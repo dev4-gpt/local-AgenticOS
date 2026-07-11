@@ -50,10 +50,15 @@ export default function WebStudio() {
       if (!j.ok) { setNotice(j.error || "Could not save the project."); return; }
       await refresh();
       const command = `cd ${JSON.stringify(j.project.path)} && claude "Read CLAUDE.md and build this website."`;
-      await navigator.clipboard.writeText(command).catch(() => {});
-      setNotice(`Saved in ${j.project.path}. Claude command copied.`);
-      if (andOpen === "claude") window.open("/claude", "_blank", "noopener");
-      if (andOpen === "design") window.open("/opendesign", "_blank", "noopener");
+      if (andOpen === "design") {
+        await navigator.clipboard.writeText(prompt).catch(() => {});
+        setNotice(`Saved in ${j.project.path}. Build prompt copied for Open Design.`);
+        window.open("/opendesign", "_blank", "noopener");
+      } else {
+        await navigator.clipboard.writeText(command).catch(() => {});
+        setNotice(`Saved in ${j.project.path}. Claude command copied.`);
+        if (andOpen === "claude") window.open("/claude", "_blank", "noopener");
+      }
     } catch { setNotice("Could not reach Web Studio."); }
     finally { setSaving(false); }
   }
