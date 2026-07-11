@@ -15,6 +15,7 @@ AgenticOS is a local-first operating layer for AI work:
 - A dashboard for Claude Code, Codex, Hermes, OpenClaw, Kimi, Antigravity, and local Ollama-backed agents.
 - A persistent memory layer that writes goals, journal entries, and notes into an Obsidian vault.
 - A provider-aware studio system for voice, video, thumbnails, music, outreach, research, and agent loops.
+- Web Studio: turn a client intake into a conversion brief and a Claude-ready build handoff, saved under `Documents/Codex/Projects/Websites`.
 - A model-routing setup that lets you use local models first and paid providers only when they are worth it.
 - A business workflow hub for founders, operators, agencies, consultants, creators, and technical teams.
 
