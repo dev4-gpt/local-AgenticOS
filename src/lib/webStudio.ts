@@ -2,10 +2,12 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { AGENTIC_DIR, VAULT_AVAILABLE } from "./vaultWriter";
 
 const HOME = os.homedir();
 export const WEB_PROJECT_ROOT = process.env.AGENTIC_OS_WEB_PROJECTS
   ?? path.join(HOME, "Documents", "Codex", "Projects", "Websites");
+const WEB_VAULT_DIR = AGENTIC_DIR ? path.join(AGENTIC_DIR, "Web Studio") : "";
 
 export interface WebProject {
   id: string;
@@ -45,7 +47,20 @@ export async function saveWebProject(input: {
   await writeFile(path.join(dir, "project.json"), JSON.stringify(project, null, 2), "utf8");
   await writeFile(path.join(dir, "site-brief.md"), input.brief, "utf8");
   await writeFile(path.join(dir, "CLAUDE.md"), input.prompt, "utf8");
+  if (VAULT_AVAILABLE && WEB_VAULT_DIR) {
+    const vaultProjects = path.join(WEB_VAULT_DIR, "Projects");
+    await mkdir(vaultProjects, { recursive: true });
+    await writeFile(path.join(vaultProjects, `${id}.md`), `${input.brief}\n\n---\n\n${input.prompt}\n`, "utf8");
+  }
   return project;
+}
+
+export async function syncWebPromptLibrary(content: string): Promise<{ ok: boolean; path?: string; error?: string }> {
+  if (!VAULT_AVAILABLE || !WEB_VAULT_DIR) return { ok: false, error: "Obsidian vault is not configured." };
+  await mkdir(WEB_VAULT_DIR, { recursive: true });
+  const file = path.join(WEB_VAULT_DIR, "Website Prompt Library.md");
+  await writeFile(file, content, "utf8");
+  return { ok: true, path: path.relative(path.dirname(AGENTIC_DIR), file) };
 }
 
 export async function listWebProjects(): Promise<WebProject[]> {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BriefcaseBusiness, Clipboard, Code2, Copy, ExternalLink, FileText, FolderPlus, Globe2, Layers3, Loader2, Sparkles, TerminalSquare } from "lucide-react";
+import { BookOpen, BriefcaseBusiness, CheckCircle2, Clipboard, Code2, Copy, FileText, FolderPlus, Globe2, Layers3, Loader2, Sparkles, TerminalSquare } from "lucide-react";
+import { ADVANCED_WEBSITE_STANDARD, WEB_PROMPT_LIBRARY, type WebPromptTemplateId, promptLibraryMarkdown } from "@/lib/webPromptLibrary";
 
 const ACCENT = "#38bdf8";
 type SiteType = "SaaS" | "Agency" | "Personal brand" | "Ecommerce" | "Course / community";
@@ -18,17 +19,21 @@ function buildBrief(v: typeof defaults) {
   return `# ${v.name || "Website project"}\n\n## Client\n${v.business || "Business to be defined"}\n\n## Site Type\n${v.type}\n\n## Target Audience\n${v.audience || "Define the primary buyer and their context."}\n\n## Offer\n${v.offer || "Define the outcome, service, or product being sold."}\n\n## Primary Goal\n${v.goal}\n\n## Conversion Story\n${v.story}\n\n## Required Pages\n${v.pages}\n\n## Visual Direction\n${v.style}\n\n## Proof to Feature\n${v.proof || "Case studies, outcomes, testimonials, recognisable clients, or founder credibility."}\n\n## Primary CTA\n${v.cta}\n\n## Delivery Runbook\n1. Research the market, audience language, competing offers, and proof available.\n2. Shape the message before layout: promise, stakes, differentiator, proof, and CTA.\n3. Design the information hierarchy around the conversion story.\n4. Build responsive components, real interactions, and intentional motion.\n5. Test the first viewport, every CTA, forms, mobile layout, keyboard navigation, and performance.\n`;
 }
 
-function buildPrompt(v: typeof defaults, brief: string) {
-  return `# Build ${v.name || "this website"}\n\nRead \`site-brief.md\` first. Build the actual ${v.type.toLowerCase()} website in this directory, not a mockup or a marketing explanation.\n\n## Outcome\nCreate a production-quality, responsive website for ${v.business || "the client"}. The primary conversion action is: ${v.cta}.\n\n## Required approach\n- Start with a short implementation plan, then execute it.\n- Use the existing project stack and conventions if a codebase already exists. If it is empty, use Next.js, TypeScript, Tailwind, and Framer Motion.\n- Make the brand, offer, and next action clear in the first viewport.\n- Follow this narrative: ${v.story}.\n- Build these pages or sections: ${v.pages}.\n- Use real, inspectable media or carefully generated assets where imagery matters; do not use empty decorative placeholders.\n- Create deliberate motion for hierarchy and feedback, while respecting reduced-motion preferences and mobile performance.\n- Make every CTA and form interaction work. Use semantic HTML, accessible labels, keyboard support, and responsive layouts.\n- Keep the visual direction: ${v.style}. Avoid copying another company or artist's exact design.\n- Do not expose secrets, add API keys to source, or publish anything without explicit approval.\n\n## Acceptance pass\nBefore finishing: run the relevant build/tests, check desktop and mobile layouts, inspect the main conversion flow, and leave the working project files in this directory.\n\n## Client brief\n\n${brief}`;
+function buildPrompt(v: typeof defaults, brief: string, templateId: WebPromptTemplateId) {
+  const template = WEB_PROMPT_LIBRARY.find((item) => item.id === templateId) ?? WEB_PROMPT_LIBRARY[0];
+  return `# ${template.label}: ${v.name || "Build this website"}\n\nRead \`site-brief.md\` first. Build the actual ${v.type.toLowerCase()} website in this directory, not a mockup or a marketing explanation.\n\n## Template Intent\n${template.prompt}\n\n## Outcome\nCreate a production-quality, responsive website for ${v.business || "the client"}. The primary conversion action is: ${v.cta}.\n\n## Client Direction\n- Target audience: ${v.audience || "Use the audience described in the brief."}\n- Offer: ${v.offer || "Use the offer described in the brief."}\n- Storyline: ${v.story}.\n- Pages or key sections: ${v.pages}.\n- Visual direction: ${v.style}.\n\n${ADVANCED_WEBSITE_STANDARD}\n\n## Client brief\n\n${brief}`;
 }
 
 export default function WebStudio() {
   const [v, setV] = useState(defaults);
   const [projects, setProjects] = useState<Project[]>([]);
   const [saving, setSaving] = useState(false);
+  const [syncingLibrary, setSyncingLibrary] = useState(false);
   const [notice, setNotice] = useState("");
+  const [templateId, setTemplateId] = useState<WebPromptTemplateId>("golden");
   const brief = useMemo(() => buildBrief(v), [v]);
-  const prompt = useMemo(() => buildPrompt(v, brief), [v, brief]);
+  const prompt = useMemo(() => buildPrompt(v, brief, templateId), [v, brief, templateId]);
+  const library = useMemo(() => promptLibraryMarkdown(), []);
   const set = (key: keyof typeof defaults, value: string) => setV((prev) => ({ ...prev, [key]: value }));
 
   const refresh = useCallback(async () => {
@@ -39,6 +44,24 @@ export default function WebStudio() {
   async function copy(value: string, label: string) {
     try { await navigator.clipboard.writeText(value); setNotice(`${label} copied.`); setTimeout(() => setNotice(""), 2600); }
     catch { setNotice("Clipboard access was blocked. Select and copy the text below."); }
+  }
+
+  function applyTemplate(id: WebPromptTemplateId) {
+    const template = WEB_PROMPT_LIBRARY.find((item) => item.id === id);
+    if (!template) return;
+    setTemplateId(id);
+    setV((prev) => ({ ...prev, type: template.type, goal: template.goal, pages: template.pages, style: template.style, story: template.story, cta: template.cta }));
+    setNotice(`${template.label} applied to the brief.`);
+  }
+
+  async function syncLibrary() {
+    setSyncingLibrary(true); setNotice("");
+    try {
+      const r = await fetch("/api/web-studio/library", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ content: library }) });
+      const j = await r.json();
+      setNotice(j.ok ? "Prompt library synced to Obsidian." : (j.error || "Could not sync the prompt library."));
+    } catch { setNotice("Could not reach the Obsidian sync endpoint."); }
+    finally { setSyncingLibrary(false); }
   }
 
   async function saveProject(andOpen?: "claude" | "design") {
@@ -72,10 +95,29 @@ export default function WebStudio() {
           <div className="text-[11.5px] mt-0.5" style={{ color: "var(--cream-mute)" }}>Client brief → conversion story → build handoff → delivery workspace</div>
         </div>
         <div className="ml-auto flex items-center gap-2 flex-wrap">
+          <button onClick={syncLibrary} disabled={syncingLibrary} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-[11.5px] disabled:opacity-50" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><BookOpen size={13} /> {syncingLibrary ? "Syncing…" : "Sync prompt library"}</button>
           <button onClick={() => copy(prompt, "Build prompt")} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-[11.5px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Copy size={13} /> Copy prompt</button>
           <button onClick={() => saveProject("claude")} disabled={saving} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11.5px] font-semibold disabled:opacity-50" style={{ background: ACCENT, color: "#07131a" }}>{saving ? <Loader2 size={13} className="animate-spin" /> : <Code2 size={13} />} Save + open Claude</button>
         </div>
       </div>
+
+      <section className="panel p-4">
+        <div className="flex items-center gap-2 mb-3"><BookOpen size={15} style={{ color: ACCENT }} /><span className="text-[13px] font-medium" style={{ color: "var(--cream)" }}>Website prompt library</span><span className="text-[10.5px]" style={{ color: "var(--cream-mute)" }}>each prompt includes structure, storyline, animation, conversion, and delivery standards</span></div>
+        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-2">
+          {WEB_PROMPT_LIBRARY.map((item) => {
+            const active = item.id === templateId;
+            return <button key={item.id} onClick={() => applyTemplate(item.id)} className="text-left border rounded-lg p-3 transition" style={{ borderColor: active ? `${ACCENT}aa` : "var(--line-soft)", background: active ? "rgba(56,189,248,0.09)" : "var(--bg-deep, rgba(0,0,0,0.14))" }}>
+              <div className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: active ? ACCENT : "var(--cream)" }}>{active && <CheckCircle2 size={12} />}{item.label}</div>
+              <div className="text-[10.5px] leading-relaxed mt-1" style={{ color: "var(--cream-mute)" }}>{item.description}</div>
+            </button>;
+          })}
+        </div>
+        <div className="flex items-center gap-2 mt-3 flex-wrap text-[10.5px]" style={{ color: "var(--cream-mute)" }}>
+          <span>Toolchain: Framer Motion + UI UX Pro Max + 21st.dev research/install workflow.</span>
+          <button onClick={() => copy(library, "Prompt library")} className="inline-flex items-center gap-1" style={{ color: ACCENT }}><Copy size={11} /> Copy library</button>
+          {notice && <span>{notice}</span>}
+        </div>
+      </section>
 
       <div className="grid xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)] gap-4">
         <section className="panel p-4">
@@ -96,7 +138,6 @@ export default function WebStudio() {
           <div className="flex items-center gap-2 mt-3 flex-wrap">
             <button onClick={() => saveProject()} disabled={saving} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-[11.5px] disabled:opacity-50" style={{ borderColor: `${ACCENT}66`, color: ACCENT }}><FolderPlus size={13} /> Save client kit</button>
             <button onClick={() => saveProject("design")} disabled={saving} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-[11.5px] disabled:opacity-50" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Layers3 size={13} /> Save + open Open Design</button>
-            {notice && <span className="text-[10.5px]" style={{ color: "var(--cream-mute)" }}>{notice}</span>}
           </div>
         </section>
 
