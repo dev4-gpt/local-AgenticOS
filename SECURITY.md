@@ -32,6 +32,8 @@ bash scripts/setup-elevenlabs-local.sh
 
 That script writes `ELEVENLABS_API_KEY` into your active Hermes profile with `0600` permissions. The key is never written to the repo.
 
+The optional `scripts/setup-elevenlabs-music-local.sh` helper writes a separate `ELEVENLABS_MUSIC_API_KEY` with the same permissions. Use a separately restricted key for Music Generation so revoking or rotating music access does not affect voice or OpenMontage.
+
 ## Pre-Push Checklist
 
 ```bash

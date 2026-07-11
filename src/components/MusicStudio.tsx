@@ -9,6 +9,7 @@ import {
 const ACCENT = "#c084fc"; // violet — sits next to Video's red in the sidebar
 
 type Model = "V5" | "V4_5PLUS" | "V4_5" | "V4" | "V3_5";
+type Provider = "suno" | "elevenlabs";
 const MODELS: { id: Model; label: string }[] = [
   { id: "V5", label: "Suno v5 · newest" },
   { id: "V4_5PLUS", label: "v4.5+" },
@@ -53,6 +54,7 @@ export default function MusicStudio() {
   const [title, setTitle] = useState("");
   const [instrumental, setInstrumental] = useState(true);
   const [model, setModel] = useState<Model>("V4_5");
+  const [provider, setProvider] = useState<Provider>("suno");
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const [savedOnly, setSavedOnly] = useState(false);
@@ -85,15 +87,21 @@ export default function MusicStudio() {
   async function generate() {
     const d = desc.trim();
     if (!d || busy) return;
-    setBusy(true); setNotice(""); setPreviews([]); setPhase("Sending to Suno…"); setElapsed(0);
+    setBusy(true); setNotice(""); setPreviews([]); setPhase(provider === "elevenlabs" ? "Composing with Eleven Music…" : "Sending to Suno…"); setElapsed(0);
 
     let taskId = "";
     try {
       const r = await (await fetch("/api/music/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: d, title: title.trim() || undefined, instrumental, model }),
+        body: JSON.stringify({ description: d, title: title.trim() || undefined, instrumental, model, provider }),
       })).json();
       if (!r.ok) { setNotice(r.error ?? "Generation failed."); setBusy(false); setPhase(""); return; }
+      if (provider === "elevenlabs") {
+        setBusy(false); setPhase(""); setNotice("✓ Eleven Music track ready."); setTitle(""); setDesc("");
+        setTracks((prev) => [...(r.tracks as Track[]), ...prev]);
+        setTimeout(() => setNotice(""), 4000);
+        return;
+      }
       taskId = r.taskId;
     } catch (e) { setNotice("Could not reach the studio: " + String(e)); setBusy(false); setPhase(""); return; }
 
@@ -198,6 +206,12 @@ export default function MusicStudio() {
             className="rounded-lg px-3 py-2 text-[12px] outline-none"
             style={{ background: "var(--bg-deep, rgba(0,0,0,0.35))", border: "1px solid var(--panel-border)", color: "var(--fg-dim)" }}>
             {MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+          <select value={provider} onChange={(e) => setProvider(e.target.value as Provider)}
+            className="rounded-lg px-3 py-2 text-[12px] outline-none"
+            style={{ background: "var(--bg-deep, rgba(0,0,0,0.35))", border: "1px solid var(--panel-border)", color: "var(--fg-dim)" }}>
+            <option value="suno">Suno · two takes</option>
+            <option value="elevenlabs">Eleven Music · 30 sec</option>
           </select>
 
           <button onClick={generate} disabled={busy || !desc.trim()}

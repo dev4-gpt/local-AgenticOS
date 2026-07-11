@@ -163,6 +163,14 @@ chmod +x scripts/setup-elevenlabs-local.sh
 bash scripts/setup-elevenlabs-local.sh
 ```
 
+For a separate Eleven Music credential, create a second restricted ElevenLabs key with only Music Generation access, then run:
+
+```bash
+bash scripts/setup-elevenlabs-music-local.sh
+```
+
+The Music tab will then offer Eleven Music alongside Suno. Eleven Music API access requires an eligible paid ElevenLabs plan; the voice/OpenMontage key remains separate.
+
 Then restart AgentOS and test:
 
 ```bash

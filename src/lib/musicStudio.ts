@@ -96,6 +96,26 @@ export async function storeTrack(
   return toItem(sidecar);
 }
 
+// Store a locally generated audio buffer using the same history format as Suno.
+export async function storeGeneratedAudio(
+  audio: Buffer,
+  meta: { taskId: string; prompt: string; title?: string; model: string; instrumental: boolean },
+): Promise<TrackItem> {
+  if (!existsSync(MUSIC_ROOT)) await mkdir(MUSIC_ROOT, { recursive: true });
+  const ts = Date.now();
+  const title = (meta.title?.trim() || meta.prompt).slice(0, 100);
+  const stem = `${ts}-0-${slugify(title)}`;
+  const audioFile = `${stem}.mp3`;
+  await writeFile(path.join(MUSIC_ROOT, audioFile), audio);
+  const sidecar: TrackSidecar = {
+    id: meta.taskId, taskId: meta.taskId, title, prompt: meta.prompt, style: meta.prompt,
+    tags: "", duration: 0, model: meta.model, instrumental: meta.instrumental,
+    audioFile, coverFile: null, createdAt: ts, saved: false,
+  };
+  await writeFile(path.join(MUSIC_ROOT, `${stem}.json`), JSON.stringify(sidecar, null, 2));
+  return toItem(sidecar);
+}
+
 async function readSidecars(): Promise<{ file: string; data: TrackSidecar }[]> {
   if (!existsSync(MUSIC_ROOT)) return [];
   const names = await readdir(MUSIC_ROOT).catch(() => []);
