@@ -74,6 +74,7 @@ export async function integrationOverview() {
     version(path.join(HOME, ".local", "bin", "crwl"), ["--help"]).then((v) => ({ id: "crawl4ai", name: "Crawl4AI", description: "LLM-friendly crawling and extraction", state: v ? "working" : "missing", detail: v ? "crawl4ai 0.9.1" : "Install Crawl4AI and its browser runtime." })),
     version(path.join(HOME, ".local", "bin", "browser-use"), ["--version"]).then((v) => ({ id: "browser-use", name: "Browser Use", description: "Interactive browser actions and QA", state: v ? "working" : "missing", detail: v || "Install Browser Use and its skill." })),
     Promise.resolve({ id: "claude-ads", name: "Claude Ads", description: "Paid-ad planning, audit, and creative skills", state: existsSync(path.join(HOME, ".codex", "skills", "ads", "SKILL.md")) && existsSync(path.join(HOME, ".claude-ads-env", "bin", "python")) ? "working" : "missing", detail: "23 skills + isolated Python runtime" }),
+    version(path.join(HOME, ".local", "bin", "graphify"), ["--version"]).then((v) => ({ id: "graphify", name: "Graphify", description: "Knowledge graph for the Obsidian vault", state: v && existsSync(path.join(HOME, ".agentic-os", "graphify", "graphify-out", "graph.json")) ? "working" : v ? "waiting" : "missing", detail: v && existsSync(path.join(HOME, ".agentic-os", "graphify", "graphify-out", "graph.json")) ? "Obsidian export ready" : v ? "Installed; build the vault graph from Memory." : "Install graphifyy with uv." })),
   ]);
 
   const external = await Promise.all(EXTERNAL.map(async (def) => {

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Brain, Check, FolderOpen, RefreshCw, Search, FileText, Sparkles, Clock, Network } from "lucide-react";
 import dynamic from "next/dynamic";
 import Panel from "./Panel";
+import GraphifyPanel from "./GraphifyPanel";
 
 // Three.js bundle is heavy — keep it out of the initial render path.
 const VaultGraph3D = dynamic(() => import("./VaultGraph3D"), { ssr: false });
@@ -161,6 +162,7 @@ export default function MemoryPanel() {
       )}
       {tab === "graph" ? (
         <div className="flex flex-col h-full min-h-0">
+          <GraphifyPanel />
           {/* Tab bar so user can still hop back out of the graph */}
           <div className="flex gap-1.5 mb-3">
             {tabs.map((t) => (
