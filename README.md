@@ -37,6 +37,8 @@ See [BUSINESS-USE-CASES.md](./BUSINESS-USE-CASES.md) for a deeper breakdown.
 
 For the current V1 completion snapshot, known gaps, and recommended V1.1 priorities, see [V1-STATUS-AND-GAPS.md](./V1-STATUS-AND-GAPS.md).
 
+For V2 local open-source tool planning, storage analysis, and the CANCEL Guide review, see [V2-LOCAL-AI-TOOLS-ROADMAP.md](./V2-LOCAL-AI-TOOLS-ROADMAP.md).
+
 For launch copy across Medium, Substack, and LinkedIn, see [MARKETING-LAUNCH-CONTENT.md](./MARKETING-LAUNCH-CONTENT.md).
 
 ## Current Local Stack

@@ -115,6 +115,7 @@ These are not broken; they are intentionally waiting for real business accounts,
 3. Vault expansion: add company positioning, offers, SOPs, website prompts, client briefs, and example outputs to `llm-wiki`, then rebuild Graphify.
 4. Integrations activation: connect only the tools that will be used immediately, starting with Cal.com, Plausible, Ghost/Listmonk, or Supabase depending on the first business workflow.
 5. Regression command: add one script that runs build, API health checks, sidebar smoke tests, and a secret scan before every push.
+6. V2 local tool planning: keep Handy, OmniVoice, ComfyUI, Wan, and HeyGem documented as optional cost-saving tools, but do not install them until storage and hardware fit the workflow. See [V2-LOCAL-AI-TOOLS-ROADMAP.md](./V2-LOCAL-AI-TOOLS-ROADMAP.md).
 
 ## Do Not Add Yet
 
