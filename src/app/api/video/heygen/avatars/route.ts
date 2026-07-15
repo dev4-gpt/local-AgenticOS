@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listAvatars } from "@/lib/heygen";
+import { listAvatars, readHeyGenKey } from "@/lib/heygen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +14,16 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const q = (url.searchParams.get("q") ?? "").toLowerCase().trim();
     const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") ?? "60", 10), 1), 500);
+
+    if (!readHeyGenKey()) {
+      return NextResponse.json({
+        configured: false,
+        count: 0,
+        total: 0,
+        avatars: [],
+        error: "HeyGen API key not configured. Add HEYGEN_API_KEY to ~/.agentic-os/heygen.env to enable avatar generation.",
+      });
+    }
 
     let avatars = await listAvatars();
     if (q) {

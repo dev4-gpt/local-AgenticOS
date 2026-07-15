@@ -41,6 +41,10 @@ For V2 local open-source tool planning, storage analysis, and the CANCEL Guide r
 
 For launch copy across Medium, Substack, and LinkedIn, see [MARKETING-LAUNCH-CONTENT.md](./MARKETING-LAUNCH-CONTENT.md).
 
+For the deck, diagram, carousel, outreach, and Open Design production briefs behind the public launch, see [LAUNCH-ASSET-SYSTEM.md](./LAUNCH-ASSET-SYSTEM.md).
+
+For the final four-week publishing order, twelve paste-ready LinkedIn captions, first comments, and long-form publishing notes, see [PUBLISHING-PLAYBOOK.md](./PUBLISHING-PLAYBOOK.md).
+
 ## Current Local Stack
 
 This repo is configured for a Mac-local AgentOS setup:

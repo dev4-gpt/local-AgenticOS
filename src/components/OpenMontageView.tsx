@@ -23,19 +23,19 @@ const STATS = [
 ];
 
 const MOVIES = [
-  { src: "/openmontage/movies/movie-dragon.mp4", poster: "/openmontage/movies/movie-dragon-poster.jpg", title: "Dragon's Shadow", note: "Veo 3.1 motion + sound · Remotion storyline over the top." },
-  { src: "/openmontage/movies/movie-space.mp4", poster: "/openmontage/movies/movie-space-poster.jpg", title: "Abandoned Odyssey", note: "Veo 3.1 motion + sound · Remotion storyline over the top." },
-  { src: "/openmontage/movies/movie-samurai.mp4", poster: "/openmontage/movies/movie-samurai-poster.jpg", title: "Blossom's Edge", note: "Veo 3.1 motion + sound · Remotion storyline over the top." },
-  { src: "/openmontage/movies/movie-ocean.mp4", poster: "/openmontage/movies/movie-ocean-poster.jpg", title: "Abyssal Reverie", note: "Veo 3.1 motion + sound · Remotion storyline over the top." },
+  { src: "", poster: "/openmontage/movies/movie-dragon-poster.jpg", title: "Dragon's Shadow", note: "Storyline preview. Generate to create a local MP4 in the OpenMontage workspace." },
+  { src: "", poster: "/openmontage/movies/movie-space-poster.jpg", title: "Abandoned Odyssey", note: "Storyline preview. Generate to create a local MP4 in the OpenMontage workspace." },
+  { src: "", poster: "/openmontage/movies/movie-samurai-poster.jpg", title: "Blossom's Edge", note: "Storyline preview. Generate to create a local MP4 in the OpenMontage workspace." },
+  { src: "", poster: "/openmontage/movies/movie-ocean-poster.jpg", title: "Abyssal Reverie", note: "Storyline preview. Generate to create a local MP4 in the OpenMontage workspace." },
 ];
 
 const VIDEOS = [
-  { src: "/openmontage/cinematic/cine-samurai.mp4", poster: "/openmontage/cinematic/cine-samurai-poster.jpg", title: "Burning Bamboo", note: "Cinematic trailer — gpt-image-2 + OpenMontage CinematicRenderer." },
-  { src: "/openmontage/cinematic/cine-spaceship.mp4", poster: "/openmontage/cinematic/cine-spaceship-poster.jpg", title: "Derelict", note: "Sci-fi trailer — film-grade stills, title cards, score." },
-  { src: "/openmontage/cinematic/cine-dragon.mp4", poster: "/openmontage/cinematic/cine-dragon-poster.jpg", title: "Frostfire", note: "Dark-fantasy trailer — cohesive world, cinematic grade." },
-  { src: "/openmontage/cinematic/cine-cyberpunk.mp4", poster: "/openmontage/cinematic/cine-cyberpunk-poster.jpg", title: "Neon Rain", note: "Cyberpunk trailer — neon Tokyo, rain, reflections." },
-  { src: "/openmontage/cinematic/cine-leviathan.mp4", poster: "/openmontage/cinematic/cine-leviathan-poster.jpg", title: "The Abyss", note: "Cinematic trailer — bioluminescent leviathan, god rays." },
-  { src: "/openmontage/signal-from-tomorrow.mp4", poster: "", title: "Signal From Tomorrow", note: "OpenMontage flagship — Veo motion clips + soundtrack." },
+  { src: "", poster: "/openmontage/cinematic/cine-samurai-poster.jpg", title: "Burning Bamboo", note: "Cinematic still preview — run the pipeline to render motion." },
+  { src: "", poster: "/openmontage/cinematic/cine-spaceship-poster.jpg", title: "Derelict", note: "Cinematic still preview — run the pipeline to render motion." },
+  { src: "", poster: "/openmontage/cinematic/cine-dragon-poster.jpg", title: "Frostfire", note: "Cinematic still preview — run the pipeline to render motion." },
+  { src: "", poster: "/openmontage/cinematic/cine-cyberpunk-poster.jpg", title: "Neon Rain", note: "Cinematic still preview — run the pipeline to render motion." },
+  { src: "", poster: "/openmontage/cinematic/cine-leviathan-poster.jpg", title: "The Abyss", note: "Cinematic still preview — run the pipeline to render motion." },
+  { src: "/openmontage/generated/om-mremdsw1a0yt.mp4", poster: "", title: "Signal From Tomorrow", note: "Local generated OpenMontage sample." },
 ];
 
 const PIPELINES = [
@@ -93,6 +93,12 @@ export default function OpenMontageView() {
   }
   function finish() { if (pollRef.current) clearInterval(pollRef.current); setBusy(false); setJob(null); }
   function stop(message: string) { if (pollRef.current) clearInterval(pollRef.current); setBusy(false); setJob(null); setErr(message); }
+  function renderPreview(v: { src: string; poster: string; title: string }) {
+    if (v.src) {
+      return <video src={v.src} poster={v.poster || undefined} controls muted loop playsInline preload="metadata" className="block w-full bg-black" style={{ aspectRatio: "16/9", objectFit: "cover" }} />;
+    }
+    return <img src={v.poster} alt="" className="block w-full bg-black" style={{ aspectRatio: "16/9", objectFit: "cover" }} />;
+  }
 
   return (
     <div className="h-full overflow-y-auto sidebar-scroll pr-1">
@@ -235,8 +241,8 @@ export default function OpenMontageView() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         {MOVIES.map((v) => (
-          <div key={v.src} className="panel overflow-hidden">
-            <video src={v.src} poster={v.poster || undefined} controls loop playsInline preload="metadata" className="block w-full bg-black" style={{ aspectRatio: "16/9", objectFit: "cover" }} />
+          <div key={v.title} className="panel overflow-hidden">
+            {renderPreview(v)}
             <div className="px-4 py-3">
               <div className="text-sm" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 600, color: "var(--cream)" }}>{v.title}</div>
               <div className="text-[11px] mt-1 leading-snug" style={{ color: "var(--cream-dim)" }}>{v.note}</div>
@@ -252,8 +258,8 @@ export default function OpenMontageView() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         {VIDEOS.map((v) => (
-          <div key={v.src} className="panel overflow-hidden">
-            <video src={v.src} poster={v.poster || undefined} controls muted loop playsInline preload="metadata" className="block w-full bg-black" style={{ aspectRatio: "16/9", objectFit: "cover" }} />
+          <div key={v.title} className="panel overflow-hidden">
+            {renderPreview(v)}
             <div className="px-4 py-3">
               <div className="text-sm" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 600, color: "var(--cream)" }}>{v.title}</div>
               <div className="text-[11px] mt-1 leading-snug" style={{ color: "var(--cream-dim)" }}>{v.note}</div>

@@ -38,7 +38,7 @@ const TITLES: Record<string, PageMeta> = {
   "/notebook":    { numeral: "XII.",  label: "Self · Notebook",    title: "Notebook",                sub: "Your NotebookLM notebooks, audio overviews and chats — all in one place, synced to Obsidian." },
   "/kanban":      { numeral: "XIII.", label: "Self · Kanban",      title: "Kanban",                  sub: "Hermes Agent multi-agent board. Drop a prompt into triage, watch the orchestrator decompose + assign." },
   "/journal":     { numeral: "XIV.",  label: "Self · Journal",     title: "Journal",                 sub: "Daily entries with voice or text. One markdown file per day." },
-  "/memory":      { numeral: "XV.",   label: "Self · Memory",      title: "Memory",                  sub: "Search 1261 Omi memories + your Obsidian vault." },
+  "/memory":      { numeral: "XV.",   label: "Self · Memory",      title: "Memory",                  sub: "Search your Obsidian vault, Graphify knowledge map, and optional Omi-compatible memory file." },
   "/guide":       { numeral: "XVI.",  label: "Build · Your Own",   title: "Build Your Own",          sub: "Step-by-step guide. Anyone can follow it. Share with your community." },
 };
 

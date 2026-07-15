@@ -2,6 +2,10 @@
 
 Use this as the first public storytelling pack for AgentOS V1. The core idea: this is not another chatbot wrapper. It is a local-first AI operating layer that turns agents, memory, workflows, and business execution into one structured system.
 
+For the visual launch architecture, Open Design prompts, deck storyboards, diagram specifications, carousel sequence, and outreach plan, see [LAUNCH-ASSET-SYSTEM.md](./LAUNCH-ASSET-SYSTEM.md).
+
+For the final four-week publishing order, twelve paste-ready LinkedIn captions, first comments, and long-form publishing notes, see [PUBLISHING-PLAYBOOK.md](./PUBLISHING-PLAYBOOK.md).
+
 ## Positioning
 
 ### One-Line Positioning

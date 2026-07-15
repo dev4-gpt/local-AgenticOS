@@ -14,7 +14,9 @@ export const dynamic = "force-dynamic";
 const POINTER = path.join(os.homedir(), ".agentic-os", "video-director-example.json");
 
 export async function GET() {
-  if (!existsSync(POINTER)) return NextResponse.json({ ok: false, error: "no example yet" }, { status: 404 });
+  if (!existsSync(POINTER)) {
+    return NextResponse.json({ ok: false, example: null, error: "no example yet" });
+  }
   try {
     const j = JSON.parse(await readFile(POINTER, "utf8"));
     return NextResponse.json({ ok: true, example: j });

@@ -11,7 +11,11 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const project = url.searchParams.get("project");
   if (project) {
-    const res = await listProjectFiles(project);
+    let res = await listProjectFiles(project);
+    if (!res) {
+      await ensureProject(project);
+      res = await listProjectFiles(project);
+    }
     if (!res) return NextResponse.json({ error: "project not found" }, { status: 404 });
     return NextResponse.json(res);
   }

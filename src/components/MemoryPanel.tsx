@@ -81,7 +81,7 @@ export default function MemoryPanel() {
   const tabs: { key: Tab; label: string; count?: number; icon: React.ReactNode }[] = [
     { key: "recent", label: "Recent", icon: <Clock size={12} />, count: recent.length },
     { key: "search", label: "Notes", icon: <FileText size={12} />, count: notes.length },
-    { key: "omi", label: "Omi", icon: <Sparkles size={12} />, count: omi.length },
+    { key: "omi", label: "Omi file", icon: <Sparkles size={12} />, count: omi.length },
     { key: "graph", label: "Graph", icon: <Network size={12} /> },
   ];
 
