@@ -1,0 +1,6 @@
+interface:
+  display_name: "Veloce Client Deployment"
+  short_description: "Ship isolated client cloud environments safely"
+  default_prompt: "Use $veloce-single-tenant-client-deployment to design an isolated, maintainable cloud deployment for this client."
+policy:
+  allow_implicit_invocation: true

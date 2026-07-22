@@ -68,6 +68,11 @@ export const CAPABILITIES: Capability[] = [
     dataScope: "Veloce-owned loopback or explicitly authorized staging environments and private assessment reports.", actionBoundary: "Manual, isolated, human-supervised assessment only; neither pentest framework is exposed as a product MCP or client tool.",
   },
   {
+    id: "single-tenant-client-deployment", name: "Veloce Client Deployment", kind: "skill", audience: "operator", status: "reviewed", destination: "/capabilities",
+    description: "Produces isolated client cloud environments from one versioned product image, with tenant-scoped identity, storage, secrets, workers, budgets, and updates.",
+    dataScope: "Approved client configuration, infrastructure metadata, capability allowlist, and non-secret deployment evidence.", actionBoundary: "Never deploys the private operator OS, personal subscription credentials, arbitrary shell access, or cross-client data surfaces.",
+  },
+  {
     id: "obsidian", name: "Obsidian Vault", kind: "connector", audience: "built-in", status: "active", destination: "/memory",
     description: "Local-first project memory, decisions, journals, and approved Flow Lab briefs.",
     dataScope: "Configured local vault and client namespace.", actionBoundary: "Local-only; no public exposure or cross-client access.",

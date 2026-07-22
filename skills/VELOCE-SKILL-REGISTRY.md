@@ -14,6 +14,7 @@ Only the following capabilities may be added after source review, license review
 | Edition experience | Original scroll-led stories, Three.js dot networks, UI motion, and fallbacks | Keep canvas non-essential; preserve keyboard and reduced-motion paths. |
 | Immersive scroll site | Provider-neutral architecture and templates for original service stories | Use only for an approved immersive brief; never copy external references or expose client data. |
 | Asset sequencing | Owned SVG, video, and frame-sequence asset planning plus a reusable React canvas implementation | Never ingest unlicensed frames or make large frame sets the default. |
+| Single-tenant client deployment | Isolated client portals, credentials, budgets, storage, workers, and release operations from one maintained product image | Never lift and shift the private operator OS, expose raw execution, or create divergent client code forks. |
 
 ## Reviewed Tool Choices
 
@@ -39,6 +40,7 @@ Only the following capabilities may be added after source review, license review
 - `veloce-design-intelligence`: three reviewable design profiles for conversion editorial, immersive operational storytelling, and high-trust product clarity.
 - `veloce-immersive-scroll-site`: one shared lazy-loaded scene, semantic operating artifacts, original procedural geometry, and no-WebGL/reduced-motion verification. Available to any provider through Web Studio and Flow Lab handoffs; Claude Code also has a compatible global shortcut.
 - `veloce-security-release-review`: operator-only release review pack that records authorization, automated checks, findings, remediation, and retest evidence. It references PentAGI and HexStrike AI without exposing either tool as a product connector.
+- `veloce-single-tenant-client-deployment`: repeatable early-client cloud architecture with isolated identity, storage, secrets, budgets, workers, acceptance evidence, and centralized upgrades.
 - `document-skills`, `mcp-builder`, `webapp-testing`, `frontend-design`, and `skill-creator`: internal capability families to be enabled only after their source and behavior are reviewed.
 
 ## Explicitly Prohibited
