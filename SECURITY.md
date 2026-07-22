@@ -1,6 +1,6 @@
 # Security And Secret Handling
 
-AgentOS is designed to run locally first. The public repository should contain source code, examples, docs, and non-secret assets only.
+Veloce AgenticOS is designed to run locally first. The public repository should contain source code, examples, docs, and non-secret assets only.
 
 ## Never Commit
 
@@ -13,6 +13,10 @@ AgentOS is designed to run locally first. The public repository should contain s
 - `.next`, `node_modules`, local build caches, logs, screenshots containing tokens
 
 The repository `.gitignore` excludes common environment files and generated folders, but still run a secret scan before pushing.
+
+## Public Release Gate
+
+Before releasing the public Veloce site, follow [SECURITY-RELEASE-GATE.md](SECURITY-RELEASE-GATE.md). It verifies that the public artifact cannot reference the private dashboard, local credential paths, or execution routes, and it keeps high-risk penetration-testing tools outside the product runtime.
 
 ## Local Key Locations
 

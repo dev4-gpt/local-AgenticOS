@@ -15,6 +15,13 @@
 
 # next.js
 /.next/
+/.next-veloce-recovery-*/
+
+# Standalone public-site build output
+/public-site/node_modules/
+/public-site/dist/
+/public-site/tsconfig.tsbuildinfo
+/test-results/
 /out/
 
 # production
@@ -52,3 +59,12 @@ member-pack/.claude-flow/
 
 # Runtime/generated media outputs
 public/openmontage/generated/
+
+# Local high-resolution masters for public Veloce art. The optimized JPG assets
+# are the only variants shipped with the public-site source.
+/public-site/assets/
+public-site/src/assets/*.png
+
+# Private client material. Keep proposals, approvals, vault exports, usage reports,
+# and delivery workspaces outside the public AgentOS repository.
+.private-client-kits/

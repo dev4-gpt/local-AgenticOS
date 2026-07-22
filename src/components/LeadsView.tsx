@@ -207,7 +207,7 @@ export default function LeadsView() {
           placeholder="e.g. Founders of small AI agencies in the US, 2–20 staff, doing client work"
           className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/25" />
         <input value={offer} onChange={(e) => setOffer(e.target.value)}
-          placeholder="What you're offering them (e.g. the Agent OS to automate delivery)"
+          placeholder="What you're offering them (e.g. Veloce AgenticOS to automate delivery)"
           className="w-full mt-2 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/25" />
         <button onClick={runIcp} disabled={icpLoading || brief.trim().length < 3}
           className="mt-3 inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium text-black disabled:opacity-40"

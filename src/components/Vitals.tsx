@@ -10,7 +10,7 @@ interface VitalsData {
   ts: number;
   claude: { ok: boolean; version: string; latencyMs: number };
   openclaw: { ok: boolean; gateway: string; degraded: boolean; busy?: boolean; agents: string[]; sessions: number; latencyMs: number };
-  hermes: { ok: boolean; model: string; provider: string; latencyMs: number };
+  hermes: { ok: boolean; degraded?: boolean; model: string; provider: string; detail?: string; latencyMs: number };
 }
 interface FccState { enabled: boolean; reachable: boolean; model: string | null; provider: string | null; }
 
@@ -95,9 +95,9 @@ export default function Vitals() {
       <VitalTile
         label="Hermes"
         icon={<Cpu size={12} />}
-        primary={data?.hermes.ok ? "Online" : "…"}
-        sub={data ? `${data.hermes.model.split("/").pop()} · ${data.hermes.provider}` : "checking…"}
-        status={data?.hermes.ok ? "ok" : "warn"}
+        primary={data?.hermes.ok ? (data.hermes.degraded ? "Fallback" : "Online") : "…"}
+        sub={data ? (data.hermes.degraded ? data.hermes.detail : `${data.hermes.model.split("/").pop()} · ${data.hermes.provider}`) : "checking…"}
+        status={!data?.hermes.ok || data.hermes.degraded ? "warn" : "ok"}
       />
       <VitalTile
         label="Heartbeat"

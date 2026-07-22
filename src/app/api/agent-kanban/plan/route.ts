@@ -33,7 +33,13 @@ export async function POST(req: Request) {
 
   const model = await resolveModel();
   try {
-    const raw = await localChat(model, SYS, `Goal: ${goal.trim()}`, { format: "json", temperature: 0.5 });
+    const raw = await localChat(model, SYS, `Goal: ${goal.trim()}`, {
+      format: "json",
+      temperature: 0.3,
+      numPredict: 700,
+      think: false,
+      timeoutMs: 120_000,
+    });
     let parsed: { cards?: { title?: string; brief?: string }[] };
     try { parsed = JSON.parse(raw); } catch { parsed = { cards: [] }; }
     const cards = (parsed.cards || [])

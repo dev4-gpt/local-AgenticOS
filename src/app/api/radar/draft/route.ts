@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     "- Do NOT run any web/X search. Output ONLY the tweet text, nothing before or after.",
   ].filter(Boolean).join("\n");
 
-  const res = await run("hermes", ["-z", prompt], { cwd: HERMES_WORKSPACE, timeoutMs: 150_000 });
+  const res = await run("hermes", ["chat", "-q", prompt, "-Q", "--source", "agentos"], { cwd: HERMES_WORKSPACE, timeoutMs: 150_000 });
 
   const text = (res.stdout || "").trim();
   if (!text) {

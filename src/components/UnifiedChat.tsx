@@ -202,7 +202,7 @@ export default function UnifiedChat({
     // Give the network/proxy 6.5 min — slightly longer than the server-side 6 min hermes timeout
     // so the server gets to send back its own diagnostic message rather than us aborting first.
     const watchdog = setTimeout(() => ctrl.abort(), 6.5 * 60 * 1000);
-    // Send the prior turns so Hermes keeps conversation context (hermes -z is single-shot
+    // Send the prior turns so Hermes keeps conversation context (Hermes query mode is single-shot
     // per call, so without this every message was treated as a brand-new conversation).
     const history = msgs.slice(-24).map((m) => ({ role: m.role, text: m.text }));
     try {

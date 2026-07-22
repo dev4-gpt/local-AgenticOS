@@ -154,7 +154,7 @@ export default function PipelineView() {
 
   if (!available) return (
     <div className="panel p-6 text-center text-[var(--fg-dim)]">
-      Pipeline needs your Obsidian vault configured. Set <code>vaultRoot</code> in your Agent OS config, then reload.
+      Pipeline needs your Obsidian vault configured. Set <code>vaultRoot</code> in your Veloce AgenticOS config, then reload.
     </div>
   );
 

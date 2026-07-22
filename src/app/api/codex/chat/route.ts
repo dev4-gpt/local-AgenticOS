@@ -81,6 +81,10 @@ export async function POST(req: Request) {
   args.push(fullPrompt);
 
   const child = spawnStream("codex", args, { cwd });
+  // Codex 0.143+ appends piped stdin to the positional prompt. `spawn()` leaves
+  // stdin open by default, so headless requests otherwise wait forever for an
+  // input stream that the dashboard will never send.
+  child.stdin.end();
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({

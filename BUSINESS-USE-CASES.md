@@ -1,6 +1,6 @@
 # Business Use Cases
 
-AgentOS is a local AI operating layer for companies that want AI agents to be useful without turning every workflow into a pile of browser tabs, SaaS logins, and scattered notes.
+Veloce AgenticOS is a local AI operating layer for companies that want AI agents to be useful without turning every workflow into a pile of browser tabs, SaaS logins, and scattered notes.
 
 It is not one more chatbot. It is a command center that connects local coding agents, model routers, voice workflows, Obsidian memory, research tools, and production checklists into one operating surface.
 
@@ -48,7 +48,7 @@ It is not one more chatbot. It is a command center that connects local coding ag
 
 ## Why Local-First Matters
 
-Many businesses adopt AI by adding more cloud tools. That works at first, then context fragments. AgentOS keeps the control plane local:
+Many businesses adopt AI by adding more cloud tools. That works at first, then context fragments. Veloce AgenticOS keeps the control plane local:
 
 - Private company memory stays on the machine or chosen vault.
 - Secrets live in local ignored files, not source code.
@@ -60,7 +60,7 @@ Many businesses adopt AI by adding more cloud tools. That works at first, then c
 
 Start with the local core:
 
-- AgentOS dashboard
+- Veloce AgenticOS dashboard
 - Obsidian vault
 - Claude Code or Codex
 - Free Claude Code through Ollama

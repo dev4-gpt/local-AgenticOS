@@ -1,6 +1,6 @@
 // Fast Jarvis voice pipeline.
 //
-// The old path spawned `hermes -z` per turn — a full agent COLD BOOT (~28s).
+// The old path spawned a fresh Hermes CLI process per turn — a full agent COLD BOOT (~28s).
 // This routes Jarvis two ways instead:
 //   - "fast"  : a DIRECT chat completion — MiniMax-M3 first, OpenRouter
 //               (Claude 5 / profile default) as fallback — no agent overhead.
@@ -15,7 +15,7 @@ import { hermesHome } from "@/lib/config";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import os from "node:os";
-import { run } from "@/lib/runner";
+import { runHermesQuery } from "@/lib/hermesCli";
 import { searchNotes, searchOmi, notesModifiedOn, recentNotes, recentOmi } from "@/lib/vault";
 import { openRouterKey } from "@/lib/providerKeys";
 
@@ -292,7 +292,7 @@ async function agent(prompt: string, history: JarvisMsg[]): Promise<JarvisResult
   const started = Date.now();
   const ctx = history.slice(-4).map((m) => `${m.role === "user" ? "Me" : "You"}: ${m.content}`).join("\n");
   const full = `${AGENT_PERSONA}\n\n${ctx ? ctx + "\n\n" : ""}Command: ${prompt}`;
-  const out = await run("hermes", ["-z", full, "--yolo", "--accept-hooks"], { timeoutMs: 6 * 60 * 1000 });
+  const out = await runHermesQuery(full, { timeoutMs: 6 * 60 * 1000, allowTools: true });
   const text = out.stdout.replace(/\x1b\[[0-9;?]*[a-zA-Z]|\x1b\]\d+;[^\x07\x1b]*(\x07|\x1b\\)/g, "").trim();
   return { ok: out.ok && !!text, text: text || "(no reply — check `hermes status`)", ms: Date.now() - started, mode: "agent", error: text ? undefined : out.stderr.slice(-300) };
 }

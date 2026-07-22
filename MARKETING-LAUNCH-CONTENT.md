@@ -1,6 +1,6 @@
-# AgentOS Launch Content Pack
+# Veloce AgenticOS Launch Content Pack
 
-Use this as the first public storytelling pack for AgentOS V1. The core idea: this is not another chatbot wrapper. It is a local-first AI operating layer that turns agents, memory, workflows, and business execution into one structured system.
+Use this as the first public storytelling pack for Veloce AgenticOS V1. The core idea: this is not another chatbot wrapper. It is a local-first AI operating layer that turns agents, memory, workflows, and business execution into one structured system.
 
 For the visual launch architecture, Open Design prompts, deck storyboards, diagram specifications, carousel sequence, and outreach plan, see [LAUNCH-ASSET-SYSTEM.md](./LAUNCH-ASSET-SYSTEM.md).
 
@@ -10,15 +10,15 @@ For the final four-week publishing order, twelve paste-ready LinkedIn captions, 
 
 ### One-Line Positioning
 
-AgentOS is a local-first AI mission control system for people and businesses who want agents, memory, content, research, coding, and operations in one structured workspace.
+Veloce AgenticOS is a local-first AI mission control system for people and businesses who want agents, memory, content, research, coding, and operations in one structured workspace.
 
 ### Short Description
 
-AgentOS turns a laptop into a private AI operating layer. It connects local agents, Claude Code, Codex, Hermes, OpenClaw, Obsidian memory, Graphify knowledge graphs, Web Studio, voice, content workflows, and optional business integrations into one dashboard.
+Veloce AgenticOS turns a laptop into a private AI operating layer. It connects local agents, Claude Code, Codex, Hermes, OpenClaw, Obsidian memory, Graphify knowledge graphs, Web Studio, voice, content workflows, and optional business integrations into one dashboard.
 
 ### Core Message
 
-Most people are using AI through scattered chats. One tab for coding, another for research, another for notes, another for content, another for client work, and another for prompts. AgentOS is built around a different idea: AI should work like an operating system, not a pile of disconnected tools.
+Most people are using AI through scattered chats. One tab for coding, another for research, another for notes, another for content, another for client work, and another for prompts. Veloce AgenticOS is built around a different idea: AI should work like an operating system, not a pile of disconnected tools.
 
 ### What Makes It Different
 
@@ -49,9 +49,9 @@ Most people are using AI through scattered chats. One tab for coding, another fo
 
 ## Title Options
 
-1. I Built a Local Agentic OS: A Mission Control System for AI Work
+1. I Built a Local Veloce AgenticOS: A Mission Control System for AI Work
 2. What Happens When AI Stops Being a Chatbot and Starts Becoming an Operating System
-3. AgentOS V1: A Local-First Command Center for Agents, Memory, Content, Research, and Work
+3. Veloce AgenticOS V1: A Local-First Command Center for Agents, Memory, Content, Research, and Work
 
 ## Subtitle
 
@@ -67,9 +67,9 @@ You ask Claude something in one place. You use Codex somewhere else. You keep no
 
 The models are getting better, but the way we work with them still feels fragmented.
 
-So I started building AgentOS.
+So I started building Veloce AgenticOS.
 
-AgentOS is a local-first AI mission control system. It runs on my Mac and brings agents, memory, content, coding, research, websites, media, and business workflows into one structured dashboard.
+Veloce AgenticOS is a local-first AI mission control system. It runs on my Mac and brings agents, memory, content, coding, research, websites, media, and business workflows into one structured dashboard.
 
 The goal was not to create another chatbot. The goal was to create an operating layer.
 
@@ -94,11 +94,11 @@ The missing piece is continuity.
 
 Where does the business memory live? Where do goals go? Where do successful prompts get reused? Where does research become content? Where does a website brief become a build plan? Where do agents write back what they learned?
 
-AgentOS is my answer to that.
+Veloce AgenticOS is my answer to that.
 
-## What AgentOS Is
+## What Veloce AgenticOS Is
 
-AgentOS is a private AI command center running locally at `127.0.0.1`.
+Veloce AgenticOS is a private AI command center running locally at `127.0.0.1`.
 
 It connects:
 
@@ -126,7 +126,7 @@ That means low-risk drafts, scaffolding, notes, planning, and first passes can r
 
 ## The Memory Layer
 
-The most important part of AgentOS is not the dashboard. It is the memory system.
+The most important part of Veloce AgenticOS is not the dashboard. It is the memory system.
 
 The app writes goals, journal entries, notes, and knowledge into an Obsidian vault. That means the system is not throwing everything into temporary chat history.
 
@@ -136,7 +136,7 @@ I also added Graphify, which turns the vault into a connected knowledge graph. I
 
 This matters because most AI systems are stateless by default. They answer the current prompt, then forget the larger context unless you keep pasting it back in.
 
-AgentOS is built to make context accumulate.
+Veloce AgenticOS is built to make context accumulate.
 
 For a business, that could mean:
 
@@ -173,7 +173,7 @@ The point is the same: the AI should be able to work from your accumulated knowl
 
 ## The Agent Layer
 
-AgentOS also acts as a control surface for multiple agents.
+Veloce AgenticOS also acts as a control surface for multiple agents.
 
 Instead of treating every model as a separate destination, it treats them as workers inside a larger system.
 
@@ -185,7 +185,7 @@ The point is to stop designing workflows around one provider.
 
 Different tasks need different levels of cost, speed, privacy, and quality. A rough draft does not need the same model as a production architecture review. A local note cleanup does not need the same provider as a deep multi-model strategy session.
 
-AgentOS is structured so the user can make those choices intentionally.
+Veloce AgenticOS is structured so the user can make those choices intentionally.
 
 ## The Website And Web Studio Layer
 
@@ -216,7 +216,7 @@ A strong website has structure:
 - Motion system.
 - Build handoff.
 
-AgentOS stores those patterns so they can be reused.
+Veloce AgenticOS stores those patterns so they can be reused.
 
 For agencies, this is a serious use case. A client brief can become a structured website plan, then a prompt, then a build workflow, then a review loop.
 
@@ -226,7 +226,7 @@ The value is repeatable delivery.
 
 ## Business Use Cases
 
-AgentOS can be useful across a lot of roles because it is not tied to one narrow workflow.
+Veloce AgenticOS can be useful across a lot of roles because it is not tied to one narrow workflow.
 
 For a business owner, it becomes a private operating desk:
 
@@ -287,11 +287,11 @@ For agencies and consultants, it becomes a delivery system:
 
 ## Why Local-First Matters
 
-I wanted AgentOS to be local-first for a reason.
+I wanted Veloce AgenticOS to be local-first for a reason.
 
 Not every workflow belongs in a hosted SaaS app. Some notes are private. Some business context is sensitive. Some experiments should not cost money. Some workflows should keep working even when a provider changes terms, rate limits, or pricing.
 
-AgentOS keeps the core system on the machine.
+Veloce AgenticOS keeps the core system on the machine.
 
 Secrets are stored outside the repository. Optional services are gated. Paid APIs are not treated as defaults. The user can decide what is worth connecting.
 
@@ -327,7 +327,7 @@ That is important. Waiting does not mean broken. It means the system is designed
 
 ## The Bigger Idea
 
-The bigger idea behind AgentOS is that AI will not stay as a single chat box.
+The bigger idea behind Veloce AgenticOS is that AI will not stay as a single chat box.
 
 The next step is not just better answers. It is better operating structure.
 
@@ -344,7 +344,7 @@ People will need:
 - Personal knowledge.
 - Output channels.
 
-AgentOS is one attempt at putting those pieces into a coherent local system.
+Veloce AgenticOS is one attempt at putting those pieces into a coherent local system.
 
 It is still V1. There is more to add, more to simplify, and more real-world usage needed.
 
@@ -368,7 +368,7 @@ And now it exists.
 
 ## Preview Text
 
-AgentOS is my attempt to turn scattered AI tools into one private mission control system.
+Veloce AgenticOS is my attempt to turn scattered AI tools into one private mission control system.
 
 ## Essay
 
@@ -382,15 +382,15 @@ It is powerful, but it does not feel like a system.
 
 So I built one.
 
-It is called AgentOS.
+It is called Veloce AgenticOS.
 
-AgentOS is a local-first AI mission control dashboard that runs on my Mac. It brings agents, memory, goals, journals, website workflows, content systems, voice, research, and business integrations into one place.
+Veloce AgenticOS is a local-first AI mission control dashboard that runs on my Mac. It brings agents, memory, goals, journals, website workflows, content systems, voice, research, and business integrations into one place.
 
 The point is not to replace every tool.
 
 The point is to give the tools a home.
 
-The part I care about most is memory. AgentOS writes into an Obsidian vault, then uses Graphify to turn that vault into a connected knowledge graph. That means the work does not disappear after a chat ends. It becomes part of a growing system.
+The part I care about most is memory. Veloce AgenticOS writes into an Obsidian vault, then uses Graphify to turn that vault into a connected knowledge graph. That means the work does not disappear after a chat ends. It becomes part of a growing system.
 
 For me, this changes the feeling of using AI.
 
@@ -405,7 +405,7 @@ Instead of asking a model to start from scratch every time, I can build around a
 
 That is the real shift.
 
-AgentOS is not just a dashboard full of shiny buttons. It is a way to make AI work compound.
+Veloce AgenticOS is not just a dashboard full of shiny buttons. It is a way to make AI work compound.
 
 It connects tools like Claude Code, Codex, Hermes, OpenClaw, local Ollama models, OpenRouter, Antigravity, Kimi, Obsidian, Graphify, Web Studio, and more. Some parts are fully local. Some parts use subscriptions I already have. Some parts wait for keys only when I actually need them.
 
@@ -457,7 +457,7 @@ Not a dashboard that just calls APIs.
 
 An actual mission control system for AI work.
 
-It is called AgentOS.
+It is called Veloce AgenticOS.
 
 The reason I built it is simple: most AI workflows are scattered.
 
@@ -472,7 +472,7 @@ Business ideas buried in chat history.
 
 The models are powerful, but the workspace is messy.
 
-AgentOS is my attempt to fix that.
+Veloce AgenticOS is my attempt to fix that.
 
 It runs locally and brings together:
 
@@ -493,7 +493,7 @@ It runs locally and brings together:
 
 The most important part is memory.
 
-AgentOS writes goals, journals, notes, and project context into an Obsidian vault. Then Graphify turns that vault into a connected knowledge graph.
+Veloce AgenticOS writes goals, journals, notes, and project context into an Obsidian vault. Then Graphify turns that vault into a connected knowledge graph.
 
 So the system does not forget everything after each chat.
 
@@ -544,7 +544,7 @@ Some integrations are intentionally waiting for real business accounts and decis
 Do not add tools for the sake of adding tools.
 Build a system that helps real work compound.
 
-That is the bigger idea behind AgentOS:
+That is the bigger idea behind Veloce AgenticOS:
 
 AI should not just answer questions.
 It should remember, organize, build, review, and help operate.
@@ -571,7 +571,7 @@ The problem was not that the tools were weak.
 
 The problem was that none of them had a shared operating system.
 
-So I built AgentOS.
+So I built Veloce AgenticOS.
 
 It runs locally on my Mac and acts as mission control for AI work:
 
@@ -588,7 +588,7 @@ It runs locally on my Mac and acts as mission control for AI work:
 
 The biggest shift is memory.
 
-Instead of losing work inside chat history, AgentOS writes into Obsidian and uses Graphify to map the knowledge into connected ideas.
+Instead of losing work inside chat history, Veloce AgenticOS writes into Obsidian and uses Graphify to map the knowledge into connected ideas.
 
 That means context can compound.
 
@@ -600,7 +600,7 @@ Most business owners do not need "more AI tools."
 
 They need one place where AI can help them run the business.
 
-That is one of the reasons I built AgentOS.
+That is one of the reasons I built Veloce AgenticOS.
 
 For a business owner, it can become:
 
@@ -635,7 +635,7 @@ Launches.
 
 AI can help with all of it, but only if the context is organized.
 
-That is where AgentOS fits.
+That is where Veloce AgenticOS fits.
 
 It gives a founder one local workspace for:
 
@@ -658,7 +658,7 @@ The goal is to remove friction from the work around the founder.
 
 ## Post 4: Students, Researchers, And Job Seekers
 
-AgentOS is not only for companies.
+Veloce AgenticOS is not only for companies.
 
 It can also be a personal operating system for learning and career growth.
 
@@ -695,7 +695,7 @@ AI is much more useful when it is not starting from zero every time.
 
 ## Post 5: Agencies And Website Workflows
 
-One part of AgentOS I am especially excited about is Web Studio.
+One part of Veloce AgenticOS I am especially excited about is Web Studio.
 
 Most AI website generation starts with a vague prompt.
 
@@ -731,7 +731,7 @@ That is where AI becomes useful for service businesses.
 
 ## Post 6: The Philosophy
 
-My main rule for AgentOS:
+My main rule for Veloce AgenticOS:
 
 Do not add tools just because they exist.
 
@@ -746,7 +746,7 @@ Memory in the user's vault.
 Optional integrations behind clear gates.
 Verification before pushing.
 
-That is why some parts of AgentOS are marked as "waiting."
+That is why some parts of Veloce AgenticOS are marked as "waiting."
 
 They are not broken.
 They are waiting for a real business reason.
@@ -767,7 +767,7 @@ Most people are not missing better prompts.
 
 They are missing an AI workspace.
 
-AgentOS is my attempt to build one:
+Veloce AgenticOS is my attempt to build one:
 
 - local dashboard
 - Obsidian memory
@@ -798,7 +798,7 @@ Real memory:
 - project context
 - source-linked knowledge
 
-AgentOS writes into Obsidian and maps the vault with Graphify.
+Veloce AgenticOS writes into Obsidian and maps the vault with Graphify.
 
 That gives AI a better starting point than an empty prompt box.
 
@@ -806,7 +806,7 @@ That gives AI a better starting point than an empty prompt box.
 
 I do not think every AI task needs the most expensive model.
 
-AgentOS is built around a simple routing idea:
+Veloce AgenticOS is built around a simple routing idea:
 
 Use local/free models for drafts, scaffolds, and routine work.
 
@@ -832,7 +832,7 @@ It should start with:
 - what is the conversion path?
 - what design system fits?
 
-That is why AgentOS has Web Studio.
+That is why Veloce AgenticOS has Web Studio.
 
 Prompts are not enough. Workflows matter.
 
@@ -845,7 +845,7 @@ Use this as a LinkedIn carousel/thread structure.
 1. Hook: "I built a local AI operating system on my Mac."
 2. Problem: AI work is scattered across tools.
 3. Insight: The missing layer is memory plus workflow structure.
-4. Build: AgentOS connects agents, models, Obsidian, Graphify, Web Studio, content, and business tools.
+4. Build: Veloce AgenticOS connects agents, models, Obsidian, Graphify, Web Studio, content, and business tools.
 5. Local-first: Private memory, controlled secrets, paid APIs only when needed.
 6. Use cases: business owners, founders, professionals, students, researchers, agencies, creators.
 7. V1 proof: dashboard, memory, Graphify, agents, Web Studio, verification tests.
@@ -876,11 +876,11 @@ For researchers and students, the biggest shift is simple: your notes become a s
 
 # Visual Ideas
 
-- Screenshot of the 3D AgentOS home dashboard.
+- Screenshot of the 3D Veloce AgenticOS home dashboard.
 - Screenshot of the Memory page with Graphify panel.
 - Screenshot of Web Studio prompt library.
 - Screenshot of Integrations hub showing local tools green and business adapters waiting.
-- Diagram: "Scattered AI tools" on the left, "AgentOS local operating layer" on the right.
+- Diagram: "Scattered AI tools" on the left, "Veloce AgenticOS local operating layer" on the right.
 - Obsidian graph screenshot after adding more notes.
 - Short screen recording: open dashboard, move through Memory, Web Studio, Fusion, Integrations.
 

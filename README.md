@@ -1,6 +1,6 @@
-# Local AgenticOS
+# Veloce AgenticOS
 
-Local AgenticOS is a private AI mission-control dashboard for running business, content, research, engineering, and media workflows from one local command center.
+Veloce AgenticOS is a private AI mission-control dashboard for running business, content, research, engineering, and media workflows from one local command center.
 
 It brings together local agents, paid-provider agents, Obsidian memory, voice workflows, model fallback, creative studios, and operational dashboards without forcing every task into a separate SaaS tab.
 
@@ -10,7 +10,7 @@ It brings together local agents, paid-provider agents, Obsidian memory, voice wo
 
 ## What This Is
 
-AgenticOS is a local-first operating layer for AI work:
+Veloce AgenticOS is a local-first operating layer for AI work:
 
 - A dashboard for Claude Code, Codex, Hermes, OpenClaw, Kimi, Antigravity, and local Ollama-backed agents.
 - A persistent memory layer that writes goals, journal entries, and notes into an Obsidian vault.
@@ -45,12 +45,16 @@ For the deck, diagram, carousel, outreach, and Open Design production briefs beh
 
 For the final four-week publishing order, twelve paste-ready LinkedIn captions, first comments, and long-form publishing notes, see [PUBLISHING-PLAYBOOK.md](./PUBLISHING-PLAYBOOK.md).
 
+For the separate public-safe Veloce AgenticOS marketing site, pricing structure, and Cloud Run deployment instructions, see [public-site/README.md](./public-site/README.md). This public site is intentionally separate from the private local dashboard.
+
+For v2 product boundaries, Flow Lab policy, approved capabilities, and explicit deferrals, see [VELOCE-AGENTICOS-V2.md](./VELOCE-AGENTICOS-V2.md). For the deliberate stable-path migration policy, see [MIGRATION-TO-VELOCE-AGENTICOS.md](./MIGRATION-TO-VELOCE-AGENTICOS.md).
+
 ## Current Local Stack
 
-This repo is configured for a Mac-local AgentOS setup:
+This repo is configured for a Mac-local Veloce AgenticOS setup:
 
 - Dashboard: `http://127.0.0.1:3737`
-- Obsidian vault: `/Users/aryamandev/Documents/llm-wiki`
+- Obsidian vault: `$HOME/Documents/llm-wiki` in this installation; configure your own path locally.
 - Free Claude Code proxy: `http://127.0.0.1:8082`
 - Free/local model: `ollama/qwen3.5:4b`
 - Paperclip local service: `http://127.0.0.1:3100`
@@ -102,7 +106,7 @@ Your exact local config should live outside the repo in:
 
 ## Provider Philosophy
 
-AgenticOS is not designed to burn credits by default.
+Veloce AgenticOS is not designed to burn credits by default.
 
 Recommended order:
 
@@ -182,7 +186,7 @@ bash scripts/setup-elevenlabs-music-local.sh
 
 The Music tab will then offer Eleven Music alongside Suno. Eleven Music API access requires an eligible paid ElevenLabs plan; the voice/OpenMontage key remains separate.
 
-Then restart AgentOS and test:
+Then restart Veloce AgenticOS and test:
 
 ```bash
 curl http://127.0.0.1:3737/api/video/voices

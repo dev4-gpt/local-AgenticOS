@@ -1,7 +1,7 @@
 # Script 1
-Here’s how I’d explain AgentOS end to end as a proper product script, with a clear narrative flow.
+Here’s how I’d explain Veloce AgenticOS end to end as a proper product script, with a clear narrative flow.
 
-**AgentOS Explainer Script**
+**Veloce AgenticOS Explainer Script**
 
 **Opening: The Problem**
 
@@ -21,11 +21,11 @@ What if AI did not live inside scattered chat windows?
 
 What if it had one command center?
 
-That is what AgentOS is.
+That is what Veloce AgenticOS is.
 
-**What AgentOS Is**
+**What Veloce AgenticOS Is**
 
-AgentOS is a local-first AI mission control system.
+Veloce AgenticOS is a local-first AI mission control system.
 
 It runs on your own machine and gives you one structured dashboard for your agents, memory, goals, projects, content, research, websites, media, and business workflows.
 
@@ -35,7 +35,7 @@ It is an operating layer for AI work.
 
 The idea is simple:
 
-Instead of jumping between disconnected tools, AgentOS brings the important parts into one place:
+Instead of jumping between disconnected tools, Veloce AgenticOS brings the important parts into one place:
 
 Claude Code for coding.
 
@@ -61,11 +61,11 @@ ElevenLabs and media tools for voice and creative workflows.
 
 Integrations for business systems like analytics, publishing, bookings, newsletters, and databases.
 
-AgentOS is designed to feel less like “asking a model a question” and more like running an AI-powered workspace.
+Veloce AgenticOS is designed to feel less like “asking a model a question” and more like running an AI-powered workspace.
 
 **The Core Philosophy**
 
-The philosophy behind AgentOS is important.
+The philosophy behind Veloce AgenticOS is important.
 
 It is local-first.
 
@@ -77,7 +77,7 @@ Not every task needs the most expensive model.
 
 A rough draft, a brainstorm, a simple cleanup, or a planning step can often use a local model. More serious tasks, like production coding, deep strategy, or final review, can use Claude, Codex, OpenRouter, or another premium provider.
 
-So AgentOS is not built to burn API credits by default.
+So Veloce AgenticOS is not built to burn API credits by default.
 
 It is built to help you choose the right level of intelligence for the task.
 
@@ -89,17 +89,17 @@ Memory always.
 
 **The Memory Layer**
 
-The most important part of AgentOS is memory.
+The most important part of Veloce AgenticOS is memory.
 
 Most AI tools are still temporary. You ask something, get an answer, maybe copy it somewhere, and then the next session starts cold again.
 
-AgentOS changes that by writing into an Obsidian vault.
+Veloce AgenticOS changes that by writing into an Obsidian vault.
 
 That means goals, journals, notes, project context, business ideas, research, prompts, and outputs can become durable markdown files.
 
 Then Graphify takes that vault and turns it into a connected knowledge graph.
 
-So instead of your notes sitting as isolated documents, AgentOS can begin to understand how ideas connect.
+So instead of your notes sitting as isolated documents, Veloce AgenticOS can begin to understand how ideas connect.
 
 A business can store:
 
@@ -155,13 +155,13 @@ The point is that your AI system should not keep starting from zero.
 
 It should build context over time.
 
-AgentOS gives AI a memory layer.
+Veloce AgenticOS gives AI a memory layer.
 
 **The Agent Layer**
 
 The second major layer is agents.
 
-AgentOS is built to work with multiple AI agents and tools instead of forcing everything through one model.
+Veloce AgenticOS is built to work with multiple AI agents and tools instead of forcing everything through one model.
 
 Claude Code can be used for deep coding and reasoning.
 
@@ -195,7 +195,7 @@ Some need code execution.
 
 Some need a second opinion.
 
-AgentOS gives those agents a shared workspace instead of leaving them as separate tools.
+Veloce AgenticOS gives those agents a shared workspace instead of leaving them as separate tools.
 
 **The Dashboard**
 
@@ -223,7 +223,7 @@ Everything is organized as a workspace, not a pile of random buttons.
 
 **Web Studio**
 
-One of the strongest parts of AgentOS is Web Studio.
+One of the strongest parts of Veloce AgenticOS is Web Studio.
 
 Most AI website generation starts with weak prompts.
 
@@ -271,7 +271,7 @@ Conversion pages.
 
 Story-driven websites.
 
-The value is not just that AgentOS can help generate a website.
+The value is not just that Veloce AgenticOS can help generate a website.
 
 The value is that it can help create a repeatable website delivery system.
 
@@ -291,7 +291,7 @@ That is how AI work becomes a process.
 
 **Fusion And Loop**
 
-AgentOS also includes thinking and iteration workflows.
+Veloce AgenticOS also includes thinking and iteration workflows.
 
 Fusion is for multi-model thinking.
 
@@ -303,7 +303,7 @@ A task can be built, judged, revised, and checked again.
 
 This matters because most AI outputs look good at first glance but often need review.
 
-AgentOS is built around the idea that serious work should have feedback loops.
+Veloce AgenticOS is built around the idea that serious work should have feedback loops.
 
 Draft.
 
@@ -319,7 +319,7 @@ That applies to code, strategy, writing, websites, and research.
 
 **Business Use Cases**
 
-For business owners, AgentOS can become a private AI command center.
+For business owners, Veloce AgenticOS can become a private AI command center.
 
 They can use it to track goals, capture decisions, draft content, research competitors, write sales material, document processes, and manage AI workflows.
 
@@ -349,11 +349,11 @@ They can turn ideas into LinkedIn posts, Medium articles, Substack essays, scrip
 
 The common thread is context.
 
-AgentOS helps people work from their own knowledge instead of starting blank every time.
+Veloce AgenticOS helps people work from their own knowledge instead of starting blank every time.
 
 **Integrations**
 
-AgentOS also has an integrations layer.
+Veloce AgenticOS also has an integrations layer.
 
 Some tools are already working locally, like Graphify, Browser Use, Crawl4AI, HyperFrames, and Claude Ads skills.
 
@@ -363,7 +363,7 @@ That includes tools like Plausible, Supabase, Cal.com, Ghost, Listmonk, Penpot, 
 
 This is intentional.
 
-AgentOS is not trying to connect every possible API immediately.
+Veloce AgenticOS is not trying to connect every possible API immediately.
 
 That would create clutter and cost.
 
@@ -383,7 +383,7 @@ The system is structured so integrations can be added when they serve a real pur
 
 **Security And Control**
 
-AgentOS is also built with credential control in mind.
+Veloce AgenticOS is also built with credential control in mind.
 
 Secrets do not belong in the repository.
 
@@ -393,13 +393,13 @@ That matters because an AI operating system can touch sensitive business context
 
 The system should respect that.
 
-AgentOS keeps the core local, keeps memory in the user’s chosen vault, and keeps optional providers behind explicit configuration.
+Veloce AgenticOS keeps the core local, keeps memory in the user’s chosen vault, and keeps optional providers behind explicit configuration.
 
 This gives the user control over privacy, cost, and risk.
 
 **Why This Matters**
 
-The bigger idea behind AgentOS is that AI is moving beyond chat.
+The bigger idea behind Veloce AgenticOS is that AI is moving beyond chat.
 
 The future is not just “ask better questions.”
 
@@ -421,11 +421,11 @@ Give it an operating structure.
 
 A single chatbot can answer a question.
 
-An Agentic OS can help run a workflow.
+An Veloce AgenticOS can help run a workflow.
 
 That is the shift.
 
-AgentOS is still V1, but the foundation is there:
+Veloce AgenticOS is still V1, but the foundation is there:
 
 A local dashboard.
 
@@ -455,9 +455,9 @@ And with more business data, more vault content, and more real workflows, it bec
 
 **Closing**
 
-So if I had to explain AgentOS in one sentence:
+So if I had to explain Veloce AgenticOS in one sentence:
 
-AgentOS is a local-first AI operating layer that turns scattered agents, notes, prompts, models, and business workflows into one structured system that can remember, build, write, research, and help operate real work.
+Veloce AgenticOS is a local-first AI operating layer that turns scattered agents, notes, prompts, models, and business workflows into one structured system that can remember, build, write, research, and help operate real work.
 
 It is not just about having more AI tools.
 
@@ -471,17 +471,19 @@ That is what we built.
 
 -----------
 
-# AgentOS Launch Asset System
+# Veloce AgenticOS Launch Asset System
 
-This is the creative and editorial brief for launching AgentOS as a credible V1 product experiment, not merely a weekend build. It is written for Open Design, a human designer, or an AI presentation tool.
+For the verified long-form avatar walkthrough and a 45-second cutdown, use [launch-system/VELOCE-AGENTICOS-HEYGEN-EXPLAINER.md](../launch-system/VELOCE-AGENTICOS-HEYGEN-EXPLAINER.md).
+
+This is the creative and editorial brief for launching Veloce AgenticOS as a credible V1 product experiment, not merely a weekend build. It is written for Open Design, a human designer, or an AI presentation tool.
 
 Use this document together with [MARKETING-LAUNCH-CONTENT.md](./MARKETING-LAUNCH-CONTENT.md) for long-form copy and [BUSINESS-USE-CASES.md](./BUSINESS-USE-CASES.md) for operational examples.
 
 ## The Strategic Correction
 
-Do not launch with one enormous "everything AgentOS can do" deck. That makes the project feel unfocused and invites skepticism. AgentOS has a broad surface area, but the launch should have a narrow narrative:
+Do not launch with one enormous "everything Veloce AgenticOS can do" deck. That makes the project feel unfocused and invites skepticism. Veloce AgenticOS has a broad surface area, but the launch should have a narrow narrative:
 
-> AgentOS is a local-first AI operating layer that gives a person or small team one place to run agents, preserve context, and turn repeatable work into reusable systems.
+> Veloce AgenticOS is a local-first AI operating layer that gives a person or small team one place to run agents, preserve context, and turn repeatable work into reusable systems.
 
 The proof is the working local dashboard, Obsidian-backed memory, Graphify knowledge map, provider-aware routing, and repeatable workspaces such as Web Studio. Other provider-backed studios are product surfaces with clear credential gates; never present them as universally active or bundled services.
 
@@ -493,7 +495,7 @@ For the first launch, prioritize three beliefs:
 
 ## Audience And Message Matrix
 
-| Audience | Existing pain | AgentOS promise | Best proof asset | Primary CTA |
+| Audience | Existing pain | Veloce AgenticOS promise | Best proof asset | Primary CTA |
 | --- | --- | --- | --- | --- |
 | Builders and technical operators | Too many terminals, chats, and model tabs | One local control surface with intentional routing | Architecture deck + repo | Explore the repository |
 | Founders and small teams | Company context disappears across meetings, notes, and tools | Durable company memory plus repeatable execution | Product story deck + demo | See the V1 walkthrough |
@@ -549,7 +551,7 @@ The visual world should feel like a precise local command center, not generic cy
 
 ### Job
 
-Make a smart non-technical audience understand why AgentOS exists before they are asked to care about the architecture. This is the deck already being created in Open Design. It should be the first narrative asset, not a technical manual.
+Make a smart non-technical audience understand why Veloce AgenticOS exists before they are asked to care about the architecture. This is the deck already being created in Open Design. It should be the first narrative asset, not a technical manual.
 
 ### Audience
 
@@ -572,7 +574,7 @@ Founders, operators, agency owners, AI-curious professionals, and anyone who rec
 | 1 | `AI work has a context problem.` | Sparse hero. A person surrounded by disconnected tools/tabs that do not connect. One line: `Great models. Fragmented work.` | Establish the pain without selling too early. |
 | 2 | `Most workflows reset to zero.` | Show a fragmented chain: chat -> note -> terminal -> browser -> prompt doc -> forgotten output. Each sits apart; no persistent thread. | Make the invisible cost of fragmentation visible. |
 | 3 | `The missing layer is an operating system.` | One controlled transformation: scattered objects converge into a local command center. Use a single clean animation path if motion is supported. | Introduce the category. |
-| 4 | `Meet AgentOS V1.` | Actual dashboard screenshot, minimally annotated: agents, memory, workflows, provider-aware modules. Small label: `Runs locally on your machine.` | Establish product proof early. |
+| 4 | `Meet Veloce AgenticOS V1.` | Actual dashboard screenshot, minimally annotated: agents, memory, workflows, provider-aware modules. Small label: `Runs locally on your machine.` | Establish product proof early. |
 | 5 | `Memory is the center of the system.` | Diagram of Goals, Journal, Notes, and agent outputs writing into Obsidian; Graphify maps relationships back into usable context. | Explain the durable differentiator. |
 | 6 | `Choose the right level of intelligence for the task.` | Local Ollama inside the local boundary; subscriptions/approved providers outside it. Show routing based on privacy, cost, speed, and quality. No vendor logo wall. | Explain cost-aware, multi-provider design. |
 | 7 | `Turn good work into repeatable workflows.` | A Web Studio example: client brief -> conversion structure -> build handoff -> review -> stored playbook. | Move from features to business utility. |
@@ -583,7 +585,7 @@ Founders, operators, agency owners, AI-curious professionals, and anyone who rec
 ### Open Design Prompt
 
 ```text
-Create a 10-slide 16:9 product-story deck for "AgentOS V1," a local-first AI operating layer for people and small teams. The story is: AI work is fragmented because chats, notes, agents, prompts, and outputs do not retain connected context; AgentOS brings agents, Obsidian-backed memory, a Graphify knowledge map, local model fallback, and repeatable workflows into one private command center.
+Create a 10-slide 16:9 product-story deck for "Veloce AgenticOS V1," a local-first AI operating layer for people and small teams. The story is: AI work is fragmented because chats, notes, agents, prompts, and outputs do not retain connected context; Veloce AgenticOS brings agents, Obsidian-backed memory, a Graphify knowledge map, local model fallback, and repeatable workflows into one private command center.
 
 Visual direction: refined dark local-command-center editorial design, not cyberpunk. Use #101217 canvas, #F2F5F7 typography, cyan #45C2F2 for active system flow, amber #F2B869 for human review, green #61D39B for working local states, coral #F28482 for credential-gated states. Use thin data paths, one clear diagram per slide, small useful labels, real dashboard screenshots as proof. Avoid gradients, glossy glass cards, logo walls, robot illustrations, excessive icons, and generic AI imagery.
 
@@ -594,7 +596,7 @@ Use this slide sequence: [paste the table above]. Keep headlines short and sharp
 
 ### Job
 
-Explain how AgentOS moves from a personal local operating layer to a useful product offering for small teams, agencies, and technical operators. This is the deck for product-minded peers, potential collaborators, technical audiences, and warm outreach. It should answer: "What is the wedge, who is it for, and how does it become valuable?"
+Explain how Veloce AgenticOS moves from a personal local operating layer to a useful product offering for small teams, agencies, and technical operators. This is the deck for product-minded peers, potential collaborators, technical audiences, and warm outreach. It should answer: "What is the wedge, who is it for, and how does it become valuable?"
 
 ### Strategic Positioning
 
@@ -610,10 +612,10 @@ The wedge is not "all AI for all people." The wedge is: **local-first operating 
 
 | Slide | Headline | Content And Visual Direction | Purpose |
 | --- | --- | --- | --- |
-| 1 | `AgentOS: the local operating layer for AI work.` | Clear title, category statement, one architectural thread below it. | Set category and premise. |
+| 1 | `Veloce AgenticOS: the local operating layer for AI work.` | Clear title, category statement, one architectural thread below it. | Set category and premise. |
 | 2 | `The market problem is not model access. It is coordination.` | Four costs: context loss, tool switching, opaque spend, unreusable workflows. Use a 2x2, not a list. | Define the market problem. |
 | 3 | `The first users already feel this pain.` | Four personas: technical operator, founder, agency lead, researcher. For each: tools they use and a failure mode. | Define the early adopter. |
-| 4 | `The wedge: context-heavy work.` | A funnel: broad AI users -> multi-tool users -> context-heavy practitioners -> first AgentOS users. | Prevent the "everyone" positioning mistake. |
+| 4 | `The wedge: context-heavy work.` | A funnel: broad AI users -> multi-tool users -> context-heavy practitioners -> first Veloce AgenticOS users. | Prevent the "everyone" positioning mistake. |
 | 5 | `The architecture has six layers.` | A crisp stacked diagram: control surface, agents, routing, memory, workflows, integrations. Keep provider names in a footnote. | Explain the system without a feature list. |
 | 6 | `The memory flywheel makes work compound.` | Capture -> structure -> connect -> retrieve -> act -> write back. Show Obsidian/Graphify at the center. | Explain durable differentiation. |
 | 7 | `Local-first is a product decision, not an ideology.` | Decision table: local for privacy/low cost/drafts; provider model for high-stakes reasoning; explicit gates for specialist APIs. | Clarify the economics and architecture. |
@@ -626,9 +628,9 @@ The wedge is not "all AI for all people." The wedge is: **local-first operating 
 ### Open Design Prompt
 
 ```text
-Create a 12-slide 16:9 GTM and architecture deck for AgentOS, a local-first AI operating layer for context-heavy work. The audience is technical operators, founders, agencies, and potential collaborators. Do not present this as a mature SaaS or claim every module is live. Present it as a working V1/open-source foundation with transparent provider gates.
+Create a 12-slide 16:9 GTM and architecture deck for Veloce AgenticOS, a local-first AI operating layer for context-heavy work. The audience is technical operators, founders, agencies, and potential collaborators. Do not present this as a mature SaaS or claim every module is live. Present it as a working V1/open-source foundation with transparent provider gates.
 
-The deck must explain: the coordination problem; early adopter wedge; six-layer architecture; the Obsidian and Graphify memory flywheel; cost-aware routing; a Web Studio workflow; the proof-led GTM motion; and an honest V1 status map. Use elegant system diagrams rather than lists. Follow the AgentOS shared visual system.
+The deck must explain: the coordination problem; early adopter wedge; six-layer architecture; the Obsidian and Graphify memory flywheel; cost-aware routing; a Web Studio workflow; the proof-led GTM motion; and an honest V1 status map. Use elegant system diagrams rather than lists. Follow the Veloce AgenticOS shared visual system.
 ```
 
 ## Asset 3: Use-Case Deck / LinkedIn Carousel Set
@@ -661,7 +663,7 @@ Convert the abstract product story into recognizable work. Do not make one giant
 | --- | --- | --- |
 | 1 | `Founders do not need more AI tabs.` | Strong hook, sparse visual of fragmented founder stack. |
 | 2 | `They need their decisions to survive the week.` | Show decision loss between meetings, chats, notes, and docs. |
-| 3 | `AgentOS turns the weekly mess into a system.` | Simple workflow with one example company context. |
+| 3 | `Veloce AgenticOS turns the weekly mess into a system.` | Simple workflow with one example company context. |
 | 4 | `Capture.` | Goals, decisions, market notes, and customer language enter durable memory. |
 | 5 | `Connect.` | Graphify turns individual notes into related knowledge, visibly tied to source notes. |
 | 6 | `Act.` | Agents create a launch update, product brief, or research plan from that context. |
@@ -685,7 +687,7 @@ Convert the abstract product story into recognizable work. Do not make one giant
 | --- | --- | --- |
 | 1 | `Your notes should become a map, not a graveyard.` | Clear research/student hook. |
 | 2 | `The usual research workflow forgets relationships.` | Documents sit as disconnected cards. |
-| 3 | `AgentOS creates a connected local memory layer.` | Obsidian source notes feed graph. |
+| 3 | `Veloce AgenticOS creates a connected local memory layer.` | Obsidian source notes feed graph. |
 | 4 | `Capture sources with provenance.` | Show original source -> note -> linked concept. |
 | 5 | `Map the relationships.` | Graphify visualization, with hubs and connected ideas. |
 | 6 | `Write from context, not from a blank page.` | Agent uses connected research to form outline/draft. |
@@ -706,7 +708,7 @@ Convert the abstract product story into recognizable work. Do not make one giant
 ### Open Design Prompt
 
 ```text
-Design a modular LinkedIn carousel system for AgentOS. Create four 7-page 4:5 carousels using a shared design system: Founder Operating System, Agency Website Delivery System, Research and Learning System, and AI Cost and Routing System. Each carousel must have one strong contrarian hook, a simple before/after workflow diagram, one real product screenshot or knowledge graph moment, a human approval step, a durable memory writeback, and a clear final CTA.
+Design a modular LinkedIn carousel system for Veloce AgenticOS. Create four 7-page 4:5 carousels using a shared design system: Founder Operating System, Agency Website Delivery System, Research and Learning System, and AI Cost and Routing System. Each carousel must have one strong contrarian hook, a simple before/after workflow diagram, one real product screenshot or knowledge graph moment, a human approval step, a durable memory writeback, and a clear final CTA.
 
 Make the assets readable on a phone. Use large headlines, very little body copy, high contrast, and diagrams with solid arrows for automatic flow, dotted arrows for optional providers, and amber nodes for human approval. Do not use stock people, robot art, dense feature lists, or vendor logo walls.
 ```
@@ -731,7 +733,7 @@ This pack should be made before aggressive outreach. It is the evidence behind t
 
 ### Proof Carousel Slides
 
-1. `A real AgentOS V1, running locally.`
+1. `A real Veloce AgenticOS V1, running locally.`
 2. Dashboard: agents and workspaces in one control surface.
 3. Memory: a journal/note/goal becomes a local Obsidian file.
 4. Knowledge: Graphify links the vault into connected concepts.
@@ -743,7 +745,7 @@ This pack should be made before aggressive outreach. It is the evidence behind t
 
 Use one small scenario rather than a tour of every tab:
 
-1. Start in Home: "This is AgentOS, a local control surface for AI work."
+1. Start in Home: "This is Veloce AgenticOS, a local control surface for AI work."
 2. Open Memory: save a short product decision as a note.
 3. Show the note inside the Obsidian vault or memory response.
 4. Show the Graphify panel: the decision joins the knowledge system.
@@ -754,7 +756,7 @@ Use one small scenario rather than a tour of every tab:
 ### Open Design Prompt
 
 ```text
-Create a 7-page LinkedIn proof carousel for AgentOS V1. The goal is credibility, not hype. Use actual UI screenshots and visual evidence: a local dashboard, an Obsidian-backed note, a Graphify knowledge graph, a local-vs-provider routing diagram, and a transparent working-versus-credential-gated status map. The final page says: "The repo is the proof. The workflow is the product."
+Create a 7-page LinkedIn proof carousel for Veloce AgenticOS V1. The goal is credibility, not hype. Use actual UI screenshots and visual evidence: a local dashboard, an Obsidian-backed note, a Graphify knowledge graph, a local-vs-provider routing diagram, and a transparent working-versus-credential-gated status map. The final page says: "The repo is the proof. The workflow is the product."
 
 Keep the design restrained and documentary. Treat screenshots as evidence. Never imply that unconfigured paid services are active.
 ```
@@ -765,11 +767,11 @@ Keep the design restrained and documentary. Treat screenshots as evidence. Never
 
 Create a reusable set of diagrams for slides, LinkedIn posts, the README, outreach emails, and future landing pages. These should be exported individually as transparent PNG and SVG, plus assembled into a one-page diagram library.
 
-### Diagram 1: Fragmented AI Work Vs AgentOS
+### Diagram 1: Fragmented AI Work Vs Veloce AgenticOS
 
 Left: isolated chat, terminal, note, browser, prompt doc, and media tool cards. Each has a dead-end line.
 
-Right: the same elements connect to a central AgentOS control plane and local memory vault. The key visual message is continuity, not centralization for its own sake.
+Right: the same elements connect to a central Veloce AgenticOS control plane and local memory vault. The key visual message is continuity, not centralization for its own sake.
 
 ### Diagram 2: The Six-Layer Architecture
 
@@ -828,7 +830,7 @@ This diagram prevents the launch from feeling like an autonomy claim. It also ma
 ### Open Design Prompt
 
 ```text
-Create six modular system diagrams for AgentOS: Fragmented AI Work vs AgentOS; Six-Layer Architecture; Memory Flywheel; Agency Website Workflow; Cost and Quality Routing; Human-in-the-Loop Boundary. Use a consistent dark technical editorial design and the AgentOS color system. Each diagram must remain legible as a standalone 4:5 LinkedIn image, transparent SVG, and one quadrant of a website section. Use solid arrows for direct flow, dotted arrows for optional external providers, local-boundary outlines, and amber decision nodes for human review.
+Create six modular system diagrams for Veloce AgenticOS: Fragmented AI Work vs Veloce AgenticOS; Six-Layer Architecture; Memory Flywheel; Agency Website Workflow; Cost and Quality Routing; Human-in-the-Loop Boundary. Use a consistent dark technical editorial design and the Veloce AgenticOS color system. Each diagram must remain legible as a standalone 4:5 LinkedIn image, transparent SVG, and one quadrant of a website section. Use solid arrows for direct flow, dotted arrows for optional external providers, local-boundary outlines, and amber decision nodes for human review.
 ```
 
 ## Asset 6: LinkedIn Post System
@@ -843,7 +845,7 @@ Do not publish twelve variations of "I built an agentic OS." Each post must move
 
 **Hook:** `I stopped treating AI like a collection of chats and started building it like an operating system.`
 
-**Flow:** Personal observation -> fragmentation -> what AgentOS is -> what works in V1 -> what the project does not claim -> repo/demo CTA.
+**Flow:** Personal observation -> fragmentation -> what Veloce AgenticOS is -> what works in V1 -> what the project does not claim -> repo/demo CTA.
 
 **Asset:** Product Story deck, pages 1, 4, 5, and 10 as a compact 4-page PDF.
 
@@ -859,7 +861,7 @@ Do not publish twelve variations of "I built an agentic OS." Each post must move
 
 **Flow:** Example of decision/prompt/output disappearing across tools -> why chat history is not a system -> how a local memory layer changes the next task.
 
-**Asset:** Fragmented AI Work Vs AgentOS diagram.
+**Asset:** Fragmented AI Work Vs Veloce AgenticOS diagram.
 
 **CTA:** `What context do you find yourself pasting into AI tools over and over?`
 
@@ -901,7 +903,7 @@ Do not publish twelve variations of "I built an agentic OS." Each post must move
 
 ### Post 6: The Website Agency Post
 
-**Job:** Translate AgentOS into a revenue-adjacent service workflow.
+**Job:** Translate Veloce AgenticOS into a revenue-adjacent service workflow.
 
 **Hook:** `The useful version of AI website generation is not "make me a website." It is a repeatable delivery system.`
 
@@ -951,7 +953,7 @@ Do not publish twelve variations of "I built an agentic OS." Each post must move
 
 **Job:** Move from narrative to evidence.
 
-**Hook:** `Here is what AgentOS V1 actually does today.`
+**Hook:** `Here is what Veloce AgenticOS V1 actually does today.`
 
 **Flow:** Working local dashboard, Obsidian writes, Graphify map, configured integrations, clear optional modules. Acknowledge setup is local and technical today.
 
@@ -965,7 +967,7 @@ Do not publish twelve variations of "I built an agentic OS." Each post must move
 
 **Hook:** `The next useful AI products will not be chat windows. They will be systems that remember, route, and write back.`
 
-**Flow:** One clear thesis, three implications, AgentOS as the experiment. No product-tour language until the final paragraph.
+**Flow:** One clear thesis, three implications, Veloce AgenticOS as the experiment. No product-tour language until the final paragraph.
 
 **Asset:** A minimalist version of the Memory Flywheel.
 
@@ -975,7 +977,7 @@ Do not publish twelve variations of "I built an agentic OS." Each post must move
 
 **Job:** Turn attention into conversations.
 
-**Hook:** `I am looking for three context-heavy workflows to turn into AgentOS playbooks.`
+**Hook:** `I am looking for three context-heavy workflows to turn into Veloce AgenticOS playbooks.`
 
 **Flow:** Name suitable examples: agency web delivery, founder operating notes, research vault, content system. State who is a fit and what the pilot produces.
 
@@ -989,7 +991,7 @@ Do not publish twelve variations of "I built an agentic OS." Each post must move
 
 Use this in DMs, warm intros, and as a PDF attachment. It must answer, in under one minute:
 
-- What is AgentOS?
+- What is Veloce AgenticOS?
 - What problem does it solve?
 - Who is it useful for?
 - What works in V1?
@@ -1002,7 +1004,7 @@ Structure: hero statement, 3-value proposition row, one architecture diagram, 3 
 ### Warm Outreach Note: Technical Collaborator
 
 ```text
-I have been building AgentOS, a local-first operating layer for AI work. The useful idea is not another chat interface; it is giving agents durable context through an Obsidian-backed memory layer, explicit routing, and repeatable workflows.
+I have been building Veloce AgenticOS, a local-first operating layer for AI work. The useful idea is not another chat interface; it is giving agents durable context through an Obsidian-backed memory layer, explicit routing, and repeatable workflows.
 
 V1 is working locally and the repo documents both the working foundation and the credential-gated modules honestly. I thought of you because [specific reason]. Would you be open to a 15-minute walkthrough and a candid critique of the architecture/workflow design?
 ```

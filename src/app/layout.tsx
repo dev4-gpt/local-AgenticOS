@@ -3,7 +3,7 @@ import "./globals.css";
 import Shell from "@/components/Shell";
 
 export const metadata: Metadata = {
-  title: "Agentic OS — Mission Control",
+  title: "Veloce AgenticOS — Mission Control",
   description: "Your command center for Claude, OpenClaw, Hermes",
 };
 
@@ -24,9 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body className="min-h-full">
-        <div className="relative z-10">
-          <Shell>{children}</Shell>
-        </div>
+        <Shell>{children}</Shell>
       </body>
     </html>
   );

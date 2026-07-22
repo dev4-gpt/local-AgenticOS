@@ -31,7 +31,8 @@ export async function POST(req: Request) {
         { role: "user", content: prompt },
       ];
       try {
-        // NOTE: do NOT send a small max_tokens — Fusion 500s if the panel is starved.
+        // Keep the council bounded. Omitting max_tokens makes OpenRouter reserve the
+        // model's full 65k ceiling up front, which rejects otherwise affordable calls.
         const r = await fetch(ENDPOINT, {
           method: "POST",
           headers: {
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
             "HTTP-Referer": "https://aiprofitboardroom.com",
             "X-Title": "Agent OS",
           },
-          body: JSON.stringify({ model: MODEL, messages, stream: true }),
+          body: JSON.stringify({ model: MODEL, messages, stream: true, max_tokens: 1600 }),
         });
         if (!r.ok || !r.body) {
           const t = await r.text().catch(() => "");

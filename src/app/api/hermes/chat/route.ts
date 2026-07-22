@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { run } from "@/lib/runner";
+import { runHermesQuery } from "@/lib/hermesCli";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ const TIMEOUT_MS = 6 * 60 * 1000; // 6 min — multi-step agentic tasks (skill i
 
 interface ChatMsg { role: "user" | "assistant" | "system"; text: string; }
 
-// `hermes -z` is single-query mode — it has no memory of earlier turns, so a
+// Hermes query mode is single-shot — it has no memory of earlier turns, so a
 // back-and-forth chat felt like talking to someone with amnesia. We give it the
 // recent conversation by packing it into the prompt (same approach the Claude,
 // Kimi, Free-Claude and Grok chat tabs use). Trimmed to fit the context budget.
@@ -52,17 +52,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "bad profile" }, { status: 400 });
   }
 
-  // hermes -z PROMPT  — single-query non-interactive mode.
+  // `hermes chat -q PROMPT -Q` is the current single-query non-interactive mode.
   // --yolo + --accept-hooks are ESSENTIAL for headless/VPS runs: without them,
   // Hermes blocks on an interactive approval/hook-confirmation prompt it can't
   // display in oneshot mode, and the dashboard just sees blank output. (Matches
   // the flags Goal Mode already uses.) If the reply is STILL blank after this,
   // it's almost always auth — run `hermes status` and check the provider shows
   // a ✓ for its API key.
-  const profileArgs = profile ? ["--profile", profile] : [];
   // Pack the recent conversation in so follow-ups keep context (no more amnesia).
   const fullPrompt = buildPromptWithHistory(history, prompt);
-  const out = await run("hermes", [...profileArgs, "-z", fullPrompt, "--yolo", "--accept-hooks"], { timeoutMs: TIMEOUT_MS });
+  const out = await runHermesQuery(fullPrompt, { profile, timeoutMs: TIMEOUT_MS, allowTools: true });
 
   const text = out.stdout.replace(ANSI_STRIP, "").trim();
   const stderrClean = out.stderr.replace(ANSI_STRIP, "").trim();
@@ -99,6 +98,8 @@ export async function POST(req: Request) {
     durationMs: out.durationMs,
     exitCode: out.code,
     timedOut: !text && out.durationMs >= TIMEOUT_MS - 2_000,
+    providerUsed: out.providerUsed,
+    attempts: out.attempts,
     stderr: stderrClean, // full, no trunc — useful for diagnosing
   });
 }

@@ -60,7 +60,12 @@ export async function POST(req: Request) {
   const model = await resolveModel();
   const prompt = `Card: ${title}\nBuild: ${brief || title}`;
   try {
-    const raw = await localChat(model, SYS, prompt, { temperature: 0.5 });
+    const raw = await localChat(model, SYS, prompt, {
+      temperature: 0.4,
+      numPredict: 4096,
+      think: false,
+      timeoutMs: 240_000,
+    });
     const html = extractHtml(raw);
     // The Reviewer: verify a real, renderable HTML artifact actually came out.
     const ok = !!html && /<(html|body|canvas|svg|div|style)/i.test(html) && html.length > 120;

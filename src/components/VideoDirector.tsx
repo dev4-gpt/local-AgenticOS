@@ -33,7 +33,7 @@ let _s = 0; const uid = () => `d${Date.now().toString(36)}${(_s++).toString(36)}
 
 function freshRun(): DirectorRun {
   return {
-    id: uid(), topic: "", durationSec: 40, mode: "avatar", engine: "minimax", brand: "Agent OS",
+    id: uid(), topic: "", durationSec: 40, mode: "avatar", engine: "minimax", brand: "Veloce AgenticOS",
     voiceEngine: "elevenlabs", elevenVoiceId: DEFAULT_VOICE_ID, elevenVoiceName: "Default voice",
     stage: "brief", broll: {}, avatar: { status: "idle" }, voiceover: { status: "idle" }, createdAt: Date.now(),
   };

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { LayoutGrid, Brain, Sparkles as SparklesIcon, TrendingUp, Columns3, NotebookText, Film, Building2, Workflow, MessagesSquare, Image as ImageIcon, Gamepad2, Music2, Network, Clapperboard, Repeat, Cpu, LayoutDashboard, Palette, GripVertical, Eye, EyeOff, SlidersHorizontal, Check, SquareTerminal, Globe2, PlugZap } from "lucide-react";
+import { LayoutGrid, Brain, Sparkles as SparklesIcon, TrendingUp, Columns3, NotebookText, Film, Building2, Workflow, MessagesSquare, Image as ImageIcon, Gamepad2, Music2, Network, Clapperboard, Repeat, Cpu, LayoutDashboard, Palette, GripVertical, Eye, EyeOff, SlidersHorizontal, Check, SquareTerminal, Globe2, PlugZap, Orbit, Blocks, Target, BookOpenText, RadioTower, ContactRound, GitBranch, Mic2 } from "lucide-react";
 import { useState, useEffect, type ReactNode } from "react";
 import AgentAvatar from "./AgentAvatar";
 
@@ -35,14 +35,21 @@ const NAV: NavItem[] = [
   { href: "/fusion",      label: "Fusion",      icon: <Network size={18} />,                         accent: "#d4a574", dim: "rgba(212,165,116,0.16)" },
   { href: "/sakana",      label: "Sakana Fugu", icon: <Network size={18} />,                         accent: "#ff5f9e", dim: "rgba(255,95,158,0.16)" },
   { href: "/local",       label: "Local",       icon: <Cpu size={18} />,                             accent: "#5eead4", dim: "rgba(94,234,212,0.16)" },
+  { href: "/engine",      label: "Local Engine", icon: <Cpu size={18} />,                             accent: "#5eead4", dim: "rgba(94,234,212,0.16)" },
   { href: "/agent-kanban", label: "Agent Kanban", icon: <LayoutDashboard size={18} />,                accent: "#7dd3fc", dim: "rgba(125,211,252,0.16)" },
   // Personal
   { href: "/loop",     label: "Loop",     icon: <Repeat size={16} />,   accent: "#2dd4bf", dim: "rgba(45,212,191,0.16)" },
+  { href: "/ruflo",    label: "Ruflo",    icon: <GitBranch size={16} />, accent: "#60a5fa", dim: "rgba(96,165,250,0.16)" },
+  { href: "/goals",    label: "Goals",    icon: <Target size={16} />,   accent: "#fbbf24", dim: "rgba(251,191,36,0.16)" },
+  { href: "/journal",  label: "Journal",  icon: <BookOpenText size={16} />, accent: "#d4a574", dim: "rgba(212,165,116,0.16)" },
   { href: "/seo",      label: "SEO",      icon: <TrendingUp size={16} />, accent: "#a3e635", dim: "rgba(163,230,53,0.16)" },
   { href: "/opendesign", label: "Open Design", icon: <Palette size={16} />, accent: "#e879f9", dim: "rgba(232,121,249,0.16)" },
   { href: "/web-studio", label: "Web Studio", icon: <Globe2 size={16} />, accent: "#38bdf8", dim: "rgba(56,189,248,0.16)" },
+  { href: "/flow-lab", label: "Flow Lab", icon: <Orbit size={16} />, accent: "#fbbf24", dim: "rgba(251,191,36,0.16)" },
   { href: "/integrations", label: "Integrations", icon: <PlugZap size={16} />, accent: "#5ab896", dim: "rgba(90,184,150,0.16)" },
+  { href: "/capabilities", label: "Capabilities", icon: <Blocks size={16} />, accent: "#34d399", dim: "rgba(52,211,153,0.16)" },
   { href: "/video",    label: "Video",    icon: <Film size={16} />,      accent: "#ef4444", dim: "rgba(239,68,68,0.16)" },
+  { href: "/studio",   label: "Agent Studio", icon: <Mic2 size={16} />,   accent: "#fb7185", dim: "rgba(251,113,133,0.16)" },
   { href: "/openmontage", label: "OpenMontage", icon: <Clapperboard size={16} />, accent: "#f0a868", dim: "rgba(240,168,104,0.16)" },
   { href: "/music",    label: "Music",    icon: <Music2 size={16} />,    accent: "#c084fc", dim: "rgba(192,132,252,0.16)" },
   { href: "/games",    label: "Game Studio", icon: <Gamepad2 size={16} />, accent: "#39ff8e", dim: "rgba(57,255,142,0.16)" },
@@ -50,24 +57,32 @@ const NAV: NavItem[] = [
   { href: "/notebook", label: "Notebook", icon: <NotebookText size={16} />, accent: "#fde047", dim: "rgba(253,224,71,0.16)" },
   { href: "/kanban",   label: "Kanban",   icon: <Columns3 size={16} />,  accent: "#14b8a6", dim: "rgba(20,184,166,0.16)" },
   { href: "/memory",   label: "Memory",   icon: <Brain size={16} />,     accent: "#22d3ee", dim: "rgba(34,211,238,0.16)" },
+  { href: "/leads",    label: "Leads",    icon: <ContactRound size={16} />, accent: "#34d399", dim: "rgba(52,211,153,0.16)" },
+  { href: "/radar",    label: "Radar",    icon: <RadioTower size={16} />, accent: "#c084fc", dim: "rgba(192,132,252,0.16)" },
   { href: "/guide",    label: "Build Guide", icon: <SparklesIcon size={16} />, accent: "#ec4899", dim: "rgba(236,72,153,0.16)" },
 ];
 
 const DEFAULT_ORDER = NAV.map((n) => n.href);
 const BY_HREF: Record<string, NavItem> = Object.fromEntries(NAV.map((n) => [n.href, n]));
-const AGENT_ROUTES = new Set(["/claude", "/openclaw", "/hermes", "/antigravity", "/codex", "/kimi", "/glm", "/grok", "/freeclaude", "/fusion", "/sakana", "/local"]);
+const AGENT_ROUTES = new Set(["/claude", "/openclaw", "/hermes", "/antigravity", "/codex", "/kimi", "/glm", "/glm-code", "/grok", "/freeclaude", "/fusion", "/sakana", "/local", "/engine"]);
 const LS_ORDER = "agentos.sidebar.order";
 const LS_HIDDEN = "agentos.sidebar.hidden";
 
-// Sidebar grouping. Mission Control sits under the top "Workspace" header;
-// Paperclip + AI Agent Mastermind + Pipeline + Agent Kanban get their own "Agent Orchestration" group;
-// the model agents under "Agents"; everything else under "Self".
-const ORCHESTRATION_ROUTES = new Set(["/paperclip", "/room", "/pipeline", "/agent-kanban"]);
+// The six Veloce operating lenses preserve every direct route, but make the
+// expanding tool set navigable as a system rather than an unstructured list.
+const ORCHESTRATION_ROUTES = new Set(["/paperclip", "/room", "/pipeline", "/agent-kanban", "/loop", "/kanban", "/ruflo"]);
+const CONTEXT_ROUTES = new Set(["/memory", "/notebook", "/goals", "/journal"]);
+const CREATE_ROUTES = new Set(["/opendesign", "/web-studio", "/flow-lab", "/video", "/studio", "/openmontage", "/music", "/games", "/thumbnails"]);
+const GOVERN_ROUTES = new Set(["/integrations", "/capabilities", "/seo", "/guide"]);
+const DELIVERY_ROUTES = new Set(["/leads", "/radar"]);
 function sectionOf(href: string): string {
-  if (href === "/") return "Workspace";
-  if (ORCHESTRATION_ROUTES.has(href)) return "Agent Orchestration";
-  if (AGENT_ROUTES.has(href)) return "Agents";
-  return "Self";
+  if (href === "/" || AGENT_ROUTES.has(href)) return "Command";
+  if (CONTEXT_ROUTES.has(href)) return "Context";
+  if (ORCHESTRATION_ROUTES.has(href)) return "Orchestrate";
+  if (CREATE_ROUTES.has(href)) return "Create";
+  if (GOVERN_ROUTES.has(href)) return "Govern";
+  if (DELIVERY_ROUTES.has(href)) return "Deliver";
+  return "Deliver";
 }
 
 export default function Sidebar() {
@@ -100,7 +115,7 @@ export default function Sidebar() {
   const visible = customize ? fullOrder : fullOrder.filter((h) => !hidden.includes(h));
   // group by section so each header shows ONCE and all its items sit together,
   // no matter how the saved drag-order interleaves them (fixes duplicate section labels)
-  const SECTION_ORDER = ["Workspace", "Agent Orchestration", "Agents", "Self"];
+  const SECTION_ORDER = ["Command", "Context", "Orchestrate", "Create", "Govern", "Deliver"];
   const list = SECTION_ORDER.flatMap((sec) => visible.filter((h) => sectionOf(h) === sec));
 
   function move(from: string, to: string) {
@@ -123,13 +138,13 @@ export default function Sidebar() {
           Local · Studio
         </div>
         <div className="text-xl tracking-tight" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 500, color: "var(--cream)" }}>
-          Agentic <span className="hand text-[1.3em] ml-1">OS</span>
+          Veloce <span className="hand text-[1.3em] ml-1">AgenticOS</span>
         </div>
       </Link>
 
       <div className="flex-1 min-h-0 overflow-y-auto sidebar-scroll">
       <div className="px-5 pb-1.5 flex items-center justify-between">
-        <span className="sidebar-section-label">Workspace</span>
+        <span className="sidebar-section-label">Operating lenses</span>
         <div className="flex items-center gap-2">
           {customize && (
             <button onClick={reset} title="Reset to default order" className="text-[9px] uppercase tracking-[0.15em] hover:opacity-100 opacity-70 transition" style={{ color: "var(--cream-dim)" }}>
@@ -160,8 +175,8 @@ export default function Sidebar() {
           const sec = sectionOf(href);
           const prevSec = prevHref ? sectionOf(prevHref) : null;
           let sectionLabel: string | undefined = sec !== prevSec ? sec : undefined;
-          // The top "Workspace" header already labels the first group — don't repeat it.
-          if (i === 0 && sectionLabel === "Workspace") sectionLabel = undefined;
+          // The top rail already labels the first operating lens.
+          if (i === 0 && sectionLabel === "Command") sectionLabel = undefined;
 
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           const isHidden = hidden.includes(href);
@@ -254,15 +269,18 @@ export default function Sidebar() {
 
 export function MobileNav() {
   const pathname = usePathname();
-  const items = NAV.filter((_, i) => i !== 5 && i !== 6); // hide goals/journal/memory on mobile bar for space
+  const mobileRoutes = new Set(["/", "/memory", "/pipeline", "/flow-lab", "/integrations", "/agent-kanban"]);
+  const items = NAV.filter((item) => mobileRoutes.has(item.href));
   return (
-    <nav className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 panel panel-hot px-2 py-1.5 flex gap-1">
+    <nav aria-label="Mobile operating lenses" className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 panel panel-hot px-2 py-1.5 flex gap-1">
       {items.map((item) => {
         const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         return (
           <Link
             key={item.href}
             href={item.href}
+            aria-label={item.label}
+            title={item.label}
             className="grid place-items-center w-10 h-10 rounded-lg transition"
             style={{
               background: active ? item.dim : "transparent",
@@ -270,6 +288,7 @@ export function MobileNav() {
             }}
           >
             {item.icon}
+            <span className="sr-only">{item.label}</span>
           </Link>
         );
       })}

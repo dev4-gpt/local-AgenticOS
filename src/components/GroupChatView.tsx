@@ -179,7 +179,7 @@ export default function GroupChatView() {
         {msgs.length === 0 && (
           <div className="text-center text-[13px] text-[var(--fg-dimmer)] leading-relaxed pt-10">
             Drop a question and watch them go.<br />
-            <span className="text-[var(--fg-dim)]">&ldquo;What should I build next in my Agent OS?&rdquo;</span> · <span className="text-[var(--fg-dim)]">&ldquo;@codex how would you structure this?&rdquo;</span>
+            <span className="text-[var(--fg-dim)]">&ldquo;What should I build next in Veloce AgenticOS?&rdquo;</span> · <span className="text-[var(--fg-dim)]">&ldquo;@codex how would you structure this?&rdquo;</span>
           </div>
         )}
         <AnimatePresence initial={false}>

@@ -1,8 +1,8 @@
-# AgentOS V2 Local AI Tools Roadmap
+# Veloce AgenticOS V2 Local AI Tools Roadmap
 
 Last updated: 2026-07-14
 
-This document captures the CANCEL Guide review and our Mac-specific analysis for adding local open-source alternatives to paid AI tools inside AgentOS.
+This document captures the CANCEL Guide review and our Mac-specific analysis for adding local open-source alternatives to paid AI tools inside Veloce AgenticOS.
 
 Source guide:
 
@@ -16,13 +16,13 @@ Related project sources checked:
 - [Wan 2.2 ComfyUI workflow guide](https://docs.comfy.org/tutorials/video/wan/wan2_2)
 - [Duix-Avatar / HeyGem](https://github.com/duixcom/Duix-Avatar)
 
-## Why This Matters For AgentOS
+## Why This Matters For Veloce AgenticOS
 
-AgentOS already follows a local-first philosophy: use local and free workflows when they are practical, then use paid APIs only when they are worth the cost.
+Veloce AgenticOS already follows a local-first philosophy: use local and free workflows when they are practical, then use paid APIs only when they are worth the cost.
 
 The CANCEL Guide lines up with that philosophy. It lists five open-source tools that can reduce or replace common paid AI subscriptions:
 
-| Paid tool category | Local alternative from the guide | AgentOS relevance |
+| Paid tool category | Local alternative from the guide | Veloce AgenticOS relevance |
 | --- | --- | --- |
 | Wispr Flow dictation | Handy | Local speech-to-text and system-wide dictation. |
 | ElevenLabs voice | OmniVoice Studio | Local voice cloning, TTS, dubbing, and dictation. |
@@ -30,7 +30,7 @@ The CANCEL Guide lines up with that philosophy. It lists five open-source tools 
 | Runway / Sora video | Wan through ComfyUI | Local text-to-video or image-to-video, if hardware allows. |
 | HeyGen avatars | HeyGem / Duix-Avatar | Local talking-head avatar generation, but very hardware-heavy. |
 
-The important product lesson is not "install everything." The lesson is to make AgentOS aware of local substitutes, then install only the ones that fit the current machine and workflow.
+The important product lesson is not "install everything." The lesson is to make Veloce AgenticOS aware of local substitutes, then install only the ones that fit the current machine and workflow.
 
 ## Current Mac Reality Check
 
@@ -50,7 +50,7 @@ Current machine:
 
 This is a strong Mac for local AI work, but it is not an NVIDIA CUDA machine. That matters because several media-generation tools are built or tuned around NVIDIA GPUs.
 
-The biggest blocker right now is disk space. With only about 47 GiB free, installing more model-heavy tools would leave macOS, Docker, browsers, Node builds, and AgentOS with too little breathing room.
+The biggest blocker right now is disk space. With only about 47 GiB free, installing more model-heavy tools would leave macOS, Docker, browsers, Node builds, and Veloce AgenticOS with too little breathing room.
 
 ## Tool-by-Tool Decision
 
@@ -73,7 +73,7 @@ Estimated space:
 
 - Around 1-3 GB in practical use.
 
-AgentOS recommendation:
+Veloce AgenticOS recommendation:
 
 - Include as an optional local dictation adapter.
 - Do not install right now unless dictation becomes a daily workflow.
@@ -108,7 +108,7 @@ Estimated space:
 - Extra cache, voices, models, and working files: another 5-10 GB over time.
 - Practical planning number: 15-30 GB.
 
-AgentOS recommendation:
+Veloce AgenticOS recommendation:
 
 - Include as an optional local ElevenLabs alternative.
 - Keep ElevenLabs as the fast/pro-quality provider for now.
@@ -141,7 +141,7 @@ Estimated space:
 - First image model workflow: commonly 10-30 GB depending on models.
 - Comfortable working budget: 50-100 GB if using multiple image workflows.
 
-AgentOS recommendation:
+Veloce AgenticOS recommendation:
 
 - Include as a supported but heavy local creative engine.
 - Do not install while only 47 GiB is free.
@@ -171,7 +171,7 @@ Estimated space:
 - Wan 5B plus text encoder and VAE can require tens of GB.
 - Practical planning number: 30-80 GB on top of ComfyUI, depending on workflow and model variants.
 
-AgentOS recommendation:
+Veloce AgenticOS recommendation:
 
 - Include as "experimental local video."
 - Keep OpenMontage and API-backed video options separate.
@@ -202,7 +202,7 @@ Estimated space:
 
 - 100 GB+ should be expected before even considering it.
 
-AgentOS recommendation:
+Veloce AgenticOS recommendation:
 
 - Catalog only.
 - Do not install locally on this Mac.
@@ -222,9 +222,9 @@ Reason:
 - Handy and OmniVoice together could consume around 20-30 GB.
 - Current free space is about 47 GiB.
 - Installing them could leave only about 17-27 GiB free.
-- That is too tight for macOS plus AgentOS, Docker, browser sessions, Node builds, caches, Ollama, and future model downloads.
+- That is too tight for macOS plus Veloce AgenticOS, Docker, browser sessions, Node builds, caches, Ollama, and future model downloads.
 
-This is exactly the kind of decision AgentOS should encourage: document the opportunity, understand the tradeoff, and avoid cluttering the machine until there is a real workflow need.
+This is exactly the kind of decision Veloce AgenticOS should encourage: document the opportunity, understand the tradeoff, and avoid cluttering the machine until there is a real workflow need.
 
 ## V2 Integration Plan
 
@@ -232,9 +232,9 @@ This is exactly the kind of decision AgentOS should encourage: document the oppo
 
 Status: Done in this document.
 
-Add the local alternatives into AgentOS as known optional tools:
+Add the local alternatives into Veloce AgenticOS as known optional tools:
 
-| Tool | AgentOS status label |
+| Tool | Veloce AgenticOS status label |
 | --- | --- |
 | Handy | Optional local dictation |
 | OmniVoice Studio | Optional local voice/TTS |
@@ -244,7 +244,7 @@ Add the local alternatives into AgentOS as known optional tools:
 
 ### Phase 2: Lightweight App Support
 
-Add an AgentOS UI section for "Local Cost-Saving Tools" that shows:
+Add an Veloce AgenticOS UI section for "Local Cost-Saving Tools" that shows:
 
 - What the tool replaces.
 - Whether it is installed.
@@ -273,14 +273,14 @@ Only after a tool is proven useful locally:
 - Add service detection.
 - Add local launch commands.
 - Add API/MCP connection if the tool exposes one.
-- Add output folders to AgentOS media history.
+- Add output folders to Veloce AgenticOS media history.
 - Add Obsidian writeback for generated assets, prompts, and notes.
 
 ## Minimum Space Targets
 
 | Goal | Free space target |
 | --- | --- |
-| Stay healthy with current AgentOS | 40-60 GB free |
+| Stay healthy with current Veloce AgenticOS | 40-60 GB free |
 | Add Handy only | 50 GB+ free preferred |
 | Add Handy plus OmniVoice | 80 GB+ free preferred |
 | Add ComfyUI image workflows | 120 GB+ free preferred |
@@ -289,12 +289,12 @@ Only after a tool is proven useful locally:
 
 ## Final Recommendation
 
-For this Mac and this stage of AgentOS:
+For this Mac and this stage of Veloce AgenticOS:
 
 1. Keep using ElevenLabs for voice because it is already configured and does not consume local disk.
 2. Skip Handy and OmniVoice installs for now because they would reduce free disk too much.
 3. Do not install ComfyUI, Wan, or HeyGem until storage is cleaned up or model storage is moved off the internal drive.
 4. Add a V2 "Local Cost-Saving Tools" page later so these options are visible, researched, and ready when the machine has room.
-5. Keep the current AgentOS focus on production readiness, content launch, Web Studio workflows, memory, Graphify, and business use cases.
+5. Keep the current Veloce AgenticOS focus on production readiness, content launch, Web Studio workflows, memory, Graphify, and business use cases.
 
-This keeps AgentOS disciplined: local-first, but not local-at-any-cost.
+This keeps Veloce AgenticOS disciplined: local-first, but not local-at-any-cost.

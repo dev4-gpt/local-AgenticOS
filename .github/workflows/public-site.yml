@@ -1,0 +1,27 @@
+name: Public site verification
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  public-site:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: public-site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: public-site/package-lock.json
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run verify:public
+      - name: Reject private implementation references from the shipped output
+        run: |
+          ! rg -n --hidden \
+            '127\\.0\\.0\\.1|localhost|~/.agentic-os|OPENROUTER_API_KEY|OPENAI_API_KEY|ELEVENLABS_API_KEY|HEYGEN_API_KEY|sk-[A-Za-z0-9_-]{20,}' dist

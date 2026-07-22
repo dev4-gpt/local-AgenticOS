@@ -1,0 +1,60 @@
+/* Public-release boundary styles are kept separate from the compressed base. */
+.legal {
+  padding: 10vw 7vw;
+  background: #090c14;
+  border-top: 1px solid var(--line);
+}
+
+.legal h2 {
+  max-width: 760px;
+  margin: 0;
+  font: 600 clamp(34px, 4.5vw, 68px) / 0.98 var(--serif);
+  letter-spacing: 0;
+}
+
+.legal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-top: 54px;
+  background: var(--line);
+}
+
+.legal article {
+  min-height: 230px;
+  padding: 28px;
+  background: #0e1420;
+}
+
+.legal h3 {
+  margin: 0 0 20px;
+  color: var(--paper);
+  font: 600 26px var(--serif);
+}
+
+.legal article p {
+  margin: 0;
+  color: #aebccc;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+footer nav {
+  display: flex;
+  gap: 16px;
+}
+
+footer nav a:hover {
+  color: var(--paper);
+}
+
+@media (max-width: 860px) {
+  .legal { padding: 18vw 7vw; }
+  .legal-grid { grid-template-columns: 1fr; }
+  footer { align-items: flex-start; flex-wrap: wrap; }
+  footer p { flex-basis: 100%; }
+}
+
+@media (max-width: 620px) {
+  footer nav { order: 4; flex-basis: 100%; }
+}

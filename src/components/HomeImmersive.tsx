@@ -3,45 +3,73 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { ArrowUpRight, Brain, Command, Cpu, DatabaseZap, RadioTower, Sparkles, Target } from "lucide-react";
+import { ArrowUpRight, Brain, Command, Cpu, DatabaseZap, Orbit, Palette, RadioTower, ShieldCheck, Sparkles, Target, Workflow } from "lucide-react";
 import Overview from "./Overview";
 
 const CHAPTERS = [
   {
-    id: "mission",
-    kicker: "Mission Control",
-    title: "AgentOS becomes a spatial command layer.",
-    body: "A live operating surface for agents, memory, builds, goals, and creative systems.",
-    metric: "37 routes",
+    id: "command",
+    kicker: "Command",
+    title: "Signals stop scattering when the work has one live command layer.",
+    body: "Mission Control gives agents, goals, active work, and the next human decision a shared operational view.",
+    metric: "control room",
+    href: "/claude",
+    action: "Open agent bay",
   },
   {
-    id: "agents",
-    kicker: "Agent Constellation",
-    title: "Every agent gets a lane, a status, and a job.",
-    body: "Claude, Codex, Hermes, OpenClaw, local models, and studios move through one cockpit.",
-    metric: "multi-agent",
+    id: "context",
+    kicker: "Context",
+    title: "Approved reasoning becomes a memory your next project can actually use.",
+    body: "Vault notes, journals, research, and Graphify links become a private context layer instead of discarded source material.",
+    metric: "private vault",
+    href: "/memory",
+    action: "Open memory",
   },
   {
-    id: "memory",
-    kicker: "Memory Galaxy",
-    title: "Your vault becomes the gravitational center.",
-    body: "Obsidian notes, goals, journals, logs, and briefs become searchable working memory.",
-    metric: "local-first",
+    id: "orchestrate",
+    kicker: "Orchestrate",
+    title: "The work moves through accountable lanes, not a chain of blank prompts.",
+    body: "Paperclip, Pipeline, Kanban, and agent workflows create clear transitions from intake to approved handoff.",
+    metric: "review-first",
+    href: "/pipeline",
+    action: "Open pipeline",
   },
   {
-    id: "build",
-    kicker: "Build Engine",
-    title: "Ideas travel from signal to artifact.",
-    body: "Pipeline, game studio, video, music, thumbnails, SEO, leads, and agent boards sit in one flow.",
-    metric: "ship loop",
+    id: "create",
+    kicker: "Create",
+    title: "Strategy becomes an original production direction before it becomes an asset.",
+    body: "Flow Lab, Web Studio, Open Design, and the media tools turn a brief into reviewable creative work without copying references.",
+    metric: "asset studio",
+    href: "/flow-lab",
+    action: "Open Flow Lab",
+  },
+  {
+    id: "govern",
+    kicker: "Govern",
+    title: "Automation moves quickly, while approval, privacy, and budgets stay visible.",
+    body: "Provider routing, integration status, human approvals, and local-first boundaries make the system safe to operate.",
+    metric: "human gate",
+    href: "/integrations",
+    action: "Open governance",
+  },
+  {
+    id: "deliver",
+    kicker: "Deliver",
+    title: "The system proves its value through outcomes your team can reuse.",
+    body: "Builds, content, reporting, and playbooks move from a named owner through approval to a client-ready result.",
+    metric: "delivery loop",
+    href: "/agent-kanban",
+    action: "Open delivery board",
   },
 ];
 
 const QUICK_LINKS = [
-  { href: "/claude", label: "Claude", icon: Cpu },
-  { href: "/memory", label: "Memory", icon: Brain },
-  { href: "/pipeline", label: "Pipeline", icon: RadioTower },
-  { href: "/goals", label: "Goals", icon: Target },
+  { href: "/claude", label: "Command", icon: Cpu },
+  { href: "/memory", label: "Context", icon: Brain },
+  { href: "/pipeline", label: "Orchestrate", icon: Workflow },
+  { href: "/flow-lab", label: "Create", icon: Palette },
+  { href: "/integrations", label: "Govern", icon: ShieldCheck },
+  { href: "/agent-kanban", label: "Deliver", icon: Target },
 ];
 
 function useReducedMotion() {
@@ -62,6 +90,7 @@ export default function HomeImmersive() {
   const mountRef = useRef<HTMLDivElement>(null);
   const scrollHostRef = useRef<HTMLElement | null>(null);
   const [active, setActive] = useState(0);
+  const [webglFailed, setWebglFailed] = useState(false);
   const reducedMotion = useReducedMotion();
 
   const chapter = CHAPTERS[active] ?? CHAPTERS[0];
@@ -81,11 +110,18 @@ export default function HomeImmersive() {
     const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 110);
     camera.position.set(0, 1.5, 18);
 
-    const renderer = new THREE.WebGLRenderer({
-      alpha: true,
-      antialias: true,
-      powerPreference: "high-performance",
-    });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: true,
+        powerPreference: "high-performance",
+      });
+    } catch {
+      setWebglFailed(true);
+      return;
+    }
+    setWebglFailed(false);
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.15 : 1.7));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -119,7 +155,7 @@ export default function HomeImmersive() {
       opacity: 0.18,
     });
     const rings: THREE.Mesh[] = [];
-    for (let i = 0; i < 20; i += 1) {
+    for (let i = 0; i < 27; i += 1) {
       const geometry = new THREE.TorusGeometry(5.2 + (i % 4) * 0.22, 0.01, 8, 96);
       const ring = new THREE.Mesh(geometry, ringMaterial.clone());
       ring.position.z = -i * 3;
@@ -139,7 +175,7 @@ export default function HomeImmersive() {
       const radius = 5.1;
       const points = [
         new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius, 4),
-        new THREE.Vector3(Math.cos(angle + 0.45) * radius, Math.sin(angle + 0.45) * radius, -58),
+        new THREE.Vector3(Math.cos(angle + 0.45) * radius, Math.sin(angle + 0.45) * radius, -80),
       ];
       root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), railMaterial.clone()));
     }
@@ -157,7 +193,7 @@ export default function HomeImmersive() {
       const angle = Math.random() * Math.PI * 2;
       positions[i * 3] = Math.cos(angle) * radius;
       positions[i * 3 + 1] = Math.sin(angle) * radius * 0.58 + (Math.random() - 0.5) * 4;
-      positions[i * 3 + 2] = 8 - Math.random() * 74;
+      positions[i * 3 + 2] = 8 - Math.random() * 90;
       const color = i % 7 === 0 ? colorC : i % 3 === 0 ? colorB : colorA;
       colors[i * 3] = color.r;
       colors[i * 3 + 1] = color.g;
@@ -190,8 +226,10 @@ export default function HomeImmersive() {
     const nodePositions = [
       new THREE.Vector3(-2.4, 1.4, -4),
       new THREE.Vector3(2.2, -0.7, -17),
-      new THREE.Vector3(-1.6, -1.3, -31),
-      new THREE.Vector3(2.7, 1.1, -45),
+      new THREE.Vector3(-1.6, -1.3, -30),
+      new THREE.Vector3(2.7, 1.1, -43),
+      new THREE.Vector3(-0.95, 0.25, -56),
+      new THREE.Vector3(1.4, -0.9, -69),
     ];
     const nodes = nodePositions.map((position, index) => {
       const node = new THREE.Mesh(nodeGeometry, nodeMaterial.clone());
@@ -242,7 +280,7 @@ export default function HomeImmersive() {
       const elapsed = clock.getElapsedTime();
       scroll += (targetScroll - scroll) * 0.07;
 
-      const cameraZ = 18 - scroll * 62;
+      const cameraZ = 18 - scroll * 80;
       camera.position.x += (pointer.x * 1.2 + Math.sin(scroll * Math.PI * 2) * 1.1 - camera.position.x) * 0.04;
       camera.position.y += ((1.8 - scroll * 2.2) - pointer.y * 0.6 - camera.position.y) * 0.04;
       camera.position.z += (cameraZ - camera.position.z) * 0.08;
@@ -306,8 +344,8 @@ export default function HomeImmersive() {
   return (
     <div className="home-immersive">
       <div className="home-immersive__stage" aria-hidden="true">
-        <div ref={mountRef} className="home-immersive__canvas" data-canvas-ready={!reducedMotion} />
-        {reducedMotion && <div className="home-immersive__fallback" />}
+        <div ref={mountRef} className="home-immersive__canvas" data-canvas-ready={!reducedMotion && !webglFailed} />
+        {(reducedMotion || webglFailed) && <div className="home-immersive__fallback" />}
       </div>
 
       <section className="home-immersive__hero">
@@ -319,14 +357,14 @@ export default function HomeImmersive() {
         <div className="home-immersive__copy">
           <div className="home-immersive__eyebrow">
             <Sparkles size={14} />
-            <span>AgentOS 2026 interface prototype</span>
+            <span>Veloce AgenticOS · System Edition 01</span>
           </div>
           <h1>
-            Scroll through the machine.
-            <span>Command the system in depth.</span>
+            Follow the work.
+            <span>Keep the system in view.</span>
           </h1>
           <p>
-            A spatial dashboard for agents, memory, creative engines, and shipping loops.
+            A private operating layer for agents, memory, creation, governance, and delivery.
           </p>
           <div className="home-immersive__actions">
             <Link href="/claude" className="home-immersive__primary">
@@ -350,6 +388,9 @@ export default function HomeImmersive() {
               <p>{item.kicker}</p>
               <h2>{item.title}</h2>
               <div>{item.body}</div>
+              <Link href={item.href} className="home-immersive__chapter-link">
+                {item.action} <ArrowUpRight size={14} />
+              </Link>
             </div>
           </section>
         ))}

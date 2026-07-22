@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, BriefcaseBusiness, CheckCircle2, Clipboard, Code2, Copy, FileText, FolderPlus, Globe2, Layers3, Loader2, Sparkles, TerminalSquare } from "lucide-react";
+import { DESIGN_PROFILES, designProfilePrompt, getDesignProfile, type DesignProfileId } from "@/lib/designIntelligence";
+import { IMMERSIVE_SCROLL_PROVIDER_PROMPT, immersiveScrollSkillApplies } from "@/lib/immersiveScrollSkill";
 import { ADVANCED_WEBSITE_STANDARD, WEB_PROMPT_LIBRARY, type WebPromptTemplateId, promptLibraryMarkdown } from "@/lib/webPromptLibrary";
 
 const ACCENT = "#38bdf8";
@@ -13,15 +15,18 @@ const defaults = {
   name: "", business: "", type: "SaaS" as SiteType, audience: "", offer: "", goal: "Lead generation",
   story: "Problem → solution → proof → call to action", pages: "Home, About, Services, Contact",
   style: "Modern, confident, editorial, high-contrast", proof: "", cta: "Book a strategy call",
+  designProfile: "conversion-editorial" as DesignProfileId, flowContext: "",
 };
 
 function buildBrief(v: typeof defaults) {
-  return `# ${v.name || "Website project"}\n\n## Client\n${v.business || "Business to be defined"}\n\n## Site Type\n${v.type}\n\n## Target Audience\n${v.audience || "Define the primary buyer and their context."}\n\n## Offer\n${v.offer || "Define the outcome, service, or product being sold."}\n\n## Primary Goal\n${v.goal}\n\n## Conversion Story\n${v.story}\n\n## Required Pages\n${v.pages}\n\n## Visual Direction\n${v.style}\n\n## Proof to Feature\n${v.proof || "Case studies, outcomes, testimonials, recognisable clients, or founder credibility."}\n\n## Primary CTA\n${v.cta}\n\n## Delivery Runbook\n1. Research the market, audience language, competing offers, and proof available.\n2. Shape the message before layout: promise, stakes, differentiator, proof, and CTA.\n3. Design the information hierarchy around the conversion story.\n4. Build responsive components, real interactions, and intentional motion.\n5. Test the first viewport, every CTA, forms, mobile layout, keyboard navigation, and performance.\n`;
+  const profile = getDesignProfile(v.designProfile);
+  return `# ${v.name || "Website project"}\n\n## Client\n${v.business || "Business to be defined"}\n\n## Site Type\n${v.type}\n\n## Target Audience\n${v.audience || "Define the primary buyer and their context."}\n\n## Offer\n${v.offer || "Define the outcome, service, or product being sold."}\n\n## Primary Goal\n${v.goal}\n\n## Conversion Story\n${v.story}\n\n## Required Pages\n${v.pages}\n\n## Visual Direction\n${v.style}\n\n${v.flowContext ? `## Flow Lab Context\n${v.flowContext}\n\n` : ""}## Veloce Design Intelligence\n- Profile: ${profile.label}\n- Intent: ${profile.intent}\n- Composition: ${profile.composition}\n- Motion: ${profile.motion}\n- Constraints: ${profile.constraints}\n\n## Proof to Feature\n${v.proof || "Case studies, outcomes, testimonials, recognisable clients, or founder credibility."}\n\n## Primary CTA\n${v.cta}\n\n## Delivery Runbook\n1. Research the market, audience language, competing offers, and proof available.\n2. Shape the message before layout: promise, stakes, differentiator, proof, and CTA.\n3. Design the information hierarchy around the conversion story.\n4. Build responsive components, real interactions, and intentional motion.\n5. Test the first viewport, every CTA, forms, mobile layout, keyboard navigation, and performance.\n`;
 }
 
 function buildPrompt(v: typeof defaults, brief: string, templateId: WebPromptTemplateId) {
   const template = WEB_PROMPT_LIBRARY.find((item) => item.id === templateId) ?? WEB_PROMPT_LIBRARY[0];
-  return `# ${template.label}: ${v.name || "Build this website"}\n\nRead \`site-brief.md\` first. Build the actual ${v.type.toLowerCase()} website in this directory, not a mockup or a marketing explanation.\n\n## Template Intent\n${template.prompt}\n\n## Outcome\nCreate a production-quality, responsive website for ${v.business || "the client"}. The primary conversion action is: ${v.cta}.\n\n## Client Direction\n- Target audience: ${v.audience || "Use the audience described in the brief."}\n- Offer: ${v.offer || "Use the offer described in the brief."}\n- Storyline: ${v.story}.\n- Pages or key sections: ${v.pages}.\n- Visual direction: ${v.style}.\n\n${ADVANCED_WEBSITE_STANDARD}\n\n## Client brief\n\n${brief}`;
+  const immersiveSkill = immersiveScrollSkillApplies({ templateId, designProfile: v.designProfile }) ? `\n\n${IMMERSIVE_SCROLL_PROVIDER_PROMPT}` : "";
+  return `# ${template.label}: ${v.name || "Build this website"}\n\nRead \`site-brief.md\` first. Build the actual ${v.type.toLowerCase()} website in this directory, not a mockup or a marketing explanation.\n\n## Template Intent\n${template.prompt}\n\n## Outcome\nCreate a production-quality, responsive website for ${v.business || "the client"}. The primary conversion action is: ${v.cta}.\n\n## Client Direction\n- Target audience: ${v.audience || "Use the audience described in the brief."}\n- Offer: ${v.offer || "Use the offer described in the brief."}\n- Storyline: ${v.story}.\n- Pages or key sections: ${v.pages}.\n- Visual direction: ${v.style}.\n\n${designProfilePrompt(v.designProfile)}${immersiveSkill}\n\n${ADVANCED_WEBSITE_STANDARD}\n\n## Client brief\n\n${brief}`;
 }
 
 export default function WebStudio() {
@@ -40,6 +45,27 @@ export default function WebStudio() {
     try { const j = await (await fetch("/api/web-studio/projects", { cache: "no-store" })).json(); setProjects(j.projects ?? []); } catch { /* Keep the editor usable offline. */ }
   }, []);
   useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("veloce.flow-lab-handoff");
+      if (!raw) return;
+      const handoff = JSON.parse(raw) as { projectName?: string; brief?: string; designProfile?: DesignProfileId };
+      if (!handoff.brief) return;
+      const flowContext = handoff.brief;
+      setV((previous) => ({
+        ...previous,
+        name: previous.name || handoff.projectName || "Veloce AgenticOS Edition",
+        business: previous.business || "Veloce AgenticOS",
+        type: "Agency",
+        designProfile: handoff.designProfile || previous.designProfile,
+        goal: previous.goal === defaults.goal ? "Create qualified discovery conversations" : previous.goal,
+        story: previous.story === defaults.story ? "Fragmented work → operational world → evidence → human boundary → measurable outcome → CTA" : previous.story,
+        flowContext,
+      }));
+      window.localStorage.removeItem("veloce.flow-lab-handoff");
+      setNotice("Flow Lab brief loaded. Complete the client details, then save the production handoff.");
+    } catch { /* An invalid local handoff should not block the studio. */ }
+  }, []);
 
   async function copy(value: string, label: string) {
     try { await navigator.clipboard.writeText(value); setNotice(`${label} copied.`); setTimeout(() => setNotice(""), 2600); }
@@ -103,7 +129,7 @@ export default function WebStudio() {
 
       <section className="panel p-4">
         <div className="flex items-center gap-2 mb-3"><BookOpen size={15} style={{ color: ACCENT }} /><span className="text-[13px] font-medium" style={{ color: "var(--cream)" }}>Website prompt library</span><span className="text-[10.5px]" style={{ color: "var(--cream-mute)" }}>each prompt includes structure, storyline, animation, conversion, and delivery standards</span></div>
-        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-2">
+        <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-2">
           {WEB_PROMPT_LIBRARY.map((item) => {
             const active = item.id === templateId;
             return <button key={item.id} onClick={() => applyTemplate(item.id)} className="text-left border rounded-lg p-3 transition" style={{ borderColor: active ? `${ACCENT}aa` : "var(--line-soft)", background: active ? "rgba(56,189,248,0.09)" : "var(--bg-deep, rgba(0,0,0,0.14))" }}>
@@ -113,7 +139,7 @@ export default function WebStudio() {
           })}
         </div>
         <div className="flex items-center gap-2 mt-3 flex-wrap text-[10.5px]" style={{ color: "var(--cream-mute)" }}>
-          <span>Toolchain: Framer Motion + UI UX Pro Max + 21st.dev research/install workflow.</span>
+          <span>Toolchain: Veloce Design Intelligence, Framer Motion, Three.js, and reviewed component research.</span>
           <button onClick={() => copy(library, "Prompt library")} className="inline-flex items-center gap-1" style={{ color: ACCENT }}><Copy size={11} /> Copy library</button>
           {notice && <span>{notice}</span>}
         </div>
@@ -127,11 +153,17 @@ export default function WebStudio() {
             <input value={v.business} onChange={(e) => set("business", e.target.value)} placeholder="Client or business" className="rounded-lg px-3 py-2.5 text-[12.5px] outline-none" style={fieldStyle} />
             <select value={v.type} onChange={(e) => set("type", e.target.value)} className="rounded-lg px-3 py-2.5 text-[12.5px] outline-none" style={fieldStyle}>{(["SaaS", "Agency", "Personal brand", "Ecommerce", "Course / community"] as SiteType[]).map((x) => <option key={x}>{x}</option>)}</select>
             <input value={v.goal} onChange={(e) => set("goal", e.target.value)} placeholder="Primary goal" className="rounded-lg px-3 py-2.5 text-[12.5px] outline-none" style={fieldStyle} />
+            <label className="sm:col-span-2 grid gap-1.5 text-[10.5px]" style={{ color: "var(--cream-mute)" }}>
+              Veloce design profile
+              <select value={v.designProfile} onChange={(e) => set("designProfile", e.target.value)} className="rounded-lg px-3 py-2.5 text-[12.5px] outline-none" style={fieldStyle} aria-label="Veloce design profile">{DESIGN_PROFILES.map((profile) => <option key={profile.id} value={profile.id}>{profile.label}</option>)}</select>
+            </label>
+            {immersiveScrollSkillApplies({ templateId, designProfile: v.designProfile }) && <div className="sm:col-span-2 flex items-center gap-1.5 text-[10.5px]" style={{ color: "#7dd3fc" }}><Sparkles size={12} /> Immersive Scroll Site is included in this provider-ready handoff: original depth, DOM artifacts, and fallback checks.</div>}
             <textarea value={v.audience} onChange={(e) => set("audience", e.target.value)} placeholder="Who is the primary buyer? What situation are they in?" className="rounded-lg px-3 py-2.5 text-[12.5px] outline-none min-h-20 resize-y" style={fieldStyle} />
             <textarea value={v.offer} onChange={(e) => set("offer", e.target.value)} placeholder="What are we offering, and what outcome does it create?" className="rounded-lg px-3 py-2.5 text-[12.5px] outline-none min-h-20 resize-y" style={fieldStyle} />
             <input value={v.pages} onChange={(e) => set("pages", e.target.value)} placeholder="Pages or key sections" className="rounded-lg px-3 py-2.5 text-[12.5px] outline-none sm:col-span-2" style={fieldStyle} />
             <input value={v.style} onChange={(e) => set("style", e.target.value)} placeholder="Visual direction" className="rounded-lg px-3 py-2.5 text-[12.5px] outline-none sm:col-span-2" style={fieldStyle} />
             <textarea value={v.proof} onChange={(e) => set("proof", e.target.value)} placeholder="Proof: results, testimonials, clients, founder story, credentials" className="rounded-lg px-3 py-2.5 text-[12.5px] outline-none min-h-16 resize-y sm:col-span-2" style={fieldStyle} />
+            {v.flowContext && <label className="sm:col-span-2 grid gap-1.5 text-[10.5px]" style={{ color: "var(--cream-mute)" }}>Flow Lab context <span>Loaded from Flow Workstation and included in the build handoff.</span><textarea value={v.flowContext} onChange={(e) => set("flowContext", e.target.value)} className="rounded-lg px-3 py-2.5 text-[11px] outline-none min-h-28 resize-y" style={fieldStyle} /></label>}
             <input value={v.cta} onChange={(e) => set("cta", e.target.value)} placeholder="Primary CTA" className="rounded-lg px-3 py-2.5 text-[12.5px] outline-none" style={fieldStyle} />
             <input value={v.story} onChange={(e) => set("story", e.target.value)} placeholder="Conversion story" className="rounded-lg px-3 py-2.5 text-[12.5px] outline-none" style={fieldStyle} />
           </div>

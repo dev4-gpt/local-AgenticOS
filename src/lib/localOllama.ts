@@ -20,13 +20,14 @@ export async function resolveModel(): Promise<string> {
   return FALLBACK;
 }
 
-interface ChatOpts { format?: "json"; temperature?: number; numCtx?: number; numPredict?: number }
+interface ChatOpts { format?: "json"; temperature?: number; numCtx?: number; numPredict?: number; think?: boolean; timeoutMs?: number }
 
 export async function localChat(model: string, system: string, user: string, opts: ChatOpts = {}): Promise<string> {
   const body: Record<string, unknown> = {
     model,
     messages: [{ role: "system", content: system }, { role: "user", content: user }],
     stream: false,
+    think: opts.think ?? false,
     keep_alive: "30m", // warm during the session, frees when idle — never pin forever
     options: {
       temperature: opts.temperature ?? 0.4,
@@ -35,7 +36,12 @@ export async function localChat(model: string, system: string, user: string, opt
     },
   };
   if (opts.format === "json") body.format = "json";
-  const r = await fetch(CHAT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const r = await fetch(CHAT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(opts.timeoutMs ?? 180_000),
+  });
   if (!r.ok) throw new Error(`Ollama HTTP ${r.status}: ${(await r.text().catch(() => "")).slice(0, 160)}`);
   const j = await r.json();
   return (j?.message?.content ?? "").trim();

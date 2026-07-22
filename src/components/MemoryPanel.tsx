@@ -151,7 +151,7 @@ export default function MemoryPanel() {
               });
               const j = await r.json();
               if (!r.ok || !j.ok) throw new Error(j.error ?? "Unable to save vault.");
-              setVaultMessage(`Saved to ${j.configPath}. Restart Agent OS so every tab reads this vault.`);
+              setVaultMessage(`Saved to ${j.configPath}. Restart Veloce AgenticOS so every tab reads this vault.`);
             } catch (error) {
               setVaultError(error instanceof Error ? error.message : "Unable to save vault.");
             } finally {
@@ -369,7 +369,7 @@ function VaultSetupCard({
             <span className="text-[10px] uppercase tracking-widest text-[var(--fg-dimmer)]">Memory · Goals · Journal</span>
           </div>
           <p className="mt-1 text-[12px] leading-relaxed text-[var(--fg-dim)]">
-            Pick the folder that contains your notes. Agent OS will only update <code>{status.configPath}</code> with <code>vaultRoot</code>.
+            Pick the folder that contains your notes. Veloce AgenticOS will only update <code>{status.configPath}</code> with <code>vaultRoot</code>.
           </p>
 
           {status.candidates.length > 0 && (

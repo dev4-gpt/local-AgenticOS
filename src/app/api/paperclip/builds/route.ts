@@ -25,12 +25,16 @@ type Agent = { id: string; name?: string; icon?: string };
 type Issue = { id: string; identifier?: string; title?: string; description?: string; status?: string; assigneeAgentId?: string | null; projectId?: string; createdAt?: string; updatedAt?: string };
 type Att = { id: string; contentType?: string; mimeType?: string };
 type Project = { id: string; name?: string };
+type Company = { id: string; name?: string };
 
 export async function GET() {
+  const companies = COMPANY ? [] : await jget<Company[]>("/companies", []);
+  const companyId = COMPANY || companies[0]?.id || "";
+  if (!companyId) return NextResponse.json({ count: 0, builds: [], configured: false });
   const [agents, issues, projects] = await Promise.all([
-    jget<Agent[]>(`/companies/${COMPANY}/agents`, []),
-    jget<Issue[]>(`/companies/${COMPANY}/issues`, []),
-    jget<Project[]>(`/companies/${COMPANY}/projects`, []),
+    jget<Agent[]>(`/companies/${companyId}/agents`, []),
+    jget<Issue[]>(`/companies/${companyId}/issues`, []),
+    jget<Project[]>(`/companies/${companyId}/projects`, []),
   ]);
 
   const agentOf = (id?: string | null) => agents.find((a) => a.id === id);
@@ -61,5 +65,5 @@ export async function GET() {
   );
 
   builds.sort((a, b) => Date.parse(b.createdAt || "0") - Date.parse(a.createdAt || "0"));
-  return NextResponse.json({ count: builds.length, builds });
+  return NextResponse.json({ count: builds.length, builds, configured: true });
 }

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Veloce Asset Sequencing"
+  short_description: "Build accessible scroll-linked frame sequences"
+  default_prompt: "Use $veloce-asset-sequencing to plan and implement an owned scroll-linked image sequence with loading and reduced-motion fallbacks."
+policy:
+  allow_implicit_invocation: true

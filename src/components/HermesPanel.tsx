@@ -7,7 +7,7 @@ import Panel from "./Panel";
 
 type Action = "status" | "sessions" | "doctor" | "insights" | "skills";
 
-interface HmVitals { ok: boolean; model: string; provider: string; raw: string; }
+interface HmVitals { ok: boolean; degraded?: boolean; detail?: string; model: string; provider: string; raw: string; }
 
 export default function HermesPanel({ vitals }: { vitals?: HmVitals | null }) {
   const [action, setAction] = useState<Action>("status");
@@ -40,8 +40,8 @@ export default function HermesPanel({ vitals }: { vitals?: HmVitals | null }) {
       accent="hermes"
       icon={<Cpu size={14} />}
       actions={
-        <span className={`pill ${vitals?.ok ? "pill-ok" : "pill-err"}`}>
-          {vitals?.ok ? "online" : "offline"}
+        <span className={`pill ${!vitals?.ok ? "pill-err" : vitals.degraded ? "pill-warn" : "pill-ok"}`}>
+          {!vitals?.ok ? "offline" : vitals.degraded ? "fallback" : "online"}
         </span>
       }
       className="min-h-[460px]"
@@ -57,6 +57,11 @@ export default function HermesPanel({ vitals }: { vitals?: HmVitals | null }) {
               <div className="text-[10px] uppercase tracking-widest text-[var(--fg-dimmer)]">Provider</div>
               <div className="text-sm metric truncate">{vitals.provider}</div>
             </div>
+            {vitals.degraded && vitals.detail && (
+              <div className="col-span-2 rounded-lg border border-[rgba(212,165,116,0.3)] bg-[rgba(212,165,116,0.06)] px-3 py-2 text-[11px] text-[var(--gold)]">
+                {vitals.detail}
+              </div>
+            )}
           </div>
         )}
 

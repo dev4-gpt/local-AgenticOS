@@ -13,13 +13,14 @@ let cached: { ts: number; body: unknown } | null = null;
 let inflight: Promise<unknown> | null = null;
 
 async function computeVitals() {
-  const [claude, openclaw, hermes, antigravity] = await Promise.all([
-    run("claude", ["--version"], { timeoutMs: 6000 }),
-    run("openclaw", ["health"], { timeoutMs: 6000 }),
-    run("hermes", ["status"], { timeoutMs: 8000 }),
-    run("antigravity", ["--version"], { timeoutMs: 6000 }),
+  const [claude, openclaw, hermes, hermesAuth, antigravity] = await Promise.all([
+    run("claude", ["--version"], { timeoutMs: 15_000 }),
+    run("openclaw", ["health"], { timeoutMs: 15_000 }),
+    run("hermes", ["status"], { timeoutMs: 15_000 }),
+    run("hermes", ["auth", "list"], { timeoutMs: 12_000 }),
+    run("antigravity", ["--version"], { timeoutMs: 12_000 }),
   ]);
-  return { claude, openclaw, hermes, antigravity };
+  return { claude, openclaw, hermes, hermesAuth, antigravity };
 }
 
 export async function GET() {
@@ -30,7 +31,7 @@ export async function GET() {
   if (!inflight) {
     inflight = computeVitals().finally(() => { inflight = null; });
   }
-  const { claude, openclaw, hermes, antigravity } = (await inflight) as Awaited<ReturnType<typeof computeVitals>>;
+  const { claude, openclaw, hermes, hermesAuth, antigravity } = (await inflight) as Awaited<ReturnType<typeof computeVitals>>;
 
   const ocAgents = (() => {
     const m = openclaw.stdout.match(/Agents:\s*(.*)/);
@@ -51,6 +52,19 @@ export async function GET() {
     const m = hermes.stdout.match(/Provider:\s+([^\n]+)/);
     return m ? m[1].trim() : "unknown";
   })();
+  const hermesAuthReady = (() => {
+    const provider = hermesProvider.toLowerCase();
+    const output = `${hermes.stdout}\n${hermes.stderr}`;
+    if (!hermes.ok || provider === "unknown" || provider === "none") return false;
+    if (/no inference provider configured/i.test(output)) return false;
+    if (provider.includes("openai codex")) return !/OpenAI Codex\s+✗/i.test(output);
+    if (provider.includes("openrouter")) return !/OpenRouter\s+✗/i.test(output);
+    if (provider.includes("anthropic")) return !/Anthropic\s+✗/i.test(output);
+    if (provider.includes("kimi") || provider.includes("moonshot")) return !/Kimi[^\n]*✗/i.test(output);
+    return !/active provider:\s*none/i.test(output);
+  })();
+  const hermesFallbackReady = /(?:kimi-coding|openrouter)\s+\([1-9]\d* credentials?\)/i.test(hermesAuth.stdout)
+    && !/(?:kimi-coding|openrouter)[^\n]*all exhausted/i.test(hermesAuth.stdout);
 
   const body = {
     ts: Date.now(),
@@ -69,7 +83,7 @@ export async function GET() {
       const reportedDegraded = /degraded/.test(openclaw.stdout);
       const trulyDegraded = reportedDegraded && (max > 100 || p99 > 50);
       return {
-        ok: openclaw.ok,
+        ok: openclaw.ok || /Gateway event loop:\s*(?:ok|degraded)/i.test(openclaw.stdout),
         gateway: /Gateway event loop:/.test(openclaw.stdout) ? "live" : "down",
         degraded: trulyDegraded,
         busy: reportedDegraded && !trulyDegraded,
@@ -82,9 +96,18 @@ export async function GET() {
       };
     })(),
     hermes: {
-      ok: hermes.ok,
+      ok: hermes.ok && (hermesAuthReady || hermesFallbackReady),
+      cliReady: hermes.ok,
+      authReady: hermesAuthReady,
+      fallbackReady: hermesFallbackReady,
+      degraded: !hermesAuthReady && hermesFallbackReady,
       model: hermesModel,
       provider: hermesProvider,
+      detail: hermesAuthReady
+        ? "Inference provider authenticated"
+        : hermesFallbackReady
+          ? "Primary provider unavailable; authenticated fallback ready"
+          : "CLI installed; active provider needs authentication",
       latencyMs: hermes.durationMs,
       raw: hermes.stdout.slice(0, 2000),
     },

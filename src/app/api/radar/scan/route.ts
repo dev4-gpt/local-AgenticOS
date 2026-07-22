@@ -197,7 +197,7 @@ async function runSweep(): Promise<void> {
   await writeStatus({ running: true, startedAt, phase: "Reading the live X firehose…" });
   try {
     if (!existsSync(HERMES_WORKSPACE)) { try { await mkdir(HERMES_WORKSPACE, { recursive: true }); } catch {} }
-    const res = await run("hermes", ["-z", scanPrompt(new Date())], { cwd: HERMES_WORKSPACE, timeoutMs: 420_000 });
+    const res = await run("hermes", ["chat", "-q", scanPrompt(new Date()), "-Q", "--source", "agentos"], { cwd: HERMES_WORKSPACE, timeoutMs: 420_000 });
     const raw = res.stdout || "";
     const signals = normalize(extractRaw(raw), raw);
     if (!signals.length) {

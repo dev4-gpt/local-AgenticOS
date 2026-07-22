@@ -206,7 +206,7 @@ function CreateTab() {
       <PromptCard title="Create video · HyperFrames" accent={ACCENT}>
         <label className="text-[10px] uppercase tracking-widest text-[var(--cream-mute)]">What video do you want?</label>
         <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)}
-          placeholder="A 10-second cinematic intro for Agent OS — fade in title, ambient particles, gold-on-aubergine palette"
+          placeholder="A 10-second cinematic intro for Veloce AgenticOS — fade in title, ambient particles, gold-on-aubergine palette"
           rows={5}
           onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) createAndRender(); }}
           className="w-full p-2.5 rounded-md text-[12.5px] resize-none mt-1"
@@ -524,7 +524,7 @@ function AvatarTab() {
         <div className="space-y-2 mt-3">
           <label className="text-[10px] uppercase tracking-widest text-[var(--cream-mute)]">Script</label>
           <textarea value={text} onChange={(e) => setText(e.target.value)}
-            placeholder="Hey everyone, welcome to my new Agent OS dashboard. This is the live AI-agent command centre I run my whole business through…"
+            placeholder="Hey everyone, welcome to my new Veloce AgenticOS dashboard. This is the live AI-agent command centre I run my whole business through…"
             rows={3}
             className="w-full p-2 rounded-md text-[12px] resize-none"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--panel-border)", color: "var(--cream)" }} />

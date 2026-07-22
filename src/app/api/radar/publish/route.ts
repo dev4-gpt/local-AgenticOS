@@ -198,7 +198,7 @@ async function runPublish(sig: { headline: string; why_now: string; angle: strin
       const site = cfg.sites[host];
       if (!site) continue;
       await writePub({ running: true, headline: sig.headline, sites: hosts, status, phase: `Writing for ${host}…`, results, startedAt });
-      const res = await run("hermes", ["-z", genPrompt(sig, ANGLES[i % ANGLES.length], profile)], { cwd: HERMES_WORKSPACE, timeoutMs: 300_000 });
+      const res = await run("hermes", ["chat", "-q", genPrompt(sig, ANGLES[i % ANGLES.length], profile), "-Q", "--source", "agentos"], { cwd: HERMES_WORKSPACE, timeoutMs: 300_000 });
       const article = parseArticle(res.stdout || "");
       if (!article) throw new Error(`The writer came back malformed for ${host} — try again.`);
       const html = withCrossLinks(withTweet(article.html, embed), host, hosts, slug);

@@ -40,7 +40,7 @@ const KIND_META: Record<MediaKind, { label: string; icon: React.ReactNode; accen
     label: "Speech",
     icon: <Mic2 size={14} />,
     accent: "#22d3ee",
-    placeholder: "Welcome to Agentic OS. Your AI command centre is online and ready.",
+    placeholder: "Welcome to Veloce AgenticOS. Your AI command centre is online and ready.",
     warn: "tts via Hermes · usually 4–10s",
   },
 };

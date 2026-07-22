@@ -19,7 +19,7 @@ import HermesManage from "@/components/HermesManage";
 import JarvisView from "@/components/JarvisView";
 
 type HermesTab = "chat" | "radar" | "talk" | "jarvis" | "studio" | "sessions" | "goals" | "workspace" | "mcps" | "manage" | "control" | "outreach" | "moa";
-interface HmVitals { ok: boolean; model: string; provider: string; }
+interface HmVitals { ok: boolean; degraded?: boolean; detail?: string; model: string; provider: string; }
 
 
 export default function HermesRoute() {
@@ -131,13 +131,20 @@ export default function HermesRoute() {
                   </div>
                   <div>
                     <div className="text-[10px] uppercase tracking-widest text-[var(--fg-dimmer)]">State</div>
-                    <div className="text-sm font-medium" style={{ color: "#60a5fa" }}>{v.ok ? "Online" : "Offline"}</div>
+                    <div className="text-sm font-medium" style={{ color: v.degraded ? "var(--gold)" : "#60a5fa" }}>
+                      {!v.ok ? "Offline" : v.degraded ? "Fallback ready" : "Online"}
+                    </div>
                   </div>
                 </div>
                 <div className="rounded-lg border border-[var(--panel-border)] px-2.5 py-2">
                   <div className="text-[10px] uppercase tracking-widest text-[var(--fg-dimmer)]">Model</div>
                   <div className="metric text-sm truncate">{v.model}</div>
                 </div>
+                {v.degraded && v.detail && (
+                  <div className="rounded-lg border border-[rgba(212,165,116,0.3)] bg-[rgba(212,165,116,0.06)] px-2.5 py-2 text-[11px] text-[var(--gold)]">
+                    {v.detail}
+                  </div>
+                )}
                 <div className="rounded-lg border border-[var(--panel-border)] px-2.5 py-2">
                   <div className="text-[10px] uppercase tracking-widest text-[var(--fg-dimmer)]">Provider</div>
                   <div className="metric text-sm truncate">{v.provider}</div>

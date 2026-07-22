@@ -21,7 +21,7 @@ const PRESETS: Record<Kind, string[]> = {
     "Time-lapse of a galaxy swirling into existence, cosmic, ultra detailed",
   ],
   voice: [
-    "Welcome to Agent OS. Seven AI agents, one mission control — powered by MiniMax.",
+    "Welcome to Veloce AgenticOS. Seven AI agents, one mission control — powered by MiniMax.",
     "This is the future of building. Local, fast, and entirely yours.",
     "Generated entirely with MiniMax — images, video, and voice from a single prompt.",
   ],

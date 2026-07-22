@@ -1,0 +1,64 @@
+/* Original Veloce cosmic worlds: generated photography supplies each chapter's
+   atmosphere, while Three.js stays a lightweight operational overlay. */
+.intro {
+  isolation: isolate;
+  position: relative;
+  background-color: var(--ink);
+  background-image:
+    linear-gradient(90deg, rgba(5, 8, 15, 0.94) 0%, rgba(5, 8, 15, 0.74) 44%, rgba(5, 8, 15, 0.18) 100%),
+    var(--hero-image);
+  background-position: center;
+  background-size: cover;
+}
+
+.intro > * {
+  position: relative;
+  z-index: 1;
+}
+
+.scene-shell {
+  isolation: isolate;
+}
+
+.cosmic-world,
+.cosmic-world-shade {
+  position: absolute;
+  inset: 0;
+}
+
+.cosmic-world {
+  z-index: 0;
+  background-position: center;
+  background-size: cover;
+  will-change: opacity, transform;
+}
+
+.cosmic-world-shade {
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(5, 8, 15, 0.9) 0%, rgba(5, 8, 15, 0.55) 42%, rgba(5, 8, 15, 0.17) 100%),
+    linear-gradient(0deg, rgba(5, 8, 15, 0.5), transparent 45%);
+}
+
+.scene-shell .depth-scene {
+  z-index: 2;
+  background: transparent !important;
+  mix-blend-mode: screen;
+  opacity: 0.82;
+}
+
+.scene-copy,
+.chapter-list {
+  z-index: 3;
+}
+
+@media (max-width: 620px) {
+  .intro,
+  .cosmic-world {
+    background-position: 62% center;
+  }
+
+  .cosmic-world-shade {
+    background: linear-gradient(0deg, rgba(5, 8, 15, 0.78) 0%, rgba(5, 8, 15, 0.22) 76%);
+  }
+}

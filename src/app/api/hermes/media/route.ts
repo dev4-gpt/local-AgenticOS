@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { run } from "@/lib/runner";
+import { runHermesQuery } from "@/lib/hermesCli";
 import { snapshot, diff, craftPrompt, extractPathsFromText, type MediaKind } from "@/lib/media";
 
 export const runtime = "nodejs";
@@ -20,8 +20,8 @@ export async function POST(req: Request) {
   const before = await snapshot(kind as MediaKind);
   const wrapped = craftPrompt(kind as MediaKind, prompt);
 
-  // Hermes -z runs a single non-interactive query. Image/video can take a while.
-  const out = await run("hermes", ["-z", wrapped], { timeoutMs: 240_000 });
+  // Hermes chat -q runs a single non-interactive query. Image/video can take a while.
+  const out = await runHermesQuery(wrapped, { timeoutMs: 240_000 });
   const text = out.stdout.replace(/\[[0-9;]*m/g, "").trim();
   const newFiles = await diff(kind as MediaKind, before);
   const textPaths = extractPathsFromText(text, kind as MediaKind);
@@ -36,6 +36,7 @@ export async function POST(req: Request) {
     kind,
     prompt,
     text: text.slice(0, 4_000),
+    providerUsed: out.providerUsed,
     paths: finalPaths,
     files: newFiles,
     durationMs: out.durationMs,
