@@ -47,6 +47,8 @@ For the final four-week publishing order, twelve paste-ready LinkedIn captions, 
 
 For the separate public-safe Veloce AgenticOS marketing site, pricing structure, and Cloud Run deployment instructions, see [public-site/README.md](./public-site/README.md). This public site is intentionally separate from the private local dashboard.
 
+Public beta: <https://veloce-agenticos-site-mquo4bf7aq-ew.a.run.app>
+
 For v2 product boundaries, Flow Lab policy, approved capabilities, and explicit deferrals, see [VELOCE-AGENTICOS-V2.md](./VELOCE-AGENTICOS-V2.md). For the deliberate stable-path migration policy, see [MIGRATION-TO-VELOCE-AGENTICOS.md](./MIGRATION-TO-VELOCE-AGENTICOS.md).
 
 ## Current Local Stack

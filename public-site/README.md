@@ -2,6 +2,8 @@
 
 This Vite/React folder is intentionally independent from the private Veloce AgenticOS dashboard. It has no private API routes, provider credentials, agent controls, analytics key, filesystem access, or lead database.
 
+Public beta: <https://veloce-agenticos-site-mquo4bf7aq-ew.a.run.app>
+
 ## Configure before publishing
 
 Edit `public/config.js` and set exactly one contact route:
@@ -25,7 +27,7 @@ From this folder, after Google Cloud CLI authentication and selecting a project:
 ```bash
 gcloud run deploy veloce-agenticos-site \
   --source . \
-  --project agentos-mvp \
+  --project veloce-agenticos-2026 \
   --region europe-west1 \
   --allow-unauthenticated \
   --port 8080 \
@@ -36,6 +38,8 @@ gcloud run deploy veloce-agenticos-site \
 ```
 
 This deployment is public only because the site is static. Do **not** deploy the main Veloce AgenticOS dashboard this way. The dashboard has local-agent and private-data capabilities that require a separately designed, authenticated product boundary.
+
+The container exposes `/status` for deployment verification. Cloud Run reserves the exact `/healthz` path in this environment, so it is not used as the application endpoint.
 
 ## Production checklist
 
