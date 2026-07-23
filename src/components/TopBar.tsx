@@ -67,13 +67,25 @@ export default function TopBar() {
   }, []);
 
   return (
-    <header className="flex items-start justify-between gap-6 mb-10">
+    <header className="workspace-page-head">
+      <div className="workspace-page-head__chrome">
+        <div>
+          <span>Veloce AgenticOS</span>
+          <i />
+          <strong>{t.label}</strong>
+        </div>
+        <div className="workspace-page-head__actions">
+          <span className="workspace-page-head__runtime"><i /> Local runtime</span>
+          <CommandPalette />
+        </div>
+      </div>
+
       <motion.div
         key={pathname}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="min-w-0"
+        className="workspace-page-head__intro"
       >
         {/* Chapter eyebrow — `I. ───── MISSION CONTROL` */}
         <div className="eyebrow">
@@ -91,22 +103,6 @@ export default function TopBar() {
           Local · Studio
         </div>
       </motion.div>
-
-      <div className="flex items-center gap-3 pt-2 shrink-0">
-        <CommandPalette />
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-md border border-[var(--line-soft)] text-[11px]"
-             style={{ color: "var(--cream-dim)", background: "rgba(243,235,218,0.02)" }}>
-          <span className="inline-flex">
-            <span className="tick live" style={{ color: "var(--gold)" }} />
-            <span className="tick live" style={{ color: "var(--gold-soft)", animationDelay: ".15s" }} />
-            <span className="tick live" style={{ color: "var(--emerald)", animationDelay: ".3s" }} />
-            <span className="tick live" style={{ color: "var(--rust)", animationDelay: ".45s" }} />
-          </span>
-          <span className="uppercase tracking-widest" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 600 }}>
-            Local runtime
-          </span>
-        </div>
-      </div>
     </header>
   );
 }

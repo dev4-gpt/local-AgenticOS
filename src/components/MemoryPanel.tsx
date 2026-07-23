@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, Check, FolderOpen, RefreshCw, Search, FileText, Sparkles, Clock, Network } from "lucide-react";
+import { Brain, Check, FolderOpen, RefreshCw, Search, FileText, Sparkles, Clock, Network, Plus, Save, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import Panel from "./Panel";
 import GraphifyPanel from "./GraphifyPanel";
@@ -11,7 +11,7 @@ import GraphifyPanel from "./GraphifyPanel";
 const VaultGraph3D = dynamic(() => import("./VaultGraph3D"), { ssr: false });
 const MemoryGalaxy = dynamic(() => import("./MemoryGalaxy"), { ssr: false });
 
-interface NoteHit { path: string; title: string; preview: string; score: number; mtime: number; }
+interface NoteHit { path: string; title: string; preview: string; score: number; mtime: number; kind: "text" | "binary"; }
 interface RecentNote { path: string; title: string; mtime: number; }
 interface VaultCandidate { path: string; label: string; noteCount: number; hasObsidianConfig: boolean; source: "configured" | "common" | "scan"; }
 interface VaultStatus { configured: boolean; activeVault: string | null; configPath: string; candidates: VaultCandidate[]; }
@@ -32,6 +32,12 @@ export default function MemoryPanel() {
   const [savingVault, setSavingVault] = useState(false);
   const [vaultMessage, setVaultMessage] = useState<string | null>(null);
   const [vaultError, setVaultError] = useState<string | null>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteBody, setNoteBody] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteMessage, setNoteMessage] = useState<string | null>(null);
+  const [noteError, setNoteError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -78,9 +84,54 @@ export default function MemoryPanel() {
     setOpen({ path: j.path, content: j.content });
   }
 
+  function openSearchHit(hit: NoteHit) {
+    if (hit.kind === "binary") {
+      window.open(`/api/memory/file?path=${encodeURIComponent(hit.path)}`, "_blank", "noopener,noreferrer");
+      return;
+    }
+    void openNote(hit.path);
+  }
+
+  async function saveNote() {
+    const body = noteBody.trim();
+    if (!body || noteSaving) return;
+    setNoteSaving(true);
+    setNoteMessage(null);
+    setNoteError(null);
+    try {
+      const title = noteTitle.trim();
+      const text = title ? `### ${title}\n\n${body}` : body;
+      const response = await fetch("/api/memory/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent: "user", kind: "note", text }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.error ?? "The note could not be written to the vault.");
+
+      const recentResponse = await fetch("/api/memory/recent", { cache: "no-store" });
+      const recentResult = await recentResponse.json();
+      setRecent(recentResult.recent ?? []);
+      void fetch("/api/memory/graphify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "stage" }),
+      }).catch(() => null);
+      setNoteTitle("");
+      setNoteBody("");
+      setNoteMessage(`Saved to ${result.path}`);
+      setTab("recent");
+      setComposerOpen(false);
+    } catch (error) {
+      setNoteError(error instanceof Error ? error.message : "The note could not be written to the vault.");
+    } finally {
+      setNoteSaving(false);
+    }
+  }
+
   const tabs: { key: Tab; label: string; count?: number; icon: React.ReactNode }[] = [
     { key: "recent", label: "Recent", icon: <Clock size={12} />, count: recent.length },
-    { key: "search", label: "Notes", icon: <FileText size={12} />, count: notes.length },
+    { key: "search", label: "Smart search", icon: <FileText size={12} />, count: notes.length },
     { key: "omi", label: "Omi file", icon: <Sparkles size={12} />, count: omi.length },
     { key: "graph", label: "Graph", icon: <Network size={12} /> },
   ];
@@ -114,9 +165,25 @@ export default function MemoryPanel() {
       accent="system"
       icon={<Brain size={14} />}
       actions={
-        <span className={`pill ${connectedVault ? "pill-info" : "pill-warn"}`}>
-          {noteCountLabel}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`pill ${connectedVault ? "pill-info" : "pill-warn"}`}>
+            {noteCountLabel}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setComposerOpen((value) => !value);
+              setNoteMessage(null);
+              setNoteError(null);
+            }}
+            disabled={!connectedVault}
+            className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ borderColor: "rgba(34,211,238,0.45)", color: "#67e8f9", background: "rgba(34,211,238,0.08)" }}
+          >
+            {composerOpen ? <X size={12} /> : <Plus size={12} />}
+            {composerOpen ? "Close" : "Add note"}
+          </button>
+        </div>
       }
       className="lg:col-span-3 min-h-[460px]"
     >
@@ -160,9 +227,64 @@ export default function MemoryPanel() {
           }}
         />
       )}
+      <AnimatePresence initial={false}>
+        {composerOpen && connectedVault && (
+          <motion.form
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveNote();
+            }}
+            className="mb-4 overflow-hidden"
+          >
+            <div className="rounded-lg border border-[rgba(34,211,238,0.28)] bg-[rgba(6,18,26,0.72)] p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[12px] font-semibold text-[var(--fg)]">Add a memory note</div>
+                  <div className="text-[10.5px] text-[var(--fg-dimmer)]">Saved privately to today&apos;s Obsidian memory file.</div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={noteSaving || !noteBody.trim()}
+                  className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-40"
+                  style={{ color: "#06131a", background: "#67e8f9" }}
+                >
+                  {noteSaving ? <RefreshCw size={12} className="animate-spin" /> : <Save size={12} />}
+                  {noteSaving ? "Saving" : "Save note"}
+                </button>
+              </div>
+              <input
+                value={noteTitle}
+                onChange={(event) => setNoteTitle(event.target.value)}
+                aria-label="Note title"
+                placeholder="Note title (optional)"
+                maxLength={160}
+                className="mb-2 w-full rounded-md border border-[var(--panel-border)] bg-[rgba(0,0,0,0.24)] px-3 py-2 text-[12.5px] text-[var(--fg)] outline-none placeholder:text-[var(--fg-dimmer)] focus:border-[rgba(34,211,238,0.55)]"
+              />
+              <textarea
+                value={noteBody}
+                onChange={(event) => setNoteBody(event.target.value)}
+                aria-label="Note body"
+                placeholder="Write something worth remembering..."
+                maxLength={7800}
+                rows={4}
+                className="w-full resize-y rounded-md border border-[var(--panel-border)] bg-[rgba(0,0,0,0.24)] px-3 py-2 text-[12.5px] leading-relaxed text-[var(--fg)] outline-none placeholder:text-[var(--fg-dimmer)] focus:border-[rgba(34,211,238,0.55)]"
+              />
+              {noteError && <div className="mt-2 text-[11px] text-red-300">{noteError}</div>}
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
+      {noteMessage && (
+        <div className="mb-3 flex items-center gap-1.5 text-[11px] text-emerald-300">
+          <Check size={12} /> {noteMessage}
+        </div>
+      )}
       {tab === "graph" ? (
         <div className="flex flex-col h-full min-h-0">
-          <GraphifyPanel />
+          <GraphifyPanel latestVaultMtime={recent.length ? Math.max(...recent.map((note) => note.mtime)) : null} />
           {/* Tab bar so user can still hop back out of the graph */}
           <div className="flex gap-1.5 mb-3">
             {tabs.map((t) => (
@@ -212,7 +334,7 @@ export default function MemoryPanel() {
               ref={inputRef}
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder={connectedVault ? "Search your Obsidian vault..." : "Connect a vault to search notes..."}
+              placeholder={connectedVault ? "Search by title, project, person, or what it does..." : "Connect a vault to search notes..."}
               className="flex-1 bg-transparent outline-none text-sm text-[var(--fg)] placeholder:text-[var(--fg-dimmer)]"
             />
             {searching && <span className="text-[10px] text-[var(--fg-dimmer)] uppercase tracking-wider">…</span>}
@@ -257,7 +379,7 @@ export default function MemoryPanel() {
               <motion.button
                 key={n.path}
                 initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
-                onClick={() => openNote(n.path)}
+                onClick={() => openSearchHit(n)}
                 className="block w-full text-left px-3 py-2 rounded-lg border border-[var(--panel-border)] hover:border-[var(--panel-border-hot)] hover:bg-[rgba(255,255,255,0.03)] transition"
               >
                 <div className="text-[13px] text-[var(--fg)] truncate">{highlight(n.title)}</div>
@@ -266,7 +388,7 @@ export default function MemoryPanel() {
               </motion.button>
             ))}
             {tab === "search" && q && notes.length === 0 && !searching && (
-              <div className="text-[12px] text-[var(--fg-dim)] px-2">No notes match.</div>
+              <div className="text-[12px] text-[var(--fg-dim)] px-2">No private documents match this title or description.</div>
             )}
 
             {tab === "omi" && omi.map((line, i) => (

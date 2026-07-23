@@ -20,10 +20,24 @@
   isolation: isolate;
 }
 
+/* Cursor-parallax layer for the background world; the slight over-scale gives
+   the translate room so the nebula edges never enter frame. Offset is 0 under
+   reduced motion, so this resolves to a static, faintly zoomed background. */
+.cosmic-parallax {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  will-change: transform;
+}
+
 .cosmic-world,
 .cosmic-world-shade {
   position: absolute;
   inset: 0;
+}
+
+.scene-copy {
+  will-change: transform;
 }
 
 .cosmic-world {

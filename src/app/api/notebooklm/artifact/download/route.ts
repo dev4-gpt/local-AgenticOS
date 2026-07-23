@@ -8,6 +8,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
 import os from "node:os";
+import { NOTEBOOK_ASSETS_DIR } from "@/lib/notebooklmStorage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ const CLI_CMD: Record<string, string> = {
   report: "report", mind_map: "mind-map", flashcards: "flashcards", quiz: "quiz", data_table: "data-table",
 };
 
-const ASSETS_DIR = path.join(os.homedir(), "Documents", "Obsidian Vault", "Agentic OS", "Notebooks", "_assets");
+const ASSETS_DIR = NOTEBOOK_ASSETS_DIR;
 
 const MIME: Record<string, string> = {
   ".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".wav": "audio/wav", ".ogg": "audio/ogg",

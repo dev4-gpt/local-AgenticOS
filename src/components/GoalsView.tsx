@@ -83,23 +83,27 @@ export default function GoalsView() {
           <Target size={16} className="text-[var(--accent-cyan)]" />
           <h3 className="text-sm font-medium">Add a goal</h3>
         </div>
-        <div className="flex items-end gap-2">
+        <div className="flex flex-wrap items-end gap-2">
           <VoiceButton onTranscript={(t, o) => { if (o.final) setInput((v) => (v ? v + " " : "") + t); }} size={38} />
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
             placeholder="What's the goal? (Enter to add)"
-            className="flex-1 bg-[rgba(0,0,0,0.25)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]"
+            className="min-w-[240px] flex-1 bg-[rgba(0,0,0,0.25)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]"
           />
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="bg-[rgba(0,0,0,0.25)] border border-[var(--panel-border)] rounded-lg px-2 h-[38px] text-sm text-[var(--fg-dim)]"
-          >
-            <option value="">No category</option>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <label className="flex min-w-[156px] flex-col gap-1">
+            <span className="px-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--fg-dimmer)]">Category</span>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              aria-label="Goal category"
+              className="goal-category-select h-[38px] w-full rounded-lg border border-[var(--panel-border)] px-2.5 text-sm outline-none focus:border-[var(--panel-border-hot)]"
+            >
+              <option value="">No category</option>
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
           <button
             onClick={add}
             disabled={!input.trim() || busy}

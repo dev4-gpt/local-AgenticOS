@@ -9,6 +9,11 @@ const execFileAsync = promisify(execFile);
 const HOME = os.homedir();
 const STATE_DIR = path.join(HOME, ".agentic-os");
 const CONFIG_FILE = path.join(STATE_DIR, "integrations.json");
+const AGENT_REACH_CACHE_FILE = path.join(STATE_DIR, "agent-reach-status.json");
+const AGENT_REACH_VALIDATED_FILE = path.join(STATE_DIR, "agent-reach-validated.json");
+const AGENT_REACH_TWITTER_ENV_FILE = path.join(HOME, ".agent-reach", "twitter.env");
+const AGENT_REACH_CACHE_MS = 15 * 60 * 1_000;
+const AGENT_REACH_VALIDATION_MS = 24 * 60 * 60 * 1_000;
 
 export type ExternalIntegrationId = "plausible" | "supabase" | "calcom" | "listmonk" | "ghost" | "stirling" | "penpot";
 type Config = Record<string, Record<string, string>>;
@@ -67,9 +72,100 @@ async function reachable(url: string): Promise<boolean> {
   } catch { return false; }
 }
 
+interface AgentReachChannel {
+  status?: string;
+  active_backend?: string | null;
+}
+
+interface AgentReachCache {
+  checkedAt: number;
+  channels: Record<string, AgentReachChannel>;
+}
+
+interface AgentReachValidation {
+  checkedAt: number;
+  channels: Record<string, { ok?: boolean; checkedAt?: number }>;
+}
+
+async function agentReachProbeEnv(): Promise<NodeJS.ProcessEnv> {
+  const env = { ...process.env };
+  const allowed = new Set(["TWITTER_AUTH_TOKEN", "TWITTER_CT0"]);
+  const raw = await readFile(AGENT_REACH_TWITTER_ENV_FILE, "utf8").catch(() => "");
+  for (const line of raw.split(/\r?\n/)) {
+    const separator = line.indexOf("=");
+    if (separator < 1) continue;
+    const key = line.slice(0, separator).trim();
+    const value = line.slice(separator + 1).trim();
+    if (allowed.has(key) && value) env[key] = value;
+  }
+  return env;
+}
+
+function summarizeAgentReach(
+  channels: Record<string, AgentReachChannel>,
+  versionName: string,
+  validation: AgentReachValidation | null,
+) {
+  const entries = Object.entries(channels);
+  const sessionBackedOpenCli = new Set(["reddit", "instagram", "facebook", "xiaohongshu"]);
+  const validationFresh = !!validation && Date.now() - validation.checkedAt < AGENT_REACH_VALIDATION_MS;
+  const ready = entries.filter(([id, channel]) => {
+    if (channel.status !== "ok") return false;
+    if (channel.active_backend !== "OpenCLI" || !sessionBackedOpenCli.has(id)) return true;
+    return validationFresh && validation?.channels[id]?.ok === true;
+  });
+  const names = ready.map(([id]) => id).slice(0, 7).join(", ");
+  return {
+    id: "agent-reach",
+    name: "AgentReach Research",
+    description: "Read-only research across approved web, code, video, RSS, and social sources",
+    state: ready.length ? "working" : "waiting",
+    detail: `${versionName || "installed"} · ${ready.length}/${entries.length} channels ready${names ? ` · ${names}` : ""}. Authenticated channels require operator setup.`,
+  };
+}
+
+async function agentReachStatus() {
+  const bin = path.join(HOME, ".local", "bin", "agent-reach");
+  const base = {
+    id: "agent-reach",
+    name: "AgentReach Research",
+    description: "Read-only research across approved web, code, video, RSS, and social sources",
+  };
+  if (!existsSync(bin)) {
+    return { ...base, state: "missing", detail: "Install the reviewed AgentReach CLI in the user tool environment." };
+  }
+
+  try {
+    const { stdout: versionOut } = await execFileAsync(bin, ["--version"], { timeout: 8_000 });
+    const versionName = versionOut.trim().replace(/^Agent Reach\s*/i, "");
+    const validation = await readFile(AGENT_REACH_VALIDATED_FILE, "utf8")
+      .then((raw) => JSON.parse(raw) as AgentReachValidation)
+      .catch(() => null);
+    const cached = await readFile(AGENT_REACH_CACHE_FILE, "utf8")
+      .then((raw) => JSON.parse(raw) as AgentReachCache)
+      .catch(() => null);
+    if (cached && Date.now() - cached.checkedAt < AGENT_REACH_CACHE_MS) {
+      return summarizeAgentReach(cached.channels, versionName, validation);
+    }
+
+    const { stdout: doctorOut } = await execFileAsync(bin, ["doctor", "--json"], {
+      timeout: 45_000,
+      maxBuffer: 2 * 1024 * 1024,
+      env: await agentReachProbeEnv(),
+    });
+    const channels = JSON.parse(doctorOut) as Record<string, AgentReachChannel>;
+    await mkdir(STATE_DIR, { recursive: true });
+    await writeFile(AGENT_REACH_CACHE_FILE, JSON.stringify({ checkedAt: Date.now(), channels }), { mode: 0o600 });
+    return summarizeAgentReach(channels, versionName, validation);
+  } catch {
+    return { ...base, state: "waiting", detail: "Installed, but the channel diagnostic did not complete. Run `agent-reach doctor`." };
+  }
+}
+
 export async function integrationOverview() {
   const config = await readConfig();
   const local = await Promise.all([
+    agentReachStatus(),
     version(path.join(HOME, "local", "node", "bin", "hyperframes"), ["--version"]).then((v) => ({ id: "hyperframes", name: "HyperFrames", description: "HTML-to-video rendering", state: v ? "working" : "missing", detail: v || "Install the HyperFrames CLI." })),
     version(path.join(HOME, ".local", "bin", "crwl"), ["--help"]).then((v) => ({ id: "crawl4ai", name: "Crawl4AI", description: "LLM-friendly crawling and extraction", state: v ? "working" : "missing", detail: v ? "crawl4ai 0.9.1" : "Install Crawl4AI and its browser runtime." })),
     version(path.join(HOME, ".local", "bin", "browser-use"), ["--version"]).then((v) => ({ id: "browser-use", name: "Browser Use", description: "Interactive browser actions and QA", state: v ? "working" : "missing", detail: v || "Install Browser Use and its skill." })),

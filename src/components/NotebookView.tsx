@@ -26,8 +26,13 @@ interface Notebook {
   source_count?: number;
   created_at?: string | number;
   updated_at?: string | number;
+  modified_at?: string | number;
   url?: string;
   share_url?: string;
+}
+interface NotebookSource {
+  id: string;
+  title?: string;
 }
 interface Artifact {
   artifact_id: string;
@@ -78,7 +83,9 @@ function fmtAgo(input: string | number | undefined): string {
   if (d < 86_400_000) return `${Math.floor(d/3_600_000)}h ago`;
   return `${Math.floor(d/86_400_000)}d ago`;
 }
-function notebookLabel(n: Notebook): string { return n.title || n.name || n.id; }
+function notebookLabel(n: Notebook): string {
+  return n.title?.trim() || n.name?.trim() || "Untitled notebook";
+}
 
 export default function NotebookView() {
   const [tab, setTab] = useState<Tab>("library");
@@ -87,6 +94,9 @@ export default function NotebookView() {
   const [err, setErr] = useState<string | null>(null);
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeSources, setActiveSources] = useState<NotebookSource[]>([]);
+  const [detailsBusy, setDetailsBusy] = useState(false);
+  const [urlReady, setUrlReady] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   // Chat
@@ -102,6 +112,7 @@ export default function NotebookView() {
 
   // Saved assets (downloaded artifacts in the vault)
   const [savedAssets, setSavedAssets] = useState<SavedAsset[]>([]);
+  const [assetRoot, setAssetRoot] = useState("");
 
   // NotebookLM's new agentic research
   const [rQuery, setRQuery] = useState("");
@@ -118,7 +129,16 @@ export default function NotebookView() {
     const t = sp.get("tab");
     if (t && ["library", "research", "chat", "studio", "assets"].includes(t)) setTab(t as Tab);
     const nb = sp.get("nb"); if (nb) setActiveId(nb);
+    setUrlReady(true);
   }, []);
+
+  useEffect(() => {
+    if (!urlReady) return;
+    const sp = new URLSearchParams(window.location.search);
+    sp.set("tab", tab);
+    if (activeId) sp.set("nb", activeId); else sp.delete("nb");
+    window.history.replaceState(null, "", `${window.location.pathname}?${sp.toString()}`);
+  }, [activeId, tab, urlReady]);
 
   // Persist the Research tab: when a notebook is active, load its last research so the
   // discovered sources are visible whenever you open it — not only during a live run.
@@ -147,6 +167,7 @@ export default function NotebookView() {
       const j = await r.json();
       const list: Notebook[] = j?.notebooks ?? j?.data?.notebooks ?? (Array.isArray(j) ? j : []);
       setNotebooks(list);
+      setActiveId((current) => current && list.some((n) => n.id === current) ? current : list[0]?.id ?? null);
     } catch (e) { setErr(String(e)); }
   }, []);
 
@@ -164,6 +185,7 @@ export default function NotebookView() {
       const r = await fetch("/api/notebooklm/library", { cache: "no-store" });
       const j = await r.json();
       setSavedAssets(j?.savedAssets ?? []);
+      setAssetRoot(j?.root ?? "");
     } catch { /* ignore */ }
   }, []);
 
@@ -181,6 +203,20 @@ export default function NotebookView() {
   useEffect(() => {
     if (activeId) refreshArtifacts(activeId);
   }, [activeId, refreshArtifacts]);
+
+  useEffect(() => {
+    if (!activeId) { setActiveSources([]); return; }
+    let cancelled = false;
+    setDetailsBusy(true);
+    fetch(`/api/notebooklm/notebooks/${encodeURIComponent(activeId)}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (!cancelled) setActiveSources(Array.isArray(j?.sources) ? j.sources : []);
+      })
+      .catch(() => { if (!cancelled) setActiveSources([]); })
+      .finally(() => { if (!cancelled) setDetailsBusy(false); });
+    return () => { cancelled = true; };
+  }, [activeId]);
 
   // Chat history persistence per notebook
   useEffect(() => {
@@ -273,6 +309,11 @@ export default function NotebookView() {
       else await refreshNotebooks();
     } catch (e) { setErr(String(e)); }
     setBusy(null);
+  }
+
+  function openNotebook(notebook: Notebook, destination: Tab) {
+    setActiveId(notebook.id);
+    setTab(destination);
   }
 
   // --- NotebookLM agentic research: start → poll → import ---
@@ -389,6 +430,23 @@ export default function NotebookView() {
         })}
       </div>
 
+      {activeNotebook && tab !== "library" && tab !== "assets" && (
+        <div className="panel px-3 py-2.5 flex items-center gap-3 flex-wrap" style={{ borderColor: `${ACCENT}44` }}>
+          <BookOpen size={14} style={{ color: ACCENT }} />
+          <div className="min-w-0 flex-1">
+            <div className="text-[9px] uppercase tracking-widest text-[var(--fg-dimmer)]">Active notebook</div>
+            <div className="text-[12.5px] font-medium text-[var(--fg)] truncate">{notebookLabel(activeNotebook)} · {activeNotebook.source_count ?? activeSources.length} sources</div>
+          </div>
+          <button onClick={() => setTab("library")} className="text-[11px] text-[var(--fg-dim)] hover:text-[var(--fg)] transition">Change notebook</button>
+          {(activeNotebook.url || activeNotebook.share_url) && (
+            <a href={activeNotebook.url || activeNotebook.share_url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[11px]" style={{ color: ACCENT }}>
+              Open in NotebookLM <ExternalLink size={10} />
+            </a>
+          )}
+        </div>
+      )}
+
       {tab === "library" && (
         <div className="space-y-4">
           <div className="flex justify-end">
@@ -409,23 +467,58 @@ export default function NotebookView() {
             {notebooks.map((n) => {
               const active = n.id === activeId;
               return (
-                <motion.button
+                <motion.div
                   key={n.id}
                   initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                  onClick={() => setActiveId(n.id)}
                   className="panel panel-hover p-4 text-left relative overflow-hidden transition"
                   style={{ borderColor: active ? ACCENT : "var(--panel-border)", background: active ? `${ACCENT}10` : undefined }}
                 >
-                  <div className="flex items-start gap-2 mb-1.5">
-                    <BookOpen size={14} style={{ color: ACCENT }} className="shrink-0 mt-0.5" />
-                    <div className="text-[14px] font-medium text-[var(--fg)] line-clamp-2 flex-1">{notebookLabel(n)}</div>
-                    {active && <span className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded-full" style={{ background: `${ACCENT}22`, color: ACCENT }}>active</span>}
-                  </div>
+                  <button onClick={() => setActiveId(n.id)} className="w-full text-left" aria-label={`Select ${notebookLabel(n)}`}>
+                    <div className="flex items-start gap-2 mb-1.5">
+                      <BookOpen size={14} style={{ color: ACCENT }} className="shrink-0 mt-0.5" />
+                      <div className="text-[14px] font-medium text-[var(--fg)] line-clamp-2 flex-1">{notebookLabel(n)}</div>
+                      {active && <span className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded-full" style={{ background: `${ACCENT}22`, color: ACCENT }}>selected</span>}
+                    </div>
+                  </button>
                   {n.description && <div className="text-[12px] text-[var(--fg-dim)] leading-snug line-clamp-3 mb-2">{n.description}</div>}
                   <div className="text-[10px] uppercase tracking-widest text-[var(--fg-dimmer)] font-[var(--font-geist-mono)] truncate">
-                    {n.id}{typeof n.source_count === "number" && ` · ${n.source_count} sources`}
+                    {typeof n.source_count === "number" ? `${n.source_count} sources` : "Sources unavailable"} · {fmtAgo(n.modified_at ?? n.updated_at ?? n.created_at)}
                   </div>
-                </motion.button>
+                  {active && (
+                    <div className="mt-3 pt-3 border-t border-[var(--panel-border)]">
+                      <div className="text-[9px] uppercase tracking-widest text-[var(--fg-dimmer)] mb-1.5">Sources in this notebook</div>
+                      {detailsBusy ? (
+                        <div className="text-[11px] text-[var(--fg-dim)]">Loading sources…</div>
+                      ) : activeSources.length > 0 ? (
+                        <div className="space-y-1 mb-3">
+                          {activeSources.slice(0, 4).map((source) => (
+                            <div key={source.id} className="text-[11px] text-[var(--fg-dim)] truncate">{source.title || "Untitled source"}</div>
+                          ))}
+                          {activeSources.length > 4 && <div className="text-[10px]" style={{ color: ACCENT }}>+ {activeSources.length - 4} more sources</div>}
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-[var(--fg-dim)] mb-3">No sources have been added yet.</div>
+                      )}
+                    </div>
+                  )}
+                  <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+                    <button onClick={() => openNotebook(n, "chat")} className="px-2.5 py-1.5 rounded-md text-[11px] border flex items-center gap-1" style={{ borderColor: `${ACCENT}55`, color: ACCENT, background: `${ACCENT}12` }}>
+                      <MessageSquare size={11} /> Chat
+                    </button>
+                    <button onClick={() => openNotebook(n, "research")} className="px-2.5 py-1.5 rounded-md text-[11px] border border-[var(--panel-border)] text-[var(--fg-dim)] hover:text-[var(--fg)] flex items-center gap-1 transition">
+                      <Telescope size={11} /> Research
+                    </button>
+                    <button onClick={() => openNotebook(n, "studio")} className="px-2.5 py-1.5 rounded-md text-[11px] border border-[var(--panel-border)] text-[var(--fg-dim)] hover:text-[var(--fg)] flex items-center gap-1 transition">
+                      <Sparkles size={11} /> Studio
+                    </button>
+                    {(n.url || n.share_url) && (
+                      <a href={n.url || n.share_url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${notebookLabel(n)} in NotebookLM`}
+                        className="ml-auto p-1.5 rounded-md border border-[var(--panel-border)] text-[var(--fg-dim)] hover:text-[var(--fg)] transition">
+                        <ExternalLink size={12} />
+                      </a>
+                    )}
+                  </div>
+                </motion.div>
               );
             })}
           </div>
@@ -691,7 +784,7 @@ export default function NotebookView() {
       {tab === "assets" && (
         <div className="space-y-3">
           <div className="text-[10px] uppercase tracking-widest text-[var(--fg-dimmer)] flex items-center gap-1.5">
-            <Download size={11} /> Downloaded from NotebookLM ({savedAssets.length}) · stored in <code>Agentic OS/Notebooks/_assets/</code>
+            <Download size={11} /> Downloaded from NotebookLM ({savedAssets.length}) · stored in <code className="normal-case break-all">{assetRoot || "Agentic OS/Notebooks/_assets/"}</code>
           </div>
           {savedAssets.length === 0 ? (
             <div className="panel p-6 text-center text-[var(--fg-dim)] text-sm">Nothing downloaded yet. Go to a notebook&apos;s Studio tab and click <strong>Pull</strong> on any artifact.</div>
