@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
-import { LayoutGrid, Brain, Sparkles as SparklesIcon, TrendingUp, Columns3, NotebookText, Film, Building2, Workflow, MessagesSquare, Image as ImageIcon, Gamepad2, Music2, Network, Clapperboard, Repeat, Cpu, LayoutDashboard, Palette, GripVertical, Eye, EyeOff, SlidersHorizontal, Check, SquareTerminal, Globe2, PlugZap, Orbit, Blocks, Target, BookOpenText, RadioTower, ContactRound, GitBranch, Mic2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { LayoutGrid, Brain, Sparkles as SparklesIcon, TrendingUp, Columns3, NotebookText, Film, Building2, Workflow, MessagesSquare, Image as ImageIcon, Gamepad2, Music2, Network, Clapperboard, Repeat, Cpu, LayoutDashboard, Palette, GripVertical, Eye, EyeOff, SlidersHorizontal, Check, SquareTerminal, Globe2, PlugZap, Orbit, Blocks, Target, BookOpenText, RadioTower, ContactRound, GitBranch, Mic2, ChevronDown } from "lucide-react";
 import { useState, useEffect, type ReactNode } from "react";
 import AgentAvatar from "./AgentAvatar";
 
@@ -85,6 +85,16 @@ function sectionOf(href: string): string {
   return "Deliver";
 }
 
+const SECTION_ORDER = ["Command", "Context", "Orchestrate", "Create", "Govern", "Deliver"] as const;
+const SECTION_META: Record<(typeof SECTION_ORDER)[number], { numeral: string; description: string }> = {
+  Command: { numeral: "I", description: "Agents and decisions" },
+  Context: { numeral: "II", description: "Memory and research" },
+  Orchestrate: { numeral: "III", description: "Workflows and ownership" },
+  Create: { numeral: "IV", description: "Design and production" },
+  Govern: { numeral: "V", description: "Safety and controls" },
+  Deliver: { numeral: "VI", description: "Growth and outcomes" },
+};
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
@@ -93,6 +103,9 @@ export default function Sidebar() {
   const [customize, setCustomize] = useState(false);
   const [dragHref, setDragHref] = useState<string | null>(null);
   const [overHref, setOverHref] = useState<string | null>(null);
+  const currentSection = sectionOf(pathname);
+  const [openSection, setOpenSection] = useState(currentSection);
+  const [homeChapter, setHomeChapter] = useState("Command");
 
   // load saved prefs (client only)
   useEffect(() => {
@@ -106,6 +119,26 @@ export default function Sidebar() {
   }, []);
   useEffect(() => { if (mounted) try { localStorage.setItem(LS_ORDER, JSON.stringify(order)); } catch {} }, [order, mounted]);
   useEffect(() => { if (mounted) try { localStorage.setItem(LS_HIDDEN, JSON.stringify(hidden)); } catch {} }, [hidden, mounted]);
+  useEffect(() => setOpenSection(currentSection), [currentSection]);
+  useEffect(() => {
+    if (pathname !== "/") return;
+    const root = document.querySelector<HTMLElement>("[data-scroll-root]");
+    const sections = SECTION_ORDER.map((section) => document.getElementById(section.toLowerCase())).filter(
+      (section): section is HTMLElement => Boolean(section),
+    );
+    if (!root || sections.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) setHomeChapter(visible.target.id.charAt(0).toUpperCase() + visible.target.id.slice(1));
+      },
+      { root, rootMargin: "-32% 0px -48% 0px", threshold: [0, 0.25, 0.6] },
+    );
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, [pathname]);
 
   // saved order + any NAV items not yet in it (e.g. new pages added later) appended in default position
   const fullOrder = [
@@ -113,10 +146,6 @@ export default function Sidebar() {
     ...DEFAULT_ORDER.filter((h) => !order.includes(h)),
   ];
   const visible = customize ? fullOrder : fullOrder.filter((h) => !hidden.includes(h));
-  // group by section so each header shows ONCE and all its items sit together,
-  // no matter how the saved drag-order interleaves them (fixes duplicate section labels)
-  const SECTION_ORDER = ["Command", "Context", "Orchestrate", "Create", "Govern", "Deliver"];
-  const list = SECTION_ORDER.flatMap((sec) => visible.filter((h) => sectionOf(h) === sec));
 
   function move(from: string, to: string) {
     if (from === to) return;
@@ -131,137 +160,129 @@ export default function Sidebar() {
   function reset() { setOrder(DEFAULT_ORDER); setHidden([]); }
 
   return (
-    <aside className="hidden md:flex flex-col w-[244px] shrink-0 h-screen overflow-hidden py-6 border-r border-[var(--line-soft)]"
-           style={{ background: "var(--bg-mid)" }}>
-      <Link href="/" className="block mb-7 px-5 shrink-0">
-        <div className="text-[10px] uppercase tracking-[0.25em] mb-1" style={{ color: "var(--cream-mute)", fontFamily: "'Manrope', sans-serif", fontWeight: 600 }}>
-          Local · Studio
-        </div>
-        <div className="text-xl tracking-tight" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 500, color: "var(--cream)" }}>
-          Veloce <span className="hand text-[1.3em] ml-1">AgenticOS</span>
-        </div>
-      </Link>
-
-      <div className="flex-1 min-h-0 overflow-y-auto sidebar-scroll">
-      <div className="px-5 pb-1.5 flex items-center justify-between">
-        <span className="sidebar-section-label">Operating lenses</span>
-        <div className="flex items-center gap-2">
-          {customize && (
-            <button onClick={reset} title="Reset to default order" className="text-[9px] uppercase tracking-[0.15em] hover:opacity-100 opacity-70 transition" style={{ color: "var(--cream-dim)" }}>
-              Reset
-            </button>
-          )}
-          <button
-            onClick={() => setCustomize((c) => !c)}
-            title={customize ? "Done customizing" : "Customize sidebar — drag to reorder, hide items"}
-            className="grid place-items-center w-6 h-6 rounded-md transition"
-            style={{ color: customize ? "var(--gold)" : "var(--cream-dim)", background: customize ? "rgba(212,165,116,0.14)" : "transparent" }}
-          >
-            {customize ? <Check size={14} /> : <SlidersHorizontal size={14} />}
-          </button>
-        </div>
+    <aside className="workspace-nav hidden md:flex" aria-label="Veloce operating lenses">
+      <div className="workspace-nav__brand">
+        <Link href="/" aria-label="Veloce AgenticOS Mission Control">
+          <span>Veloce</span>
+          <strong>AgenticOS</strong>
+        </Link>
+        <button
+          onClick={() => setCustomize((value) => !value)}
+          title={customize ? "Finish navigation setup" : "Customize navigation"}
+          aria-label={customize ? "Finish navigation setup" : "Customize navigation"}
+          className={customize ? "is-active" : ""}
+        >
+          {customize ? <Check size={16} /> : <SlidersHorizontal size={16} />}
+        </button>
       </div>
+
+      <div className="workspace-nav__edition">
+        <span>Private operating edition</span>
+        <span className="workspace-nav__live"><i /> local</span>
+      </div>
+
       {customize && (
-        <div className="px-5 pb-2 text-[10px] leading-snug" style={{ color: "var(--cream-mute)" }}>
-          Drag <GripVertical size={10} className="inline -mt-0.5" /> to reorder · tap the eye to hide
+        <div className="workspace-nav__customize-note">
+          <span>Drag tools to reorder. Hide anything you do not use.</span>
+          <button onClick={reset}>Reset</button>
         </div>
       )}
 
-      <nav className="flex flex-col gap-0.5 relative">
-        {list.map((href, i) => {
-          const item = BY_HREF[href];
-          if (!item) return null;
-          const prevHref = i > 0 ? list[i - 1] : null;
-          const sec = sectionOf(href);
-          const prevSec = prevHref ? sectionOf(prevHref) : null;
-          let sectionLabel: string | undefined = sec !== prevSec ? sec : undefined;
-          // The top rail already labels the first operating lens.
-          if (i === 0 && sectionLabel === "Command") sectionLabel = undefined;
-
-          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-          const isHidden = hidden.includes(href);
-          const isOver = overHref === href && dragHref !== href;
+      <nav className="workspace-nav__chapters">
+        {pathname === "/" ? (
+          <div className="workspace-nav__home-index">
+            {SECTION_ORDER.map((section) => {
+              const meta = SECTION_META[section];
+              return (
+                <a key={section} href={`#${section.toLowerCase()}`} className={homeChapter === section ? "is-current" : ""}>
+                  <span className="workspace-nav__numeral">{meta.numeral}</span>
+                  <span className="workspace-nav__chapter-copy">
+                    <strong>{section}</strong>
+                    <small>{meta.description}</small>
+                  </span>
+                </a>
+              );
+            })}
+          </div>
+        ) : SECTION_ORDER.map((section) => {
+          const meta = SECTION_META[section];
+          const sectionItems = visible.filter((href) => sectionOf(href) === section);
+          const expanded = customize || openSection === section;
+          const sectionActive = currentSection === section;
 
           return (
-            <div key={href}>
-              {sectionLabel && (
-                <div className="sidebar-section-label mt-5 mb-1.5 px-5">
-                  {sectionLabel}
-                </div>
-              )}
+            <section key={section} className={`workspace-nav__chapter ${sectionActive ? "is-current" : ""}`}>
+              <button
+                className="workspace-nav__chapter-button"
+                onClick={() => setOpenSection((current) => current === section && !customize ? "" : section)}
+                aria-expanded={expanded}
+              >
+                <span className="workspace-nav__numeral">{meta.numeral}</span>
+                <span className="workspace-nav__chapter-copy">
+                  <strong>{section}</strong>
+                  <small>{meta.description}</small>
+                </span>
+                <ChevronDown size={15} className={expanded ? "is-open" : ""} />
+              </button>
 
-              {customize ? (
-                <div
-                  draggable
-                  onDragStart={() => setDragHref(href)}
-                  onDragEnter={() => setOverHref(href)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => { if (dragHref) move(dragHref, href); setDragHref(null); setOverHref(null); }}
-                  onDragEnd={() => { setDragHref(null); setOverHref(null); }}
-                  className="sidebar-item relative group flex items-center gap-2 py-2.5 px-3 mx-2 rounded-lg cursor-grab active:cursor-grabbing"
-                  style={{
-                    opacity: dragHref === href ? 0.4 : isHidden ? 0.4 : 1,
-                    borderTop: isOver ? "2px solid var(--gold)" : "2px solid transparent",
-                    background: isOver ? "rgba(212,165,116,0.08)" : "transparent",
-                  }}
-                >
-                  <GripVertical size={14} style={{ color: "var(--cream-mute)" }} className="shrink-0" />
-                  <span className="shrink-0 grid place-items-center w-7 h-7 rounded-md" style={{ color: "var(--cream-dim)" }}>
-                    {item.icon}
-                  </span>
-                  <span className="flex-1 truncate" style={{ textDecoration: isHidden ? "line-through" : "none" }}>{item.label}</span>
-                  <button
-                    onClick={() => toggleHidden(href)}
-                    title={isHidden ? "Show" : "Hide"}
-                    className="shrink-0 grid place-items-center w-6 h-6 rounded-md transition hover:bg-[rgba(255,255,255,0.06)]"
-                    style={{ color: isHidden ? "var(--cream-mute)" : "var(--gold)" }}
+              <AnimatePresence initial={false}>
+                {expanded && (
+                  <motion.div
+                    className="workspace-nav__tools"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                   >
-                    {isHidden ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                </div>
-              ) : (
-                <Link
-                  href={href}
-                  className={`sidebar-item relative group flex items-center gap-3 py-2.5 px-5 ${active ? "active" : ""}`}
-                >
-                  {active && (
-                    <motion.span
-                      layoutId="nav-indicator"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-[22px]"
-                      style={{ background: "var(--gold)", boxShadow: "0 0 10px var(--gold)" }}
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                  <span
-                    className="shrink-0 grid place-items-center w-7 h-7 rounded-md transition"
-                    style={{ color: active ? "var(--gold)" : "var(--cream-dim)" }}
-                  >
-                    {item.icon}
-                  </span>
-                  <span>{item.label}</span>
-                </Link>
-              )}
-            </div>
+                    {sectionItems.map((href) => {
+                      const item = BY_HREF[href];
+                      if (!item) return null;
+                      const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+                      const isHidden = hidden.includes(href);
+                      const isOver = overHref === href && dragHref !== href;
+
+                      if (customize) {
+                        return (
+                          <div
+                            key={href}
+                            draggable
+                            onDragStart={() => setDragHref(href)}
+                            onDragEnter={() => setOverHref(href)}
+                            onDragOver={(event) => event.preventDefault()}
+                            onDrop={() => { if (dragHref) move(dragHref, href); setDragHref(null); setOverHref(null); }}
+                            onDragEnd={() => { setDragHref(null); setOverHref(null); }}
+                            className={`workspace-nav__tool workspace-nav__tool--custom ${isOver ? "is-over" : ""}`}
+                            style={{ opacity: dragHref === href ? 0.4 : isHidden ? 0.45 : 1 }}
+                          >
+                            <GripVertical size={13} />
+                            <span className="workspace-nav__tool-icon">{item.icon}</span>
+                            <span>{item.label}</span>
+                            <button onClick={() => toggleHidden(href)} aria-label={`${isHidden ? "Show" : "Hide"} ${item.label}`}>
+                              {isHidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <Link key={href} href={href} className={`workspace-nav__tool ${active ? "is-active" : ""}`}>
+                          {active && <motion.i layoutId="nav-indicator" />}
+                          <span className="workspace-nav__tool-icon">{item.icon}</span>
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </section>
           );
         })}
-        {customize && (
-          <div
-            onDragEnter={() => setOverHref("__end__")}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => { if (dragHref) move(dragHref, "__end__"); setDragHref(null); setOverHref(null); }}
-            className="h-6 mx-2 rounded-lg"
-            style={{ borderTop: overHref === "__end__" ? "2px solid var(--gold)" : "2px solid transparent" }}
-          />
-        )}
       </nav>
-      </div>
 
-      <div className="shrink-0 pt-6 mx-5 border-t border-[var(--line-soft)]">
-        <div className="sidebar-section-label mt-4 mb-2">Wired</div>
-        <div className="text-[11px] leading-relaxed mono" style={{ color: "var(--cream-dim)" }}>
-          claude · openclaw · hermes<br />
-          <span className="hand text-[1.15em]">+</span> Obsidian vault
-        </div>
+      <div className="workspace-nav__footer">
+        <span>Runtime</span>
+        <strong>Agents · Vault · Approval</strong>
       </div>
     </aside>
   );

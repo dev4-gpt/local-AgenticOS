@@ -15,6 +15,8 @@ const CHAPTERS = [
     metric: "control room",
     href: "/claude",
     action: "Open agent bay",
+    artifact: "Live agent routing",
+    tools: [["Claude", "/claude"], ["Hermes", "/hermes"], ["Codex", "/codex"], ["Fusion", "/fusion"]],
   },
   {
     id: "context",
@@ -24,6 +26,8 @@ const CHAPTERS = [
     metric: "private vault",
     href: "/memory",
     action: "Open memory",
+    artifact: "Connected knowledge",
+    tools: [["Memory", "/memory"], ["Notebook", "/notebook"], ["Goals", "/goals"], ["Journal", "/journal"]],
   },
   {
     id: "orchestrate",
@@ -33,6 +37,8 @@ const CHAPTERS = [
     metric: "review-first",
     href: "/pipeline",
     action: "Open pipeline",
+    artifact: "Approval-aware workflow",
+    tools: [["Paperclip", "/paperclip"], ["Pipeline", "/pipeline"], ["Agent Kanban", "/agent-kanban"], ["Ruflo", "/ruflo"]],
   },
   {
     id: "create",
@@ -42,6 +48,8 @@ const CHAPTERS = [
     metric: "asset studio",
     href: "/flow-lab",
     action: "Open Flow Lab",
+    artifact: "Original production brief",
+    tools: [["Flow Lab", "/flow-lab"], ["Web Studio", "/web-studio"], ["Open Design", "/opendesign"], ["Video", "/video"]],
   },
   {
     id: "govern",
@@ -51,6 +59,8 @@ const CHAPTERS = [
     metric: "human gate",
     href: "/integrations",
     action: "Open governance",
+    artifact: "Human approval boundary",
+    tools: [["Integrations", "/integrations"], ["Capabilities", "/capabilities"], ["SEO", "/seo"], ["Build Guide", "/guide"]],
   },
   {
     id: "deliver",
@@ -60,6 +70,8 @@ const CHAPTERS = [
     metric: "delivery loop",
     href: "/agent-kanban",
     action: "Open delivery board",
+    artifact: "Measured handoff",
+    tools: [["Leads", "/leads"], ["Radar", "/radar"], ["Kanban", "/kanban"], ["Studio", "/studio"]],
   },
 ];
 
@@ -95,6 +107,29 @@ export default function HomeImmersive() {
 
   const chapter = CHAPTERS[active] ?? CHAPTERS[0];
   const progressLabel = useMemo(() => String(active + 1).padStart(2, "0"), [active]);
+
+  useEffect(() => {
+    const host = document.querySelector<HTMLElement>("[data-scroll-root]");
+    const sections = CHAPTERS.map((item) => document.getElementById(item.id)).filter(
+      (section): section is HTMLElement => Boolean(section),
+    );
+    if (!host || sections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible) return;
+        const next = CHAPTERS.findIndex((item) => item.id === visible.target.id);
+        if (next >= 0) setActive(next);
+      },
+      { root: host, rootMargin: "-32% 0px -48% 0px", threshold: [0, 0.2, 0.5, 0.8] },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -266,8 +301,6 @@ export default function HomeImmersive() {
       if (!host) return;
       const max = Math.max(1, host.scrollHeight - host.clientHeight);
       targetScroll = Math.min(1, Math.max(0, host.scrollTop / max));
-      const nextActive = Math.min(CHAPTERS.length - 1, Math.round(targetScroll * (CHAPTERS.length - 1)));
-      setActive((current) => (current === nextActive ? current : nextActive));
     };
 
     const updatePointer = (event: PointerEvent) => {
@@ -348,6 +381,26 @@ export default function HomeImmersive() {
         {(reducedMotion || webglFailed) && <div className="home-immersive__fallback" />}
       </div>
 
+      <header className="home-edition-head">
+        <Link href="/" className="home-edition-head__brand">
+          <strong>Veloce AgenticOS</strong>
+          <span>Private operating edition</span>
+        </Link>
+        <div className="home-edition-head__status">
+          <span><i /> Local runtime</span>
+          <Link href="/integrations">System status</Link>
+        </div>
+      </header>
+
+      <nav className="home-edition-index" aria-label="Mission Control chapters">
+        {CHAPTERS.map((item, index) => (
+          <a key={item.id} href={`#${item.id}`} className={active === index ? "is-active" : ""}>
+            <span>{item.kicker}</span>
+            <em>{String(index + 1).padStart(2, "0")}</em>
+          </a>
+        ))}
+      </nav>
+
       <section className="home-immersive__hero">
         <div className="home-immersive__rail">
           <span>{progressLabel}</span>
@@ -364,7 +417,7 @@ export default function HomeImmersive() {
             <span>Keep the system in view.</span>
           </h1>
           <p>
-            A private operating layer for agents, memory, creation, governance, and delivery.
+            One private command system for agents, memory, creation, governance, and measurable delivery.
           </p>
           <div className="home-immersive__actions">
             <Link href="/claude" className="home-immersive__primary">
@@ -379,18 +432,41 @@ export default function HomeImmersive() {
 
       <div className="home-immersive__chapters">
         {CHAPTERS.map((item, index) => (
-          <section key={item.id} className="home-immersive__chapter">
+          <section id={item.id} key={item.id} className={`home-immersive__chapter home-immersive__chapter--${item.id}`}>
             <div className={`home-immersive__chapter-card ${active === index ? "is-active" : ""}`}>
-              <div className="home-immersive__chapter-top">
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <span>{item.metric}</span>
+              <div className="home-immersive__chapter-copy-block">
+                <div className="home-immersive__chapter-top">
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <span>{item.metric}</span>
+                </div>
+                <p>{item.kicker}</p>
+                <h2>{item.title}</h2>
+                <div>{item.body}</div>
+                <Link href={item.href} className="home-immersive__chapter-link">
+                  {item.action} <ArrowUpRight size={14} />
+                </Link>
               </div>
-              <p>{item.kicker}</p>
-              <h2>{item.title}</h2>
-              <div>{item.body}</div>
-              <Link href={item.href} className="home-immersive__chapter-link">
-                {item.action} <ArrowUpRight size={14} />
-              </Link>
+
+              <div className="home-immersive__artifact" aria-label={`${item.kicker} workspace preview`}>
+                <div className="home-immersive__artifact-head">
+                  <span>{item.artifact}</span>
+                  <i>live</i>
+                </div>
+                <div className="home-immersive__artifact-signal">
+                  <span className="home-immersive__artifact-orbit" />
+                  <span className="home-immersive__artifact-core"><Orbit size={28} /></span>
+                  <span className="home-immersive__artifact-route" />
+                </div>
+                <nav className="home-immersive__artifact-tools" aria-label={`${item.kicker} tools`}>
+                  {item.tools.map(([label, href], toolIndex) => (
+                    <Link key={href} href={href}>
+                      <span>{String(toolIndex + 1).padStart(2, "0")}</span>
+                      <strong>{label}</strong>
+                      <ArrowUpRight size={14} />
+                    </Link>
+                  ))}
+                </nav>
+              </div>
             </div>
           </section>
         ))}

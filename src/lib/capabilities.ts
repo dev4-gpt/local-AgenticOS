@@ -83,6 +83,11 @@ export const CAPABILITIES: Capability[] = [
     dataScope: "Selected vault collections.", actionBoundary: "Rebuilds and queries stay inside the configured vault boundary.",
   },
   {
+    id: "agent-reach", name: "AgentReach Research", kind: "connector", audience: "operator", status: "active", destination: "/integrations",
+    description: "Routes read-only research through reviewed web, GitHub, video, RSS, and optional authenticated social-source tools.",
+    dataScope: "Public sources and content the operator is already authorized to access, with source attribution retained.", actionBoundary: "No paywall bypass, credential sharing, posting, liking, commenting, or unattended account automation; cookie-backed channels require a dedicated account and operator approval.",
+  },
+  {
     id: "hermes-mcp", name: "Hermes MCP Catalog", kind: "connector", audience: "operator", status: "active", destination: "/hermes",
     description: "Operator-managed MCP tools for the established Hermes environment.",
     dataScope: "Explicitly configured provider and tool scopes.", actionBoundary: "Clients consume approved outcomes, not raw connector administration.",

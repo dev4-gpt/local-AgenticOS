@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { graphifyReport, graphifyStatus, queryGraphify, rebuildGraphify } from "@/lib/graphify";
+import { graphifyReport, graphifyStatus, queryGraphify, stageGraphifyCorpus, startGraphifyBuild } from "@/lib/graphify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,11 +15,18 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   try {
-    if (body.action === "build") return NextResponse.json({ ok: true, status: await rebuildGraphify() });
+    if (body.action === "stage") {
+      await stageGraphifyCorpus();
+      return NextResponse.json({ ok: true, status: await graphifyStatus() });
+    }
+    if (body.action === "build") {
+      const build = startGraphifyBuild();
+      return NextResponse.json({ ok: true, accepted: true, build, status: await graphifyStatus() }, { status: 202 });
+    }
     if (body.action === "query" && typeof body.question === "string" && body.question.trim()) {
       return NextResponse.json({ ok: true, answer: await queryGraphify(body.question.trim().slice(0, 500)) });
     }
-    return NextResponse.json({ ok: false, error: "Use action build or query with a question." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Use action stage, build, or query with a question." }, { status: 400 });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }

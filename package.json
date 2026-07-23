@@ -3,16 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --disable-source-maps -H 127.0.0.1",
+    "dev": "node scripts/run-next-dev.mjs",
     "build": "next build",
     "start": "next start -H 127.0.0.1",
     "verify:v1": "npm run build && npx playwright test tests/sidebar-smoke.spec.ts --reporter=line",
     "verify:product": "npm run build && npx playwright test tests/sidebar-smoke.spec.ts tests/visual-shell.spec.ts --reporter=line && npm run verify:health && npm run verify:flow-lab && npm run verify:security",
     "verify:health": "node scripts/verify-live-health.mjs",
+    "verify:models": "node scripts/verify-model-chats.mjs",
     "verify:security": "node scripts/verify-security-release.mjs",
     "verify:secrets": "node scripts/verify-repository-secrets.mjs",
     "verify:flow-lab": "node scripts/verify-flow-lab.mjs",
     "record:reference": "node scripts/record-reference-scroll.mjs"
+  },
+  "engines": {
+    "node": ">=22 <26"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

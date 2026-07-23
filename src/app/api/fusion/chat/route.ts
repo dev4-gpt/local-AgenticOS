@@ -41,7 +41,7 @@ export async function POST(req: Request) {
             "HTTP-Referer": "https://aiprofitboardroom.com",
             "X-Title": "Agent OS",
           },
-          body: JSON.stringify({ model: MODEL, messages, stream: true, max_tokens: 1600 }),
+          body: JSON.stringify({ model: MODEL, messages, stream: true, max_tokens: 1200 }),
         });
         if (!r.ok || !r.body) {
           const t = await r.text().catch(() => "");
