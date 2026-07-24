@@ -129,9 +129,19 @@ export const SEO_ROSTER: { type: string; name: string }[] = [
 
 export interface LaunchResult { ok: boolean; swarmId?: string; spawned: number; objective: string; errors: string[]; }
 
+// Providers/models this app will actually pass through to ruflo. Note: ruflo's
+// own internal task router has been observed to still write provider:
+// "anthropic" at the top level of an agent record even when agent spawn is
+// given an explicit -p/-m flag (the flag *is* captured in the record's
+// nested config, just not honoured by whatever routes real execution) - so
+// picking "ollama" here is best-effort, not a guarantee ruflo actually calls
+// it. Passing the flags is still the correct thing to do; it's the most this
+// app's integration surface (the ruflo CLI) currently exposes.
+export type RufloProvider = "ollama" | "anthropic" | "openrouter";
+
 // Launch an SEO swarm: init coordination, spawn the roster (each registers in
 // store.json → appears as a node), and kick swarm start in the background.
-export async function launchSeoSwarm(objective: string): Promise<LaunchResult> {
+export async function launchSeoSwarm(objective: string, provider: RufloProvider = "ollama", model?: string): Promise<LaunchResult> {
   const errors: string[] = [];
   const obj = objective.trim().slice(0, 400) || "Build a complete SEO strategy";
 
@@ -143,13 +153,18 @@ export async function launchSeoSwarm(objective: string): Promise<LaunchResult> {
   let spawned = 0;
   for (const r of SEO_ROSTER) {
     if (!/^[a-z0-9-]{1,40}$/.test(r.type) || !/^[a-z0-9-]{1,40}$/.test(r.name)) continue;
-    const s = await run("ruflo", ["agent", "spawn", "-t", r.type, "-n", r.name, "--task", `${r.name.replace(/-/g, " ")} for: ${obj}`, "--timeout", "120"], { timeoutMs: 25000 });
+    const args = ["agent", "spawn", "-t", r.type, "-n", r.name, "-p", provider];
+    if (model) args.push("-m", model);
+    args.push("--task", `${r.name.replace(/-/g, " ")} for: ${obj}`, "--timeout", "120");
+    const s = await run("ruflo", args, { timeoutMs: 25000 });
     if (s.ok) spawned++;
   }
 
-  // 3. kick the swarm to actually coordinate work (background — don't block).
-  //    We don't await long; just fire it so agents activate. The graph polls state.
-  void run("ruflo", ["swarm", "start", "-o", obj, "--parallel"], { timeoutMs: 8000 }).catch(() => {});
+  // 3. kick the swarm to actually coordinate work (background — don't block
+  //    the HTTP response, which already returns without awaiting this). The
+  //    call was previously killed after 8s, nowhere near enough for a real
+  //    LLM pass across 8 agents even locally - give it real room to run.
+  void run("ruflo", ["swarm", "start", "-o", obj, "--parallel"], { timeoutMs: 5 * 60_000 }).catch(() => {});
 
   const state = await readState();
   return { ok: errors.length === 0, swarmId: state.swarm?.id, spawned, objective: obj, errors };

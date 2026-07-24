@@ -5,7 +5,7 @@
 // colour (idle → working gold pulse → green). Polls Ruflo's JSON state while
 // active. This is the "watch the swarm assemble" money shot.
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Network, Rocket, RefreshCw, Loader2, Users, Cpu, GitBranch, AlertCircle, Zap, Send } from "lucide-react";
 import { usePollWhileVisible } from "@/lib/usePollWhileVisible";
@@ -39,6 +39,9 @@ export default function RufloView() {
   const [objective, setObjective] = useState("Build a complete SEO strategy + content plan for an AI SaaS");
   const [launching, setLaunching] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [models, setModels] = useState<string[]>([]);
+  const [ollamaUp, setOllamaUp] = useState<boolean | null>(null);
+  const [model, setModel] = useState<string>("");
 
   const load = useCallback(async () => {
     try { const r = await fetch("/api/ruflo/swarm", { cache: "no-store" }); setState(await r.json()); }
@@ -46,13 +49,21 @@ export default function RufloView() {
   }, []);
   usePollWhileVisible(load, 3000);
 
+  useEffect(() => {
+    fetch("/api/ruflo/models").then((r) => r.json()).then((j) => {
+      setOllamaUp(!!j.ollamaUp);
+      setModels(j.models ?? []);
+      setModel((prev) => prev || (j.models?.[0] ?? ""));
+    }).catch(() => setOllamaUp(false));
+  }, []);
+
   async function launch() {
     if (launching || !objective.trim()) return;
     setLaunching(true); setNote("Initialising swarm + spawning agents…");
     try {
       const r = await fetch("/api/ruflo/swarm", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ objective }),
+        body: JSON.stringify({ objective, provider: "ollama", model }),
       });
       const j = await r.json();
       setNote(j.ok ? `Swarm live — ${j.spawned} agents spawned. Watch them fan out below.` : `Launched with ${j.spawned} agents (${(j.errors||[]).length} warnings).`);
@@ -88,12 +99,20 @@ export default function RufloView() {
             <AlertCircle size={14} /> Ruflo not detected at ~/.claude-flow — run <code className="mono">npx ruflo@latest init</code>.
           </div>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <input value={objective} onChange={(e) => setObjective(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !launching) launch(); }}
             placeholder="Mission objective…"
-            className="flex-1 px-3 py-2 text-[12.5px] rounded-md border bg-transparent text-[var(--cream)] placeholder:text-[var(--cream-mute)]"
+            className="flex-1 min-w-[220px] px-3 py-2 text-[12.5px] rounded-md border bg-transparent text-[var(--cream)] placeholder:text-[var(--cream-mute)]"
             style={{ borderColor: "var(--line-soft)" }} />
+          <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-md border" style={{ borderColor: "var(--line-soft)" }} title="Model this swarm's agents run on — local + free">
+            <Cpu size={12} style={{ color: BLUE }} />
+            <select value={model} onChange={(e) => setModel(e.target.value)} disabled={!models.length}
+              className="text-[12px] bg-transparent text-[var(--cream)] outline-none disabled:opacity-50">
+              {models.length === 0 && <option value="">{ollamaUp === false ? "Ollama not running" : "loading…"}</option>}
+              {models.map((m) => <option key={m} value={m} style={{ color: "#0a070d" }}>{m}</option>)}
+            </select>
+          </div>
           <button onClick={launch} disabled={launching || !objective.trim()}
             className="flex items-center gap-1.5 px-4 py-2 rounded-md text-[12px] uppercase tracking-widest font-semibold transition disabled:opacity-40"
             style={{ color: GOLD, border: `1px solid ${GOLD}`, background: `${GOLD}1a` }}>
@@ -101,6 +120,11 @@ export default function RufloView() {
           </button>
           <button onClick={load} title="Refresh" className="p-2 text-[var(--cream-mute)] hover:text-[var(--cream)]"><RefreshCw size={14} /></button>
         </div>
+        {ollamaUp === false && (
+          <div className="text-[11px] mt-2" style={{ color: PLUM }}>
+            Ollama isn&apos;t running on :11434 — start it (<code className="mono">ollama serve</code>) to run swarms on a free local model.
+          </div>
+        )}
         {note && <div className="text-[11px] mt-2" style={{ color: GOLD }}>{note}</div>}
       </div>
 
@@ -113,8 +137,9 @@ export default function RufloView() {
         <Stat icon={<Cpu size={11} />} label="swarm" value={sw?.status ?? "—"} color={sw?.status === "running" ? EMERALD : MUTE} />
       </div>
 
-      {/* Legend — each node encodes two things at once (outer ring = role,
-          inner fill = status), which reads as noise without this. */}
+      {/* Legend — outer ring = role, inner ring = status; the node itself is
+          always a solid light disc so it reads clearly against the dark
+          graph background. */}
       {agents.length > 0 && (
         <div className="flex items-center gap-4 flex-wrap text-[10.5px] px-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -127,7 +152,7 @@ export default function RufloView() {
           </div>
           <div className="w-px h-3" style={{ background: "var(--line-soft)" }} />
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="uppercase tracking-widest text-[9px]" style={{ color: MUTE }}>Fill = status</span>
+            <span className="uppercase tracking-widest text-[9px]" style={{ color: MUTE }}>Inner ring = status</span>
             <LegendDot color={MUTE} label="Idle" />
             <LegendDot color={GOLD} label="Working" pulse />
             <LegendDot color={EMERALD} label="Done" />
@@ -222,15 +247,21 @@ function SwarmGraph({ swarm, agents }: { swarm: Swarm | null; agents: Agent[] })
         return (
           <motion.g key={`n${a.id}`} initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 200, damping: 16, delay: i * 0.05 }} style={{ transformOrigin: `${p.x}px ${p.y}px` }}>
-            <circle cx={p.x} cy={p.y} r={r + 4} fill="none" stroke={rc} strokeWidth={1} strokeOpacity={0.45} />
-            <circle cx={p.x} cy={p.y} r={r} fill={`${sc}26`} stroke={sc} strokeWidth={2} />
+            {/* outer ring = role */}
+            <circle cx={p.x} cy={p.y} r={r + 7} fill="none" stroke={rc} strokeWidth={2.5} />
+            {/* inner ring = status */}
+            <circle cx={p.x} cy={p.y} r={r + 2.5} fill="none" stroke={sc} strokeWidth={2} />
+            {/* the node itself: solid light disc, always readable against the dark canvas */}
+            <circle cx={p.x} cy={p.y} r={r} fill="#f3ebda" />
             {working && (
-              <circle cx={p.x} cy={p.y} r={r} fill="none" stroke={sc} strokeWidth={1.5}>
-                <animate attributeName="r" values={`${r};${r + 11};${r}`} dur="1.3s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.7;0;0.7" dur="1.3s" repeatCount="indefinite" />
+              <circle cx={p.x} cy={p.y} r={r + 2.5} fill="none" stroke={sc} strokeWidth={1.5}>
+                <animate attributeName="r" values={`${r + 2.5};${r + 14};${r + 2.5}`} dur="1.3s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.8;0;0.8" dur="1.3s" repeatCount="indefinite" />
               </circle>
             )}
-            {done && <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize="13" fill={sc}>✓</text>}
+            {done
+              ? <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize="14" fontWeight="700" fill={sc}>✓</text>
+              : <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize="12" fontWeight="700" fill="#0a070d">{a.type.slice(0, 1).toUpperCase()}</text>}
             <rect x={p.x - (lab.length * 3.2 + 6)} y={p.y + r + 4} width={lab.length * 6.4 + 12} height={15} rx={4} fill="#0a070d" fillOpacity={0.72} />
             <text x={p.x} y={p.y + r + 14.5} textAnchor="middle" fontSize="10.5" fontWeight="600" fill="#f3ebda">{lab}</text>
             <rect x={p.x - (`${a.type}${a.model ? ` · ${a.model}` : ""}`.length * 2.6 + 4)} y={p.y + r + 19} width={`${a.type}${a.model ? ` · ${a.model}` : ""}`.length * 5.2 + 8} height={13} rx={3} fill="#0a070d" fillOpacity={0.72} />

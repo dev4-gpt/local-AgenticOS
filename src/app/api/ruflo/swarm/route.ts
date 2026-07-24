@@ -5,7 +5,7 @@
 // launches go through the `ruflo` CLI.
 
 import { NextResponse } from "next/server";
-import { readState, launchSeoSwarm } from "@/lib/ruflo";
+import { readState, launchSeoSwarm, type RufloProvider } from "@/lib/ruflo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,8 +19,10 @@ export async function POST(req: Request) {
   let body: unknown;
   try { body = await req.json(); }
   catch { return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 }); }
-  const objective = (body && typeof body === "object" && typeof (body as Record<string, unknown>)["objective"] === "string")
-    ? ((body as Record<string, unknown>)["objective"] as string) : "";
-  const res = await launchSeoSwarm(objective);
+  const b = (body && typeof body === "object") ? (body as Record<string, unknown>) : {};
+  const objective = typeof b.objective === "string" ? b.objective : "";
+  const provider: RufloProvider = b.provider === "anthropic" || b.provider === "openrouter" ? b.provider : "ollama";
+  const model = typeof b.model === "string" && b.model ? b.model : undefined;
+  const res = await launchSeoSwarm(objective, provider, model);
   return NextResponse.json(res, { status: res.ok ? 200 : 207 });
 }
