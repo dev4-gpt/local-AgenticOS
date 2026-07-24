@@ -200,20 +200,39 @@ function Stat({ icon, label, value, color }: { icon: React.ReactNode; label: str
   );
 }
 
+// Minimum edge-to-edge gap between neighbouring nodes on the same ring. The
+// old layout used fixed ring radii (175/105) regardless of node count or
+// size, so anything past a handful of agents overlapped.
+const NODE_GAP = 34; // ~2x a node's own diameter at rest, i.e. "2 units" of breathing room
+
 function SwarmGraph({ swarm, agents }: { swarm: Swarm | null; agents: Agent[] }) {
   const W = 900, H = 540, cx = W / 2, cy = H / 2;
   const n = agents.length;
-  // up to two rings
-  const split = n > 8 ? Math.ceil(n / 2) : n;
-  const pos = agents.map((a, i) => {
-    const ring = i < split ? 0 : 1;
-    const inRing = ring === 0 ? i : i - split;
-    const count = ring === 0 ? split : n - split;
-    const radius = ring === 0 ? 175 : 105;
-    const ang = (inRing / Math.max(count, 1)) * Math.PI * 2 - Math.PI / 2 + (ring === 1 ? Math.PI / Math.max(count, 1) : 0);
-    return { x: cx + Math.cos(ang) * radius, y: cy + Math.sin(ang) * radius };
-  });
   const nodeR = (a: Agent) => 13 + modelRing(a.model) * 2 + Math.min(8, a.taskCount * 2);
+
+  // up to two rings; ring 0 (outer, capped ~250 so it still fits the canvas)
+  // holds the first half, ring 1 (inner, capped ~140) holds the rest.
+  const split = n > 8 ? Math.ceil(n / 2) : n;
+  const ringSpec = [
+    { idxs: Array.from({ length: split }, (_, i) => i), maxRadius: 250, angleOffset: 0 },
+    { idxs: Array.from({ length: n - split }, (_, i) => split + i), maxRadius: 140, angleOffset: Math.PI / Math.max(1, n - split) },
+  ];
+
+  const pos: { x: number; y: number }[] = new Array(n);
+  for (const { idxs, maxRadius, angleOffset } of ringSpec) {
+    const count = idxs.length;
+    if (count === 0) continue;
+    // Radius needed so `count` nodes, each up to the ring's largest node
+    // size, sit NODE_GAP apart edge-to-edge - then clamp to what the canvas
+    // can actually hold.
+    const maxNodeR = Math.max(...idxs.map((i) => nodeR(agents[i])));
+    const neededCircumference = count * (maxNodeR * 2 + NODE_GAP);
+    const radius = Math.min(maxRadius, Math.max(60, neededCircumference / (2 * Math.PI)));
+    idxs.forEach((i, k) => {
+      const ang = (k / count) * Math.PI * 2 - Math.PI / 2 + angleOffset;
+      pos[i] = { x: cx + Math.cos(ang) * radius, y: cy + Math.sin(ang) * radius };
+    });
+  }
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
