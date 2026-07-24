@@ -2,8 +2,9 @@ import type { Chapter, FeatureItem } from "@/types/editions";
 
 // Base URL of the live Veloce AgenticOS runtime. Every card deep-links into a
 // real route (e.g. /flow-lab, /memory) so this editorial edition opens
-// straight into the working system. Swap this to the deployed origin later.
-const APP = "http://127.0.0.1:3939";
+// straight into the working system. Set NEXT_PUBLIC_APP_URL at build/deploy
+// time to point these links at the deployed workspace origin.
+const APP = process.env.NEXT_PUBLIC_APP_URL ?? "http://127.0.0.1:3939";
 
 // Every feature is an equal card (kind "image", no image) — FeatureImage
 // renders eyebrow + desc + an "Open" pill so all links are equally visible and
