@@ -16,6 +16,7 @@
 # next.js
 /.next/
 /.next-veloce-recovery-*/
+/.next-v0/
 
 # Standalone public-site build output
 /public-site/node_modules/

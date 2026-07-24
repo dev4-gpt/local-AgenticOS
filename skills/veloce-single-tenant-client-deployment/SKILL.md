@@ -5,7 +5,21 @@ description: Design, provision, review, and update isolated cloud deployments of
 
 # Veloce Single-Tenant Client Deployment
 
-Build an isolated client product from one maintained codebase. Do not lift and shift the private local OS.
+Build an isolated client product from one maintained codebase. Reuse the
+Veloce experience, interaction model, and approved UI components; do not lift
+and shift the private local OS.
+
+## Product-parity rule
+
+Treat the local Veloce Operator Edition as the presentation reference. Carry
+its six lenses (Command, Context, Orchestrate, Create, Govern, Deliver),
+approved UI components, motion rules, and accessibility fallbacks into a
+client-branded edition. Never copy local data, operator history, Mac paths,
+provider credentials, internal-only tools, or raw agent execution surfaces.
+
+Before implementation, create a Client Edition Manifest covering client
+branding, enabled capabilities, roles, approvals, data retention, provider
+credential model, budgets, and explicit exclusions.
 
 ## Non-negotiable architecture
 
@@ -32,6 +46,20 @@ one repository -> tested image -> client project
 ```
 
 Do not clone the repository for each client. Parameterize branding, enabled capabilities, storage identifiers, domains, budgets, and provider configuration.
+
+## Build a client edition, not a local replica
+
+| Local concern | Client-edition treatment |
+| --- | --- |
+| Edition UI, six-lens navigation, motion, accessibility | Reuse or parameterize after visual review. |
+| Obsidian/local vault files | Replace with tenant-scoped database, object storage, and retrieval service. |
+| CLI, shell, local app, Mac paths | Exclude or replace with a narrow queued worker action. |
+| Personal subscription login | Exclude from hosted production. |
+| Agent/provider feature | Include only after client scope, key model, budget, and approval rule are set. |
+| Local operator views | Keep operator-only or create a separate audited administrator view. |
+
+Do not promise every current local tab to every client. A smaller, client-safe
+edition that performs the signed workflows well is product parity.
 
 ## Classify every local capability
 
@@ -74,6 +102,11 @@ Choose and document one model per provider:
 
 Never ask users to paste keys into chat. Use a secure onboarding form that sends directly to the authenticated backend and stores the value in Secret Manager.
 
+For every enabled provider, record the secret reference rather than the secret
+value, the model allowlist, the budget cap, the warning threshold, the data
+sharing terms, and the named business owner. Render only connection state and
+budget status in the browser.
+
 ## Delivery workflow
 
 1. **Inventory:** enumerate local routes, tools, data, credentials, writes, and outbound actions.
@@ -111,5 +144,9 @@ For each client, produce:
 - Threat model and acceptance matrix.
 - Release/rollback plan.
 - Operator runbook and client onboarding/offboarding checklist.
+
+Also produce the Client Edition Manifest and a client-specific cloud intake
+strategy. Keep these in a client blueprint area, not in application
+configuration or source code containing runtime secrets.
 
 State assumptions and unresolved credential or legal gates. Never label optional, untested provider features as working.

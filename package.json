@@ -4,8 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/run-next-dev.mjs",
+    "dev:v0": "env VELOCE_DIST_DIR=.next-v0 PORT=3737 node scripts/run-next-dev.mjs",
     "build": "next build",
+    "build:v0": "env VELOCE_DIST_DIR=.next-v0 next build",
     "start": "next start -H 127.0.0.1",
+    "start:v0": "env VELOCE_DIST_DIR=.next-v0 PORT=3737 next start -H 127.0.0.1",
     "verify:v1": "npm run build && npx playwright test tests/sidebar-smoke.spec.ts --reporter=line",
     "verify:product": "npm run build && npx playwright test tests/sidebar-smoke.spec.ts tests/visual-shell.spec.ts --reporter=line && npm run verify:health && npm run verify:flow-lab && npm run verify:security",
     "verify:health": "node scripts/verify-live-health.mjs",

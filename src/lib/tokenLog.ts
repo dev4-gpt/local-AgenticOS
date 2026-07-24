@@ -86,6 +86,7 @@ export interface AgentUsage {
   completionTokens: number;
   totalTokens: number;
   costUsd: number;
+  monthCostUsd: number;
   todayTokens: number;
   models: string[];
   lastTs: number;
@@ -93,12 +94,16 @@ export interface AgentUsage {
 
 export interface UsageSummary {
   agents: AgentUsage[];      // sorted by totalTokens desc
-  grand: { calls: number; promptTokens: number; completionTokens: number; totalTokens: number; costUsd: number; todayTokens: number };
+  grand: { calls: number; promptTokens: number; completionTokens: number; totalTokens: number; costUsd: number; monthCostUsd: number; todayTokens: number };
   generatedAt: number;
 }
 
 function startOfTodayMs(): number {
   const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime();
+}
+
+function startOfMonthMs(): number {
+  const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d.getTime();
 }
 
 /** Read the log and aggregate per agent. */
@@ -110,22 +115,25 @@ export async function readUsage(maxLines = 50_000): Promise<UsageSummary> {
   } catch { /* no log yet */ }
 
   const today = startOfTodayMs();
+  const month = startOfMonthMs();
   const by = new Map<string, AgentUsage>();
-  const grand = { calls: 0, promptTokens: 0, completionTokens: 0, totalTokens: 0, costUsd: 0, todayTokens: 0 };
+  const grand = { calls: 0, promptTokens: 0, completionTokens: 0, totalTokens: 0, costUsd: 0, monthCostUsd: 0, todayTokens: 0 };
 
   for (const line of lines) {
     let e: TokenEvent;
     try { e = JSON.parse(line); } catch { continue; }
     if (!e || !e.agent) continue;
     let a = by.get(e.agent);
-    if (!a) { a = { agent: e.agent, calls: 0, promptTokens: 0, completionTokens: 0, totalTokens: 0, costUsd: 0, todayTokens: 0, models: [], lastTs: 0 }; by.set(e.agent, a); }
+    if (!a) { a = { agent: e.agent, calls: 0, promptTokens: 0, completionTokens: 0, totalTokens: 0, costUsd: 0, monthCostUsd: 0, todayTokens: 0, models: [], lastTs: 0 }; by.set(e.agent, a); }
     a.calls++; a.promptTokens += e.promptTokens; a.completionTokens += e.completionTokens;
     a.totalTokens += e.totalTokens; a.costUsd += e.costUsd || 0;
+    if (e.ts >= month) a.monthCostUsd += e.costUsd || 0;
     if (e.ts >= today) a.todayTokens += e.totalTokens;
     if (e.ts > a.lastTs) a.lastTs = e.ts;
     if (e.model && !a.models.includes(e.model)) a.models.push(e.model);
     grand.calls++; grand.promptTokens += e.promptTokens; grand.completionTokens += e.completionTokens;
     grand.totalTokens += e.totalTokens; grand.costUsd += e.costUsd || 0;
+    if (e.ts >= month) grand.monthCostUsd += e.costUsd || 0;
     if (e.ts >= today) grand.todayTokens += e.totalTokens;
   }
 

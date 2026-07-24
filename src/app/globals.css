@@ -2260,6 +2260,7 @@ blockquote cite {
 
 @media (max-width: 767px) {
   .home-immersive { min-height: auto; }
+  .home-immersive .home-edition-index { display: none !important; }
   .home-immersive__hero { min-height: 100svh; }
   .home-immersive__copy h1 { font-size: clamp(48px, 14vw, 72px); }
   .home-immersive__chapter { padding: 100px 16px; }

@@ -11,7 +11,7 @@ test("public Veloce edition presents all six operating chapters", async ({ page 
   expect(response?.status()).toBe(200);
   await expect(page.getByRole("heading", { name: /make the work behind/i })).toBeVisible();
 
-  for (const label of ["Signal", "Memory", "Workflows", "Human approval", "Measured delivery", "Engage"]) {
+  for (const label of ["Command", "Context", "Orchestrate", "Create", "Govern", "Deliver"]) {
     await expect(page.getByRole("button", { name: new RegExp(label, "i") }).first()).toBeVisible();
   }
   await page.locator("#chapter-2").scrollIntoViewIfNeeded();
@@ -29,7 +29,7 @@ test("public Veloce edition presents all six operating chapters", async ({ page 
 test("public Veloce edition keeps a readable reduced-motion fallback", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/", { waitUntil: "networkidle" });
-  await expect(page.getByText("Signal", { exact: true }).last()).toBeVisible();
+  await expect(page.getByText("Command", { exact: true }).last()).toBeVisible();
   await expect(page.locator(".depth-fallback")).toBeVisible();
 });
 

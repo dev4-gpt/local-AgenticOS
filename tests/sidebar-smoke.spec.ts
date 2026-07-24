@@ -71,7 +71,7 @@ test("integrations remains usable on mobile", async ({ page }) => {
 
 test("mission control exposes the six Veloce operating lenses", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { name: /follow the work/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /work with more signal/i })).toBeVisible();
   for (const lens of ["Command", "Context", "Orchestrate", "Create", "Govern", "Deliver"]) {
     await expect(page.getByText(lens, { exact: true }).first()).toBeVisible();
   }
@@ -129,7 +129,7 @@ test("Memory exposes automatic retrieval and background Graphify controls", asyn
   await expect(page.getByText(/curated sources/)).toBeVisible();
 });
 
-test("Goals category menu keeps readable dark-theme contrast", async ({ page }) => {
+test("Goals category menu keeps readable workspace-theme contrast", async ({ page }) => {
   await page.goto("/goals", { waitUntil: "domcontentloaded" });
   const category = page.getByLabel("Goal category");
   await expect(category).toBeVisible();
@@ -144,9 +144,9 @@ test("Goals category menu keeps readable dark-theme contrast", async ({ page }) 
       optionBackground: optionComputed?.backgroundColor,
     };
   });
-  expect(styles.colorScheme).toBe("dark");
-  expect(styles.optionColor).toBe("rgb(243, 235, 218)");
-  expect(styles.optionBackground).toBe("rgb(28, 22, 34)");
+  expect(styles.colorScheme).toBe("light");
+  expect(styles.optionColor).toBe("rgb(38, 33, 28)");
+  expect(styles.optionBackground).toBe("rgb(250, 247, 239)");
 });
 
 test("Notebook Library exposes sources and opens each working surface", async ({ page }) => {

@@ -1,0 +1,98 @@
+version: "0.1"
+status: "discovery"
+client:
+  id: "brandeur"
+  display_name: "Brandeur Delivery OS"
+  powered_by: "Veloce AgenticOS"
+  engagement: "B2B Brand Elevate pilot"
+  public_references:
+    - "https://brandeur.in/"
+    - "https://brandeur.in/b2b-branding-transformation/"
+
+deployment:
+  model: "single-tenant cloud edition"
+  target_cloud: "GCP"
+  environment_strategy: "separate staging and production"
+  domain: "TBD with Brandeur"
+  region: "TBD after data and contract review"
+
+experience:
+  source: "Veloce Operator Edition"
+  narrative_lenses:
+    - "Command"
+    - "Context"
+    - "Orchestrate"
+    - "Create"
+    - "Govern"
+    - "Deliver"
+  branding_inputs: "TBD: logo, fonts, colours, visual assets, attribution rules"
+
+capabilities:
+  command:
+    enabled: true
+    workflows: ["active-engagement portfolio", "next-decision queue", "project health"]
+  context:
+    enabled: true
+    workflows: ["client intake", "brand research", "source-backed strategy brief"]
+  orchestrate:
+    enabled: true
+    workflows: ["three-month transformation plan", "stage ownership", "review gates"]
+  create:
+    enabled: true
+    workflows: ["website brief", "creative direction", "content handoff"]
+  govern:
+    enabled: true
+    workflows: ["approval log", "scope and version control", "provider budget status"]
+  deliver:
+    enabled: true
+    workflows: ["exportable brand kit", "client review", "reporting and playbook"]
+
+roles:
+  - "brandeur_owner"
+  - "account_lead"
+  - "strategist"
+  - "creative_lead"
+  - "web_lead"
+  - "client_approver"
+  - "veloce_operator"
+
+data:
+  tenant_boundary: "Brandeur-only"
+  portal_storage: "TBD: Cloud SQL or Firestore after data-model review"
+  file_storage: "tenant-scoped Cloud Storage"
+  retention_policy: "TBD with Brandeur"
+  export_owner: "TBD with Brandeur"
+
+providers:
+  text_models:
+    model: "Brandeur-owned API account"
+    secret_store: "GCP Secret Manager"
+    allowlist: "TBD"
+    monthly_cap: "TBD"
+    overage_approver: "Brandeur owner"
+  voice:
+    enabled: false
+    reason: "Enable only for a signed, approved voice workflow"
+  publishing:
+    enabled: false
+    reason: "Excluded from pilot; external actions require a separate approval design"
+
+approval_policy:
+  external_delivery: "named Brandeur reviewer and client approver"
+  provider_overage: "written approval before spend"
+  support_access: "time-bound, approved, and audited"
+
+exclusions:
+  - "local shell and CLI"
+  - "Mac filesystem and local vault paths"
+  - "personal AI subscriptions"
+  - "unrestricted MCP or skill installation"
+  - "unapproved publishing, outreach, or paid-media actions"
+  - "cross-client data access"
+
+open_decisions:
+  - "Named Brandeur sponsor and pilot project"
+  - "Internal-only pilot versus client approver access"
+  - "GCP billing project, region, domain, and identity provider"
+  - "Initial text-model provider, model allowlist, and budget"
+  - "Data retention, backup, export, and offboarding terms"

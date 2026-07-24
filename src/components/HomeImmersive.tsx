@@ -1,76 +1,118 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import * as THREE from "three";
-import { ArrowUpRight, Brain, Command, Cpu, DatabaseZap, Orbit, Palette, RadioTower, ShieldCheck, Sparkles, Target, Workflow } from "lucide-react";
+import { ArrowUpRight, Brain, Command, Cpu, DatabaseZap, Palette, RadioTower, ShieldCheck, Sparkles, Target, Workflow } from "lucide-react";
 import Overview from "./Overview";
 
 const CHAPTERS = [
   {
     id: "command",
+    number: "I",
     kicker: "Command",
-    title: "Signals stop scattering when the work has one live command layer.",
-    body: "Mission Control gives agents, goals, active work, and the next human decision a shared operational view.",
-    metric: "control room",
+    stage: "The operating signal",
+    title: "See the whole operation before you ask the next question.",
+    body: "Mission Control makes active agents, decisions, and the next human move visible in one place.",
+    metric: "Live command layer",
     href: "/claude",
     action: "Open agent bay",
-    artifact: "Live agent routing",
+    artifact: "Command workspace",
+    accent: "#ff6b47",
+    shade: "#271313",
+    light: "#ffd8c8",
+    proof: "Choose the right working brain, inspect its state, then enter the task with context intact.",
+    outcomes: ["Agent status", "Decision queue", "Live handoff"],
     tools: [["Claude", "/claude"], ["Hermes", "/hermes"], ["Codex", "/codex"], ["Fusion", "/fusion"]],
   },
   {
     id: "context",
+    number: "II",
     kicker: "Context",
-    title: "Approved reasoning becomes a memory your next project can actually use.",
-    body: "Vault notes, journals, research, and Graphify links become a private context layer instead of discarded source material.",
-    metric: "private vault",
+    stage: "The system remembers",
+    title: "Every useful decision gets a place to become useful again.",
+    body: "Private notes, research, journals, and Graphify connections become working context rather than lost history.",
+    metric: "Grounded memory",
     href: "/memory",
     action: "Open memory",
-    artifact: "Connected knowledge",
+    artifact: "Context workspace",
+    accent: "#8b68e8",
+    shade: "#19142b",
+    light: "#e5dcff",
+    proof: "Search by name, title, or meaning. The source stays local and the links remain inspectable.",
+    outcomes: ["Vault retrieval", "Source links", "Reusable briefs"],
     tools: [["Memory", "/memory"], ["Notebook", "/notebook"], ["Goals", "/goals"], ["Journal", "/journal"]],
   },
   {
     id: "orchestrate",
+    number: "III",
     kicker: "Orchestrate",
-    title: "The work moves through accountable lanes, not a chain of blank prompts.",
-    body: "Paperclip, Pipeline, Kanban, and agent workflows create clear transitions from intake to approved handoff.",
-    metric: "review-first",
+    stage: "Work with a route",
+    title: "A request becomes a named sequence, with an owner at every turn.",
+    body: "Paperclip, Pipeline, Kanban, and agent workflows turn loose work into visible, reviewable handoffs.",
+    metric: "Accountable lanes",
     href: "/pipeline",
     action: "Open pipeline",
-    artifact: "Approval-aware workflow",
+    artifact: "Workflow workspace",
+    accent: "#37c987",
+    shade: "#10241d",
+    light: "#d5ffe9",
+    proof: "Define the handoff before the automation runs. Every lane can be checked, redirected, or approved by a person.",
+    outcomes: ["Named owners", "Review steps", "Visible state"],
     tools: [["Paperclip", "/paperclip"], ["Pipeline", "/pipeline"], ["Agent Kanban", "/agent-kanban"], ["Ruflo", "/ruflo"]],
   },
   {
     id: "create",
+    number: "IV",
     kicker: "Create",
-    title: "Strategy becomes an original production direction before it becomes an asset.",
-    body: "Flow Lab, Web Studio, Open Design, and the media tools turn a brief into reviewable creative work without copying references.",
-    metric: "asset studio",
+    stage: "Make the direction tangible",
+    title: "Turn an insight into something your team can see, challenge, and ship.",
+    body: "Flow Lab, Web Studio, Open Design, and media tools turn an approved brief into original production direction.",
+    metric: "Original production",
     href: "/flow-lab",
     action: "Open Flow Lab",
-    artifact: "Original production brief",
+    artifact: "Creative workspace",
+    accent: "#f0c94a",
+    shade: "#30270b",
+    light: "#fff2b4",
+    proof: "Study a permitted reference, retain the lesson, then make a distinct visual system and implementation brief.",
+    outcomes: ["Flow analysis", "Build briefs", "Asset direction"],
     tools: [["Flow Lab", "/flow-lab"], ["Web Studio", "/web-studio"], ["Open Design", "/opendesign"], ["Video", "/video"]],
   },
   {
     id: "govern",
+    number: "V",
     kicker: "Govern",
-    title: "Automation moves quickly, while approval, privacy, and budgets stay visible.",
-    body: "Provider routing, integration status, human approvals, and local-first boundaries make the system safe to operate.",
-    metric: "human gate",
+    stage: "Keep the human signal",
+    title: "Move faster without making your standards invisible.",
+    body: "Provider routing, cost awareness, integration status, and approval boundaries remain part of the work, not an afterthought.",
+    metric: "Human gate",
     href: "/integrations",
     action: "Open governance",
-    artifact: "Human approval boundary",
+    artifact: "Governance workspace",
+    accent: "#55b7ff",
+    shade: "#10213a",
+    light: "#d8efff",
+    proof: "Automation may prepare and propose. People retain the decision before anything leaves the system.",
+    outcomes: ["Budget visibility", "Private keys", "Approval gate"],
     tools: [["Integrations", "/integrations"], ["Capabilities", "/capabilities"], ["SEO", "/seo"], ["Build Guide", "/guide"]],
   },
   {
     id: "deliver",
+    number: "VI",
     kicker: "Deliver",
-    title: "The system proves its value through outcomes your team can reuse.",
-    body: "Builds, content, reporting, and playbooks move from a named owner through approval to a client-ready result.",
-    metric: "delivery loop",
+    stage: "Close the loop",
+    title: "Make the result clear enough to hand over and strong enough to repeat.",
+    body: "Reporting, launch work, and reusable playbooks carry approved output from an owner to a client-ready outcome.",
+    metric: "Measured delivery",
     href: "/agent-kanban",
     action: "Open delivery board",
-    artifact: "Measured handoff",
+    artifact: "Delivery workspace",
+    accent: "#ed6a87",
+    shade: "#30131e",
+    light: "#ffd9e3",
+    proof: "A completed task is not only a finished artifact. It is a traceable outcome, a learning, and the next reusable pattern.",
+    outcomes: ["Client handoff", "Outcome review", "Reusable playbook"],
     tools: [["Leads", "/leads"], ["Radar", "/radar"], ["Kanban", "/kanban"], ["Studio", "/studio"]],
   },
 ];
@@ -103,10 +145,16 @@ export default function HomeImmersive() {
   const scrollHostRef = useRef<HTMLElement | null>(null);
   const [active, setActive] = useState(0);
   const [webglFailed, setWebglFailed] = useState(false);
+  const [sceneReady, setSceneReady] = useState(false);
   const reducedMotion = useReducedMotion();
 
   const chapter = CHAPTERS[active] ?? CHAPTERS[0];
   const progressLabel = useMemo(() => String(active + 1).padStart(2, "0"), [active]);
+  const editionStyle = {
+    "--edition-accent": chapter.accent,
+    "--edition-shade": chapter.shade,
+    "--edition-light": chapter.light,
+  } as CSSProperties;
 
   useEffect(() => {
     const host = document.querySelector<HTMLElement>("[data-scroll-root]");
@@ -133,7 +181,10 @@ export default function HomeImmersive() {
 
   useEffect(() => {
     const mount = mountRef.current;
-    if (!mount || reducedMotion) return;
+    if (!mount || reducedMotion) {
+      setSceneReady(false);
+      return;
+    }
 
     const scrollHost = mount.closest("main") as HTMLElement | null;
     scrollHostRef.current = scrollHost;
@@ -154,6 +205,7 @@ export default function HomeImmersive() {
       });
     } catch {
       setWebglFailed(true);
+      setSceneReady(false);
       return;
     }
     setWebglFailed(false);
@@ -349,6 +401,7 @@ export default function HomeImmersive() {
     scheduleResize();
     updateScroll();
     animate();
+    setSceneReady(true);
 
     scrollHost?.addEventListener("scroll", updateScroll, { passive: true });
     window.addEventListener("resize", scheduleResize);
@@ -375,16 +428,16 @@ export default function HomeImmersive() {
   }, [reducedMotion]);
 
   return (
-    <div className="home-immersive">
+    <div className="home-immersive" style={editionStyle} data-edition={chapter.id}>
       <div className="home-immersive__stage" aria-hidden="true">
         <div ref={mountRef} className="home-immersive__canvas" data-canvas-ready={!reducedMotion && !webglFailed} />
-        {(reducedMotion || webglFailed) && <div className="home-immersive__fallback" />}
+        {(reducedMotion || webglFailed || !sceneReady) && <div className="home-immersive__fallback" />}
       </div>
 
       <header className="home-edition-head">
         <Link href="/" className="home-edition-head__brand">
           <strong>Veloce AgenticOS</strong>
-          <span>Private operating edition</span>
+          <span>Private operator edition</span>
         </Link>
         <div className="home-edition-head__status">
           <span><i /> Local runtime</span>
@@ -410,14 +463,14 @@ export default function HomeImmersive() {
         <div className="home-immersive__copy">
           <div className="home-immersive__eyebrow">
             <Sparkles size={14} />
-            <span>Veloce AgenticOS · System Edition 01</span>
+            <span>Veloce AgenticOS · Operator Edition</span>
           </div>
           <h1>
-            Follow the work.
-            <span>Keep the system in view.</span>
+            Work with more signal.
+            <span>Keep every move in view.</span>
           </h1>
           <p>
-            One private command system for agents, memory, creation, governance, and measurable delivery.
+            A private operating system for agents, context, production, approval, and delivery. Designed to make complex work feel legible.
           </p>
           <div className="home-immersive__actions">
             <Link href="/claude" className="home-immersive__primary">
@@ -432,14 +485,24 @@ export default function HomeImmersive() {
 
       <div className="home-immersive__chapters">
         {CHAPTERS.map((item, index) => (
-          <section id={item.id} key={item.id} className={`home-immersive__chapter home-immersive__chapter--${item.id}`}>
+          <section
+            id={item.id}
+            key={item.id}
+            className={`home-immersive__chapter home-immersive__chapter--${item.id}`}
+            style={{
+              "--chapter-accent": item.accent,
+              "--chapter-shade": item.shade,
+              "--chapter-light": item.light,
+            } as CSSProperties}
+          >
             <div className={`home-immersive__chapter-card ${active === index ? "is-active" : ""}`}>
               <div className="home-immersive__chapter-copy-block">
                 <div className="home-immersive__chapter-top">
-                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <span>{item.number}</span>
                   <span>{item.metric}</span>
                 </div>
-                <p>{item.kicker}</p>
+                <p>{item.stage}</p>
+                <span className="home-immersive__chapter-name">{item.kicker}</span>
                 <h2>{item.title}</h2>
                 <div>{item.body}</div>
                 <Link href={item.href} className="home-immersive__chapter-link">
@@ -447,15 +510,25 @@ export default function HomeImmersive() {
                 </Link>
               </div>
 
-              <div className="home-immersive__artifact" aria-label={`${item.kicker} workspace preview`}>
+              <div className="home-immersive__artifact" aria-label={`${item.kicker} working workspace preview`}>
                 <div className="home-immersive__artifact-head">
                   <span>{item.artifact}</span>
-                  <i>live</i>
+                  <i>connected</i>
                 </div>
-                <div className="home-immersive__artifact-signal">
-                  <span className="home-immersive__artifact-orbit" />
-                  <span className="home-immersive__artifact-core"><Orbit size={28} /></span>
-                  <span className="home-immersive__artifact-route" />
+                <div className="home-immersive__artifact-story">
+                  <div className="home-immersive__artifact-number">{String(index + 1).padStart(2, "0")}</div>
+                  <div>
+                    <span>What this lens makes possible</span>
+                    <p>{item.proof}</p>
+                  </div>
+                </div>
+                <div className="home-immersive__artifact-outcomes" aria-label={`${item.kicker} outcomes`}>
+                  {item.outcomes.map((outcome, outcomeIndex) => (
+                    <div key={outcome}>
+                      <span>{String(outcomeIndex + 1).padStart(2, "0")}</span>
+                      <strong>{outcome}</strong>
+                    </div>
+                  ))}
                 </div>
                 <nav className="home-immersive__artifact-tools" aria-label={`${item.kicker} tools`}>
                   {item.tools.map(([label, href], toolIndex) => (

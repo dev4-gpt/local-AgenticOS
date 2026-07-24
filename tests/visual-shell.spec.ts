@@ -10,7 +10,7 @@ for (const viewport of [
   test(`immersive Mission Control is framed and nonblank on ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: /follow the work/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /work with more signal/i })).toBeVisible();
     expect(await page.locator("body").evaluate((body) => body.scrollWidth <= window.innerWidth)).toBe(true);
     if (viewport.name === "mobile") {
       const mobileLenses = page.getByRole("navigation", { name: "Mobile operating lenses" });

@@ -15,5 +15,7 @@
   "goalCategories": ["Health", "Personal", "Work", "Learning", "Side Project"],
 
   "locationLabel": "Local",
-  "_location_note": "Shown in the top-bar timestamp. e.g. \"Bangkok\", \"London\", or just \"Local\"."
+  "_location_note": "Shown in the top-bar timestamp. e.g. \"Bangkok\", \"London\", or just \"Local\".",
+
+  "_costs_note": "Monthly subscriptions and API budgets are kept separately in ~/.agentic-os/cost-ledger.json and can be edited from the Token Usage panel. Prices are never guessed from a provider key."
 }

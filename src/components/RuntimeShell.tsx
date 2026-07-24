@@ -50,7 +50,7 @@ export default function RuntimeShell({ children }: { children: ReactNode }) {
                     <Link
                       key={href}
                       href={href}
-                      className={`block rounded-md px-2.5 py-2 text-sm transition ${active ? "bg-[rgba(212,165,116,0.14)] text-[var(--gold)]" : "text-[var(--cream-dim)] hover:bg-white/5 hover:text-[var(--cream)]"}`}
+                      className={`block rounded-md px-2.5 py-2 text-sm transition ${active ? "bg-[rgba(212,165,116,0.14)] text-[var(--gold)]" : "text-[var(--cream-dim)] hover:bg-black/5 hover:text-[var(--cream)]"}`}
                     >
                       {label}
                     </Link>

@@ -26,7 +26,9 @@ function shiftDate(iso: string, days: number): string {
 }
 
 export default function JournalView() {
-  const [date, setDate] = useState<string>(todayISO());
+  // Dates must start after hydration so the server timezone cannot disagree
+  // with the operator's browser timezone around midnight.
+  const [date, setDate] = useState<string | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [days, setDays] = useState<string[]>([]);
   const [input, setInput] = useState("");
@@ -39,7 +41,13 @@ export default function JournalView() {
     setDays(j.days ?? []);
   }
 
-  useEffect(() => { load(date); }, [date]);
+  useEffect(() => {
+    if (!date) {
+      setDate(todayISO());
+      return;
+    }
+    void load(date);
+  }, [date]);
 
   async function add() {
     const text = input.trim();
@@ -55,6 +63,10 @@ export default function JournalView() {
       if (j.entries) setEntries(j.entries);
       setInput("");
     } finally { setBusy(false); }
+  }
+
+  if (!date) {
+    return <div className="panel p-5 text-sm text-[var(--fg-dim)]">Loading journal…</div>;
   }
 
   const isToday = date === todayISO();
