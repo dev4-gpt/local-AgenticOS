@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { createRoot } from "react-dom/client";
 import { config } from "./config";
@@ -6,6 +6,7 @@ import { EngagementSection, LegalSection, MethodSection, PricingSection, ProofSe
 import { CHAPTERS, COSMIC_WORLDS, cosmicIgnition } from "./landingData";
 import { useScrollProgress } from "./useScrollProgress";
 import { useMouseParallax } from "./useMouseParallax";
+import { jumpTo } from "./jumpTo";
 import "./styles.css";
 import "./cosmic.css";
 import "./release.css";
@@ -71,8 +72,9 @@ function App() {
     }
     await navigator.clipboard.writeText(brief).then(() => setNotice("Your discovery brief is copied. This site intentionally stores no leads.")).catch(() => setNotice("This site intentionally stores no leads. Add a booking URL or contact email to enable handoff."));
   }
-  return <><a className="skip" href="#main">Skip to content</a><header><a className="mark" href="#top">Veloce <em>AgenticOS</em></a><nav><a href="#method">Method</a><a href="#investment">Investment</a><a href="#engage">Engage</a></nav><a className="header-cta" href="#engage">Start with a handoff <b>↗</b></a></header><div className="edition-rail" aria-label="Veloce operating layers"><span>Operating layers</span>{CHAPTERS.map(([label], index) => <button key={label} onClick={() => moveToChapter(index)} className={index === active ? "rail-item active" : "rail-item"}>{String(index + 1).padStart(2, "0")} {label}</button>)}</div><main id="main" className={`site scene-${active}`}>
-    <section id="top" className="intro" style={{ "--hero-image": `url(${cosmicIgnition})` } as CSSProperties}><div><p className="eyebrow">Managed operating systems for agencies and expert teams</p><h1>Make the work behind your best work <i>compound.</i></h1><div className="actions"><a className="primary" href="#engage">Map a broken handoff <b>→</b></a><a className="quiet" href="#chapter-0">Walk through the system <b>↓</b></a></div></div><aside className="intro-proof"><div className="signal-map" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><b>01</b><b>02</b><b>03</b><b>04</b><b>05</b></div><span className="dot"></span><strong>Not software access</strong><p>A managed transformation with private workflows, explicit approvals, and budget control.</p><div><span>Private by default</span><span>Human reviewed</span><span>Budget capped</span></div></aside></section>
+  const jump = (id: string) => (event: MouseEvent) => { event.preventDefault(); jumpTo(id); };
+  return <><a className="skip" href="#main" onClick={jump("main")}>Skip to content</a><header><a className="mark" href="#top" onClick={jump("top")}>Veloce <em>AgenticOS</em></a><nav><a href="#method" onClick={jump("method")}>Method</a><a href="#investment" onClick={jump("investment")}>Investment</a><a href="#engage" onClick={jump("engage")}>Engage</a></nav><a className="header-cta" href="#engage" onClick={jump("engage")}>Start with a handoff <b>↗</b></a></header><div className="edition-rail" aria-label="Veloce operating layers"><span>Operating layers</span>{CHAPTERS.map(([label], index) => <button key={label} onClick={() => moveToChapter(index)} className={index === active ? "rail-item active" : "rail-item"}>{String(index + 1).padStart(2, "0")} {label}</button>)}</div><main id="main" className={`site scene-${active}`}>
+    <section id="top" className="intro" style={{ "--hero-image": `url(${cosmicIgnition})` } as CSSProperties}><div><p className="eyebrow">Managed operating systems for agencies and expert teams</p><h1>Make the work behind your best work <i>compound.</i></h1><div className="actions"><a className="primary" href="#engage" onClick={jump("engage")}>Map a broken handoff <b>→</b></a><a className="quiet" href="#chapter-0" onClick={jump("chapter-0")}>Walk through the system <b>↓</b></a></div></div><aside className="intro-proof"><div className="signal-map" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><b>01</b><b>02</b><b>03</b><b>04</b><b>05</b></div><span className="dot"></span><strong>Not software access</strong><p>A managed transformation with private workflows, explicit approvals, and budget control.</p><div><span>Private by default</span><span>Human reviewed</span><span>Budget capped</span></div></aside></section>
     <section className="scroll-story" aria-label="The Veloce AgenticOS method" ref={storyRef}>
       <div className="scene-shell" ref={setSceneAndParallax}>
         <div className="cosmic-parallax" style={{ transform: `translate(${offset.x * 10}px, ${offset.y * 10}px) scale(${1.06 + ignite * 0.16})`, filter: `brightness(${1 + ignite * 0.5})` }}>

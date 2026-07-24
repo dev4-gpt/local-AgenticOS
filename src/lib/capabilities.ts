@@ -63,12 +63,12 @@ export const CAPABILITIES: Capability[] = [
     dataScope: "Veloce-owned or authorized preview environments.", actionBoundary: "Read-only checks before release; no unattended fixes or deployments.",
   },
   {
-    id: "security-release-review", name: "Veloce Security Release Review", kind: "skill", audience: "operator", status: "active", destination: "/capabilities",
+    id: "security-release-review", name: "Veloce Security Release Review", kind: "skill", audience: "operator", status: "active",
     description: "Authorization, release-gate, finding, remediation, and retest workflow informed by PentAGI and HexStrike AI.",
     dataScope: "Veloce-owned loopback or explicitly authorized staging environments and private assessment reports.", actionBoundary: "Manual, isolated, human-supervised assessment only; neither pentest framework is exposed as a product MCP or client tool.",
   },
   {
-    id: "single-tenant-client-deployment", name: "Veloce Client Deployment", kind: "skill", audience: "operator", status: "reviewed", destination: "/capabilities",
+    id: "single-tenant-client-deployment", name: "Veloce Client Deployment", kind: "skill", audience: "operator", status: "reviewed",
     description: "Produces isolated client cloud environments from one versioned product image, with tenant-scoped identity, storage, secrets, workers, budgets, and updates.",
     dataScope: "Approved client configuration, infrastructure metadata, capability allowlist, and non-secret deployment evidence.", actionBoundary: "Never deploys the private operator OS, personal subscription credentials, arbitrary shell access, or cross-client data surfaces.",
   },

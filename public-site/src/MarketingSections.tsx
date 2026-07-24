@@ -1,4 +1,7 @@
-import type { FormEvent } from "react";
+import type { FormEvent, MouseEvent } from "react";
+import { jumpTo } from "./jumpTo";
+
+const jump = (id: string) => (event: MouseEvent) => { event.preventDefault(); jumpTo(id); };
 
 interface EngagementSectionProps {
   notice: string;
@@ -26,5 +29,5 @@ export function LegalSection() {
 }
 
 export function SiteFooter() {
-  return <footer><a className="mark" href="#top">Veloce <em>AgenticOS</em></a><p>Managed systems for work that should compound.</p><nav aria-label="Legal links"><a href="#privacy">Privacy</a><a href="#terms">Terms</a><a href="#security">Security</a></nav><a href="#engage">Start a conversation ↗</a></footer>;
+  return <footer><a className="mark" href="#top" onClick={jump("top")}>Veloce <em>AgenticOS</em></a><p>Managed systems for work that should compound.</p><nav aria-label="Legal links"><a href="#privacy" onClick={jump("privacy")}>Privacy</a><a href="#terms" onClick={jump("terms")}>Terms</a><a href="#security" onClick={jump("security")}>Security</a></nav><a href="#engage" onClick={jump("engage")}>Start a conversation ↗</a></footer>;
 }
