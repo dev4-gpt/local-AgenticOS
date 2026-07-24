@@ -6,11 +6,12 @@ import {
   Sparkles, Rocket, FileText, BookOpen, Play, Square,
   CheckCircle2, AlertCircle, Globe, FileSearch, ClipboardPaste, Save,
   History as HistoryIcon, ExternalLink, Clock,
-  Search, TrendingUp, Loader2, ArrowRight, Link2,
+  Search, TrendingUp, Loader2, ArrowRight, Link2, Bot,
 } from "lucide-react";
 import MarkdownView from "./MarkdownView";
+import AEOPanel from "./AEOPanel";
 
-type Tab = "research" | "openseo" | "generate" | "deploy" | "history" | "transcripts" | "skill";
+type Tab = "research" | "aeo" | "openseo" | "generate" | "deploy" | "history" | "transcripts" | "skill";
 
 interface ResearchTopic {
   keyword: string; score: number; badges: string[];
@@ -91,7 +92,7 @@ export default function SEOView() {
   const [openseoUp, setOpenseoUp] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (tab !== "research" || rConnected !== null) return;
+    if ((tab !== "research" && tab !== "aeo") || rConnected !== null) return;
     fetch("/api/seo/research")
       .then((r) => r.json())
       .then((j) => {
@@ -361,6 +362,7 @@ export default function SEOView() {
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { key: "research",    label: "Research",    icon: <Search size={14} /> },
+    { key: "aeo",         label: "AEO",         icon: <Bot size={14} /> },
     { key: "openseo",     label: "OpenSEO",     icon: <TrendingUp size={14} /> },
     { key: "generate",    label: "Generate",    icon: <Sparkles size={14} /> },
     { key: "deploy",      label: "Deploy",      icon: <Rocket size={14} /> },
@@ -1072,6 +1074,8 @@ export default function SEOView() {
           </div>
         </div>
       )}
+
+      {tab === "aeo" && <AEOPanel sites={rSites} />}
 
       {tab === "openseo" && (
         <div className="space-y-3">
