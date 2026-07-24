@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
  * layers ease toward the cursor instead of snapping. Mirrors the live site's
  * mouse-driven depth parallax on its Three.js hero/chapter scenes (moving
  * the cursor shifts foreground/background layers at different rates even
- * with no scrolling — see docs/research/www.shopify.com/BEHAVIORS.md).
+ * with no scrolling — see template-scaffolding/docs/research/www.shopify.com/BEHAVIORS.md).
  */
 export function useMouseParallax<T extends HTMLElement>() {
   const ref = useRef<T>(null);

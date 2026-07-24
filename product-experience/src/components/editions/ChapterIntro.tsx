@@ -14,7 +14,7 @@ import { SEAM_PAINTING_OPACITY, SEAM_PAINTING_SCALE } from "./seam";
  * animate in as the user scrolls through a tall wrapper region, then the
  * whole thing fades/scales out to release into the normal feature grid.
  * Mirrors the live site's per-chapter Three.js title-card sequence (see
- * docs/research/www.shopify.com/BEHAVIORS.md) using CSS/JS instead of WebGL.
+ * template-scaffolding/docs/research/www.shopify.com/BEHAVIORS.md) using CSS/JS instead of WebGL.
  */
 export function ChapterIntro({ chapter }: { chapter: Chapter }) {
   const { ref: wrapperRef, progress } = useScrollProgress<HTMLDivElement>();

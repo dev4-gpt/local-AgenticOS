@@ -9,7 +9,7 @@ import { useEffect } from "react";
  * the beige content background) based on which .theme-dark-region is
  * currently crossing the trigger line near the top of the viewport. Mirrors
  * the live site's IntersectionObserver-driven theme system (see
- * docs/research/www.shopify.com/BEHAVIORS.md).
+ * template-scaffolding/docs/research/www.shopify.com/BEHAVIORS.md).
  */
 export function ThemeObserver() {
   useEffect(() => {

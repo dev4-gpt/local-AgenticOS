@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 /**
  * Golden-ratio / Vitruvian construction-line diagram from the hero.
- * Markup is copied verbatim from the live site (docs/research/www.shopify.com/hero-davinci-lines.svg).
+ * Markup is copied verbatim from the live site (template-scaffolding/docs/research/www.shopify.com/hero-davinci-lines.svg).
  * Lines belong to reveal "stages" via data-group; the visible stage advances
  * as the user scrolls past the first few chapter boundaries.
  */
