@@ -5,7 +5,7 @@
   position: relative;
   background-color: var(--ink);
   background-image:
-    linear-gradient(90deg, rgba(5, 8, 15, 0.94) 0%, rgba(5, 8, 15, 0.74) 44%, rgba(5, 8, 15, 0.18) 100%),
+    linear-gradient(90deg, rgba(21, 16, 26, 0.94) 0%, rgba(21, 16, 26, 0.74) 44%, rgba(21, 16, 26, 0.18) 100%),
     var(--hero-image);
   background-position: center;
   background-size: cover;
@@ -50,8 +50,8 @@
 .cosmic-world-shade {
   z-index: 1;
   background:
-    linear-gradient(90deg, rgba(5, 8, 15, 0.9) 0%, rgba(5, 8, 15, 0.55) 42%, rgba(5, 8, 15, 0.17) 100%),
-    linear-gradient(0deg, rgba(5, 8, 15, 0.5), transparent 45%);
+    linear-gradient(90deg, rgba(21, 16, 26, 0.9) 0%, rgba(21, 16, 26, 0.55) 42%, rgba(21, 16, 26, 0.17) 100%),
+    linear-gradient(0deg, rgba(21, 16, 26, 0.5), transparent 45%);
 }
 
 .scene-shell .depth-scene {
@@ -73,6 +73,6 @@
   }
 
   .cosmic-world-shade {
-    background: linear-gradient(0deg, rgba(5, 8, 15, 0.78) 0%, rgba(5, 8, 15, 0.22) 76%);
+    background: linear-gradient(0deg, rgba(21, 16, 26, 0.78) 0%, rgba(21, 16, 26, 0.22) 76%);
   }
 }

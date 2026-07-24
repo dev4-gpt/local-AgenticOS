@@ -10,38 +10,41 @@
   --font-geist-sans: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-geist-mono: "SFMono-Regular", "Roboto Mono", ui-monospace, monospace;
 
-  /* Midnight Aubergine palette */
-  --bg-deep:    #15101a;
-  --bg-mid:     #1c1622;
-  --bg-card:    #251d2c;
-  --bg-elev:    #2e2436;
+  /* Parchment Editorial palette — light theme matching the Veloce edition
+     landing page. Backgrounds are warm parchment tiers; "cream" tokens now
+     carry the dark aubergine-INK foreground (kept named cream so the hundreds
+     of `var(--cream)` text references flip in one place). */
+  --bg-deep:    #e4ded1;
+  --bg-mid:     #ece7db;
+  --bg-card:    #f4f0e6;
+  --bg-elev:    #faf7ef;
 
-  --cream:      #f3ebda;
-  --cream-soft: #ddd0bb;
-  --cream-dim:  #a59783;
-  --cream-mute: #6e6353;
+  --cream:      #26211c;
+  --cream-soft: #3c352d;
+  --cream-dim:  #6b6155;
+  --cream-mute: #8a7f6f;
 
-  --gold:       #d4a574;
-  --gold-soft:  #e6c69a;
-  --gold-deep:  #a87f54;
+  --gold:       #b3803f;
+  --gold-soft:  #c99a5a;
+  --gold-deep:  #8a5f2e;
 
-  --emerald:    #5ab896;
-  --emerald-dim:#3a8a6e;
-  --plum:       #c4607e;
-  --rust:       #c97c5e;
+  --emerald:    #2f8f6b;
+  --emerald-dim:#26785a;
+  --plum:       #b04a68;
+  --rust:       #b5643f;
 
-  --line:       rgba(212, 165, 116, 0.20);
-  --line-soft:  rgba(243, 235, 218, 0.08);
-  --line-deep:  rgba(243, 235, 218, 0.04);
+  --line:       rgba(38, 33, 28, 0.14);
+  --line-soft:  rgba(38, 33, 28, 0.08);
+  --line-deep:  rgba(38, 33, 28, 0.05);
 
-  --shadow-1: 0 1px 0 rgba(243, 235, 218, 0.03), 0 8px 24px rgba(0,0,0,0.5);
-  --shadow-2: 0 2px 0 rgba(243, 235, 218, 0.04), 0 20px 60px rgba(0,0,0,0.55);
+  --shadow-1: 0 1px 2px rgba(38,33,28,0.05), 0 8px 24px rgba(38,33,28,0.08);
+  --shadow-2: 0 2px 4px rgba(38,33,28,0.06), 0 20px 60px rgba(38,33,28,0.12);
 
   /* Backwards-compat aliases — existing components reference these. We remap
      them onto the new palette so nothing visibly breaks while we refresh. */
   --bg: var(--bg-deep);
   --bg-2: var(--bg-mid);
-  --panel: rgba(37, 29, 44, 0.65);
+  --panel: rgba(250, 247, 239, 0.72);
   --panel-border: var(--line-soft);
   --panel-border-hot: var(--line);
   --fg: var(--cream);
@@ -59,7 +62,7 @@
   --openclaw: var(--plum);
   --hermes: var(--gold-soft);
 
-  --grid: rgba(212, 165, 116, 0.04);
+  --grid: rgba(38, 33, 28, 0.05);
   --glow: 0 0 40px 0;
 }
 
@@ -73,14 +76,14 @@
 * { box-sizing: border-box; }
 
 .goal-category-select {
-  color-scheme: dark;
-  background-color: #17121d;
+  color-scheme: light;
+  background-color: var(--bg-elev);
   color: var(--cream);
 }
 
 .goal-category-select option {
-  background-color: #1c1622;
-  color: #f3ebda;
+  background-color: var(--bg-elev);
+  color: var(--cream);
 }
 
 html, body {
@@ -106,9 +109,9 @@ body::before {
   inset: 0;
   pointer-events: none;
   z-index: 1;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.95  0 0 0 0 0.9  0 0 0 0 0.85  0 0 0 0.035 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  opacity: 0.55;
-  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.18  0 0 0 0 0.15  0 0 0 0 0.11  0 0 0 0.04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  opacity: 0.5;
+  mix-blend-mode: multiply;
 }
 
 /* Warm ambient gradients sitting beneath everything */
@@ -126,6 +129,19 @@ body::after {
 
 /* Lift real chrome above the overlays */
 main, header, aside, nav, .surface { position: relative; z-index: 2; }
+
+/* Light-theme form controls. The dark build set text-white on many inputs;
+   on parchment that makes typed text invisible. Force ink for controls inside
+   the (light) workspace shell — the dark home-immersive hero keeps its own. */
+.workspace-shell input:not([type="checkbox"]):not([type="radio"]),
+.workspace-shell textarea,
+.workspace-shell select {
+  color: var(--cream);
+}
+.workspace-shell input::placeholder,
+.workspace-shell textarea::placeholder {
+  color: var(--cream-mute);
+}
 
 /* ─────────────────────────────────────────────────────────────────────
    Typography primitives
@@ -414,11 +430,13 @@ blockquote cite {
    Glass `.panel` (reused everywhere) — reskinned to aubergine + gold
    ───────────────────────────────────────────────────────────────────── */
 .panel {
-  background: linear-gradient(180deg, rgba(37, 29, 44, 0.85), rgba(28, 22, 34, 0.7));
+  /* Calmer, flatter card — a near-solid aubergine fill instead of a glassy
+     high-saturation gradient, so dense pages read as quiet surfaces. */
+  background: linear-gradient(180deg, rgba(250, 247, 239, 0.9), rgba(244, 240, 230, 0.86));
   border: 1px solid var(--line-soft);
   border-radius: 10px;
-  backdrop-filter: blur(14px) saturate(120%);
-  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  backdrop-filter: blur(12px) saturate(104%);
+  -webkit-backdrop-filter: blur(12px) saturate(104%);
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-1);
@@ -428,7 +446,7 @@ blockquote cite {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(120% 60% at 0% 0%, rgba(212,165,116,0.06), transparent 60%);
+    radial-gradient(120% 60% at 0% 0%, rgba(212,165,116,0.035), transparent 60%);
   pointer-events: none;
 }
 .panel-hot { border-color: var(--line); }
@@ -1037,9 +1055,9 @@ blockquote cite {
   overflow: hidden;
   opacity: 0.7;
   background:
-    linear-gradient(90deg, rgba(243, 235, 218, 0.025) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(243, 235, 218, 0.02) 1px, transparent 1px),
-    linear-gradient(128deg, rgba(8, 7, 11, 0.96), rgba(21, 16, 26, 0.82) 54%, rgba(8, 17, 16, 0.94));
+    linear-gradient(90deg, rgba(38, 33, 28, 0.04) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(38, 33, 28, 0.03) 1px, transparent 1px),
+    linear-gradient(128deg, var(--bg-mid), var(--bg-deep) 54%, var(--bg-mid));
   background-size: 72px 72px, 72px 72px, auto;
 }
 
@@ -1084,7 +1102,7 @@ blockquote cite {
 
 .workspace-shell__main {
   position: relative;
-  background: linear-gradient(180deg, rgba(8, 7, 11, 0.16), rgba(8, 7, 11, 0.48));
+  background: linear-gradient(180deg, rgba(38, 33, 28, 0.015), rgba(38, 33, 28, 0.05));
   scroll-behavior: smooth;
 }
 
@@ -1386,6 +1404,17 @@ blockquote cite {
   display: grid;
   place-items: center;
   color: currentColor;
+  /* Editorial calm: multicolour brand avatars read as one restrained set by
+     default (desaturated + dimmed); their real colour returns only on hover or
+     when the tool is active, so the rail stops looking like a generic AI grid.
+     Lucide icons already inherit currentColor, so grayscale is a no-op on them. */
+  filter: grayscale(1) opacity(0.6);
+  transition: filter 160ms ease;
+}
+
+.workspace-nav__tool:hover .workspace-nav__tool-icon,
+.workspace-nav__tool.is-active .workspace-nav__tool-icon {
+  filter: grayscale(0) opacity(1);
 }
 
 .workspace-nav__tool--custom {
@@ -1908,4 +1937,344 @@ blockquote cite {
   .home-immersive__artifact-tools a {
     transition: none;
   }
+}
+
+/* Operator Edition v2 — the local demonstration experience. This deliberately
+   uses Veloce's own chapter vocabulary, procedural depth, and live route
+   handoffs. It is an editorial rhythm, not a copied third-party page. */
+.home-immersive {
+  --edition-accent: #ff6b47;
+  --edition-shade: #271313;
+  --edition-light: #ffd8c8;
+  min-height: 900vh;
+  background: var(--edition-shade);
+  transition: background 700ms ease;
+}
+
+.home-immersive::before {
+  opacity: 0.14;
+  background-size: 72px 72px;
+}
+
+.home-immersive__stage {
+  background:
+    radial-gradient(circle at 72% 42%, color-mix(in srgb, var(--edition-accent) 38%, transparent), transparent 26%),
+    radial-gradient(circle at 42% 70%, color-mix(in srgb, var(--edition-light) 13%, transparent), transparent 36%),
+    linear-gradient(120deg, color-mix(in srgb, var(--edition-shade) 97%, #050508), color-mix(in srgb, var(--edition-shade) 68%, #050508) 58%, #09080d);
+  transition: background 700ms ease;
+}
+
+.home-immersive__stage::after {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--edition-shade) 76%, #030305) 0%, transparent 30%, transparent 70%, color-mix(in srgb, var(--edition-shade) 72%, #030305) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.13), transparent 42%, color-mix(in srgb, var(--edition-shade) 65%, transparent) 100%);
+}
+
+.home-edition-head {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--edition-shade) 72%, rgba(4, 4, 7, 0.94)), transparent);
+}
+
+.home-edition-head__brand strong {
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.home-immersive__hero {
+  min-height: 112vh;
+  padding-top: 110px;
+}
+
+.home-immersive__eyebrow {
+  color: var(--edition-light);
+}
+
+.home-immersive__copy h1 {
+  max-width: 920px;
+  color: #fffaf5;
+  font-size: clamp(56px, 8.1vw, 122px);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+.home-immersive__copy h1 span {
+  color: var(--edition-light);
+}
+
+.home-immersive__copy p {
+  max-width: 620px;
+  color: color-mix(in srgb, var(--edition-light) 78%, #fff);
+}
+
+.home-immersive__primary {
+  color: #120f10;
+  background: var(--edition-light);
+  border-color: color-mix(in srgb, var(--edition-light) 76%, #fff);
+}
+
+.home-immersive__secondary {
+  border-color: color-mix(in srgb, var(--edition-light) 34%, transparent);
+}
+
+.home-immersive__primary:hover,
+.home-immersive__secondary:hover,
+.home-immersive__dock a:hover {
+  border-color: var(--edition-light);
+  transform: translateY(-3px);
+}
+
+.home-immersive__chapters {
+  display: block;
+}
+
+.home-immersive__chapter {
+  min-height: 148vh;
+  display: grid;
+  align-items: center;
+  padding: clamp(110px, 13vw, 190px) clamp(24px, 6vw, 112px);
+  background:
+    radial-gradient(circle at 80% 30%, color-mix(in srgb, var(--chapter-accent) 36%, transparent), transparent 26%),
+    linear-gradient(150deg, color-mix(in srgb, var(--chapter-shade) 78%, transparent), color-mix(in srgb, var(--chapter-shade) 30%, transparent) 55%, transparent);
+  box-shadow: inset 0 1px color-mix(in srgb, var(--chapter-light) 14%, transparent);
+  isolation: isolate;
+}
+
+.home-immersive__chapter::before {
+  inset: auto 0 0;
+  z-index: -1;
+  height: min(54vw, 700px);
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--chapter-shade) 86%, #07070a));
+  border: 0;
+}
+
+.home-immersive__chapter-card {
+  width: min(1240px, 100%);
+  grid-template-columns: minmax(0, 0.85fr) minmax(460px, 1.15fr);
+  gap: clamp(44px, 8vw, 136px);
+  opacity: 0.5;
+  transform: translateY(56px) scale(0.98);
+  transition: opacity 460ms ease, transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-immersive__chapter-card.is-active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.home-immersive__chapter-top {
+  color: var(--chapter-light);
+  border-top: 1px solid color-mix(in srgb, var(--chapter-light) 36%, transparent);
+  padding-top: 14px;
+}
+
+.home-immersive__chapter-card p {
+  margin-top: 38px;
+  color: var(--chapter-light);
+  font-size: 11px;
+}
+
+.home-immersive__chapter-name {
+  display: block;
+  margin-top: 8px;
+  color: color-mix(in srgb, var(--chapter-light) 70%, transparent);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.home-immersive__chapter-card h2 {
+  margin-top: 20px;
+  color: #fffaf5;
+  font-size: clamp(42px, 5vw, 76px);
+  font-weight: 600;
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+.home-immersive__chapter-card .home-immersive__chapter-copy-block > div:last-of-type {
+  color: color-mix(in srgb, var(--chapter-light) 78%, #fff);
+  font-size: 16px;
+}
+
+.home-immersive__chapter-link {
+  color: var(--chapter-light);
+  border-bottom: 1px solid color-mix(in srgb, var(--chapter-light) 42%, transparent);
+}
+
+.home-immersive__artifact {
+  min-height: 0;
+  overflow: hidden;
+  color: #201d22;
+  border: 0;
+  border-radius: 4px;
+  background: #f7f2ea;
+  box-shadow: 0 38px 90px rgba(0, 0, 0, 0.34), 0 1px 0 rgba(255, 255, 255, 0.75) inset;
+  transform: perspective(1400px) rotateY(-2deg) rotateX(1deg);
+  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 500ms ease;
+}
+
+.home-immersive__chapter-card.is-active .home-immersive__artifact:hover {
+  box-shadow: 0 48px 110px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.75) inset;
+  transform: perspective(1400px) rotateY(0) rotateX(0) translateY(-8px);
+}
+
+.home-immersive__artifact-head {
+  min-height: 58px;
+  padding: 0 22px;
+  color: #5d5452;
+  border-bottom: 1px solid rgba(40, 33, 38, 0.12);
+  font-size: 10px;
+}
+
+.home-immersive__artifact-head i {
+  color: #167749;
+}
+
+.home-immersive__artifact-story {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 18px;
+  padding: clamp(30px, 4vw, 52px) clamp(22px, 4vw, 50px);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--chapter-light) 62%, #fff), #f7f2ea 58%);
+}
+
+.home-immersive__artifact-number {
+  color: var(--chapter-accent);
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: clamp(52px, 6vw, 82px);
+  font-weight: 600;
+  line-height: 0.8;
+  letter-spacing: -0.07em;
+}
+
+.home-immersive__artifact-story span {
+  color: color-mix(in srgb, #211e22 60%, var(--chapter-shade));
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.home-immersive__artifact-story p {
+  margin: 14px 0 0;
+  color: #211e22;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: clamp(22px, 2.4vw, 34px);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.home-immersive__artifact-outcomes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid rgba(40, 33, 38, 0.12);
+  border-bottom: 1px solid rgba(40, 33, 38, 0.12);
+}
+
+.home-immersive__artifact-outcomes > div {
+  display: flex;
+  min-height: 88px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-right: 1px solid rgba(40, 33, 38, 0.12);
+}
+
+.home-immersive__artifact-outcomes > div:last-child { border-right: 0; }
+
+.home-immersive__artifact-outcomes span {
+  color: var(--chapter-accent);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+.home-immersive__artifact-outcomes strong {
+  color: #211e22;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.home-immersive__artifact-tools { background: #f7f2ea; }
+
+.home-immersive__artifact-tools a {
+  min-height: 76px;
+  color: #211e22;
+  border-color: rgba(40, 33, 38, 0.12);
+}
+
+.home-immersive__artifact-tools a:hover {
+  color: #181419;
+  background: color-mix(in srgb, var(--chapter-light) 56%, #fff);
+}
+
+.home-immersive__artifact-tools span { color: var(--chapter-accent); }
+
+.home-immersive__artifact-tools strong { font-size: 12px; }
+
+.home-immersive__dock {
+  min-height: 78vh;
+  padding: 110px 44px;
+  background: #f7f2ea;
+}
+
+.home-immersive__dock-inner {
+  align-items: flex-start;
+  padding: 28px;
+  color: #211e22;
+  border: 1px solid rgba(40, 33, 38, 0.14);
+  border-radius: 4px;
+  background: #fffdfa;
+  box-shadow: 0 24px 60px rgba(41, 25, 23, 0.1);
+}
+
+.home-immersive__dock-inner > div { color: #211e22; }
+
+.home-immersive__dock a {
+  color: #211e22;
+  border-color: rgba(40, 33, 38, 0.16);
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.home-immersive__dock a:hover {
+  color: #211e22;
+  border-color: var(--edition-accent);
+  background: color-mix(in srgb, var(--edition-light) 58%, white);
+}
+
+.home-immersive__overview {
+  padding-top: 110px;
+  background: linear-gradient(180deg, #f7f2ea, var(--bg-deep) 36%);
+}
+
+@media (max-width: 980px) {
+  .home-immersive__chapter { min-height: auto; }
+  .home-immersive__chapter-card { grid-template-columns: 1fr; }
+  .home-immersive__artifact { transform: none; }
+}
+
+@media (max-width: 767px) {
+  .home-immersive { min-height: auto; }
+  .home-immersive__hero { min-height: 100svh; }
+  .home-immersive__copy h1 { font-size: clamp(48px, 14vw, 72px); }
+  .home-immersive__chapter { padding: 100px 16px; }
+  .home-immersive__chapter-card h2 { font-size: clamp(40px, 12vw, 58px); }
+  .home-immersive__artifact-story { grid-template-columns: 64px minmax(0, 1fr); gap: 12px; padding: 28px 18px; }
+  .home-immersive__artifact-outcomes { grid-template-columns: 1fr; }
+  .home-immersive__artifact-outcomes > div { min-height: 64px; border-right: 0; border-bottom: 1px solid rgba(40, 33, 38, 0.12); }
+  .home-immersive__artifact-outcomes > div:last-child { border-bottom: 0; }
+  .home-immersive__dock { padding: 72px 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-immersive,
+  .home-immersive__stage,
+  .home-immersive__chapter-card,
+  .home-immersive__artifact { transition: none; }
+  .home-immersive__artifact { transform: none; }
 }

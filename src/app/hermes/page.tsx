@@ -49,7 +49,7 @@ export default function HermesRoute() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
         {([
           { key: "chat",      label: "Chat",         icon: <MessageSquare size={14} /> },
           { key: "talk",      label: "Talk",         icon: <AudioLines size={14} /> },
@@ -70,7 +70,7 @@ export default function HermesRoute() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-[12.5px] transition"
+              className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg border text-[12.5px] transition truncate"
               style={{
                 background: active ? "rgba(96,165,250,0.16)" : "transparent",
                 borderColor: active ? "#60a5fa" : "var(--panel-border)",

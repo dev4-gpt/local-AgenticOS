@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Send, X, Radio, History, Maximize2, Hammer } from "lucide-react";
 
-const CYAN = "#22d3ee";
-const TEAL = "#34d399";
+// Light-theme-legible tones — the original bright #22d3ee / #34d399 were
+// tuned for a dark background and read as near-invisible text on parchment.
+const CYAN = "#0e7490";
+const TEAL = "#2f8f6b";
 
 // Voice builds use GLM 5.2 (z.ai) — fast, reliable, strong at one-shot HTML/JS
 // (falls back to the on-device model server-side if z.ai ever hiccups) — and land
@@ -220,7 +222,7 @@ export default function JarvisRealtime({ voice = "ash", onClose }: { voice?: str
     setShowHist(true);
   }
 
-  const dot = status === "live" ? TEAL : status === "connecting" ? "#f59e0b" : status === "error" ? "#f87171" : "var(--fg-dimmer)";
+  const dot = status === "live" ? TEAL : status === "connecting" ? "#b45309" : status === "error" ? "#be123c" : "var(--fg-dimmer)";
   return (
     <div className="rounded-2xl border overflow-hidden" style={{ borderColor: `${CYAN}55`, background: "rgba(34,211,238,0.04)" }}>
       <audio ref={audioRef} autoPlay hidden />
@@ -240,11 +242,11 @@ export default function JarvisRealtime({ voice = "ash", onClose }: { voice?: str
               <Radio size={13} /> Go live
             </button>
           ) : (
-            <button onClick={disconnect} className="px-3 h-8 rounded-lg border text-[12px] flex items-center gap-1.5 text-rose-300" style={{ borderColor: "rgba(248,113,113,0.5)" }}>
+            <button onClick={disconnect} className="px-3 h-8 rounded-lg border text-[12px] flex items-center gap-1.5 text-rose-700" style={{ borderColor: "rgba(248,113,113,0.5)" }}>
               <X size={13} /> End
             </button>
           )}
-          {onClose && <button onClick={() => { disconnect(); onClose(); }} title="Close" className="p-1.5 rounded-lg hover:bg-rose-500/15 text-rose-300/80"><X size={14} /></button>}
+          {onClose && <button onClick={() => { disconnect(); onClose(); }} title="Close" className="p-1.5 rounded-lg hover:bg-rose-500/15 text-rose-700/80"><X size={14} /></button>}
         </div>
       </div>
 
@@ -263,7 +265,7 @@ export default function JarvisRealtime({ voice = "ash", onClose }: { voice?: str
           <>
             {status === "connecting" && <div className="text-[12.5px] text-[var(--fg-dim)] flex items-center gap-2"><Loader2 size={13} className="animate-spin" /> Opening the live link… allow the mic if asked.</div>}
             {status === "idle" && lines.length === 0 && <div className="text-[12.5px] text-[var(--fg-dimmer)] text-center py-6">Hit <b style={{ color: TEAL }}>Go live</b> once, then just talk — no clicking per reply. Type any time too.</div>}
-            {err && <div className="text-[12px] text-rose-300 bg-rose-500/10 border border-rose-400/30 rounded-lg px-3 py-2">{err}</div>}
+            {err && <div className="text-[12px] text-rose-700 bg-rose-500/10 border border-rose-400/30 rounded-lg px-3 py-2">{err}</div>}
             {lines.map((l) => (
               <div key={l.id} className="text-[14px] leading-relaxed">
                 <span className="text-[10px] uppercase tracking-widest mr-2" style={{ color: l.role === "you" ? "var(--gold)" : CYAN }}>{l.role === "you" ? "You" : "JARVIS"}</span>
@@ -281,7 +283,7 @@ export default function JarvisRealtime({ voice = "ash", onClose }: { voice?: str
             {previewFile && !building && (
               <div className="ml-auto flex items-center gap-1.5">
                 <a href={jPreviewUrl(previewFile)} target="_blank" rel="noopener noreferrer" title="Open in new tab" className="p-1 rounded hover:bg-[rgba(34,211,238,0.12)]" style={{ color: "var(--fg-dim)" }}><Maximize2 size={12} /></a>
-                <button onClick={() => setPreviewFile(null)} title="Close preview" className="p-1 rounded hover:bg-rose-500/15 text-rose-300/80"><X size={12} /></button>
+                <button onClick={() => setPreviewFile(null)} title="Close preview" className="p-1 rounded hover:bg-rose-500/15 text-rose-700/80"><X size={12} /></button>
               </div>
             )}
           </div>
@@ -295,7 +297,7 @@ export default function JarvisRealtime({ voice = "ash", onClose }: { voice?: str
         <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendText(); }}
           placeholder={status === "live" ? "Talk, or type any time and press Enter…" : "Go live first to chat"}
           disabled={status !== "live"}
-          className="flex-1 bg-[rgba(0,0,0,0.3)] border border-[var(--panel-border)] rounded-lg px-3.5 h-10 text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)] disabled:opacity-40" />
+          className="flex-1 bg-[rgba(38,33,28,.06)] border border-[var(--panel-border)] rounded-lg px-3.5 h-10 text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)] disabled:opacity-40" />
         <button onClick={sendText} disabled={status !== "live" || !input.trim()} className="px-4 h-10 rounded-lg border border-[var(--panel-border)] text-[13px] text-[var(--fg-dim)] disabled:opacity-30 flex items-center gap-1.5"><Send size={14} /> Send</button>
       </div>
     </div>

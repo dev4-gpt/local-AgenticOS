@@ -47,14 +47,14 @@ const SITE_ACCENT: Record<string, string> = {
   aiprofitboardroom: "#a855f7",
   juliangoldieautomation: "#22d3ee",
   aisuccesslab: "#ec4899",
-  aimoneylab: "#a3e635",
+  aimoneylab: "#4d7c0f",
 };
 
 function badgeClass(b: string): string {
-  if (b === "LOW CTR") return "bg-[rgba(56,189,248,0.14)] text-sky-300 border-sky-400/30";
-  if (b === "STRIKING DISTANCE") return "bg-[rgba(163,230,53,0.14)] text-lime-300 border-lime-400/30";
-  if (b === "CONTENT GAP") return "bg-[rgba(251,191,36,0.14)] text-amber-300 border-amber-400/30";
-  return "bg-[rgba(168,85,247,0.14)] text-purple-300 border-purple-400/30";
+  if (b === "LOW CTR") return "bg-[rgba(56,189,248,0.14)] text-sky-800 border-sky-400/30";
+  if (b === "STRIKING DISTANCE") return "bg-[rgba(163,230,53,0.14)] text-lime-800 border-lime-400/30";
+  if (b === "CONTENT GAP") return "bg-[rgba(251,191,36,0.14)] text-amber-800 border-amber-400/30";
+  return "bg-[rgba(168,85,247,0.14)] text-purple-800 border-purple-400/30";
 }
 
 export default function SEOView() {
@@ -396,7 +396,7 @@ export default function SEOView() {
               className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-[12.5px] transition"
               style={{
                 background: active ? "rgba(163,230,53,0.16)" : "transparent",
-                borderColor: active ? "#a3e635" : "var(--panel-border)",
+                borderColor: active ? "#4d7c0f" : "var(--panel-border)",
                 color: active ? "var(--fg)" : "var(--fg-dim)",
               }}
             >
@@ -421,7 +421,7 @@ export default function SEOView() {
         <a
           href="/downloads/seo-pack.zip"
           download
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12.5px] transition border-[rgba(163,230,53,0.4)] bg-[rgba(163,230,53,0.12)] text-lime-300 hover:bg-[rgba(163,230,53,0.18)]"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12.5px] transition border-[rgba(163,230,53,0.4)] bg-[rgba(163,230,53,0.12)] text-lime-800 hover:bg-[rgba(163,230,53,0.18)]"
           title="Download the skill + config templates + sample transcript (.zip)"
         >
           <Save size={14} /> SEO Pack (.zip)
@@ -433,7 +433,7 @@ export default function SEOView() {
           {/* GSC connection banner */}
           <div className="panel p-4 flex items-center gap-3 flex-wrap">
             <div className="w-9 h-9 rounded-lg grid place-items-center shrink-0" style={{ background: rConnected ? "rgba(163,230,53,0.14)" : "rgba(255,255,255,0.05)" }}>
-              <Globe size={17} className={rConnected ? "text-[#a3e635]" : "text-[var(--fg-dim)]"} />
+              <Globe size={17} className={rConnected ? "text-[#4d7c0f]" : "text-[var(--fg-dim)]"} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -441,7 +441,7 @@ export default function SEOView() {
                 {rConnected === null ? (
                   <span className="text-[10px] text-[var(--fg-dim)]">checking…</span>
                 ) : rConnected ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[rgba(163,230,53,0.16)] text-lime-300 inline-flex items-center gap-1"><CheckCircle2 size={10} /> CONNECTED</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[rgba(163,230,53,0.16)] text-lime-800 inline-flex items-center gap-1"><CheckCircle2 size={10} /> CONNECTED</span>
                 ) : (
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-[rgba(248,113,113,0.16)] text-red-300">NOT CONNECTED</span>
                 )}
@@ -455,13 +455,13 @@ export default function SEOView() {
           {/* research form */}
           <div className="panel p-5">
             <div className="flex items-center gap-2 mb-4">
-              <TrendingUp size={16} className="text-[#a3e635]" />
+              <TrendingUp size={16} className="text-[#4d7c0f]" />
               <h3 className="text-sm font-medium">Keyword research &amp; competitor analysis</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="text-[10px] uppercase tracking-widest text-[var(--fg-dimmer)]">Site to analyse</label>
-                <select value={rSite} onChange={(e) => setRSite(e.target.value)} className="mt-1 w-full bg-[rgba(0,0,0,0.25)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]">
+                <select value={rSite} onChange={(e) => setRSite(e.target.value)} className="mt-1 w-full bg-[rgba(38,33,28,.06)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]">
                   {rSites.length === 0 && <option value="">loading…</option>}
                   {rSites.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -469,7 +469,7 @@ export default function SEOView() {
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-widest text-[var(--fg-dimmer)]">Date range</label>
-                <select value={rDays} onChange={(e) => setRDays(Number(e.target.value))} className="mt-1 w-full bg-[rgba(0,0,0,0.25)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]">
+                <select value={rDays} onChange={(e) => setRDays(Number(e.target.value))} className="mt-1 w-full bg-[rgba(38,33,28,.06)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]">
                   <option value={7}>Last 7 days</option>
                   <option value={28}>Last 28 days</option>
                   <option value={90}>Last 90 days</option>
@@ -477,12 +477,12 @@ export default function SEOView() {
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-widest text-[var(--fg-dimmer)]">Seed keyword (optional filter)</label>
-                <input value={rSeed} onChange={(e) => setRSeed(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") runResearch(); }} placeholder="e.g. hermes workspace" className="mt-1 w-full bg-[rgba(0,0,0,0.25)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]" />
+                <input value={rSeed} onChange={(e) => setRSeed(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") runResearch(); }} placeholder="e.g. hermes workspace" className="mt-1 w-full bg-[rgba(38,33,28,.06)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]" />
               </div>
             </div>
             <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
               <p className="text-[11px] text-[var(--fg-dim)] max-w-xl">Scores queries from GSC: striking distance (positions 5–20), low CTR on page 1, content gaps, and high-impression opportunities — then ranks what to write or refresh next.</p>
-              <button onClick={runResearch} disabled={rLoading || !rSite} className="flex items-center gap-2 px-4 h-[38px] rounded-lg border text-sm font-medium transition disabled:opacity-50 border-[rgba(163,230,53,0.4)] bg-[rgba(163,230,53,0.14)] text-lime-300 hover:bg-[rgba(163,230,53,0.2)]">
+              <button onClick={runResearch} disabled={rLoading || !rSite} className="flex items-center gap-2 px-4 h-[38px] rounded-lg border text-sm font-medium transition disabled:opacity-50 border-[rgba(163,230,53,0.4)] bg-[rgba(163,230,53,0.14)] text-lime-800 hover:bg-[rgba(163,230,53,0.2)]">
                 {rLoading ? <><Loader2 size={14} className="animate-spin" /> Researching…</> : <><Search size={14} /> Run research</>}
               </button>
             </div>
@@ -507,7 +507,7 @@ export default function SEOView() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-[var(--fg)]">{t.keyword}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[rgba(163,230,53,0.16)] text-lime-300 metric">SCORE {t.score.toLocaleString()}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[rgba(163,230,53,0.16)] text-lime-800 metric">SCORE {t.score.toLocaleString()}</span>
                         {t.badges.map((b) => <span key={b} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${badgeClass(b)}`}>{b}</span>)}
                       </div>
                       <p className="text-[12px] text-[var(--fg-dim)] mt-1">{t.reason}</p>
@@ -516,16 +516,16 @@ export default function SEOView() {
                         <span>{t.clicks} clicks</span>
                         <span>{(t.ctr * 100).toFixed(1)}% CTR</span>
                         <span>avg pos {t.position}</span>
-                        {t.page && <a href={t.page} target="_blank" rel="noopener" className="inline-flex items-center gap-1 text-[var(--fg-dim)] hover:text-[#a3e635] truncate max-w-[300px]"><Link2 size={10} /> {t.page.replace(/^https?:\/\//, "")}</a>}
+                        {t.page && <a href={t.page} target="_blank" rel="noopener" className="inline-flex items-center gap-1 text-[var(--fg-dim)] hover:text-[#4d7c0f] truncate max-w-[300px]"><Link2 size={10} /> {t.page.replace(/^https?:\/\//, "")}</a>}
                       </div>
                       {t.competitors && t.competitors.length > 0 && (
                         <div className="mt-2.5 pt-2.5 border-t border-[var(--panel-border)]">
                           <div className="text-[10px] uppercase tracking-widest text-[var(--fg-dimmer)] mb-1 flex items-center gap-1"><Globe size={10} /> Top competitors in SERP</div>
-                          {t.competitors.slice(0, 3).map((c) => <a key={c.link} href={c.link} target="_blank" rel="noopener" className="block text-[11.5px] text-sky-300/80 hover:text-sky-300 truncate"><ExternalLink size={9} className="inline mr-1" />{c.title}</a>)}
+                          {t.competitors.slice(0, 3).map((c) => <a key={c.link} href={c.link} target="_blank" rel="noopener" className="block text-[11.5px] text-sky-800/80 hover:text-sky-800 truncate"><ExternalLink size={9} className="inline mr-1" />{c.title}</a>)}
                         </div>
                       )}
                     </div>
-                    <button onClick={() => useTopic(t.keyword)} className="flex items-center gap-1.5 px-3 h-[34px] rounded-lg border text-[12.5px] shrink-0 transition border-[rgba(163,230,53,0.35)] text-lime-300 hover:bg-[rgba(163,230,53,0.14)]">
+                    <button onClick={() => useTopic(t.keyword)} className="flex items-center gap-1.5 px-3 h-[34px] rounded-lg border text-[12.5px] shrink-0 transition border-[rgba(163,230,53,0.35)] text-lime-800 hover:bg-[rgba(163,230,53,0.14)]">
                       <Sparkles size={13} /> Use topic <ArrowRight size={12} />
                     </button>
                   </div>
@@ -536,7 +536,7 @@ export default function SEOView() {
 
           {!rData && !rError && !rLoading && (
             <div className="panel p-6 text-center text-[12.5px] text-[var(--fg-dim)]">
-              Pick a site and hit <span className="text-lime-300">Run research</span> to pull your live Search Console opportunities.
+              Pick a site and hit <span className="text-lime-800">Run research</span> to pull your live Search Console opportunities.
             </div>
           )}
         </div>
@@ -546,7 +546,7 @@ export default function SEOView() {
         <div className="space-y-5">
           <div className="panel p-5">
             <div className="flex items-center gap-2 mb-4">
-              <Sparkles size={16} className="text-[#a3e635]" />
+              <Sparkles size={16} className="text-[#4d7c0f]" />
               <h3 className="text-sm font-medium">Generate 5 unique SEO articles for all 5 sites</h3>
             </div>
 
@@ -557,7 +557,7 @@ export default function SEOView() {
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
                   placeholder="e.g. hermes mcp server"
-                  className="mt-1 w-full bg-[rgba(0,0,0,0.25)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]"
+                  className="mt-1 w-full bg-[rgba(38,33,28,.06)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]"
                 />
               </div>
               <div>
@@ -566,7 +566,7 @@ export default function SEOView() {
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
                   placeholder="hermes-mcp-server"
-                  className="mt-1 w-full bg-[rgba(0,0,0,0.25)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)] font-[var(--font-geist-mono)]"
+                  className="mt-1 w-full bg-[rgba(38,33,28,.06)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)] font-[var(--font-geist-mono)]"
                 />
               </div>
             </div>
@@ -580,7 +580,7 @@ export default function SEOView() {
                     className="px-2 py-1 rounded-md text-[10px] uppercase tracking-widest border transition flex items-center gap-1"
                     style={{
                       background: transcriptMode === "pick" ? "rgba(163,230,53,0.16)" : "transparent",
-                      borderColor: transcriptMode === "pick" ? "#a3e635" : "var(--panel-border)",
+                      borderColor: transcriptMode === "pick" ? "#4d7c0f" : "var(--panel-border)",
                       color: transcriptMode === "pick" ? "var(--fg)" : "var(--fg-dim)",
                     }}
                   >
@@ -591,7 +591,7 @@ export default function SEOView() {
                     className="px-2 py-1 rounded-md text-[10px] uppercase tracking-widest border transition flex items-center gap-1"
                     style={{
                       background: transcriptMode === "paste" ? "rgba(163,230,53,0.16)" : "transparent",
-                      borderColor: transcriptMode === "paste" ? "#a3e635" : "var(--panel-border)",
+                      borderColor: transcriptMode === "paste" ? "#4d7c0f" : "var(--panel-border)",
                       color: transcriptMode === "paste" ? "var(--fg)" : "var(--fg-dim)",
                     }}
                   >
@@ -643,7 +643,7 @@ export default function SEOView() {
                     }}
                     rows={10}
                     placeholder={`Paste your transcript here. Could be raw YouTube auto-captions, a Descript export, or a bullet-point outline.\n\nExample:\n\nHow to use AI agents with Hermes to rank number one. Free AI SEO agent tutorial.\n\nPROOF: Example website's traffic went from 12-19 clicks a day to 364 clicks…`}
-                    className="w-full bg-[rgba(0,0,0,0.25)] border border-[var(--panel-border)] rounded-lg px-3 py-2 text-[13px] outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)] font-[var(--font-geist-mono)] resize-y leading-relaxed"
+                    className="w-full bg-[rgba(38,33,28,.06)] border border-[var(--panel-border)] rounded-lg px-3 py-2 text-[13px] outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)] font-[var(--font-geist-mono)] resize-y leading-relaxed"
                   />
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-[var(--fg-dim)]">
@@ -651,7 +651,7 @@ export default function SEOView() {
                     </span>
                     <div className="flex items-center gap-2">
                       {savedNotice && (
-                        <span className={savedNotice.startsWith("saved") ? "text-emerald-300" : "text-rose-300"}>
+                        <span className={savedNotice.startsWith("saved") ? "text-emerald-800" : "text-rose-800"}>
                           {savedNotice}
                         </span>
                       )}
@@ -717,7 +717,7 @@ export default function SEOView() {
                 {generating ? (
                   <button
                     onClick={stopGenerate}
-                    className="px-4 h-[38px] rounded-lg flex items-center gap-1.5 text-sm bg-[rgba(248,113,113,0.15)] border border-[rgba(248,113,113,0.45)] text-rose-300"
+                    className="px-4 h-[38px] rounded-lg flex items-center gap-1.5 text-sm bg-[rgba(248,113,113,0.15)] border border-[rgba(248,113,113,0.45)] text-rose-800"
                   >
                     <Square size={14} /> Stop
                   </button>
@@ -726,7 +726,7 @@ export default function SEOView() {
                     onClick={startGenerate}
                     disabled={!keyword.trim() || !slug.trim()}
                     className="px-4 h-[38px] rounded-lg flex items-center gap-1.5 text-sm transition disabled:opacity-40"
-                    style={{ background: "rgba(163,230,53,0.2)", border: "1px solid rgba(163,230,53,0.55)", color: "#a3e635" }}
+                    style={{ background: "rgba(163,230,53,0.2)", border: "1px solid rgba(163,230,53,0.55)", color: "#4d7c0f" }}
                   >
                     <Play size={14} /> Generate 5 articles
                   </button>
@@ -739,12 +739,12 @@ export default function SEOView() {
             <div className="panel p-5">
               <div className="flex items-center justify-between mb-2">
                 <div className="text-sm font-medium flex items-center gap-2">
-                  <FileSearch size={14} className="text-[#a3e635]" />
+                  <FileSearch size={14} className="text-[#4d7c0f]" />
                   Live generation
-                  {generating && <span className="inline-flex ml-2"><span className="tick live" style={{color:"#a3e635"}}/><span className="tick live" style={{color:"#a3e635",animationDelay:".15s"}}/><span className="tick live" style={{color:"#a3e635",animationDelay:".3s"}}/></span>}
+                  {generating && <span className="inline-flex ml-2"><span className="tick live" style={{color:"#4d7c0f"}}/><span className="tick live" style={{color:"#4d7c0f",animationDelay:".15s"}}/><span className="tick live" style={{color:"#4d7c0f",animationDelay:".3s"}}/></span>}
                 </div>
                 {genDone && (
-                  <div className={`text-[11px] uppercase tracking-widest ${genDone.code === 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                  <div className={`text-[11px] uppercase tracking-widest ${genDone.code === 0 ? "text-emerald-800" : "text-rose-800"}`}>
                     {genDone.code === 0 ? "✓ done" : `exit ${genDone.code}`}
                   </div>
                 )}
@@ -771,7 +771,7 @@ export default function SEOView() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                 {sites.filter((s) => writtenSiteIds.has(s.site.id) || deployStatus[s.site.id]).map((s) => {
-                  const accent = SITE_ACCENT[s.site.id] ?? "#a3e635";
+                  const accent = SITE_ACCENT[s.site.id] ?? "#4d7c0f";
                   const status = deployStatus[s.site.id];
                   const liveUrl = `${s.site.url}/blog/${slug}/`;
                   return (
@@ -803,7 +803,7 @@ export default function SEOView() {
                         <div className="text-[11px] text-[var(--fg-dim)]">11ty build → netlify deploy</div>
                       )}
                       {status === "err" && (deployLog[s.site.id] ?? []).length > 0 && (
-                        <pre className="mt-1 text-[10.5px] text-rose-300/80 bg-[rgba(248,113,113,0.06)] rounded px-1.5 py-1 max-h-[60px] overflow-auto font-[var(--font-geist-mono)] whitespace-pre-wrap">
+                        <pre className="mt-1 text-[10.5px] text-rose-800/80 bg-[rgba(248,113,113,0.06)] rounded px-1.5 py-1 max-h-[60px] overflow-auto font-[var(--font-geist-mono)] whitespace-pre-wrap">
                           {(deployLog[s.site.id] ?? []).join("").slice(-300)}
                         </pre>
                       )}
@@ -823,7 +823,7 @@ export default function SEOView() {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {sites.map((s) => {
-              const accent = SITE_ACCENT[s.site.id] ?? "#a3e635";
+              const accent = SITE_ACCENT[s.site.id] ?? "#4d7c0f";
               const status = deployStatus[s.site.id];
               const log = deployLog[s.site.id] ?? [];
               return (
@@ -836,8 +836,8 @@ export default function SEOView() {
                       <div className="text-[10px] text-[var(--fg-dimmer)] font-[var(--font-geist-mono)] truncate">{s.site.path}</div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {status === "ok"  && <CheckCircle2 size={14} className="text-emerald-300" />}
-                      {status === "err" && <AlertCircle size={14} className="text-rose-300" />}
+                      {status === "ok"  && <CheckCircle2 size={14} className="text-emerald-800" />}
+                      {status === "err" && <AlertCircle size={14} className="text-rose-800" />}
                       <button
                         disabled={status === "running"}
                         onClick={() => deploySite(s.site.id)}
@@ -899,7 +899,7 @@ export default function SEOView() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {historyDeploys.slice(0, 12).map((d) => {
-                  const accent = SITE_ACCENT[d.siteId] ?? "#a3e635";
+                  const accent = SITE_ACCENT[d.siteId] ?? "#4d7c0f";
                   const colour = d.status === "ok" ? "#86efac" : d.status === "failed" ? "#f87171" : "#fbbf24";
                   return (
                     <motion.div
@@ -952,7 +952,7 @@ export default function SEOView() {
                           </div>
                         )}
                         {d.errorTail && d.status === "failed" && (
-                          <pre className="mt-2 text-[10.5px] text-rose-300/80 bg-[rgba(248,113,113,0.06)] rounded px-2 py-1 max-h-[80px] overflow-auto font-[var(--font-geist-mono)] whitespace-pre-wrap">
+                          <pre className="mt-2 text-[10.5px] text-rose-800/80 bg-[rgba(248,113,113,0.06)] rounded px-2 py-1 max-h-[80px] overflow-auto font-[var(--font-geist-mono)] whitespace-pre-wrap">
                             {d.errorTail.slice(-400)}
                           </pre>
                         )}
@@ -968,7 +968,7 @@ export default function SEOView() {
           <section>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-medium flex items-center gap-2">
-                <Sparkles size={14} className="text-[#a3e635]" />
+                <Sparkles size={14} className="text-[#4d7c0f]" />
                 Generate sessions
                 <span className="text-[10px] uppercase tracking-widest text-[var(--fg-dimmer)] font-normal ml-2">
                   {historySessions.length} sessions logged
@@ -1018,7 +1018,7 @@ export default function SEOView() {
                           </div>
                           <ul className="space-y-1">
                             {s.articles.map((a) => {
-                              const accent = SITE_ACCENT[a.siteId] ?? "#a3e635";
+                              const accent = SITE_ACCENT[a.siteId] ?? "#4d7c0f";
                               return (
                                 <li key={a.filePath} className="flex items-center gap-2 text-[11.5px]">
                                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: accent, boxShadow: `0 0 8px ${accent}` }} />
@@ -1083,9 +1083,9 @@ export default function SEOView() {
               <span className="flex items-center gap-1.5 text-[11.5px] metric px-2.5 py-1 rounded-full border"
                 style={{
                   borderColor: openseoUp ? "rgba(163,230,53,0.4)" : "var(--panel-border)",
-                  color: openseoUp ? "#a3e635" : "var(--fg-dim)",
+                  color: openseoUp ? "#4d7c0f" : "var(--fg-dim)",
                 }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: openseoUp ? "#a3e635" : openseoUp === false ? "#f87171" : "#a1a1aa" }} />
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: openseoUp ? "#4d7c0f" : openseoUp === false ? "#f87171" : "#a1a1aa" }} />
                 {openseoUp == null ? "checking…" : openseoUp ? "running" : "not running"}
               </span>
               <a href="http://localhost:3001" target="_blank" rel="noopener noreferrer"
@@ -1097,7 +1097,7 @@ export default function SEOView() {
 
           {openseoUp === false ? (
             <div className="rounded-xl border border-[var(--panel-border)] p-6 text-[13px] text-[var(--fg-dim)] leading-relaxed">
-              <div className="flex items-center gap-2 text-amber-300 mb-2"><AlertCircle size={16} /> OpenSEO isn&apos;t responding on localhost:3001.</div>
+              <div className="flex items-center gap-2 text-amber-800 mb-2"><AlertCircle size={16} /> OpenSEO isn&apos;t responding on localhost:3001.</div>
               Make sure Docker Desktop is running, then start it:
               <pre className="mt-2 p-3 rounded-lg bg-[rgba(255,255,255,0.04)] text-[12px] overflow-x-auto">cd ~/open-seo &amp;&amp; docker compose up -d</pre>
               It auto-restarts with Docker, so this is usually a one-time step after a reboot.

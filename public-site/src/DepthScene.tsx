@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-const CHAPTER_COLORS = ["#f4ae4e", "#72d8c0", "#8d7eff", "#f4ae4e", "#72d8c0", "#8d7eff"].map((value) => new THREE.Color(value));
+const CHAPTER_COLORS = ["#d4a574", "#5ab896", "#c4607e", "#c97c5e", "#a87f54", "#3a8a6e"].map((value) => new THREE.Color(value));
 
 /**
  * Original Veloce system visual: small signal dots establish connections as the
@@ -73,7 +73,7 @@ export default function DepthScene({ progress }: { progress: number }) {
     const signalAttribute = new THREE.BufferAttribute(signalPositions, 3);
     signalGeometry.setAttribute("position", signalAttribute);
     const signalMesh = new THREE.Points(signalGeometry, new THREE.PointsMaterial({
-      color: 0xdde6f1, size: mobile ? 0.045 : 0.038, transparent: true, opacity: 0.82, depthWrite: false,
+      color: 0xf0e6d8, size: mobile ? 0.045 : 0.038, transparent: true, opacity: 0.82, depthWrite: false,
     }));
     group.add(signalMesh);
 
@@ -83,7 +83,7 @@ export default function DepthScene({ progress }: { progress: number }) {
     connectionGeometry.setAttribute("position", connectionAttribute);
     connectionGeometry.setDrawRange(0, 0);
     const connectionMesh = new THREE.LineSegments(connectionGeometry, new THREE.LineBasicMaterial({
-      color: 0x8aa5b9, transparent: true, opacity: 0.29,
+      color: 0xa8927e, transparent: true, opacity: 0.29,
     }));
     group.add(connectionMesh);
 
@@ -96,12 +96,12 @@ export default function DepthScene({ progress }: { progress: number }) {
     }
     dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
     const dustMesh = new THREE.Points(dustGeometry, new THREE.PointsMaterial({
-      color: 0xd2d9e5, size: 0.022, transparent: true, opacity: 0.58, depthWrite: false,
+      color: 0xd8cdb8, size: 0.022, transparent: true, opacity: 0.58, depthWrite: false,
     }));
     group.add(dustMesh);
 
-    scene.add(new THREE.PointLight(0xf4ae4e, 15, 20).translateX(-2).translateY(2).translateZ(3));
-    scene.add(new THREE.AmbientLight(0x9ab2e7, 1.1));
+    scene.add(new THREE.PointLight(0xd4a574, 15, 20).translateX(-2).translateY(2).translateZ(3));
+    scene.add(new THREE.AmbientLight(0xcdbfa0, 1.1));
 
     let target = 0;
     let current = 0;
@@ -205,5 +205,5 @@ export default function DepthScene({ progress }: { progress: number }) {
     };
   }, []);
 
-  return <div ref={mountRef} data-progress={progress} className="depth-scene" aria-hidden="true"><div className="depth-fallback"><span>Signal</span><i></i><span>Context</span><i></i><span>Orchestrate</span><i></i><span>Approval</span></div></div>;
+  return <div ref={mountRef} data-progress={progress} className="depth-scene" aria-hidden="true"><div className="depth-fallback"><span>Command</span><i></i><span>Context</span><i></i><span>Orchestrate</span><i></i><span>Create</span><i></i><span>Govern</span><i></i><span>Deliver</span></div></div>;
 }

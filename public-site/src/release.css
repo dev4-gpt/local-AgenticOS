@@ -1,7 +1,7 @@
 /* Public-release boundary styles are kept separate from the compressed base. */
 .legal {
   padding: 10vw 7vw;
-  background: #090c14;
+  background: #15101a;
   border-top: 1px solid var(--line);
 }
 
@@ -23,7 +23,7 @@
 .legal article {
   min-height: 230px;
   padding: 28px;
-  background: #0e1420;
+  background: #1c1622;
 }
 
 .legal h3 {
@@ -34,7 +34,7 @@
 
 .legal article p {
   margin: 0;
-  color: #aebccc;
+  color: #ddd0bb;
   font-size: 13px;
   line-height: 1.75;
 }

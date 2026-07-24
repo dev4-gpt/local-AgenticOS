@@ -62,7 +62,7 @@ export default function ClaudeAnt() {
           </div>
         </div>
         {loaded.current && (
-          <div className="text-[11px] px-2.5 py-1 rounded-full border" style={{ borderColor: connected ? "rgba(52,211,153,.4)" : "var(--panel-border)", color: connected ? "#34d399" : "var(--fg-dim)" }}>
+          <div className="text-[11px] px-2.5 py-1 rounded-full border" style={{ borderColor: connected ? "rgba(47,143,107,.35)" : "var(--panel-border)", color: connected ? "var(--emerald)" : "var(--fg-dim)" }}>
             {connected ? `● connected${status?.version ? " · " + status.version.split(/\s+/)[0] : ""}` : status?.wrongAnt ? "⚠ wrong ‘ant’ found" : "○ not connected"}
           </div>
         )}
@@ -72,7 +72,7 @@ export default function ClaudeAnt() {
       {connected && (
         <div className="space-y-3">
           <div className="flex gap-2 items-center">
-            <div className="flex items-center gap-1.5 flex-1 bg-[rgba(0,0,0,.3)] border rounded-xl px-3 py-2.5" style={{ borderColor: "var(--panel-border)" }}>
+            <div className="flex items-center gap-1.5 flex-1 bg-[rgba(38,33,28,.06)] border rounded-xl px-3 py-2.5" style={{ borderColor: "var(--panel-border)" }}>
               <span className="text-[var(--fg-dimmer)] font-[var(--font-geist-mono)] text-[13px]">ant</span>
               <input value={cmd} onChange={(e) => setCmd(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") runCmd(); }}
                 className="flex-1 bg-transparent outline-none text-[13.5px] font-[var(--font-geist-mono)]" style={{ color: "var(--fg)" }} placeholder="models" />
@@ -89,7 +89,7 @@ export default function ClaudeAnt() {
           </div>
           {out && (
             <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--panel-border)" }}>
-              <div className="px-3 py-2 text-[11.5px] font-[var(--font-geist-mono)] border-b flex items-center justify-between" style={{ borderColor: "var(--panel-border)", color: out.ok ? "#34d399" : "#f87171" }}>
+              <div className="px-3 py-2 text-[11.5px] font-[var(--font-geist-mono)] border-b flex items-center justify-between" style={{ borderColor: "var(--panel-border)", color: out.ok ? "var(--emerald)" : "var(--plum)" }}>
                 <span>$ {out.cmd}</span><span>{out.ok ? "ok" : "error"}</span>
               </div>
               <pre className="scroll p-3 text-[12px] leading-relaxed overflow-auto max-h-[360px] font-[var(--font-geist-mono)]" style={{ color: "var(--fg-dim)" }}>
@@ -108,11 +108,11 @@ export default function ClaudeAnt() {
           ) : (
             <p className="text-[13.5px] text-[var(--fg-dim)] mb-3">The <b>Claude Platform CLI</b> isn't connected yet. Once you install it and log in, this tab becomes a live cockpit for the entire Claude Platform.</p>
           )}
-          <div className="text-[12px] font-[var(--font-geist-mono)] bg-[rgba(0,0,0,.3)] rounded-lg p-3 space-y-1.5 mb-1" style={{ color: "var(--fg-dim)" }}>
+          <div className="text-[12px] font-[var(--font-geist-mono)] bg-[rgba(38,33,28,.08)] rounded-lg p-3 space-y-1.5 mb-1" style={{ color: "var(--fg-dim)" }}>
             <div><span className="text-[var(--fg-dimmer)]"># 1. install (from platform.claude.com — brew / curl / go)</span></div>
-            <div className="text-[#34d399]">brew install anthropics/tap/ant</div>
+            <div className="text-[var(--emerald)] font-medium">brew install anthropics/tap/ant</div>
             <div><span className="text-[var(--fg-dimmer)]"># 2. log in (browser OAuth, scoped to a workspace)</span></div>
-            <div className="text-[#34d399]">ant auth login</div>
+            <div className="text-[var(--emerald)] font-medium">ant auth login</div>
             <div><span className="text-[var(--fg-dimmer)]"># then restart the dashboard — this tab goes live</span></div>
           </div>
           <p className="text-[11.5px] text-[var(--fg-dimmer)] mt-2">Tip: not sure of the exact install command? Open Claude Code and ask — it knows <code>ant</code> via the built-in <code>/claude-api</code> skill.</p>
@@ -124,7 +124,7 @@ export default function ClaudeAnt() {
         <div className="text-[11px] uppercase tracking-widest text-[var(--fg-dimmer)] mb-2">What this unlocks</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {FEATURES.map((f) => (
-            <div key={f.t} className="rounded-xl border p-4" style={{ borderColor: "var(--panel-border)", background: "rgba(255,255,255,.02)" }}>
+            <div key={f.t} className="rounded-xl border p-4" style={{ borderColor: "var(--panel-border)", background: "rgba(38,33,28,.02)" }}>
               <div className="grid place-items-center w-9 h-9 rounded-lg mb-2.5" style={{ background: "rgba(217,119,87,.14)", color: ACCENT }}>{f.icon}</div>
               <div className="text-[14px] font-medium mb-1">{f.t}</div>
               <div className="text-[12.5px] text-[var(--fg-dim)] leading-relaxed">{f.d}</div>
