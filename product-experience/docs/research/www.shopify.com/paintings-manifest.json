@@ -1,0 +1,14 @@
+[
+ {"slug": "sidekick", "title": "Self-Portrait", "artist": "Rembrandt van Rijn", "localPath": "/images/editions/paintings/sidekick.jpg", "source": "https://www.metmuseum.org/art/collection/search/437397"},
+ {"slug": "agentic", "title": "Study of a Young Woman", "artist": "Johannes Vermeer", "localPath": "/images/editions/paintings/agentic.jpg", "source": "https://www.metmuseum.org/art/collection/search/437879"},
+ {"slug": "online", "title": "The Coronation of the Virgin", "artist": "Sandro Botticelli", "localPath": "/images/editions/paintings/online.jpg", "source": "https://www.metmuseum.org/art/collection/search/435731"},
+ {"slug": "retail", "title": "Filippo Archinto, Archbishop of Milan", "artist": "Titian", "localPath": "/images/editions/paintings/retail.jpg", "source": "https://www.metmuseum.org/art/collection/search/437823"},
+ {"slug": "marketing", "title": "Giuliano de' Medici, Duke of Nemours", "artist": "Raphael", "localPath": "/images/editions/paintings/marketing.jpg", "source": "https://www.metmuseum.org/art/collection/search/437373"},
+ {"slug": "checkout", "title": "The Fortune-Teller", "artist": "Georges de La Tour", "localPath": "/images/editions/paintings/checkout.jpg", "source": "https://www.metmuseum.org/art/collection/search/436838"},
+ {"slug": "operations", "title": "View of Toledo", "artist": "El Greco", "localPath": "/images/editions/paintings/operations.jpg", "source": "https://www.metmuseum.org/art/collection/search/436575"},
+ {"slug": "shop-app", "title": "Portrait of a Carthusian", "artist": "Petrus Christus", "localPath": "/images/editions/paintings/shop-app.jpg", "source": "https://www.metmuseum.org/art/collection/search/435896"},
+ {"slug": "b2b", "title": "Portrait of a Young Man", "artist": "Bronzino", "localPath": "/images/editions/paintings/b2b.jpg", "source": "https://www.metmuseum.org/art/collection/search/435802"},
+ {"slug": "finance", "title": "Francesco Sassetti and His Son Teodoro", "artist": "Domenico Ghirlandaio", "localPath": "/images/editions/paintings/finance.jpg", "source": "https://www.metmuseum.org/art/collection/search/436489"},
+ {"slug": "shipping", "title": "Benedikt von Hertenstein", "artist": "Hans Holbein the Younger", "localPath": "/images/editions/paintings/shipping.jpg", "source": "https://www.metmuseum.org/art/collection/search/436657"},
+ {"slug": "developer", "title": "Alessandro Vittoria", "artist": "Paolo Veronese", "localPath": "/images/editions/paintings/developer.jpg", "source": "https://www.metmuseum.org/art/collection/search/437889"}
+]

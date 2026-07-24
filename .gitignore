@@ -22,6 +22,11 @@
 /public-site/node_modules/
 /public-site/dist/
 /public-site/tsconfig.tsbuildinfo
+
+# Standalone product-experience app
+/product-experience/node_modules/
+/product-experience/.next/
+
 /test-results/
 /out/
 
