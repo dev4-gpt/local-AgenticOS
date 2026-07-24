@@ -59,6 +59,7 @@ next-env.d.ts
 # ruflo/claude-flow runtime data — never ship or commit (audit #12)
 .claude-flow/
 member-pack/.claude-flow/
+.swarm/
 
 # Local Netlify folder
 .netlify

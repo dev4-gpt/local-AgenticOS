@@ -113,6 +113,29 @@ export default function RufloView() {
         <Stat icon={<Cpu size={11} />} label="swarm" value={sw?.status ?? "—"} color={sw?.status === "running" ? EMERALD : MUTE} />
       </div>
 
+      {/* Legend — each node encodes two things at once (outer ring = role,
+          inner fill = status), which reads as noise without this. */}
+      {agents.length > 0 && (
+        <div className="flex items-center gap-4 flex-wrap text-[10.5px] px-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="uppercase tracking-widest text-[9px]" style={{ color: MUTE }}>Outer ring = role</span>
+            <LegendDot color={BLUE} label="Research" />
+            <LegendDot color={PINK} label="Review/QA" />
+            <LegendDot color={GOLD} label="SEO/Optim" />
+            <LegendDot color={PLUM} label="Architecture" />
+            <LegendDot color={EMERALD} label="Build" />
+          </div>
+          <div className="w-px h-3" style={{ background: "var(--line-soft)" }} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="uppercase tracking-widest text-[9px]" style={{ color: MUTE }}>Fill = status</span>
+            <LegendDot color={MUTE} label="Idle" />
+            <LegendDot color={GOLD} label="Working" pulse />
+            <LegendDot color={EMERALD} label="Done" />
+            <LegendDot color={PLUM} label="Failed" />
+          </div>
+        </div>
+      )}
+
       {/* The graph */}
       <div className="panel p-0 overflow-hidden" style={{ minHeight: 540, background: "radial-gradient(ellipse at center, rgba(212,165,116,0.05), #0a070d)" }}>
         {agents.length === 0 ? (
@@ -128,6 +151,17 @@ export default function RufloView() {
         )}
       </div>
     </div>
+  );
+}
+
+function LegendDot({ color, label, pulse }: { color: string; label: string; pulse?: boolean }) {
+  return (
+    <span className="flex items-center gap-1.5" style={{ color: "var(--cream-mute)" }}>
+      <span className="relative inline-flex w-2.5 h-2.5 rounded-full" style={{ background: color }}>
+        {pulse && <span className="absolute inset-0 rounded-full animate-ping" style={{ background: color, opacity: 0.6 }} />}
+      </span>
+      {label}
+    </span>
   );
 }
 
@@ -197,8 +231,10 @@ function SwarmGraph({ swarm, agents }: { swarm: Swarm | null; agents: Agent[] })
               </circle>
             )}
             {done && <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize="13" fill={sc}>✓</text>}
-            <text x={p.x} y={p.y + r + 13} textAnchor="middle" fontSize="9.5" fill="#f3ebda">{lab}</text>
-            <text x={p.x} y={p.y + r + 24} textAnchor="middle" fontSize="8" fill={MUTE}>{a.type}{a.model ? ` · ${a.model}` : ""}</text>
+            <rect x={p.x - (lab.length * 3.2 + 6)} y={p.y + r + 4} width={lab.length * 6.4 + 12} height={15} rx={4} fill="#0a070d" fillOpacity={0.72} />
+            <text x={p.x} y={p.y + r + 14.5} textAnchor="middle" fontSize="10.5" fontWeight="600" fill="#f3ebda">{lab}</text>
+            <rect x={p.x - (`${a.type}${a.model ? ` · ${a.model}` : ""}`.length * 2.6 + 4)} y={p.y + r + 19} width={`${a.type}${a.model ? ` · ${a.model}` : ""}`.length * 5.2 + 8} height={13} rx={3} fill="#0a070d" fillOpacity={0.72} />
+            <text x={p.x} y={p.y + r + 28.5} textAnchor="middle" fontSize="9" fill={MUTE}>{a.type}{a.model ? ` · ${a.model}` : ""}</text>
           </motion.g>
         );
       })}

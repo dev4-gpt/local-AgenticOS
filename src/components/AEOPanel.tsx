@@ -83,12 +83,17 @@ export default function AEOPanel({ sites }: { sites: string[] }) {
       <div className="panel p-4 flex items-end gap-3 flex-wrap">
         <div className="min-w-[220px]">
           <label className="text-[11px] text-[var(--fg-dim)]">Site</label>
-          {sites.length ? (
-            <select value={site} onChange={(e) => setSite(e.target.value)} className="mt-1 w-full bg-[rgba(38,33,28,.06)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]">
-              {sites.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          ) : (
-            <input value={site} onChange={(e) => setSite(e.target.value)} placeholder="example.com" className="mt-1 w-full bg-[rgba(38,33,28,.06)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]" />
+          <input
+            value={site}
+            onChange={(e) => setSite(e.target.value)}
+            placeholder="example.com"
+            list="aeo-known-sites"
+            className="mt-1 w-full bg-[rgba(38,33,28,.06)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]"
+          />
+          {sites.length > 0 && (
+            <datalist id="aeo-known-sites">
+              {sites.map((s) => <option key={s} value={s} />)}
+            </datalist>
           )}
         </div>
         <button onClick={runCheck} disabled={loading || !site.trim()} className="flex items-center gap-2 px-4 h-[38px] rounded-lg border text-sm font-medium transition disabled:opacity-50 border-[rgba(163,230,53,0.4)] bg-[rgba(163,230,53,0.14)] text-lime-800 hover:bg-[rgba(163,230,53,0.2)]">

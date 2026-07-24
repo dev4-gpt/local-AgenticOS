@@ -448,10 +448,18 @@ export default function SEOView() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="text-[10px] uppercase tracking-widest text-[var(--fg-dimmer)]">Site to analyse</label>
-                <select value={rSite} onChange={(e) => setRSite(e.target.value)} className="mt-1 w-full bg-[rgba(38,33,28,.06)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]">
-                  {rSites.length === 0 && <option value="">loading…</option>}
-                  {rSites.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <input
+                  value={rSite}
+                  onChange={(e) => setRSite(e.target.value)}
+                  placeholder={rSites.length === 0 ? "loading…" : "example.com"}
+                  list="research-known-sites"
+                  className="mt-1 w-full bg-[rgba(38,33,28,.06)] border border-[var(--panel-border)] rounded-lg px-3 h-[38px] text-sm outline-none focus:border-[var(--panel-border-hot)] text-[var(--fg)]"
+                />
+                {rSites.length > 0 && (
+                  <datalist id="research-known-sites">
+                    {rSites.map((s) => <option key={s} value={s} />)}
+                  </datalist>
+                )}
                 {rSite && <p className="text-[10px] text-[var(--fg-dimmer)] mt-1 metric">GSC property: sc-domain:{rSite}</p>}
               </div>
               <div>
