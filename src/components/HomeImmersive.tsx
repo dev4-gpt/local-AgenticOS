@@ -180,6 +180,29 @@ export default function HomeImmersive() {
   }, []);
 
   useEffect(() => {
+    const host = document.querySelector<HTMLElement>("[data-scroll-root]");
+    const sections = CHAPTERS.map((item) => document.getElementById(item.id)).filter(
+      (section): section is HTMLElement => Boolean(section),
+    );
+    if (!host || sections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible) return;
+        const next = CHAPTERS.findIndex((item) => item.id === visible.target.id);
+        if (next >= 0) setActive(next);
+      },
+      { root: host, rootMargin: "-32% 0px -48% 0px", threshold: [0, 0.2, 0.5, 0.8] },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     const mount = mountRef.current;
     if (!mount || reducedMotion) {
       setSceneReady(false);
