@@ -799,7 +799,7 @@ blockquote cite {
 .home-immersive__secondary,
 .home-immersive__dock a {
   color: var(--cream);
-  background: rgba(8,7,11,0.46);
+  background: rgba(8,7,11,0.62);
   border: 1px solid rgba(243,235,218,0.14);
   backdrop-filter: blur(18px);
 }
@@ -2013,7 +2013,8 @@ blockquote cite {
 }
 
 .home-immersive__secondary {
-  border-color: color-mix(in srgb, var(--edition-light) 34%, transparent);
+  color: var(--edition-light);
+  border-color: color-mix(in srgb, var(--edition-light) 65%, transparent);
 }
 
 .home-immersive__primary:hover,
