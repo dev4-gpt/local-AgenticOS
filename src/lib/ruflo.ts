@@ -15,6 +15,8 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { run } from "@/lib/runner";
+import { runSwarmTasks } from "@/lib/rufloExec";
+import type { ExecModel } from "@/lib/rufloModels";
 
 const CF_ROOT = process.env.AGENTIC_OS_CLAUDEFLOW ?? path.join(os.homedir(), ".claude-flow");
 const AGENTS_STORE = path.join(CF_ROOT, "agents", "store.json");
@@ -112,22 +114,30 @@ export async function readState(): Promise<RufloState> {
 // The SEO mission roster — each entry becomes a spawned Ruflo agent (the name
 // carries the SEO role; type maps to a valid Ruflo agent category). This is what
 // makes the swarm graph fan out into a labelled SEO team on screen.
+// NB: type must be one of ruflo's actual enum (verified via `ruflo agent spawn
+// -t bogus`'s error): coder, researcher, tester, reviewer, architect,
+// coordinator, analyst, optimizer, security-architect, security-auditor,
+// memory-specialist, swarm-specialist, performance-engineer, core-architect,
+// test-architect. "seo-specialist"/"frontend-dev" (the original values here)
+// are NOT in that list — ruflo silently rejected those 6 spawns every time,
+// so only half the roster ever registered or ran. Remapped to the nearest
+// real fit below.
 export const SEO_ROSTER: { type: string; name: string }[] = [
   { type: "researcher",    name: "keyword-research" },
   { type: "researcher",    name: "search-intent" },
-  { type: "seo-specialist", name: "competitor-analysis" },
-  { type: "seo-specialist", name: "technical-audit" },
+  { type: "analyst",       name: "competitor-analysis" },
+  { type: "tester",        name: "technical-audit" },
   { type: "architect",     name: "content-architecture" },
   { type: "researcher",    name: "serp-analysis" },
-  { type: "seo-specialist", name: "on-page-optimizer" },
-  { type: "seo-specialist", name: "schema-strategist" },
+  { type: "optimizer",     name: "on-page-optimizer" },
+  { type: "analyst",       name: "schema-strategist" },
   { type: "researcher",    name: "backlink-gap" },
-  { type: "frontend-dev",  name: "core-web-vitals" },
-  { type: "seo-specialist", name: "internal-linking" },
+  { type: "performance-engineer", name: "core-web-vitals" },
+  { type: "analyst",       name: "internal-linking" },
   { type: "reviewer",      name: "seo-qa-reviewer" },
 ];
 
-export interface LaunchResult { ok: boolean; swarmId?: string; spawned: number; objective: string; errors: string[]; }
+export interface LaunchResult { ok: boolean; swarmId?: string; spawned: number; objective: string; errors: string[]; executing: boolean; }
 
 // Providers/models this app will actually pass through to ruflo. Note: ruflo's
 // own internal task router has been observed to still write provider:
@@ -141,7 +151,7 @@ export type RufloProvider = "ollama" | "anthropic" | "openrouter";
 
 // Launch an SEO swarm: init coordination, spawn the roster (each registers in
 // store.json → appears as a node), and kick swarm start in the background.
-export async function launchSeoSwarm(objective: string, provider: RufloProvider = "ollama", model?: string): Promise<LaunchResult> {
+export async function launchSeoSwarm(objective: string, provider: RufloProvider = "ollama", model?: string, execModel: ExecModel = "claude-haiku"): Promise<LaunchResult> {
   const errors: string[] = [];
   const obj = objective.trim().slice(0, 400) || "Build a complete SEO strategy";
 
@@ -149,25 +159,41 @@ export async function launchSeoSwarm(objective: string, provider: RufloProvider 
   const init = await run("ruflo", ["swarm", "init", "--topology", "hierarchical", "--max-agents", "14"], { timeoutMs: 30000 });
   if (!init.ok) errors.push(`init: ${init.stderr.slice(0, 200)}`);
 
-  // 2. spawn the SEO roster (each is a quick registration)
+  // 2. spawn the SEO roster (each is a quick registration) and capture the
+  //    real agent ID ruflo assigns each one, so step 4 can attach real
+  //    output to the right node.
   let spawned = 0;
+  const roster: { agentId: string; type: string; name: string; task: string }[] = [];
   for (const r of SEO_ROSTER) {
     if (!/^[a-z0-9-]{1,40}$/.test(r.type) || !/^[a-z0-9-]{1,40}$/.test(r.name)) continue;
+    const task = `${r.name.replace(/-/g, " ")} for: ${obj}`;
     const args = ["agent", "spawn", "-t", r.type, "-n", r.name, "-p", provider];
     if (model) args.push("-m", model);
-    args.push("--task", `${r.name.replace(/-/g, " ")} for: ${obj}`, "--timeout", "120");
+    args.push("--task", task, "--timeout", "120");
     const s = await run("ruflo", args, { timeoutMs: 25000 });
-    if (s.ok) spawned++;
+    if (s.ok) {
+      spawned++;
+      const idMatch = s.stdout.match(/agent-\d{10,}-[a-z0-9]+/);
+      if (idMatch) roster.push({ agentId: idMatch[0], type: r.type, name: r.name, task });
+    }
   }
 
-  // 3. kick the swarm to actually coordinate work (background — don't block
-  //    the HTTP response, which already returns without awaiting this). The
-  //    call was previously killed after 8s, nowhere near enough for a real
-  //    LLM pass across 8 agents even locally - give it real room to run.
-  void run("ruflo", ["swarm", "start", "-o", obj, "--parallel"], { timeoutMs: 5 * 60_000 }).catch(() => {});
+  // 3. tell ruflo's own coordination state the swarm is running (keeps its
+  //    status/topology display meaningful) — cosmetic at this point, since
+  //    it does not itself execute anything (see rufloExec.ts for why).
+  void run("ruflo", ["swarm", "start", "-o", obj, "--parallel"], { timeoutMs: 60_000 }).catch(() => {});
 
   const state = await readState();
-  return { ok: errors.length === 0, swarmId: state.swarm?.id, spawned, objective: obj, errors };
+  const swarmId = state.swarm?.id;
+
+  // 4. the part that actually does the work: run each agent's task for real
+  //    through Claude Code's headless mode. Background — the HTTP response
+  //    already returns before this finishes.
+  if (swarmId && roster.length) {
+    void runSwarmTasks(swarmId, obj, roster, execModel).catch(() => {});
+  }
+
+  return { ok: errors.length === 0, swarmId, spawned, objective: obj, errors, executing: roster.length > 0 };
 }
 
 // Colour + glyph mapping for agent roles (used by the graph).

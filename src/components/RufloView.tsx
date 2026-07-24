@@ -7,14 +7,17 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Network, Rocket, RefreshCw, Loader2, Users, Cpu, GitBranch, AlertCircle, Zap, Send } from "lucide-react";
+import { Network, Rocket, RefreshCw, Loader2, Users, Cpu, GitBranch, AlertCircle, Zap, Send, ChevronDown, FileText } from "lucide-react";
 import { usePollWhileVisible } from "@/lib/usePollWhileVisible";
+import { EXEC_MODELS, EXEC_MODEL_INFO, type ExecModel } from "@/lib/rufloModels";
 
 const GOLD = "#d4a574", PINK = "#f472b6", BLUE = "#60a5fa", EMERALD = "#5ab896", PLUM = "#c4607e", MUTE = "#a59783";
 
 interface Agent { id: string; type: string; name?: string; status: string; health: number; taskCount: number; model?: string; domain?: string; createdAt?: string; }
 interface Swarm { id: string; topology: string; maxAgents: number; status: string; strategy?: string; createdAt?: string; updatedAt?: string; }
 interface State { installed: boolean; swarm: Swarm | null; agents: Agent[]; activity: { active: boolean; agentCount: number; coordinationActive: boolean } | null; }
+interface TaskResult { agentId: string; type: string; name: string; task: string; status: "running" | "done" | "failed"; output?: string; error?: string; startedAt: number; finishedAt?: number; }
+interface ResultsFile { swarmId: string; objective?: string; tasks: TaskResult[]; }
 
 function roleColor(s: string): string {
   const x = s.toLowerCase();
@@ -39,9 +42,10 @@ export default function RufloView() {
   const [objective, setObjective] = useState("Build a complete SEO strategy + content plan for an AI SaaS");
   const [launching, setLaunching] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const [models, setModels] = useState<string[]>([]);
-  const [ollamaUp, setOllamaUp] = useState<boolean | null>(null);
-  const [model, setModel] = useState<string>("");
+  const [execModel, setExecModel] = useState<ExecModel>("claude-haiku");
+  const [swarmId, setSwarmId] = useState<string | null>(null);
+  const [results, setResults] = useState<ResultsFile | null>(null);
+  const [openTask, setOpenTask] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try { const r = await fetch("/api/ruflo/swarm", { cache: "no-store" }); setState(await r.json()); }
@@ -49,13 +53,16 @@ export default function RufloView() {
   }, []);
   usePollWhileVisible(load, 3000);
 
-  useEffect(() => {
-    fetch("/api/ruflo/models").then((r) => r.json()).then((j) => {
-      setOllamaUp(!!j.ollamaUp);
-      setModels(j.models ?? []);
-      setModel((prev) => prev || (j.models?.[0] ?? ""));
-    }).catch(() => setOllamaUp(false));
+  const loadResults = useCallback(async (id: string) => {
+    try { const r = await fetch(`/api/ruflo/results?swarmId=${encodeURIComponent(id)}`, { cache: "no-store" }); setResults(await r.json()); }
+    catch { /* ignore */ }
   }, []);
+  useEffect(() => {
+    if (!swarmId) return;
+    loadResults(swarmId);
+    const id = setInterval(() => loadResults(swarmId), 3000);
+    return () => clearInterval(id);
+  }, [swarmId, loadResults]);
 
   async function launch() {
     if (launching || !objective.trim()) return;
@@ -63,16 +70,31 @@ export default function RufloView() {
     try {
       const r = await fetch("/api/ruflo/swarm", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ objective, provider: "ollama", model }),
+        body: JSON.stringify({ objective, execModel }),
       });
       const j = await r.json();
-      setNote(j.ok ? `Swarm live — ${j.spawned} agents spawned. Watch them fan out below.` : `Launched with ${j.spawned} agents (${(j.errors||[]).length} warnings).`);
+      if (j.swarmId) { setSwarmId(j.swarmId); setResults(null); setOpenTask(null); }
+      setNote(
+        j.ok
+          ? j.executing
+            ? `Swarm live — ${j.spawned} agents spawned, running real tasks through Claude now. Results appear below as each finishes.`
+            : `Swarm live — ${j.spawned} agents spawned. Watch them fan out below.`
+          : `Launched with ${j.spawned} agents (${(j.errors || []).length} warnings).`
+      );
       await load();
     } catch (e) { setNote(`Launch failed: ${e}`); }
     finally { setLaunching(false); setTimeout(load, 1500); }
   }
 
-  const agents = state?.agents ?? [];
+  // Ruflo's own agent status never moves past "idle" (it doesn't execute
+  // anything itself - see rufloExec.ts). Overlay our real task results onto
+  // the node status shown in the graph so it actually reflects what happened.
+  const resultByAgent = new Map((results?.tasks ?? []).map((t) => [t.agentId, t]));
+  const agents = (state?.agents ?? []).map((a) => {
+    const t = resultByAgent.get(a.id);
+    if (!t) return a;
+    return { ...a, status: t.status === "done" ? "completed" : t.status === "failed" ? "failed" : "working" };
+  });
   const sw = state?.swarm;
   const active = agents.filter(a => /active|busy|working/.test(a.status)).length;
   const done = agents.filter(a => /complet|done|success/.test(a.status)).length;
@@ -90,7 +112,7 @@ export default function RufloView() {
             <div className="text-[11px] uppercase tracking-[0.25em] mb-1" style={{ color: GOLD }}>Ruflo · Multi-Agent Swarm</div>
             <div className="text-[18px] font-semibold text-[var(--cream)] mb-1">Fire a swarm. Watch it fan out.</div>
             <div className="text-[12.5px] text-[var(--cream-mute)] max-w-[680px] leading-snug">
-              Launch a Ruflo SEO mission — specialised agents register and spread out from the swarm core as a live node graph. Each node is a real Ruflo agent (keyword research, competitor analysis, technical audit…), coloured by role and lit by status.
+              Launch a Ruflo SEO mission — agents register as a live node graph, then each one&apos;s task actually runs through Claude Code (Ruflo itself only coordinates state; it doesn&apos;t execute anything on its own). Results appear below as they finish.
             </div>
           </div>
         </div>
@@ -105,12 +127,17 @@ export default function RufloView() {
             placeholder="Mission objective…"
             className="flex-1 min-w-[220px] px-3 py-2 text-[12.5px] rounded-md border bg-transparent text-[var(--cream)] placeholder:text-[var(--cream-mute)]"
             style={{ borderColor: "var(--line-soft)" }} />
-          <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-md border" style={{ borderColor: "var(--line-soft)" }} title="Model this swarm's agents run on — local + free">
+          <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-md border" style={{ borderColor: "var(--line-soft)" }} title="Which of this app's agent CLIs actually runs each task">
             <Cpu size={12} style={{ color: BLUE }} />
-            <select value={model} onChange={(e) => setModel(e.target.value)} disabled={!models.length}
-              className="text-[12px] bg-transparent text-[var(--cream)] outline-none disabled:opacity-50">
-              {models.length === 0 && <option value="">{ollamaUp === false ? "Ollama not running" : "loading…"}</option>}
-              {models.map((m) => <option key={m} value={m} style={{ color: "#0a070d" }}>{m}</option>)}
+            <select value={execModel} onChange={(e) => setExecModel(e.target.value as ExecModel)}
+              className="text-[12px] bg-transparent text-[var(--cream)] outline-none">
+              {Array.from(new Set(EXEC_MODELS.map((m) => EXEC_MODEL_INFO[m].group))).map((group) => (
+                <optgroup key={group} label={group} style={{ color: "#0a070d" }}>
+                  {EXEC_MODELS.filter((m) => EXEC_MODEL_INFO[m].group === group).map((m) => (
+                    <option key={m} value={m} style={{ color: "#0a070d" }}>{EXEC_MODEL_INFO[m].label}</option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
           </div>
           <button onClick={launch} disabled={launching || !objective.trim()}
@@ -120,11 +147,6 @@ export default function RufloView() {
           </button>
           <button onClick={load} title="Refresh" className="p-2 text-[var(--cream-mute)] hover:text-[var(--cream)]"><RefreshCw size={14} /></button>
         </div>
-        {ollamaUp === false && (
-          <div className="text-[11px] mt-2" style={{ color: PLUM }}>
-            Ollama isn&apos;t running on :11434 — start it (<code className="mono">ollama serve</code>) to run swarms on a free local model.
-          </div>
-        )}
         {note && <div className="text-[11px] mt-2" style={{ color: GOLD }}>{note}</div>}
       </div>
 
@@ -175,6 +197,48 @@ export default function RufloView() {
           <SwarmGraph swarm={sw ?? null} agents={agents} />
         )}
       </div>
+
+      {/* Results — real output from Claude for each task, not just the graph's
+          coordination status. This is what makes the swarm's work checkable. */}
+      {results && results.tasks.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 px-1">
+            <FileText size={13} style={{ color: GOLD }} />
+            <span className="text-[12px] font-semibold text-[var(--cream)]">Results</span>
+            <span className="text-[11px]" style={{ color: MUTE }}>
+              {results.tasks.filter((t) => t.status === "done").length}/{results.tasks.length} complete
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {results.tasks.map((t) => {
+              const open = openTask === t.agentId;
+              return (
+                <div key={t.agentId} className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--line-soft)" }}>
+                  <button
+                    onClick={() => setOpenTask(open ? null : t.agentId)}
+                    disabled={t.status !== "done" && t.status !== "failed"}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left disabled:cursor-default"
+                  >
+                    {t.status === "running" && <Loader2 size={12} className="animate-spin shrink-0" style={{ color: GOLD }} />}
+                    {t.status === "done" && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: EMERALD }} />}
+                    {t.status === "failed" && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PLUM }} />}
+                    <span className="text-[12px] font-medium text-[var(--cream)]">{t.name.replace(/-/g, " ")}</span>
+                    <span className="text-[10.5px] flex-1 truncate" style={{ color: MUTE }}>{t.task}</span>
+                    {(t.status === "done" || t.status === "failed") && (
+                      <ChevronDown size={13} style={{ color: MUTE, transform: open ? "rotate(180deg)" : undefined }} />
+                    )}
+                  </button>
+                  {open && (
+                    <div className="px-3 pb-3 text-[12px] leading-relaxed whitespace-pre-wrap" style={{ color: "var(--cream-mute)", borderTop: "1px solid var(--line-soft)", paddingTop: 10 }}>
+                      {t.status === "failed" ? <span style={{ color: PLUM }}>{t.error || "Task failed with no output."}</span> : t.output}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

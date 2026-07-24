@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { readState, launchSeoSwarm, type RufloProvider } from "@/lib/ruflo";
+import { EXEC_MODELS, type ExecModel } from "@/lib/rufloModels";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
   const objective = typeof b.objective === "string" ? b.objective : "";
   const provider: RufloProvider = b.provider === "anthropic" || b.provider === "openrouter" ? b.provider : "ollama";
   const model = typeof b.model === "string" && b.model ? b.model : undefined;
-  const res = await launchSeoSwarm(objective, provider, model);
+  const execModel: ExecModel = EXEC_MODELS.includes(b.execModel as ExecModel) ? (b.execModel as ExecModel) : "claude-haiku";
+  const res = await launchSeoSwarm(objective, provider, model, execModel);
   return NextResponse.json(res, { status: res.ok ? 200 : 207 });
 }
