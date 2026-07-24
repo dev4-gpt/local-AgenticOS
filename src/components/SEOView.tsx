@@ -88,9 +88,6 @@ export default function SEOView() {
   const [rData, setRData] = useState<ResearchResult | null>(null);
   const [rError, setRError] = useState<string | null>(null);
 
-  // ── OpenSEO (embedded local tool, runs in Docker on :3001) ─────────
-  const [openseoUp, setOpenseoUp] = useState<boolean | null>(null);
-
   useEffect(() => {
     if ((tab !== "research" && tab !== "aeo") || rConnected !== null) return;
     fetch("/api/seo/research")
@@ -102,18 +99,6 @@ export default function SEOView() {
       })
       .catch(() => setRConnected(false));
   }, [tab, rConnected, rSite]);
-
-  useEffect(() => {
-    if (tab !== "openseo") return;
-    let stop = false;
-    const ping = () => fetch("/api/openseo/status", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((j) => { if (!stop) setOpenseoUp(!!j.running); })
-      .catch(() => { if (!stop) setOpenseoUp(false); });
-    ping();
-    const id = setInterval(ping, 5000);
-    return () => { stop = true; clearInterval(id); };
-  }, [tab]);
 
   async function runResearch() {
     if (!rSite || rLoading) return;
@@ -1081,36 +1066,21 @@ export default function SEOView() {
         <div className="space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="text-[13px] text-[var(--fg-dim)] max-w-[60ch]">
-              <span className="text-[var(--fg)] font-medium">OpenSEO</span> — a free, self-hosted Semrush/Ahrefs alternative. Keyword research, rank tracking, backlinks &amp; site audits, powered by your own DataForSEO key. Runs locally on this Mac.
+              <span className="text-[var(--fg)] font-medium">OpenSEO</span> — hosted at app.openseo.so ($10/mo base plan, includes $10 of usage credits; Search Console data is free and doesn&apos;t touch that). Keyword research, rank tracking, backlinks &amp; site audits on DataForSEO data.
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="flex items-center gap-1.5 text-[11.5px] metric px-2.5 py-1 rounded-full border"
-                style={{
-                  borderColor: openseoUp ? "rgba(163,230,53,0.4)" : "var(--panel-border)",
-                  color: openseoUp ? "#4d7c0f" : "var(--fg-dim)",
-                }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: openseoUp ? "#4d7c0f" : openseoUp === false ? "#f87171" : "#a1a1aa" }} />
-                {openseoUp == null ? "checking…" : openseoUp ? "running" : "not running"}
-              </span>
-              <a href="http://localhost:3001" target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12.5px] transition border-[var(--panel-border)] text-[var(--fg-dim)] hover:text-[var(--fg)] hover:border-[rgba(163,230,53,0.4)]">
-                <ExternalLink size={14} /> Open full
-              </a>
-            </div>
+            <a href="https://app.openseo.so" target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12.5px] transition shrink-0 border-[var(--panel-border)] text-[var(--fg-dim)] hover:text-[var(--fg)] hover:border-[rgba(163,230,53,0.4)]">
+              <ExternalLink size={14} /> Open in new tab
+            </a>
           </div>
 
-          {openseoUp === false ? (
-            <div className="rounded-xl border border-[var(--panel-border)] p-6 text-[13px] text-[var(--fg-dim)] leading-relaxed">
-              <div className="flex items-center gap-2 text-amber-800 mb-2"><AlertCircle size={16} /> OpenSEO isn&apos;t responding on localhost:3001.</div>
-              Make sure Docker Desktop is running, then start it:
-              <pre className="mt-2 p-3 rounded-lg bg-[rgba(255,255,255,0.04)] text-[12px] overflow-x-auto">cd ~/open-seo &amp;&amp; docker compose up -d</pre>
-              It auto-restarts with Docker, so this is usually a one-time step after a reboot.
-            </div>
-          ) : (
-            <div className="rounded-xl overflow-hidden border border-[var(--panel-border)] bg-white" style={{ height: "78vh" }}>
-              <iframe src="http://localhost:3001" title="OpenSEO" className="w-full h-full border-0" allow="clipboard-write" />
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-[11.5px] text-[var(--fg-dimmer)]">
+            <AlertCircle size={13} /> If the embed below prompts a login instead of your dashboard, that&apos;s a cross-site cookie thing on their end — use &quot;Open in new tab&quot; instead.
+          </div>
+
+          <div className="rounded-xl overflow-hidden border border-[var(--panel-border)] bg-white" style={{ height: "78vh" }}>
+            <iframe src="https://app.openseo.so" title="OpenSEO" className="w-full h-full border-0" allow="clipboard-write" />
+          </div>
         </div>
       )}
 
