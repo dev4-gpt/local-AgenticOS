@@ -470,7 +470,15 @@ export default function HomeImmersive() {
 
       <nav className="home-edition-index" aria-label="Mission Control chapters">
         {CHAPTERS.map((item, index) => (
-          <a key={item.id} href={`#${item.id}`} className={active === index ? "is-active" : ""}>
+          <a
+            key={item.id}
+            href={`#${item.id}`}
+            className={active === index ? "is-active" : ""}
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
             <span>{item.kicker}</span>
             <em>{String(index + 1).padStart(2, "0")}</em>
           </a>
