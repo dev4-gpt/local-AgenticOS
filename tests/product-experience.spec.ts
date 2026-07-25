@@ -44,6 +44,17 @@ test("product experience contact form is present and submittable", async ({ page
   await expect(page.getByRole("button", { name: /start the conversation/i })).toBeVisible();
 });
 
+test("product experience legal links resolve to real policy sections", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  await expect(page.locator("#privacy")).toContainText(/does not expose local files/i);
+  await expect(page.locator("#terms")).toContainText(/signed proposal/i);
+  await expect(page.locator("#security")).toContainText(/private execution/i);
+
+  await page.getByRole("link", { name: /terms of service/i }).click();
+  await expect(page).toHaveURL(/#terms$/);
+});
+
 test("product experience remains usable on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/", { waitUntil: "networkidle" });

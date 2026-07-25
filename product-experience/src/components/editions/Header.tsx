@@ -165,11 +165,14 @@ export function Header() {
           </ul>
           <div className="flex flex-col gap-3 px-5 py-6 text-xs text-white/60">
             <span>&copy; Veloce AgenticOS</span>
-            <a href="#developer" className="no-underline hover:underline">
+            <a href="#terms" onClick={() => setMenuOpen(false)} className="no-underline hover:underline">
               Terms of Service
             </a>
-            <a href="#developer" className="no-underline hover:underline">
+            <a href="#privacy" onClick={() => setMenuOpen(false)} className="no-underline hover:underline">
               Privacy Policy
+            </a>
+            <a href="#security" onClick={() => setMenuOpen(false)} className="no-underline hover:underline">
+              Security
             </a>
           </div>
         </div>

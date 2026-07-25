@@ -2,6 +2,7 @@ import { Header } from "@/components/editions/Header";
 import { SidebarNav } from "@/components/editions/SidebarNav";
 import { HeroSection } from "@/components/editions/HeroSection";
 import { ChapterSection } from "@/components/editions/ChapterSection";
+import { LegalSection } from "@/components/editions/LegalSection";
 import { ThemeObserver } from "@/components/editions/ThemeObserver";
 import { chapters } from "@/data/editions";
 
@@ -15,6 +16,7 @@ export default function Home() {
       {chapters.map((chapter) => (
         <ChapterSection key={chapter.slug} chapter={chapter} />
       ))}
+      <LegalSection />
     </main>
   );
 }

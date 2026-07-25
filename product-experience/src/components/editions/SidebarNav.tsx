@@ -47,14 +47,14 @@ export function SidebarNav() {
 
       <div className="terms-of-service pointer-events-auto absolute bottom-8 flex flex-col gap-2 text-[10px]">
         <p className="font-display">&copy; Veloce AgenticOS</p>
-        <a href="#developer" className="font-display no-underline hover:underline">
+        <a href="#terms" className="font-display no-underline hover:underline">
           Terms of Service
         </a>
-        <a
-          href="#developer"
-          className="font-display no-underline hover:underline"
-        >
+        <a href="#privacy" className="font-display no-underline hover:underline">
           Privacy Policy
+        </a>
+        <a href="#security" className="font-display no-underline hover:underline">
+          Security
         </a>
       </div>
     </aside>
