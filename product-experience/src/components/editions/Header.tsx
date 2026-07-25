@@ -1,13 +1,67 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { chapters } from "@/data/editions";
-import { ChevronDownIcon, MenuIcon, CloseIcon, SearchIcon } from "@/components/icons";
-import { cn } from "@/lib/utils";
+import { MenuIcon, CloseIcon, SearchIcon } from "@/components/icons";
+
+type SearchResult = {
+  key: string;
+  title: string;
+  eyebrow: string;
+  description: string;
+  href: string;
+};
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [editionsOpen, setEditionsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const searchResults = useMemo<SearchResult[]>(() => {
+    const chapterResults = chapters.map((chapter) => ({
+      key: `chapter-${chapter.slug}`,
+      title: chapter.title,
+      eyebrow: `Chapter ${chapter.roman}`,
+      description: `${chapter.items.length || 1} linked operating surface${chapter.items.length === 1 ? "" : "s"}`,
+      href: `#${chapter.slug}`,
+    }));
+
+    const itemResults = chapters.flatMap((chapter) =>
+      chapter.items.map((item) => ({
+        key: `${chapter.slug}-${item.eyebrow}`,
+        title: item.eyebrow ?? chapter.title,
+        eyebrow: chapter.title,
+        description: item.desc ?? "Open this operating surface.",
+        href: item.linkHref ?? `#${chapter.slug}`,
+      }))
+    );
+
+    const needle = query.trim().toLowerCase();
+    const allResults = [...chapterResults, ...itemResults];
+
+    if (!needle) return allResults.slice(0, 8);
+
+    return allResults
+      .filter((result) =>
+        [result.title, result.eyebrow, result.description].some((value) =>
+          value.toLowerCase().includes(needle)
+        )
+      )
+      .slice(0, 10);
+  }, [query]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+      if (event.key === "Escape") setSearchOpen(false);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 bg-gradient-to-b from-black/10 to-transparent">
@@ -17,28 +71,61 @@ export function Header() {
           <span className="opacity-60">Private Operator Edition</span>
         </div>
 
-        <div className="hidden items-center gap-6 lg:flex">
+        <div className="relative hidden items-center lg:flex">
           <button
             type="button"
-            onClick={() => setEditionsOpen((v) => !v)}
-            className="nav-theme-text flex items-center gap-2 text-sm font-medium"
+            onClick={() => setSearchOpen((v) => !v)}
+            className="flex h-10 w-[280px] items-center gap-3 rounded-full border border-black/10 bg-white/95 px-4 text-left text-sm font-medium text-black shadow-sm backdrop-blur transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+            aria-expanded={searchOpen}
+            aria-controls="veloce-search-panel"
           >
-            Editions
-            <ChevronDownIcon className={cn("transition-transform", editionsOpen && "rotate-180")} />
+            <SearchIcon className="shrink-0 text-black/60" />
+            <span className="flex-1 text-black/70">Search OS surfaces</span>
+            <span className="rounded bg-black/5 px-1.5 py-0.5 text-[10px] uppercase text-black/45">Cmd K</span>
           </button>
-          <button type="button" className="nav-theme-text flex items-center gap-2 text-sm font-medium">
-            Search
-            <SearchIcon />
-          </button>
+
+          {searchOpen && (
+            <div
+              id="veloce-search-panel"
+              className="absolute right-0 top-12 w-[420px] overflow-hidden rounded-lg border border-black/10 bg-white text-black shadow-2xl"
+            >
+              <label className="flex items-center gap-3 border-b border-black/10 px-4 py-3">
+                <SearchIcon className="shrink-0 text-black/55" />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search Memory, Flow Lab, Lead routing..."
+                  className="h-9 flex-1 bg-transparent text-sm text-black outline-none placeholder:text-black/45"
+                />
+              </label>
+              <div className="max-h-[460px] overflow-y-auto py-2">
+                {searchResults.length > 0 ? (
+                  searchResults.map((result) => (
+                    <a
+                      key={result.key}
+                      href={result.href}
+                      onClick={() => setSearchOpen(false)}
+                      className="block px-4 py-3 text-black no-underline transition hover:bg-black/[0.04] focus-visible:bg-black/[0.06] focus-visible:outline-none"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="font-heading text-lg font-bold leading-tight">{result.title}</span>
+                        <span className="shrink-0 rounded-full bg-black/[0.06] px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-black/55">
+                          {result.eyebrow}
+                        </span>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-sm leading-snug text-black/62">{result.description}</p>
+                    </a>
+                  ))
+                ) : (
+                  <p className="px-4 py-8 text-center text-sm text-black/55">No matching surface found.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-6">
-          <a
-            href="https://github.com/dev4-gpt/local-AgenticOS"
-            className="nav-theme-text hidden text-sm no-underline hover:underline lg:inline"
-          >
-            GitHub
-          </a>
           <a
             href="#developer"
             className="rounded-full bg-white px-5 py-3 text-sm font-medium text-black no-underline"
@@ -55,30 +142,6 @@ export function Header() {
           </button>
         </div>
       </nav>
-
-      {editionsOpen && (
-        <div className="mx-auto hidden max-w-[1680px] px-8 lg:block">
-          <ul className="w-[280px] rounded-md border border-black/10 bg-white py-2 shadow-lg">
-            {chapters.length > 0 && (
-              <li className="px-4 py-2 text-xs uppercase tracking-wide text-black/50">
-                Past editions
-              </li>
-            )}
-            {["Operator Edition — Command→Deliver", "Runtime — Local & Private", "Method — 90-day engagement"].map(
-              (label) => (
-                <li key={label}>
-                  <a
-                    href="#"
-                    className="block px-4 py-2 text-sm text-black no-underline hover:bg-black/5"
-                  >
-                    {label}
-                  </a>
-                </li>
-              )
-            )}
-          </ul>
-        </div>
-      )}
 
       {menuOpen && (
         <div className="fixed inset-0 z-50 flex flex-col bg-[#292919] text-white lg:hidden">
