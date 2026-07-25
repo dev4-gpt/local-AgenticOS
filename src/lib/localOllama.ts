@@ -2,11 +2,17 @@
 // Used by the Local Agent Kanban so the whole team runs on one warm local model.
 
 const PS = "http://127.0.0.1:11434/api/ps";
+const TAGS = "http://127.0.0.1:11434/api/tags";
 const CHAT = "http://127.0.0.1:11434/api/chat";
+// Last-resort only if Ollama can't even list installed models (still down,
+// wrong port, etc). NOT assumed to be pulled - see resolveModel below, which
+// prefers whatever's actually installed on THIS machine first.
 const FALLBACK = "richardyoung/qwythos-9b-abliterated:latest";
 
-// Use whatever model is ALREADY warm (so we don't load a second one and swap the Mac).
-// Falls back to a known builder if nothing is loaded.
+// Use whatever model is ALREADY warm (so we don't load a second one and swap
+// the Mac). If nothing's warm, fall back to whatever's actually installed
+// (not a hardcoded name - that 404s the moment the assumed model isn't
+// pulled on this particular machine, which is exactly what happened here).
 export async function resolveModel(): Promise<string> {
   if (process.env.LOCAL_MODEL) return process.env.LOCAL_MODEL;
   try {
@@ -15,6 +21,14 @@ export async function resolveModel(): Promise<string> {
       const j = await r.json();
       const loaded: string[] = (j.models || []).map((m: { name?: string; model?: string }) => m.name || m.model).filter(Boolean);
       if (loaded.length) return loaded[0];
+    }
+  } catch { /* ollama down */ }
+  try {
+    const r = await fetch(TAGS, { cache: "no-store" });
+    if (r.ok) {
+      const j = await r.json();
+      const installed: string[] = (j.models || []).map((m: { name?: string; model?: string }) => m.name || m.model).filter(Boolean);
+      if (installed.length) return installed[0];
     }
   } catch { /* ollama down */ }
   return FALLBACK;
