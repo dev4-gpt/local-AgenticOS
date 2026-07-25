@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     email,
     company: body.company ? String(body.company).trim() : null,
     message: body.message ? String(body.message).trim() : null,
-    source: "edition-53565",
+    source: "edition-3565",
     meta: { userAgent: req.headers.get("user-agent") ?? null },
   };
 

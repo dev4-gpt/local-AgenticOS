@@ -5,7 +5,7 @@
 This is the master script for the final product video and live demonstration.
 
 - **Landing page:** `http://127.0.0.1:4321/`
-- **Immersive product experience:** `http://127.0.0.1:53565/#developer`
+- **Immersive product experience:** `http://127.0.0.1:3565/#developer`
 - **Private functional workspace:** `http://127.0.0.1:3939/`
 - **Preserved V0 reference:** `http://127.0.0.1:3737/` (do not show unless comparing the earlier interface)
 
@@ -34,7 +34,7 @@ Veloce AgenticOS is the operating layer I built to connect that work. It gives a
 
 **On screen**
 
-Begin at `4321`. Show the hero, launch video, positioning, and the invitation to explore the system. Cut to the opening scene of `53565`.
+Begin at `4321`. Show the hero, launch video, positioning, and the invitation to explore the system. Cut to the opening scene of `3565`.
 
 ### 00:30-01:10 - The Three-Part Product Journey
 
@@ -50,7 +50,7 @@ Third is the private workspace behind it. This is where the actual work happens.
 
 **On screen**
 
-At `53565`, scroll through the cinematic chapters. Click one representative product card to enter `3939`.
+At `3565`, scroll through the cinematic chapters. Click one representative product card to enter `3939`.
 
 ### 01:10-02:20 - Command: Choose the Right Worker
 
@@ -154,7 +154,7 @@ The interface changes from client to client. The operating principles do not: du
 
 **On screen**
 
-Return to `53565` and scroll through the final delivery chapter. Overlay four concise labels: `Agency delivery`, `Founder operations`, `Research system`, `Professional workspace`.
+Return to `3565` and scroll through the final delivery chapter. Overlay four concise labels: `Agency delivery`, `Founder operations`, `Research system`, `Professional workspace`.
 
 ### 08:15-08:55 - Close and Call to Action
 
@@ -193,13 +193,13 @@ Veloce AgenticOS: map the handoff, keep the context, and deliver the work.
 ## Shot List
 
 1. `4321` hero and launch video: 10 seconds.
-2. `53565` cinematic journey: 20 seconds.
+2. `3565` cinematic journey: 20 seconds.
 3. Command and model routing at `3939`: 35 seconds.
 4. Memory, Graphify, and Notebook: 45 seconds.
 5. Pipeline, Kanban, Loop, and approval state: 45 seconds.
 6. Flow Lab to Web Studio handoff: 75 seconds.
 7. Integrations, Capabilities, and budget state: 35 seconds.
-8. `53565` delivery chapter plus four use cases: 35 seconds.
+8. `3565` delivery chapter plus four use cases: 35 seconds.
 9. `4321` final call to action: 15 seconds.
 
 ## Presenter Notes
