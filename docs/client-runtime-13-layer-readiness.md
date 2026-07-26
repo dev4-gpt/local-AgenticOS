@@ -1,7 +1,7 @@
 # Client Runtime 13-Layer Readiness
 
 Updated 2026-07-26 after reviewing the public intake deployment, the local
-operator runtime, and Cloud Run client image `v7`.
+operator runtime, and Cloud Run client image `v8`.
 
 ## Executive answer
 
@@ -15,7 +15,7 @@ The current state is:
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
-| Cloud Run client shell | Live as image `v7` | Controlled test only |
+| Cloud Run client shell | Live as image `v8` | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |
 | Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
 
@@ -49,10 +49,13 @@ test and an operator notification workflow are still worth adding before
 promising real-time alerts.
 
 The public intake route now applies a conservative five-request/15-minute
-per-forwarded-client throttle, rejects oversized fields, validates email
-shape, and returns generic storage errors without backend details. This is a
-best-effort serverless guard, not a substitute for a durable edge limiter;
-before high-volume promotion, add a provider-backed limiter and alerting.
+per-forwarded-client throttle. Once
+`product-experience/supabase-public-request-hardening.sql` is applied, the
+counter is atomic and durable in Supabase; the in-memory fallback only covers
+temporary RPC unavailability. The route also rejects oversized fields,
+validates email shape, and returns generic storage errors without backend
+details. Before high-volume promotion, add a provider-backed edge limiter and
+alerting.
 
 ## Credential and tenant boundary
 
@@ -90,7 +93,7 @@ retention. Same codebase does not mean same permissions.
 | 6 | Cloud and compute | **Partial** | Cloud Run and Secret Manager are live. Add provider API adapters, private workers, Cloud Tasks/Pub/Sub, bounded retries, idempotency, and long-job status. |
 | 7 | CI/CD and version control | **Partial** | GitHub and versioned images are in use. Add a reviewed client manifest pipeline, image promotion, deployment provenance, and automated rollback checks. |
 | 8 | Security and row-level security | **Partial** | Secrets are kept out of the browser and the intake table has RLS. Add tenant RLS for all runtime data, least-privilege storage/IAM, redacted audit logs, rotation, and cross-tenant tests. |
-| 9 | Rate limiting | **Partial for public intake; missing for the runtime** | Public intake has a best-effort five-request/15-minute serverless throttle. Add durable edge/API limits for intake, login, credential submission, provider calls, and expensive jobs, with abuse alerts and per-client quotas. |
+| 9 | Rate limiting | **Public intake implementation ready; migration/application evidence pending; runtime missing** | Apply the Supabase hardening migration and verify the RPC. Add durable edge/API limits for login, credential submission, provider calls, and expensive jobs, with abuse alerts and per-client quotas. |
 | 10 | Caching and CDN | **Partial** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Add deliberate cache headers, private-data no-store rules, signed object access, and provider-result caching where safe. |
 | 11 | Load balancing and scaling | **Partial** | Cloud Run scales to zero and the test is capped at one instance. Add queue-backed work, concurrency/load tests, per-client quotas, and scaling rules for production workloads. |
 | 12 | Error tracking and logs | **Partial** | Cloud logs and health checks exist. Add structured redacted errors, request IDs, audit events, provider failure classification, alerts, and a retention policy. |
@@ -166,12 +169,17 @@ true:
   `SUPABASE_SERVICE_ROLE_KEY` as encrypted variables.
 - [x] Intake validates required fields and rejects secret-like content.
 - [x] Intake has a basic abuse throttle and does not return backend error detail.
+- [x] Shared rate-limit guard covers both public lead endpoints.
+- [ ] Apply `supabase-public-request-hardening.sql` and verify the RPC in
+  Supabase; until then the route uses its bounded in-memory fallback.
 - [x] Public pages state that they do not expose the operator runtime or accept
   credentials.
 - [x] Live smoke test returns `200` for `/start` and rejects an invalid email
   without creating a request.
 - [x] Production dependency audit passes with
   `npm audit --omit=dev --audit-level=high`.
+- [x] Cloud Run v8 is deployed and passes the client-runtime verification
+  script with security headers enabled.
 - [ ] Review remaining development-toolchain advisories before allowing
   untrusted contributors or automated build scripts into the release process.
 - [ ] Submit one real test request and confirm it appears in Supabase as
@@ -184,3 +192,69 @@ true:
 The unchecked items are operational confirmation, not a reason to expose the
 3939 runtime. The full client runtime remains blocked by the layer table and
 capability adapter inventory above.
+
+## Gate plan and low-cost architecture
+
+The cheapest safe shape is a single-tenant control plane, not one giant shared
+multi-tenant worker and not an always-on VM for every client:
+
+```text
+Vercel free tier: public landing + intake
+        |
+Supabase free tier: requests, Auth, RLS, rate-limit counter, audit metadata
+        |
+GCP Cloud Run min=0: one approved client service per client
+        |-- Secret Manager: client provider secrets
+        |-- Cloud Storage: client files and deliverables
+        `-- Cloud Tasks/Pub/Sub: add only when a capability needs long jobs
+GitHub Actions: build, scan, test, and manifest review
+```
+
+Do not add Redis, an always-on worker, a separate database, or media providers
+until a client workflow requires it. Use `max-instances=1`, explicit provider
+allowlists, model allowlists, monthly budget caps, and `min-instances=0` for the
+first client editions. Media generation, crawling, and long-running agents are
+opt-in cost centers.
+
+Each layer has a gate, an evidence artifact, and a failure action:
+
+| Layer | Gate to pass | Evidence | Failure action |
+|---:|---|---|---|
+| 1 | UI has no private paths, secrets, or misleading enabled controls | Public scan, responsive smoke test, client screenshot | Keep capability gated |
+| 2 | Every enabled action has an authenticated server contract | API route inventory and contract tests | Remove route from manifest |
+| 3 | Every record/file has a client namespace and retention rule | SQL schema, bucket policy, export sample | Do not store the artifact |
+| 4 | Login, logout, expiry, and approved-user membership work | Auth journey and denied-user test | Revoke runtime access |
+| 5 | Image is versioned and rollbackable | Cloud Run revision and deployment manifest | Roll back to last verified image |
+| 6 | Long work is bounded and does not depend on the request process | Worker/queue test or explicit short-job limit | Keep capability disabled |
+| 7 | Same commit produces the tested image and checked manifest | GitHub workflow and image digest | Block promotion |
+| 8 | Secrets, tenant data, and logs do not cross boundaries | Secret scan, IAM review, RLS/cross-tenant test | Destroy/revoke test deployment |
+| 9 | Public and runtime expensive routes have durable limits | Supabase RPC test, 429 test, budget alert | Fail closed or disable route |
+| 10 | Private responses are never shared by a cache | Cache-header and signed-object test | Force `no-store` |
+| 11 | Service scales within a declared budget | Load/concurrency test and max-instance setting | Lower concurrency or queue work |
+| 12 | Errors are redacted, traceable, and alertable | Request ID, structured log, alert test | Stop external action and investigate |
+| 13 | Data, secrets, and image can be recovered or deleted | Restore/export/delete drill | Do not onboard external client |
+
+The public control-plane changes in this release add shared headers, sanitized
+public errors, a durable Supabase rate-limit migration, CI release checks, and
+production dependency checks. The SQL migration still requires one manual
+application in the Supabase project before the durable limiter is considered
+verified.
+
+## Remaining blockers for a full hosted 3939-style product
+
+These are engineering work, not deployment switches:
+
+- Provider adapters for each model/media/service tab; personal CLI sessions
+  cannot become client capacity by adding environment variables.
+- Tenant-scoped runtime tables and object storage for memory, files, jobs, and
+  deliverables, or a documented single-tenant-only equivalent for each route.
+- A real provider-secret promotion/rotation workflow. The current credential
+  inbox safely receives an encrypted submission for manual review; it does not
+  automatically turn that submission into an enabled provider secret.
+- Queue-backed jobs with idempotency, retries, budgets, and approval records.
+- Cross-client isolation, backup/restore, export/deletion, and offboarding
+  evidence using a second dry-run client manifest.
+- Durable runtime rate limits and alerts beyond the public intake guard.
+
+Until these are complete, “production ready” means the public front door and
+approved intake control plane, not unrestricted access to every local tab.

@@ -12,6 +12,7 @@
     "start": "next start -H 127.0.0.1 -p 3565",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "verify:release-gates": "node scripts/verify-release-gates.mjs",
     "check": "npm run lint && npm run typecheck && npm run build"
   },
   "dependencies": {

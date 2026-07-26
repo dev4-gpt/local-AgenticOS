@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { allowPublicRequest, payloadTooLarge } from "@/lib/publicRequestGuard";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -24,42 +25,16 @@ const fields = [
   "notes",
 ] as const;
 
-const RATE_WINDOW_MS = 15 * 60 * 1000;
-const RATE_LIMIT = 5;
-const MAX_BODY_BYTES = 100_000;
-const requestAttempts = new Map<string, number[]>();
-
 function clean(value: unknown) {
   return String(value ?? "").trim();
 }
 
-function clientKey(req: Request) {
-  const forwarded = req.headers.get("x-forwarded-for")?.split(",", 1)[0]?.trim();
-  return forwarded || req.headers.get("x-real-ip")?.trim() || "unknown";
-}
-
-function rateLimit(req: Request) {
-  const key = clientKey(req);
-  const now = Date.now();
-  const recent = (requestAttempts.get(key) ?? []).filter((time) => now - time < RATE_WINDOW_MS);
-  if (recent.length >= RATE_LIMIT) {
-    requestAttempts.set(key, recent);
-    return false;
-  }
-  requestAttempts.set(key, [...recent, now]);
-  return true;
-}
-
 export async function POST(req: Request) {
-  if (!rateLimit(req)) {
-    return NextResponse.json(
-      { ok: false, error: "rate_limited" },
-      { status: 429, headers: { "Retry-After": String(Math.ceil(RATE_WINDOW_MS / 1000)) } },
-    );
+  if (!(await allowPublicRequest(req, "deployment-request"))) {
+    return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
   }
 
-  const contentLength = Number(req.headers.get("content-length") ?? 0);
-  if (contentLength > MAX_BODY_BYTES) {
+  if (payloadTooLarge(req)) {
     return NextResponse.json({ ok: false, error: "payload_too_large" }, { status: 413 });
   }
 

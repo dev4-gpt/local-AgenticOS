@@ -17,7 +17,7 @@ subscriptions.
 | Editorial front door + `/api/lead` | 3565 | Safe to share now; runtime dropdown live | Vercel serverless | `source/product-experience` |
 | Operator/product runtime | 3939/3737 | Owner-only local runtime | Local persistent compute | `source` |
 | Local client-safe test | 3940 | Local verification only | Local Next runtime | `source` with `dev:client-runtime` |
-| Internal cloud client-safe test | n/a | Live internal validation runtime | GCP Cloud Run | `source` image `client-runtime:v7` |
+| Internal cloud client-safe test | n/a | Live internal validation runtime | GCP Cloud Run | `source` image `client-runtime:v8` |
 
 ## What Goes Live First
 
@@ -53,7 +53,7 @@ deployment, security, scaling, observability, and recovery is maintained in
 GCP project: veloce-agenticos-2026
 Region: asia-south1
 Service: veloce-cloud-test
-Image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v7
+Image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v8
 Primary service URL: https://veloce-cloud-test-1075094991117.asia-south1.run.app
 Product dropdown login URL: https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2F
 Runtime service account: veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com
@@ -65,9 +65,10 @@ Allowed runtime user: aryamandev777@gmail.com
 
 Verification completed:
 
-- Cloud Build image `client-runtime:v7` built successfully.
+- Cloud Build image `client-runtime:v8` built successfully.
 - Cloud Run service deployed with `min-instances=0`, `max-instances=1`, and
   app-auth mode.
+- Client-runtime v8 acceptance verification passed; security headers are active.
 - `npm run verify:client-runtime` passed against the Cloud Run URL.
 - Product page was redeployed and aliased to
   <https://product-experience-five.vercel.app>.
