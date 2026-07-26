@@ -1,7 +1,7 @@
 # Client Runtime 13-Layer Readiness
 
 Updated 2026-07-26 after reviewing the public intake deployment, the local
-operator runtime, and Cloud Run client image `v9`.
+operator runtime, and Cloud Run client image `v10`.
 
 ## Executive answer
 
@@ -15,7 +15,7 @@ The current state is:
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
-| Cloud Run client shell | Live as image `v9` | Controlled test only |
+| Cloud Run client shell | Live as image `v10`, Supabase data mode enabled | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |
 | Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
 
@@ -178,7 +178,7 @@ true:
   without creating a request.
 - [x] Production dependency audit passes with
   `npm audit --omit=dev --audit-level=high`.
-- [x] Cloud Run v9 is deployed and passes the client-runtime verification
+- [x] Cloud Run v10 is deployed and passes the client-runtime verification
   script with security headers enabled.
 - [ ] Review remaining development-toolchain advisories before allowing
   untrusted contributors or automated build scripts into the release process.
