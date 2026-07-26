@@ -1,0 +1,150 @@
+# Client Runtime 13-Layer Readiness
+
+Updated 2026-07-26 after reviewing the public intake deployment, the local
+operator runtime, and Cloud Run client image `v7`.
+
+## Executive answer
+
+The business has a real public front door and a real isolated Cloud Run test,
+but it does **not** yet have a fully cloud-hosted version of every local tab.
+The current state is:
+
+| Surface | Status | Safe to share? |
+|---|---|---|
+| Public landing page | Published on Vercel and Cloud Run | Yes |
+| Public runtime request form | Published on Vercel | Yes |
+| Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
+| Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
+| Cloud Run client shell | Live as image `v7` | Controlled test only |
+| Full 3939 operator OS | Local only | No, never publish directly |
+| Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
+
+### Links
+
+- Public landing page: https://veloce-agenticos-public.vercel.app
+- Public product front door: https://product-experience-five.vercel.app
+- Request runtime: https://product-experience-five.vercel.app/start
+- Cloud client test login: https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2F
+- Private local operator runtime: http://127.0.0.1:3939/
+- Local Free Claude Code helper: http://127.0.0.1:8082/ (loopback only; not a product URL)
+
+## What happens to a public request
+
+1. A visitor opens `/start` and submits name, email, company, and workflow.
+2. The Vercel server route `/api/deployment-request` validates the fields and
+   rejects secret-like values.
+3. The server route uses the encrypted Vercel Production
+   `SUPABASE_SERVICE_ROLE_KEY` to insert a `pending_approval` record into the
+   Supabase `public.deployment_requests` table.
+4. The browser receives only success or failure status. It does not receive
+   the service-role key.
+5. Manual approval is still required. The form does not automatically create a
+   Cloud Run service or grant access.
+
+Production environment metadata was verified on 2026-07-26. Vercel lists
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+`NEXT_PUBLIC_CLIENT_RUNTIME_URL`, and
+`NEXT_PUBLIC_ALLOW_LOCAL_CLIENT_RUNTIME_LINK` in Production. A live submission
+test and an operator notification workflow are still worth adding before
+promising real-time alerts.
+
+## Credential and tenant boundary
+
+There are three separate kinds of credentials:
+
+1. **Runtime login:** Supabase Auth session used to access an approved client
+   runtime.
+2. **Provider credentials:** client-owned or Veloce-managed API keys held by
+   Secret Manager and used server-side by an approved adapter.
+3. **Operator credentials:** personal CLI sessions, local vault data, local
+   files, and local helper services used only by `3939`.
+
+The current cloud test does not put raw provider keys in the browser. The
+credentials screen shows connection state, and the submission flow sends a
+provider value to the configured client vault inbox. That is a foundation, not
+proof that every future client is automatically secure. Before external
+clients are onboarded, each deployment needs a unique service account, secret
+prefix, storage boundary, Auth membership, capability manifest, budget, audit
+trail, rotation process, export, and deletion path.
+
+Every client can use the same tested image and visual shell, but clients should
+not necessarily see the same features. The manifest controls branding,
+capabilities, providers, models, storage namespace, budgets, approvals, and
+retention. Same codebase does not mean same permissions.
+
+## The 13 layers
+
+| # | Layer | Current state | What remains before external client readiness |
+|---:|---|---|---|
+| 1 | Frontend foundations | **Ready for public pages and the client shell; partial parity with 3939** | Replace gated placeholders only after the underlying adapter is ready; finish responsive/error-state review per enabled capability. |
+| 2 | APIs and backend logic | **Partial** | Intake, Auth, credential status, and approval-shaped workflows exist. Feature APIs still include local/operator implementations and need cloud contracts. |
+| 3 | Database and storage | **Partial** | Supabase intake data exists and a cloud bucket is provisioned. Add tenant-scoped runtime records, object storage paths, signed downloads, export, and deletion. |
+| 4 | Auth and permissions | **Partial, test-ready** | Supabase Auth and middleware protect the client test. Add client membership, roles, session lifecycle, operator/admin separation, and explicit RBAC tests. |
+| 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
+| 6 | Cloud and compute | **Partial** | Cloud Run and Secret Manager are live. Add provider API adapters, private workers, Cloud Tasks/Pub/Sub, bounded retries, idempotency, and long-job status. |
+| 7 | CI/CD and version control | **Partial** | GitHub and versioned images are in use. Add a reviewed client manifest pipeline, image promotion, deployment provenance, and automated rollback checks. |
+| 8 | Security and row-level security | **Partial** | Secrets are kept out of the browser and the intake table has RLS. Add tenant RLS for all runtime data, least-privilege storage/IAM, redacted audit logs, rotation, and cross-tenant tests. |
+| 9 | Rate limiting | **Missing** | Add edge/API rate limits for intake, login, credential submission, provider calls, and expensive jobs; include abuse alerts and per-client quotas. |
+| 10 | Caching and CDN | **Partial** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Add deliberate cache headers, private-data no-store rules, signed object access, and provider-result caching where safe. |
+| 11 | Load balancing and scaling | **Partial** | Cloud Run scales to zero and the test is capped at one instance. Add queue-backed work, concurrency/load tests, per-client quotas, and scaling rules for production workloads. |
+| 12 | Error tracking and logs | **Partial** | Cloud logs and health checks exist. Add structured redacted errors, request IDs, audit events, provider failure classification, alerts, and a retention policy. |
+| 13 | Availability and recovery | **Partial / not production-ready** | Revision rollback exists. Add database/object backup, restore drills, secret recovery, export/offboarding, incident runbook, uptime target, and a second-client recovery test. |
+
+## Private operator dependency inventory
+
+An API key is only enough when the surface already has a server-side provider
+adapter. A key cannot replace a local filesystem, local CLI session, Mac vault,
+or a loopback service.
+
+| Surface or tab | Current dependency | Cloud treatment |
+|---|---|---|
+| Claude, Codex | Personal CLI/subscription session in local execution paths | Provider API adapter with client key, model allowlist, budget, approval, and queued jobs |
+| OpenClaw, Hermes | Local agents/credential pool and local execution | Reviewed provider/API adapter; no personal CLI session in hosted capacity |
+| Antigravity | Local tool/auth path | Gemini API adapter plus tenant-scoped job/output storage |
+| Kimi Code | Local CLI/auth path | Moonshot API adapter plus budget and approval policy |
+| GLM 5.2, GLM Code | Local/provider-specific execution | GLM API adapter and model allowlist |
+| Grok Build | Local/provider-specific execution | xAI API adapter and outbound-action approval |
+| Free Claude Code | `fcc-server` at `127.0.0.1:8082` and local Claude CLI | Replace with an approved API-backed workflow; never publish port 8082 |
+| Local, Local Engine, Ollama | Laptop models, filesystem, and local process state | Optional per-client model service or approved hosted model API; Cloud Storage/Supabase for state |
+| Paperclip | Local service at `localhost:3100` and local company/workspace data | Isolated hosted Paperclip deployment or a Veloce workflow adapter with its own database and service account |
+| Open Design, Web Studio, Flow Lab, Video, Music, Agent Studio, OpenMontage, Game Studio, Thumbnails | Local creative services, provider keys, or local output paths | One adapter per workspace; provider API, Cloud Storage outputs, signed access, budget, and approval |
+| Pipeline, Agent Kanban, Loop, Ruflo | Local files, local models/CLI, operator vault, or orchestration state | Supabase/Cloud Storage state plus Cloud Tasks/Pub/Sub worker and tenant-scoped audit records |
+| Memory, Notebook, Journal, Goals, Context intake | Client-safe intake pieces exist, but local-memory parity is not complete | Supabase tables, tenant RLS, object storage for attachments, retention/export/delete |
+| SEO, Integrations, Build Guide | Operator configuration, local credential paths, private source material, or redistribution risk | Client-safe contracts, provider APIs, secret references, licensed/original content, approval, and audit |
+| Delivery and external actions | Approval-shaped UI exists; execution and delivery adapters vary | Per-action provider adapter, human approval, idempotency, audit, and client-specific destination |
+
+The current Cloud Run gate is therefore expected behavior. It prevents a client
+from reaching code that would otherwise attempt to use the operator laptop.
+Removing the gate before adapting the route would turn a visible limitation
+into a security and reliability problem.
+
+## Repeatable path for each capability
+
+For every gated tab, use this sequence:
+
+1. Inventory its reads, writes, local paths, subprocesses, provider calls,
+   credentials, outbound actions, and long-running work.
+2. Classify it as `client-safe`, `api-adapter-required`, or `operator-only`.
+3. Define the client contract: inputs, outputs, allowed models, storage,
+   budget, approval points, errors, and retention.
+4. Replace local files with tenant-scoped Supabase/Cloud Storage records.
+5. Replace local CLI or helper services with a server-side provider API or a
+   private queued worker. Never make the browser call localhost.
+6. Add secret references, service-account IAM, request validation, rate
+   limits, audit events, and redaction.
+7. Add functional, authorization, tenant-isolation, secret, budget, retry,
+   accessibility, and recovery tests.
+8. Enable the route in only one dry-run manifest, deploy the same image, and
+   verify it before enabling it for another client.
+
+## Sharing decision
+
+Share the public landing page and runtime request form now. Describe the Cloud
+Run URL as an approved internal test, not as a promise that all 3939 features
+are already hosted. Do not share `3939`, `8082`, local vault paths, private
+operator credentials, or a client runtime with capabilities that have not
+passed the adapter and tenant-isolation checks above.
+
+This document is the release gate for turning the local operator OS into a
+multi-client hosted product. It should be updated whenever a capability moves
+from operator-only to client-safe.

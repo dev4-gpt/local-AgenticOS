@@ -77,6 +77,51 @@ Before cloud work, classify each route or module:
 
 Reject a deployment plan that exposes raw shell commands, arbitrary paths, another tenant's identifiers, provider admin screens, or personal subscription credentials.
 
+## Eliminate operator dependencies deliberately
+
+The client runtime must not become a local replica merely because its UI looks
+like the operator edition. A route is not client-safe when it reaches a Mac
+path, local vault, personal CLI login, loopback service, unrestricted shell, or
+operator-only workspace data. Adding an API key to that route is insufficient.
+
+Use this migration loop for every gated tab or capability:
+
+1. Inventory reads, writes, subprocesses, local services, provider calls,
+   credentials, outbound actions, and long-running work.
+2. Classify the capability as `client-safe`, `api-adapter-required`, or
+   `operator-only`.
+3. Define a narrow client contract for inputs, outputs, models, budgets,
+   approvals, errors, retention, and ownership.
+4. Move state to tenant-scoped Supabase tables or Cloud Storage with RLS,
+   signed access, export, and deletion behavior.
+5. Replace local CLI/helper execution with a provider API or private
+   Cloud Tasks/Pub/Sub worker. Never call `localhost` from the browser and
+   never put personal subscription sessions in hosted capacity.
+6. Add Secret Manager references, least-privilege IAM, validation, rate
+   limits, audit events, redaction, idempotency, and bounded retries.
+7. Add acceptance tests for behavior, authorization, tenant isolation, secret
+   handling, budget enforcement, accessibility, failures, and recovery.
+8. Enable the route in one dry-run Client Edition Manifest, deploy the same
+   tested image, inspect logs and browser output, then promote it to clients.
+
+Do not solve a gate by deleting the gate. The gate is a security boundary until
+the underlying dependency has a reviewed replacement. Maintain the full route
+inventory and current status in
+`docs/client-runtime-13-layer-readiness.md`.
+
+### Capability migration classifications
+
+Use these initial classifications for Veloce:
+
+| Classification | Examples | Required next step |
+|---|---|---|
+| `client-safe` | Public pages, client login, context/request intake, capability and credential status | Keep tenant-scoped and add the acceptance evidence required for the client manifest. |
+| `api-adapter-required` | Claude, Codex, OpenClaw, Hermes, Antigravity, Kimi, GLM, Grok, media workspaces, SEO, delivery actions | Build the provider/storage/worker contract, then enable only with client secrets, budgets, and approvals. |
+| `operator-only` | Local, Local Engine, Free Claude Code proxy, personal CLI sessions, local vault/files, local Paperclip, unreplaced orchestration and private source material | Keep out of Cloud Run or replace it with a separately reviewed hosted service. |
+
+The canonical tab-by-tab inventory and the 13-layer readiness table are part of
+the release evidence, not optional project notes.
+
 ## GCP reference mapping
 
 Use equivalent managed services when another cloud is selected.
@@ -133,6 +178,15 @@ Do not call a client deployment complete without evidence for:
 - Mobile, keyboard, reduced-motion, and error-state behavior.
 - Dependency, secret, and container scans.
 - Rollback to the previous tested image.
+
+## Thirteen-layer release gate
+
+Before calling the business production-ready, review the companion matrix for
+all thirteen layers: frontend, APIs, data, auth, hosting, compute, CI/CD,
+security/RLS, rate limiting, caching/CDN, scaling, error tracking/logs, and
+availability/recovery. `Ready for the test track` is not the same as `ready to
+share as a full client product`. Missing rate limits, tenant RLS, recovery
+drills, or provider adapters block external capability enablement.
 
 ## Expected output
 

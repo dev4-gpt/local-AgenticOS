@@ -75,6 +75,8 @@ boundaries, and the request surfaces. Its manifest intentionally enables only
 `delivery` and `quality` and allowlists only Supabase. The detailed split between
 provider-API work and private operator work is in
 [docs/runtime-capability-matrix.md](./docs/runtime-capability-matrix.md).
+The complete 13-layer publication and operator-dependency decision is in
+[docs/client-runtime-13-layer-readiness.md](./docs/client-runtime-13-layer-readiness.md).
 
 ## Live Local Verification Snapshot
 

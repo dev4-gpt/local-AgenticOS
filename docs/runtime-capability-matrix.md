@@ -2,6 +2,10 @@
 
 Updated 2026-07-26 after verifying the local processes and the first Cloud Run client-safe image.
 
+For the complete 13-layer business readiness assessment, shareability decision,
+and tab-by-tab operator dependency inventory, see
+[`docs/client-runtime-13-layer-readiness.md`](client-runtime-13-layer-readiness.md).
+
 ## Runtime boundary
 
 | Runtime | Purpose | What it may use |

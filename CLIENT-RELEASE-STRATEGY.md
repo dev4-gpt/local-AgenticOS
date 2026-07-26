@@ -45,6 +45,9 @@ The current local-versus-client dependency classification is maintained in
 [docs/runtime-capability-matrix.md](./docs/runtime-capability-matrix.md). It is
 the checklist to use before adding a provider key or enabling another route in
 a client manifest.
+The full business readiness decision across frontend, APIs, data, auth,
+deployment, security, scaling, observability, and recovery is maintained in
+[docs/client-runtime-13-layer-readiness.md](./docs/client-runtime-13-layer-readiness.md).
 
 ```text
 GCP project: veloce-agenticos-2026
@@ -190,6 +193,10 @@ credential status endpoint is `/api/client-runtime/credentials` and returns
 only connected/not-connected booleans.
 
 ## Required Gates Before A Client Runtime Link
+
+These gates are summarized in the 13-layer readiness document. A Cloud Run URL
+is an internal validation link until the enabled capabilities have passed the
+adapter, tenant-isolation, budget, and recovery checks.
 
 - Authentication, logout, and session expiry.
 - Tenant A cannot enumerate, read, mutate, or infer Tenant B data.
