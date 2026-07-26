@@ -168,6 +168,12 @@ true:
 - [x] Intake has a basic abuse throttle and does not return backend error detail.
 - [x] Public pages state that they do not expose the operator runtime or accept
   credentials.
+- [x] Live smoke test returns `200` for `/start` and rejects an invalid email
+  without creating a request.
+- [x] Production dependency audit passes with
+  `npm audit --omit=dev --audit-level=high`.
+- [ ] Review remaining development-toolchain advisories before allowing
+  untrusted contributors or automated build scripts into the release process.
 - [ ] Submit one real test request and confirm it appears in Supabase as
   `pending_approval`.
 - [ ] Confirm who reviews requests and how the owner is notified; the current
