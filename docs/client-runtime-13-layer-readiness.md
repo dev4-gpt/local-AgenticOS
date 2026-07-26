@@ -216,6 +216,11 @@ allowlists, model allowlists, monthly budget caps, and `min-instances=0` for the
 first client editions. Media generation, crawling, and long-running agents are
 opt-in cost centers.
 
+An optional Oracle/Coolify worker plane is documented in
+[`docs/oracle-self-hosted-runtime-option.md`](./oracle-self-hosted-runtime-option.md).
+It is not part of the current cloud-test deployment and must not become a
+second shared secrets store or source of truth.
+
 Each layer has a gate, an evidence artifact, and a failure action:
 
 | Layer | Gate to pass | Evidence | Failure action |

@@ -156,8 +156,10 @@ Supabase project:
 3. `product-experience/supabase-client-runtime-control-plane.sql`
 
 Create the approved tenant and membership from the Supabase SQL editor or an
-operator-only migration job. Replace the placeholders with the real tenant and
-Auth user UUID; never accept membership creation from the browser:
+operator-only migration job. Never accept membership creation from the
+browser. For the first internal test, run
+`product-experience/supabase-seed-veloce-cloud-test.sql`; it finds the approved
+Auth user by email and ends with a verification query:
 
 ```sql
 insert into public.client_tenants (slug, name, retention_days)
@@ -169,9 +171,12 @@ values ('example-client', 'AUTH_USER_UUID', 'owner')
 on conflict (tenant_slug, user_id) do update set role = excluded.role, status = 'active';
 ```
 
-Then set `CLIENT_RUNTIME_DATA_MODE=supabase` in the approved manifest. The
-current internal cloud test remains on its Secret Manager inbox mode until this
-schema and membership row are applied and verified.
+Only after the final query returns an active tenant and membership should you
+set `CLIENT_RUNTIME_DATA_MODE=supabase` in the approved manifest. The current
+internal cloud test remains on its Secret Manager inbox mode until this schema
+and membership row are applied and verified. If the verification query returns
+zero membership rows, invite or create the Auth user first and rerun the seed
+file; do not switch the manifest yet.
 
 ## Build The Client Image
 
