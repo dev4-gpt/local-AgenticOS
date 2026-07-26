@@ -62,6 +62,18 @@ export function StartIntakeForm() {
         return;
       }
 
+      if (body.error === "rate_limited") {
+        setState("blocked");
+        setNotice("Too many requests from this network. Please wait a few minutes before trying again.");
+        return;
+      }
+
+      if (body.error === "invalid_email") {
+        setState("blocked");
+        setNotice("Enter a valid work email so Veloce can respond to your request.");
+        return;
+      }
+
       const brief = makeBrief(payload);
       await navigator.clipboard.writeText(brief).catch(() => {});
       setState("fallback");

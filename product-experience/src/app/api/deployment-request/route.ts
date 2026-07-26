@@ -24,11 +24,45 @@ const fields = [
   "notes",
 ] as const;
 
+const RATE_WINDOW_MS = 15 * 60 * 1000;
+const RATE_LIMIT = 5;
+const MAX_BODY_BYTES = 100_000;
+const requestAttempts = new Map<string, number[]>();
+
 function clean(value: unknown) {
   return String(value ?? "").trim();
 }
 
+function clientKey(req: Request) {
+  const forwarded = req.headers.get("x-forwarded-for")?.split(",", 1)[0]?.trim();
+  return forwarded || req.headers.get("x-real-ip")?.trim() || "unknown";
+}
+
+function rateLimit(req: Request) {
+  const key = clientKey(req);
+  const now = Date.now();
+  const recent = (requestAttempts.get(key) ?? []).filter((time) => now - time < RATE_WINDOW_MS);
+  if (recent.length >= RATE_LIMIT) {
+    requestAttempts.set(key, recent);
+    return false;
+  }
+  requestAttempts.set(key, [...recent, now]);
+  return true;
+}
+
 export async function POST(req: Request) {
+  if (!rateLimit(req)) {
+    return NextResponse.json(
+      { ok: false, error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(RATE_WINDOW_MS / 1000)) } },
+    );
+  }
+
+  const contentLength = Number(req.headers.get("content-length") ?? 0);
+  if (contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ ok: false, error: "payload_too_large" }, { status: 413 });
+  }
+
   if (!SUPABASE_URL || !SERVICE_KEY) {
     return NextResponse.json({ ok: false, error: "not_configured" }, { status: 503 });
   }
@@ -43,6 +77,14 @@ export async function POST(req: Request) {
   const values = Object.fromEntries(fields.map((field) => [field, clean(body[field])]));
   if (!values.name || !values.email || !values.company || !values.workflow) {
     return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
+  }
+
+  if (!/^\S+@\S+\.\S+$/.test(values.email)) {
+    return NextResponse.json({ ok: false, error: "invalid_email" }, { status: 400 });
+  }
+
+  if (fields.some((field) => values[field].length > 4_000)) {
+    return NextResponse.json({ ok: false, error: "field_too_large" }, { status: 413 });
   }
 
   const combined = fields.map((field) => values[field]).join("\n");
@@ -87,12 +129,13 @@ export async function POST(req: Request) {
     });
 
     if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      return NextResponse.json({ ok: false, error: "store_failed", detail }, { status: 502 });
+      console.error("deployment request store failed", { status: res.status });
+      return NextResponse.json({ ok: false, error: "store_failed" }, { status: 502 });
     }
 
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: "store_unreachable", detail: String(e) }, { status: 502 });
+    console.error("deployment request store unreachable", e instanceof Error ? e.message : "unknown error");
+    return NextResponse.json({ ok: false, error: "store_unreachable" }, { status: 502 });
   }
 }

@@ -48,6 +48,12 @@ Production environment metadata was verified on 2026-07-26. Vercel lists
 test and an operator notification workflow are still worth adding before
 promising real-time alerts.
 
+The public intake route now applies a conservative five-request/15-minute
+per-forwarded-client throttle, rejects oversized fields, validates email
+shape, and returns generic storage errors without backend details. This is a
+best-effort serverless guard, not a substitute for a durable edge limiter;
+before high-volume promotion, add a provider-backed limiter and alerting.
+
 ## Credential and tenant boundary
 
 There are three separate kinds of credentials:
@@ -84,7 +90,7 @@ retention. Same codebase does not mean same permissions.
 | 6 | Cloud and compute | **Partial** | Cloud Run and Secret Manager are live. Add provider API adapters, private workers, Cloud Tasks/Pub/Sub, bounded retries, idempotency, and long-job status. |
 | 7 | CI/CD and version control | **Partial** | GitHub and versioned images are in use. Add a reviewed client manifest pipeline, image promotion, deployment provenance, and automated rollback checks. |
 | 8 | Security and row-level security | **Partial** | Secrets are kept out of the browser and the intake table has RLS. Add tenant RLS for all runtime data, least-privilege storage/IAM, redacted audit logs, rotation, and cross-tenant tests. |
-| 9 | Rate limiting | **Missing** | Add edge/API rate limits for intake, login, credential submission, provider calls, and expensive jobs; include abuse alerts and per-client quotas. |
+| 9 | Rate limiting | **Partial for public intake; missing for the runtime** | Public intake has a best-effort five-request/15-minute serverless throttle. Add durable edge/API limits for intake, login, credential submission, provider calls, and expensive jobs, with abuse alerts and per-client quotas. |
 | 10 | Caching and CDN | **Partial** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Add deliberate cache headers, private-data no-store rules, signed object access, and provider-result caching where safe. |
 | 11 | Load balancing and scaling | **Partial** | Cloud Run scales to zero and the test is capped at one instance. Add queue-backed work, concurrency/load tests, per-client quotas, and scaling rules for production workloads. |
 | 12 | Error tracking and logs | **Partial** | Cloud logs and health checks exist. Add structured redacted errors, request IDs, audit events, provider failure classification, alerts, and a retention policy. |
@@ -148,3 +154,27 @@ passed the adapter and tenant-isolation checks above.
 This document is the release gate for turning the local operator OS into a
 multi-client hosted product. It should be updated whenever a capability moves
 from operator-only to client-safe.
+
+## Public front-door release checklist
+
+The public landing and intake experience can be shared when all of these are
+true:
+
+- [x] Public landing build and private-reference scan pass.
+- [x] Product experience build passes.
+- [x] Product Production environment contains `SUPABASE_URL` and
+  `SUPABASE_SERVICE_ROLE_KEY` as encrypted variables.
+- [x] Intake validates required fields and rejects secret-like content.
+- [x] Intake has a basic abuse throttle and does not return backend error detail.
+- [x] Public pages state that they do not expose the operator runtime or accept
+  credentials.
+- [ ] Submit one real test request and confirm it appears in Supabase as
+  `pending_approval`.
+- [ ] Confirm who reviews requests and how the owner is notified; the current
+  route stores requests but does not send an email notification.
+- [ ] Confirm the public domain, contact destination, privacy wording, and
+  terms with the business owner before paid traffic.
+
+The unchecked items are operational confirmation, not a reason to expose the
+3939 runtime. The full client runtime remains blocked by the layer table and
+capability adapter inventory above.
