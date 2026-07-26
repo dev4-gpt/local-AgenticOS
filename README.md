@@ -49,15 +49,33 @@ For the separate public-safe Veloce AgenticOS marketing site, pricing structure,
 
 Public beta: <https://veloce-agenticos-site-mquo4bf7aq-ew.a.run.app>
 
+Current public/front-door links:
+
+- Landing page: <https://veloce-agenticos-public.vercel.app>
+- Product experience: <https://product-experience-five.vercel.app>
+- Runtime intake: <https://product-experience-five.vercel.app/start>
+- Internal cloud client-runtime test:
+  <https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2F>
+
+The cloud runtime test is a client-safe GCP Cloud Run deployment, not the
+private local operator runtime. For deployment boundaries and current links,
+see [DEPLOYMENT-LINKS.md](./DEPLOYMENT-LINKS.md) and
+[CLIENT-RELEASE-STRATEGY.md](./CLIENT-RELEASE-STRATEGY.md). The detailed
+local-versus-client capability boundary is in
+[docs/runtime-capability-matrix.md](./docs/runtime-capability-matrix.md).
+
 For v2 product boundaries, Flow Lab policy, approved capabilities, and explicit deferrals, see [VELOCE-AGENTICOS-V2.md](./VELOCE-AGENTICOS-V2.md). For the deliberate stable-path migration policy, see [MIGRATION-TO-VELOCE-AGENTICOS.md](./MIGRATION-TO-VELOCE-AGENTICOS.md).
 
 ## Current Local Stack
 
 This repo is configured for a Mac-local Veloce AgenticOS setup:
 
-- Dashboard: `http://127.0.0.1:3737`
+- Dashboard/operator runtime: `http://127.0.0.1:3939`
+- Alternate dashboard port: `http://127.0.0.1:3737`
+- Local client-safe test runtime: `http://127.0.0.1:3940`
 - Obsidian vault: `$HOME/Documents/llm-wiki` in this installation; configure your own path locally.
-- Free Claude Code proxy: `http://127.0.0.1:8082`
+- Free Claude Code proxy/helper: `http://127.0.0.1:8082` (private loopback only;
+  the `3939` Free Claude Code tab uses it, while Cloud Run never does)
 - Free/local model: `ollama/qwen3.5:4b`
 - Paperclip local service: `http://127.0.0.1:3100`
 
@@ -125,6 +143,11 @@ Recommended order:
 
 No credentials should ever be committed to this repository.
 
+For hosted client runtimes, provider credentials live in the client's GCP
+Secret Manager namespace and are injected into Cloud Run as secret-backed
+environment variables. The browser should show only connected/not-connected
+status, never raw keys.
+
 ## Requirements
 
 - macOS or Linux
@@ -145,7 +168,7 @@ npm run dev
 For the local production-style setup used on this Mac, the dashboard runs at:
 
 ```bash
-http://127.0.0.1:3737
+http://127.0.0.1:3939
 ```
 
 ## Configuration
@@ -191,7 +214,7 @@ The Music tab will then offer Eleven Music alongside Suno. Eleven Music API acce
 Then restart Veloce AgenticOS and test:
 
 ```bash
-curl http://127.0.0.1:3737/api/video/voices
+curl http://127.0.0.1:3939/api/video/voices
 ```
 
 ## Free Credits And API Keys
@@ -231,16 +254,17 @@ rg -n --hidden --glob '!node_modules/**' --glob '!.next/**' --glob '!package-loc
 
 ```bash
 npm run build
-curl http://127.0.0.1:3737/api/vitals
-curl http://127.0.0.1:3737/api/memory/vault
-curl http://127.0.0.1:3737/api/fcc
+curl http://127.0.0.1:3939/api/vitals
+curl http://127.0.0.1:3939/api/memory/vault
+curl http://127.0.0.1:3939/api/fcc
 ```
 
 Expected local status:
 
 - Dashboard: working
 - Obsidian vault: configured
-- Free Claude Code: reachable through local Ollama
+- Free Claude Code: local helper reachable; its full chat route also requires
+  the configured `~/.fcc/.env` upstream
 - Paperclip: service reachable, workspace content still business-specific
 - Paid studios: waiting for explicit provider keys
 

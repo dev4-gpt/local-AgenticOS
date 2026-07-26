@@ -2,7 +2,9 @@
 
 This Vite/React folder is intentionally independent from the private Veloce AgenticOS dashboard. It has no private API routes, provider credentials, agent controls, analytics key, filesystem access, or lead database.
 
-Public beta: <https://veloce-agenticos-site-mquo4bf7aq-ew.a.run.app>
+Previous Cloud Run beta: <https://veloce-agenticos-site-mquo4bf7aq-ew.a.run.app>
+
+Current production link: <https://veloce-agenticos-public.vercel.app>
 
 ## Configure before publishing
 
@@ -19,6 +21,20 @@ Do not place API keys, private dashboard URLs, local machine paths, or client in
 ## Preview locally
 
 Run `npm install` once, then use `npm run dev`. Build with `npm run build`; the deployable output is `dist/`.
+
+## Deploy to Vercel
+
+From this folder:
+
+```bash
+npm install
+npm run build
+vercel deploy --prod
+```
+
+`vercel.json` sets the Vite build and `dist/` output directory. Keep
+`public/config.js` free of secrets; the Supabase anon key is public-safe only
+when the `signups` table has insert-only RLS.
 
 ## Deploy to Cloud Run
 

@@ -1,0 +1,15 @@
+.git
+.next
+.next-v0
+.next-client-test
+node_modules
+test-results
+coverage
+.private-client-kits
+.claude-flow
+.swarm
+.env
+.env.*
+!.env.example
+public/openmontage/generated
+client-blueprints/*.gcp.json

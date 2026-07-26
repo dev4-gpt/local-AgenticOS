@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { chapters } from "@/data/editions";
-import { MenuIcon, CloseIcon, SearchIcon } from "@/components/icons";
+import { MenuIcon, CloseIcon, SearchIcon, ChevronDownIcon } from "@/components/icons";
 
 type SearchResult = {
   key: string;
@@ -12,10 +12,18 @@ type SearchResult = {
   href: string;
 };
 
+const DEFAULT_CLIENT_RUNTIME_URL = "https://veloce-cloud-test-1075094991117.asia-south1.run.app/login?next=%2F";
+
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [accessOpen, setAccessOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const configuredRuntimeUrl = process.env.NEXT_PUBLIC_CLIENT_RUNTIME_URL?.trim() || DEFAULT_CLIENT_RUNTIME_URL;
+  const allowLocalRuntimeLink = process.env.NEXT_PUBLIC_ALLOW_LOCAL_CLIENT_RUNTIME_LINK === "1";
+  const clientRuntimeUrl = process.env.NODE_ENV === "production" && /https?:\/\/(localhost|127\.0\.0\.1)/i.test(configuredRuntimeUrl) && !allowLocalRuntimeLink
+    ? ""
+    : configuredRuntimeUrl;
 
   const searchResults = useMemo<SearchResult[]>(() => {
     const chapterResults = chapters.map((chapter) => ({
@@ -126,12 +134,37 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-6">
-          <a
-            href="#developer"
-            className="rounded-full bg-white px-5 py-3 text-sm font-medium text-black no-underline"
-          >
-            Book a walkthrough
-          </a>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setAccessOpen((value) => !value)}
+              className="flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+              aria-expanded={accessOpen}
+              aria-controls="runtime-access-menu"
+            >
+              Runtime access
+              <ChevronDownIcon className={accessOpen ? "rotate-180 transition-transform" : "transition-transform"} />
+            </button>
+            {accessOpen && (
+              <div id="runtime-access-menu" role="menu" className="absolute right-0 top-12 w-64 overflow-hidden rounded-lg border border-black/10 bg-white p-1 text-black shadow-2xl">
+                <a href="/start" role="menuitem" onClick={() => setAccessOpen(false)} className="block rounded-md px-3 py-3 text-sm font-semibold no-underline transition hover:bg-black/[0.05]">
+                  Request runtime
+                  <span className="mt-1 block text-xs font-normal text-black/55">Describe the workspace you need.</span>
+                </a>
+                {clientRuntimeUrl ? (
+                  <a href={clientRuntimeUrl} role="menuitem" onClick={() => setAccessOpen(false)} className="block rounded-md px-3 py-3 text-sm font-semibold no-underline transition hover:bg-black/[0.05]">
+                    Client login
+                    <span className="mt-1 block text-xs font-normal text-black/55">Open your approved runtime.</span>
+                  </a>
+                ) : (
+                  <span role="menuitem" aria-disabled="true" className="block rounded-md px-3 py-3 text-sm font-semibold text-black/40">
+                    Client login
+                    <span className="mt-1 block text-xs font-normal text-black/45">Available after approval.</span>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
           <button
             type="button"
             aria-label="Open menu"
@@ -165,6 +198,8 @@ export function Header() {
           </ul>
           <div className="flex flex-col gap-3 px-5 py-6 text-xs text-white/60">
             <span>&copy; Veloce AgenticOS</span>
+            <a href="/start" onClick={() => setMenuOpen(false)} className="no-underline hover:underline">Request runtime</a>
+            {clientRuntimeUrl && <a href={clientRuntimeUrl} onClick={() => setMenuOpen(false)} className="no-underline hover:underline">Client login</a>}
             <a href="#terms" onClick={() => setMenuOpen(false)} className="no-underline hover:underline">
               Terms of Service
             </a>

@@ -1,0 +1,37 @@
+ARG NODE_VERSION=24.14.1-slim
+
+FROM node:${NODE_VERSION} AS dependencies
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+FROM node:${NODE_VERSION} AS builder
+WORKDIR /app
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY . .
+ENV NODE_ENV=production
+ENV VELOCE_CONTAINER_BUILD=1
+ENV VELOCE_CLIENT_EDITION=1
+ENV AGENTIC_OS_DISABLE_LOCAL_CLI=1
+ENV AGENTIC_OS_DISABLE_LOCAL_FILES=1
+ENV AGENTIC_OS_REQUIRE_APPROVALS=1
+RUN npm run build
+
+FROM node:${NODE_VERSION} AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=8080
+ENV HOSTNAME=0.0.0.0
+ENV VELOCE_CLIENT_EDITION=1
+ENV AGENTIC_OS_DISABLE_LOCAL_CLI=1
+ENV AGENTIC_OS_DISABLE_LOCAL_FILES=1
+ENV AGENTIC_OS_REQUIRE_APPROVALS=1
+ENV CLIENT_RUNTIME_ENFORCE_AUTH=1
+ENV CLIENT_ALLOWED_ROUTES=/,/context,/orchestrate,/create,/credentials,/capabilities,/deliver,/paperclip,/room,/pipeline,/claude,/openclaw,/hermes,/antigravity,/codex,/kimi,/glm,/glm-code,/grok,/freeclaude,/fusion,/sakana,/local,/engine,/agent-kanban,/loop,/ruflo,/goals,/journal,/seo,/opendesign,/web-studio,/flow-lab,/integrations,/video,/studio,/openmontage,/music,/games,/thumbnails,/notebook,/kanban,/memory,/leads,/radar,/guide
+ENV CLIENT_ALLOWED_API_ROUTES=/api/capabilities,/api/client-runtime/credentials,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-auth/session
+COPY --from=builder --chown=node:node /app/public ./public
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+USER node
+EXPOSE 8080
+CMD ["node", "server.js"]

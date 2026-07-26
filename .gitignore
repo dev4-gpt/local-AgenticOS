@@ -17,6 +17,7 @@
 /.next/
 /.next-veloce-recovery-*/
 /.next-v0/
+/.next-client-test/
 
 # Standalone public-site build output
 /public-site/node_modules/

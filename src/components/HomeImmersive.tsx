@@ -140,7 +140,7 @@ function useReducedMotion() {
   return reduced;
 }
 
-export default function HomeImmersive() {
+export default function HomeImmersive({ clientEdition = false }: { clientEdition?: boolean }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const scrollHostRef = useRef<HTMLElement | null>(null);
   const [active, setActive] = useState(0);
@@ -460,11 +460,11 @@ export default function HomeImmersive() {
       <header className="home-edition-head">
         <Link href="/" className="home-edition-head__brand">
           <strong>Veloce AgenticOS</strong>
-          <span>Private operator edition</span>
+          <span>{clientEdition ? "Client operating edition" : "Private operator edition"}</span>
         </Link>
         <div className="home-edition-head__status">
-          <span><i /> Local runtime</span>
-          <Link href="/integrations">System status</Link>
+          <span><i /> {clientEdition ? "Client runtime" : "Local runtime"}</span>
+          <Link href={clientEdition ? "/credentials" : "/integrations"}>{clientEdition ? "Credential status" : "System status"}</Link>
         </div>
       </header>
 
@@ -494,21 +494,21 @@ export default function HomeImmersive() {
         <div className="home-immersive__copy">
           <div className="home-immersive__eyebrow">
             <Sparkles size={14} />
-            <span>Veloce AgenticOS · Operator Edition</span>
+            <span>Veloce AgenticOS · {clientEdition ? "Client Edition" : "Operator Edition"}</span>
           </div>
           <h1>
             Work with more signal.
             <span>Keep every move in view.</span>
           </h1>
           <p>
-            A private operating system for agents, context, production, approval, and delivery. Designed to make complex work feel legible.
+            {clientEdition ? "A client-scoped operating system for context, production, approval, and delivery. Designed to make complex work feel legible." : "A private operating system for agents, context, production, approval, and delivery. Designed to make complex work feel legible."}
           </p>
           <div className="home-immersive__actions">
-            <Link href="/claude" className="home-immersive__primary">
-              Enter Control Room <ArrowUpRight size={16} />
+            <Link href={clientEdition ? "/context" : "/claude"} className="home-immersive__primary">
+              {clientEdition ? "Start a client request" : "Enter Control Room"} <ArrowUpRight size={16} />
             </Link>
-            <Link href="/memory" className="home-immersive__secondary">
-              Connect Memory
+            <Link href={clientEdition ? "/credentials" : "/memory"} className="home-immersive__secondary">
+              {clientEdition ? "Review credentials" : "Connect Memory"}
             </Link>
           </div>
         </div>

@@ -5,24 +5,29 @@ import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import Sidebar, { MobileNav } from "./Sidebar";
 import TopBar from "./TopBar";
+import ClientCapabilityGate from "./ClientCapabilityGate";
 
 const ROUTE_LENS: Array<[string[], string]> = [
-  [["/memory", "/notebook", "/goals", "/journal"], "context"],
-  [["/paperclip", "/room", "/pipeline", "/agent-kanban", "/kanban", "/loop", "/ruflo"], "orchestrate"],
-  [["/flow-lab", "/web-studio", "/opendesign", "/video", "/openmontage", "/music", "/games", "/thumbnails", "/studio"], "create"],
-  [["/integrations", "/capabilities", "/seo", "/seo-guide", "/guide"], "govern"],
-  [["/leads", "/radar"], "deliver"],
+  [["/context", "/memory", "/notebook", "/goals", "/journal"], "context"],
+  [["/orchestrate", "/paperclip", "/room", "/pipeline", "/agent-kanban", "/kanban", "/loop", "/ruflo"], "orchestrate"],
+  [["/create", "/flow-lab", "/web-studio", "/opendesign", "/video", "/openmontage", "/music", "/games", "/thumbnails", "/studio"], "create"],
+  [["/integrations", "/capabilities", "/credentials", "/seo", "/seo-guide", "/guide"], "govern"],
+  [["/deliver", "/leads", "/radar"], "deliver"],
 ];
 
 function lensFor(pathname: string) {
   return ROUTE_LENS.find(([routes]) => routes.some((route) => pathname.startsWith(route)))?.[1] ?? "command";
 }
 
-export default function Shell({ children }: { children: ReactNode }) {
+const CLIENT_SURFACE_ROUTES = new Set(["/", "/context", "/orchestrate", "/create", "/capabilities", "/credentials", "/deliver"]);
+
+export default function Shell({ children, clientEdition = false }: { children: ReactNode; clientEdition?: boolean }) {
   const pathname = usePathname();
+  if (pathname === "/login" || pathname === "/client-unavailable") return <>{children}</>;
   const isHome = pathname === "/";
   const reduceMotion = useReducedMotion();
   const lens = lensFor(pathname);
+  const gatedClientRoute = clientEdition && !CLIENT_SURFACE_ROUTES.has(pathname);
 
   return (
     <div className={`workspace-shell workspace-shell--${lens}`} data-lens={lens}>
@@ -42,7 +47,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             className={isHome ? "min-h-full w-full" : "workspace-shell__page max-w-[1500px] mx-auto px-5 md:px-10 py-7 md:py-9"}
           >
             {!isHome && <TopBar />}
-            {children}
+            {gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
           </motion.div>
         </main>
       </div>

@@ -24,7 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body className="min-h-full">
-        <Shell>{children}</Shell>
+        <Shell clientEdition={process.env.VELOCE_CLIENT_EDITION === "1"}>{children}</Shell>
       </body>
     </html>
   );

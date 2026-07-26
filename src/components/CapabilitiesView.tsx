@@ -21,9 +21,12 @@ export default function CapabilitiesView() {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    fetch("/api/capabilities")
-      .then((response) => response.json())
-      .then((data) => { if (data.ok) setCapabilities(data.capabilities); else setNotice("The capability registry could not be loaded."); })
+    Promise.all([fetch("/api/capabilities"), fetch("/api/client-runtime/credentials", { cache: "no-store" })])
+      .then(async ([response, runtimeResponse]) => ({ data: await response.json(), runtime: runtimeResponse.ok ? await runtimeResponse.json() : null }))
+      .then(({ data, runtime }) => {
+        if (runtime?.mode?.clientEdition) setFilter("built-in");
+        if (data.ok) setCapabilities(data.capabilities); else setNotice("The capability registry could not be loaded.");
+      })
       .catch(() => setNotice("The capability registry could not be reached."));
   }, []);
 

@@ -11,6 +11,10 @@ interface PageMeta { numeral: string; label: string; title: string; sub: string;
 // numeral renders in Caveat gold, label in small-caps Manrope. See globals.css `.eyebrow`.
 const TITLES: Record<string, PageMeta> = {
   "/":            { numeral: "I.",    label: "Mission Control",    title: "Mission Control",         sub: "Status of every agent, every memory, every signal." },
+  "/context":     { numeral: "II.",   label: "Context",             title: "Project Context",          sub: "Give Veloce the approved notes, decisions, references, and source material behind the work." },
+  "/orchestrate": { numeral: "III.",  label: "Orchestrate",          title: "Workflow Request",         sub: "Describe the outcome you want and let Veloce shape the work into an inspectable, approval-ready sequence." },
+  "/create":      { numeral: "IV.",   label: "Create",               title: "Production Brief",         sub: "Turn an approved direction into a clear brief for design, content, web, video, or another deliverable." },
+  "/deliver":     { numeral: "VI.",   label: "Deliver",              title: "Delivery Review",          sub: "Track the next handoff, review a deliverable, and request the final human-approved release step." },
   "/claude":      { numeral: "II.",   label: "Agent · Claude",     title: "Claude",                  sub: "Direct streaming channel to your Claude Code CLI. Voice in, auto-logged to Obsidian." },
   "/openclaw":    { numeral: "III.",  label: "Agent · OpenClaw",   title: "OpenClaw",                sub: "Chat one-shot or open the control room. Logged to your vault." },
   "/hermes":      { numeral: "IV.",   label: "Agent · Hermes",     title: "Hermes",                  sub: "Nous Research agent. Sessions, skills, kanban — and a chat line." },
@@ -47,6 +51,7 @@ const TITLES: Record<string, PageMeta> = {
   "/web-studio":  { numeral: "XVIII.",label: "Create · Web Studio",title: "Veloce Web Studio",       sub: "Turn approved strategy into conversion structure, motion direction, and a reviewable web build." },
   "/integrations":{ numeral: "XIX.",  label: "Govern · Integrations", title: "Integrations",          sub: "See the services and delivery adapters configured for this private operating environment." },
   "/capabilities":{ numeral: "XX.",   label: "Govern · Capabilities", title: "Capabilities",          sub: "Curated skills and connectors with clear scopes, boundaries, and client-readiness." },
+  "/credentials":{ numeral: "XX.",   label: "Govern · Credentials", title: "Credentials",          sub: "Review runtime identity, provider connection state, and the secret boundary." },
   "/video":       { numeral: "XXI.",  label: "Create · Video",     title: "Video Studio",            sub: "Move from approved script to voice, avatar, assembly, and preview through provider-aware production stages." },
   "/openmontage": { numeral: "XXII.", label: "Create · OpenMontage", title: "OpenMontage",          sub: "Plan and run agentic video workflows with local scripts, inspectable outputs, and explicit model gates." },
   "/music":       { numeral: "XXIII.",label: "Create · Music",     title: "Music Studio",            sub: "Draft music direction, choose an available engine, and keep generated tracks in the local workspace." },
@@ -57,6 +62,7 @@ export default function TopBar() {
   const pathname = usePathname();
   const t = TITLES[pathname] ?? TITLES["/"];
   const [time, setTime] = useState<string>("");
+  const [clientEdition, setClientEdition] = useState(false);
 
   useEffect(() => {
     const set = () =>
@@ -64,6 +70,12 @@ export default function TopBar() {
     set();
     const i = setInterval(set, 1000 * 15);
     return () => clearInterval(i);
+  }, []);
+  useEffect(() => {
+    fetch("/api/client-runtime/credentials", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => setClientEdition(data?.mode?.clientEdition === true))
+      .catch(() => undefined);
   }, []);
 
   return (
@@ -75,7 +87,7 @@ export default function TopBar() {
           <strong>{t.label}</strong>
         </div>
         <div className="workspace-page-head__actions">
-          <span className="workspace-page-head__runtime"><i /> Local runtime</span>
+          <span className="workspace-page-head__runtime"><i /> {clientEdition ? "Client runtime" : "Local runtime"}</span>
           <CommandPalette />
         </div>
       </div>
@@ -100,7 +112,7 @@ export default function TopBar() {
         <div className="mt-4 status-meta">
           <span className="hand">{time}</span>
           <span className="mx-2 opacity-40">·</span>
-          Local · Studio
+          {clientEdition ? "Client · Vault" : "Local · Studio"}
         </div>
       </motion.div>
     </header>

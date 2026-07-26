@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { LayoutGrid, Brain, Sparkles as SparklesIcon, TrendingUp, Columns3, NotebookText, Film, Building2, Workflow, MessagesSquare, Image as ImageIcon, Gamepad2, Music2, Network, Clapperboard, Repeat, Cpu, LayoutDashboard, Palette, GripVertical, Eye, EyeOff, SlidersHorizontal, Check, SquareTerminal, Globe2, PlugZap, Orbit, Blocks, Target, BookOpenText, RadioTower, ContactRound, GitBranch, Mic2, ChevronDown } from "lucide-react";
+import { LayoutGrid, Brain, Sparkles as SparklesIcon, TrendingUp, Columns3, NotebookText, Film, Building2, Workflow, MessagesSquare, Image as ImageIcon, Gamepad2, Music2, Network, Clapperboard, Repeat, Cpu, LayoutDashboard, Palette, GripVertical, Eye, EyeOff, SlidersHorizontal, Check, SquareTerminal, Globe2, PlugZap, Orbit, Blocks, Target, BookOpenText, RadioTower, ContactRound, GitBranch, Mic2, ChevronDown, KeyRound } from "lucide-react";
 import { useState, useEffect, type ReactNode } from "react";
 import AgentAvatar from "./AgentAvatar";
 
@@ -17,6 +17,10 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { href: "/",         label: "Mission Control", icon: <LayoutGrid size={16} />, accent: "#a855f7", dim: "rgba(168,85,247,0.16)" },
+  { href: "/context",  label: "Context intake", icon: <Brain size={16} />, accent: "#22d3ee", dim: "rgba(34,211,238,0.16)" },
+  { href: "/orchestrate", label: "Workflow requests", icon: <Workflow size={16} />, accent: "#5ab896", dim: "rgba(90,184,150,0.16)" },
+  { href: "/create",   label: "Create brief", icon: <SparklesIcon size={16} />, accent: "#f0a868", dim: "rgba(240,168,104,0.16)" },
+  { href: "/deliver",  label: "Delivery", icon: <TrendingUp size={16} />, accent: "#c084fc", dim: "rgba(192,132,252,0.16)" },
   { href: "/paperclip", label: "Paperclip", icon: <Building2 size={16} />, accent: "#d4a574", dim: "rgba(212,165,116,0.16)" },
   { href: "/room",     label: "AI Agent Mastermind", icon: <MessagesSquare size={16} />, accent: "#a855f7", dim: "rgba(168,85,247,0.16)" },
   { href: "/pipeline", label: "Pipeline", icon: <Workflow size={16} />, accent: "#34d399", dim: "rgba(52,211,153,0.16)" },
@@ -48,6 +52,7 @@ const NAV: NavItem[] = [
   { href: "/flow-lab", label: "Flow Lab", icon: <Orbit size={16} />, accent: "#fbbf24", dim: "rgba(251,191,36,0.16)" },
   { href: "/integrations", label: "Integrations", icon: <PlugZap size={16} />, accent: "#5ab896", dim: "rgba(90,184,150,0.16)" },
   { href: "/capabilities", label: "Capabilities", icon: <Blocks size={16} />, accent: "#34d399", dim: "rgba(52,211,153,0.16)" },
+  { href: "/credentials", label: "Credentials", icon: <KeyRound size={16} />, accent: "#60a5fa", dim: "rgba(96,165,250,0.16)" },
   { href: "/video",    label: "Video",    icon: <Film size={16} />,      accent: "#ef4444", dim: "rgba(239,68,68,0.16)" },
   { href: "/studio",   label: "Agent Studio", icon: <Mic2 size={16} />,   accent: "#fb7185", dim: "rgba(251,113,133,0.16)" },
   { href: "/openmontage", label: "OpenMontage", icon: <Clapperboard size={16} />, accent: "#f0a868", dim: "rgba(240,168,104,0.16)" },
@@ -72,13 +77,15 @@ const LS_HIDDEN = "agentos.sidebar.hidden";
 // expanding tool set navigable as a system rather than an unstructured list.
 const ORCHESTRATION_ROUTES = new Set(["/paperclip", "/room", "/pipeline", "/agent-kanban", "/loop", "/kanban", "/ruflo"]);
 const CONTEXT_ROUTES = new Set(["/memory", "/notebook", "/goals", "/journal"]);
-const CREATE_ROUTES = new Set(["/opendesign", "/web-studio", "/flow-lab", "/video", "/studio", "/openmontage", "/music", "/games", "/thumbnails"]);
-const GOVERN_ROUTES = new Set(["/integrations", "/capabilities", "/seo", "/guide"]);
-const DELIVERY_ROUTES = new Set(["/leads", "/radar"]);
+const CLIENT_ONLY_ROUTES = new Set(["/context", "/orchestrate", "/create", "/deliver"]);
+const CLIENT_NAV_ROUTES = new Set(["/", ...CLIENT_ONLY_ROUTES, "/capabilities", "/credentials"]);
+const CREATE_ROUTES = new Set(["/create", "/opendesign", "/web-studio", "/flow-lab", "/video", "/studio", "/openmontage", "/music", "/games", "/thumbnails"]);
+const GOVERN_ROUTES = new Set(["/integrations", "/capabilities", "/credentials", "/seo", "/guide"]);
+const DELIVERY_ROUTES = new Set(["/deliver", "/leads", "/radar"]);
 function sectionOf(href: string): string {
   if (href === "/" || AGENT_ROUTES.has(href)) return "Command";
-  if (CONTEXT_ROUTES.has(href)) return "Context";
-  if (ORCHESTRATION_ROUTES.has(href)) return "Orchestrate";
+  if (href === "/context" || CONTEXT_ROUTES.has(href)) return "Context";
+  if (href === "/orchestrate" || ORCHESTRATION_ROUTES.has(href)) return "Orchestrate";
   if (CREATE_ROUTES.has(href)) return "Create";
   if (GOVERN_ROUTES.has(href)) return "Govern";
   if (DELIVERY_ROUTES.has(href)) return "Deliver";
@@ -103,6 +110,7 @@ export default function Sidebar() {
   const [customize, setCustomize] = useState(false);
   const [dragHref, setDragHref] = useState<string | null>(null);
   const [overHref, setOverHref] = useState<string | null>(null);
+  const [clientEdition, setClientEdition] = useState(false);
   const currentSection = sectionOf(pathname);
   const [openSection, setOpenSection] = useState(currentSection);
   const [homeChapter, setHomeChapter] = useState("Command");
@@ -139,13 +147,20 @@ export default function Sidebar() {
     sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
   }, [pathname]);
+  useEffect(() => {
+    fetch("/api/client-runtime/credentials", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => setClientEdition(data?.mode?.clientEdition === true))
+      .catch(() => undefined);
+  }, []);
 
   // saved order + any NAV items not yet in it (e.g. new pages added later) appended in default position
   const fullOrder = [
     ...order.filter((h) => BY_HREF[h]),
     ...DEFAULT_ORDER.filter((h) => !order.includes(h)),
   ];
-  const visible = customize ? fullOrder : fullOrder.filter((h) => !hidden.includes(h));
+  const allowedOrder = clientEdition ? fullOrder : fullOrder.filter((href) => !CLIENT_ONLY_ROUTES.has(href));
+  const visible = customize ? allowedOrder : allowedOrder.filter((h) => !hidden.includes(h));
 
   function move(from: string, to: string) {
     if (from === to) return;
@@ -178,7 +193,7 @@ export default function Sidebar() {
 
       <div className="workspace-nav__edition">
         <span>Private operating edition</span>
-        <span className="workspace-nav__live"><i /> local</span>
+        <span className="workspace-nav__live"><i /> {clientEdition ? "client" : "local"}</span>
       </div>
 
       {customize && (
@@ -209,6 +224,7 @@ export default function Sidebar() {
           const sectionItems = visible.filter((href) => sectionOf(href) === section);
           const expanded = customize || openSection === section;
           const sectionActive = currentSection === section;
+          if (sectionItems.length === 0) return null;
 
           return (
             <section key={section} className={`workspace-nav__chapter ${sectionActive ? "is-current" : ""}`}>
@@ -290,8 +306,17 @@ export default function Sidebar() {
 
 export function MobileNav() {
   const pathname = usePathname();
+  const [clientEdition, setClientEdition] = useState(false);
   const mobileRoutes = new Set(["/", "/memory", "/pipeline", "/flow-lab", "/integrations", "/agent-kanban"]);
-  const items = NAV.filter((item) => mobileRoutes.has(item.href));
+  useEffect(() => {
+    fetch("/api/client-runtime/credentials", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => setClientEdition(data?.mode?.clientEdition === true))
+      .catch(() => undefined);
+  }, []);
+  const items = clientEdition
+    ? NAV.filter((item) => CLIENT_NAV_ROUTES.has(item.href))
+    : NAV.filter((item) => mobileRoutes.has(item.href));
   return (
     <nav aria-label="Mobile operating lenses" className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 panel panel-hot px-2 py-1.5 flex gap-1">
       {items.map((item) => {

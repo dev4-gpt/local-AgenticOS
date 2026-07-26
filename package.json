@@ -6,6 +6,8 @@
     "dev": "node scripts/run-next-dev.mjs",
     "dev:v0": "env VELOCE_DIST_DIR=.next-v0 PORT=3737 node scripts/run-next-dev.mjs",
     "dev:workspace": "env PORT=3939 node scripts/run-next-dev.mjs",
+    "dev:operator-runtime": "node scripts/run-operator-runtime-local.mjs",
+    "dev:client-runtime": "node scripts/run-client-runtime-local.mjs",
     "dev:landing": "npm --prefix public-site run dev",
     "dev:experience": "npm --prefix product-experience run dev",
     "build": "next build",
@@ -13,6 +15,7 @@
     "start": "next start -H 127.0.0.1",
     "start:v0": "env VELOCE_DIST_DIR=.next-v0 PORT=3737 next start -H 127.0.0.1",
     "start:workspace": "next start -H 127.0.0.1 -p 3939",
+    "start:cloud": "next start -H 0.0.0.0",
     "start:landing": "npm --prefix public-site run preview",
     "start:experience": "npm --prefix product-experience run start",
     "verify:v1": "npm run build && npx playwright test tests/sidebar-smoke.spec.ts --reporter=line",
@@ -22,7 +25,10 @@
     "verify:security": "node scripts/verify-security-release.mjs",
     "verify:secrets": "node scripts/verify-repository-secrets.mjs",
     "verify:flow-lab": "node scripts/verify-flow-lab.mjs",
+    "verify:client-runtime": "node scripts/verify-client-runtime.mjs",
     "verify:experience": "npm --prefix product-experience run build && npx playwright test tests/product-experience.spec.ts --reporter=line",
+    "provision:gcp-client": "node scripts/provision-gcp-client.mjs",
+    "build:client-image": "gcloud builds submit --config cloudbuild.client.yaml --substitutions=_IMAGE=$CLIENT_IMAGE .",
     "record:reference": "node scripts/record-reference-scroll.mjs"
   },
   "engines": {

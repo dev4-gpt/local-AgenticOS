@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Runtime access dropdown on the public product page with `Request runtime` and `Client login` entries.
+- Internal GCP Cloud Run client-runtime test link for the first approved runtime validation.
+
 ### Changed
 - Raised the project Node.js baseline to 24 across local development, CI, Docker, and contributor-facing documentation
 

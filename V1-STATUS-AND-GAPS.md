@@ -1,6 +1,6 @@
 # Veloce AgenticOS V1 Status And Gaps
 
-Last updated: 2026-07-22
+Last updated: 2026-07-26
 
 The current verified release record is [RELEASE-ACCEPTANCE-2026-07-22.md](./RELEASE-ACCEPTANCE-2026-07-22.md). It supersedes any older runtime details in this V1 snapshot.
 
@@ -11,7 +11,7 @@ This file is the post-V1 source of truth for what Veloce AgenticOS already has, 
 Veloce AgenticOS V1 is a local-first AI mission-control dashboard running on this Mac at:
 
 ```bash
-http://127.0.0.1:3737
+http://127.0.0.1:3939
 ```
 
 The local memory root is:
@@ -34,7 +34,7 @@ Secrets must stay outside the repository in user-level files such as:
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Dashboard | Working | Local app runs at `127.0.0.1:3737`. |
+| Dashboard | Working | Private operator app runs at `127.0.0.1:3939`; `3737` remains an alternate local port. |
 | Immersive homepage | Working | 3D mission-control surface is part of the app. |
 | Sidebar/workspaces | Working | Agent, studio, memory, and business pages are navigable. |
 | Obsidian vault | Working | Configured locally through `~/.agentic-os/config.json`. |
@@ -48,7 +48,7 @@ Secrets must stay outside the repository in user-level files such as:
 | Kimi Code | Working locally when logged in | Credential exists in Hermes auth pool; usage depends on selected Kimi plan/model. |
 | Gemini free auth | Working | Google Gemini CLI OAuth credential exists in Hermes auth pool. |
 | OpenRouter | Working for app routes that read the Hermes credential pool | Fusion/Loop-style routes can use the shared OpenRouter credential through app helpers. |
-| Free Claude Code | Working locally | Local/Ollama-backed coding flow is present. |
+| Free Claude Code | Working locally | The `fcc-server` helper is healthy on `127.0.0.1:8082`; the full chat path also needs its configured `~/.fcc/.env` upstream. |
 | Web Studio | Working | Prompt/workflow library for agency, SaaS, personal, and conversion-driven websites. |
 | Open Design | Working locally | Local design system tool is available; it may show its own onboarding if its local state is reset. |
 | Integrations hub | Working | Tracks local tools and external business adapters without storing repo secrets. |
@@ -58,6 +58,23 @@ Secrets must stay outside the repository in user-level files such as:
 | Claude Ads skills | Working | Ads skill pack and isolated runtime detected. |
 | ElevenLabs voice | Configured locally | Key is stored outside the repo through helper script. |
 | Eleven Music option | Supported | Separate music key script exists; actual use depends on ElevenLabs plan/API eligibility. |
+
+## Client-Safe Cloud Track
+
+The public release and client-runtime work is now documented separately from the
+local V1 surface:
+
+- Product/front door: <https://product-experience-five.vercel.app>
+- Approved runtime intake: <https://product-experience-five.vercel.app/start>
+- Internal Cloud Run test: <https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2F>
+- Local client-safe test: `http://127.0.0.1:3940`
+
+The Cloud Run test is a client-safe validation edition, not a hosted copy of
+3939. It currently proves Supabase Auth, client credential status, approval
+boundaries, and the request surfaces. Its manifest intentionally enables only
+`delivery` and `quality` and allowlists only Supabase. The detailed split between
+provider-API work and private operator work is in
+[docs/runtime-capability-matrix.md](./docs/runtime-capability-matrix.md).
 
 ## Live Local Verification Snapshot
 
@@ -89,7 +106,7 @@ These are not broken; they are intentionally waiting for real business accounts,
 | --- | --- | --- |
 | Paperclip workspace setup | Working locally | Local company `Veloce AgenticOS` and project `Veloce AgenticOS v2 Acceptance` are configured. VPS synchronization remains a separate future decision. |
 | Plausible | Waiting | Create a site or self-host Plausible, then add base URL/domain/API key in Integrations. |
-| Supabase | Waiting | Create a project, then add project URL and anon key in Integrations. |
+| Supabase | Connected for client test | Supabase Auth and the publishable/anon key are configured for the internal Cloud Run test; local operator integrations remain separately configurable. |
 | Cal.com | Waiting | Add a booking URL or self-hosted Cal.com URL. |
 | Listmonk | Waiting | Deploy or connect Listmonk, SMTP, and API credentials. |
 | Ghost | Waiting | Deploy or subscribe to Ghost and add Admin API integration. |
@@ -134,10 +151,10 @@ Or run the checks individually:
 
 ```bash
 npm run build
-/usr/bin/curl -s http://127.0.0.1:3737/api/vitals
-/usr/bin/curl -s http://127.0.0.1:3737/api/memory/vault
-/usr/bin/curl -s http://127.0.0.1:3737/api/memory/graphify
-/usr/bin/curl -s http://127.0.0.1:3737/api/integrations
+/usr/bin/curl -s http://127.0.0.1:3939/api/vitals
+/usr/bin/curl -s http://127.0.0.1:3939/api/memory/vault
+/usr/bin/curl -s http://127.0.0.1:3939/api/memory/graphify
+/usr/bin/curl -s http://127.0.0.1:3939/api/integrations
 npx playwright test tests/sidebar-smoke.spec.ts --reporter=line
 ```
 

@@ -74,30 +74,32 @@ export default function Vitals() {
   useEffect(() => { /* no-op: polling moved to usePollWhileVisible above */ }, []);
 
   const fccLabel = fcc?.model ? fcc.model.split("/").slice(-1)[0] : "—";
-  const totalLatency = data ? data.claude.latencyMs + data.openclaw.latencyMs + data.hermes.latencyMs : 0;
+  const totalLatency = data?.claude && data.openclaw && data.hermes
+    ? data.claude.latencyMs + data.openclaw.latencyMs + data.hermes.latencyMs
+    : 0;
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
       <VitalTile
         label="Claude"
         icon={<Sparkles size={12} />}
-        primary={data?.claude.ok ? "Online" : "…"}
-        sub={data ? `${data.claude.version.split(" ")[0]} · ${data.claude.latencyMs}ms` : "checking…"}
-        status={data?.claude.ok ? "ok" : "warn"}
+        primary={data?.claude?.ok ? "Online" : "…"}
+        sub={data?.claude ? `${data.claude.version.split(" ")[0]} · ${data.claude.latencyMs}ms` : "client access gated"}
+        status={data?.claude?.ok ? "ok" : "warn"}
       />
       <VitalTile
         label="OpenClaw"
         icon={<Box size={12} />}
-        primary={data?.openclaw.ok ? (data.openclaw.degraded ? "Degraded" : data.openclaw.busy ? "Busy" : "Ready") : "…"}
-        sub={data ? `${data.openclaw.agents.length} agents · ${data.openclaw.sessions} sessions` : "checking…"}
-        status={!data?.openclaw.ok ? "err" : data.openclaw.degraded ? "warn" : "ok"}
+        primary={data?.openclaw?.ok ? (data.openclaw.degraded ? "Degraded" : data.openclaw.busy ? "Busy" : "Ready") : "…"}
+        sub={data?.openclaw ? `${data.openclaw.agents.length} agents · ${data.openclaw.sessions} sessions` : "client access gated"}
+        status={!data?.openclaw?.ok ? "err" : data.openclaw.degraded ? "warn" : "ok"}
       />
       <VitalTile
         label="Hermes"
         icon={<Cpu size={12} />}
-        primary={data?.hermes.ok ? (data.hermes.degraded ? "Fallback" : "Online") : "…"}
-        sub={data ? (data.hermes.degraded ? data.hermes.detail : `${data.hermes.model.split("/").pop()} · ${data.hermes.provider}`) : "checking…"}
-        status={!data?.hermes.ok || data.hermes.degraded ? "warn" : "ok"}
+        primary={data?.hermes?.ok ? (data.hermes.degraded ? "Fallback" : "Online") : "…"}
+        sub={data?.hermes ? (data.hermes.degraded ? data.hermes.detail : `${data.hermes.model.split("/").pop()} · ${data.hermes.provider}`) : "client access gated"}
+        status={!data?.hermes?.ok || data.hermes.degraded ? "warn" : "ok"}
       />
       <VitalTile
         label="Heartbeat"

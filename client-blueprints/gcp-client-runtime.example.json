@@ -1,0 +1,95 @@
+{
+  "clientSlug": "example-client",
+  "clientName": "Example Client",
+  "approved": false,
+  "approvalOwner": "Aryaman",
+  "acknowledgeClientSafeRuntime": false,
+  "gcp": {
+    "projectId": "your-gcp-project-id",
+    "region": "asia-south1",
+    "serviceName": "veloce-example-client",
+    "runtimeServiceAccount": "veloce-example-client-run",
+    "storageBucket": "your-gcp-project-id-veloce-example-client",
+    "artifactRegistryRepository": "veloce",
+    "image": "asia-south1-docker.pkg.dev/your-gcp-project-id/veloce/client-runtime:VERSION",
+    "minInstances": 0,
+    "maxInstances": 1,
+    "cpu": "1",
+    "memory": "1Gi",
+    "concurrency": 8,
+    "timeout": "900s"
+  },
+  "access": {
+    "mode": "app-auth",
+    "invokerEmails": [],
+    "allowedUserEmails": [
+      "client-admin@example.com"
+    ]
+  },
+  "runtimeEnv": {
+    "VELOCE_CLIENT_EDITION": "1",
+    "AGENTIC_OS_DISABLE_LOCAL_CLI": "1",
+    "AGENTIC_OS_DISABLE_LOCAL_FILES": "1",
+    "AGENTIC_OS_REQUIRE_APPROVALS": "1",
+    "CLIENT_RUNTIME_ENFORCE_AUTH": "1",
+    "CLIENT_ALLOWED_ROUTES": "/,/context,/orchestrate,/create,/credentials,/capabilities,/deliver,/paperclip,/room,/pipeline,/claude,/openclaw,/hermes,/antigravity,/codex,/kimi,/glm,/glm-code,/grok,/freeclaude,/fusion,/sakana,/local,/engine,/agent-kanban,/loop,/ruflo,/goals,/journal,/seo,/opendesign,/web-studio,/flow-lab,/integrations,/video,/studio,/openmontage,/music,/games,/thumbnails,/notebook,/kanban,/memory,/leads,/radar,/guide",
+    "CLIENT_ALLOWED_API_ROUTES": "/api/capabilities,/api/client-runtime/credentials,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-auth/session",
+    "SUPABASE_URL": "https://your-project.supabase.co"
+  },
+  "enabledCapabilities": [
+    "web-studio",
+    "design-intelligence",
+    "immersive-scroll-site",
+    "asset-sequencing",
+    "flow-lab",
+    "knowledge",
+    "delivery",
+    "quality"
+  ],
+  "providerAllowlist": [
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "OPENROUTER_API_KEY",
+    "GEMINI_API_KEY",
+    "MOONSHOT_API_KEY",
+    "ELEVENLABS_API_KEY",
+    "ELEVENLABS_MUSIC_API_KEY",
+    "HEYGEN_API_KEY",
+    "SUNO_API_KEY",
+    "GLM_API_KEY",
+    "XAI_API_KEY",
+    "SAKANA_API_KEY",
+    "FIRECRAWL_API_KEY",
+    "HUNTER_API_KEY",
+    "SUPABASE_URL",
+    "SUPABASE_ANON_KEY"
+  ],
+  "modelAllowlist": [],
+  "budget": {
+    "monthlyCap": "100",
+    "warningThreshold": "80"
+  },
+  "approvalPolicy": "approve_external_actions",
+  "storage": {
+    "namespace": "example-client"
+  },
+  "retention": {
+    "days": 30
+  },
+  "secretEnv": {
+    "ANTHROPIC_API_KEY": "anthropic-api-key",
+    "OPENAI_API_KEY": "openai-api-key",
+    "OPENROUTER_API_KEY": "openrouter-api-key",
+    "SUPABASE_ANON_KEY": "supabase-anon-key",
+    "ELEVENLABS_API_KEY": "elevenlabs-api-key",
+    "ELEVENLABS_MUSIC_API_KEY": "elevenlabs-music-api-key",
+    "HEYGEN_API_KEY": "heygen-api-key",
+    "SUNO_API_KEY": "suno-api-key",
+    "GLM_API_KEY": "glm-api-key",
+    "SAKANA_API_KEY": "sakana-api-key",
+    "FIRECRAWL_API_KEY": "firecrawl-api-key",
+    "HUNTER_API_KEY": "hunter-api-key",
+    "GOOGLE_OAUTH_CLIENT": "google-oauth-client"
+  },
+  "notes": "Do not put secret values in this file. Create secret versions through Secret Manager only."
+}

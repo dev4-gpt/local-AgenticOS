@@ -105,13 +105,21 @@ export function ContactSection() {
               className="resize-none rounded-lg border border-[var(--g5)]/20 bg-[var(--g1)] px-4 py-3 text-sm text-[var(--g5)] outline-none focus:border-[var(--g5)]/50"
             />
           </label>
-          <button
-            type="submit"
-            disabled={busy}
-            className="mt-1 inline-flex w-fit items-center gap-2 rounded-full bg-[var(--g5)] px-6 py-3 text-sm font-medium text-[var(--g1)] no-underline transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            {busy ? "Sending…" : "Start the conversation"} <span aria-hidden>→</span>
-          </button>
+          <div className="mt-1 flex flex-wrap gap-3">
+            <button
+              type="submit"
+              disabled={busy}
+              className="inline-flex w-fit items-center gap-2 rounded-full bg-[var(--g5)] px-6 py-3 text-sm font-medium text-[var(--g1)] no-underline transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {busy ? "Sending..." : "Start the conversation"} <span aria-hidden>→</span>
+            </button>
+            <a
+              href="/start"
+              className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--g5)]/20 px-6 py-3 text-sm font-medium text-[var(--g5)] no-underline hover:bg-[var(--g5)]/5"
+            >
+              Request gated runtime <span aria-hidden>→</span>
+            </a>
+          </div>
           <p aria-live="polite" className="text-xs text-[var(--g5)]/50">
             {notice || "We'll only use this to reply about a Veloce engagement. Don't include confidential information."}
           </p>

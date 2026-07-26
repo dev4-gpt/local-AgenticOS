@@ -86,6 +86,20 @@
   color: var(--cream);
 }
 
+/* Native selects otherwise inherit Chrome's dark popup styling on the
+   parchment client forms, making the selected option hard to read. */
+.runtime-request-select {
+  color-scheme: light;
+  appearance: auto;
+  background-color: var(--bg-elev);
+  color: var(--cream);
+}
+
+.runtime-request-select option {
+  background-color: var(--bg-elev);
+  color: var(--cream);
+}
+
 html, body {
   background: var(--bg-deep);
   color: var(--cream);
