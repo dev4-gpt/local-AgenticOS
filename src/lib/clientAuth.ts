@@ -35,17 +35,12 @@ export async function currentClientUser(): Promise<ClientUser | null> {
   const jar = await cookies();
   const token = jar.get(ACCESS_COOKIE)?.value;
   if (!token) return null;
-  try {
-    const response = await fetch(`${config.url}/auth/v1/user`, {
-      headers: { apikey: config.key, Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    if (!response.ok) return null;
-    const user = await response.json() as ClientUser;
-    return clientUserEmailAllowed(user.email) ? user : null;
-  } catch {
-    return null;
-  }
+  const user = await fetchClientUser(config, token);
+  if (user) return user;
+
+  const refreshToken = jar.get(REFRESH_COOKIE)?.value;
+  if (!refreshToken) return null;
+  return refreshClientSession(config, refreshToken, jar);
 }
 
 export async function currentClientAccessToken() {
@@ -59,4 +54,61 @@ export function authCookieNames() {
 
 export function supabaseAuthConfig() {
   return supabaseConfig();
+}
+
+async function fetchClientUser(config: { url: string; key: string }, token: string) {
+  try {
+    const response = await fetch(`${config.url}/auth/v1/user`, {
+      headers: { apikey: config.key, Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const user = await response.json() as ClientUser;
+    return clientUserEmailAllowed(user.email) ? user : null;
+  } catch {
+    return null;
+  }
+}
+
+async function refreshClientSession(
+  config: { url: string; key: string },
+  refreshToken: string,
+  jar: Awaited<ReturnType<typeof cookies>>,
+) {
+  try {
+    const response = await fetch(`${config.url}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: { apikey: config.key, "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const session = await response.json() as {
+      access_token?: string;
+      refresh_token?: string;
+      expires_in?: number;
+      user?: ClientUser;
+    };
+    const user = session.user;
+    if (!session.access_token || !user?.id || !clientUserEmailAllowed(user.email)) return null;
+
+    const secure = process.env.NODE_ENV === "production";
+    jar.set(ACCESS_COOKIE, session.access_token, {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: Math.max(300, session.expires_in ?? 3600),
+    });
+    jar.set(REFRESH_COOKIE, session.refresh_token || refreshToken, {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+    return user;
+  } catch {
+    return null;
+  }
 }
