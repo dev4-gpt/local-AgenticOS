@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
 import { currentClientUser } from "@/lib/clientAuth";
+import { insertClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +24,20 @@ export async function POST(request: Request) {
 
   if (!REQUEST_TYPES.has(type)) return NextResponse.json({ ok: false, error: "invalid_request_type" }, { status: 400 });
   if (title.length < 3 || details.length < 10) return NextResponse.json({ ok: false, error: "request_needs_detail" }, { status: 400 });
+
+  if (process.env.CLIENT_RUNTIME_DATA_MODE === "supabase") {
+    const result = await insertClientRecord("client_runtime_requests", {
+      tenant_slug: process.env.CLIENT_SLUG || null,
+      submitted_by: user.id,
+      request_type: type,
+      title,
+      details,
+      fields,
+    });
+    if (!result.ok) return NextResponse.json({ ok: false, error: "request_store_failed" }, { status: result.status >= 400 ? 502 : 503 });
+    await recordClientAudit("request.submitted", { requestType: type });
+    return NextResponse.json({ ok: true, requestType: type }, { headers: { "cache-control": "no-store" } });
+  }
 
   const projectId = await gcpProjectId();
   const token = await gcpAccessToken();
@@ -47,6 +62,7 @@ export async function POST(request: Request) {
   }).catch(() => null);
 
   if (!response?.ok) return NextResponse.json({ ok: false, error: "request_inbox_write_failed" }, { status: 502 });
+  await recordClientAudit("request.submitted", { requestType: type, storage: "secret-manager-inbox" });
   return NextResponse.json({ ok: true, requestType: type }, { headers: { "cache-control": "no-store" } });
 }
 

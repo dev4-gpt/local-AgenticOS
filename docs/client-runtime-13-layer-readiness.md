@@ -86,17 +86,17 @@ retention. Same codebase does not mean same permissions.
 | # | Layer | Current state | What remains before external client readiness |
 |---:|---|---|---|
 | 1 | Frontend foundations | **Ready for public pages and the client shell; partial parity with 3939** | Replace gated placeholders only after the underlying adapter is ready; finish responsive/error-state review per enabled capability. |
-| 2 | APIs and backend logic | **Partial** | Intake, Auth, credential status, and approval-shaped workflows exist. Feature APIs still include local/operator implementations and need cloud contracts. |
-| 3 | Database and storage | **Partial** | Supabase intake data exists and a cloud bucket is provisioned. Add tenant-scoped runtime records, object storage paths, signed downloads, export, and deletion. |
+| 2 | APIs and backend logic | **Control-plane foundation implemented; feature adapters partial** | Intake, Auth, client requests, credential status, safe audit metadata, and manifest validation exist. Feature APIs still include local/operator implementations and need cloud contracts. |
+| 3 | Database and storage | **Control-plane schema implemented; application evidence pending** | Tenant, membership, request, audit, job, artifact, and budget-ledger tables plus RLS are defined. Apply the schema, add Cloud Storage signed-object handling, and complete export/deletion drills. |
 | 4 | Auth and permissions | **Partial, test-ready** | Supabase Auth and middleware protect the client test. Add client membership, roles, session lifecycle, operator/admin separation, and explicit RBAC tests. |
 | 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
-| 6 | Cloud and compute | **Partial** | Cloud Run and Secret Manager are live. Add provider API adapters, private workers, Cloud Tasks/Pub/Sub, bounded retries, idempotency, and long-job status. |
-| 7 | CI/CD and version control | **Partial** | GitHub and versioned images are in use. Add a reviewed client manifest pipeline, image promotion, deployment provenance, and automated rollback checks. |
-| 8 | Security and row-level security | **Partial** | Secrets are kept out of the browser and the intake table has RLS. Add tenant RLS for all runtime data, least-privilege storage/IAM, redacted audit logs, rotation, and cross-tenant tests. |
+| 6 | Cloud and compute | **Control-plane foundation implemented; workers/adapters partial** | Cloud Run and Secret Manager are live. Add provider API adapters, private workers, Cloud Tasks/Pub/Sub, bounded retries, idempotency, and long-job status. |
+| 7 | CI/CD and version control | **Improved; client promotion evidence pending** | GitHub release checks, manifest validation, and versioned images are in use. Add image digest promotion, deployment provenance, and automated rollback checks. |
+| 8 | Security and row-level security | **Schema and boundary implemented; verification pending** | Secrets stay out of the browser, security headers are active, and the control-plane schema has RLS. Apply it, review IAM, rotate secrets, and run cross-tenant tests. |
 | 9 | Rate limiting | **Public intake implementation ready; migration/application evidence pending; runtime missing** | Apply the Supabase hardening migration and verify the RPC. Add durable edge/API limits for login, credential submission, provider calls, and expensive jobs, with abuse alerts and per-client quotas. |
 | 10 | Caching and CDN | **Partial** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Add deliberate cache headers, private-data no-store rules, signed object access, and provider-result caching where safe. |
 | 11 | Load balancing and scaling | **Partial** | Cloud Run scales to zero and the test is capped at one instance. Add queue-backed work, concurrency/load tests, per-client quotas, and scaling rules for production workloads. |
-| 12 | Error tracking and logs | **Partial** | Cloud logs and health checks exist. Add structured redacted errors, request IDs, audit events, provider failure classification, alerts, and a retention policy. |
+| 12 | Error tracking and logs | **Audit event foundation implemented; observability partial** | Safe audit metadata is supported. Add request IDs, structured redacted errors, provider failure classification, alerts, and a retention policy. |
 | 13 | Availability and recovery | **Partial / not production-ready** | Revision rollback exists. Add database/object backup, restore drills, secret recovery, export/offboarding, incident runbook, uptime target, and a second-client recovery test. |
 
 ## Private operator dependency inventory
@@ -239,6 +239,12 @@ public errors, a durable Supabase rate-limit migration, CI release checks, and
 production dependency checks. The SQL migration still requires one manual
 application in the Supabase project before the durable limiter is considered
 verified.
+
+The client control-plane migration adds single-tenant membership/RLS, safe
+request records, audit events, idempotent job records, artifact metadata, and a
+budget ledger. It deliberately does not store provider secret values. Applying
+the migration and inserting one approved membership row are required before
+switching a client manifest to `CLIENT_RUNTIME_DATA_MODE=supabase`.
 
 ## Remaining blockers for a full hosted 3939-style product
 

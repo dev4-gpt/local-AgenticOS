@@ -48,6 +48,11 @@ export async function currentClientUser(): Promise<ClientUser | null> {
   }
 }
 
+export async function currentClientAccessToken() {
+  const jar = await cookies();
+  return jar.get(ACCESS_COOKIE)?.value ?? null;
+}
+
 export function authCookieNames() {
   return { access: ACCESS_COOKIE, refresh: REFRESH_COOKIE };
 }

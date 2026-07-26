@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
 import { currentClientUser } from "@/lib/clientAuth";
 import { clientCredentialOption } from "@/lib/clientCredentialCatalog";
+import { recordClientAudit } from "@/lib/clientDataPlane";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "secret_inbox_write_failed" }, { status: 502 });
   }
 
+  await recordClientAudit("credential.submitted", { provider: option.key });
   return NextResponse.json({ ok: true, provider: { key: option.key, label: option.label } }, { headers: { "cache-control": "no-store" } });
 }
 

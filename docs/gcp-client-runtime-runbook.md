@@ -146,6 +146,33 @@ ANTHROPIC_API_KEY=veloce-acme-anthropic-api-key:latest
 The application can then read standard provider env vars without receiving
 secret values in source code or deployment manifests.
 
+## Apply the client control-plane schema
+
+For a production client edition, apply these SQL files in order in the client
+Supabase project:
+
+1. `product-experience/supabase-deployment-requests.sql`
+2. `product-experience/supabase-public-request-hardening.sql`
+3. `product-experience/supabase-client-runtime-control-plane.sql`
+
+Create the approved tenant and membership from the Supabase SQL editor or an
+operator-only migration job. Replace the placeholders with the real tenant and
+Auth user UUID; never accept membership creation from the browser:
+
+```sql
+insert into public.client_tenants (slug, name, retention_days)
+values ('example-client', 'Example Client', 30)
+on conflict (slug) do update set name = excluded.name;
+
+insert into public.client_memberships (tenant_slug, user_id, role)
+values ('example-client', 'AUTH_USER_UUID', 'owner')
+on conflict (tenant_slug, user_id) do update set role = excluded.role, status = 'active';
+```
+
+Then set `CLIENT_RUNTIME_DATA_MODE=supabase` in the approved manifest. The
+current internal cloud test remains on its Secret Manager inbox mode until this
+schema and membership row are applied and verified.
+
 ## Build The Client Image
 
 Cloud Build keeps Docker Desktop optional:
