@@ -111,7 +111,7 @@ Client slug: veloce-cloud-test
 Project: veloce-agenticos-2026
 Region: asia-south1
 Service: veloce-cloud-test
-Image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v6
+Image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v7
 Login URL: https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2F
 Service URL: https://veloce-cloud-test-1075094991117.asia-south1.run.app
 Secret namespace: veloce-veloce-cloud-test-*
