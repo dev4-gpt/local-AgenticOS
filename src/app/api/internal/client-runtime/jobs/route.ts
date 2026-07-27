@@ -112,6 +112,12 @@ async function processMediaJob(jobId: string, tenantSlug: string, workerToken: s
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "artifact_store_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
+  await settleClientRuntimeBudgetWorker({
+    jobId,
+    actualAmountMicros: result.estimatedCostMicros,
+    usageMetadata: { estimatedCostMicros: result.estimatedCostMicros },
+    workerToken,
+  });
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", {
     adapter: "elevenlabs-speech",
     artifactId,
@@ -163,6 +169,12 @@ async function processSunoJob(jobId: string, tenantSlug: string, workerToken: st
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "artifact_store_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
+  await settleClientRuntimeBudgetWorker({
+    jobId,
+    actualAmountMicros: result.estimatedCostMicros,
+    usageMetadata: { estimatedCostMicros: result.estimatedCostMicros },
+    workerToken,
+  });
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", { adapter: "suno-music", artifactId, provider: result.provider, model: result.model, contentType: "audio/mpeg", byteSize: bytes.length });
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
@@ -208,6 +220,12 @@ async function processHeyGenJob(jobId: string, tenantSlug: string, workerToken: 
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "artifact_store_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
+  await settleClientRuntimeBudgetWorker({
+    jobId,
+    actualAmountMicros: result.estimatedCostMicros,
+    usageMetadata: { estimatedCostMicros: result.estimatedCostMicros },
+    workerToken,
+  });
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", { adapter: "heygen-video", artifactId, provider: result.provider, model: result.model, contentType: "video/mp4", byteSize: bytes.length });
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
@@ -256,6 +274,12 @@ async function processSeoJob(jobId: string, tenantSlug: string, workerToken: str
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
     return NextResponse.json({ ok: true, status: "failed" });
   }
+  await settleClientRuntimeBudgetWorker({
+    jobId,
+    actualAmountMicros: result.estimatedCostMicros,
+    usageMetadata: { estimatedCostMicros: result.estimatedCostMicros },
+    workerToken,
+  });
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", {
     adapter: "firecrawl-scrape",
     provider: result.provider,
