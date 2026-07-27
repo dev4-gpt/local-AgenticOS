@@ -18,7 +18,7 @@ private.
 
 | Group | Surfaces | Replacement | Gate evidence |
 |---|---|---|---|
-| Text agents | Claude, Codex, OpenClaw, Hermes, Kimi, GLM, Grok | Tenant-safe queued API workspace now routes these surfaces away from local CLI; add provider-specific tool/workspace contracts and manifest entries | Authenticated request, correct client key, capped spend, redacted logs, retry/idempotency test |
+| Text agents | Claude, Codex, OpenClaw, Hermes, Kimi, GLM, Grok | Tenant-safe queued API workspace now routes these surfaces away from local CLI; provider-specific protocol and bounded reviewed-plan tool contracts are implemented, while manifest activation remains gated | Authenticated request, correct client key, capped spend, redacted logs, retry/idempotency test |
 | Local execution | Local, Local Engine, Free Claude Code | Client edition now routes Local/Engine to the queued API model workspace and Free Claude Code to its OpenRouter adapter; the 3939 local model/CLI remains operator-only | No shell or localhost dependency in the client image; provider key, model, budget, and isolation test |
 | Orchestration | Paperclip, Pipeline, Agent Kanban, Loop, Ruflo | Tenant workflow board now persists scoped work items and step state in Supabase; provider-backed agent execution remains a separate opt-in adapter | Create, update, archive, delete, ownership/audit, tenant A/B test, then queue-backed provider execution where enabled |
 | Memory and context | Memory, Notebook, Journal, Goals, Context intake | Tenant-scoped Supabase records adapter is implemented for text records; Cloud Storage attachments and retention policy remain | Apply hosted-capabilities migration, then prove RLS, signed download, export, delete, retention, and private-cache behavior |

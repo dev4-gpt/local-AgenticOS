@@ -65,6 +65,7 @@ expect(workerRoute.includes("validClientTaskIdentity"), "worker route must verif
 expect(providerAdapter.includes("CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON") && providerAdapter.includes("provider_model_not_allowlisted"), "provider adapter must enforce provider-specific model allowlists");
 expect(providerAdapter.includes("clientProviderContract") && providerAdapter.includes("clientProviderAttributionHeaders"), "provider adapter must enforce the reviewed provider contract layer");
 expect(providerContracts.includes('toolMode: "none"') && providerContracts.includes('toolMode: "reviewed-plan"') && providerContracts.includes("maxPromptChars") && providerContracts.includes("maxHistoryMessages"), "provider contracts must define bounded workspace and tool modes");
+expect(providerContracts.includes("CLIENT_REVIEWED_PLAN_TOOL") && providerContracts.includes("approvalRequired: true") && providerAdapter.includes("tool_calls") && providerAdapter.includes("tool_use") && providerAdapter.includes("functionCall"), "provider adapters must enforce bounded reviewed-plan tool results across protocols");
 expect(workerRoute.includes("claim_client_runtime_job"), "worker route must claim jobs through Supabase");
 expect(workerRoute.includes("retry_client_runtime_job"), "worker route must use bounded retry state");
 expect(workerRoute.includes("complete_client_runtime_job"), "worker route must complete jobs through Supabase");
@@ -139,7 +140,7 @@ expect(provisioner.includes("storage.namespace must equal clientSlug") && provis
 expect(provisioner.includes("normalizeCorsOrigins") && provisioner.includes("--cors-file="), "GCP provisioning must configure bucket CORS for signed browser uploads");
 expect(provisioner.includes("SUPABASE_SERVICE_ROLE_KEY") && provisioner.includes("Operator-only secret cannot be placed"), "GCP provisioning must reject operator-only secret slots");
 expect(inputSafety.includes("SECRET_LIKE") && inputSafety.includes("containsClientSecretLike"), "client input safety helper must reject secret-like text");
-for (const provider of ["anthropic", "codex", "openrouter", "openclaw", "hermes", "kimi", "glm", "glm-code", "grok", "antigravity", "freeclaude", "fusion", "sakana"]) {
+for (const provider of ["anthropic", "openai", "codex", "openrouter", "openclaw", "hermes", "freeclaude", "fusion", "moonshot", "kimi", "glm", "glm-code", "xai", "grok", "sakana", "gemini", "antigravity"]) {
   const marker = provider.includes("-") ? `"${provider}"` : `${provider}:`;
   expect(providerAdapter.includes(marker), `provider adapter must explicitly register ${provider}`);
   expect(providerContracts.includes(marker), `provider contracts must explicitly register ${provider}`);

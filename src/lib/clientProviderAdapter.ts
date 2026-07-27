@@ -2,7 +2,7 @@ import { clientProviderCallsEnabled, clientProviderEnabled } from "@/lib/clientR
 import { providerEnvKey, openRouterKey } from "@/lib/providerKeys";
 import { reserveClientRuntimeBudget } from "@/lib/clientDataPlane";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
-import { clientProviderAttributionHeaders, clientProviderContract } from "@/lib/clientProviderContracts";
+import { clientProviderAttributionHeaders, clientProviderContract, clientProviderToolPayload, serializeClientReviewedPlan } from "@/lib/clientProviderContracts";
 
 type Message = { role: "system" | "user" | "assistant"; content: string };
 type ProviderUsage = { inputTokens: number; outputTokens: number };
@@ -86,10 +86,10 @@ export async function runClientTextAdapter(input: {
   }
 
   const response = spec.protocol === "anthropic"
-    ? await callAnthropic(spec, key, model, messages, maxOutputTokens)
+    ? await callAnthropic(spec, key, model, messages, maxOutputTokens, clientProviderToolPayload(provider))
     : spec.protocol === "gemini"
-      ? await callGemini(spec, key, model, messages, maxOutputTokens)
-      : await callOpenAiCompatible(spec, key, model, messages, maxOutputTokens, clientProviderAttributionHeaders(provider));
+      ? await callGemini(spec, key, model, messages, maxOutputTokens, clientProviderToolPayload(provider))
+      : await callOpenAiCompatible(spec, key, model, messages, maxOutputTokens, clientProviderAttributionHeaders(provider), clientProviderToolPayload(provider));
   if (!response.ok) return { ok: false as const, status: response.status, error: "provider_request_failed" };
   return { ok: true as const, provider, model, output: response.output, usage: response.usage };
 }
@@ -159,47 +159,66 @@ export function clientTextMaxOutputTokens() {
   return Math.min(4096, Math.max(256, Number(process.env.CLIENT_MAX_OUTPUT_TOKENS ?? 2048)));
 }
 
-async function callOpenAiCompatible(spec: ProviderSpec, key: string, model: string, messages: Message[], maxTokens: number, extraHeaders: Record<string, string> = {}) {
+async function callOpenAiCompatible(spec: ProviderSpec, key: string, model: string, messages: Message[], maxTokens: number, extraHeaders: Record<string, string> = {}, toolPayload: Record<string, unknown> = {}) {
   const response = await fetch(spec.endpoint, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...extraHeaders },
-    body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: 0.2 }),
+    body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: 0.2, ...toolPayload }),
     cache: "no-store",
     signal: providerAbortSignal(),
   }).catch(() => null);
   if (!response?.ok) return { ok: false as const, status: response?.status ?? 503, output: "" };
-  const data = await responseJson(response) as { choices?: Array<{ message?: { content?: unknown } }>; usage?: { prompt_tokens?: unknown; completion_tokens?: unknown } } | null;
-  const output = data?.choices?.[0]?.message?.content;
+  const data = await responseJson(response) as { choices?: Array<{ message?: { content?: unknown; tool_calls?: Array<{ function?: { name?: unknown; arguments?: unknown } }> } }>; usage?: { prompt_tokens?: unknown; completion_tokens?: unknown } } | null;
+  const message = data?.choices?.[0]?.message;
+  const toolCall = message?.tool_calls?.find((call) => call.function?.name === "propose_reviewed_plan");
+  if (toolCall) {
+    const raw = parseToolArguments(toolCall.function?.arguments);
+    if (raw === null) return { ok: false as const, status: 502, output: "" };
+    const output = serializeClientReviewedPlan(raw);
+    return output ? { ok: true as const, status: 200, output, usage: normalizeUsage(data?.usage?.prompt_tokens, data?.usage?.completion_tokens) } : { ok: false as const, status: 502, output: "" };
+  }
+  const output = message?.content;
   return typeof output === "string" ? { ok: true as const, status: 200, output, usage: normalizeUsage(data?.usage?.prompt_tokens, data?.usage?.completion_tokens) } : { ok: false as const, status: 502, output: "" };
 }
 
-async function callAnthropic(spec: ProviderSpec, key: string, model: string, messages: Message[], maxTokens: number) {
+async function callAnthropic(spec: ProviderSpec, key: string, model: string, messages: Message[], maxTokens: number, toolPayload: Record<string, unknown> = {}) {
   const system = messages.filter((item) => item.role === "system").map((item) => item.content).join("\n");
   const response = await fetch(spec.endpoint, {
     method: "POST",
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-    body: JSON.stringify({ model, system: system || undefined, messages: messages.filter((item) => item.role !== "system"), max_tokens: maxTokens }),
+    body: JSON.stringify({ model, system: system || undefined, messages: messages.filter((item) => item.role !== "system"), max_tokens: maxTokens, ...toolPayload }),
     cache: "no-store",
     signal: providerAbortSignal(),
   }).catch(() => null);
   if (!response?.ok) return { ok: false as const, status: response?.status ?? 503, output: "" };
-  const data = await responseJson(response) as { content?: Array<{ type?: string; text?: unknown }>; usage?: { input_tokens?: unknown; output_tokens?: unknown } } | null;
+  const data = await responseJson(response) as { content?: Array<{ type?: string; text?: unknown; input?: unknown; name?: unknown }>; usage?: { input_tokens?: unknown; output_tokens?: unknown } } | null;
+  const toolUse = data?.content?.find((item) => item.type === "tool_use" && item.name === "propose_reviewed_plan");
+  if (toolUse) {
+    const output = serializeClientReviewedPlan(toolUse.input);
+    return output ? { ok: true as const, status: 200, output, usage: normalizeUsage(data?.usage?.input_tokens, data?.usage?.output_tokens) } : { ok: false as const, status: 502, output: "" };
+  }
   const output = data?.content?.find((item) => item.type === "text")?.text;
   return typeof output === "string" ? { ok: true as const, status: 200, output, usage: normalizeUsage(data?.usage?.input_tokens, data?.usage?.output_tokens) } : { ok: false as const, status: 502, output: "" };
 }
 
-async function callGemini(spec: ProviderSpec, key: string, model: string, messages: Message[], maxTokens: number) {
+async function callGemini(spec: ProviderSpec, key: string, model: string, messages: Message[], maxTokens: number, toolPayload: Record<string, unknown> = {}) {
   const contents = messages.filter((item) => item.role !== "system").map((item) => ({ role: item.role === "assistant" ? "model" : "user", parts: [{ text: item.content }] }));
   const response = await fetch(`${spec.endpoint}/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-    body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: maxTokens, temperature: 0.2 } }),
+    body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: maxTokens, temperature: 0.2 }, ...toolPayload }),
     cache: "no-store",
     signal: providerAbortSignal(),
   }).catch(() => null);
   if (!response?.ok) return { ok: false as const, status: response?.status ?? 503, output: "" };
-  const data = await responseJson(response) as { candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }>; usageMetadata?: { promptTokenCount?: unknown; candidatesTokenCount?: unknown } } | null;
-  const output = data?.candidates?.[0]?.content?.parts?.map((part) => typeof part.text === "string" ? part.text : "").join("");
+  const data = await responseJson(response) as { candidates?: Array<{ content?: { parts?: Array<{ text?: unknown; functionCall?: { name?: unknown; args?: unknown } }> } }>; usageMetadata?: { promptTokenCount?: unknown; candidatesTokenCount?: unknown } } | null;
+  const parts = data?.candidates?.[0]?.content?.parts ?? [];
+  const functionCall = parts.find((part) => part.functionCall?.name === "propose_reviewed_plan")?.functionCall;
+  if (functionCall) {
+    const output = serializeClientReviewedPlan(functionCall.args);
+    return output ? { ok: true as const, status: 200, output, usage: normalizeUsage(data?.usageMetadata?.promptTokenCount, data?.usageMetadata?.candidatesTokenCount) } : { ok: false as const, status: 502, output: "" };
+  }
+  const output = parts.map((part) => typeof part.text === "string" ? part.text : "").join("");
   return output ? { ok: true as const, status: 200, output, usage: normalizeUsage(data?.usageMetadata?.promptTokenCount, data?.usageMetadata?.candidatesTokenCount) } : { ok: false as const, status: 502, output: "" };
 }
 
@@ -209,6 +228,11 @@ function normalizeUsage(inputTokens: unknown, outputTokens: unknown): ProviderUs
   return Number.isSafeInteger(input) && Number.isSafeInteger(output) && input >= 0 && output >= 0
     ? { inputTokens: input, outputTokens: output }
     : undefined;
+}
+
+function parseToolArguments(value: unknown) {
+  if (typeof value !== "string") return value;
+  try { return JSON.parse(value) as unknown; } catch { return null; }
 }
 
 function providerAbortSignal() {
