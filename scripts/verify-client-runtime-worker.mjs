@@ -93,6 +93,7 @@ expect(cloudTasks.includes("CLIENT_RUNTIME_BASE_URL") && cloudTasks.includes("ba
 expect(cloudTasks.includes("randomUUID") && cloudTasks.includes("const taskName") && cloudTasks.includes("${identifier}-${randomUUID()}"), "Cloud Tasks retries must use unique dispatch names");
 expect(provisioner.includes("secretVersionAdder") && provisioner.includes("CLIENT_CREDENTIAL_INBOX_SECRET"), "GCP provisioner must grant inbox version-write access explicitly");
 expect(workerRoute.includes("runtime.provider_failed") && alerts.includes("runtime_budget_denied") && alerts.includes("runtime_provider_failed"), "runtime must emit and provision redacted provider and budget alerts");
+expect(alerts.includes('mimeType: "text/markdown"') && alerts.includes("undefined, metricName"), "runtime alert policies must include valid documentation MIME metadata and idempotent metric checks");
 expect(workerRoute.includes('provider: "elevenlabs"'), "speech failures must identify the speech provider in redacted logs");
 expect(providerAdapter.includes("AbortSignal.timeout") && providerAdapter.includes("2_000_000"), "provider adapters must bound request time and response size");
 expect(mediaAdapter.includes("runClientSpeechAdapter") && mediaAdapter.includes("runClientHeyGenAdapter") && mediaAdapter.includes("runClientMusicAdapter"), "media adapters must cover speech, video, and music contracts");

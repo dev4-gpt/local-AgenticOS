@@ -24,7 +24,7 @@ for (const metric of metrics) {
   const metricFilter = `metric.type="logging.googleapis.com/user/${metricName}" AND resource.type="cloud_run_revision" AND resource.labels.service_name="${service}"`;
   console.log(`Metric: ${metricName}`);
   console.log(`Policy: ${policyName}`);
-  run("gcloud", ["logging", "metrics", "create", metricName, "--project", project, "--description", metric.description, "--log-filter", filter], false);
+  run("gcloud", ["logging", "metrics", "create", metricName, "--project", project, "--description", metric.description, "--log-filter", filter], false, undefined, metricName);
   const policy = {
     displayName: policyName,
     enabled: true,
@@ -39,7 +39,10 @@ for (const metric of metrics) {
         aggregations: [{ alignmentPeriod: "60s", perSeriesAligner: "ALIGN_RATE", crossSeriesReducer: "REDUCE_SUM" }],
       },
     }],
-    documentation: { content: `Investigate ${metric.title} for ${slug}. This alert contains no prompts, keys, or client content.` },
+    documentation: {
+      content: `Investigate ${metric.title} for ${slug}. This alert contains no prompts, keys, or client content.`,
+      mimeType: "text/markdown",
+    },
     ...(notificationChannel ? { notificationChannels: [notificationChannel] } : {}),
   };
   const policyFile = `/tmp/${metricName}-policy.json`;
