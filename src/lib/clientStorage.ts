@@ -87,6 +87,15 @@ export async function clientStorageObjectMetadata(bucket: string, objectKey: str
   return Number.isFinite(size) && size >= 0 && typeof data?.contentType === "string" ? { size, contentType: data.contentType } : null;
 }
 
+export async function deleteClientStorageObject(bucket: string, objectKey: string, token: string) {
+  const response = await fetch(`https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(objectKey)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  }).catch(() => null);
+  return response?.status === 204 || response?.status === 404;
+}
+
 export async function uploadClientStorageObject(input: {
   bucket: string;
   objectKey: string;

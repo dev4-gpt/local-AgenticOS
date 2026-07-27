@@ -203,6 +203,12 @@ prefix after that many days; it does not apply to other tenant prefixes in a
 shared bucket. Verify it with `gcloud storage buckets describe` and inspect
 `lifecycle_config.rule` before treating retention as live.
 
+The current lifecycle SQL also provides authenticated tenant-scoped artifact
+deletion. The runtime removes the Cloud Storage object first, treats an already
+missing object as idempotently deleted, and then removes its Supabase metadata.
+Apply or reapply the lifecycle SQL and rerun the final verification query before
+using the artifact `DELETE` route.
+
 The hosted-capabilities migration is required before enabling the new hosted
 workflow, media, SEO, artifact, or delivery-action boundaries. It adds separate
 authenticated and worker-only artifact creation RPCs and the approval-only

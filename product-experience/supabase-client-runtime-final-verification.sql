@@ -41,6 +41,7 @@ where n.nspname = 'public'
     'settle_client_runtime_budget_worker',
     'create_client_runtime_artifact_worker',
     'confirm_client_runtime_artifact_worker',
+    'delete_client_runtime_artifact',
     'checkpoint_client_runtime_job_worker',
     'create_client_delivery_action',
     'claim_client_delivery_action_worker',

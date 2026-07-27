@@ -89,3 +89,31 @@ revoke all on function public.confirm_client_runtime_artifact(text, uuid, bigint
   from public, anon;
 grant execute on function public.confirm_client_runtime_artifact(text, uuid, bigint, text)
   to authenticated;
+
+create or replace function public.delete_client_runtime_artifact(
+  p_tenant_slug text,
+  p_artifact_id uuid
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.client_member(p_tenant_slug)
+     or p_artifact_id is null then
+    return false;
+  end if;
+
+  delete from public.client_runtime_artifacts
+  where id = p_artifact_id
+    and tenant_slug = p_tenant_slug;
+
+  return found;
+end;
+$$;
+
+revoke all on function public.delete_client_runtime_artifact(text, uuid)
+  from public, anon;
+grant execute on function public.delete_client_runtime_artifact(text, uuid)
+  to authenticated;
