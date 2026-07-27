@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
+import { normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
 const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
@@ -30,6 +30,8 @@ for (const [label, config, expected] of [
   ["missing secret slot", { providerAllowlist: [], secretNames: [] }, "Secret Manager slot"],
   ["missing pricing", { modelPricing: {} }, "pricing"],
   ["missing text capability", { enabledCapabilities: [] }, "text-agents"],
+  ["missing media providers", { enabledCapabilities: ["text-agents", "media"], providerAllowlist: ["ANTHROPIC_API_KEY"], secretNames: ["ANTHROPIC_API_KEY"] }, "Capability media"],
+  ["missing SEO hosts", { enabledCapabilities: ["text-agents", "seo"], providerAllowlist: ["ANTHROPIC_API_KEY", "FIRECRAWL_API_KEY"], secretNames: ["ANTHROPIC_API_KEY", "FIRECRAWL_API_KEY"] }, "SEO capability"],
 ]) {
   const result = { message: null };
   validateProviderActivation({
@@ -40,6 +42,8 @@ for (const [label, config, expected] of [
     providerModelAllowlist: { anthropic: ["claude-test"] },
     modelPricing: config.modelPricing ?? normalizeModelPricing({ "claude-test": { inputMicrosPer1k: 1, outputMicrosPer1k: 2 } }),
     enabledCapabilities: config.enabledCapabilities ?? ["text-agents"],
+    seoAllowedHosts: config.seoAllowedHosts ?? [],
+    deliveryAllowedHosts: config.deliveryAllowedHosts ?? [],
     fail: (message) => { result.message = message; },
   });
   expect(typeof result.message === "string" && result.message.includes(expected), `${label} must fail closed`);

@@ -6,6 +6,8 @@
   "acknowledgeClientSafeRuntime": false,
   "providerCallsEnabled": false,
   "modelPricing": {},
+  "seoAllowedHosts": [],
+  "deliveryAllowedHosts": [],
   "gcp": {
     "projectId": "your-gcp-project-id",
     "region": "asia-south1",

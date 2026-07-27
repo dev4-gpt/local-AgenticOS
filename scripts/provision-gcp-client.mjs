@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import { normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
+import { normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
 
 const args = process.argv.slice(2);
 const configPath = valueAfter("--config") ?? valueAfter("-c");
@@ -51,6 +51,8 @@ const modelAllowlist = normalizeList(manifest.modelAllowlist);
 const providerModelAllowlist = normalizeProviderModelAllowlist(manifest.providerModelAllowlist);
 const providerCallsEnabled = manifest.providerCallsEnabled === true;
 const modelPricing = normalizeModelPricing(manifest.modelPricing);
+const seoAllowedHosts = normalizeHostAllowlist(manifest.seoAllowedHosts);
+const deliveryAllowedHosts = normalizeHostAllowlist(manifest.deliveryAllowedHosts);
 validateProviderActivation({
   enabled: providerCallsEnabled,
   providerAllowlist,
@@ -59,6 +61,8 @@ validateProviderActivation({
   providerModelAllowlist,
   modelPricing,
   enabledCapabilities,
+  seoAllowedHosts,
+  deliveryAllowedHosts,
   fail,
 });
 const configuredStorageNamespace = manifest.storage?.namespace;
@@ -106,6 +110,8 @@ const protectedRuntimeEnv = {
   CLIENT_TASK_INVOKER_SERVICE_ACCOUNT: serviceAccountEmail,
   CLIENT_PROVIDER_CALLS_ENABLED: providerCallsEnabled ? "1" : "0",
   ...(providerCallsEnabled ? { CLIENT_MODEL_PRICING_JSON: JSON.stringify(modelPricing) } : {}),
+  ...(seoAllowedHosts.length > 0 ? { CLIENT_SEO_ALLOWED_HOSTS: seoAllowedHosts.join(",") } : {}),
+  ...(deliveryAllowedHosts.length > 0 ? { CLIENT_DELIVERY_ALLOWED_HOSTS: deliveryAllowedHosts.join(",") } : {}),
 };
 const runtimeEnv = { ...manifestRuntimeEnv, ...protectedRuntimeEnv };
 
@@ -137,6 +143,8 @@ const immutableRuntimeKeys = [
   "CLIENT_ALLOWED_ROUTES",
   "CLIENT_ALLOWED_API_ROUTES",
   "CLIENT_RUNTIME_DATA_MODE",
+  "CLIENT_SEO_ALLOWED_HOSTS",
+  "CLIENT_DELIVERY_ALLOWED_HOSTS",
 ];
 for (const key of immutableRuntimeKeys) {
   if (Object.hasOwn(manifestRuntimeEnv, key) && String(manifestRuntimeEnv[key]) !== String(runtimeEnv[key])) {

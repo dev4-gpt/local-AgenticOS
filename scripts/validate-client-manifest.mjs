@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
+import { normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
 
 const file = process.argv[2];
 if (!file) fail("Usage: node scripts/validate-client-manifest.mjs path/to/client.json");
@@ -58,6 +58,8 @@ validateProviderActivation({
   providerModelAllowlist: providerModels,
   modelPricing,
   enabledCapabilities: manifest.enabledCapabilities.map(String),
+  seoAllowedHosts: normalizeHostAllowlist(manifest.seoAllowedHosts),
+  deliveryAllowedHosts: normalizeHostAllowlist(manifest.deliveryAllowedHosts),
   fail,
 });
 

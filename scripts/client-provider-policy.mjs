@@ -18,6 +18,12 @@ export const PROVIDER_SECRET_KEYS = Object.freeze({
   antigravity: "GEMINI_API_KEY",
 });
 
+const CAPABILITY_SECRET_KEYS = Object.freeze({
+  media: ["ELEVENLABS_API_KEY", "HEYGEN_API_KEY", "SUNO_API_KEY"],
+  "seo-research": ["FIRECRAWL_API_KEY"],
+  seo: ["FIRECRAWL_API_KEY"],
+});
+
 export function normalizeModelPricing(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const pricing = {};
@@ -32,6 +38,13 @@ export function normalizeModelPricing(value) {
   return pricing;
 }
 
+export function normalizeHostAllowlist(value) {
+  if (value == null) return [];
+  const values = Array.isArray(value) ? value : typeof value === "string" ? value.split(",") : [];
+  const hosts = values.map((item) => String(item).trim().toLowerCase()).filter(Boolean);
+  return [...new Set(hosts.filter((host) => /^(?=.{1,253}$)(?!.*\.\.)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(host)))];
+}
+
 export function validateProviderActivation({
   enabled,
   providerAllowlist,
@@ -40,6 +53,8 @@ export function validateProviderActivation({
   providerModelAllowlist,
   modelPricing,
   enabledCapabilities,
+  seoAllowedHosts = [],
+  deliveryAllowedHosts = [],
   fail,
 }) {
   if (!enabled) return;
@@ -65,5 +80,18 @@ export function validateProviderActivation({
         fail(`Provider activation requires pricing for allowlisted model: ${model}`);
       }
     }
+  }
+  for (const capability of enabledCapabilities) {
+    for (const providerKey of CAPABILITY_SECRET_KEYS[capability] ?? []) {
+      if (!allowedSecrets.has(providerKey) || !availableSecrets.has(providerKey)) {
+        fail(`Capability ${capability} requires an allowlisted Secret Manager slot for ${providerKey}`);
+      }
+    }
+  }
+  if ((enabledCapabilities.includes("seo") || enabledCapabilities.includes("seo-research")) && seoAllowedHosts.length === 0) {
+    fail("SEO capability requires a non-empty public host allowlist");
+  }
+  if (enabledCapabilities.includes("delivery") && deliveryAllowedHosts.length === 0) {
+    fail("Delivery capability requires a non-empty approved webhook host allowlist");
   }
 }
