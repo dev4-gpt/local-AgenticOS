@@ -72,6 +72,7 @@ expect(recordsRoute.includes("SECRET_LIKE"), "tenant records route must reject s
 expect(workflowsRoute.includes("clientCapabilityEnabled(\"orchestration\")"), "hosted workflow route must be capability gated");
 expect(workflowsRoute.includes("client_runtime_records") && workflowsRoute.includes("workflow"), "hosted workflow route must use tenant records");
 expect(workflowsRoute.includes("SECRET_LIKE"), "hosted workflow route must reject secret-like content");
+expect(workflowsRoute.includes("approval_required") && workflowsRoute.includes("updateExecution"), "denied workflow dispatch must retain an auditable execution state");
 expect(workflowsRoute.includes("CLIENT_WORKFLOW_PROVIDER") && workflowsRoute.includes("enqueueClientRuntimeJob"), "workflow dispatch must use a manifest-selected queued provider job");
 expect(lifecycleScript.includes('"client_runtime_records"'), "lifecycle export/restore must include tenant records");
 expect(lifecycleScript.includes("SUPABASE_SERVICE_ROLE_KEY") && lifecycleScript.includes("required for export/offboard"), "lifecycle export must require the service role key");

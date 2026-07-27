@@ -59,13 +59,13 @@ export async function POST(request: Request) {
   if (!stored.ok) return error("workflow_write_failed", 502);
   if (operation === "dispatch") {
     if (!clientProviderCallsEnabled()) {
-      await deleteClientRecord("client_runtime_records", { id: `eq.${workflowId}`, tenant_slug: `eq.${tenantSlug}`, kind: "eq.workflow", created_by: `eq.${user.id}` });
+      await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "approval_required" });
       return error("provider_calls_require_approval", 403);
     }
     const provider = process.env.CLIENT_WORKFLOW_PROVIDER?.trim().toLowerCase() || "openrouter";
     const policy = clientProviderRequestAllowed(provider, process.env.CLIENT_WORKFLOW_MODEL);
     if (!policy.ok) {
-      await deleteClientRecord("client_runtime_records", { id: `eq.${workflowId}`, tenant_slug: `eq.${tenantSlug}`, kind: "eq.workflow", created_by: `eq.${user.id}` });
+      await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", errorCode: policy.error });
       return error(policy.error, policy.status);
     }
     const prompt = `Execute the approved tenant workflow. Surface: ${surface}. Title: ${title}. Goal and constraints:\n${goal}`.slice(0, 20_000);
@@ -77,21 +77,28 @@ export async function POST(request: Request) {
       inputMetadata: { prompt, history: [], workflowId, surface },
     });
     if (!jobId) {
-      await deleteClientRecord("client_runtime_records", { id: `eq.${workflowId}`, tenant_slug: `eq.${tenantSlug}`, kind: "eq.workflow", created_by: `eq.${user.id}` });
+      await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", errorCode: "workflow_job_store_failed" });
       return error("workflow_job_store_failed", 502);
     }
     const task = await enqueueClientRuntimeTask({ jobId, tenantSlug });
     if (!task.ok) {
       await cancelClientRuntimeJob(jobId, task.error ?? "task_enqueue_failed");
-      await deleteClientRecord("client_runtime_records", { id: `eq.${workflowId}`, tenant_slug: `eq.${tenantSlug}`, kind: "eq.workflow", created_by: `eq.${user.id}` });
+      await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", jobId, errorCode: task.error ?? "task_enqueue_failed" });
       return error(task.error ?? "task_enqueue_failed", task.status >= 500 ? 503 : task.status);
     }
-    await updateClientRecord("client_runtime_records", { id: `eq.${workflowId}`, tenant_slug: `eq.${tenantSlug}`, kind: "eq.workflow", created_by: `eq.${user.id}` }, { metadata: { ...metadata, jobId, execution: "queued" }, updated_at: new Date().toISOString() });
+    await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "queued", jobId, provider: policy.provider, model: policy.model });
     await recordClientAudit("workflow.dispatched", { surface, provider: policy.provider });
     return NextResponse.json({ ok: true, workflowId, jobId, status: "queued" }, { status: 202, headers: { "cache-control": "private, no-store" } });
   }
   await recordClientAudit("workflow.created", { surface, operation });
   return NextResponse.json({ ok: true, workflowId }, { status: 201, headers: { "cache-control": "private, no-store" } });
+}
+
+async function updateExecution(workflowId: string, tenantSlug: string, userId: string, metadata: Record<string, unknown>, execution: Record<string, unknown>) {
+  await updateClientRecord("client_runtime_records", { id: `eq.${workflowId}`, tenant_slug: `eq.${tenantSlug}`, kind: "eq.workflow", created_by: `eq.${userId}` }, {
+    metadata: { ...metadata, execution },
+    updated_at: new Date().toISOString(),
+  });
 }
 
 export async function PATCH(request: Request) {
