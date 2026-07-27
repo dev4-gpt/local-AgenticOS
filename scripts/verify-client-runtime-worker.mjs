@@ -41,6 +41,22 @@ const shell = await readFile(join(root, "src/components/Shell.tsx"), "utf8");
 const briefWorkspace = await readFile(join(root, "src/components/ClientBriefWorkspace.tsx"), "utf8");
 const workflowRunner = await readFile(join(root, "src/lib/clientWorkflowRunner.ts"), "utf8");
 const authenticatedVerifier = await readFile(join(root, "scripts/verify-client-runtime-authenticated.mjs"), "utf8");
+const runtimeRateLimitedRoutes = [
+  "src/app/api/client-runtime/provider-chat/route.ts",
+  "src/app/api/client-runtime/credential-submissions/route.ts",
+  "src/app/api/client-runtime/credentials/route.ts",
+  "src/app/api/client-runtime/requests/route.ts",
+  "src/app/api/client-runtime/jobs/route.ts",
+  "src/app/api/client-runtime/jobs/[id]/route.ts",
+  "src/app/api/client-runtime/hosted-jobs/route.ts",
+  "src/app/api/client-runtime/artifacts/route.ts",
+  "src/app/api/client-runtime/artifacts/[id]/route.ts",
+  "src/app/api/client-runtime/artifacts/[id]/complete/route.ts",
+  "src/app/api/client-runtime/artifacts/[id]/download/route.ts",
+  "src/app/api/client-runtime/records/route.ts",
+  "src/app/api/client-runtime/delivery/route.ts",
+].map(async (relativePath) => [relativePath, await readFile(join(root, relativePath), "utf8")]);
+const runtimeRateLimitedRouteSources = await Promise.all(runtimeRateLimitedRoutes);
 
 expect(workerRoute.includes("validClientTaskIdentity"), "worker route must verify Cloud Tasks identity");
 expect(providerAdapter.includes("CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON") && providerAdapter.includes("provider_model_not_allowlisted"), "provider adapter must enforce provider-specific model allowlists");
@@ -84,6 +100,11 @@ expect(workflowsRoute.includes("client_runtime_records") && workflowsRoute.inclu
 expect(workflowsRoute.includes("checkClientRuntimeRateLimit") && workflowsRoute.includes("runtime_limit_unavailable"), "workflow routes must distinguish limiter outages from genuine rate limiting");
 expect(authenticatedVerifier.includes("completedSteps === 4") && authenticatedVerifier.includes("signed artifact upload") && authenticatedVerifier.includes("equalBytes"), "authenticated verifier must prove four-step workflow completion and signed artifact byte integrity");
 expect(authenticatedVerifier.includes("cookie-file") && authenticatedVerifier.includes("must not be readable by group or other users") && !authenticatedVerifier.includes("console.log(cookie"), "authenticated verifier must accept a protected cookie file without printing credentials");
+for (const [relativePath, source] of runtimeRateLimitedRouteSources) {
+  expect(source.includes("checkClientRuntimeRateLimit"), `${relativePath} must use the structured limiter result`);
+  expect(source.includes("runtime_limit_unavailable") && source.includes("runtime_rate_limited"), `${relativePath} must distinguish limiter outages from genuine throttles`);
+  expect(!source.includes("consumeClientRuntimeRateLimit"), `${relativePath} must not collapse limiter outages into 429`);
+}
 expect(workflowsRoute.includes("SECRET_LIKE"), "hosted workflow route must reject secret-like content");
 expect(workflowsRoute.includes("approval_required") && workflowsRoute.includes("updateExecution"), "denied workflow dispatch must retain an auditable execution state");
 expect(workflowsRoute.includes("CLIENT_WORKFLOW_PROVIDER") && workflowsRoute.includes("enqueueClientRuntimeJob"), "workflow dispatch must use a manifest-selected queued provider job");

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { clientRpc, consumeClientRuntimeRateLimit, insertClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, clientRpc, insertClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
@@ -21,7 +21,9 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!clientCapabilityEnabled("delivery-actions")) return NextResponse.json({ ok: false, error: "capability_not_enabled" }, { status: 403 });
-  if (!(await consumeClientRuntimeRateLimit("delivery-actions", 10, 900))) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
+  const rateLimit = await checkClientRuntimeRateLimit("delivery-actions", 10, 900);
+  if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });
+  if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const action = typeof body.action === "string" ? body.action.trim().toLowerCase() : "";

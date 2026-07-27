@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { clientRpc, consumeClientRuntimeRateLimit, selectClientRecords, recordClientAudit } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, clientRpc, selectClientRecords, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientGcpAccessToken, clientStorageConfig, deleteClientStorageObject, safeClientObjectKey } from "@/lib/clientStorage";
 
@@ -11,7 +11,9 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const user = await currentClientUser();
   if (!user || !(await currentClientMember())) return error("not_authenticated", 401);
   if (!clientCapabilityEnabled("artifacts")) return error("capability_not_enabled", 403);
-  if (!(await consumeClientRuntimeRateLimit("artifact-deletes", 20, 900))) return error("runtime_rate_limited", 429);
+  const rateLimit = await checkClientRuntimeRateLimit("artifact-deletes", 20, 900);
+  if (!rateLimit.ok) return error("runtime_limit_unavailable", 503);
+  if (!rateLimit.allowed) return error("runtime_rate_limited", 429);
 
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return error("invalid_artifact", 400);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentClientMember } from "@/lib/clientAuth";
-import { consumeClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { runClientTextAdapter } from "@/lib/clientProviderAdapter";
 
@@ -11,7 +11,9 @@ export async function POST(request: Request) {
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!clientCapabilityEnabled("text-agents")) return NextResponse.json({ ok: false, error: "capability_not_enabled" }, { status: 403 });
   if (!clientProviderCallsEnabled()) return NextResponse.json({ ok: false, error: "provider_calls_require_approval" }, { status: 403 });
-  if (!(await consumeClientRuntimeRateLimit("provider-chat", 10, 900))) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
+  const rateLimit = await checkClientRuntimeRateLimit("provider-chat", 10, 900);
+  if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });
+  if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const provider = typeof body.provider === "string" ? body.provider : "";

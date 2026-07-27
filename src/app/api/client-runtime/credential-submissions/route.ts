@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { clientCredentialOption } from "@/lib/clientCredentialCatalog";
-import { consumeClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientCredentialSubmissionEnabled } from "@/lib/clientRuntimePolicy";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
@@ -16,9 +16,9 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
 
-  if (!(await consumeClientRuntimeRateLimit("credential-submissions", 5, 3600))) {
-    return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
-  }
+  const rateLimit = await checkClientRuntimeRateLimit("credential-submissions", 5, 3600);
+  if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });
+  if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "3600" } });
 
   const inboxSecret = process.env.CLIENT_CREDENTIAL_INBOX_SECRET?.trim();
   if (!inboxSecret) return NextResponse.json({ ok: false, error: "credential_inbox_not_configured" }, { status: 503 });

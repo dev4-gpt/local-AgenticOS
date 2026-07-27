@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { clientRpc, selectClientRecords } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, clientRpc, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientGcpAccessToken, clientStorageConfig, clientStorageObjectMetadata, safeClientObjectKey } from "@/lib/clientStorage";
 
@@ -14,6 +14,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!clientCapabilityEnabled("artifacts")) return NextResponse.json({ ok: false, error: "capability_not_enabled" }, { status: 403 });
+  const rateLimit = await checkClientRuntimeRateLimit("artifact-completions", 20, 900);
+  if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });
+  if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ ok: false, error: "invalid_artifact" }, { status: 400 });
   const config = clientStorageConfig();

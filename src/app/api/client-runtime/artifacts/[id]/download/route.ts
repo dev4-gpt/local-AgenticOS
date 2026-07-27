@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { consumeClientRuntimeRateLimit, selectClientRecords } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientGcpAccessToken, clientServiceAccountEmail, signedClientStorageUrl } from "@/lib/clientStorage";
 
@@ -12,7 +12,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!clientCapabilityEnabled("artifacts")) return NextResponse.json({ ok: false, error: "capability_not_enabled" }, { status: 403 });
-  if (!(await consumeClientRuntimeRateLimit("artifact-downloads", 40, 900))) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
+  const rateLimit = await checkClientRuntimeRateLimit("artifact-downloads", 40, 900);
+  if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });
+  if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
 
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ ok: false, error: "invalid_artifact" }, { status: 400 });

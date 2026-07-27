@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember } from "@/lib/clientAuth";
-import { cancelClientRuntimeJob, consumeClientRuntimeRateLimit, enqueueClientRuntimeJob } from "@/lib/clientDataPlane";
+import { cancelClientRuntimeJob, checkClientRuntimeRateLimit, enqueueClientRuntimeJob } from "@/lib/clientDataPlane";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
@@ -29,7 +29,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
-  if (!(await consumeClientRuntimeRateLimit("hosted-jobs", 20, 900))) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
+  const rateLimit = await checkClientRuntimeRateLimit("hosted-jobs", 20, 900);
+  if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });
+  if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const requested = typeof body.capability === "string" ? body.capability.trim().toLowerCase() : "";

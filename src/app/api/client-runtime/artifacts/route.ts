@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { clientRpc, consumeClientRuntimeRateLimit } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, clientRpc } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientGcpAccessToken, clientServiceAccountEmail, clientStorageConfig, safeClientFileName, signedClientStorageUrl } from "@/lib/clientStorage";
 
@@ -19,7 +19,9 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!clientCapabilityEnabled("artifacts")) return NextResponse.json({ ok: false, error: "capability_not_enabled" }, { status: 403 });
-  if (!(await consumeClientRuntimeRateLimit("artifact-uploads", 10, 900))) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
+  const rateLimit = await checkClientRuntimeRateLimit("artifact-uploads", 10, 900);
+  if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });
+  if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
 
   const config = clientStorageConfig();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();

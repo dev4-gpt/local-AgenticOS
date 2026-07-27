@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { consumeClientRuntimeRateLimit, insertClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, insertClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
 export const runtime = "nodejs";
@@ -15,9 +15,9 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
 
-  if (!(await consumeClientRuntimeRateLimit("requests", 20, 900))) {
-    return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
-  }
+  const rateLimit = await checkClientRuntimeRateLimit("requests", 20, 900);
+  if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });
+  if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const type = typeof body.type === "string" ? body.type.trim().toLowerCase() : "";

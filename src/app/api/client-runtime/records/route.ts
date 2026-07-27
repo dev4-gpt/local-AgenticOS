@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { consumeClientRuntimeRateLimit, deleteClientRecord, insertClientRecord, selectClientRecords, updateClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, deleteClientRecord, insertClientRecord, selectClientRecords, updateClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 
 export const runtime = "nodejs";
@@ -14,7 +14,9 @@ export async function GET(request: Request) {
   const user = await currentClientUser();
   if (!user || !(await currentClientMember())) return jsonError("not_authenticated", 401);
   if (!clientCapabilityEnabled("tenant-data")) return jsonError("capability_not_enabled", 403);
-  if (!(await consumeClientRuntimeRateLimit("tenant-records-read", 60, 900))) return jsonError("runtime_rate_limited", 429);
+  const rateLimit = await checkClientRuntimeRateLimit("tenant-records-read", 60, 900);
+  if (!rateLimit.ok) return jsonError("runtime_limit_unavailable", 503);
+  if (!rateLimit.allowed) return jsonError("runtime_rate_limited", 429);
   const kind = new URL(request.url).searchParams.get("kind")?.trim().toLowerCase() ?? "";
   if (!KINDS.has(kind)) return jsonError("record_kind_invalid", 400);
   const result = await selectClientRecords("client_runtime_records", {
@@ -31,7 +33,9 @@ export async function POST(request: Request) {
   const user = await currentClientUser();
   if (!user || !(await currentClientMember())) return jsonError("not_authenticated", 401);
   if (!clientCapabilityEnabled("tenant-data")) return jsonError("capability_not_enabled", 403);
-  if (!(await consumeClientRuntimeRateLimit("tenant-records-write", 30, 900))) return jsonError("runtime_rate_limited", 429);
+  const rateLimit = await checkClientRuntimeRateLimit("tenant-records-write", 30, 900);
+  if (!rateLimit.ok) return jsonError("runtime_limit_unavailable", 503);
+  if (!rateLimit.allowed) return jsonError("runtime_rate_limited", 429);
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const kind = typeof body.kind === "string" ? body.kind.trim().toLowerCase() : "";
   const title = typeof body.title === "string" ? body.title.trim().slice(0, 240) : "";
@@ -51,7 +55,9 @@ export async function PATCH(request: Request) {
   const user = await currentClientUser();
   if (!user || !(await currentClientMember())) return jsonError("not_authenticated", 401);
   if (!clientCapabilityEnabled("tenant-data")) return jsonError("capability_not_enabled", 403);
-  if (!(await consumeClientRuntimeRateLimit("tenant-records-write", 30, 900))) return jsonError("runtime_rate_limited", 429);
+  const rateLimit = await checkClientRuntimeRateLimit("tenant-records-write", 30, 900);
+  if (!rateLimit.ok) return jsonError("runtime_limit_unavailable", 503);
+  if (!rateLimit.allowed) return jsonError("runtime_rate_limited", 429);
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const id = typeof body.id === "string" ? body.id.trim() : "";
   const status = typeof body.status === "string" ? body.status.trim().toLowerCase() : "";
@@ -65,7 +71,9 @@ export async function DELETE(request: Request) {
   const user = await currentClientUser();
   if (!user || !(await currentClientMember())) return jsonError("not_authenticated", 401);
   if (!clientCapabilityEnabled("tenant-data")) return jsonError("capability_not_enabled", 403);
-  if (!(await consumeClientRuntimeRateLimit("tenant-records-write", 30, 900))) return jsonError("runtime_rate_limited", 429);
+  const rateLimit = await checkClientRuntimeRateLimit("tenant-records-write", 30, 900);
+  if (!rateLimit.ok) return jsonError("runtime_limit_unavailable", 503);
+  if (!rateLimit.allowed) return jsonError("runtime_rate_limited", 429);
   const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
   if (!/^[0-9a-f-]{36}$/i.test(id)) return jsonError("record_id_invalid", 400);
   const result = await deleteClientRecord("client_runtime_records", { id: `eq.${id}`, tenant_slug: `eq.${process.env.CLIENT_SLUG ?? ""}`, created_by: `eq.${user.id}` });
