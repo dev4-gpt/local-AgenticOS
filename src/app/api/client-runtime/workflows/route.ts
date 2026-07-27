@@ -124,10 +124,11 @@ export async function PATCH(request: Request) {
   if (!(await consumeClientRuntimeRateLimit("workflow-write", 30, 900))) return error("runtime_rate_limited", 429);
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const id = typeof body.id === "string" ? body.id.trim() : "";
+  const action = typeof body.action === "string" ? body.action.trim().toLowerCase() : null;
   const status = typeof body.status === "string" ? body.status.trim().toLowerCase() : null;
   const stepId = typeof body.stepId === "string" ? body.stepId.trim() : null;
   const stepStatus = typeof body.stepStatus === "string" ? body.stepStatus.trim().toLowerCase() : null;
-  if (!/^[0-9a-f-]{36}$/i.test(id) || (status && !STATUSES.has(status)) || (stepId && (!/^[0-9a-f-]{36}$/i.test(stepId) || !stepStatus || !STEP_STATUSES.has(stepStatus)))) return error("workflow_update_invalid", 400);
+  if (!/^[0-9a-f-]{36}$/i.test(id) || (action && action !== "retry_execution") || (status && !STATUSES.has(status)) || (stepId && (!/^[0-9a-f-]{36}$/i.test(stepId) || !stepStatus || !STEP_STATUSES.has(stepStatus)))) return error("workflow_update_invalid", 400);
   const tenantSlug = process.env.CLIENT_SLUG?.trim() ?? "";
   const result = await selectClientRecords("client_runtime_records", { id: `eq.${id}`, tenant_slug: `eq.${tenantSlug}`, kind: "eq.workflow", created_by: `eq.${user.id}`, limit: "1" });
   const workflow = result.records[0];
@@ -135,6 +136,29 @@ export async function PATCH(request: Request) {
   if (!workflow) return error("workflow_not_found", 404);
   const currentMetadata = workflow.metadata && typeof workflow.metadata === "object" && !Array.isArray(workflow.metadata) ? workflow.metadata as Record<string, unknown> : {};
   const currentSteps = Array.isArray(currentMetadata.steps) ? currentMetadata.steps as Array<Record<string, unknown>> : [];
+  if (action === "retry_execution") {
+    const execution = currentMetadata.execution && typeof currentMetadata.execution === "object" && !Array.isArray(currentMetadata.execution) ? currentMetadata.execution as Record<string, unknown> : {};
+    if (execution.status !== "failed") return error("workflow_retry_not_allowed", 409);
+    const workflowOperation = typeof currentMetadata.operation === "string" ? currentMetadata.operation : "plan";
+    if (workflowOperation === "dispatch") return error("provider_calls_require_approval", 403);
+    const workflowSurface = typeof currentMetadata.surface === "string" ? currentMetadata.surface : "orchestrate";
+    const jobId = await enqueueClientRuntimeJob({
+      capability: "orchestration",
+      idempotencyKey: `workflow-${id}-retry-${randomUUID()}`,
+      inputMetadata: { workflowId: id, surface: workflowSurface, operation: workflowOperation, title: String(workflow.title ?? "Hosted workflow"), goal: String(workflow.content ?? "Review the requested outcome"), steps: currentSteps },
+    });
+    if (!jobId) return error("workflow_job_store_failed", 502);
+    const task = await enqueueClientRuntimeTask({ jobId, tenantSlug });
+    if (!task.ok) {
+      const taskError = task.error ?? "task_enqueue_failed";
+      await cancelClientRuntimeJob(jobId, taskError);
+      await updateExecution(id, tenantSlug, user.id, currentMetadata, { status: "failed", jobId, adapter: "tenant-workflow-runner", mode: "deterministic-free", errorCode: taskError });
+      return error(taskError, task.status >= 500 ? 503 : task.status);
+    }
+    await updateExecution(id, tenantSlug, user.id, currentMetadata, { status: "queued", jobId, adapter: "tenant-workflow-runner", mode: "deterministic-free" });
+    await recordClientAudit("workflow.retried", { surface: workflowSurface, operation: workflowOperation });
+    return NextResponse.json({ ok: true, workflowId: id, jobId, status: "queued" }, { status: 202, headers: { "cache-control": "private, no-store" } });
+  }
   const steps = stepId ? currentSteps.map((step) => step.id === stepId ? { ...step, status: stepStatus } : step) : currentSteps;
   const next = await updateClientRecord("client_runtime_records", { id: `eq.${id}`, tenant_slug: `eq.${tenantSlug}`, kind: "eq.workflow", created_by: `eq.${user.id}` }, { ...(status ? { status } : {}), metadata: { ...currentMetadata, steps }, updated_at: new Date().toISOString() });
   if (!next.ok) return error("workflow_update_failed", 502);

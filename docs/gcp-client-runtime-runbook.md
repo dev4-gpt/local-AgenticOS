@@ -305,6 +305,15 @@ active provider configuration. After manual review, promote one matching
 provider value into the client-scoped target secret without printing the raw
 value:
 
+### Recovering a failed workflow execution
+
+If a workflow card shows `Execution: failed` with
+`task_runtime_not_configured`, it was created before the Cloud Tasks callback
+environment was deployed. Refresh the client runtime and use the circular-arrow
+retry action on that card. The retry creates a new tenant-scoped orchestration
+job and preserves the four bounded workflow steps; it does not retry provider
+dispatches while provider calls are gated.
+
 The credentials screen can accept a catalogued provider key even while that
 provider is not active. This is intentional: submission only writes a reviewed
 inbox event. The provider remains unavailable until the operator promotes the

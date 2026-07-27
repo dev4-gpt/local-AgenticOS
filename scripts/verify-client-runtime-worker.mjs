@@ -82,6 +82,7 @@ expect(workflowsRoute.includes("SECRET_LIKE"), "hosted workflow route must rejec
 expect(workflowsRoute.includes("approval_required") && workflowsRoute.includes("updateExecution"), "denied workflow dispatch must retain an auditable execution state");
 expect(workflowsRoute.includes("CLIENT_WORKFLOW_PROVIDER") && workflowsRoute.includes("enqueueClientRuntimeJob"), "workflow dispatch must use a manifest-selected queued provider job");
 expect(workflowsRoute.includes('capability: "orchestration"') && workflowsRoute.includes("workflow-${workflowId}"), "non-provider workflow operations must use a durable orchestration job");
+expect(workflowsRoute.includes('action !== "retry_execution"') && workflowsRoute.includes("workflow_retry_not_allowed") && workflowsRoute.includes("workflow-${id}-retry-${randomUUID()}"), "failed provider-free workflows must support a fresh tenant-scoped retry job");
 expect(workflowReconciliationSql.includes("jsonb_typeof(p_execution->'steps') = 'array'") && workflowReconciliationSql.includes("'{steps}'"), "worker reconciliation must mirror bounded step state onto the workflow card");
 expect(!workerRoute.includes("output: result.output"), "provider output must not be copied into workflow execution metadata");
 expect(lifecycleScript.includes('"client_runtime_records"'), "lifecycle export/restore must include tenant records");
