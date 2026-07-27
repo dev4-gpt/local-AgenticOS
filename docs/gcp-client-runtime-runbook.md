@@ -359,9 +359,9 @@ submission route and an OIDC-verified worker route. The deployed v29 client
 shell keeps provider calls disabled; the active cloud-test revision has the
 worker flag, Secret Manager token binding, and artifacts capability. Successful
 text, media, and SEO work settles its bounded budget reservation after the
-provider result is durably stored; failed or still-processing work remains
-conservative. Authenticated end-to-end job and artifact checks remain separate
-gates. The worker never receives the
+provider result is durably stored; terminal provider failures settle to zero,
+while retryable or still-processing work retains its reservation. Authenticated
+end-to-end job and artifact checks remain separate gates. The worker never receives the
 Supabase service-role key or a client browser session.
 
 The supported operator path generates a random token, writes it to the client

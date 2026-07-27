@@ -63,6 +63,7 @@ export async function POST(request: Request) {
   }
   logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: job.provider, status: result.status, reason: result.error });
   if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
+  await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
   await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, result.error);
   return NextResponse.json({ ok: true, status: "failed" });
 }
@@ -103,12 +104,14 @@ async function processMediaJob(jobId: string, tenantSlug: string, workerToken: s
   if (!result.ok) {
     logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: "elevenlabs", status: result.status, reason: result.error });
     if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
+    await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
     return NextResponse.json({ ok: true, status: "failed" });
   }
 
   const artifactId = await storeArtifact(tenantSlug, jobId, workerToken, result.fileName, result.contentType, result.bytes);
   if (!artifactId) {
+    await settleTerminalBudget(jobId, workerToken, result.estimatedCostMicros, { estimatedCostMicros: result.estimatedCostMicros, artifactStoreFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "artifact_store_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -139,6 +142,7 @@ async function processSunoJob(jobId: string, tenantSlug: string, workerToken: st
   if (!result.ok) {
     logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: "suno", status: result.status, reason: result.error });
     if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
+    await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -150,22 +154,26 @@ async function processSunoJob(jobId: string, tenantSlug: string, workerToken: st
     return NextResponse.json({ ok: true, status: "processing" }, { status: 202 });
   }
   if (result.state === "failed" || !result.outputUrl || !safeProviderOutputUrl(result.outputUrl)) {
+    await settleTerminalBudget(jobId, workerToken, result.estimatedCostMicros, { estimatedCostMicros: result.estimatedCostMicros, providerOutputFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error || "provider_music_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const response = await fetch(result.outputUrl, { cache: "no-store", signal: AbortSignal.timeout(120_000) }).catch(() => null);
   if (!response?.ok) {
     if (await retryJob(tenantSlug, jobId, workerToken, "provider_output_download_failed")) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
+    await settleTerminalBudget(jobId, workerToken, result.estimatedCostMicros, { estimatedCostMicros: result.estimatedCostMicros, outputDownloadFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_output_download_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length < 1 || bytes.length > 100 * 1024 * 1024) {
+    await settleTerminalBudget(jobId, workerToken, result.estimatedCostMicros, { estimatedCostMicros: result.estimatedCostMicros, providerOutputFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_output_invalid");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const artifactId = await storeArtifact(tenantSlug, jobId, workerToken, `${jobId}.mp3`, "audio/mpeg", bytes);
   if (!artifactId) {
+    await settleTerminalBudget(jobId, workerToken, result.estimatedCostMicros, { estimatedCostMicros: result.estimatedCostMicros, artifactStoreFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "artifact_store_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -189,6 +197,7 @@ async function processHeyGenJob(jobId: string, tenantSlug: string, workerToken: 
   if (!result.ok) {
     logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: "heygen", status: result.status, reason: result.error });
     if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
+    await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -201,22 +210,26 @@ async function processHeyGenJob(jobId: string, tenantSlug: string, workerToken: 
     return NextResponse.json({ ok: true, status: "processing" }, { status: 202 });
   }
   if (result.state === "failed" || !result.outputUrl || !safeProviderOutputUrl(result.outputUrl)) {
+    await settleTerminalBudget(jobId, workerToken, result.estimatedCostMicros, { estimatedCostMicros: result.estimatedCostMicros, providerOutputFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error || "provider_video_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const response = await fetch(result.outputUrl, { cache: "no-store", signal: AbortSignal.timeout(120_000) }).catch(() => null);
   if (!response?.ok) {
     if (await retryJob(tenantSlug, jobId, workerToken, "provider_output_download_failed")) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
+    await settleTerminalBudget(jobId, workerToken, result.estimatedCostMicros, { estimatedCostMicros: result.estimatedCostMicros, outputDownloadFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_output_download_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length < 1 || bytes.length > 100 * 1024 * 1024) {
+    await settleTerminalBudget(jobId, workerToken, result.estimatedCostMicros, { estimatedCostMicros: result.estimatedCostMicros, providerOutputFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_output_invalid");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const artifactId = await storeArtifact(tenantSlug, jobId, workerToken, `${jobId}.mp4`, "video/mp4", bytes);
   if (!artifactId) {
+    await settleTerminalBudget(jobId, workerToken, result.estimatedCostMicros, { estimatedCostMicros: result.estimatedCostMicros, artifactStoreFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "artifact_store_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -271,6 +284,7 @@ async function processSeoJob(jobId: string, tenantSlug: string, workerToken: str
   });
   if (!result.ok) {
     if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
+    await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -313,6 +327,11 @@ async function completeJob(tenantSlug: string, jobId: string, workerToken: strin
       },
     });
   }
+}
+
+async function settleTerminalBudget(jobId: string, workerToken: string, actualAmountMicros: number, usageMetadata: Record<string, number>) {
+  const settled = await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros, usageMetadata, workerToken });
+  if (!settled) logClientRuntimeEvent("runtime.budget_settlement_failed", { jobId, status: 503 });
 }
 
 function workflowIdFrom(input: Record<string, unknown> | null | undefined) {

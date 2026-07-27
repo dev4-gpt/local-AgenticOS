@@ -10,10 +10,10 @@ v29 image is deployed and passes the unauthenticated boundary checks. Revision
 `veloce-cloud-test-00032-mc8` has the worker flag, Secret Manager token
 binding, and artifact capability enabled; provider calls remain disabled. The
 worker now settles successful text reservations against normalized provider
-usage when pricing is configured, and settles fixed media/SEO estimates after
-successful artifact or research completion, while leaving reservations
-unchanged if usage is missing, work is still processing, or cost exceeds the
-bound. The lifecycle export contract now uses
+usage when pricing is configured, settles fixed media/SEO estimates after
+successful completion, refunds terminal provider failures to zero, and keeps
+reservations for retryable or still-processing work. The lifecycle export
+contract now uses
 an explicit credential-safe column allowlist, and tenant members cannot read
 the worker-token verifier after the controls migration is reapplied.
 
