@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { workerRpc } from "@/lib/clientDataPlane";
 import { validClientTaskIdentity } from "@/lib/clientTaskAuth";
+import { logClientRuntimeEvent } from "@/lib/clientRuntimeObservability";
 import { runClientDeliveryAdapter } from "@/lib/clientDeliveryAdapter";
 
 export const runtime = "nodejs";
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
   const artifactIds = Array.isArray(action.artifact_ids) ? action.artifact_ids.filter((value): value is string => typeof value === "string") : [];
   const result = await runClientDeliveryAdapter({ action: action.action, destination: typeof action.destination === "string" ? action.destination : undefined, requestId: action.request_id, artifactIds });
   const status = result.ok ? "executed" : "failed";
+  if (!result.ok) logClientRuntimeEvent("runtime.delivery_failed", { tenant: tenantSlug, status: result.status, reason: result.error });
   await workerRpc("complete_client_delivery_action_worker", { p_tenant_slug: tenantSlug, p_action_id: actionId, p_worker_token: workerToken, p_status: status, p_error_code: result.ok ? null : result.error });
   // The action is durably marked failed before returning. A second automatic
   // Cloud Tasks retry cannot claim it and accidentally repeat an external POST.

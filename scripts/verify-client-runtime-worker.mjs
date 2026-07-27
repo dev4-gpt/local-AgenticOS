@@ -94,7 +94,7 @@ expect(provisioner.includes("CLIENT_RUNTIME_BASE_URL") && provisioner.includes("
 expect(cloudTasks.includes("CLIENT_RUNTIME_BASE_URL") && cloudTasks.includes("baseUrl"), "Cloud Tasks helper must use the approved runtime callback URL");
 expect(cloudTasks.includes("randomUUID") && cloudTasks.includes("const taskName") && cloudTasks.includes("${identifier}-${randomUUID()}"), "Cloud Tasks retries must use unique dispatch names");
 expect(provisioner.includes("secretVersionAdder") && provisioner.includes("CLIENT_CREDENTIAL_INBOX_SECRET"), "GCP provisioner must grant inbox version-write access explicitly");
-expect(workerRoute.includes("runtime.provider_failed") && alerts.includes("runtime_budget_denied") && alerts.includes("runtime_provider_failed"), "runtime must emit and provision redacted provider and budget alerts");
+expect(workerRoute.includes("runtime.provider_failed") && workerRoute.includes("runtime.budget_exceeded") && deliveryRoute.includes("runtime.delivery_failed") && alerts.includes("runtime_budget_denied") && alerts.includes("runtime_provider_failed"), "runtime must emit and provision redacted provider, budget, and delivery alerts");
 expect(alerts.includes('mimeType: "text/markdown"') && alerts.includes("undefined, metricName"), "runtime alert policies must include valid documentation MIME metadata and idempotent metric checks");
 expect(workerRoute.includes('provider: "elevenlabs"'), "speech failures must identify the speech provider in redacted logs");
 expect(providerAdapter.includes("AbortSignal.timeout") && providerAdapter.includes("2_000_000"), "provider adapters must bound request time and response size");

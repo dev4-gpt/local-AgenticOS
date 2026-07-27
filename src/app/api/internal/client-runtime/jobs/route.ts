@@ -44,6 +44,7 @@ export async function POST(request: Request) {
   const pricingModel = model ?? "";
   const estimate = estimateClientTextCostMicros(pricingModel, messages, clientTextMaxOutputTokens());
   if (estimate === null || !model || !(await reserveClientRuntimeBudgetWorker({ provider: job.provider, model, amountMicros: estimate, jobId, workerToken }))) {
+    logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider: job.provider, status: 429 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
     await completeJob(tenantSlug, jobId, workerToken, "succeeded", { provider: result.provider, model: result.model, output: result.output });
     return NextResponse.json({ ok: true, status: "succeeded" });
   }
+  logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: job.provider, status: result.status, reason: result.error });
   if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
   await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
   return NextResponse.json({ ok: true, status: "failed" });
@@ -85,6 +87,7 @@ async function processMediaJob(jobId: string, tenantSlug: string, workerToken: s
     const model = provider === "heygen" ? "heygen-video" : provider === "suno" ? (process.env.CLIENT_SUNO_MODEL?.trim() || "V4_5") : "eleven_multilingual_v2";
     const estimate = provider === "heygen" ? Math.max(0, Math.round(Number(process.env.CLIENT_HEYGEN_COST_MICROS ?? 100_000))) : provider === "suno" ? Math.max(0, Math.round(Number(process.env.CLIENT_SUNO_COST_MICROS ?? 100_000))) : estimateClientMediaCostMicros(text.length);
     if (!(await reserveClientRuntimeBudgetWorker({ provider, model, amountMicros: estimate, jobId, workerToken }))) {
+      logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider, status: 429 });
       await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
       return NextResponse.json({ ok: true, status: "failed" });
     }
@@ -236,6 +239,7 @@ async function processSeoJob(jobId: string, tenantSlug: string, workerToken: str
   const input = job.input_metadata ?? {};
   const estimate = Math.max(0, Math.round(Number(process.env.CLIENT_FIRECRAWL_COST_MICROS ?? 1000)));
   if (!(await reserveClientRuntimeBudgetWorker({ provider: "firecrawl", model: "scrape-markdown", amountMicros: estimate, jobId, workerToken }))) {
+    logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider: "firecrawl", status: 429 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
     return NextResponse.json({ ok: true, status: "failed" });
   }
