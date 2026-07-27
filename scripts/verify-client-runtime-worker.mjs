@@ -40,6 +40,7 @@ const runtimePolicy = await readFile(join(root, "src/lib/clientRuntimePolicy.ts"
 const providerPolicy = await readFile(join(root, "scripts/client-provider-policy.mjs"), "utf8");
 const cloudTasks = await readFile(join(root, "src/lib/cloudTasks.ts"), "utf8");
 const alerts = await readFile(join(root, "scripts/provision-client-runtime-alerts.mjs"), "utf8");
+const deliveryApproval = await readFile(join(root, "scripts/approve-client-delivery.mjs"), "utf8");
 const middleware = await readFile(join(root, "src/middleware.ts"), "utf8");
 const observability = await readFile(join(root, "src/lib/clientRuntimeObservability.ts"), "utf8");
 const shell = await readFile(join(root, "src/components/Shell.tsx"), "utf8");
@@ -88,6 +89,7 @@ expect(mediaAdapter.includes('clientProviderEnabled("SUNO_API_KEY")') && mediaAd
 expect(workerRoute.includes("create_client_runtime_artifact_worker"), "media worker must create tenant artifact records through RPC");
 expect(workerRoute.includes("checkpoint_client_runtime_job_worker"), "async media worker must checkpoint provider job state through RPC");
 expect(deliveryRoute.includes("claim_client_delivery_action_worker") && deliveryRoute.includes("runClientDeliveryAdapter"), "delivery worker must claim and execute only approved actions");
+expect(deliveryApproval.includes("delivery.approved") && deliveryApproval.includes("delivery.queued") && deliveryApproval.includes("client_runtime_audit_events"), "delivery approval CLI must record redacted approval and queue audit events");
 for (const marker of ["SUPABASE_SERVICE_ROLE_KEY", "ANTHROPIC_API_KEY=", "OPENAI_API_KEY="]) {
   expect(!workerRoute.includes(marker) && !jobRoute.includes(marker), `worker boundary must not contain ${marker}`);
 }

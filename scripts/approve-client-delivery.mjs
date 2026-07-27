@@ -36,8 +36,14 @@ if (!apply) {
   process.exit(0);
 }
 
-if (action.status === "pending_approval") await patchAction("approved");
-if (enqueue) await enqueueTask();
+if (action.status === "pending_approval") {
+  await patchAction("approved");
+  await recordAudit("delivery.approved", { action: action.action, approvalSource: "operator-cli" }, action.request_id);
+}
+if (enqueue) {
+  await enqueueTask();
+  await recordAudit("delivery.queued", { action: action.action, approvalSource: "operator-cli" }, action.request_id);
+}
 console.log(enqueue ? "Delivery approved and queued." : "Delivery approved. Run with --enqueue to dispatch it through the reviewed worker.");
 
 async function readAction() {
@@ -69,6 +75,16 @@ async function enqueueTask() {
   }).catch(() => null);
   if (response?.status === 409) return;
   if (!response?.ok) fail(`Could not enqueue approved delivery (${response?.status ?? "no response"})`);
+}
+
+async function recordAudit(eventType, metadata, requestId) {
+  const response = await fetch(`${supabaseUrl}/rest/v1/client_runtime_audit_events`, {
+    method: "POST",
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify({ tenant_slug: slug, actor_id: null, event_type: eventType, request_id: requestId || actionId, metadata }),
+    cache: "no-store",
+  }).catch(() => null);
+  if (!response?.ok) fail(`Could not record ${eventType} audit event (${response?.status ?? "no response"})`);
 }
 
 function required(flag) {
