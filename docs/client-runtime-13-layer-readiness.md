@@ -1,13 +1,13 @@
 # Client Runtime 13-Layer Readiness
 
 Updated 2026-07-27 after reviewing the public intake deployment, the local
-operator runtime, Cloud Run client image `v34`, and the hosted adapter slice.
+operator runtime, Cloud Run client image `v35`, and the hosted adapter slice.
 The repository now contains a tenant-scoped records migration, explicit API
 provider aliases, queue-only client text execution, hosted Local/Engine
 replacement routes, tenant-safe brief workspaces, provider/model allowlists,
 and queued workflow dispatch with durable audit state on failed submission. The
-v34 image is deployed and passes the unauthenticated boundary checks. Revision
-`veloce-cloud-test-00038-bnv` has the worker flag, Secret Manager token
+v35 image is deployed and passes the unauthenticated boundary checks. Revision
+`veloce-cloud-test-00039-k72` has the worker flag, Secret Manager token
 binding, and artifact capability enabled; provider calls remain disabled. The
 worker now settles successful text reservations against normalized provider
 usage when pricing is configured, settles fixed media/SEO estimates after
@@ -29,7 +29,7 @@ The current state is:
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
-| Cloud Run client shell | Live as image `v34`; worker binding and artifacts are enabled, provider calls remain disabled, request correlation is active, limiter outages are separated from genuine throttles, and authenticated job/artifact evidence is pending | Controlled test only |
+| Cloud Run client shell | Live as image `v35`; worker binding and artifacts are enabled, provider calls remain disabled, request correlation is active, limiter outages are separated from genuine throttles, and authenticated job/artifact evidence is pending | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |
 | Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
 
@@ -192,7 +192,7 @@ true:
   without creating a request.
 - [x] Production dependency audit passes with
   `npm audit --omit=dev --audit-level=high`.
-- [x] Cloud Run v34 is deployed and passes the current client-runtime
+- [x] Cloud Run v35 is deployed and passes the current client-runtime
   verification script with security headers enabled.
 - [ ] Rerun authenticated client tests for queued jobs, artifacts, and delivery
   after the Supabase membership and worker-token gates are exercised end to end.

@@ -29,6 +29,7 @@ const finalVerificationSql = await readFile(join(root, "product-experience/supab
 const recordsSql = await readFile(join(root, "product-experience/supabase-client-runtime-records.sql"), "utf8");
 const lifecycleScript = await readFile(join(root, "scripts/client-lifecycle.mjs"), "utf8");
 const providerAdapter = await readFile(join(root, "src/lib/clientProviderAdapter.ts"), "utf8");
+const providerContracts = await readFile(join(root, "src/lib/clientProviderContracts.ts"), "utf8");
 const mediaAdapter = await readFile(join(root, "src/lib/clientMediaAdapter.ts"), "utf8");
 const seoAdapter = await readFile(join(root, "src/lib/clientSeoAdapter.ts"), "utf8");
 const deliveryAdapter = await readFile(join(root, "src/lib/clientDeliveryAdapter.ts"), "utf8");
@@ -60,6 +61,8 @@ const runtimeRateLimitedRouteSources = await Promise.all(runtimeRateLimitedRoute
 
 expect(workerRoute.includes("validClientTaskIdentity"), "worker route must verify Cloud Tasks identity");
 expect(providerAdapter.includes("CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON") && providerAdapter.includes("provider_model_not_allowlisted"), "provider adapter must enforce provider-specific model allowlists");
+expect(providerAdapter.includes("clientProviderContract") && providerAdapter.includes("clientProviderAttributionHeaders"), "provider adapter must enforce the reviewed provider contract layer");
+expect(providerContracts.includes('toolMode: "none"') && providerContracts.includes('toolMode: "reviewed-plan"') && providerContracts.includes("maxPromptChars") && providerContracts.includes("maxHistoryMessages"), "provider contracts must define bounded workspace and tool modes");
 expect(workerRoute.includes("claim_client_runtime_job"), "worker route must claim jobs through Supabase");
 expect(workerRoute.includes("retry_client_runtime_job"), "worker route must use bounded retry state");
 expect(workerRoute.includes("complete_client_runtime_job"), "worker route must complete jobs through Supabase");
@@ -130,7 +133,9 @@ expect(inputSafety.includes("SECRET_LIKE") && inputSafety.includes("containsClie
 for (const provider of ["anthropic", "codex", "openrouter", "openclaw", "hermes", "kimi", "glm", "glm-code", "grok", "antigravity", "freeclaude", "fusion", "sakana"]) {
   const marker = provider.includes("-") ? `"${provider}"` : `${provider}:`;
   expect(providerAdapter.includes(marker), `provider adapter must explicitly register ${provider}`);
+  expect(providerContracts.includes(marker), `provider contracts must explicitly register ${provider}`);
 }
+expect(providerContracts.includes('"HTTP-Referer"') && providerContracts.includes('"X-Title"'), "OpenRouter contract must define attribution headers");
 expect(!runtimePolicy.includes('"/api/client-runtime/provider-chat"'), "client policy must not allow the synchronous provider-chat bypass");
 expect(!provisioner.includes("/api/client-runtime/provider-chat"), "GCP client manifest must not allow the synchronous provider-chat bypass");
 expect(provisioner.includes("GOOGLE_CLOUD_PROJECT: projectId"), "GCP provisioner must inject the project identifier required by Cloud Tasks");

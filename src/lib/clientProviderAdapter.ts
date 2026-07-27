@@ -2,6 +2,7 @@ import { clientProviderCallsEnabled, clientProviderEnabled } from "@/lib/clientR
 import { providerEnvKey, openRouterKey } from "@/lib/providerKeys";
 import { reserveClientRuntimeBudget } from "@/lib/clientDataPlane";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
+import { clientProviderAttributionHeaders, clientProviderContract } from "@/lib/clientProviderContracts";
 
 type Message = { role: "system" | "user" | "assistant"; content: string };
 type ProviderUsage = { inputTokens: number; outputTokens: number };
@@ -62,20 +63,22 @@ export async function runClientTextAdapter(input: {
 }) {
   const provider = input.provider.trim().toLowerCase();
   const spec = PROVIDERS[provider];
+  const contract = clientProviderContract(provider);
   if (!clientProviderCallsEnabled()) return { ok: false as const, status: 403, error: "provider_calls_require_approval" };
   const requestPolicy = clientProviderRequestAllowed(provider, input.model);
   if (!requestPolicy.ok) return requestPolicy;
   const model = requestPolicy.model;
-  if (input.prompt.length < 1 || input.prompt.length > 20000) return { ok: false as const, status: 400, error: "prompt_invalid" };
+  if (!contract || contract.protocol !== spec.protocol) return { ok: false as const, status: 503, error: "provider_contract_not_configured" };
+  if (input.prompt.length < 1 || input.prompt.length > contract.maxPromptChars) return { ok: false as const, status: 400, error: "prompt_invalid" };
   if (containsClientSecretLike(input.prompt, input.history)) return { ok: false as const, status: 400, error: "secret_like_input_rejected" };
 
   const key = spec.key === "OPENROUTER_API_KEY" ? openRouterKey() : providerEnvKey(spec.key);
   if (!key) return { ok: false as const, status: 503, error: "provider_not_configured" };
   const messages: Message[] = [
-    ...(input.history ?? []).slice(-16).filter((item) => item && typeof item.content === "string"),
+    ...(input.history ?? []).slice(-contract.maxHistoryMessages).filter((item) => item && typeof item.content === "string"),
     { role: "user", content: input.prompt },
   ];
-  const maxOutputTokens = Math.min(4096, Math.max(256, Number(process.env.CLIENT_MAX_OUTPUT_TOKENS ?? 2048)));
+  const maxOutputTokens = Math.min(contract.maxOutputTokens, Math.min(4096, Math.max(256, Number(process.env.CLIENT_MAX_OUTPUT_TOKENS ?? 2048))));
   const estimate = estimateClientTextCostMicros(model, messages, maxOutputTokens);
   if (estimate === null) return { ok: false as const, status: 503, error: "model_pricing_not_configured" };
   if (input.reserveBudget !== false && !(await reserveClientRuntimeBudget(provider, model, estimate, input.jobId))) {
@@ -86,7 +89,7 @@ export async function runClientTextAdapter(input: {
     ? await callAnthropic(spec, key, model, messages, maxOutputTokens)
     : spec.protocol === "gemini"
       ? await callGemini(spec, key, model, messages, maxOutputTokens)
-      : await callOpenAiCompatible(spec, key, model, messages, maxOutputTokens);
+      : await callOpenAiCompatible(spec, key, model, messages, maxOutputTokens, clientProviderAttributionHeaders(provider));
   if (!response.ok) return { ok: false as const, status: response.status, error: "provider_request_failed" };
   return { ok: true as const, provider, model, output: response.output, usage: response.usage };
 }
@@ -154,10 +157,10 @@ export function clientTextMaxOutputTokens() {
   return Math.min(4096, Math.max(256, Number(process.env.CLIENT_MAX_OUTPUT_TOKENS ?? 2048)));
 }
 
-async function callOpenAiCompatible(spec: ProviderSpec, key: string, model: string, messages: Message[], maxTokens: number) {
+async function callOpenAiCompatible(spec: ProviderSpec, key: string, model: string, messages: Message[], maxTokens: number, extraHeaders: Record<string, string> = {}) {
   const response = await fetch(spec.endpoint, {
     method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...extraHeaders },
     body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: 0.2 }),
     cache: "no-store",
     signal: providerAbortSignal(),
