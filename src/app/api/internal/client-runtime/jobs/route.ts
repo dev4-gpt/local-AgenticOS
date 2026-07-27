@@ -28,14 +28,14 @@ export async function POST(request: Request) {
   const job = claim.value as { id?: string; capability?: string; provider?: string; model?: string; input_metadata?: Record<string, unknown> | null } | null;
   if (!job?.id || typeof job.capability !== "string") return NextResponse.json({ ok: true, status: "already_claimed" });
   if (["text-agents", "media", "seo-research"].includes(job.capability) && !clientProviderCallsEnabled()) {
-    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_calls_require_approval");
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, "provider_calls_require_approval");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   if (job.capability === "orchestration") return processOrchestrationJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "media") return processMediaJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "seo-research") return processSeoJob(jobId, tenantSlug, workerToken, job);
   if (job.capability !== "text-agents" || typeof job.provider !== "string" || typeof job.input_metadata?.prompt !== "string") {
-    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "capability_adapter_missing");
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, "capability_adapter_missing");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const model = typeof job.model === "string" && job.model ? job.model : clientProviderDefaultModel(job.provider) ?? undefined;
@@ -45,24 +45,25 @@ export async function POST(request: Request) {
   const estimate = estimateClientTextCostMicros(pricingModel, messages, clientTextMaxOutputTokens());
   if (estimate === null || !model || !(await reserveClientRuntimeBudgetWorker({ provider: job.provider, model, amountMicros: estimate, jobId, workerToken }))) {
     logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider: job.provider, status: 429 });
-    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, "budget_exceeded");
     return NextResponse.json({ ok: true, status: "failed" });
   }
 
   const result = await runClientTextAdapter({ provider: job.provider, model, prompt: job.input_metadata.prompt, history, reserveBudget: false, jobId });
   if (result.ok) {
-    await completeJob(tenantSlug, jobId, workerToken, "succeeded", { provider: result.provider, model: result.model, output: result.output });
+    await completeJob(tenantSlug, jobId, workerToken, "succeeded", { workflowId: workflowIdFrom(job.input_metadata), provider: result.provider, model: result.model, output: result.output });
     return NextResponse.json({ ok: true, status: "succeeded" });
   }
   logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: job.provider, status: result.status, reason: result.error });
   if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
-  await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
+  await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, result.error);
   return NextResponse.json({ ok: true, status: "failed" });
 }
 
 async function processOrchestrationJob(jobId: string, tenantSlug: string, workerToken: string, job: { input_metadata?: Record<string, unknown> | null }) {
   const input = job.input_metadata ?? {};
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", {
+    workflowId: workflowIdFrom(input),
     adapter: "tenant-workflow",
     workflow: {
       goal: typeof input.goal === "string" ? input.goal.slice(0, 5000) : "Review the requested outcome",
@@ -266,6 +267,25 @@ async function processSeoJob(jobId: string, tenantSlug: string, workerToken: str
 
 async function completeJob(tenantSlug: string, jobId: string, workerToken: string, status: string, outputMetadata: Record<string, unknown>, errorCode?: string) {
   await workerRpc("complete_client_runtime_job", { p_tenant_slug: tenantSlug, p_job_id: jobId, p_worker_token: workerToken, p_status: status, p_output_metadata: outputMetadata, p_error_code: errorCode ?? null });
+  const workflowId = typeof outputMetadata.workflowId === "string" && /^[0-9a-f-]{36}$/i.test(outputMetadata.workflowId) ? outputMetadata.workflowId : null;
+  if (workflowId) {
+    await workerRpc("update_client_runtime_record_worker", {
+      p_tenant_slug: tenantSlug,
+      p_record_id: workflowId,
+      p_worker_token: workerToken,
+      p_execution: {
+        status: status === "succeeded" ? "completed" : "failed",
+        jobId,
+        errorCode: errorCode ?? null,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  }
+}
+
+function workflowIdFrom(input: Record<string, unknown> | null | undefined) {
+  const value = input && typeof input.workflowId === "string" ? input.workflowId : "";
+  return /^[0-9a-f-]{36}$/i.test(value) ? value : null;
 }
 
 async function retryJob(tenantSlug: string, jobId: string, workerToken: string, errorCode: string) {

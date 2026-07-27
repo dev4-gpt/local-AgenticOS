@@ -158,6 +158,7 @@ Supabase project:
 4. `product-experience/supabase-client-runtime-controls.sql`
 5. `product-experience/supabase-client-runtime-lifecycle.sql`
 6. `product-experience/supabase-client-runtime-hosted-capabilities.sql`
+7. `product-experience/supabase-client-runtime-workflow-reconciliation.sql`
 
 Create the approved tenant and membership from the Supabase SQL editor or an
 operator-only migration job. Never accept membership creation from the
@@ -203,6 +204,12 @@ delivery action table. It does not
 grant a client permission to publish, execute local tools, or read another
 tenant's artifacts.
 
+The workflow-reconciliation migration is required before enabling provider
+dispatch from Paperclip, Ruflo, Loop, Pipeline, or Kanban surfaces. It adds one
+worker-authenticated RPC that updates only the workflow card's execution status;
+provider output remains in the job record and is never copied into workflow
+metadata. It is idempotent and reports `Success. No rows returned` when applied.
+
 The current migration also adds `client_runtime_records` for tenant-scoped
 memory, journal, goals, and notebook entries. These records use Supabase RLS
 and are separate from the operator vault. The `tenant-data` capability must be
@@ -243,14 +250,15 @@ where n.nspname = 'public'
     'checkpoint_client_runtime_job_worker',
     'create_client_delivery_action',
     'claim_client_delivery_action_worker',
-    'complete_client_delivery_action_worker'
+    'complete_client_delivery_action_worker',
+    'update_client_runtime_record_worker'
   )
 order by p.proname;
 ```
 
 Run each SELECT separately in the Supabase SQL Editor so the result panel is
 not showing only the last statement. The first result should contain one row.
-The second should contain eleven function rows after all listed migrations are
+The second should contain twelve function rows after all listed migrations are
 applied. The `complete_client_delivery_action_worker` row must show five
 identity arguments, including `p_error_code text`; an old four-argument row
 means the current hosted-capabilities migration has not been rerun. An empty
@@ -425,8 +433,9 @@ npm run approve:client-delivery -- \
   --apply --enqueue
 ```
 
-Do not use this command until the current hosted-capabilities migration has
-been rerun and the eleven-function verification query passes.
+Do not use this command until the current hosted-capabilities and
+workflow-reconciliation migrations have been applied and the twelve-function
+verification query passes.
 
 ## Build The Client Image
 

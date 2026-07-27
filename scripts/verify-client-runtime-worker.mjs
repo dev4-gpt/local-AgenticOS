@@ -24,6 +24,7 @@ const credentialSubmissionRoute = await readFile(join(root, "src/app/api/client-
 const inputSafety = await readFile(join(root, "src/lib/clientInputSafety.ts"), "utf8");
 const controlsSql = await readFile(join(root, "product-experience/supabase-client-runtime-controls.sql"), "utf8");
 const hostedSql = await readFile(join(root, "product-experience/supabase-client-runtime-hosted-capabilities.sql"), "utf8");
+const workflowReconciliationSql = await readFile(join(root, "product-experience/supabase-client-runtime-workflow-reconciliation.sql"), "utf8");
 const recordsSql = await readFile(join(root, "product-experience/supabase-client-runtime-records.sql"), "utf8");
 const lifecycleScript = await readFile(join(root, "scripts/client-lifecycle.mjs"), "utf8");
 const providerAdapter = await readFile(join(root, "src/lib/clientProviderAdapter.ts"), "utf8");
@@ -41,6 +42,7 @@ expect(providerAdapter.includes("CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON") && provi
 expect(workerRoute.includes("claim_client_runtime_job"), "worker route must claim jobs through Supabase");
 expect(workerRoute.includes("retry_client_runtime_job"), "worker route must use bounded retry state");
 expect(workerRoute.includes("complete_client_runtime_job"), "worker route must complete jobs through Supabase");
+expect(workerRoute.includes("update_client_runtime_record_worker") && workerRoute.includes("workflowIdFrom"), "worker must reconcile workflow execution state through the worker-only RPC");
 expect(jobRoute.includes("enqueueClientRuntimeTask"), "client job route must enqueue a durable task");
 expect(jobRoute.includes("cancelClientRuntimeJob"), "client job route must cancel orphaned queue rows");
 expect(jobRoute.includes("clientProviderRequestAllowed"), "client job route must enforce provider and model allowlists before enqueue");
@@ -59,6 +61,7 @@ for (const marker of ["retry_client_runtime_job", "cancel_client_runtime_job", "
 for (const marker of ["create_client_runtime_artifact_worker", "checkpoint_client_runtime_job_worker", "create_client_delivery_action", "claim_client_delivery_action_worker", "complete_client_delivery_action_worker", "p_error_code", "client_runtime_delivery_actions"]) {
   expect(hostedSql.includes(marker), `hosted capability migration must contain ${marker}`);
 }
+expect(workflowReconciliationSql.includes("update_client_runtime_record_worker") && workflowReconciliationSql.includes("worker_token_hash"), "workflow reconciliation migration must be worker-authenticated");
 expect(workerRoute.includes("confirm_client_runtime_artifact_worker"), "worker artifact path must confirm storage metadata through the worker RPC");
 expect(artifactsRoute.includes('clientRpc("create_client_runtime_artifact"'), "client uploads must create artifact metadata through an authenticated RPC");
 expect(!artifactsRoute.includes("CLIENT_WORKER_TOKEN"), "authenticated artifact uploads must not depend on the worker token");
