@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { reserveClientRuntimeBudgetWorker, settleClientRuntimeBudgetWorker, workerRpc } from "@/lib/clientDataPlane";
-import { clientProviderDefaultModel, clientTextMaxOutputTokens, clientTextUsageCostMicros, estimateClientTextCostMicros, runClientTextAdapter } from "@/lib/clientProviderAdapter";
+import { clientProviderDefaultModel, clientTextMaxOutputTokens, clientTextUsageCostMicros, estimateClientTextCostMicros, runClientTextAdapter, safeClientProviderOutput } from "@/lib/clientProviderAdapter";
 import { clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { estimateClientMediaCostMicros, runClientHeyGenAdapter, runClientMusicAdapter, runClientSpeechAdapter, safeProviderOutputUrl } from "@/lib/clientMediaAdapter";
 import { runClientSeoAdapter } from "@/lib/clientSeoAdapter";
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
         await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros, usageMetadata: result.usage, workerToken });
       }
     }
-    await completeJob(tenantSlug, jobId, workerToken, "succeeded", { workflowId: workflowIdFrom(job.input_metadata), provider: result.provider, model: result.model, steps: workflowStepsFrom(job.input_metadata) });
+    await completeJob(tenantSlug, jobId, workerToken, "succeeded", { workflowId: workflowIdFrom(job.input_metadata), provider: result.provider, model: result.model, output: safeClientProviderOutput(result.output), steps: workflowStepsFrom(job.input_metadata) });
     return NextResponse.json({ ok: true, status: "succeeded" });
   }
   logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: job.provider, status: result.status, reason: result.error });

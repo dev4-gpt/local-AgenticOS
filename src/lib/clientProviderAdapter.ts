@@ -126,6 +126,13 @@ export function clientTextUsageCostMicros(model: string, usage: ProviderUsage) {
   return Math.ceil((usage.inputTokens / 1000) * rate.inputMicrosPer1k + (usage.outputTokens / 1000) * rate.outputMicrosPer1k);
 }
 
+export function safeClientProviderOutput(value: string) {
+  const output = value.trim().slice(0, 40_000);
+  return containsClientSecretLike(output)
+    ? "[Provider output withheld because it matched secret-like content.]"
+    : output;
+}
+
 export function clientTextMaxOutputTokens() {
   return Math.min(4096, Math.max(256, Number(process.env.CLIENT_MAX_OUTPUT_TOKENS ?? 2048)));
 }
