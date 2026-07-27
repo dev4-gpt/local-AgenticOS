@@ -81,6 +81,7 @@ process.on("exit", () => {
   try { unlinkSync(storageCorsFile); } catch {}
 });
 const protectedRuntimeEnv = {
+  GOOGLE_CLOUD_PROJECT: projectId,
   VELOCE_CLIENT_EDITION: "1",
   AGENTIC_OS_DISABLE_LOCAL_CLI: "1",
   AGENTIC_OS_DISABLE_LOCAL_FILES: "1",
@@ -116,6 +117,7 @@ const protectedRuntimeEnv = {
 const runtimeEnv = { ...manifestRuntimeEnv, ...protectedRuntimeEnv };
 
 const immutableRuntimeKeys = [
+  "GOOGLE_CLOUD_PROJECT",
   "VELOCE_CLIENT_EDITION",
   "AGENTIC_OS_DISABLE_LOCAL_CLI",
   "AGENTIC_OS_DISABLE_LOCAL_FILES",

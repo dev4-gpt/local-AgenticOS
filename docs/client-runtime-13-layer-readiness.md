@@ -7,7 +7,7 @@ provider aliases, queue-only client text execution, hosted Local/Engine
 replacement routes, tenant-safe brief workspaces, provider/model allowlists,
 and queued workflow dispatch with durable audit state on failed submission. The
 v28 image is deployed and passes the unauthenticated boundary checks. Revision
-`veloce-cloud-test-00029-thg` has the worker flag, Secret Manager token
+`veloce-cloud-test-00030-lbj` has the worker flag, Secret Manager token
 binding, and artifact capability enabled; provider calls remain disabled. The
 worker now settles successful text reservations against normalized provider
 usage when pricing is configured, and settles fixed media/SEO estimates after
