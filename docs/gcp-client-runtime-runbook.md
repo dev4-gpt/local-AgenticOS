@@ -313,7 +313,7 @@ different provider alias.
 
 The controls migration adds idempotent job enqueue, claim, completion, retry,
 cancel, and worker-budget functions. The application now has a Cloud Tasks
-submission route and an OIDC-verified worker route. The deployed v17 client
+submission route and an OIDC-verified worker route. The deployed v18 client
 shell keeps provider calls and worker execution disabled; the staged manifest
 enables the worker only after the token rotation and end-to-end checks below
 are complete. The worker never receives the Supabase service-role key or a
@@ -523,8 +523,13 @@ npm run client:lifecycle -- \
   --mode restore \
   --slug veloce-cloud-test \
   --input .private-client-kits/exports/EXPORT.json \
-  --objects .private-client-kits/exports/EXPORT-objects
+  --objects .private-client-kits/exports/EXPORT-objects \
+  --apply --confirm-restore
 ```
+
+An applied restore requires `--confirm-restore`. If the snapshot contains
+artifact metadata, the matching `--objects` backup is also required so the
+database cannot advertise files that are missing from Cloud Storage.
 
 Offboarding requires an explicit confirmation and destroys the client-scoped
 Secret Manager containers only when `--destroy-secrets` is supplied:

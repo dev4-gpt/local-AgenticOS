@@ -68,6 +68,7 @@ expect(workflowsRoute.includes("SECRET_LIKE"), "hosted workflow route must rejec
 expect(workflowsRoute.includes("CLIENT_WORKFLOW_PROVIDER") && workflowsRoute.includes("enqueueClientRuntimeJob"), "workflow dispatch must use a manifest-selected queued provider job");
 expect(lifecycleScript.includes('"client_runtime_records"'), "lifecycle export/restore must include tenant records");
 expect(lifecycleScript.includes("SUPABASE_SERVICE_ROLE_KEY") && lifecycleScript.includes("required for export/offboard"), "lifecycle export must require the service role key");
+expect(lifecycleScript.includes("confirm-restore") && lifecycleScript.includes("artifact metadata; pass --objects"), "lifecycle restore must require explicit confirmation and matching objects for artifact metadata");
 expect(promotion.includes("Source inbox secret must be inside the client namespace") && promotion.includes("Target secret must be a provider secret"), "credential promotion must enforce client-namespaced source and target secrets");
 expect(workerProvisioner.includes("worker_token_hash") && workerProvisioner.includes("base64url") && workerProvisioner.includes("SUPABASE_SERVICE_ROLE_KEY"), "worker provisioning must rotate a random token and persist only its hash with operator credentials");
 expect(!workerProvisioner.includes("console.log(token") && !workerProvisioner.includes("console.log(hash"), "worker provisioning must never print the token or hash");

@@ -17,6 +17,7 @@ const project = valueAfter("--project") || process.env.GOOGLE_CLOUD_PROJECT || p
 const bucket = valueAfter("--bucket");
 const namespace = valueAfter("--namespace") || slug;
 const includeObjects = args.includes("--include-objects");
+const confirmRestore = args.includes("--confirm-restore");
 const destroySecrets = args.includes("--destroy-secrets");
 const deleteService = args.includes("--delete-service");
 const deleteBucket = args.includes("--delete-bucket");
@@ -30,6 +31,7 @@ if (mode === "offboard" && apply && !args.includes("--confirm-offboard")) fail("
 if (mode === "offboard" && apply && !destroySecrets) fail("Refusing offboard apply without --destroy-secrets");
 if (mode === "offboard" && apply && !deleteQueue) fail("Refusing offboard apply without --delete-queue");
 if (mode === "offboard" && apply && !project) fail("--project is required for offboard apply");
+if (mode === "restore" && apply && !confirmRestore) fail("Refusing restore apply without --confirm-restore");
 
 const manifest = configPath ? JSON.parse(await readFile(path.resolve(process.cwd(), configPath), "utf8")) : {};
 const gcp = manifest.gcp && typeof manifest.gcp === "object" ? manifest.gcp : {};
@@ -68,6 +70,9 @@ if (mode === "restore") {
     console.log(`Dry run restore for ${snapshot.slug} from ${inputPath}`);
     console.log(`Tables: ${Object.keys(snapshot.tables).join(", ")}`);
     process.exit(0);
+  }
+  if (snapshot.tables.client_runtime_artifacts?.length && !objectsPath) {
+    fail("Restore contains artifact metadata; pass --objects with the matching Cloud Storage backup");
   }
   await restoreSnapshot(snapshot);
   if (objectsPath) restoreObjects(objectsPath);
