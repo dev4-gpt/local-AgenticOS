@@ -26,6 +26,10 @@ export function clientProviderNames() {
   return Object.keys(PROVIDERS);
 }
 
+export function clientProviderDefaultModel(provider: string) {
+  return PROVIDERS[provider.trim().toLowerCase()]?.defaultModel ?? null;
+}
+
 export async function runClientTextAdapter(input: {
   provider: string;
   model?: string;

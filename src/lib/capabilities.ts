@@ -18,6 +18,16 @@ export interface Capability {
 // product contract, not an unrestricted ability for a client to run arbitrary tools.
 export const CAPABILITIES: Capability[] = [
   {
+    id: "text-agents", name: "Tenant API Agent Workspace", kind: "skill", audience: "built-in", status: "reviewed", destination: "/claude",
+    description: "Provider-neutral text workspace backed by approved client API keys, model allowlists, budgets, and queued jobs.",
+    dataScope: "Tenant-approved prompts and job outputs only.", actionBoundary: "No local CLI, shell, operator vault, or unattended external action; provider calls require explicit manifest approval.",
+  },
+  {
+    id: "artifacts", name: "Tenant Artifact Storage", kind: "skill", audience: "built-in", status: "reviewed", destination: "/context",
+    description: "Upload, verify, retain, and download client-owned artifacts through tenant-prefixed Cloud Storage objects.",
+    dataScope: "Client-owned files in the current tenant namespace.", actionBoundary: "Pending uploads are not downloadable; signed URLs expire and never expose storage credentials.",
+  },
+  {
     id: "web-studio", name: "Veloce Web Studio", kind: "skill", audience: "built-in", status: "active", destination: "/web-studio",
     description: "Original conversion structure, responsive UI direction, controlled components, and implementation handoff.",
     dataScope: "Approved project brief and client-provided brand material.", actionBoundary: "Creates briefs and builds for human review; never publishes by itself.",

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { reserveClientRuntimeBudgetWorker, workerRpc } from "@/lib/clientDataPlane";
-import { estimateClientTextCostMicros, clientTextMaxOutputTokens, runClientTextAdapter } from "@/lib/clientProviderAdapter";
+import { clientProviderDefaultModel, estimateClientTextCostMicros, clientTextMaxOutputTokens, runClientTextAdapter } from "@/lib/clientProviderAdapter";
 import { clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 
 export const runtime = "nodejs";
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   if (!claim.ok) return NextResponse.json({ ok: false, error: "job_claim_failed" }, { status: 503 });
   const job = claim.value as { id?: string; provider?: string; model?: string; input_metadata?: { prompt?: string; history?: Array<{ role: "system" | "user" | "assistant"; content: string }> } } | null;
   if (!job?.id || typeof job.provider !== "string" || typeof job.input_metadata?.prompt !== "string") return NextResponse.json({ ok: true, status: "already_claimed" });
-  const model = typeof job.model === "string" && job.model ? job.model : undefined;
+  const model = typeof job.model === "string" && job.model ? job.model : clientProviderDefaultModel(job.provider) ?? undefined;
   const messages = [...(job.input_metadata.history ?? []), { role: "user" as const, content: job.input_metadata.prompt }].slice(-16);
   const pricingModel = model ?? "";
   const estimate = estimateClientTextCostMicros(pricingModel, messages, clientTextMaxOutputTokens());

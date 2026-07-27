@@ -18,7 +18,7 @@ private.
 
 | Group | Surfaces | Replacement | Gate evidence |
 |---|---|---|---|
-| Text agents | Claude, Codex, OpenClaw, Hermes, Kimi, GLM, Grok | Shared API-only adapter foundation exists; add provider manifest entries, model pricing, queued job, budget ledger, approval policy | Authenticated request, correct client key, capped spend, redacted logs, retry/idempotency test |
+| Text agents | Claude, Codex, OpenClaw, Hermes, Kimi, GLM, Grok | Tenant-safe queued API workspace now routes these surfaces away from local CLI; add provider-specific tool/workspace contracts and manifest entries | Authenticated request, correct client key, capped spend, redacted logs, retry/idempotency test |
 | Local execution | Local, Local Engine, Free Claude Code | Explicitly operator-only, or a separately reviewed sandbox/model service | No shell or localhost dependency in the client image; isolation and resource-limit test |
 | Orchestration | Paperclip, Pipeline, Agent Kanban, Loop, Ruflo | Tenant-scoped workflow state plus Cloud Tasks/Pub/Sub worker | Job survives request end, bounded retry, ownership/audit, tenant A/B test |
 | Memory and context | Memory, Notebook, Journal, Goals, Context intake | Supabase rows plus Cloud Storage attachments and retention policy | RLS, signed download, export, delete, retention, private-cache test |

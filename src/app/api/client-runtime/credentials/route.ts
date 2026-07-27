@@ -25,6 +25,7 @@ export async function GET() {
         localCliDisabled: process.env.AGENTIC_OS_DISABLE_LOCAL_CLI === "1",
         localFilesDisabled: process.env.AGENTIC_OS_DISABLE_LOCAL_FILES === "1",
         approvalsRequired: process.env.AGENTIC_OS_REQUIRE_APPROVALS === "1",
+        providerCallsEnabled: process.env.CLIENT_PROVIDER_CALLS_ENABLED === "1",
       },
       client: {
         slug: process.env.CLIENT_SLUG || null,

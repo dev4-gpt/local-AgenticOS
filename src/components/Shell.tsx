@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import Sidebar, { MobileNav } from "./Sidebar";
 import TopBar from "./TopBar";
 import ClientCapabilityGate from "./ClientCapabilityGate";
+import ClientProviderWorkspace from "./ClientProviderWorkspace";
 
 const ROUTE_LENS: Array<[string[], string]> = [
   [["/context", "/memory", "/notebook", "/goals", "/journal"], "context"],
@@ -20,6 +21,20 @@ function lensFor(pathname: string) {
 }
 
 const CLIENT_SURFACE_ROUTES = new Set(["/", "/context", "/orchestrate", "/create", "/capabilities", "/credentials", "/deliver"]);
+const CLIENT_PROVIDER_ROUTES: Record<string, { provider: string; title: string }> = {
+  "/claude": { provider: "anthropic", title: "Claude" },
+  "/codex": { provider: "openai", title: "Codex" },
+  "/openclaw": { provider: "openrouter", title: "OpenClaw" },
+  "/hermes": { provider: "openrouter", title: "Hermes" },
+  "/antigravity": { provider: "gemini", title: "Antigravity" },
+  "/kimi": { provider: "moonshot", title: "Kimi Code" },
+  "/glm": { provider: "glm", title: "GLM" },
+  "/glm-code": { provider: "glm", title: "GLM Code" },
+  "/grok": { provider: "xai", title: "Grok" },
+  "/freeclaude": { provider: "openrouter", title: "Free Claude Code" },
+  "/fusion": { provider: "openrouter", title: "Fusion" },
+  "/sakana": { provider: "sakana", title: "Sakana" },
+};
 
 export default function Shell({ children, clientEdition = false }: { children: ReactNode; clientEdition?: boolean }) {
   const pathname = usePathname();
@@ -28,6 +43,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
   const reduceMotion = useReducedMotion();
   const lens = lensFor(pathname);
   const gatedClientRoute = clientEdition && !CLIENT_SURFACE_ROUTES.has(pathname);
+  const providerWorkspace = clientEdition ? CLIENT_PROVIDER_ROUTES[pathname] : null;
 
   return (
     <div className={`workspace-shell workspace-shell--${lens}`} data-lens={lens}>
@@ -47,7 +63,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
             className={isHome ? "min-h-full w-full" : "workspace-shell__page max-w-[1500px] mx-auto px-5 md:px-10 py-7 md:py-9"}
           >
             {!isHome && <TopBar />}
-            {gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
+            {providerWorkspace ? <ClientProviderWorkspace {...providerWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
           </motion.div>
         </main>
       </div>
