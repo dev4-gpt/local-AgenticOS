@@ -1,10 +1,14 @@
 import { Buffer } from "node:buffer";
 import { providerEnvKey } from "@/lib/providerKeys";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
+import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
 const ELEVENLABS_ENDPOINT = "https://api.elevenlabs.io/v1/text-to-speech";
+const OPENAI_IMAGE_ENDPOINT = "https://api.openai.com/v1/images/generations";
 const MAX_TEXT = 10_000;
 const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+const MAX_IMAGE_RESPONSE_BYTES = 32 * 1024 * 1024;
 
 export interface ClientMediaResult {
   ok: true;
@@ -41,6 +45,16 @@ export interface ClientMusicResult {
   providerJobId: string;
   outputUrl?: string;
   error?: string;
+  estimatedCostMicros: number;
+}
+
+export interface ClientImageResult {
+  ok: true;
+  provider: "openai";
+  model: string;
+  fileName: string;
+  contentType: "image/png";
+  bytes: Buffer;
   estimatedCostMicros: number;
 }
 
@@ -83,6 +97,46 @@ export async function runClientSpeechAdapter(input: {
     contentType: "audio/mpeg",
     bytes,
     estimatedCostMicros: estimateClientMediaCostMicros(text.length),
+  };
+}
+
+export async function runClientImageAdapter(input: {
+  prompt: string;
+  size?: string;
+  quality?: string;
+}): Promise<ClientImageResult | ClientMediaFailure> {
+  const prompt = input.prompt.trim();
+  if (prompt.length < 1 || prompt.length > 4_000 || containsClientSecretLike(prompt)) return { ok: false, status: 400, error: prompt.length > 4_000 ? "image_prompt_invalid" : "secret_like_input_rejected" };
+  if (!clientProviderEnabled("OPENAI_API_KEY")) return { ok: false, status: 403, error: "provider_not_allowlisted" };
+  const key = providerEnvKey("OPENAI_API_KEY");
+  if (!key) return { ok: false, status: 503, error: "provider_not_configured" };
+
+  const size = allowedImageSize(input.size);
+  const quality = allowedImageQuality(input.quality);
+  const model = process.env.CLIENT_IMAGE_MODEL?.trim() || "gpt-image-1";
+  const response = await fetch(OPENAI_IMAGE_ENDPOINT, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model, prompt, size, quality, output_format: "png", n: 1 }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(120_000),
+  }).catch(() => null);
+  if (!response?.ok) return { ok: false, status: response?.status ?? 503, error: "provider_request_failed" };
+  const data = await boundedJson(response);
+  const encoded = data?.data?.[0]?.b64_json;
+  if (typeof encoded !== "string" || encoded.length < 1) return { ok: false, status: 502, error: "provider_output_invalid" };
+  let bytes: Buffer;
+  try { bytes = Buffer.from(encoded, "base64"); } catch { return { ok: false, status: 502, error: "provider_output_invalid" }; }
+  if (bytes.length < 8 || bytes.length > MAX_IMAGE_BYTES || !isPng(bytes)) return { ok: false, status: 502, error: "provider_output_invalid" };
+  const slug = prompt.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "image";
+  return {
+    ok: true,
+    provider: "openai",
+    model,
+    fileName: `${slug}.png`,
+    contentType: "image/png",
+    bytes,
+    estimatedCostMicros: estimateClientImageCostMicros(quality, size),
   };
 }
 
@@ -182,6 +236,38 @@ export function safeProviderOutputUrl(value: string) {
   } catch {
     return false;
   }
+}
+
+function allowedImageSize(value?: string) {
+  return value === "1024x1536" || value === "1536x1024" ? value : "1024x1024";
+}
+
+function allowedImageQuality(value?: string) {
+  return value === "low" || value === "medium" || value === "high" ? value : "auto";
+}
+
+export function estimateClientImageCostMicros(quality: string, size: string) {
+  const configured = Number(process.env.CLIENT_OPENAI_IMAGE_COST_MICROS ?? 40_000);
+  const base = Number.isFinite(configured) && configured >= 0 ? Math.round(configured) : 40_000;
+  const qualityMultiplier = quality === "high" ? 2 : quality === "medium" ? 1.5 : 1;
+  const sizeMultiplier = size === "1024x1024" ? 1 : 1.5;
+  return Math.max(0, Math.ceil(base * qualityMultiplier * sizeMultiplier));
+}
+
+async function boundedJson(response: Response) {
+  const body = await response.text().catch(() => "");
+  if (!body || body.length > MAX_IMAGE_RESPONSE_BYTES) return null;
+  try {
+    return JSON.parse(body) as { data?: Array<{ b64_json?: unknown }> };
+  } catch {
+    return null;
+  }
+}
+
+function isPng(bytes: Buffer) {
+  return bytes.length >= 8
+    && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47
+    && bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a;
 }
 
 function estimateHeyGenCostMicros() {

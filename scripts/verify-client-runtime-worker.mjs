@@ -13,6 +13,7 @@ function expect(condition, message) {
 const workerRoute = await readFile(join(root, "src/app/api/internal/client-runtime/jobs/route.ts"), "utf8");
 const deliveryRoute = await readFile(join(root, "src/app/api/internal/client-runtime/delivery/route.ts"), "utf8");
 const jobRoute = await readFile(join(root, "src/app/api/client-runtime/jobs/route.ts"), "utf8");
+const hostedJobsRoute = await readFile(join(root, "src/app/api/client-runtime/hosted-jobs/route.ts"), "utf8");
 const artifactsRoute = await readFile(join(root, "src/app/api/client-runtime/artifacts/route.ts"), "utf8");
 const promotion = await readFile(join(root, "scripts/promote-client-credential.mjs"), "utf8");
 const workerProvisioner = await readFile(join(root, "scripts/provision-client-worker-token.mjs"), "utf8");
@@ -34,6 +35,7 @@ const mediaAdapter = await readFile(join(root, "src/lib/clientMediaAdapter.ts"),
 const seoAdapter = await readFile(join(root, "src/lib/clientSeoAdapter.ts"), "utf8");
 const deliveryAdapter = await readFile(join(root, "src/lib/clientDeliveryAdapter.ts"), "utf8");
 const runtimePolicy = await readFile(join(root, "src/lib/clientRuntimePolicy.ts"), "utf8");
+const providerPolicy = await readFile(join(root, "scripts/client-provider-policy.mjs"), "utf8");
 const cloudTasks = await readFile(join(root, "src/lib/cloudTasks.ts"), "utf8");
 const alerts = await readFile(join(root, "scripts/provision-client-runtime-alerts.mjs"), "utf8");
 const middleware = await readFile(join(root, "src/middleware.ts"), "utf8");
@@ -73,7 +75,10 @@ expect(workflowRunner.includes("slice(0, 8)") && workflowRunner.includes("slice(
 expect(jobRoute.includes("enqueueClientRuntimeTask"), "client job route must enqueue a durable task");
 expect(jobRoute.includes("cancelClientRuntimeJob"), "client job route must cancel orphaned queue rows");
 expect(jobRoute.includes("clientProviderRequestAllowed"), "client job route must enforce provider and model allowlists before enqueue");
-expect(workerRoute.includes("processMediaJob") && workerRoute.includes("processSeoJob"), "worker must have hosted media and SEO branches");
+expect(workerRoute.includes("processMediaJob") && workerRoute.includes("processSeoJob") && workerRoute.includes("processOpenAiImageJob"), "worker must have hosted media, image, and SEO branches");
+expect(mediaAdapter.includes("runClientImageAdapter") && mediaAdapter.includes("OPENAI_IMAGE_ENDPOINT") && mediaAdapter.includes("isPng"), "image adapter must use the bounded server-side OpenAI image contract");
+expect(hostedJobsRoute.includes('"openai"') && hostedJobsRoute.includes('openai: "OPENAI_API_KEY"'), "hosted media jobs must expose the reviewed OpenAI image provider key only through the gated queue");
+expect(providerPolicy.includes('"OPENAI_API_KEY"') && providerPolicy.includes("media:"), "provider activation policy must require the OpenAI image secret for media capability activation");
 expect(workerRoute.includes("processSunoJob") && workerRoute.includes("runClientMusicAdapter"), "worker must have a queued Suno music branch");
 expect(mediaAdapter.includes('clientProviderEnabled("SUNO_API_KEY")') && mediaAdapter.includes("record-info"), "Suno adapter must use an allowlisted server-side key and durable status polling");
 expect(workerRoute.includes("create_client_runtime_artifact_worker"), "media worker must create tenant artifact records through RPC");
@@ -158,6 +163,7 @@ expect(alerts.includes('"monitoring", "policies", "update"') && alerts.includes(
 expect(workerRoute.includes('provider: "elevenlabs"'), "speech failures must identify the speech provider in redacted logs");
 expect(providerAdapter.includes("AbortSignal.timeout") && providerAdapter.includes("2_000_000"), "provider adapters must bound request time and response size");
 expect(mediaAdapter.includes("runClientSpeechAdapter") && mediaAdapter.includes("runClientHeyGenAdapter") && mediaAdapter.includes("runClientMusicAdapter"), "media adapters must cover speech, video, and music contracts");
+expect(mediaAdapter.includes("MAX_IMAGE_BYTES") && mediaAdapter.includes("containsClientSecretLike"), "image adapter must bound output bytes and reject secret-like prompts");
 expect(seoAdapter.includes("safePublicUrl") && seoAdapter.includes("isPrivateAddress"), "SEO adapter must enforce public host and private-address blocking");
 expect(deliveryAdapter.includes("approved-webhook") && deliveryAdapter.includes("safeDeliveryUrl") && deliveryAdapter.includes('parsed.protocol === "https:"'), "delivery adapter must require an allowlisted HTTPS approved webhook");
 expect(hostedSql.includes("p_namespace <> p_tenant_slug"), "artifact RPC must enforce the tenant storage namespace");

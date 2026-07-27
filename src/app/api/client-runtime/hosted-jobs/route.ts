@@ -12,13 +12,14 @@ export const dynamic = "force-dynamic";
 
 const SPECS: Record<string, { capability: string; providers: string[]; maxInput: number }> = {
   orchestration: { capability: "orchestration", providers: [], maxInput: 16_000 },
-  media: { capability: "media", providers: ["elevenlabs", "heygen", "suno"], maxInput: 10_000 },
+  media: { capability: "media", providers: ["elevenlabs", "heygen", "suno", "openai"], maxInput: 10_000 },
   seo: { capability: "seo-research", providers: ["firecrawl"], maxInput: 2_500 },
 };
 const PROVIDER_KEYS: Record<string, string> = {
   elevenlabs: "ELEVENLABS_API_KEY",
   heygen: "HEYGEN_API_KEY",
   suno: "SUNO_API_KEY",
+  openai: "OPENAI_API_KEY",
   firecrawl: "FIRECRAWL_API_KEY",
 };
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { reserveClientRuntimeBudgetWorker, settleClientRuntimeBudgetWorker, workerRpc } from "@/lib/clientDataPlane";
 import { clientProviderDefaultModel, clientTextMaxOutputTokens, clientTextUsageCostMicros, estimateClientTextCostMicros, runClientTextAdapter, safeClientProviderMetadata, safeClientProviderOutput } from "@/lib/clientProviderAdapter";
 import { clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
-import { estimateClientMediaCostMicros, runClientHeyGenAdapter, runClientMusicAdapter, runClientSpeechAdapter, safeProviderOutputUrl } from "@/lib/clientMediaAdapter";
+import { estimateClientImageCostMicros, estimateClientMediaCostMicros, runClientHeyGenAdapter, runClientImageAdapter, runClientMusicAdapter, runClientSpeechAdapter, safeProviderOutputUrl } from "@/lib/clientMediaAdapter";
 import { runClientSeoAdapter } from "@/lib/clientSeoAdapter";
 import { clientGcpAccessToken, clientStorageConfig, uploadClientStorageObject } from "@/lib/clientStorage";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
@@ -80,7 +80,7 @@ async function processOrchestrationJob(jobId: string, tenantSlug: string, worker
 }
 
 async function processMediaJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; input_metadata?: Record<string, unknown> | null }) {
-  if (job.provider !== "elevenlabs" && job.provider !== "heygen" && job.provider !== "suno") {
+  if (job.provider !== "elevenlabs" && job.provider !== "heygen" && job.provider !== "suno" && job.provider !== "openai") {
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_not_allowed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -89,14 +89,15 @@ async function processMediaJob(jobId: string, tenantSlug: string, workerToken: s
   const providerJobId = typeof input.provider_job_id === "string" ? input.provider_job_id : undefined;
   if (!providerJobId) {
     const provider = job.provider;
-    const model = provider === "heygen" ? "heygen-video" : provider === "suno" ? (process.env.CLIENT_SUNO_MODEL?.trim() || "V4_5") : "eleven_multilingual_v2";
-    const estimate = provider === "heygen" ? Math.max(0, Math.round(Number(process.env.CLIENT_HEYGEN_COST_MICROS ?? 100_000))) : provider === "suno" ? Math.max(0, Math.round(Number(process.env.CLIENT_SUNO_COST_MICROS ?? 100_000))) : estimateClientMediaCostMicros(text.length);
+    const model = provider === "heygen" ? "heygen-video" : provider === "suno" ? (process.env.CLIENT_SUNO_MODEL?.trim() || "V4_5") : provider === "openai" ? (process.env.CLIENT_IMAGE_MODEL?.trim() || "gpt-image-1") : "eleven_multilingual_v2";
+    const estimate = provider === "heygen" ? Math.max(0, Math.round(Number(process.env.CLIENT_HEYGEN_COST_MICROS ?? 100_000))) : provider === "suno" ? Math.max(0, Math.round(Number(process.env.CLIENT_SUNO_COST_MICROS ?? 100_000))) : provider === "openai" ? estimateClientImageCostMicros(input.quality === "low" || input.quality === "medium" || input.quality === "high" ? input.quality : "auto", input.size === "1024x1536" || input.size === "1536x1024" ? input.size : "1024x1024") : estimateClientMediaCostMicros(text.length);
     if (!(await reserveClientRuntimeBudgetWorker({ provider, model, amountMicros: estimate, jobId, workerToken }))) {
       logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider, status: 429 });
       await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
       return NextResponse.json({ ok: true, status: "failed" });
     }
   }
+  if (job.provider === "openai") return processOpenAiImageJob(jobId, tenantSlug, workerToken, input);
   if (job.provider === "heygen") return processHeyGenJob(jobId, tenantSlug, workerToken, input, providerJobId);
   if (job.provider === "suno") return processSunoJob(jobId, tenantSlug, workerToken, input, providerJobId);
 
@@ -129,6 +130,30 @@ async function processMediaJob(jobId: string, tenantSlug: string, workerToken: s
     contentType: result.contentType,
     byteSize: result.bytes.length,
   });
+  return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+async function processOpenAiImageJob(jobId: string, tenantSlug: string, workerToken: string, input: Record<string, unknown>) {
+  const result = await runClientImageAdapter({
+    prompt: typeof input.prompt === "string" ? input.prompt : typeof input.text === "string" ? input.text : "",
+    size: typeof input.size === "string" ? input.size : undefined,
+    quality: typeof input.quality === "string" ? input.quality : undefined,
+  });
+  if (!result.ok) {
+    logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: "openai", status: result.status, reason: result.error });
+    if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
+    await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const artifactId = await storeArtifact(tenantSlug, jobId, workerToken, result.fileName, result.contentType, result.bytes);
+  if (!artifactId) {
+    await settleTerminalBudget(jobId, workerToken, result.estimatedCostMicros, { estimatedCostMicros: result.estimatedCostMicros, artifactStoreFailure: 1 });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "artifact_store_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros: result.estimatedCostMicros, usageMetadata: { estimatedCostMicros: result.estimatedCostMicros }, workerToken });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { adapter: "openai-image", artifactId, provider: result.provider, model: result.model, contentType: result.contentType, byteSize: result.bytes.length });
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
 

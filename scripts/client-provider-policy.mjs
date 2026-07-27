@@ -19,7 +19,7 @@ export const PROVIDER_SECRET_KEYS = Object.freeze({
 });
 
 const CAPABILITY_SECRET_KEYS = Object.freeze({
-  media: ["ELEVENLABS_API_KEY", "HEYGEN_API_KEY", "SUNO_API_KEY"],
+  media: ["ELEVENLABS_API_KEY", "HEYGEN_API_KEY", "SUNO_API_KEY", "OPENAI_API_KEY"],
   "seo-research": ["FIRECRAWL_API_KEY"],
   seo: ["FIRECRAWL_API_KEY"],
 });
