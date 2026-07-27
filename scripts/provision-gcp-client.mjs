@@ -35,6 +35,9 @@ if (!["app-auth", "cloud-run-iam"].includes(accessMode)) fail("access.mode must 
 const invokerEmails = normalizeList(manifest.access?.invokerEmails);
 const allowedUserEmails = normalizeList(manifest.access?.allowedUserEmails);
 const secretEnv = normalizeSecretEnv(manifest.secretEnv ?? manifest.secretRefs ?? {});
+const manifestRuntimeEnv = manifest.runtimeEnv && typeof manifest.runtimeEnv === "object" && !Array.isArray(manifest.runtimeEnv)
+  ? manifest.runtimeEnv
+  : {};
 const inboxSecretNames = [...new Set([
   manifest.runtimeEnv?.CLIENT_CREDENTIAL_INBOX_SECRET,
   manifest.runtimeEnv?.CLIENT_REQUEST_INBOX_SECRET,
@@ -69,8 +72,36 @@ const runtimeEnv = {
   CLIENT_RUNTIME_TASK_QUEUE: `veloce-${slug}`,
   CLIENT_TASK_INVOKER_SERVICE_ACCOUNT: serviceAccountEmail,
   CLIENT_PROVIDER_CALLS_ENABLED: "0",
-  ...(manifest.runtimeEnv ?? {}),
+  ...manifestRuntimeEnv,
 };
+
+const immutableRuntimeKeys = [
+  "VELOCE_CLIENT_EDITION",
+  "AGENTIC_OS_DISABLE_LOCAL_CLI",
+  "AGENTIC_OS_DISABLE_LOCAL_FILES",
+  "AGENTIC_OS_REQUIRE_APPROVALS",
+  "CLIENT_SLUG",
+  "CLIENT_NAME",
+  "CLIENT_RUNTIME_ENFORCE_AUTH",
+  "CLIENT_ALLOWED_USER_EMAILS",
+  "CLIENT_ENABLED_CAPABILITIES",
+  "CLIENT_PROVIDER_ALLOWLIST",
+  "CLIENT_MODEL_ALLOWLIST",
+  "CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON",
+  "CLIENT_BUDGET_CAP",
+  "CLIENT_BUDGET_WARNING_THRESHOLD",
+  "CLIENT_STORAGE_NAMESPACE",
+  "CLIENT_STORAGE_BUCKET",
+  "CLIENT_RUNTIME_SERVICE_ACCOUNT",
+  "CLIENT_RUNTIME_TASK_REGION",
+  "CLIENT_RUNTIME_TASK_QUEUE",
+  "CLIENT_TASK_INVOKER_SERVICE_ACCOUNT",
+];
+for (const key of immutableRuntimeKeys) {
+  if (Object.hasOwn(manifestRuntimeEnv, key) && String(manifestRuntimeEnv[key]) !== String(runtimeEnv[key])) {
+    fail(`runtimeEnv.${key} cannot override the derived client isolation value`);
+  }
+}
 
 if (apply) {
   if (manifest.approved !== true) fail("Refusing --apply: manifest.approved must be true after Veloce approval.");
@@ -272,6 +303,9 @@ function normalizeSecretEnv(value) {
   for (const [envName, secretRef] of Object.entries(value)) {
     const cleanEnv = envName.trim().toUpperCase();
     if (!/^[A-Z][A-Z0-9_]{1,120}$/.test(cleanEnv)) fail(`Invalid secret env name: ${envName}`);
+    if (["SUPABASE_SERVICE_ROLE_KEY", "GOOGLE_APPLICATION_CREDENTIALS", "AWS_SECRET_ACCESS_KEY", "CLAUDE_CODE_SESSION", "CODEX_SESSION"].includes(cleanEnv)) {
+      fail(`Operator-only secret cannot be placed in a client manifest: ${cleanEnv}`);
+    }
     out[cleanEnv] = sanitizeSecret(String(secretRef));
   }
   return out;

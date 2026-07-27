@@ -313,17 +313,34 @@ different provider alias.
 
 The controls migration adds idempotent job enqueue, claim, completion, retry,
 cancel, and worker-budget functions. The application now has a Cloud Tasks
-submission route and an OIDC-verified worker route. They remain disabled for
-the current v11 test until the migration, queue, token, and end-to-end checks
-below are complete. The worker never receives the Supabase service-role key or
-a client browser session.
+submission route and an OIDC-verified worker route. The deployed v17 client
+shell keeps provider calls and worker execution disabled; the staged manifest
+enables the worker only after the token rotation and end-to-end checks below
+are complete. The worker never receives the Supabase service-role key or a
+client browser session.
 
-Generate the token locally and add only its hash to the tenant record. Keep the
+The supported operator path generates a random token, writes it to the client
+Secret Manager namespace, and patches only its SHA-256 hash into the matching
+tenant row. It requires the Supabase service-role key in the operator shell,
+never prints either token or hash, and is dry-run by default:
+
+```bash
+npm run provision:client-worker-token -- \
+  --project veloce-agenticos-2026 \
+  --slug veloce-cloud-test
+
+npm run provision:client-worker-token -- \
+  --project veloce-agenticos-2026 \
+  --slug veloce-cloud-test \
+  --apply
+```
+
+The older manual shape is shown only to explain the storage boundary. Keep the
 raw token in the client Secret Manager namespace:
 
 ```bash
 umask 077
-openssl rand -hex 32 > /tmp/veloce-cloud-test-worker-token
+openssl rand -hex 32 | tr -d '\\n' > /tmp/veloce-cloud-test-worker-token
 shasum -a 256 /tmp/veloce-cloud-test-worker-token
 gcloud secrets versions add veloce-veloce-cloud-test-worker-token \
   --project veloce-agenticos-2026 \
@@ -331,10 +348,10 @@ gcloud secrets versions add veloce-veloce-cloud-test-worker-token \
 rm /tmp/veloce-cloud-test-worker-token
 ```
 
-Add the displayed hash through the operator-only Supabase SQL editor, and add
-the raw token as a Secret Manager version named
-`veloce-<clientSlug>-worker-token`. The SQL update is shaped like this; paste
-only the hash, never the raw token:
+If the provisioner cannot be used, add only the displayed hash through the
+operator-only Supabase SQL editor and add the raw token as a Secret Manager
+version named `veloce-<clientSlug>-worker-token`. The SQL update is shaped like
+this; paste only the hash, never the raw token:
 
 ```sql
 update public.client_tenants

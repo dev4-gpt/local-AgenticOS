@@ -18,7 +18,9 @@ if (!project || !clientSlug || !providerKey || !inboxSecret || !targetSecret) {
 if (!/^[a-z][a-z0-9-]{2,40}$/.test(clientSlug)) fail("Invalid client slug");
 if (!/^[A-Z][A-Z0-9_]{2,120}$/.test(providerKey)) fail("Invalid provider key");
 if (!/^[a-z][a-z0-9_-]{1,120}$/.test(inboxSecret) || !/^\d+$|^latest$/.test(version)) fail("Invalid source secret or version");
+if (!inboxSecret.startsWith(`veloce-${clientSlug}-`)) fail("Source inbox secret must be inside the client namespace");
 if (!targetSecret.startsWith(`veloce-${clientSlug}-`)) fail("Target secret must be inside the client namespace");
+if (targetSecret === inboxSecret || targetSecret.includes("credential-inbox")) fail("Target secret must be a provider secret, not the credential inbox");
 if (disablePrevious && !apply) fail("--disable-previous requires --apply so the new version is written before older versions are disabled");
 
 const source = run("gcloud", ["secrets", "versions", "access", version, "--secret", inboxSecret, "--project", project]);

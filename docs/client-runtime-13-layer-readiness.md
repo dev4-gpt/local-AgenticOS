@@ -1,12 +1,14 @@
 # Client Runtime 13-Layer Readiness
 
 Updated 2026-07-27 after reviewing the public intake deployment, the local
-operator runtime, Cloud Run client image `v11`, and the hosted adapter slice.
+operator runtime, Cloud Run client image `v17`, and the hosted adapter slice.
 The repository now contains a tenant-scoped records migration, explicit API
 provider aliases, queue-only client text execution, hosted Local/Engine
 replacement routes, tenant-safe brief workspaces, provider/model allowlists,
-and queued workflow dispatch with cleanup on failed submission. The newest
-image is built but not deployed until the records table is verified in Supabase.
+and queued workflow dispatch with cleanup on failed submission. The v17 image
+is deployed and passes the unauthenticated boundary checks. The worker-enabled
+manifest is staged for the next revision after token rotation and hosted-
+capability SQL verification.
 
 ## Executive answer
 
@@ -20,7 +22,7 @@ The current state is:
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
-| Cloud Run client shell | Live as historical image `v11`; a newer image is built, but current auth, hosted-adapter, records, and worker changes await deployment | Controlled test only |
+| Cloud Run client shell | Live as image `v17`; provider calls remain disabled and worker execution awaits token provisioning | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |
 | Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
 

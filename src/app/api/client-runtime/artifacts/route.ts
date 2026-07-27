@@ -23,8 +23,7 @@ export async function POST(request: Request) {
 
   const config = clientStorageConfig();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
-  const workerToken = process.env.CLIENT_WORKER_TOKEN?.trim();
-  if (!config || !tenantSlug || !workerToken) return NextResponse.json({ ok: false, error: "storage_not_configured" }, { status: 503 });
+  if (!config || !tenantSlug) return NextResponse.json({ ok: false, error: "storage_not_configured" }, { status: 503 });
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const originalName = typeof body.fileName === "string" ? safeClientFileName(body.fileName) : null;
   const contentType = typeof body.contentType === "string" ? body.contentType.trim().toLowerCase() : "";

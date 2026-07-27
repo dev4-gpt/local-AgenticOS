@@ -24,7 +24,7 @@ const deleteQueue = args.includes("--delete-queue");
 
 if (!["export", "restore", "offboard"].includes(mode)) fail("--mode must be export, restore, or offboard");
 if (mode === "restore" && !inputPath) fail("--input is required for restore");
-if (mode !== "restore" && !process.env.SUPABASE_URL) fail("SUPABASE_URL is required for export/offboard");
+if (mode !== "restore" && (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)) fail("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for export/offboard");
 if ((mode === "offboard" || mode === "restore") && !process.env.SUPABASE_SERVICE_ROLE_KEY) fail("SUPABASE_SERVICE_ROLE_KEY is required for operator lifecycle actions");
 if (mode === "offboard" && apply && !args.includes("--confirm-offboard")) fail("Refusing offboard apply without --confirm-offboard");
 if (mode === "offboard" && apply && !destroySecrets) fail("Refusing offboard apply without --destroy-secrets");

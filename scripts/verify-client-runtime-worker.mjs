@@ -14,6 +14,9 @@ const workerRoute = await readFile(join(root, "src/app/api/internal/client-runti
 const deliveryRoute = await readFile(join(root, "src/app/api/internal/client-runtime/delivery/route.ts"), "utf8");
 const jobRoute = await readFile(join(root, "src/app/api/client-runtime/jobs/route.ts"), "utf8");
 const artifactsRoute = await readFile(join(root, "src/app/api/client-runtime/artifacts/route.ts"), "utf8");
+const promotion = await readFile(join(root, "scripts/promote-client-credential.mjs"), "utf8");
+const workerProvisioner = await readFile(join(root, "scripts/provision-client-worker-token.mjs"), "utf8");
+const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
 const recordsRoute = await readFile(join(root, "src/app/api/client-runtime/records/route.ts"), "utf8");
 const workflowsRoute = await readFile(join(root, "src/app/api/client-runtime/workflows/route.ts"), "utf8");
 const inputSafety = await readFile(join(root, "src/lib/clientInputSafety.ts"), "utf8");
@@ -25,7 +28,6 @@ const providerAdapter = await readFile(join(root, "src/lib/clientProviderAdapter
 const mediaAdapter = await readFile(join(root, "src/lib/clientMediaAdapter.ts"), "utf8");
 const runtimePolicy = await readFile(join(root, "src/lib/clientRuntimePolicy.ts"), "utf8");
 const cloudTasks = await readFile(join(root, "src/lib/cloudTasks.ts"), "utf8");
-const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
 const alerts = await readFile(join(root, "scripts/provision-client-runtime-alerts.mjs"), "utf8");
 const shell = await readFile(join(root, "src/components/Shell.tsx"), "utf8");
 const briefWorkspace = await readFile(join(root, "src/components/ClientBriefWorkspace.tsx"), "utf8");
@@ -55,6 +57,7 @@ for (const marker of ["create_client_runtime_artifact_worker", "checkpoint_clien
 }
 expect(workerRoute.includes("confirm_client_runtime_artifact_worker"), "worker artifact path must confirm storage metadata through the worker RPC");
 expect(artifactsRoute.includes('clientRpc("create_client_runtime_artifact"'), "client uploads must create artifact metadata through an authenticated RPC");
+expect(!artifactsRoute.includes("CLIENT_WORKER_TOKEN"), "authenticated artifact uploads must not depend on the worker token");
 expect(hostedSql.includes("create_client_runtime_artifact(") && hostedSql.includes("p_object_key not like"), "client artifact RPC must enforce tenant and user object namespaces");
 expect(recordsRoute.includes("clientCapabilityEnabled(\"tenant-data\")"), "tenant records route must be capability gated");
 expect(recordsRoute.includes("client_runtime_records"), "tenant records route must use the hosted records table");
@@ -64,6 +67,12 @@ expect(workflowsRoute.includes("client_runtime_records") && workflowsRoute.inclu
 expect(workflowsRoute.includes("SECRET_LIKE"), "hosted workflow route must reject secret-like content");
 expect(workflowsRoute.includes("CLIENT_WORKFLOW_PROVIDER") && workflowsRoute.includes("enqueueClientRuntimeJob"), "workflow dispatch must use a manifest-selected queued provider job");
 expect(lifecycleScript.includes('"client_runtime_records"'), "lifecycle export/restore must include tenant records");
+expect(lifecycleScript.includes("SUPABASE_SERVICE_ROLE_KEY") && lifecycleScript.includes("required for export/offboard"), "lifecycle export must require the service role key");
+expect(promotion.includes("Source inbox secret must be inside the client namespace") && promotion.includes("Target secret must be a provider secret"), "credential promotion must enforce client-namespaced source and target secrets");
+expect(workerProvisioner.includes("worker_token_hash") && workerProvisioner.includes("base64url") && workerProvisioner.includes("SUPABASE_SERVICE_ROLE_KEY"), "worker provisioning must rotate a random token and persist only its hash with operator credentials");
+expect(!workerProvisioner.includes("console.log(token") && !workerProvisioner.includes("console.log(hash"), "worker provisioning must never print the token or hash");
+expect(provisioner.includes("immutableRuntimeKeys") && provisioner.includes("cannot override the derived client isolation value"), "GCP provisioning must protect derived tenant isolation values");
+expect(provisioner.includes("SUPABASE_SERVICE_ROLE_KEY") && provisioner.includes("Operator-only secret cannot be placed"), "GCP provisioning must reject operator-only secret slots");
 expect(inputSafety.includes("SECRET_LIKE") && inputSafety.includes("containsClientSecretLike"), "client input safety helper must reject secret-like text");
 for (const provider of ["anthropic", "codex", "openclaw", "hermes", "kimi", "glm-code", "grok", "antigravity", "freeclaude", "fusion", "sakana"]) {
   const marker = provider.includes("-") ? `"${provider}"` : `${provider}:`;
