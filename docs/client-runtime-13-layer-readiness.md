@@ -1,8 +1,10 @@
 # Client Runtime 13-Layer Readiness
 
 Updated 2026-07-27 after reviewing the public intake deployment, the local
-operator runtime, Cloud Run client image `v11`, and the next un-deployed hosted
-adapter slice.
+operator runtime, Cloud Run client image `v11`, and the next hosted adapter
+slice. The repository now also contains a tenant-scoped records adapter for
+memory, journal, goals, and notebook; it is not live until the current
+Supabase hosted-capabilities migration is applied and a new image is deployed.
 
 ## Executive answer
 
@@ -88,7 +90,7 @@ retention. Same codebase does not mean same permissions.
 |---:|---|---|---|
 | 1 | Frontend foundations | **Ready for public pages and the client shell; partial parity with 3939** | Replace gated placeholders only after the underlying adapter is ready; finish responsive/error-state review per enabled capability. |
 | 2 | APIs and backend logic | **Control-plane, API-only text, workflow, Firecrawl SEO, media, and approval-only delivery contracts implemented; feature parity partial** | The new hosted routes and delivery worker are manifest-gated and need current-image deployment evidence. HeyGen, Suno, image/video production, publishing destinations, and the remaining local workspaces still need separate adapters. |
-| 3 | Database and storage | **Tenant-scoped artifact upload/verification/download plus worker artifact creation implemented; evidence pending** | Apply the lifecycle and hosted-capability migrations, configure Cloud Storage IAM, and complete an object export/deletion drill. |
+| 3 | Database and storage | **Tenant-scoped artifact upload/verification/download plus worker artifact creation and tenant records implemented; evidence pending** | Apply the lifecycle and current hosted-capability migrations, configure Cloud Storage IAM, and complete object and record export/deletion drills. |
 | 4 | Auth and permissions | **Partial, test-ready** | Supabase Auth and middleware protect the client test. Add client membership, roles, session lifecycle, operator/admin separation, and explicit RBAC tests. |
 | 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
 | 6 | Cloud and compute | **Cloud Tasks/OIDC worker path, artifact worker, and delivery worker implemented in code; deployment evidence pending** | Apply the controls and current hosted-capability migrations, provision the per-client queue, set the worker token hash/secret, deploy, and verify bounded retries, artifact output, delivery completion, and job status. |
@@ -119,7 +121,7 @@ or a loopback service.
 | Paperclip | Local service at `localhost:3100` and local company/workspace data | A tenant workflow-planning adapter now exists behind `orchestration`; full hosted Paperclip parity still needs its own reviewed work-item contract |
 | Open Design, Web Studio, Flow Lab, Video, Music, Agent Studio, OpenMontage, Game Studio, Thumbnails | Local creative services, provider keys, or local output paths | One adapter per workspace; provider API, Cloud Storage outputs, signed access, budget, and approval |
 | Pipeline, Agent Kanban, Loop, Ruflo, Agent Mastermind | Local files, local models/CLI, operator vault, or orchestration state | A tenant workflow-planning adapter now exists behind `orchestration`; full agent execution, durable work-item editing, and parity remain gated |
-| Memory, Notebook, Journal, Goals, Context intake | Client-safe intake pieces exist, but local-memory parity is not complete | Supabase tables, tenant RLS, object storage for attachments, retention/export/delete |
+| Memory, Notebook, Journal, Goals, Context intake | Tenant records adapter is implemented for the client edition; local-memory parity is not complete | Apply the current hosted-capability migration, enable `tenant-data`, then verify Supabase RLS, object storage for attachments, retention/export/delete |
 | SEO, Integrations, Build Guide | Operator configuration, local credential paths, private source material, or redistribution risk | A Firecrawl read-only adapter now exists behind `seo-research`; integrations, licensed/original content, publishing, and full SEO workflows remain gated |
 | Delivery and external actions | Approval-shaped UI exists; execution and delivery adapters vary | An idempotent approval-only delivery action record now exists; destination execution, rollback, and client-specific adapters remain gated |
 

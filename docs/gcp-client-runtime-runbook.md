@@ -193,6 +193,12 @@ artifact creation RPC and the approval-only delivery action table. It does not
 grant a client permission to publish, execute local tools, or read another
 tenant's artifacts.
 
+The current migration also adds `client_runtime_records` for tenant-scoped
+memory, journal, goals, and notebook entries. These records use Supabase RLS
+and are separate from the operator vault. The `tenant-data` capability must be
+enabled in a manifest before the client UI can use them; these four surfaces do
+not require a provider API key.
+
 If an earlier copy of this migration was already applied, rerun the current
 repository copy. It is intentionally idempotent and upgrades the delivery
 action table with `error_code`, permits the `running` state, and removes the
@@ -242,6 +248,19 @@ result means
 the query was run in the wrong Supabase project or the migration stopped
 before completion; do not enable the worker or hosted capabilities in that
 case.
+
+Then verify the new tenant record table separately:
+
+```sql
+select table_schema, table_name
+from information_schema.tables
+where table_schema = 'public'
+  and table_name = 'client_runtime_records';
+```
+
+This should return one row. If it returns zero, rerun the current
+`supabase-client-runtime-hosted-capabilities.sql` file before deploying the
+image that includes tenant memory, journal, goals, or notebook surfaces.
 
 ## Promote or rotate a provider credential
 

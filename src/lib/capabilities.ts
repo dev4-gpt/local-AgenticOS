@@ -18,6 +18,11 @@ export interface Capability {
 // product contract, not an unrestricted ability for a client to run arbitrary tools.
 export const CAPABILITIES: Capability[] = [
   {
+    id: "tenant-data", name: "Tenant Memory and Records", kind: "skill", audience: "built-in", status: "reviewed", destination: "/context",
+    description: "Tenant-scoped memory, journal, goals, and notebook records backed by Supabase RLS and retention controls.",
+    dataScope: "The current tenant's records and explicitly uploaded artifacts only.", actionBoundary: "No local vault, filesystem, operator history, or cross-tenant enumeration; destructive actions remain user-scoped and auditable.",
+  },
+  {
     id: "text-agents", name: "Tenant API Agent Workspace", kind: "skill", audience: "built-in", status: "reviewed", destination: "/claude",
     description: "Provider-neutral text workspace backed by approved client API keys, model allowlists, budgets, and queued jobs.",
     dataScope: "Tenant-approved prompts and job outputs only.", actionBoundary: "No local CLI, shell, operator vault, or unattended external action; provider calls require explicit manifest approval.",

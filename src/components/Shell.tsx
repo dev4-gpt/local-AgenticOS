@@ -8,6 +8,7 @@ import TopBar from "./TopBar";
 import ClientCapabilityGate from "./ClientCapabilityGate";
 import ClientProviderWorkspace from "./ClientProviderWorkspace";
 import ClientHostedWorkspace from "./ClientHostedWorkspace";
+import ClientDataWorkspace from "./ClientDataWorkspace";
 
 const ROUTE_LENS: Array<[string[], string]> = [
   [["/context", "/memory", "/notebook", "/goals", "/journal"], "context"],
@@ -48,6 +49,12 @@ const CLIENT_HOSTED_ROUTES: Record<string, { kind: "orchestration" | "media" | "
   "/video": { kind: "media", title: "Hosted Video", provider: "heygen" },
   "/seo": { kind: "seo", title: "SEO Research" },
 };
+const CLIENT_DATA_ROUTES: Record<string, "memory" | "journal" | "goals" | "notebook"> = {
+  "/memory": "memory",
+  "/journal": "journal",
+  "/goals": "goals",
+  "/notebook": "notebook",
+};
 
 export default function Shell({ children, clientEdition = false }: { children: ReactNode; clientEdition?: boolean }) {
   const pathname = usePathname();
@@ -58,6 +65,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
   const gatedClientRoute = clientEdition && !CLIENT_SURFACE_ROUTES.has(pathname);
   const providerWorkspace = clientEdition ? CLIENT_PROVIDER_ROUTES[pathname] : null;
   const hostedWorkspace = clientEdition ? CLIENT_HOSTED_ROUTES[pathname] : null;
+  const dataWorkspace = clientEdition ? CLIENT_DATA_ROUTES[pathname] : null;
 
   return (
     <div className={`workspace-shell workspace-shell--${lens}`} data-lens={lens}>
@@ -77,7 +85,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
             className={isHome ? "min-h-full w-full" : "workspace-shell__page max-w-[1500px] mx-auto px-5 md:px-10 py-7 md:py-9"}
           >
             {!isHome && <TopBar />}
-            {providerWorkspace ? <ClientProviderWorkspace {...providerWorkspace} /> : hostedWorkspace ? <ClientHostedWorkspace {...hostedWorkspace} pathname={pathname} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
+            {providerWorkspace ? <ClientProviderWorkspace {...providerWorkspace} /> : hostedWorkspace ? <ClientHostedWorkspace {...hostedWorkspace} pathname={pathname} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
           </motion.div>
         </main>
       </div>

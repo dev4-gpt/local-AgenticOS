@@ -13,6 +13,7 @@ function expect(condition, message) {
 const workerRoute = await readFile(join(root, "src/app/api/internal/client-runtime/jobs/route.ts"), "utf8");
 const deliveryRoute = await readFile(join(root, "src/app/api/internal/client-runtime/delivery/route.ts"), "utf8");
 const jobRoute = await readFile(join(root, "src/app/api/client-runtime/jobs/route.ts"), "utf8");
+const recordsRoute = await readFile(join(root, "src/app/api/client-runtime/records/route.ts"), "utf8");
 const controlsSql = await readFile(join(root, "product-experience/supabase-client-runtime-controls.sql"), "utf8");
 const hostedSql = await readFile(join(root, "product-experience/supabase-client-runtime-hosted-capabilities.sql"), "utf8");
 
@@ -36,6 +37,12 @@ for (const marker of ["create_client_runtime_artifact_worker", "checkpoint_clien
   expect(hostedSql.includes(marker), `hosted capability migration must contain ${marker}`);
 }
 expect(workerRoute.includes("confirm_client_runtime_artifact_worker"), "worker artifact path must confirm storage metadata through the worker RPC");
+expect(recordsRoute.includes("clientCapabilityEnabled(\"tenant-data\")"), "tenant records route must be capability gated");
+expect(recordsRoute.includes("client_runtime_records"), "tenant records route must use the hosted records table");
+expect(recordsRoute.includes("SECRET_LIKE"), "tenant records route must reject secret-like content");
+for (const marker of ["client_runtime_records", "client_runtime_records_member_select", "client_runtime_records_member_insert", "client_runtime_records_owner_update", "client_runtime_records_owner_delete"]) {
+  expect(hostedSql.includes(marker), `hosted capability migration must contain ${marker}`);
+}
 
 const base = (process.env.CLIENT_RUNTIME_URL || "").replace(/\/$/, "");
 if (base) {

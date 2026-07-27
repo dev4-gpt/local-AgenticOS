@@ -22,6 +22,38 @@ export async function insertClientRecord(table: string, record: Record<string, u
   return { ok: Boolean(response?.ok), status: response?.status ?? 503 };
 }
 
+export async function updateClientRecord(table: string, filters: Record<string, string>, record: Record<string, unknown>) {
+  const config = supabaseAuthConfig();
+  const token = await currentClientAccessToken();
+  if (!config || !token) return { ok: false, status: 401 };
+  const query = new URLSearchParams(filters);
+  const response = await fetch(`${config.url}/rest/v1/${table}?${query.toString()}`, {
+    method: "PATCH",
+    headers: {
+      apikey: config.key,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(record),
+    cache: "no-store",
+  }).catch(() => null);
+  return { ok: Boolean(response?.ok), status: response?.status ?? 503 };
+}
+
+export async function deleteClientRecord(table: string, filters: Record<string, string>) {
+  const config = supabaseAuthConfig();
+  const token = await currentClientAccessToken();
+  if (!config || !token) return { ok: false, status: 401 };
+  const query = new URLSearchParams(filters);
+  const response = await fetch(`${config.url}/rest/v1/${table}?${query.toString()}`, {
+    method: "DELETE",
+    headers: { apikey: config.key, Authorization: `Bearer ${token}`, Prefer: "return=minimal" },
+    cache: "no-store",
+  }).catch(() => null);
+  return { ok: Boolean(response?.ok), status: response?.status ?? 503 };
+}
+
 export async function clientRpc(functionName: string, body: Record<string, unknown>) {
   const config = supabaseAuthConfig();
   const token = await currentClientAccessToken();
