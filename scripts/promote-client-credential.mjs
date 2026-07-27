@@ -11,9 +11,10 @@ const targetSecret = valueAfter("--target-secret");
 const version = valueAfter("--version") || "latest";
 const apply = args.includes("--apply");
 const disablePrevious = args.includes("--disable-previous");
+const disableSourceVersion = args.includes("--disable-source-version");
 
 if (!project || !clientSlug || !providerKey || !inboxSecret || !targetSecret) {
-  fail("Usage: npm run promote:client-credential -- --project PROJECT --client-slug SLUG --provider PROVIDER_KEY --inbox-secret SECRET --target-secret SECRET [--version latest|N] [--apply]");
+  fail("Usage: npm run promote:client-credential -- --project PROJECT --client-slug SLUG --provider PROVIDER_KEY --inbox-secret SECRET --target-secret SECRET [--version latest|N] [--apply] [--disable-previous] [--disable-source-version]");
 }
 if (!/^[a-z][a-z0-9-]{2,40}$/.test(clientSlug)) fail("Invalid client slug");
 if (!/^[A-Z][A-Z0-9_]{2,120}$/.test(providerKey)) fail("Invalid provider key");
@@ -21,9 +22,10 @@ if (!/^[a-z][a-z0-9_-]{1,120}$/.test(inboxSecret) || !/^\d+$|^latest$/.test(vers
 if (!inboxSecret.startsWith(`veloce-${clientSlug}-`)) fail("Source inbox secret must be inside the client namespace");
 if (!targetSecret.startsWith(`veloce-${clientSlug}-`)) fail("Target secret must be inside the client namespace");
 if (targetSecret === inboxSecret || targetSecret.includes("credential-inbox")) fail("Target secret must be a provider secret, not the credential inbox");
-if (disablePrevious && !apply) fail("--disable-previous requires --apply so the new version is written before older versions are disabled");
+if ((disablePrevious || disableSourceVersion) && !apply) fail("Secret version disabling requires --apply so the new target version is written first");
 
 const source = run("gcloud", ["secrets", "versions", "access", version, "--secret", inboxSecret, "--project", project]);
+const sourceVersion = disableSourceVersion && apply ? (version === "latest" ? latestEnabledVersion() : version) : null;
 let envelope;
 try {
   envelope = JSON.parse(source);
@@ -53,6 +55,11 @@ if (apply) {
     const disabled = spawnSync("gcloud", ["secrets", "versions", "disable", previousVersion, "--secret", targetSecret, "--project", project], { stdio: "inherit" });
     if (disabled.status !== 0) process.exit(disabled.status ?? 1);
   }
+  if (disableSourceVersion) {
+    const disabled = spawnSync("gcloud", ["secrets", "versions", "disable", sourceVersion, "--secret", inboxSecret, "--project", project], { stdio: "inherit" });
+    if (disabled.status !== 0) process.exit(disabled.status ?? 1);
+    console.log(`Source inbox version disabled: ${inboxSecret}:${sourceVersion}`);
+  }
   console.log("Promotion complete. The next approved Cloud Run revision can consume the new target version as latest.");
 } else {
   console.log("Dry run only. Add --apply to write the target secret version.");
@@ -62,6 +69,12 @@ function enabledTargetVersions() {
   const result = spawnSync("gcloud", ["secrets", "versions", "list", targetSecret, "--project", project, "--filter=state=ENABLED", "--format=value(name.basename())"], { encoding: "utf8" });
   if (result.status !== 0) fail("Could not enumerate existing target secret versions");
   return result.stdout.split(/\r?\n/).map((item) => item.trim()).filter((item) => /^\d+$/.test(item));
+}
+
+function latestEnabledVersion() {
+  const result = spawnSync("gcloud", ["secrets", "versions", "list", inboxSecret, "--project", project, "--filter=state=ENABLED", "--sort-by=~createTime", "--limit=1", "--format=value(name.basename())"], { encoding: "utf8" });
+  if (result.status !== 0 || !/^\d+$/.test(result.stdout.trim())) fail("Could not resolve the source inbox version");
+  return result.stdout.trim();
 }
 
 function valueAfter(flag) {

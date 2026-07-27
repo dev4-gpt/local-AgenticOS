@@ -338,7 +338,9 @@ it only under the documented incident/offboarding procedure.
 For a deliberate rotation, add `--disable-previous` to the applied command.
 The script records currently enabled target versions, writes the new version
 first, then disables only those older versions. It refuses this option during a
-dry run.
+dry run. After the operator has confirmed the promotion, add
+`--disable-source-version` to disable the reviewed inbox version as well; this
+is available only with `--apply` and happens after the target write succeeds.
 
 The target secret must already exist and must begin with
 `veloce-<clientSlug>-`. The promotion script verifies the source client and

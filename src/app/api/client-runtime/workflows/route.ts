@@ -190,5 +190,11 @@ function buildSteps(surface: string, operation: string) {
 }
 
 function error(code: string, status: number) {
-  return NextResponse.json({ ok: false, error: code }, { status, headers: { "cache-control": "private, no-store" } });
+  return NextResponse.json({ ok: false, error: code }, {
+    status,
+    headers: {
+      "cache-control": "private, no-store",
+      ...(code === "runtime_rate_limited" ? { "Retry-After": "900" } : {}),
+    },
+  });
 }

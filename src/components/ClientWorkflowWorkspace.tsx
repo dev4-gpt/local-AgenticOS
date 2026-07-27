@@ -45,7 +45,10 @@ export default function ClientWorkflowWorkspace({ surface }: { surface: Surface 
     if (!title.trim() || !goal.trim() || busy) return;
     setBusy(true); setError("");
     const response = await fetch("/api/client-runtime/workflows", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ surface, operation, title, goal }) }).catch(() => null);
-    if (!response?.ok) setError((await response?.json().catch(() => null))?.error || "The workflow could not be saved.");
+    if (!response?.ok) {
+      const data = await response?.json().catch(() => null);
+      setError(data?.error === "runtime_rate_limited" ? "Workflow writes are rate limited. Wait about 15 minutes before trying again." : data?.error || "The workflow could not be saved.");
+    }
     else { setTitle(""); setGoal(""); await load(); }
     setBusy(false);
   }
@@ -65,7 +68,10 @@ export default function ClientWorkflowWorkspace({ surface }: { surface: Surface 
     if (busy) return;
     setBusy(true); setError("");
     const response = await fetch("/api/client-runtime/workflows", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, action: "retry_execution" }) }).catch(() => null);
-    if (!response?.ok) setError((await response?.json().catch(() => null))?.error || "The workflow could not be retried.");
+    if (!response?.ok) {
+      const data = await response?.json().catch(() => null);
+      setError(data?.error === "runtime_rate_limited" ? "Workflow retries are rate limited. Wait about 15 minutes before trying again." : data?.error || "The workflow could not be retried.");
+    }
     else await load();
     setBusy(false);
   }
