@@ -77,7 +77,10 @@
   },
   "approvalPolicy": "approve_external_actions",
   "storage": {
-    "namespace": "example-client"
+    "namespace": "example-client",
+    "corsOrigins": [
+      "https://veloce-example-client-REPLACE.run.app"
+    ]
   },
   "retention": {
     "days": 30

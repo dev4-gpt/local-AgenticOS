@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
@@ -52,6 +52,17 @@ const configuredStorageNamespace = manifest.storage?.namespace;
 if (configuredStorageNamespace != null && sanitizeSlug(String(configuredStorageNamespace)) !== slug) {
   fail("storage.namespace must equal clientSlug so Supabase and Cloud Storage namespaces cannot diverge");
 }
+const storageCorsOrigins = normalizeCorsOrigins(manifest.storage?.corsOrigins);
+const storageCorsFile = `/tmp/veloce-${slug}-storage-cors.json`;
+writeFileSync(storageCorsFile, JSON.stringify([{
+  origin: storageCorsOrigins,
+  method: ["GET", "PUT", "OPTIONS"],
+  responseHeader: ["Content-Type", "ETag"],
+  maxAgeSeconds: 900,
+}], null, 2), { mode: 0o600 });
+process.on("exit", () => {
+  try { unlinkSync(storageCorsFile); } catch {}
+});
 const runtimeEnv = {
   VELOCE_CLIENT_EDITION: "1",
   AGENTIC_OS_DISABLE_LOCAL_CLI: "1",
@@ -127,6 +138,7 @@ const prepareCommands = [
   ["gcloud", ["artifacts", "repositories", "create", repository, "--repository-format=docker", "--location", region, "--project", projectId, "--description", "Veloce client runtime images"]],
   ["gcloud", ["iam", "service-accounts", "create", serviceAccount, "--project", projectId, "--display-name", `Veloce ${clientName} runtime`]],
   ["gcloud", ["storage", "buckets", "create", `gs://${bucket}`, "--project", projectId, "--location", region, "--uniform-bucket-level-access"]],
+  ["gcloud", ["storage", "buckets", "update", `gs://${bucket}`, `--cors-file=${storageCorsFile}`]],
   ["gcloud", ["storage", "buckets", "add-iam-policy-binding", `gs://${bucket}`, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/storage.objectAdmin"]],
   ["gcloud", ["iam", "service-accounts", "add-iam-policy-binding", serviceAccountEmail, "--project", projectId, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/iam.serviceAccountTokenCreator"]],
   ["gcloud", ["iam", "service-accounts", "add-iam-policy-binding", serviceAccountEmail, "--project", projectId, "--member", `serviceAccount:service-${projectNumber}@gcp-sa-cloudtasks.iam.gserviceaccount.com`, "--role", "roles/iam.serviceAccountTokenCreator"]],
@@ -178,6 +190,7 @@ console.log(`  repository: ${repository}`);
 console.log(`  service: ${serviceName}`);
 console.log(`  service account: ${serviceAccountEmail}`);
 console.log(`  bucket: gs://${bucket}`);
+console.log(`  storage CORS origins: ${storageCorsOrigins.join(",")}`);
 console.log(`  image: ${image}`);
 console.log(`  access: ${accessMode}`);
 console.log(`  approved users: ${allowedUserEmails.length}`);
@@ -332,6 +345,17 @@ function normalizeProviderModelAllowlist(value) {
     out[cleanProvider] = [...new Set(cleanModels)];
   }
   return out;
+}
+
+function normalizeCorsOrigins(value) {
+  if (value == null) return ["*"];
+  if (!Array.isArray(value) || value.length === 0) fail("storage.corsOrigins must be a non-empty array when provided");
+  const origins = value.map((origin) => String(origin).trim()).filter(Boolean);
+  if (origins.includes("*")) return ["*"];
+  if (origins.some((origin) => !/^https:\/\/[^\s/]+(?:\/[^\s]*)?$/i.test(origin))) {
+    fail("storage.corsOrigins entries must be HTTPS origins or '*'");
+  }
+  return [...new Set(origins)];
 }
 
 function shorten(value, max) {

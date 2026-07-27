@@ -190,6 +190,12 @@ confirmation function before enabling the `artifacts` capability. Uploads are
 created as `pending`, checked against Cloud Storage metadata, and only then
 marked `ready`; downloads reject every other state.
 
+The GCP prepare phase also applies the manifest's `storage.corsOrigins` to the
+private bucket. It permits only signed `GET` and `PUT` requests from the listed
+HTTPS client origins; CORS does not make the bucket public. Keep the origins
+specific to the deployed client URL and rerun prepare when a custom domain is
+added.
+
 The hosted-capabilities migration is required before enabling the new hosted
 workflow, media, SEO, artifact, or delivery-action boundaries. It adds separate
 authenticated and worker-only artifact creation RPCs and the approval-only

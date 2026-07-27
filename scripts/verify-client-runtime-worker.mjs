@@ -80,6 +80,7 @@ expect(workerProvisioner.includes("worker_token_hash") && workerProvisioner.incl
 expect(!workerProvisioner.includes("console.log(token") && !workerProvisioner.includes("console.log(hash"), "worker provisioning must never print the token or hash");
 expect(provisioner.includes("immutableRuntimeKeys") && provisioner.includes("cannot override the derived client isolation value"), "GCP provisioning must protect derived tenant isolation values");
 expect(provisioner.includes("storage.namespace must equal clientSlug") && provisioner.includes("CLIENT_STORAGE_NAMESPACE: slug"), "GCP provisioning must keep storage and tenant namespaces identical");
+expect(provisioner.includes("normalizeCorsOrigins") && provisioner.includes("--cors-file="), "GCP provisioning must configure bucket CORS for signed browser uploads");
 expect(provisioner.includes("SUPABASE_SERVICE_ROLE_KEY") && provisioner.includes("Operator-only secret cannot be placed"), "GCP provisioning must reject operator-only secret slots");
 expect(inputSafety.includes("SECRET_LIKE") && inputSafety.includes("containsClientSecretLike"), "client input safety helper must reject secret-like text");
 for (const provider of ["anthropic", "codex", "openrouter", "openclaw", "hermes", "kimi", "glm", "glm-code", "grok", "antigravity", "freeclaude", "fusion", "sakana"]) {
