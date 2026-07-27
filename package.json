@@ -27,6 +27,7 @@
     "verify:flow-lab": "node scripts/verify-flow-lab.mjs",
     "verify:client-runtime": "node scripts/verify-client-runtime.mjs",
     "validate:client-manifest": "node scripts/validate-client-manifest.mjs",
+    "promote:client-credential": "node scripts/promote-client-credential.mjs",
     "verify:experience": "npm --prefix product-experience run build && npx playwright test tests/product-experience.spec.ts --reporter=line",
     "provision:gcp-client": "node scripts/provision-gcp-client.mjs",
     "build:client-image": "gcloud builds submit --config cloudbuild.client.yaml --substitutions=_IMAGE=$CLIENT_IMAGE .",

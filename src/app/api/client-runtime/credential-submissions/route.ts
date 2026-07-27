@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
 import { currentClientUser } from "@/lib/clientAuth";
 import { clientCredentialOption } from "@/lib/clientCredentialCatalog";
-import { recordClientAudit } from "@/lib/clientDataPlane";
+import { consumeClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +12,10 @@ const METADATA_ROOT = "http://metadata.google.internal/computeMetadata/v1";
 export async function POST(request: Request) {
   const user = await currentClientUser();
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+
+  if (!(await consumeClientRuntimeRateLimit("credential-submissions", 5, 3600))) {
+    return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
+  }
 
   const inboxSecret = process.env.CLIENT_CREDENTIAL_INBOX_SECRET?.trim();
   if (!inboxSecret) return NextResponse.json({ ok: false, error: "credential_inbox_not_configured" }, { status: 503 });

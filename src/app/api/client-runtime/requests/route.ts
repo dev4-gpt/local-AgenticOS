@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
 import { currentClientUser } from "@/lib/clientAuth";
-import { insertClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
+import { consumeClientRuntimeRateLimit, insertClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +12,10 @@ const REQUEST_TYPES = new Set(["command", "context", "orchestrate", "create", "d
 export async function POST(request: Request) {
   const user = await currentClientUser();
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+
+  if (!(await consumeClientRuntimeRateLimit("requests", 20, 900))) {
+    return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
+  }
 
   const inboxSecret = (process.env.CLIENT_REQUEST_INBOX_SECRET || process.env.CLIENT_CREDENTIAL_INBOX_SECRET)?.trim();
   if (!inboxSecret) return NextResponse.json({ ok: false, error: "request_inbox_not_configured" }, { status: 503 });

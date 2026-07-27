@@ -154,6 +154,7 @@ Supabase project:
 1. `product-experience/supabase-deployment-requests.sql`
 2. `product-experience/supabase-public-request-hardening.sql`
 3. `product-experience/supabase-client-runtime-control-plane.sql`
+4. `product-experience/supabase-client-runtime-controls.sql`
 
 Create the approved tenant and membership from the Supabase SQL editor or an
 operator-only migration job. Never accept membership creation from the
@@ -173,10 +174,37 @@ on conflict (tenant_slug, user_id) do update set role = excluded.role, status = 
 
 Only after the final query returns an active tenant and membership should you
 set `CLIENT_RUNTIME_DATA_MODE=supabase` in the approved manifest. The current
-internal cloud test remains on its Secret Manager inbox mode until this schema
-and membership row are applied and verified. If the verification query returns
+internal cloud test has this mode enabled and has verified request persistence.
+The additional controls migration is required before deploying the durable
+runtime throttles and budget reservations. If the verification query returns
 zero membership rows, invite or create the Auth user first and rerun the seed
 file; do not switch the manifest yet.
+
+## Promote or rotate a provider credential
+
+The browser submission is an encrypted Secret Manager inbox event, not an
+active provider configuration. After manual review, promote one matching
+provider value into the client-scoped target secret without printing the raw
+value:
+
+```bash
+npm run promote:client-credential -- \
+  --project veloce-agenticos-2026 \
+  --client-slug veloce-cloud-test \
+  --provider ANTHROPIC_API_KEY \
+  --inbox-secret veloce-veloce-cloud-test-client-credential-inbox \
+  --target-secret veloce-veloce-cloud-test-anthropic-api-key \
+  --version latest
+```
+
+Review the dry run, then repeat with `--apply`. Rotation uses the same command
+with the newly reviewed inbox version; the target Secret Manager `latest`
+alias then points to the new version. Keep the old version disabled or destroy
+it only under the documented incident/offboarding procedure.
+
+The target secret must already exist and must begin with
+`veloce-<clientSlug>-`. The promotion script verifies the source client and
+provider names before writing, and never prints the secret value.
 
 ## Build The Client Image
 

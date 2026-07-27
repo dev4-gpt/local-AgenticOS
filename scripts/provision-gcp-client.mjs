@@ -46,7 +46,7 @@ const runtimeEnv = {
   CLIENT_RUNTIME_ENFORCE_AUTH: "1",
   CLIENT_ALLOWED_USER_EMAILS: allowedUserEmails.join(","),
   CLIENT_ALLOWED_ROUTES: "/,/context,/orchestrate,/create,/credentials,/capabilities,/deliver,/paperclip,/room,/pipeline,/claude,/openclaw,/hermes,/antigravity,/codex,/kimi,/glm,/glm-code,/grok,/freeclaude,/fusion,/sakana,/local,/engine,/agent-kanban,/loop,/ruflo,/goals,/journal,/seo,/opendesign,/web-studio,/flow-lab,/integrations,/video,/studio,/openmontage,/music,/games,/thumbnails,/notebook,/kanban,/memory,/leads,/radar,/guide",
-  CLIENT_ALLOWED_API_ROUTES: "/api/capabilities,/api/client-runtime/credentials,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-auth/session",
+  CLIENT_ALLOWED_API_ROUTES: "/api/capabilities,/api/client-runtime/credentials,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-runtime/artifacts,/api/client-auth/session",
   CLIENT_ENABLED_CAPABILITIES: enabledCapabilities.join(","),
   CLIENT_PROVIDER_ALLOWLIST: providerAllowlist.join(","),
   ...(modelAllowlist.length > 0 ? { CLIENT_MODEL_ALLOWLIST: modelAllowlist.join(",") } : {}),
@@ -55,6 +55,8 @@ const runtimeEnv = {
   ...(manifest.storage?.namespace ? { CLIENT_STORAGE_NAMESPACE: sanitizeSlug(String(manifest.storage.namespace)) } : { CLIENT_STORAGE_NAMESPACE: slug }),
   ...(manifest.retention?.days ? { CLIENT_RETENTION_DAYS: String(manifest.retention.days) } : {}),
   ...(manifest.approvalPolicy ? { CLIENT_APPROVAL_POLICY: String(manifest.approvalPolicy) } : {}),
+  CLIENT_STORAGE_BUCKET: bucket,
+  CLIENT_RUNTIME_SERVICE_ACCOUNT: serviceAccountEmail,
   ...(manifest.runtimeEnv ?? {}),
 };
 
@@ -68,11 +70,12 @@ if (apply) {
 
 const prepareCommands = [
   ["gcloud", ["config", "set", "project", projectId]],
-  ["gcloud", ["services", "enable", "run.googleapis.com", "secretmanager.googleapis.com", "storage.googleapis.com", "artifactregistry.googleapis.com", "cloudbuild.googleapis.com", "--project", projectId]],
+  ["gcloud", ["services", "enable", "run.googleapis.com", "secretmanager.googleapis.com", "storage.googleapis.com", "artifactregistry.googleapis.com", "cloudbuild.googleapis.com", "iamcredentials.googleapis.com", "--project", projectId]],
   ["gcloud", ["artifacts", "repositories", "create", repository, "--repository-format=docker", "--location", region, "--project", projectId, "--description", "Veloce client runtime images"]],
   ["gcloud", ["iam", "service-accounts", "create", serviceAccount, "--project", projectId, "--display-name", `Veloce ${clientName} runtime`]],
   ["gcloud", ["storage", "buckets", "create", `gs://${bucket}`, "--project", projectId, "--location", region, "--uniform-bucket-level-access"]],
   ["gcloud", ["storage", "buckets", "add-iam-policy-binding", `gs://${bucket}`, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/storage.objectAdmin"]],
+  ["gcloud", ["iam", "service-accounts", "add-iam-policy-binding", serviceAccountEmail, "--project", projectId, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/iam.serviceAccountTokenCreator"]],
   ...Object.values(secretEnv).flatMap((secretRef) => {
     const secretName = secretNameFor(slug, secretRef);
     return [
