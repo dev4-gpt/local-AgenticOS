@@ -109,7 +109,7 @@ expect(workerRoute.includes('provider: "elevenlabs"'), "speech failures must ide
 expect(providerAdapter.includes("AbortSignal.timeout") && providerAdapter.includes("2_000_000"), "provider adapters must bound request time and response size");
 expect(mediaAdapter.includes("runClientSpeechAdapter") && mediaAdapter.includes("runClientHeyGenAdapter") && mediaAdapter.includes("runClientMusicAdapter"), "media adapters must cover speech, video, and music contracts");
 expect(seoAdapter.includes("safePublicUrl") && seoAdapter.includes("isPrivateAddress"), "SEO adapter must enforce public host and private-address blocking");
-expect(deliveryAdapter.includes("approved-webhook") && deliveryAdapter.includes("safeDeliveryUrl"), "delivery adapter must require an allowlisted approved webhook");
+expect(deliveryAdapter.includes("approved-webhook") && deliveryAdapter.includes("safeDeliveryUrl") && deliveryAdapter.includes('parsed.protocol === "https:"'), "delivery adapter must require an allowlisted HTTPS approved webhook");
 expect(hostedSql.includes("p_namespace <> p_tenant_slug"), "artifact RPC must enforce the tenant storage namespace");
 for (const surface of ["opendesign", "web-studio", "flow-lab", "openmontage", "games", "thumbnails", "integrations", "leads", "radar", "guide"]) {
   expect(shell.includes(`"/${surface}"`), `client shell must route ${surface}`);

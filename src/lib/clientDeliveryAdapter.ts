@@ -25,5 +25,13 @@ export async function runClientDeliveryAdapter(input: {
 
 function safeDeliveryUrl(value: string) {
   const allowlist = (process.env.CLIENT_DELIVERY_ALLOWED_HOSTS ?? "").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
-  return allowlist.length > 0 ? safePublicUrl(value, allowlist) : null;
+  if (allowlist.length === 0) return null;
+  const safeUrl = safePublicUrl(value, allowlist);
+  if (!safeUrl) return null;
+  try {
+    const parsed = new URL(safeUrl);
+    return parsed.protocol === "https:" ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
 }
