@@ -4,6 +4,7 @@
 
 alter table public.client_runtime_artifacts
   add column if not exists original_name text,
+  add column if not exists created_by uuid references auth.users(id),
   add column if not exists status text not null default 'pending',
   add column if not exists uploaded_at timestamptz;
 

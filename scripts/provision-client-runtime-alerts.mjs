@@ -9,46 +9,49 @@ const slug = sanitize(required("--slug"));
 const service = sanitize(required("--service"));
 const apply = args.includes("--apply");
 const notificationChannel = valueAfter("--notification-channel");
-const metricName = `veloce_${slug}_runtime_429`;
-const policyName = `Veloce ${slug} runtime throttles`;
-const filter = `resource.type="cloud_run_revision" AND resource.labels.service_name="${service}" AND jsonPayload.event="runtime.rate_limited"`;
-const metricFilter = `metric.type="logging.googleapis.com/user/${metricName}" AND resource.type="cloud_run_revision" AND resource.labels.service_name="${service}"`;
-
-const commands = [
-  ["gcloud", ["logging", "metrics", "create", metricName, "--project", project, "--description", `Rate-limit events for ${slug}`, "--log-filter", filter]],
+const metrics = [
+  { suffix: "runtime_429", event: "runtime.rate_limited", description: "Rate-limit events", title: "runtime throttles" },
+  { suffix: "runtime_budget_denied", event: "runtime.budget_exceeded", description: "Budget denial events", title: "budget denials" },
+  { suffix: "runtime_provider_failed", event: "runtime.provider_failed", description: "Provider failure events", title: "provider failures" },
 ];
-console.log(`Veloce runtime alerts: ${slug}`);
-console.log(`Metric: ${metricName}`);
-console.log(`Policy: ${policyName}`);
-console.log(`Mode: ${apply ? "APPLY" : "DRY RUN"}`);
-for (const [command, commandArgs] of commands) run(command, commandArgs, false);
 
-const policy = {
-  displayName: policyName,
-  enabled: true,
-  combiner: "OR",
-  conditions: [{
-    displayName: "Runtime throttles exceed ten events in five minutes",
-    conditionThreshold: {
-      filter: metricFilter,
-      comparison: "COMPARISON_GT",
-      thresholdValue: 10,
-      duration: "300s",
-      aggregations: [{ alignmentPeriod: "60s", perSeriesAligner: "ALIGN_RATE", crossSeriesReducer: "REDUCE_SUM" }],
-    },
-  }],
-  documentation: { content: `Investigate runtime throttling for ${slug}. This alert contains no prompts, keys, or client content.` },
-  ...(notificationChannel ? { notificationChannels: [notificationChannel] } : {}),
-};
-const policyFile = `/tmp/${metricName}-policy.json`;
-writeFileSync(policyFile, JSON.stringify(policy, null, 2), { mode: 0o600 });
-try {
-  run("gcloud", ["monitoring", "policies", "create", "--project", project, `--policy-from-file=${policyFile}`], true);
-} finally {
-  if (existsSync(policyFile)) unlinkSync(policyFile);
+console.log(`Veloce runtime alerts: ${slug}`);
+console.log(`Mode: ${apply ? "APPLY" : "DRY RUN"}`);
+for (const metric of metrics) {
+  const metricName = `veloce_${slug}_${metric.suffix}`;
+  const policyName = `Veloce ${slug} ${metric.title}`;
+  const filter = `resource.type="cloud_run_revision" AND resource.labels.service_name="${service}" AND jsonPayload.event="${metric.event}"`;
+  const metricFilter = `metric.type="logging.googleapis.com/user/${metricName}" AND resource.type="cloud_run_revision" AND resource.labels.service_name="${service}"`;
+  console.log(`Metric: ${metricName}`);
+  console.log(`Policy: ${policyName}`);
+  run("gcloud", ["logging", "metrics", "create", metricName, "--project", project, "--description", metric.description, "--log-filter", filter], false);
+  const policy = {
+    displayName: policyName,
+    enabled: true,
+    combiner: "OR",
+    conditions: [{
+      displayName: `${metric.title} exceed ten events in five minutes`,
+      conditionThreshold: {
+        filter: metricFilter,
+        comparison: "COMPARISON_GT",
+        thresholdValue: 10,
+        duration: "300s",
+        aggregations: [{ alignmentPeriod: "60s", perSeriesAligner: "ALIGN_RATE", crossSeriesReducer: "REDUCE_SUM" }],
+      },
+    }],
+    documentation: { content: `Investigate ${metric.title} for ${slug}. This alert contains no prompts, keys, or client content.` },
+    ...(notificationChannel ? { notificationChannels: [notificationChannel] } : {}),
+  };
+  const policyFile = `/tmp/${metricName}-policy.json`;
+  writeFileSync(policyFile, JSON.stringify(policy, null, 2), { mode: 0o600 });
+  try {
+    run("gcloud", ["monitoring", "policies", "create", "--project", project, `--policy-from-file=${policyFile}`], true, policyName, metricName);
+  } finally {
+    if (existsSync(policyFile)) unlinkSync(policyFile);
+  }
 }
 
-function run(command, commandArgs, policyCommand) {
+function run(command, commandArgs, policyCommand, policyName, metricName) {
   const rendered = [command, ...commandArgs].join(" ");
   console.log(rendered);
   if (!apply) return;

@@ -7,6 +7,7 @@ import { runClientSeoAdapter } from "@/lib/clientSeoAdapter";
 import { clientGcpAccessToken, clientStorageConfig, uploadClientStorageObject } from "@/lib/clientStorage";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { validClientTaskIdentity } from "@/lib/clientTaskAuth";
+import { logClientRuntimeEvent } from "@/lib/clientRuntimeObservability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,6 +94,7 @@ async function processMediaJob(jobId: string, tenantSlug: string, workerToken: s
 
   const result = await runClientSpeechAdapter({ text, voiceId: typeof input.voiceId === "string" ? input.voiceId : undefined });
   if (!result.ok) {
+    logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: "suno", status: result.status, reason: result.error });
     if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
     return NextResponse.json({ ok: true, status: "failed" });
@@ -122,6 +124,7 @@ async function processSunoJob(jobId: string, tenantSlug: string, workerToken: st
     providerJobId,
   });
   if (!result.ok) {
+    logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: "suno", status: result.status, reason: result.error });
     if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
     return NextResponse.json({ ok: true, status: "failed" });
@@ -165,6 +168,7 @@ async function processHeyGenJob(jobId: string, tenantSlug: string, workerToken: 
     providerJobId,
   });
   if (!result.ok) {
+    logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: "heygen", status: result.status, reason: result.error });
     if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
     return NextResponse.json({ ok: true, status: "failed" });

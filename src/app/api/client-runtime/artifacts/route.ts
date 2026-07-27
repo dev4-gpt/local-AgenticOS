@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { consumeClientRuntimeRateLimit, insertClientRecord } from "@/lib/clientDataPlane";
+import { clientRpc, consumeClientRuntimeRateLimit } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientGcpAccessToken, clientServiceAccountEmail, clientStorageConfig, safeClientFileName, signedClientStorageUrl } from "@/lib/clientStorage";
 
@@ -41,16 +41,16 @@ export async function POST(request: Request) {
   const signedUrl = await signedClientStorageUrl({ method: "PUT", bucket: config.bucket, objectKey, serviceAccount, token, contentType });
   if (!signedUrl) return NextResponse.json({ ok: false, error: "signed_upload_unavailable" }, { status: 503 });
 
-  const stored = await insertClientRecord("client_runtime_artifacts", {
-    id: artifactId,
-    tenant_slug: tenantSlug,
-    object_key: objectKey,
-    original_name: originalName,
-    content_type: contentType,
-    byte_size: byteSize,
-    status: "pending",
-    retention_expires_at: new Date(Date.now() + Number(process.env.CLIENT_RETENTION_DAYS ?? 30) * 86400000).toISOString(),
+  const stored = await clientRpc("create_client_runtime_artifact", {
+    p_tenant_slug: tenantSlug,
+    p_artifact_id: artifactId,
+    p_namespace: config.namespace,
+    p_object_key: objectKey,
+    p_original_name: originalName,
+    p_content_type: contentType,
+    p_byte_size: byteSize,
+    p_retention_expires_at: new Date(Date.now() + Number(process.env.CLIENT_RETENTION_DAYS ?? 30) * 86400000).toISOString(),
   });
-  if (!stored.ok) return NextResponse.json({ ok: false, error: "artifact_record_failed" }, { status: 502 });
+  if (!stored.ok || stored.value !== artifactId) return NextResponse.json({ ok: false, error: "artifact_record_failed" }, { status: 502 });
   return NextResponse.json({ ok: true, artifactId, uploadUrl: signedUrl, uploadHeaders: { "content-type": contentType }, expiresInSeconds: 900 }, { status: 201, headers: { "cache-control": "private, no-store" } });
 }

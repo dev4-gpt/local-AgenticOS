@@ -183,6 +183,60 @@ create policy client_delivery_actions_member_insert on public.client_runtime_del
 
 grant select, insert on public.client_runtime_delivery_actions to authenticated;
 
+create or replace function public.create_client_runtime_artifact(
+  p_tenant_slug text,
+  p_artifact_id uuid,
+  p_namespace text,
+  p_object_key text,
+  p_original_name text,
+  p_content_type text,
+  p_byte_size bigint,
+  p_retention_expires_at timestamptz default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  if not public.client_member(p_tenant_slug)
+     or p_artifact_id is null
+     or p_namespace <> p_tenant_slug
+     or length(coalesce(p_object_key, '')) < 1
+     or p_object_key not like left(p_tenant_slug, 120) || '/' || auth.uid()::text || '/%'
+     or p_object_key like '%..%'
+     or p_byte_size < 1
+     or p_byte_size > 26214400
+     or length(coalesce(p_original_name, '')) < 1
+     or length(coalesce(p_original_name, '')) > 180
+     or length(coalesce(p_content_type, '')) < 1
+     or length(coalesce(p_content_type, '')) > 180 then
+    return null;
+  end if;
+
+  insert into public.client_runtime_artifacts
+    (id, tenant_slug, created_by, object_key, original_name, content_type, byte_size, status, retention_expires_at)
+  values
+    (p_artifact_id, p_tenant_slug, auth.uid(), p_object_key, p_original_name, p_content_type, p_byte_size, 'pending', p_retention_expires_at)
+  on conflict (id) do nothing;
+
+  if exists (
+    select 1 from public.client_runtime_artifacts
+    where id = p_artifact_id
+      and tenant_slug = p_tenant_slug
+      and created_by = auth.uid()
+  ) then
+    return p_artifact_id;
+  end if;
+  return null;
+end;
+$$;
+
+revoke all on function public.create_client_runtime_artifact(text, uuid, text, text, text, text, bigint, timestamptz)
+  from public, anon;
+grant execute on function public.create_client_runtime_artifact(text, uuid, text, text, text, text, bigint, timestamptz)
+  to authenticated;
+
 create or replace function public.create_client_delivery_action(
   p_tenant_slug text,
   p_request_id uuid,

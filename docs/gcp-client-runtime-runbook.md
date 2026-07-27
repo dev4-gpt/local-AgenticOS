@@ -191,8 +191,9 @@ created as `pending`, checked against Cloud Storage metadata, and only then
 marked `ready`; downloads reject every other state.
 
 The hosted-capabilities migration is required before enabling the new hosted
-workflow, media, SEO, or delivery-action boundaries. It adds the worker-only
-artifact creation RPC and the approval-only delivery action table. It does not
+workflow, media, SEO, artifact, or delivery-action boundaries. It adds separate
+authenticated and worker-only artifact creation RPCs and the approval-only
+delivery action table. It does not
 grant a client permission to publish, execute local tools, or read another
 tenant's artifacts.
 
@@ -301,6 +302,12 @@ dry run.
 The target secret must already exist and must begin with
 `veloce-<clientSlug>-`. The promotion script verifies the source client and
 provider names before writing, and never prints the secret value.
+
+When provider calls are enabled, the manifest must also provide a global
+`modelAllowlist`, a `providerModelAllowlist` mapping each provider alias to its
+allowed models, and `CLIENT_MODEL_PRICING_JSON` with input/output rates for
+every model. A model allowed for one provider cannot be selected through a
+different provider alias.
 
 ## Worker identity and long jobs
 
@@ -455,8 +462,9 @@ curl http://127.0.0.1:3940/api/client-runtime/credentials
 
 ## Runtime Alerts
 
-Runtime throttles and budget denials are emitted as redacted structured Cloud
-Run log events. Provision one log-based metric and alert policy per client:
+Runtime throttles, budget denials, and provider failures are emitted as redacted
+structured Cloud Run log events. Provision three log-based metrics and alert
+policies per client:
 
 ```bash
 npm run provision:runtime-alerts -- \

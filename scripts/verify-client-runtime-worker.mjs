@@ -13,6 +13,7 @@ function expect(condition, message) {
 const workerRoute = await readFile(join(root, "src/app/api/internal/client-runtime/jobs/route.ts"), "utf8");
 const deliveryRoute = await readFile(join(root, "src/app/api/internal/client-runtime/delivery/route.ts"), "utf8");
 const jobRoute = await readFile(join(root, "src/app/api/client-runtime/jobs/route.ts"), "utf8");
+const artifactsRoute = await readFile(join(root, "src/app/api/client-runtime/artifacts/route.ts"), "utf8");
 const recordsRoute = await readFile(join(root, "src/app/api/client-runtime/records/route.ts"), "utf8");
 const workflowsRoute = await readFile(join(root, "src/app/api/client-runtime/workflows/route.ts"), "utf8");
 const inputSafety = await readFile(join(root, "src/lib/clientInputSafety.ts"), "utf8");
@@ -25,10 +26,12 @@ const mediaAdapter = await readFile(join(root, "src/lib/clientMediaAdapter.ts"),
 const runtimePolicy = await readFile(join(root, "src/lib/clientRuntimePolicy.ts"), "utf8");
 const cloudTasks = await readFile(join(root, "src/lib/cloudTasks.ts"), "utf8");
 const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
+const alerts = await readFile(join(root, "scripts/provision-client-runtime-alerts.mjs"), "utf8");
 const shell = await readFile(join(root, "src/components/Shell.tsx"), "utf8");
 const briefWorkspace = await readFile(join(root, "src/components/ClientBriefWorkspace.tsx"), "utf8");
 
 expect(workerRoute.includes("validClientTaskIdentity"), "worker route must verify Cloud Tasks identity");
+expect(providerAdapter.includes("CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON") && providerAdapter.includes("provider_model_not_allowlisted"), "provider adapter must enforce provider-specific model allowlists");
 expect(workerRoute.includes("claim_client_runtime_job"), "worker route must claim jobs through Supabase");
 expect(workerRoute.includes("retry_client_runtime_job"), "worker route must use bounded retry state");
 expect(workerRoute.includes("complete_client_runtime_job"), "worker route must complete jobs through Supabase");
@@ -51,6 +54,8 @@ for (const marker of ["create_client_runtime_artifact_worker", "checkpoint_clien
   expect(hostedSql.includes(marker), `hosted capability migration must contain ${marker}`);
 }
 expect(workerRoute.includes("confirm_client_runtime_artifact_worker"), "worker artifact path must confirm storage metadata through the worker RPC");
+expect(artifactsRoute.includes('clientRpc("create_client_runtime_artifact"'), "client uploads must create artifact metadata through an authenticated RPC");
+expect(hostedSql.includes("create_client_runtime_artifact(") && hostedSql.includes("p_object_key not like"), "client artifact RPC must enforce tenant and user object namespaces");
 expect(recordsRoute.includes("clientCapabilityEnabled(\"tenant-data\")"), "tenant records route must be capability gated");
 expect(recordsRoute.includes("client_runtime_records"), "tenant records route must use the hosted records table");
 expect(recordsRoute.includes("SECRET_LIKE"), "tenant records route must reject secret-like content");
@@ -70,6 +75,7 @@ expect(provisioner.includes("CLIENT_RUNTIME_BASE_URL") && provisioner.includes("
 expect(cloudTasks.includes("CLIENT_RUNTIME_BASE_URL") && cloudTasks.includes("baseUrl"), "Cloud Tasks helper must use the approved runtime callback URL");
 expect(cloudTasks.includes("randomUUID") && cloudTasks.includes("const taskName") && cloudTasks.includes("${identifier}-${randomUUID()}"), "Cloud Tasks retries must use unique dispatch names");
 expect(provisioner.includes("secretVersionAdder") && provisioner.includes("CLIENT_CREDENTIAL_INBOX_SECRET"), "GCP provisioner must grant inbox version-write access explicitly");
+expect(workerRoute.includes("runtime.provider_failed") && alerts.includes("runtime_budget_denied") && alerts.includes("runtime_provider_failed"), "runtime must emit and provision redacted provider and budget alerts");
 for (const surface of ["opendesign", "web-studio", "flow-lab", "openmontage", "games", "thumbnails", "integrations", "leads", "radar", "guide"]) {
   expect(shell.includes(`"/${surface}"`), `client shell must route ${surface}`);
   expect(briefWorkspace.includes(`${surface}:`) || briefWorkspace.includes(`"${surface}"`), `brief workspace must define ${surface}`);

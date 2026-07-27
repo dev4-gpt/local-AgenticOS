@@ -46,6 +46,8 @@ export function clientProviderRequestAllowed(provider: string, requestedModel?: 
   if (!spec || !clientProviderEnabled(spec.key)) return { ok: false as const, status: 403, error: "provider_not_allowlisted" };
   const model = requestedModel?.trim() || spec.defaultModel;
   if (!configuredModels().includes(model)) return { ok: false as const, status: 403, error: "model_not_allowlisted" };
+  const providerModels = configuredProviderModels(normalizedProvider);
+  if (providerModels && !providerModels.includes(model)) return { ok: false as const, status: 403, error: "provider_model_not_allowlisted" };
   return { ok: true as const, provider: normalizedProvider, model, key: spec.key };
 }
 
@@ -90,6 +92,19 @@ export async function runClientTextAdapter(input: {
 
 function configuredModels() {
   return (process.env.CLIENT_MODEL_ALLOWLIST ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+}
+
+function configuredProviderModels(provider: string) {
+  const raw = process.env.CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON?.trim();
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
+    const models = parsed[provider];
+    return Array.isArray(models) ? models.filter((value): value is string => typeof value === "string" && value.trim().length > 0).map((value) => value.trim()) : [];
+  } catch {
+    return [];
+  }
 }
 
 export function estimateClientTextCostMicros(model: string, messages: Message[], maxOutputTokens: number) {

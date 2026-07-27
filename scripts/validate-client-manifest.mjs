@@ -29,5 +29,19 @@ if (Number(manifest.gcp.maxInstances) < 1) fail("maxInstances must be at least 1
 if (Number(manifest.budget.warningThreshold) >= Number(manifest.budget.monthlyCap)) fail("warningThreshold must be below monthlyCap");
 if (/sk-[A-Za-z0-9_-]{20,}|api[_ -]?key\s*[:=]|secret\s*[:=]|password\s*[:=]/i.test(raw)) fail("Manifest appears to contain a raw credential value");
 
+const models = Array.isArray(manifest.modelAllowlist) ? manifest.modelAllowlist.map(String) : [];
+const providerModels = manifest.providerModelAllowlist ?? {};
+if (!providerModels || typeof providerModels !== "object" || Array.isArray(providerModels)) fail("providerModelAllowlist must be an object when provided");
+for (const [provider, values] of Object.entries(providerModels)) {
+  if (!/^[a-z][a-z0-9-]{1,40}$/.test(provider) || !Array.isArray(values) || values.length === 0) fail(`Invalid providerModelAllowlist.${provider}`);
+  if (values.some((model) => typeof model !== "string" || !models.includes(model))) fail(`providerModelAllowlist.${provider} must only reference modelAllowlist entries`);
+}
+if (String(env.CLIENT_PROVIDER_CALLS_ENABLED ?? "0") === "1") {
+  if (models.length === 0 || Object.keys(providerModels).length === 0) fail("Provider calls require modelAllowlist and providerModelAllowlist");
+  let pricing;
+  try { pricing = JSON.parse(String(env.CLIENT_MODEL_PRICING_JSON ?? "{}")); } catch { fail("CLIENT_MODEL_PRICING_JSON must be valid JSON when provider calls are enabled"); }
+  for (const model of models) if (!pricing[model] || !Number.isFinite(Number(pricing[model].inputMicrosPer1k)) || !Number.isFinite(Number(pricing[model].outputMicrosPer1k))) fail(`Missing pricing for allowlisted model: ${model}`);
+}
+
 console.log(`Client manifest validation passed: ${manifest.clientSlug}`);
 function fail(message) { console.error(message); process.exit(1); }

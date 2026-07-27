@@ -42,6 +42,7 @@ const inboxSecretNames = [...new Set([
 const enabledCapabilities = normalizeList(manifest.enabledCapabilities);
 const providerAllowlist = normalizeList(manifest.providerAllowlist, Object.keys(secretEnv));
 const modelAllowlist = normalizeList(manifest.modelAllowlist);
+const providerModelAllowlist = normalizeProviderModelAllowlist(manifest.providerModelAllowlist);
 const runtimeEnv = {
   VELOCE_CLIENT_EDITION: "1",
   AGENTIC_OS_DISABLE_LOCAL_CLI: "1",
@@ -56,6 +57,7 @@ const runtimeEnv = {
   CLIENT_ENABLED_CAPABILITIES: enabledCapabilities.join(","),
   CLIENT_PROVIDER_ALLOWLIST: providerAllowlist.join(","),
   ...(modelAllowlist.length > 0 ? { CLIENT_MODEL_ALLOWLIST: modelAllowlist.join(",") } : {}),
+  ...(Object.keys(providerModelAllowlist).length > 0 ? { CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON: JSON.stringify(providerModelAllowlist) } : {}),
   ...(manifest.budget?.monthlyCap ? { CLIENT_BUDGET_CAP: String(manifest.budget.monthlyCap) } : {}),
   ...(manifest.budget?.warningThreshold ? { CLIENT_BUDGET_WARNING_THRESHOLD: String(manifest.budget.warningThreshold) } : {}),
   ...(manifest.storage?.namespace ? { CLIENT_STORAGE_NAMESPACE: sanitizeSlug(String(manifest.storage.namespace)) } : { CLIENT_STORAGE_NAMESPACE: slug }),
@@ -271,6 +273,19 @@ function normalizeSecretEnv(value) {
     const cleanEnv = envName.trim().toUpperCase();
     if (!/^[A-Z][A-Z0-9_]{1,120}$/.test(cleanEnv)) fail(`Invalid secret env name: ${envName}`);
     out[cleanEnv] = sanitizeSecret(String(secretRef));
+  }
+  return out;
+}
+
+function normalizeProviderModelAllowlist(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out = {};
+  for (const [provider, models] of Object.entries(value)) {
+    const cleanProvider = provider.trim().toLowerCase();
+    if (!/^[a-z][a-z0-9-]{1,40}$/.test(cleanProvider) || !Array.isArray(models)) fail(`Invalid providerModelAllowlist entry: ${provider}`);
+    const cleanModels = models.map((model) => String(model).trim()).filter(Boolean);
+    if (cleanModels.length === 0) fail(`providerModelAllowlist.${provider} must contain at least one model`);
+    out[cleanProvider] = [...new Set(cleanModels)];
   }
   return out;
 }
