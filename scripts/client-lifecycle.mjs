@@ -19,6 +19,8 @@ const namespace = valueAfter("--namespace") || slug;
 const includeObjects = args.includes("--include-objects");
 const confirmRestore = args.includes("--confirm-restore");
 const destroySecrets = args.includes("--destroy-secrets");
+const notificationChannel = valueAfter("--notification-channel");
+const deleteNotificationChannel = args.includes("--delete-notification-channel");
 const deleteService = args.includes("--delete-service");
 const deleteBucket = args.includes("--delete-bucket");
 const deleteQueue = args.includes("--delete-queue");
@@ -30,6 +32,8 @@ if ((mode === "offboard" || mode === "restore") && !process.env.SUPABASE_SERVICE
 if (mode === "offboard" && apply && !args.includes("--confirm-offboard")) fail("Refusing offboard apply without --confirm-offboard");
 if (mode === "offboard" && apply && !destroySecrets) fail("Refusing offboard apply without --destroy-secrets");
 if (mode === "offboard" && apply && !deleteQueue) fail("Refusing offboard apply without --delete-queue");
+if (mode === "offboard" && apply && !deleteNotificationChannel) fail("Refusing offboard apply without --delete-notification-channel");
+if (mode === "offboard" && apply && deleteNotificationChannel && !notificationChannel) fail("--notification-channel is required when deleting the client alert channel");
 if (mode === "offboard" && apply && !project) fail("--project is required for offboard apply");
 if (mode === "restore" && apply && !confirmRestore) fail("Refusing restore apply without --confirm-restore");
 
@@ -123,6 +127,7 @@ if (bucketHasObjects()) runGcloud(["storage", "rm", "--recursive", `gs://${resol
 if (deleteBucket) runGcloud(["storage", "buckets", "delete", `gs://${resolvedBucket}`, "--project", project, "--quiet"]);
 if (deleteQueue) deleteQueueIfPresent();
 deleteRuntimeAlerts();
+if (deleteNotificationChannel) await deleteClientNotificationChannel(notificationChannel);
 const secretNames = listSecretNames();
 for (const name of secretNames) runGcloud(["secrets", "delete", name, "--project", project, "--quiet"]);
 if (deleteService) runGcloud(["run", "services", "delete", serviceName, "--region", gcp.region || "asia-south1", "--project", project, "--quiet"]);
@@ -265,6 +270,21 @@ function deleteRuntimeAlerts() {
   for (const name of metrics.stdout.split(/\r?\n/).map((value) => value.trim()).filter(Boolean)) {
     runGcloud(["logging", "metrics", "delete", name, "--project", project, "--quiet"]);
   }
+}
+
+async function deleteClientNotificationChannel(resource) {
+  if (!resource || !/^projects\/[^/]+\/notificationChannels\/\d+$/.test(resource)) fail("--notification-channel must be a Monitoring notification channel resource");
+  const tokenResult = spawnSync("gcloud", ["auth", "print-access-token"], { encoding: "utf8" });
+  const token = tokenResult.status === 0 ? tokenResult.stdout.trim() : "";
+  if (!token) fail("Unable to obtain a Google Cloud access token for notification-channel deletion");
+  const base = "https://monitoring.googleapis.com/v3/";
+  const channelResponse = await fetch(`${base}${resource}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => null);
+  if (!channelResponse?.ok) fail(`Unable to inspect notification channel (${channelResponse?.status ?? 503})`);
+  const channel = await channelResponse.json().catch(() => null);
+  if (channel?.displayName !== `Veloce ${slug} runtime alerts`) fail("Refusing to delete a notification channel that is not owned by this client");
+  const response = await fetch(`${base}${resource}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => null);
+  if (!response?.ok) fail(`Notification-channel deletion failed (${response?.status ?? 503})`);
+  console.log("Client notification channel deleted.");
 }
 
 function listSecretNames() {

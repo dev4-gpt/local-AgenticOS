@@ -670,7 +670,8 @@ npm run client:lifecycle -- \
   --mode offboard \
   --slug veloce-cloud-test \
   --config .private-client-kits/veloce-cloud-test.gcp.json \
-  --apply --confirm-offboard --destroy-secrets --delete-queue --delete-bucket
+  --notification-channel projects/veloce-agenticos-2026/notificationChannels/11435881475361291593 \
+  --apply --confirm-offboard --destroy-secrets --delete-queue --delete-notification-channel --delete-bucket
 ```
 
 `--delete-queue` is required for an applied offboarding so no durable work can
@@ -681,8 +682,10 @@ bucket for an operator-controlled retention decision.
 
 Offboarding also removes the client-scoped runtime alert policies and log-based
 metrics created by `provision:runtime-alerts`, then deletes the matching
-Secret Manager containers. Review the export and confirm the resource list
-before applying this operation.
+Secret Manager containers. When supplied with
+`--notification-channel` and `--delete-notification-channel`, it also verifies
+the channel display name belongs to the client before deleting that channel.
+Review the export and confirm the resource list before applying this operation.
 
 Run export and restore in a disposable second tenant before using offboarding
 for a real client. Do not put the service-role key in a manifest, Vercel, Cloud

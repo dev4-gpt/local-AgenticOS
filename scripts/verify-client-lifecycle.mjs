@@ -25,6 +25,7 @@ expect(lifecycle.includes("pickExportColumns(table, row)"), "restore must use th
 expect(lifecycle.includes("secretLikeValue") && lifecycle.includes("assertSnapshotSafe"), "lifecycle must reject secret-like values in metadata backups");
 expect(lifecycle.includes("confirm-restore") && lifecycle.includes("confirm-offboard"), "destructive lifecycle actions must require explicit confirmation");
 expect(lifecycle.includes("--delete-queue") && lifecycle.includes("--destroy-secrets"), "offboarding must require queue and secret deletion consent");
+expect(lifecycle.includes("--notification-channel") && lifecycle.includes("--delete-notification-channel") && lifecycle.includes("Refusing to delete a notification channel that is not owned by this client"), "offboarding must explicitly and safely delete the client notification channel");
 expect(lifecycle.includes("deleteRuntimeAlerts") && lifecycle.includes("listSecretNames"), "offboarding must remove client alert and secret resources");
 expect(provisioner.includes("storageLifecycleFile") && provisioner.includes("matchesPrefix: [`${slug}/`]") && provisioner.includes('action: { type: "Delete" }'), "GCP provisioner must apply tenant-prefixed Cloud Storage retention");
 expect(provisioner.includes("normalizeRetentionDays") && provisioner.includes("retentionDays"), "GCP provisioner must derive storage retention from the validated manifest");
@@ -55,6 +56,8 @@ const secretRun = runLifecycle(["--mode", "restore", "--slug", "test-client", "-
 expect(secretRun.status !== 0 && `${secretRun.stdout}\n${secretRun.stderr}`.includes("secret-like"), "restore must reject secret-like snapshot values");
 const confirmationRun = runLifecycle(["--mode", "restore", "--slug", "test-client", "--input", safeSnapshot, "--apply"]);
 expect(confirmationRun.status !== 0 && `${confirmationRun.stdout}\n${confirmationRun.stderr}`.includes("confirm-restore"), "restore apply must require explicit confirmation before any network call");
+const offboardChannelRun = runLifecycle(["--mode", "offboard", "--slug", "test-client", "--bucket", "test-client-bucket", "--project", "test-project", "--apply", "--confirm-offboard", "--destroy-secrets", "--delete-queue"]);
+expect(offboardChannelRun.status !== 0 && `${offboardChannelRun.stdout}\n${offboardChannelRun.stderr}`.includes("delete-notification-channel"), "offboard apply must require explicit notification-channel deletion consent");
 await rm(tempDir, { recursive: true, force: true });
 
 if (failures.length) {
