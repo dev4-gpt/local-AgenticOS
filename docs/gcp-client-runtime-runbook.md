@@ -264,6 +264,12 @@ This should return one row. If it returns zero, rerun the current
 `supabase-client-runtime-hosted-capabilities.sql` file before deploying the
 image that includes tenant memory, journal, goals, or notebook surfaces.
 
+If the saved Supabase query is an older or partial copy and rerunning the full
+hosted-capabilities file does not create the table, apply the standalone
+`product-experience/supabase-client-runtime-records.sql` migration instead.
+It is idempotent, contains only the tenant records table and its RLS policies,
+and can be run independently after the control-plane tables exist.
+
 ## Promote or rotate a provider credential
 
 The browser submission is an encrypted Secret Manager inbox event, not an
@@ -285,6 +291,11 @@ Review the dry run, then repeat with `--apply`. Rotation uses the same command
 with the newly reviewed inbox version; the target Secret Manager `latest`
 alias then points to the new version. Keep the old version disabled or destroy
 it only under the documented incident/offboarding procedure.
+
+For a deliberate rotation, add `--disable-previous` to the applied command.
+The script records currently enabled target versions, writes the new version
+first, then disables only those older versions. It refuses this option during a
+dry run.
 
 The target secret must already exist and must begin with
 `veloce-<clientSlug>-`. The promotion script verifies the source client and
@@ -506,6 +517,22 @@ bucket for an operator-controlled retention decision.
 Run export and restore in a disposable second tenant before using offboarding
 for a real client. Do not put the service-role key in a manifest, Vercel, Cloud
 Run, browser storage, or source file.
+
+For tenant-isolation evidence, use two Auth access tokens with the read-only
+probe script:
+
+```bash
+npm run verify:client-isolation -- \
+  --url https://YOUR_PROJECT.supabase.co \
+  --tenant-a client-a \
+  --tenant-b client-b \
+  --access-token-a "$CLIENT_A_ACCESS_TOKEN" \
+  --access-token-b "$CLIENT_B_ACCESS_TOKEN"
+```
+
+The script checks each token's own tenant and confirms the opposite tenant
+returns zero rows for records, jobs, and artifacts. It never prints tokens or
+row content. Run it before enabling a second client manifest.
 
 - In `app-auth` mode, the Cloud Run URL reaches only the login shell and the
   application requires a valid individual Supabase Auth session for runtime

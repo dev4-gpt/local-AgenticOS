@@ -40,18 +40,35 @@ These can be exposed only through server-side provider APIs, a per-client allowl
 | Grok Build | `XAI_API_KEY` |
 | Web Studio | `OPENAI_API_KEY` or another approved model adapter |
 | Flow Lab | `FIRECRAWL_API_KEY`, only for an authorized source workflow |
-| Video, Music, Thumbnails | The specific media provider API, with output storage and budget controls |
+| Video, Music, Thumbnails | The specific media provider API, with output storage and budget controls. ElevenLabs speech, Suno music polling, and HeyGen video polling now have server-side queue adapters; image and broader production workflows remain gated. |
 
 Adding one of these keys does not automatically enable the route. The implementation must stop using local CLI/filesystem calls, use the client provider API, write to tenant-scoped storage, and be added to that client manifest.
+
+## Hosted replacement now available, full parity still gated
+
+- Local and Local Engine routes now use the hosted, queued API model workspace
+  in the client edition. They do not expose Ollama, local files, or local
+  agent execution; provider access still requires a client-approved API key,
+  model allowlist, budget, and manifest capability.
+- Open Design, Web Studio, Flow Lab, Agent Studio, OpenMontage, Game Studio,
+  Thumbnail Studio, Integrations, Leads, Radar, and Build Guide now have a
+  tenant-safe brief/request workspace. Provider generation, publishing, and
+  account-connected actions remain separate approved adapters.
 
 ## Operator-only until adapted
 
 These currently rely on local infrastructure or personal operator state and therefore show a private dependency boundary in the client edition:
 
 - Paperclip: local service at `localhost:3100` and local company/workspace data.
-- Local and Local Engine: Ollama and local filesystem/agent execution.
-- Free Claude Code chat: local `fcc-server` on `8082` and the local Claude CLI. It is available in `3939`, but not in Cloud Run.
-- Open Design and related production workspaces: local service at `127.0.0.1:7456` or local output paths.
+- The private 3939 Local Engine and local model execution: Ollama and local
+  filesystem/agent execution remain operator-only; the client edition uses the
+  hosted API replacement described above.
+- The private 3939 Free Claude Code chat: local `fcc-server` on `8082` and
+  the local Claude CLI remain operator-only. The client edition uses the
+  separately approved OpenRouter free-model adapter instead.
+- Private Open Design and related local production services: local service at
+  `127.0.0.1:7456` or local output paths. The client brief workspace does not
+  expose those dependencies.
 - Pipeline, Agent Kanban, Loop, and Ruflo: local files, local model/CLI execution, or operator vault state.
 - SEO, Integrations, and Build Guide: current implementations expose operator configuration, local data, or source material that has not yet been reduced to a client-safe contract.
 
@@ -59,7 +76,12 @@ To move one of these into a client edition, build a separate adapter using Supab
 
 ## First cloud test configuration
 
-The current `veloce-cloud-test` manifest intentionally enables only `delivery` and `quality` and allowlists only `SUPABASE_URL` and `SUPABASE_ANON_KEY`. This is the correct narrow starting point for testing identity, intake, secret handling, route boundaries, and approval behavior. It is not yet the full hosted version of the local operator OS.
+The current `veloce-cloud-test` manifest intentionally enables `tenant-data`,
+`orchestration`, `delivery`, and `quality`, and allowlists only `SUPABASE_URL`
+and `SUPABASE_ANON_KEY`. This is the correct narrow starting point for testing
+identity, tenant records, workflow state, intake, secret handling, route
+boundaries, and approval behavior. It is not yet the full hosted version of
+the local operator OS.
 
 The next safe expansion is one adapter at a time: add its API contract, tenant-scoped persistence, approval behavior, provider secret reference, acceptance tests, and only then add the capability and route to a client manifest.
 

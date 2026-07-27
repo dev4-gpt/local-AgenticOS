@@ -13,7 +13,7 @@ const CAPABILITY_LABELS: Record<Kind, string> = {
   seo: "Tenant SEO Research",
 };
 
-export default function ClientHostedWorkspace({ kind, title, pathname: _pathname, provider = "elevenlabs" }: { kind: Kind; title: string; pathname: string; provider?: "elevenlabs" | "heygen" }) {
+export default function ClientHostedWorkspace({ kind, title, pathname: _pathname, provider = "elevenlabs" }: { kind: Kind; title: string; pathname: string; provider?: "elevenlabs" | "heygen" | "suno" }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [goal, setGoal] = useState("");
   const [operation, setOperation] = useState("plan");

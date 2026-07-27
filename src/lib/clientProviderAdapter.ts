@@ -15,6 +15,7 @@ interface ProviderSpec {
 const PROVIDERS: Record<string, ProviderSpec> = {
   anthropic: { key: "ANTHROPIC_API_KEY", protocol: "anthropic", endpoint: "https://api.anthropic.com/v1/messages", defaultModel: "claude-3-5-haiku-latest" },
   openai: { key: "OPENAI_API_KEY", protocol: "openai", endpoint: "https://api.openai.com/v1/chat/completions", defaultModel: "gpt-4o-mini" },
+  codex: { key: "OPENAI_API_KEY", protocol: "openai", endpoint: "https://api.openai.com/v1/chat/completions", defaultModel: "gpt-4o-mini" },
   openrouter: { key: "OPENROUTER_API_KEY", protocol: "openai", endpoint: "https://openrouter.ai/api/v1/chat/completions", defaultModel: "openai/gpt-4o-mini" },
   openclaw: { key: "OPENROUTER_API_KEY", protocol: "openai", endpoint: "https://openrouter.ai/api/v1/chat/completions", defaultModel: "meta-llama/llama-3.3-70b-instruct" },
   hermes: { key: "OPENROUTER_API_KEY", protocol: "openai", endpoint: "https://openrouter.ai/api/v1/chat/completions", defaultModel: "nousresearch/hermes-4-70b" },
@@ -25,8 +26,10 @@ const PROVIDERS: Record<string, ProviderSpec> = {
   glm: { key: "GLM_API_KEY", protocol: "openai", endpoint: "https://api.z.ai/api/coding/paas/v4/chat/completions", defaultModel: "glm-5.2" },
   "glm-code": { key: "GLM_API_KEY", protocol: "openai", endpoint: "https://api.z.ai/api/coding/paas/v4/chat/completions", defaultModel: "glm-5.2" },
   xai: { key: "XAI_API_KEY", protocol: "openai", endpoint: "https://api.x.ai/v1/chat/completions", defaultModel: "grok-3-mini" },
+  grok: { key: "XAI_API_KEY", protocol: "openai", endpoint: "https://api.x.ai/v1/chat/completions", defaultModel: "grok-3-mini" },
   sakana: { key: "SAKANA_API_KEY", protocol: "openai", endpoint: "https://api.sakana.ai/v1/chat/completions", defaultModel: "fugu-ultra-20260615" },
   gemini: { key: "GEMINI_API_KEY", protocol: "gemini", endpoint: "https://generativelanguage.googleapis.com/v1beta/models", defaultModel: "gemini-2.0-flash" },
+  antigravity: { key: "GEMINI_API_KEY", protocol: "gemini", endpoint: "https://generativelanguage.googleapis.com/v1beta/models", defaultModel: "gemini-2.0-flash" },
 };
 
 export function clientProviderNames() {

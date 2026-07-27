@@ -16,7 +16,6 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/client-runtime/delivery",
   "/api/client-runtime/records",
   "/api/client-runtime/workflows",
-  "/api/client-runtime/provider-chat",
   "/api/client-runtime/jobs",
   "/api/internal/client-runtime/jobs",
   "/api/internal/client-runtime/delivery",

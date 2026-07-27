@@ -33,6 +33,17 @@ export interface ClientVideoResult {
   estimatedCostMicros: number;
 }
 
+export interface ClientMusicResult {
+  ok: true;
+  provider: "suno";
+  model: string;
+  state: "processing" | "completed" | "failed";
+  providerJobId: string;
+  outputUrl?: string;
+  error?: string;
+  estimatedCostMicros: number;
+}
+
 export async function runClientSpeechAdapter(input: {
   text: string;
   voiceId?: string;
@@ -119,6 +130,51 @@ export async function runClientHeyGenAdapter(input: {
   return { ok: true, provider: "heygen", model: "heygen-video", state: "processing", providerJobId, estimatedCostMicros: estimateHeyGenCostMicros() };
 }
 
+export async function runClientMusicAdapter(input: {
+  text: string;
+  model?: string;
+  instrumental?: boolean;
+  providerJobId?: string;
+}): Promise<ClientMusicResult | ClientMediaFailure> {
+  if (!clientProviderEnabled("SUNO_API_KEY")) return { ok: false, status: 403, error: "provider_not_allowlisted" };
+  const key = providerEnvKey("SUNO_API_KEY");
+  if (!key) return { ok: false, status: 503, error: "provider_not_configured" };
+  const base = (process.env.CLIENT_SUNO_API_BASE?.trim() || "https://api.sunoapi.org").replace(/\/$/, "");
+
+  if (input.providerJobId) {
+    const statusResponse = await fetch(`${base}/api/v1/generate/record-info?taskId=${encodeURIComponent(input.providerJobId)}`, {
+      headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(30_000),
+    }).catch(() => null);
+    if (!statusResponse?.ok) return { ok: false, status: statusResponse?.status ?? 503, error: "provider_status_failed" };
+    const data = await statusResponse.json().catch(() => null) as { data?: { status?: string; errorMessage?: string; response?: { sunoData?: Array<{ audioUrl?: unknown }> } }; msg?: string } | null;
+    const state = String(data?.data?.status ?? "").toUpperCase();
+    if (/FAIL|SENSITIVE|ERROR/.test(state)) return { ok: true, provider: "suno", model: input.model || "V4_5", state: "failed", providerJobId: input.providerJobId, error: "provider_music_failed", estimatedCostMicros: estimateSunoCostMicros() };
+    const outputUrl = data?.data?.response?.sunoData?.find((clip) => typeof clip.audioUrl === "string")?.audioUrl;
+    if (state === "SUCCESS" && typeof outputUrl === "string" && safeProviderOutputUrl(outputUrl)) {
+      return { ok: true, provider: "suno", model: input.model || "V4_5", state: "completed", providerJobId: input.providerJobId, outputUrl, estimatedCostMicros: estimateSunoCostMicros() };
+    }
+    return { ok: true, provider: "suno", model: input.model || "V4_5", state: "processing", providerJobId: input.providerJobId, estimatedCostMicros: estimateSunoCostMicros() };
+  }
+
+  const description = input.text.trim();
+  if (description.length < 1 || description.length > 3_000) return { ok: false, status: 400, error: "music_input_invalid" };
+  const model = input.model?.trim() || process.env.CLIENT_SUNO_MODEL?.trim() || "V4_5";
+  const response = await fetch(`${base}/api/v1/generate`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ customMode: true, instrumental: input.instrumental !== false, style: description.slice(0, 1_000), title: "Veloce client track", model, callBackUrl: process.env.CLIENT_SUNO_CALLBACK_URL || "https://example.com/suno-callback" }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(60_000),
+  }).catch(() => null);
+  if (!response?.ok) return { ok: false, status: response?.status ?? 503, error: "provider_request_failed" };
+  const data = await response.json().catch(() => null) as { data?: { taskId?: unknown }; msg?: string } | null;
+  const providerJobId = typeof data?.data?.taskId === "string" ? data.data.taskId : "";
+  if (!providerJobId) return { ok: false, status: 502, error: "provider_output_invalid" };
+  return { ok: true, provider: "suno", model, state: "processing", providerJobId, estimatedCostMicros: estimateSunoCostMicros() };
+}
+
 export function safeProviderOutputUrl(value: string) {
   try {
     const url = new URL(value);
@@ -130,6 +186,10 @@ export function safeProviderOutputUrl(value: string) {
 
 function estimateHeyGenCostMicros() {
   return Math.max(0, Math.round(Number(process.env.CLIENT_HEYGEN_COST_MICROS ?? 100_000)));
+}
+
+function estimateSunoCostMicros() {
+  return Math.max(0, Math.round(Number(process.env.CLIENT_SUNO_COST_MICROS ?? 100_000)));
 }
 
 export function estimateClientMediaCostMicros(characters: number) {

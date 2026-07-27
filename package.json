@@ -27,6 +27,7 @@
     "verify:flow-lab": "node scripts/verify-flow-lab.mjs",
     "verify:client-runtime": "node scripts/verify-client-runtime.mjs",
     "verify:client-worker": "node scripts/verify-client-runtime-worker.mjs",
+    "verify:client-isolation": "node scripts/verify-client-runtime-isolation.mjs",
     "client:lifecycle": "node scripts/client-lifecycle.mjs",
     "provision:runtime-alerts": "node scripts/provision-client-runtime-alerts.mjs",
     "validate:client-manifest": "node scripts/validate-client-manifest.mjs",

@@ -10,6 +10,7 @@ const inboxSecret = valueAfter("--inbox-secret");
 const targetSecret = valueAfter("--target-secret");
 const version = valueAfter("--version") || "latest";
 const apply = args.includes("--apply");
+const disablePrevious = args.includes("--disable-previous");
 
 if (!project || !clientSlug || !providerKey || !inboxSecret || !targetSecret) {
   fail("Usage: npm run promote:client-credential -- --project PROJECT --client-slug SLUG --provider PROVIDER_KEY --inbox-secret SECRET --target-secret SECRET [--version latest|N] [--apply]");
@@ -18,6 +19,7 @@ if (!/^[a-z][a-z0-9-]{2,40}$/.test(clientSlug)) fail("Invalid client slug");
 if (!/^[A-Z][A-Z0-9_]{2,120}$/.test(providerKey)) fail("Invalid provider key");
 if (!/^[a-z][a-z0-9_-]{1,120}$/.test(inboxSecret) || !/^\d+$|^latest$/.test(version)) fail("Invalid source secret or version");
 if (!targetSecret.startsWith(`veloce-${clientSlug}-`)) fail("Target secret must be inside the client namespace");
+if (disablePrevious && !apply) fail("--disable-previous requires --apply so the new version is written before older versions are disabled");
 
 const source = run("gcloud", ["secrets", "versions", "access", version, "--secret", inboxSecret, "--project", project]);
 let envelope;
@@ -39,14 +41,25 @@ console.log(`Source: ${inboxSecret}:${version}`);
 console.log(`Target: ${targetSecret}:latest`);
 console.log("Raw credential value is never printed.");
 if (apply) {
+  const previousVersions = disablePrevious ? enabledTargetVersions() : [];
   const result = spawnSync("gcloud", ["secrets", "versions", "add", targetSecret, "--project", project, "--data-file=-"], {
     input: value,
     stdio: ["pipe", "inherit", "inherit"],
   });
   if (result.status !== 0) process.exit(result.status ?? 1);
+  for (const previousVersion of previousVersions) {
+    const disabled = spawnSync("gcloud", ["secrets", "versions", "disable", previousVersion, "--secret", targetSecret, "--project", project], { stdio: "inherit" });
+    if (disabled.status !== 0) process.exit(disabled.status ?? 1);
+  }
   console.log("Promotion complete. The next approved Cloud Run revision can consume the new target version as latest.");
 } else {
   console.log("Dry run only. Add --apply to write the target secret version.");
+}
+
+function enabledTargetVersions() {
+  const result = spawnSync("gcloud", ["secrets", "versions", "list", targetSecret, "--project", project, "--filter=state=ENABLED", "--format=value(name.basename())"], { encoding: "utf8" });
+  if (result.status !== 0) fail("Could not enumerate existing target secret versions");
+  return result.stdout.split(/\r?\n/).map((item) => item.trim()).filter((item) => /^\d+$/.test(item));
 }
 
 function valueAfter(flag) {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { reserveClientRuntimeBudgetWorker, workerRpc } from "@/lib/clientDataPlane";
 import { clientProviderDefaultModel, estimateClientTextCostMicros, clientTextMaxOutputTokens, runClientTextAdapter } from "@/lib/clientProviderAdapter";
 import { clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
-import { estimateClientMediaCostMicros, runClientHeyGenAdapter, runClientSpeechAdapter, safeProviderOutputUrl } from "@/lib/clientMediaAdapter";
+import { estimateClientMediaCostMicros, runClientHeyGenAdapter, runClientMusicAdapter, runClientSpeechAdapter, safeProviderOutputUrl } from "@/lib/clientMediaAdapter";
 import { runClientSeoAdapter } from "@/lib/clientSeoAdapter";
 import { clientGcpAccessToken, clientStorageConfig, uploadClientStorageObject } from "@/lib/clientStorage";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
@@ -72,7 +72,7 @@ async function processOrchestrationJob(jobId: string, tenantSlug: string, worker
 }
 
 async function processMediaJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; input_metadata?: Record<string, unknown> | null }) {
-  if (job.provider !== "elevenlabs" && job.provider !== "heygen") {
+  if (job.provider !== "elevenlabs" && job.provider !== "heygen" && job.provider !== "suno") {
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_not_allowed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -81,14 +81,15 @@ async function processMediaJob(jobId: string, tenantSlug: string, workerToken: s
   const providerJobId = typeof input.provider_job_id === "string" ? input.provider_job_id : undefined;
   if (!providerJobId) {
     const provider = job.provider;
-    const model = provider === "heygen" ? "heygen-video" : "eleven_multilingual_v2";
-    const estimate = provider === "heygen" ? Math.max(0, Math.round(Number(process.env.CLIENT_HEYGEN_COST_MICROS ?? 100_000))) : estimateClientMediaCostMicros(text.length);
+    const model = provider === "heygen" ? "heygen-video" : provider === "suno" ? (process.env.CLIENT_SUNO_MODEL?.trim() || "V4_5") : "eleven_multilingual_v2";
+    const estimate = provider === "heygen" ? Math.max(0, Math.round(Number(process.env.CLIENT_HEYGEN_COST_MICROS ?? 100_000))) : provider === "suno" ? Math.max(0, Math.round(Number(process.env.CLIENT_SUNO_COST_MICROS ?? 100_000))) : estimateClientMediaCostMicros(text.length);
     if (!(await reserveClientRuntimeBudgetWorker({ provider, model, amountMicros: estimate, jobId, workerToken }))) {
       await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
       return NextResponse.json({ ok: true, status: "failed" });
     }
   }
   if (job.provider === "heygen") return processHeyGenJob(jobId, tenantSlug, workerToken, input, providerJobId);
+  if (job.provider === "suno") return processSunoJob(jobId, tenantSlug, workerToken, input, providerJobId);
 
   const result = await runClientSpeechAdapter({ text, voiceId: typeof input.voiceId === "string" ? input.voiceId : undefined });
   if (!result.ok) {
@@ -110,6 +111,49 @@ async function processMediaJob(jobId: string, tenantSlug: string, workerToken: s
     contentType: result.contentType,
     byteSize: result.bytes.length,
   });
+  return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+async function processSunoJob(jobId: string, tenantSlug: string, workerToken: string, input: Record<string, unknown>, providerJobId?: string) {
+  const result = await runClientMusicAdapter({
+    text: typeof input.text === "string" ? input.text : "",
+    model: typeof input.model === "string" ? input.model : undefined,
+    instrumental: input.instrumental !== false,
+    providerJobId,
+  });
+  if (!result.ok) {
+    if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  if (result.state === "processing") {
+    const checkpointed = await workerRpc("checkpoint_client_runtime_job_worker", { p_tenant_slug: tenantSlug, p_job_id: jobId, p_worker_token: workerToken, p_provider_job_id: result.providerJobId });
+    if (!(checkpointed.ok && checkpointed.value === true) || !(await retryJob(tenantSlug, jobId, workerToken, "provider_processing"))) return NextResponse.json({ ok: false, error: "provider_poll_reschedule_failed" }, { status: 503 });
+    const task = await enqueueClientRuntimeTask({ jobId, tenantSlug, delaySeconds: 15 });
+    if (!task.ok) return NextResponse.json({ ok: false, error: "provider_poll_enqueue_failed" }, { status: 503 });
+    return NextResponse.json({ ok: true, status: "processing" }, { status: 202 });
+  }
+  if (result.state === "failed" || !result.outputUrl || !safeProviderOutputUrl(result.outputUrl)) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error || "provider_music_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const response = await fetch(result.outputUrl, { cache: "no-store", signal: AbortSignal.timeout(120_000) }).catch(() => null);
+  if (!response?.ok) {
+    if (await retryJob(tenantSlug, jobId, workerToken, "provider_output_download_failed")) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_output_download_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length < 1 || bytes.length > 100 * 1024 * 1024) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_output_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const artifactId = await storeArtifact(tenantSlug, jobId, workerToken, `${jobId}.mp3`, "audio/mpeg", bytes);
+  if (!artifactId) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "artifact_store_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { adapter: "suno-music", artifactId, provider: result.provider, model: result.model, contentType: "audio/mpeg", byteSize: bytes.length });
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
 
