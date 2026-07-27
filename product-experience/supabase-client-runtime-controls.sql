@@ -70,6 +70,12 @@ create index if not exists client_runtime_rate_limits_window_idx
 alter table public.client_tenants
   add column if not exists worker_token_hash text;
 
+-- The worker verifier is never client-readable. Replace the earlier table-
+-- level grant with an explicit safe-column grant after the column exists.
+revoke select on public.client_tenants from authenticated;
+grant select (slug, name, status, retention_days, created_at, updated_at)
+  on public.client_tenants to authenticated;
+
 alter table public.client_runtime_jobs
   add column if not exists updated_at timestamptz not null default now();
 

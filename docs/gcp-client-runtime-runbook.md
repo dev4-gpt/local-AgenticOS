@@ -389,6 +389,17 @@ set worker_token_hash = 'PASTE_SHA256_HEX_HASH', updated_at = now()
 where slug = 'veloce-cloud-test';
 ```
 
+The hash column must not be readable by client members. Re-run the controls
+migration after adding it; that migration replaces the broad tenant read grant
+with an explicit grant for only `slug`, `name`, `status`, `retention_days`,
+`created_at`, and `updated_at`.
+
+For a read-only post-migration check, run
+`product-experience/supabase-client-runtime-final-verification.sql` in the
+Supabase SQL Editor. Its `worker_hash_select` result must be `false`; the
+worker RPC list should include workflow reconciliation and the artifact,
+delivery, rate-limit, and budget functions.
+
 Set these runtime values in the approved manifest, with the raw worker token
 declared only in `secretEnv`:
 
@@ -546,7 +557,9 @@ npm run client:lifecycle -- \
 ```
 
 The export is written with mode `0600` and includes tenant-scoped Supabase
-metadata plus optional Cloud Storage objects. A restore is dry-run by default;
+metadata plus optional Cloud Storage objects. It uses an explicit, credential-
+safe column allowlist: worker-token hashes, provider values, and secret-like
+metadata are refused. A restore is dry-run by default;
 pass the matching object backup directory to restore Cloud Storage objects too:
 
 ```bash
@@ -561,6 +574,9 @@ npm run client:lifecycle -- \
 An applied restore requires `--confirm-restore`. If the snapshot contains
 artifact metadata, the matching `--objects` backup is also required so the
 database cannot advertise files that are missing from Cloud Storage.
+Worker credentials are deliberately not restored. After a successful restore,
+run `npm run provision:client-worker-token` with operator credentials and
+redeploy the approved revision before enabling queued work.
 
 Offboarding requires an explicit confirmation and destroys the client-scoped
 Secret Manager containers only when `--destroy-secrets` is supplied:

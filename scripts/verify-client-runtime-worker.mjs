@@ -25,6 +25,7 @@ const inputSafety = await readFile(join(root, "src/lib/clientInputSafety.ts"), "
 const controlsSql = await readFile(join(root, "product-experience/supabase-client-runtime-controls.sql"), "utf8");
 const hostedSql = await readFile(join(root, "product-experience/supabase-client-runtime-hosted-capabilities.sql"), "utf8");
 const workflowReconciliationSql = await readFile(join(root, "product-experience/supabase-client-runtime-workflow-reconciliation.sql"), "utf8");
+const finalVerificationSql = await readFile(join(root, "product-experience/supabase-client-runtime-final-verification.sql"), "utf8");
 const recordsSql = await readFile(join(root, "product-experience/supabase-client-runtime-records.sql"), "utf8");
 const lifecycleScript = await readFile(join(root, "scripts/client-lifecycle.mjs"), "utf8");
 const providerAdapter = await readFile(join(root, "src/lib/clientProviderAdapter.ts"), "utf8");
@@ -62,6 +63,8 @@ for (const marker of ["create_client_runtime_artifact_worker", "checkpoint_clien
   expect(hostedSql.includes(marker), `hosted capability migration must contain ${marker}`);
 }
 expect(workflowReconciliationSql.includes("update_client_runtime_record_worker") && workflowReconciliationSql.includes("worker_token_hash"), "workflow reconciliation migration must be worker-authenticated");
+expect(finalVerificationSql.includes("has_column_privilege") && finalVerificationSql.includes("worker_hash_select"), "final verification must prove the worker hash is not client-readable");
+expect(finalVerificationSql.includes("update_client_runtime_record_worker"), "final verification must include workflow reconciliation");
 expect(workerRoute.includes("confirm_client_runtime_artifact_worker"), "worker artifact path must confirm storage metadata through the worker RPC");
 expect(artifactsRoute.includes('clientRpc("create_client_runtime_artifact"'), "client uploads must create artifact metadata through an authenticated RPC");
 expect(!artifactsRoute.includes("CLIENT_WORKER_TOKEN"), "authenticated artifact uploads must not depend on the worker token");
@@ -83,6 +86,7 @@ expect(credentialsRoute.includes("item.submitAllowed") && credentialSubmissionRo
 expect(provisioner.includes("credentialInboxSecret") && provisioner.includes("requestInboxSecret") && provisioner.includes("CLIENT_CREDENTIAL_INBOX_SECRET"), "GCP provisioning must normalize inbox secret names into the client namespace");
 expect(workerProvisioner.includes("worker_token_hash") && workerProvisioner.includes("base64url") && workerProvisioner.includes("SUPABASE_SERVICE_ROLE_KEY"), "worker provisioning must rotate a random token and persist only its hash with operator credentials");
 expect(!workerProvisioner.includes("console.log(token") && !workerProvisioner.includes("console.log(hash"), "worker provisioning must never print the token or hash");
+expect(controlsSql.includes("revoke select on public.client_tenants from authenticated") && controlsSql.includes("grant select (slug, name, status, retention_days, created_at, updated_at)"), "worker token verifier must be excluded from client-readable tenant columns");
 expect(provisioner.includes("immutableRuntimeKeys") && provisioner.includes("cannot override the derived client isolation value"), "GCP provisioning must protect derived tenant isolation values");
 expect(provisioner.includes("storage.namespace must equal clientSlug") && provisioner.includes("CLIENT_STORAGE_NAMESPACE: slug"), "GCP provisioning must keep storage and tenant namespaces identical");
 expect(provisioner.includes("normalizeCorsOrigins") && provisioner.includes("--cors-file="), "GCP provisioning must configure bucket CORS for signed browser uploads");

@@ -55,6 +55,31 @@ const tables = [
   "client_runtime_delivery_actions",
 ];
 
+// Lifecycle exports are portable backups, not credential backups. Keep this
+// list explicit so a newly-added sensitive column cannot silently enter an
+// export through a wildcard query.
+const exportColumns = Object.freeze({
+  client_tenants: "slug,name,status,retention_days,created_at,updated_at",
+  client_memberships: "tenant_slug,user_id,role,status,created_at",
+  client_runtime_requests: "id,tenant_slug,submitted_by,request_type,title,details,fields,status,created_at,updated_at",
+  client_runtime_audit_events: "id,tenant_slug,actor_id,event_type,request_id,metadata,created_at",
+  client_runtime_jobs: "id,tenant_slug,requested_by,capability,provider,model,idempotency_key,status,attempt_count,input_metadata,output_metadata,error_code,created_at,started_at,finished_at",
+  client_runtime_artifacts: "id,tenant_slug,job_id,created_by,object_key,original_name,content_type,byte_size,status,retention_expires_at,created_at",
+  client_runtime_records: "id,tenant_slug,created_by,kind,title,content,status,metadata,created_at,updated_at",
+  client_runtime_budget_ledger: "id,tenant_slug,job_id,provider,model,amount_micros,usage_metadata,created_at",
+  client_runtime_delivery_actions: "id,tenant_slug,request_id,requested_by,action,destination,artifact_ids,status,error_code,idempotency_key,created_at,updated_at",
+});
+
+const forbiddenExportFields = new Set([
+  "worker_token_hash",
+  "credential_value",
+  "api_key",
+  "access_token",
+  "refresh_token",
+  "private_key",
+]);
+const secretLikeValue = /(?:api[_ -]?key|secret|password|private[_ -]?key|access[_ -]?token)\s*[:=]\s*[^\s]{4,}|\b(?:sk|rk|ghp|xai)-[A-Za-z0-9_-]{16,}\b/i;
+
 if (mode === "export") {
   const snapshot = await exportSnapshot();
   await writeSnapshot(snapshot, outputPath);
@@ -105,8 +130,12 @@ await supabaseDelete("client_tenants", `slug=eq.${encodeURIComponent(slug)}`);
 console.log(`Client offboarding completed: ${slug}`);
 
 async function exportSnapshot() {
-  const result = { schemaVersion: 1, slug, exportedAt: new Date().toISOString(), tables: {} };
-  for (const table of tables) result.tables[table] = await supabaseSelect(table, table === "client_tenants" ? `slug=eq.${encodeURIComponent(slug)}` : `tenant_slug=eq.${encodeURIComponent(slug)}`);
+  const result = { schemaVersion: 2, slug, exportedAt: new Date().toISOString(), tables: {} };
+  for (const table of tables) {
+    const rows = await supabaseSelect(table, table === "client_tenants" ? `slug=eq.${encodeURIComponent(slug)}` : `tenant_slug=eq.${encodeURIComponent(slug)}`, exportColumns[table]);
+    assertSnapshotSafe(table, rows);
+    result.tables[table] = rows;
+  }
   return result;
 }
 
@@ -117,12 +146,43 @@ async function restoreSnapshot(snapshot) {
     if (!rows.length) continue;
     const tenantRows = rows.filter((row) => table === "client_tenants" ? row.slug === slug : row.tenant_slug === slug);
     if (tenantRows.length !== rows.length) fail(`Restore contains rows outside requested tenant: ${table}`);
-    await supabaseInsert(table, tenantRows);
+    assertSnapshotSafe(table, tenantRows);
+    await supabaseInsert(table, tenantRows.map((row) => pickExportColumns(table, row)));
   }
 }
 
 function validateSnapshot(snapshot) {
-  if (!snapshot || snapshot.schemaVersion !== 1 || snapshot.slug !== slug || !snapshot.tables || typeof snapshot.tables !== "object") fail("Invalid lifecycle snapshot or slug mismatch");
+  if (!snapshot || ![1, 2].includes(snapshot.schemaVersion) || snapshot.slug !== slug || !snapshot.tables || typeof snapshot.tables !== "object") fail("Invalid lifecycle snapshot or slug mismatch");
+  for (const [table, rows] of Object.entries(snapshot.tables)) {
+    if (!tables.includes(table) || !Array.isArray(rows)) fail(`Invalid lifecycle table: ${table}`);
+    assertSnapshotSafe(table, rows);
+  }
+}
+
+function assertSnapshotSafe(table, rows) {
+  for (const row of Array.isArray(rows) ? rows : []) {
+    scanSnapshotValue(table, row, "row");
+  }
+}
+
+function scanSnapshotValue(table, value, pathLabel) {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => scanSnapshotValue(table, item, `${pathLabel}[${index}]`));
+    return;
+  }
+  if (!value || typeof value !== "object") {
+    if (typeof value === "string" && secretLikeValue.test(value)) fail(`Refusing to export or restore secret-like value in ${table}.${pathLabel}`);
+    return;
+  }
+  for (const [key, child] of Object.entries(value)) {
+    if (forbiddenExportFields.has(key.toLowerCase())) fail(`Refusing to export or restore sensitive field ${table}.${pathLabel}.${key}`);
+    scanSnapshotValue(table, child, `${pathLabel}.${key}`);
+  }
+}
+
+function pickExportColumns(table, row) {
+  const columns = exportColumns[table]?.split(",") ?? [];
+  return Object.fromEntries(columns.filter((column) => Object.prototype.hasOwnProperty.call(row, column)).map((column) => [column, row[column]]));
 }
 
 function restoreObjects(input) {
@@ -140,8 +200,9 @@ async function writeSnapshot(snapshot, filePath) {
   await chmod(filePath, 0o600);
 }
 
-async function supabaseSelect(table, filter) {
-  const response = await supabaseRequest(`${table}?${filter}&select=*`);
+async function supabaseSelect(table, filter, columns) {
+  if (!columns) fail(`No export column allowlist for ${table}`);
+  const response = await supabaseRequest(`${table}?${filter}&select=${encodeURIComponent(columns)}`);
   if (!response.ok) fail(`Export failed for ${table} (${response.status})`);
   const data = await response.json();
   return Array.isArray(data) ? data : [];
