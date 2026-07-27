@@ -565,6 +565,11 @@ dedicated to that client and the export has been reviewed; otherwise the
 offboarding command removes the client namespace objects but leaves the empty
 bucket for an operator-controlled retention decision.
 
+Offboarding also removes the client-scoped runtime alert policies and log-based
+metrics created by `provision:runtime-alerts`, then deletes the matching
+Secret Manager containers. Review the export and confirm the resource list
+before applying this operation.
+
 Run export and restore in a disposable second tenant before using offboarding
 for a real client. Do not put the service-role key in a manifest, Vercel, Cloud
 Run, browser storage, or source file.

@@ -97,6 +97,7 @@ await supabasePatch("client_tenants", `slug=eq.${encodeURIComponent(slug)}`, { s
 if (bucketHasObjects()) runGcloud(["storage", "rm", "--recursive", `gs://${resolvedBucket}/${resolvedNamespace}/**`, "--quiet"]);
 if (deleteBucket) runGcloud(["storage", "buckets", "delete", `gs://${resolvedBucket}`, "--project", project, "--quiet"]);
 if (deleteQueue) deleteQueueIfPresent();
+deleteRuntimeAlerts();
 const secretNames = listSecretNames();
 for (const name of secretNames) runGcloud(["secrets", "delete", name, "--project", project, "--quiet"]);
 if (deleteService) runGcloud(["run", "services", "delete", serviceName, "--region", gcp.region || "asia-south1", "--project", project, "--quiet"]);
@@ -192,8 +193,21 @@ function deleteQueueIfPresent() {
   runGcloud(["tasks", "queues", "delete", queue, "--location", region, "--project", project, "--quiet"]);
 }
 
+function deleteRuntimeAlerts() {
+  const policies = spawnSync("gcloud", ["monitoring", "policies", "list", "--project", project, `--filter=displayName~^Veloce ${slug} `, "--format=value(name)"], { encoding: "utf8" });
+  if (policies.status !== 0) fail("Unable to enumerate client alert policies");
+  for (const name of policies.stdout.split(/\r?\n/).map((value) => value.trim()).filter(Boolean)) {
+    runGcloud(["monitoring", "policies", "delete", name, "--project", project, "--quiet"]);
+  }
+  const metrics = spawnSync("gcloud", ["logging", "metrics", "list", "--project", project, `--filter=name~veloce_${slug}_runtime_`, "--format=value(name)"], { encoding: "utf8" });
+  if (metrics.status !== 0) fail("Unable to enumerate client log metrics");
+  for (const name of metrics.stdout.split(/\r?\n/).map((value) => value.trim()).filter(Boolean)) {
+    runGcloud(["logging", "metrics", "delete", name, "--project", project, "--quiet"]);
+  }
+}
+
 function listSecretNames() {
-  const result = spawnSync("gcloud", ["secrets", "list", "--project", project, `--filter=name~^veloce-${slug}-`, "--format=value(name)"], { encoding: "utf8" });
+  const result = spawnSync("gcloud", ["secrets", "list", "--project", project, `--filter=name~veloce-${slug}-`, "--format=value(name)"], { encoding: "utf8" });
   if (result.status !== 0) fail("Unable to enumerate client secrets");
   return result.stdout.split(/\r?\n/).map((value) => value.trim()).filter(Boolean).map((value) => value.split("/").pop()).filter(Boolean);
 }
