@@ -1,14 +1,15 @@
 # Client Runtime 13-Layer Readiness
 
 Updated 2026-07-27 after reviewing the public intake deployment, the local
-operator runtime, Cloud Run client image `v19`, and the hosted adapter slice.
+operator runtime, Cloud Run client image `v20`, and the hosted adapter slice.
 The repository now contains a tenant-scoped records migration, explicit API
 provider aliases, queue-only client text execution, hosted Local/Engine
 replacement routes, tenant-safe brief workspaces, provider/model allowlists,
-and queued workflow dispatch with cleanup on failed submission. The v19 image
+and queued workflow dispatch with cleanup on failed submission. The v20 image
 is deployed and passes the unauthenticated boundary checks. Revision
-`veloce-cloud-test-00018-r6t` now has the worker flag and Secret Manager token
-binding enabled; an authenticated queued-job completion drill is still pending.
+`veloce-cloud-test-00020-z5p` has the worker flag, Secret Manager token
+binding, and artifact capability enabled; authenticated queued-job and
+artifact drills are still pending.
 
 ## Executive answer
 
@@ -22,7 +23,7 @@ The current state is:
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
-| Cloud Run client shell | Live as image `v19`; worker binding is enabled, provider calls remain disabled, and end-to-end job evidence is pending | Controlled test only |
+| Cloud Run client shell | Live as image `v20`; worker binding and artifacts are enabled, provider calls remain disabled, and authenticated job/artifact evidence is pending | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |
 | Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
 
@@ -185,10 +186,10 @@ true:
   without creating a request.
 - [x] Production dependency audit passes with
   `npm audit --omit=dev --audit-level=high`.
-- [x] Cloud Run v11 is deployed and passes the prior client-runtime verification
-  script with security headers enabled.
-- [ ] Deploy the newest built image after Supabase returns one
-  `client_runtime_records` table row, then rerun authenticated client tests.
+- [x] Cloud Run v20 is deployed and passes the current client-runtime
+  verification script with security headers enabled.
+- [ ] Rerun authenticated client tests for queued jobs, artifacts, and delivery
+  after the Supabase membership and worker-token gates are exercised end to end.
 - [ ] Review remaining development-toolchain advisories before allowing
   untrusted contributors or automated build scripts into the release process.
 - [ ] Submit one real test request and confirm it appears in Supabase as
@@ -250,9 +251,9 @@ Each layer has a gate, an evidence artifact, and a failure action:
 
 The public control-plane changes in this release add shared headers, sanitized
 public errors, a durable Supabase rate-limit migration, CI release checks, and
-production dependency checks. The SQL migration still requires one manual
-application in the Supabase project before the durable limiter is considered
-verified.
+production dependency checks. The Supabase migrations and test tenant
+membership are applied; durable limiter, worker, artifact, and cross-tenant
+behavior still require live authenticated verification.
 
 The client control-plane migration adds single-tenant membership/RLS, safe
 request records, audit events, idempotent job records, artifact metadata, and a
@@ -265,11 +266,12 @@ switching a client manifest to `CLIENT_RUNTIME_DATA_MODE=supabase`.
 These are engineering work, not deployment switches:
 
 - Provider adapters for each model/media/service tab; queue-backed API-only
-  text aliases, workflow, Firecrawl read-only SEO, ElevenLabs artifact,
-  Suno music, and HeyGen video polling adapters are implemented but not enabled
-  in the test manifest. Image/video production, destination publishing, and
-  provider-specific tool contracts remain. Personal CLI sessions cannot become client capacity by
-  adding environment variables.
+  text aliases, workflow, Firecrawl read-only SEO, ElevenLabs artifact, Suno
+  music, and HeyGen video polling adapters are implemented, but provider calls
+  remain disabled in the test manifest until credentials, pricing, and live
+  smoke evidence exist. Image/video production, destination publishing, and
+  provider-specific tool contracts remain. Personal CLI sessions cannot become
+  client capacity by adding environment variables.
 - Tenant-scoped runtime tables and object storage for memory, files, jobs, and
   deliverables, or a documented single-tenant-only equivalent for each route;
   apply the standalone records migration if the hosted-capabilities query is

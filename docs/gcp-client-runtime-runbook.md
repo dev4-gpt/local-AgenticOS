@@ -13,15 +13,15 @@ the 3939-style client edition, not for exposing the private local operator OS.
 
 ## Current Internal Test Status
 
-As of 2026-07-26, the first client-safe Cloud Run test is live and verified.
+As of 2026-07-27, the first client-safe Cloud Run test is live and verified.
 
 ```text
 Client slug: veloce-cloud-test
 GCP project: veloce-agenticos-2026
 Region: asia-south1
 Cloud Run service: veloce-cloud-test
-Live Artifact Registry image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v11
-Current verified image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v19
+Current verified image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v20
+Current verified revision: veloce-cloud-test-00020-z5p
 Runtime service account: veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com
 Storage bucket: gs://veloce-agenticos-2026-veloce-cloud-test
 Primary URL: https://veloce-cloud-test-1075094991117.asia-south1.run.app
@@ -330,10 +330,10 @@ different provider alias.
 
 The controls migration adds idempotent job enqueue, claim, completion, retry,
 cancel, and worker-budget functions. The application now has a Cloud Tasks
-submission route and an OIDC-verified worker route. The deployed v19 client
+submission route and an OIDC-verified worker route. The deployed v20 client
 shell keeps provider calls disabled; the active cloud-test revision has the
-worker flag and Secret Manager token binding, while the authenticated
-end-to-end job check remains a separate gate. The worker never receives the
+worker flag, Secret Manager token binding, and artifacts capability, while the
+authenticated end-to-end job and artifact checks remain separate gates. The worker never receives the
 Supabase service-role key or a client browser session.
 
 The supported operator path generates a random token, writes it to the client
@@ -442,7 +442,7 @@ The image is built from `Dockerfile.client`. It contains no provider values.
 The current internal test image is:
 
 ```text
-asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v19
+asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v20
 ```
 
 ## Deploy The Prepared Runtime
