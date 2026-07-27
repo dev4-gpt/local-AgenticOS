@@ -13,6 +13,8 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/client-runtime/requests",
   "/api/client-runtime/artifacts",
   "/api/client-runtime/provider-chat",
+  "/api/client-runtime/jobs",
+  "/api/internal/client-runtime/jobs",
   "/api/client-auth/session",
 ];
 
@@ -34,6 +36,10 @@ export function clientCapabilityEnabled(id: string) {
 export function clientProviderEnabled(key: string) {
   const configured = clientConfiguredList("CLIENT_PROVIDER_ALLOWLIST");
   return configured.length === 0 || configured.includes(key);
+}
+
+export function clientProviderCallsEnabled() {
+  return process.env.CLIENT_PROVIDER_CALLS_ENABLED === "1";
 }
 
 export function clientAuthEnforced() {

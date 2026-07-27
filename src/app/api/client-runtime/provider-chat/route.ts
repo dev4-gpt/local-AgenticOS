@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentClientUser } from "@/lib/clientAuth";
 import { consumeClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
-import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
+import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { runClientTextAdapter } from "@/lib/clientProviderAdapter";
 
 export const runtime = "nodejs";
@@ -11,6 +11,7 @@ export async function POST(request: Request) {
   const user = await currentClientUser();
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!clientCapabilityEnabled("text-agents")) return NextResponse.json({ ok: false, error: "capability_not_enabled" }, { status: 403 });
+  if (!clientProviderCallsEnabled()) return NextResponse.json({ ok: false, error: "provider_calls_require_approval" }, { status: 403 });
   if (!(await consumeClientRuntimeRateLimit("provider-chat", 10, 900))) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;

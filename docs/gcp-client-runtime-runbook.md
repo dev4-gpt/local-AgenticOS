@@ -208,10 +208,12 @@ provider names before writing, and never prints the secret value.
 
 ## Worker identity and long jobs
 
-The controls migration also adds an idempotent job enqueue function and
-worker-token claim/complete functions. A future Cloud Tasks or self-hosted
-worker uses a per-client random token held in Secret Manager; it never receives
-the Supabase service-role key or a client browser session.
+The controls migration adds idempotent job enqueue, claim, completion, retry,
+cancel, and worker-budget functions. The application now has a Cloud Tasks
+submission route and an OIDC-verified worker route. They remain disabled for
+the current v11 test until the migration, queue, token, and end-to-end checks
+below are complete. The worker never receives the Supabase service-role key or
+a client browser session.
 
 Generate the token locally and add only its hash to the tenant record. Keep the
 raw token in the client Secret Manager namespace:
@@ -228,9 +230,42 @@ rm /tmp/veloce-cloud-test-worker-token
 
 Add the displayed hash through the operator-only Supabase SQL editor, and add
 the raw token as a Secret Manager version named
-`veloce-<clientSlug>-worker-token`. The worker contract is intentionally not
-enabled in the current client manifest until Cloud Tasks/OIDC verification,
-retry limits, and completion tests are in place.
+`veloce-<clientSlug>-worker-token`. The SQL update is shaped like this; paste
+only the hash, never the raw token:
+
+```sql
+update public.client_tenants
+set worker_token_hash = 'PASTE_SHA256_HEX_HASH', updated_at = now()
+where slug = 'veloce-cloud-test';
+```
+
+Set these runtime values in the approved manifest, with the raw worker token
+declared only in `secretEnv`:
+
+```json
+{
+  "CLIENT_RUNTIME_WORKER_ENABLED": "1",
+  "CLIENT_RUNTIME_BASE_URL": "https://YOUR-CLOUD-RUN-URL",
+  "CLIENT_RUNTIME_TASK_QUEUE": "veloce-veloce-cloud-test",
+  "CLIENT_TASK_INVOKER_SERVICE_ACCOUNT": "veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com"
+}
+```
+
+Keep `CLIENT_PROVIDER_CALLS_ENABLED=0` until the provider key, model pricing,
+budget cap, approval owner, and smoke test have all been reviewed. Setting it
+to `1` is a deliberate operator approval to spend the client's provider
+budget; it is separate from merely enabling the UI capability.
+
+The provisioner enables Cloud Tasks, creates the queue with a maximum of ten
+attempts and one concurrent dispatch, and grants the Cloud Tasks service agent
+permission to mint the per-client OIDC token. Do not enable the worker until
+the service URL in `CLIENT_RUNTIME_BASE_URL` is the actual deployed URL.
+
+After deployment, submit a job through the authenticated client shell and poll
+`/api/client-runtime/jobs/<job-id>`. Confirm the row moves from `queued` to
+`running` and then `succeeded` or `failed`, that a transient provider error can
+return to `queued`, and that the tenth attempt fails closed. The browser sees
+only the job record and output metadata; it never sees the worker token.
 
 ## Build The Client Image
 

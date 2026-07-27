@@ -207,6 +207,137 @@ grant execute on function public.claim_client_runtime_job(text, uuid, text),
   public.complete_client_runtime_job(text, uuid, text, text, jsonb, text)
   to anon;
 
+create or replace function public.retry_client_runtime_job(
+  p_tenant_slug text,
+  p_job_id uuid,
+  p_worker_token text,
+  p_error_code text default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  if p_worker_token is null or length(p_worker_token) < 24
+     or not exists (
+       select 1 from public.client_tenants
+       where slug = p_tenant_slug
+         and status = 'active'
+         and worker_token_hash = encode(digest(p_worker_token, 'sha256'), 'hex')
+     ) then
+    return false;
+  end if;
+
+  update public.client_runtime_jobs
+    set status = 'queued',
+        error_code = left(p_error_code, 120),
+        updated_at = now()
+  where id = p_job_id
+    and tenant_slug = p_tenant_slug
+    and status = 'running'
+    and attempt_count < 10;
+
+  return found;
+end;
+$$;
+
+revoke all on function public.retry_client_runtime_job(text, uuid, text, text)
+  from public, authenticated;
+grant execute on function public.retry_client_runtime_job(text, uuid, text, text)
+  to anon;
+
+create or replace function public.cancel_client_runtime_job(
+  p_tenant_slug text,
+  p_job_id uuid,
+  p_error_code text default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.client_member(p_tenant_slug) then
+    return false;
+  end if;
+
+  update public.client_runtime_jobs
+    set status = 'cancelled',
+        error_code = left(p_error_code, 120),
+        finished_at = now(),
+        updated_at = now()
+  where id = p_job_id
+    and tenant_slug = p_tenant_slug
+    and status = 'queued'
+    and requested_by = auth.uid();
+
+  return found;
+end;
+$$;
+
+revoke all on function public.cancel_client_runtime_job(text, uuid, text)
+  from public, anon;
+grant execute on function public.cancel_client_runtime_job(text, uuid, text)
+  to authenticated;
+
+create or replace function public.reserve_client_runtime_budget_worker(
+  p_tenant_slug text,
+  p_provider text,
+  p_model text,
+  p_amount_micros bigint,
+  p_monthly_cap_micros bigint,
+  p_job_id uuid default null,
+  p_worker_token text default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  used_micros bigint;
+begin
+  if p_worker_token is null or length(p_worker_token) < 24
+     or not exists (
+       select 1 from public.client_tenants
+       where slug = p_tenant_slug
+         and status = 'active'
+         and worker_token_hash = encode(digest(p_worker_token, 'sha256'), 'hex')
+     )
+     or length(coalesce(p_provider, '')) = 0
+     or p_amount_micros < 0
+     or p_monthly_cap_micros < 0
+     or p_amount_micros > p_monthly_cap_micros then
+    return false;
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext(left(p_tenant_slug, 64)));
+
+  select coalesce(sum(amount_micros), 0)
+    into used_micros
+  from public.client_runtime_budget_ledger
+  where tenant_slug = p_tenant_slug
+    and created_at >= date_trunc('month', now());
+
+  if used_micros + p_amount_micros > p_monthly_cap_micros then
+    return false;
+  end if;
+
+  insert into public.client_runtime_budget_ledger
+    (tenant_slug, job_id, provider, model, amount_micros, usage_metadata)
+  values
+    (p_tenant_slug, p_job_id, left(p_provider, 120), left(p_model, 180), p_amount_micros, jsonb_build_object('reserved_by', 'worker'));
+
+  return true;
+end;
+$$;
+
+revoke all on function public.reserve_client_runtime_budget_worker(text, text, text, bigint, bigint, uuid, text)
+  from public, authenticated;
+grant execute on function public.reserve_client_runtime_budget_worker(text, text, text, bigint, bigint, uuid, text)
+  to anon;
+
 create or replace function public.reserve_client_runtime_budget(
   p_tenant_slug text,
   p_provider text,

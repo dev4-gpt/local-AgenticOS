@@ -106,6 +106,55 @@ export async function enqueueClientRuntimeJob(input: {
   return typeof jobId === "string" ? jobId : null;
 }
 
+export async function cancelClientRuntimeJob(jobId: string, errorCode: string) {
+  const config = supabaseAuthConfig();
+  const token = await currentClientAccessToken();
+  const user = await currentClientUser();
+  const tenantSlug = process.env.CLIENT_SLUG?.trim();
+  if (!config || !token || !user || !tenantSlug) return false;
+  const response = await fetch(`${config.url}/rest/v1/rpc/cancel_client_runtime_job`, {
+    method: "POST",
+    headers: { apikey: config.key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_tenant_slug: tenantSlug, p_job_id: jobId, p_error_code: errorCode }),
+    cache: "no-store",
+  }).catch(() => null);
+  return response?.ok === true && (await response.json().catch(() => false)) === true;
+}
+
+export async function workerRpc(functionName: string, body: Record<string, unknown>) {
+  const config = supabaseAuthConfig();
+  if (!config) return { ok: false, status: 503, value: null as unknown };
+  const response = await fetch(`${config.url}/rest/v1/rpc/${functionName}`, {
+    method: "POST",
+    headers: { apikey: config.key, Authorization: `Bearer ${config.key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  }).catch(() => null);
+  return { ok: response?.ok === true, status: response?.status ?? 503, value: await response?.json().catch(() => null) };
+}
+
+export async function reserveClientRuntimeBudgetWorker(input: {
+  provider: string;
+  model: string;
+  amountMicros: number;
+  jobId: string;
+  workerToken: string;
+}) {
+  const tenantSlug = process.env.CLIENT_SLUG?.trim();
+  const monthlyCap = Number(process.env.CLIENT_BUDGET_CAP ?? 0);
+  if (!tenantSlug || !Number.isFinite(monthlyCap) || monthlyCap < 0) return false;
+  const result = await workerRpc("reserve_client_runtime_budget_worker", {
+    p_tenant_slug: tenantSlug,
+    p_provider: input.provider,
+    p_model: input.model,
+    p_amount_micros: Math.max(0, Math.round(input.amountMicros)),
+    p_monthly_cap_micros: Math.round(monthlyCap * 1_000_000),
+    p_job_id: input.jobId,
+    p_worker_token: input.workerToken,
+  });
+  return result.ok && result.value === true;
+}
+
 export async function recordClientAudit(eventType: string, metadata: Record<string, unknown> = {}) {
   const user = await currentClientUser();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();

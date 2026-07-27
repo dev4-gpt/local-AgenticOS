@@ -31,6 +31,8 @@ export async function runClientTextAdapter(input: {
   model?: string;
   prompt: string;
   history?: Message[];
+  reserveBudget?: boolean;
+  jobId?: string;
 }) {
   const provider = input.provider.trim().toLowerCase();
   const spec = PROVIDERS[provider];
@@ -47,9 +49,11 @@ export async function runClientTextAdapter(input: {
     { role: "user", content: input.prompt },
   ];
   const maxOutputTokens = Math.min(4096, Math.max(256, Number(process.env.CLIENT_MAX_OUTPUT_TOKENS ?? 2048)));
-  const estimate = estimateCostMicros(model, messages, maxOutputTokens);
+  const estimate = estimateClientTextCostMicros(model, messages, maxOutputTokens);
   if (estimate === null) return { ok: false as const, status: 503, error: "model_pricing_not_configured" };
-  if (!(await reserveClientRuntimeBudget(provider, model, estimate))) return { ok: false as const, status: 429, error: "budget_exceeded" };
+  if (input.reserveBudget !== false && !(await reserveClientRuntimeBudget(provider, model, estimate, input.jobId))) {
+    return { ok: false as const, status: 429, error: "budget_exceeded" };
+  }
 
   const response = spec.protocol === "anthropic"
     ? await callAnthropic(spec, key, model, messages, maxOutputTokens)
@@ -64,13 +68,17 @@ function configuredModels() {
   return (process.env.CLIENT_MODEL_ALLOWLIST ?? "").split(",").map((value) => value.trim()).filter(Boolean);
 }
 
-function estimateCostMicros(model: string, messages: Message[], maxOutputTokens: number) {
+export function estimateClientTextCostMicros(model: string, messages: Message[], maxOutputTokens: number) {
   let pricing: Record<string, { inputMicrosPer1k: number; outputMicrosPer1k: number }>;
   try { pricing = JSON.parse(process.env.CLIENT_MODEL_PRICING_JSON ?? "{}"); } catch { return null; }
   const rate = pricing[model];
   if (!rate || !Number.isFinite(rate.inputMicrosPer1k) || !Number.isFinite(rate.outputMicrosPer1k)) return null;
   const inputTokens = Math.ceil(messages.reduce((total, item) => total + item.content.length, 0) / 4);
   return Math.ceil((inputTokens / 1000) * rate.inputMicrosPer1k + (maxOutputTokens / 1000) * rate.outputMicrosPer1k);
+}
+
+export function clientTextMaxOutputTokens() {
+  return Math.min(4096, Math.max(256, Number(process.env.CLIENT_MAX_OUTPUT_TOKENS ?? 2048)));
 }
 
 async function callOpenAiCompatible(spec: ProviderSpec, key: string, model: string, messages: Message[], maxTokens: number) {
