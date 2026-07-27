@@ -339,6 +339,25 @@ curl http://127.0.0.1:3940/api/client-runtime/credentials
 
 ## Verify Before Sharing
 
+## Runtime Alerts
+
+Runtime throttles and budget denials are emitted as redacted structured Cloud
+Run log events. Provision one log-based metric and alert policy per client:
+
+```bash
+npm run provision:runtime-alerts -- \
+  --project veloce-agenticos-2026 \
+  --slug veloce-cloud-test \
+  --service veloce-cloud-test \
+  --notification-channel CHANNEL_ID \
+  --apply
+```
+
+The command is idempotent. Without `--notification-channel`, the policy still
+appears in Cloud Monitoring but does not send email or another notification.
+The event payload contains only tenant slug, bucket/provider label, status, and
+reason-safe fields; it never contains prompts, keys, or file contents.
+
 ## Export, Restore, and Offboarding
 
 Lifecycle actions are operator-only and require the Supabase service-role key

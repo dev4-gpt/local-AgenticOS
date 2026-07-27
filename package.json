@@ -28,6 +28,7 @@
     "verify:client-runtime": "node scripts/verify-client-runtime.mjs",
     "verify:client-worker": "node scripts/verify-client-runtime-worker.mjs",
     "client:lifecycle": "node scripts/client-lifecycle.mjs",
+    "provision:runtime-alerts": "node scripts/provision-client-runtime-alerts.mjs",
     "validate:client-manifest": "node scripts/validate-client-manifest.mjs",
     "promote:client-credential": "node scripts/promote-client-credential.mjs",
     "verify:experience": "npm --prefix product-experience run build && npx playwright test tests/product-experience.spec.ts --reporter=line",

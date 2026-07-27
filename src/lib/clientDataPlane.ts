@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { currentClientAccessToken, currentClientUser, supabaseAuthConfig } from "@/lib/clientAuth";
+import { logClientRuntimeEvent } from "@/lib/clientRuntimeObservability";
 
 export async function insertClientRecord(table: string, record: Record<string, unknown>) {
   const config = supabaseAuthConfig();
@@ -48,8 +49,13 @@ export async function consumeClientRuntimeRateLimit(bucket: string, limit: numbe
     body: JSON.stringify({ p_tenant_slug: tenantSlug, p_bucket: bucket, p_key_hash: keyHash, p_limit: limit, p_window_seconds: windowSeconds }),
     cache: "no-store",
   }).catch(() => null);
-  if (!response?.ok) return false;
-  return (await response.json().catch(() => false)) === true;
+  if (!response?.ok) {
+    logClientRuntimeEvent("runtime.limit_check_failed", { tenant: tenantSlug ?? "unknown", bucket, status: response?.status ?? 503 });
+    return false;
+  }
+  const allowed = (await response.json().catch(() => false)) === true;
+  if (!allowed) logClientRuntimeEvent("runtime.rate_limited", { tenant: tenantSlug ?? "unknown", bucket, status: 429 });
+  return allowed;
 }
 
 export async function reserveClientRuntimeBudget(provider: string, model: string | null, amountMicros: number, jobId?: string) {
@@ -72,8 +78,13 @@ export async function reserveClientRuntimeBudget(provider: string, model: string
     }),
     cache: "no-store",
   }).catch(() => null);
-  if (!response?.ok) return false;
-  return (await response.json().catch(() => false)) === true;
+  if (!response?.ok) {
+    logClientRuntimeEvent("runtime.budget_check_failed", { tenant: tenantSlug ?? "unknown", provider, status: response?.status ?? 503 });
+    return false;
+  }
+  const allowed = (await response.json().catch(() => false)) === true;
+  if (!allowed) logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug ?? "unknown", provider, status: 429 });
+  return allowed;
 }
 
 export async function enqueueClientRuntimeJob(input: {
