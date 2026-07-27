@@ -71,6 +71,7 @@ function authJsonKey(file: string, provider: string): string | null {
 export function providerEnvKey(name: string): string | null {
   const fromEnv = process.env[name]?.trim();
   if (fromEnv) return fromEnv;
+  if (process.env.VELOCE_CLIENT_EDITION === "1") return null;
   const profile = activeProfile();
   const files = [
     path.join(hermesHome(), "profiles", profile, ".env"),
@@ -87,6 +88,7 @@ export function providerEnvKey(name: string): string | null {
 export function openRouterKey(): string | null {
   const fromEnvFile = providerEnvKey("OPENROUTER_API_KEY");
   if (fromEnvFile) return fromEnvFile;
+  if (process.env.VELOCE_CLIENT_EDITION === "1") return null;
   const profile = activeProfile();
   const authFiles = [
     path.join(hermesHome(), "profiles", profile, "auth.json"),

@@ -86,7 +86,7 @@ retention. Same codebase does not mean same permissions.
 | # | Layer | Current state | What remains before external client readiness |
 |---:|---|---|---|
 | 1 | Frontend foundations | **Ready for public pages and the client shell; partial parity with 3939** | Replace gated placeholders only after the underlying adapter is ready; finish responsive/error-state review per enabled capability. |
-| 2 | APIs and backend logic | **Control-plane foundation implemented; feature adapters partial** | Intake, Auth, client requests, credential status, safe audit metadata, and manifest validation exist. Feature APIs still include local/operator implementations and need cloud contracts. |
+| 2 | APIs and backend logic | **Control-plane and API-only text adapter foundation implemented; feature adapters partial** | Intake, Auth, client requests, credential status, safe audit metadata, manifest validation, and a disabled API-only text adapter boundary exist. Feature APIs still include local/operator implementations and need cloud contracts. |
 | 3 | Database and storage | **Control-plane schema and artifact download boundary implemented; evidence pending** | Tenant, membership, request, audit, job, artifact, budget, and runtime-control tables are defined. Apply the controls migration, configure Cloud Storage signing IAM, and complete export/deletion drills. |
 | 4 | Auth and permissions | **Partial, test-ready** | Supabase Auth and middleware protect the client test. Add client membership, roles, session lifecycle, operator/admin separation, and explicit RBAC tests. |
 | 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
@@ -255,8 +255,9 @@ switching a client manifest to `CLIENT_RUNTIME_DATA_MODE=supabase`.
 
 These are engineering work, not deployment switches:
 
-- Provider adapters for each model/media/service tab; personal CLI sessions
-  cannot become client capacity by adding environment variables.
+- Provider adapters for each model/media/service tab; the shared API-only text
+  adapter is implemented but not enabled in the test manifest. Personal CLI
+  sessions cannot become client capacity by adding environment variables.
 - Tenant-scoped runtime tables and object storage for memory, files, jobs, and
   deliverables, or a documented single-tenant-only equivalent for each route.
 - Apply `supabase-client-runtime-controls.sql` and verify durable runtime

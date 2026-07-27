@@ -11,6 +11,8 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/client-runtime/credentials",
   "/api/client-runtime/credential-submissions",
   "/api/client-runtime/requests",
+  "/api/client-runtime/artifacts",
+  "/api/client-runtime/provider-chat",
   "/api/client-auth/session",
 ];
 
