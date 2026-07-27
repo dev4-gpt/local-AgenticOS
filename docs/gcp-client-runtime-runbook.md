@@ -457,6 +457,30 @@ After deployment, submit a job through the authenticated client shell and poll
 return to `queued`, and that the tenth attempt fails closed. The browser sees
 only the job record and output metadata; it never sees the worker token.
 
+### Authenticated acceptance verifier
+
+The repository includes a credential-safe acceptance harness for the controlled
+cloud-test tenant. It creates a provider-free `/orchestrate` plan, waits for
+`Execution: completed` with four `done` steps, then uploads and downloads a
+small signed artifact and verifies the returned bytes before deleting both test
+records. It never prints the cookie, response bodies, signed URLs, or provider
+output.
+
+Create a local file containing only the authenticated `Cookie:` header copied
+from the browser session. Keep it private (`chmod 600`) and do not paste its
+contents into chat, source control, or a terminal transcript. Then run:
+
+```bash
+npm run verify:client-authenticated -- \
+  --url https://veloce-cloud-test-mquo4bf7aq-el.a.run.app \
+  --cookie-file /private/tmp/veloce-runtime-cookie.txt
+```
+
+Use `--workflow-only` only when intentionally isolating the workflow path; the
+default run is the required workflow plus signed-storage evidence. A successful
+run prints only a pass summary. On failure, the status code and redacted
+failure class identify the next gate without disclosing session material.
+
 ## Approve and dispatch delivery
 
 Delivery actions are created as `pending_approval`. Only the operator may

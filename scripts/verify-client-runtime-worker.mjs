@@ -40,6 +40,7 @@ const observability = await readFile(join(root, "src/lib/clientRuntimeObservabil
 const shell = await readFile(join(root, "src/components/Shell.tsx"), "utf8");
 const briefWorkspace = await readFile(join(root, "src/components/ClientBriefWorkspace.tsx"), "utf8");
 const workflowRunner = await readFile(join(root, "src/lib/clientWorkflowRunner.ts"), "utf8");
+const authenticatedVerifier = await readFile(join(root, "scripts/verify-client-runtime-authenticated.mjs"), "utf8");
 
 expect(workerRoute.includes("validClientTaskIdentity"), "worker route must verify Cloud Tasks identity");
 expect(providerAdapter.includes("CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON") && providerAdapter.includes("provider_model_not_allowlisted"), "provider adapter must enforce provider-specific model allowlists");
@@ -81,6 +82,8 @@ expect(recordsRoute.includes("SECRET_LIKE"), "tenant records route must reject s
 expect(workflowsRoute.includes("clientCapabilityEnabled(\"orchestration\")"), "hosted workflow route must be capability gated");
 expect(workflowsRoute.includes("client_runtime_records") && workflowsRoute.includes("workflow"), "hosted workflow route must use tenant records");
 expect(workflowsRoute.includes("checkClientRuntimeRateLimit") && workflowsRoute.includes("runtime_limit_unavailable"), "workflow routes must distinguish limiter outages from genuine rate limiting");
+expect(authenticatedVerifier.includes("completedSteps === 4") && authenticatedVerifier.includes("signed artifact upload") && authenticatedVerifier.includes("equalBytes"), "authenticated verifier must prove four-step workflow completion and signed artifact byte integrity");
+expect(authenticatedVerifier.includes("cookie-file") && authenticatedVerifier.includes("must not be readable by group or other users") && !authenticatedVerifier.includes("console.log(cookie"), "authenticated verifier must accept a protected cookie file without printing credentials");
 expect(workflowsRoute.includes("SECRET_LIKE"), "hosted workflow route must reject secret-like content");
 expect(workflowsRoute.includes("approval_required") && workflowsRoute.includes("updateExecution"), "denied workflow dispatch must retain an auditable execution state");
 expect(workflowsRoute.includes("CLIENT_WORKFLOW_PROVIDER") && workflowsRoute.includes("enqueueClientRuntimeJob"), "workflow dispatch must use a manifest-selected queued provider job");

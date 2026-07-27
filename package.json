@@ -26,6 +26,7 @@
     "verify:secrets": "node scripts/verify-repository-secrets.mjs",
     "verify:flow-lab": "node scripts/verify-flow-lab.mjs",
     "verify:client-runtime": "node scripts/verify-client-runtime.mjs",
+    "verify:client-authenticated": "node scripts/verify-client-runtime-authenticated.mjs",
     "verify:client-worker": "node scripts/verify-client-runtime-worker.mjs",
     "verify:client-provider-policy": "node scripts/verify-client-provider-policy.mjs",
     "verify:client-lifecycle": "node scripts/verify-client-lifecycle.mjs",
