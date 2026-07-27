@@ -31,7 +31,16 @@ begin
   end if;
 
   update public.client_runtime_records
-    set metadata = jsonb_set(coalesce(metadata, '{}'::jsonb), '{execution}', p_execution, true),
+    set metadata = case
+          when jsonb_typeof(p_execution->'steps') = 'array'
+            then jsonb_set(
+              jsonb_set(coalesce(metadata, '{}'::jsonb), '{execution}', p_execution, true),
+              '{steps}',
+              p_execution->'steps',
+              true
+            )
+          else jsonb_set(coalesce(metadata, '{}'::jsonb), '{execution}', p_execution, true)
+        end,
         status = case when p_execution->>'status' = 'completed' then 'done' else status end,
         updated_at = now()
   where id = p_record_id

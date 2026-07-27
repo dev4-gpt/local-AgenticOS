@@ -96,7 +96,7 @@ retention. Same codebase does not mean same permissions.
 | # | Layer | Current state | What remains before external client readiness |
 |---:|---|---|---|
 | 1 | Frontend foundations | **Ready for public pages and the client shell; partial parity with 3939** | Replace gated placeholders only after the underlying adapter is ready; finish responsive/error-state review per enabled capability. |
-| 2 | APIs and backend logic | **Control-plane, queue-backed API text aliases, workflow, Firecrawl SEO, Suno/HeyGen/ElevenLabs media adapters, approval-only delivery contracts, and workflow execution reconciliation implemented; feature parity partial** | Provider submission, promotion, manifest binding, migration application, and live adapter evidence remain separate gates. Image/video production, publishing destinations, and provider-specific tool contracts still need separate adapters. |
+| 2 | APIs and backend logic | **Control-plane, queue-backed API text aliases, provider-free workflow runner, Firecrawl SEO, Suno/HeyGen/ElevenLabs media adapters, approval-only delivery contracts, and workflow execution reconciliation implemented; feature parity partial** | Provider submission, promotion, manifest binding, migration application, and live adapter evidence remain separate gates. Image/video production, publishing destinations, and provider-specific tool contracts still need separate adapters. |
 | 3 | Database and storage | **Tenant-scoped artifact upload/verification/download, authenticated artifact metadata RPC, worker artifact creation, tenant records, and signed-upload CORS provisioned; namespace bucket drill passed** | Complete the authenticated signed-URL upload/download drill and record export/deletion drill. Run the final verification query and confirm the worker hash is not client-readable. |
 | 4 | Auth and permissions | **Partial, test-ready** | Supabase Auth and middleware protect the client test. Add client membership, roles, session lifecycle, operator/admin separation, and explicit RBAC tests. |
 | 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
@@ -125,9 +125,9 @@ or a loopback service.
 | Grok Build | Local/provider-specific execution | xAI API adapter and outbound-action approval |
 | Free Claude Code | `fcc-server` at `127.0.0.1:8082` and local Claude CLI | Private 3939 remains local; client edition uses the approved queued OpenRouter free-model adapter. Never publish port 8082 |
 | Local, Local Engine, Ollama | Laptop models, filesystem, and local process state | Client `/local` and `/engine` use the hosted queued API model workspace; Ollama and local process state remain private |
-| Paperclip | Local service at `localhost:3100` and local company/workspace data | A tenant workflow-planning adapter now exists behind `orchestration`; approved provider dispatch is queued only when explicitly enabled, while full hosted Paperclip parity still needs its own reviewed work-item contract |
+| Paperclip | Local service at `localhost:3100` and local company/workspace data | A tenant workflow runner now queues provider-free planning/review/iteration work behind `orchestration`; approved provider dispatch is queued only when explicitly enabled, while full hosted Paperclip parity still needs its own reviewed work-item contract |
 | Open Design, Web Studio, Flow Lab, Agent Studio, OpenMontage, Game Studio, Thumbnails | Local creative services, provider keys, or local output paths | Tenant-safe brief/request workspaces now record approved work; provider generation still needs API, Cloud Storage outputs, signed access, budget, and approval adapters |
-| Pipeline, Agent Kanban, Loop, Ruflo, Agent Mastermind | Local files, local models/CLI, operator vault, or orchestration state | Tenant workflow boards now provide durable work items, step state, and worker-reconciled execution status behind `orchestration`; explicit approved dispatch remains gated until the reconciliation migration, key, queue, budget, and approval evidence pass |
+| Pipeline, Agent Kanban, Loop, Ruflo, Agent Mastermind | Local files, local models/CLI, operator vault, or orchestration state | Tenant workflow boards now provide durable work items, a bounded provider-free runner, step state, and worker-reconciled execution status behind `orchestration`; explicit approved dispatch remains gated until the refreshed reconciliation migration, key, queue, budget, and approval evidence pass |
 | Memory, Notebook, Journal, Goals, Context intake | Tenant records adapter is implemented for the client edition; local-memory parity is not complete | Apply the current hosted-capability migration, enable `tenant-data`, then verify Supabase RLS, object storage for attachments, retention/export/delete |
 | SEO, Integrations, Build Guide | Operator configuration, local credential paths, private source material, or redistribution risk | Firecrawl read-only research and tenant-safe brief/request workspaces exist; integrations, licensed/original content, publishing, and full SEO workflows remain gated |
 | Delivery and external actions | Approval-shaped UI exists; execution and delivery adapters vary | An idempotent approval-only delivery action record now exists; destination execution, rollback, and client-specific adapters remain gated |
@@ -281,9 +281,10 @@ These are engineering work, not deployment switches:
   applying the workflow-reconciliation migration.
 - Apply `supabase-client-runtime-controls.sql` and verify durable runtime
   throttles and budget reservations.
-- Apply `supabase-client-runtime-workflow-reconciliation.sql` before enabling
-  provider dispatch on hosted workflow surfaces; verify the worker-only RPC and
-  a completed or failed execution state on the workflow record.
+- Apply or reapply `supabase-client-runtime-workflow-reconciliation.sql` before
+  enabling provider dispatch on hosted workflow surfaces; verify the worker-only
+  RPC, `worker_hash_select = false`, and a completed or failed execution state
+  with bounded steps on the workflow record.
 - Use the redacted provider-secret promotion/rotation CLI after manual review;
   provider adapters still must consume the promoted target secrets. Enable
   providers only with `providerCallsEnabled: true` plus matching secret slots,

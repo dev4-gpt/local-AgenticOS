@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       provider: policy.provider,
       model: policy.model,
       idempotencyKey: `workflow-${workflowId}`,
-      inputMetadata: { prompt, history: [], workflowId, surface },
+      inputMetadata: { prompt, history: [], workflowId, surface, steps },
     });
     if (!jobId) {
       await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", errorCode: "workflow_job_store_failed" });
@@ -90,8 +90,25 @@ export async function POST(request: Request) {
     await recordClientAudit("workflow.dispatched", { surface, provider: policy.provider });
     return NextResponse.json({ ok: true, workflowId, jobId, status: "queued" }, { status: 202, headers: { "cache-control": "private, no-store" } });
   }
-  await recordClientAudit("workflow.created", { surface, operation });
-  return NextResponse.json({ ok: true, workflowId }, { status: 201, headers: { "cache-control": "private, no-store" } });
+  const jobId = await enqueueClientRuntimeJob({
+    capability: "orchestration",
+    idempotencyKey: `workflow-${workflowId}`,
+    inputMetadata: { workflowId, surface, operation, title, goal, steps },
+  });
+  if (!jobId) {
+    await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", errorCode: "workflow_job_store_failed" });
+    return error("workflow_job_store_failed", 502);
+  }
+  const task = await enqueueClientRuntimeTask({ jobId, tenantSlug });
+  if (!task.ok) {
+    const taskError = task.error ?? "task_enqueue_failed";
+    await cancelClientRuntimeJob(jobId, taskError);
+    await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", jobId, errorCode: taskError });
+    return error(taskError, task.status >= 500 ? 503 : task.status);
+  }
+  await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "queued", jobId, adapter: "tenant-workflow-runner", mode: "deterministic-free" });
+  await recordClientAudit("workflow.queued", { surface, operation });
+  return NextResponse.json({ ok: true, workflowId, jobId, status: "queued" }, { status: 202, headers: { "cache-control": "private, no-store" } });
 }
 
 async function updateExecution(workflowId: string, tenantSlug: string, userId: string, metadata: Record<string, unknown>, execution: Record<string, unknown>) {

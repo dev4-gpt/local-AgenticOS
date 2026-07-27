@@ -8,6 +8,7 @@ import { clientGcpAccessToken, clientStorageConfig, uploadClientStorageObject } 
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { validClientTaskIdentity } from "@/lib/clientTaskAuth";
 import { logClientRuntimeEvent } from "@/lib/clientRuntimeObservability";
+import { runClientWorkflowRunner } from "@/lib/clientWorkflowRunner";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
 
   const result = await runClientTextAdapter({ provider: job.provider, model, prompt: job.input_metadata.prompt, history, reserveBudget: false, jobId });
   if (result.ok) {
-    await completeJob(tenantSlug, jobId, workerToken, "succeeded", { workflowId: workflowIdFrom(job.input_metadata), provider: result.provider, model: result.model, output: result.output });
+    await completeJob(tenantSlug, jobId, workerToken, "succeeded", { workflowId: workflowIdFrom(job.input_metadata), provider: result.provider, model: result.model, steps: workflowStepsFrom(job.input_metadata) });
     return NextResponse.json({ ok: true, status: "succeeded" });
   }
   logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: job.provider, status: result.status, reason: result.error });
@@ -62,16 +63,12 @@ export async function POST(request: Request) {
 
 async function processOrchestrationJob(jobId: string, tenantSlug: string, workerToken: string, job: { input_metadata?: Record<string, unknown> | null }) {
   const input = job.input_metadata ?? {};
-  await completeJob(tenantSlug, jobId, workerToken, "succeeded", {
-    workflowId: workflowIdFrom(input),
-    adapter: "tenant-workflow",
-    workflow: {
-      goal: typeof input.goal === "string" ? input.goal.slice(0, 5000) : "Review the requested outcome",
-      operation: typeof input.operation === "string" ? input.operation : "plan",
-      stages: ["Scope and constraints", "Work items and ownership", "Human review", "Approved delivery"],
-      externalActions: "approval_required",
-    },
-  });
+  const execution = runClientWorkflowRunner(input);
+  if (!execution) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(input) }, "workflow_input_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", execution);
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
 
@@ -277,6 +274,11 @@ async function completeJob(tenantSlug: string, jobId: string, workerToken: strin
         status: status === "succeeded" ? "completed" : "failed",
         jobId,
         errorCode: errorCode ?? null,
+        ...(Array.isArray(outputMetadata.steps) ? { steps: outputMetadata.steps.slice(0, 8) } : {}),
+        ...(typeof outputMetadata.completedSteps === "number" ? { completedSteps: Math.min(8, Math.max(0, Math.round(outputMetadata.completedSteps))) } : {}),
+        ...(typeof outputMetadata.adapter === "string" ? { adapter: outputMetadata.adapter } : {}),
+        ...(typeof outputMetadata.mode === "string" ? { mode: outputMetadata.mode } : {}),
+        ...(typeof outputMetadata.completedAt === "string" ? { completedAt: outputMetadata.completedAt } : {}),
         updatedAt: new Date().toISOString(),
       },
     });
@@ -286,6 +288,10 @@ async function completeJob(tenantSlug: string, jobId: string, workerToken: strin
 function workflowIdFrom(input: Record<string, unknown> | null | undefined) {
   const value = input && typeof input.workflowId === "string" ? input.workflowId : "";
   return /^[0-9a-f-]{36}$/i.test(value) ? value : null;
+}
+
+function workflowStepsFrom(input: Record<string, unknown> | null | undefined) {
+  return Array.isArray(input?.steps) ? input.steps.slice(0, 8) : undefined;
 }
 
 async function retryJob(tenantSlug: string, jobId: string, workerToken: string, errorCode: string) {

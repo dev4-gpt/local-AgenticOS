@@ -37,6 +37,7 @@ const cloudTasks = await readFile(join(root, "src/lib/cloudTasks.ts"), "utf8");
 const alerts = await readFile(join(root, "scripts/provision-client-runtime-alerts.mjs"), "utf8");
 const shell = await readFile(join(root, "src/components/Shell.tsx"), "utf8");
 const briefWorkspace = await readFile(join(root, "src/components/ClientBriefWorkspace.tsx"), "utf8");
+const workflowRunner = await readFile(join(root, "src/lib/clientWorkflowRunner.ts"), "utf8");
 
 expect(workerRoute.includes("validClientTaskIdentity"), "worker route must verify Cloud Tasks identity");
 expect(providerAdapter.includes("CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON") && providerAdapter.includes("provider_model_not_allowlisted"), "provider adapter must enforce provider-specific model allowlists");
@@ -44,6 +45,9 @@ expect(workerRoute.includes("claim_client_runtime_job"), "worker route must clai
 expect(workerRoute.includes("retry_client_runtime_job"), "worker route must use bounded retry state");
 expect(workerRoute.includes("complete_client_runtime_job"), "worker route must complete jobs through Supabase");
 expect(workerRoute.includes("update_client_runtime_record_worker") && workerRoute.includes("workflowIdFrom"), "worker must reconcile workflow execution state through the worker-only RPC");
+expect(workerRoute.includes("runClientWorkflowRunner") && workerRoute.includes("workflow_input_invalid"), "worker must run and fail closed on invalid provider-free workflow inputs");
+expect(workflowRunner.includes("deterministic-free") && workflowRunner.includes("externalActions: \"approval_required\""), "provider-free workflow runner must be explicit about its mode and approval boundary");
+expect(workflowRunner.includes("slice(0, 8)") && workflowRunner.includes("slice(0, 5000)"), "workflow runner must bound steps and goal content");
 expect(jobRoute.includes("enqueueClientRuntimeTask"), "client job route must enqueue a durable task");
 expect(jobRoute.includes("cancelClientRuntimeJob"), "client job route must cancel orphaned queue rows");
 expect(jobRoute.includes("clientProviderRequestAllowed"), "client job route must enforce provider and model allowlists before enqueue");
@@ -77,6 +81,9 @@ expect(workflowsRoute.includes("client_runtime_records") && workflowsRoute.inclu
 expect(workflowsRoute.includes("SECRET_LIKE"), "hosted workflow route must reject secret-like content");
 expect(workflowsRoute.includes("approval_required") && workflowsRoute.includes("updateExecution"), "denied workflow dispatch must retain an auditable execution state");
 expect(workflowsRoute.includes("CLIENT_WORKFLOW_PROVIDER") && workflowsRoute.includes("enqueueClientRuntimeJob"), "workflow dispatch must use a manifest-selected queued provider job");
+expect(workflowsRoute.includes('capability: "orchestration"') && workflowsRoute.includes("workflow-${workflowId}"), "non-provider workflow operations must use a durable orchestration job");
+expect(workflowReconciliationSql.includes("jsonb_typeof(p_execution->'steps') = 'array'") && workflowReconciliationSql.includes("'{steps}'"), "worker reconciliation must mirror bounded step state onto the workflow card");
+expect(!workerRoute.includes("output: result.output"), "provider output must not be copied into workflow execution metadata");
 expect(lifecycleScript.includes('"client_runtime_records"'), "lifecycle export/restore must include tenant records");
 expect(lifecycleScript.includes("SUPABASE_SERVICE_ROLE_KEY") && lifecycleScript.includes("required for export/offboard"), "lifecycle export must require the service role key");
 expect(lifecycleScript.includes("confirm-restore") && lifecycleScript.includes("artifact metadata; pass --objects"), "lifecycle restore must require explicit confirmation and matching objects for artifact metadata");
