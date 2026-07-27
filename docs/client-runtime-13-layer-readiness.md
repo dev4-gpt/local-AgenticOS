@@ -87,17 +87,17 @@ retention. Same codebase does not mean same permissions.
 |---:|---|---|---|
 | 1 | Frontend foundations | **Ready for public pages and the client shell; partial parity with 3939** | Replace gated placeholders only after the underlying adapter is ready; finish responsive/error-state review per enabled capability. |
 | 2 | APIs and backend logic | **Control-plane, API-only text adapter, and approval switch implemented; feature adapters partial** | Intake, Auth, client requests, credential status, safe audit metadata, manifest validation, and a disabled API-only text adapter boundary exist. Feature APIs still include local/operator implementations and need cloud contracts. |
-| 3 | Database and storage | **Control-plane schema and artifact download boundary implemented; evidence pending** | Tenant, membership, request, audit, job, artifact, budget, and runtime-control tables are defined. Apply the controls migration, configure Cloud Storage signing IAM, and complete export/deletion drills. |
+| 3 | Database and storage | **Tenant-scoped artifact upload/verification/download lifecycle implemented; evidence pending** | Tenant, membership, request, audit, job, artifact, budget, lifecycle, and runtime-control tables are defined. Apply the lifecycle migration, configure Cloud Storage IAM, and complete an object export/deletion drill. |
 | 4 | Auth and permissions | **Partial, test-ready** | Supabase Auth and middleware protect the client test. Add client membership, roles, session lifecycle, operator/admin separation, and explicit RBAC tests. |
 | 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
 | 6 | Cloud and compute | **Cloud Tasks/OIDC worker path implemented in code; deployment evidence pending** | Apply the controls migration, provision the per-client queue, set the worker token hash/secret, deploy, and verify bounded retries and long-job status. |
 | 7 | CI/CD and version control | **Improved; client promotion evidence pending** | GitHub release checks, manifest validation, and versioned images are in use. Add image digest promotion, deployment provenance, and automated rollback checks. |
 | 8 | Security and row-level security | **Schema, secret promotion checks, and boundary implemented; verification pending** | Secrets stay out of the browser, security headers are active, and the control-plane schema has RLS. Apply controls, review signing IAM, rotate secrets, and run cross-tenant tests. |
 | 9 | Rate limiting | **Public intake ready; durable runtime limiter implemented, migration/evidence pending** | Apply the client controls migration and verify 429 behavior for request, credential, provider, and job routes. Add alert delivery. |
-| 10 | Caching and CDN | **Partial** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Add deliberate cache headers, private-data no-store rules, signed object access, and provider-result caching where safe. |
+| 10 | Caching and CDN | **Partial with private artifact controls** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Private runtime responses use no-store and artifacts use expiring signed URLs; add provider-result caching only where safe. |
 | 11 | Load balancing and scaling | **Partial** | Cloud Run scales to zero and the test is capped at one instance. Add queue-backed work, concurrency/load tests, per-client quotas, and scaling rules for production workloads. |
 | 12 | Error tracking and logs | **Audit event foundation implemented; observability partial** | Safe audit metadata is supported. Add request IDs, structured redacted errors, provider failure classification, alerts, and a retention policy. |
-| 13 | Availability and recovery | **Partial / not production-ready** | Revision rollback exists. Add database/object backup, restore drills, secret recovery, export/offboarding, incident runbook, uptime target, and a second-client recovery test. |
+| 13 | Availability and recovery | **Lifecycle CLI implemented; recovery evidence pending** | Revision rollback and operator export/restore/offboarding commands exist. Run them against a disposable second tenant, verify object/secret deletion, and document secret recovery and incident response. |
 
 ## Private operator dependency inventory
 
@@ -270,7 +270,8 @@ These are engineering work, not deployment switches:
   contains the OIDC-verified worker path, job status route, and bounded retry
   contract, but the current `v11` cloud test has not been replaced with it.
 - Cross-client isolation, backup/restore, export/deletion, and offboarding
-  evidence using a second dry-run client manifest.
+  evidence using a second dry-run client manifest. The operator lifecycle CLI
+  exists, but it has not yet been exercised against a disposable tenant.
 - Durable runtime rate limits and alerts beyond the public intake guard.
 
 Until these are complete, “production ready” means the public front door and

@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientUser } from "@/lib/clientAuth";
-import { selectClientRecords } from "@/lib/clientDataPlane";
+import { consumeClientRuntimeRateLimit, selectClientRecords } from "@/lib/clientDataPlane";
+import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +12,8 @@ const METADATA_ROOT = "http://metadata.google.internal/computeMetadata/v1";
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentClientUser();
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+  if (!clientCapabilityEnabled("artifacts")) return NextResponse.json({ ok: false, error: "capability_not_enabled" }, { status: 403 });
+  if (!(await consumeClientRuntimeRateLimit("artifact-downloads", 40, 900))) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
 
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ ok: false, error: "invalid_artifact" }, { status: 400 });
@@ -27,7 +30,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!result.ok) return NextResponse.json({ ok: false, error: "artifact_lookup_failed" }, { status: 502 });
   const artifact = result.records[0];
   const objectKey = typeof artifact?.object_key === "string" ? artifact.object_key : "";
-  if (!artifact || !safeObjectKey(objectKey, namespace)) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+  if (!artifact || artifact.status !== "ready" || !safeObjectKey(objectKey, namespace)) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
 
   const serviceAccount = process.env.CLIENT_RUNTIME_SERVICE_ACCOUNT?.trim() || await metadataText("instance/service-accounts/default/email");
   const token = await metadataText("instance/service-accounts/default/token").then((value) => value ? JSON.parse(value).access_token : null).catch(() => null);

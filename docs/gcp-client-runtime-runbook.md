@@ -155,6 +155,7 @@ Supabase project:
 2. `product-experience/supabase-public-request-hardening.sql`
 3. `product-experience/supabase-client-runtime-control-plane.sql`
 4. `product-experience/supabase-client-runtime-controls.sql`
+5. `product-experience/supabase-client-runtime-lifecycle.sql`
 
 Create the approved tenant and membership from the Supabase SQL editor or an
 operator-only migration job. Never accept membership creation from the
@@ -179,6 +180,11 @@ The additional controls migration is required before deploying the durable
 runtime throttles and budget reservations. If the verification query returns
 zero membership rows, invite or create the Auth user first and rerun the seed
 file; do not switch the manifest yet.
+
+After the lifecycle migration, verify the artifact status columns and worker
+confirmation function before enabling the `artifacts` capability. Uploads are
+created as `pending`, checked against Cloud Storage metadata, and only then
+marked `ready`; downloads reject every other state.
 
 ## Promote or rotate a provider credential
 
@@ -332,6 +338,48 @@ curl http://127.0.0.1:3940/api/client-runtime/credentials
 ```
 
 ## Verify Before Sharing
+
+## Export, Restore, and Offboarding
+
+Lifecycle actions are operator-only and require the Supabase service-role key
+in the operator environment. The CLI defaults to a metadata export and never
+prints provider values:
+
+```bash
+export SUPABASE_URL='https://YOUR_PROJECT.supabase.co'
+export SUPABASE_SERVICE_ROLE_KEY='use-an-operator-shell-secret'
+
+npm run client:lifecycle -- \
+  --mode export \
+  --slug veloce-cloud-test \
+  --config .private-client-kits/veloce-cloud-test.gcp.json \
+  --include-objects
+```
+
+The export is written with mode `0600` and includes tenant-scoped Supabase
+metadata plus optional Cloud Storage objects. A restore is dry-run by default:
+
+```bash
+npm run client:lifecycle -- \
+  --mode restore \
+  --slug veloce-cloud-test \
+  --input .private-client-kits/exports/EXPORT.json
+```
+
+Offboarding requires an explicit confirmation and destroys the client-scoped
+Secret Manager containers only when `--destroy-secrets` is supplied:
+
+```bash
+npm run client:lifecycle -- \
+  --mode offboard \
+  --slug veloce-cloud-test \
+  --config .private-client-kits/veloce-cloud-test.gcp.json \
+  --apply --confirm-offboard --destroy-secrets
+```
+
+Run export and restore in a disposable second tenant before using offboarding
+for a real client. Do not put the service-role key in a manifest, Vercel, Cloud
+Run, browser storage, or source file.
 
 - In `app-auth` mode, the Cloud Run URL reaches only the login shell and the
   application requires a valid individual Supabase Auth session for runtime

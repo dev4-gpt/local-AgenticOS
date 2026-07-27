@@ -10,8 +10,9 @@ reviewing whether a `3939` operator feature can be enabled in Cloud Run.
 
 ## Required order
 
-1. Apply the four control-plane migrations in the GCP client runbook, including
-   `product-experience/supabase-client-runtime-controls.sql`.
+1. Apply the four core control-plane migrations in the GCP client runbook,
+   then apply the additive artifact lifecycle migration:
+   `product-experience/supabase-client-runtime-lifecycle.sql`.
 2. Create the Auth user and run
    `product-experience/supabase-seed-veloce-cloud-test.sql` with the client's
    approved email and slug.
