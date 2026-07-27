@@ -20,6 +20,7 @@ const workerProvisioner = await readFile(join(root, "scripts/provision-client-wo
 const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
 const recordsRoute = await readFile(join(root, "src/app/api/client-runtime/records/route.ts"), "utf8");
 const workflowsRoute = await readFile(join(root, "src/app/api/client-runtime/workflows/route.ts"), "utf8");
+const workflowWorkspace = await readFile(join(root, "src/components/ClientWorkflowWorkspace.tsx"), "utf8");
 const credentialsRoute = await readFile(join(root, "src/app/api/client-runtime/credentials/route.ts"), "utf8");
 const credentialSubmissionRoute = await readFile(join(root, "src/app/api/client-runtime/credential-submissions/route.ts"), "utf8");
 const inputSafety = await readFile(join(root, "src/lib/clientInputSafety.ts"), "utf8");
@@ -110,6 +111,9 @@ expect(recordsRoute.includes("SECRET_LIKE"), "tenant records route must reject s
 expect(workflowsRoute.includes("clientCapabilityEnabled(\"orchestration\")"), "hosted workflow route must be capability gated");
 expect(workflowsRoute.includes("client_runtime_records") && workflowsRoute.includes("workflow"), "hosted workflow route must use tenant records");
 expect(workflowsRoute.includes("checkClientRuntimeRateLimit") && workflowsRoute.includes("runtime_limit_unavailable"), "workflow routes must distinguish limiter outages from genuine rate limiting");
+expect(workflowsRoute.includes('checkClientRuntimeRateLimit("workflow-read", 240, 900)'), "workflow reads must leave headroom for queued execution polling");
+expect(workflowWorkspace.includes("setInterval(() => { void load(); }, 10000)"), "workflow polling must not consume the read limiter faster than a normal worker run");
+expect(workflowWorkspace.includes("runtime_rate_limited"), "workflow read throttles must be visible in the client workspace");
 expect(workflowsRoute.includes("refundClientRuntimeRateLimit") && jobRoute.includes("refundClientRuntimeRateLimit") && hostedJobsRoute.includes("refundClientRuntimeRateLimit"), "task enqueue failures must refund their consumed client rate-limit token");
 expect(authenticatedVerifier.includes("completedSteps === 4") && authenticatedVerifier.includes("signed artifact upload") && authenticatedVerifier.includes("equalBytes"), "authenticated verifier must prove four-step workflow completion and signed artifact byte integrity");
 expect(authenticatedVerifier.includes("cookie-file") && authenticatedVerifier.includes("must not be readable by group or other users") && !authenticatedVerifier.includes("console.log(cookie"), "authenticated verifier must accept a protected cookie file without printing credentials");

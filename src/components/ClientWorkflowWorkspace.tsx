@@ -35,12 +35,13 @@ export default function ClientWorkflowWorkspace({ surface }: { surface: Surface 
     if (!response?.ok) {
       if (data?.error === "capability_not_enabled") setError("Tenant workflow management is not enabled in this client manifest yet.");
       else if (data?.error === "runtime_limit_unavailable") setError("The runtime limit service is temporarily unavailable. Try again shortly.");
+      else if (data?.error === "runtime_rate_limited") setError("Workflow reads are rate limited. Wait about 15 minutes before refreshing.");
     }
   }
   useEffect(() => { void load(); }, [surface]);
   useEffect(() => {
     if (!workflows.some((item) => item.metadata?.execution?.status === "queued")) return;
-    const timer = window.setInterval(() => { void load(); }, 3000);
+    const timer = window.setInterval(() => { void load(); }, 10000);
     return () => window.clearInterval(timer);
   }, [workflows, surface]);
 

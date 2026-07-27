@@ -387,6 +387,23 @@ without the refund function, wait for the `Retry-After` window or clear only
 the affected test bucket as an operator. Do not repeatedly refresh the submit
 action while a `429 runtime_rate_limited` result is visible.
 
+Workflow execution reads are also rate-limited, but the client polls queued
+cards every 10 seconds and the route allows 240 reads per 15 minutes. This
+leaves headroom for a normal long-running worker run. If the board reports
+`runtime_rate_limited` after repeated testing, clear both test buckets before
+retrying so a stale read token cannot mask a successful write:
+
+```sql
+delete from public.client_runtime_rate_limits
+where tenant_slug = 'veloce-cloud-test'
+  and bucket in ('workflow-read', 'workflow-write');
+```
+
+An empty result is normal when no matching limiter row exists. DDL and the
+delete statement also normally show `Success. No rows returned`; verify the
+effect with the next authenticated workflow request, not by expecting rows in
+the SQL editor.
+
 The supported operator path generates a random token, writes it to the client
 Secret Manager namespace, and patches only its SHA-256 hash into the matching
 tenant row. It requires the Supabase service-role key in the operator shell,

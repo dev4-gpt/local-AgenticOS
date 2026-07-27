@@ -18,7 +18,9 @@ const SECRET_LIKE = /(api[_ -]?key|secret|password|private[_ -]?key|access[_ -]?
 export async function GET(request: Request) {
   const user = await authenticatedMember();
   if (!user) return error("not_authenticated", 401);
-  const readLimit = await checkClientRuntimeRateLimit("workflow-read", 120, 900);
+  // The client polls queued executions while a worker is running. Keep the
+  // read guard, but leave enough headroom for a normal long-running job.
+  const readLimit = await checkClientRuntimeRateLimit("workflow-read", 240, 900);
   if (!readLimit.ok) return error("runtime_limit_unavailable", 503);
   if (!readLimit.allowed) return error("runtime_rate_limited", 429);
   const surface = new URL(request.url).searchParams.get("surface")?.trim().toLowerCase() ?? "";
