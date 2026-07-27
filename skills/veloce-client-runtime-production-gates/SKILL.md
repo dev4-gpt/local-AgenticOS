@@ -10,7 +10,8 @@ reviewing whether a `3939` operator feature can be enabled in Cloud Run.
 
 ## Required order
 
-1. Apply the three control-plane migrations in the GCP client runbook.
+1. Apply the four control-plane migrations in the GCP client runbook, including
+   `product-experience/supabase-client-runtime-controls.sql`.
 2. Create the Auth user and run
    `product-experience/supabase-seed-veloce-cloud-test.sql` with the client's
    approved email and slug.
@@ -34,6 +35,23 @@ reviewing whether a `3939` operator feature can be enabled in Cloud Run.
 Never treat a provider API key as a replacement for a local process or local
 filesystem. Never place a provider key, service-role key, personal CLI session,
 or raw secret in a manifest, image, browser response, or log.
+
+## Worker and provider approval gate
+
+The shared client runtime includes an API-only text adapter boundary, a
+tenant-scoped job table, a Cloud Tasks submission path, and an OIDC-verified
+worker path. Keep these disabled until all of the following are true:
+
+- The controls migration is applied and the tenant row has a worker-token hash.
+- The raw worker token exists only as the client-scoped Secret Manager secret.
+- The Cloud Tasks queue and service-account token-minting IAM are verified.
+- `CLIENT_PROVIDER_CALLS_ENABLED=1` is set only after provider key, model
+  pricing, monthly budget, and human approval ownership are recorded.
+- A job moves through queued/running/succeeded or failed, and transient errors
+  demonstrate bounded retry without exposing keys or local paths.
+
+The default is fail-closed. Enabling a UI capability alone must never authorize
+provider spend or hosted execution.
 
 ## Completion standard
 
