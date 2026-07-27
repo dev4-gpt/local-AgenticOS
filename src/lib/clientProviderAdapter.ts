@@ -132,10 +132,20 @@ export function clientTextUsageCostMicros(model: string, usage: ProviderUsage) {
 }
 
 export function safeClientProviderOutput(value: string) {
-  const output = value.trim().slice(0, 40_000);
+  const output = redactKnownProviderSecrets(value.trim().slice(0, 40_000));
   return containsClientSecretLike(output)
     ? "[Provider output withheld because it matched secret-like content.]"
     : output;
+}
+
+function redactKnownProviderSecrets(value: string) {
+  let output = value;
+  const names = new Set(Object.values(PROVIDERS).map((spec) => spec.key));
+  for (const name of names) {
+    const secret = name === "OPENROUTER_API_KEY" ? openRouterKey() : providerEnvKey(name);
+    if (secret && secret.length >= 8) output = output.split(secret).join("[Redacted provider secret.]");
+  }
+  return output;
 }
 
 export function safeClientProviderMetadata(value: unknown, depth = 0): unknown {

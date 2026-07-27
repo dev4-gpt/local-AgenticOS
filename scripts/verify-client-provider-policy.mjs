@@ -17,6 +17,7 @@ expect(!provisioner.includes('CLIENT_PROVIDER_CALLS_ENABLED: "0",\n  ...manifest
 expect(contracts.includes("CLIENT_REVIEWED_PLAN_TOOL") && contracts.includes("approvalRequired: true"), "reviewed-plan contracts must produce approval-required bounded plans");
 expect(contracts.includes("input_schema") && contracts.includes("functionDeclarations") && contracts.includes("tool_choice"), "reviewed-plan contracts must cover Anthropic, Gemini, and OpenAI-compatible tool shapes");
 expect(adapter.includes("tool_calls") && adapter.includes("tool_use") && adapter.includes("functionCall") && adapter.includes("serializeClientReviewedPlan"), "provider adapters must normalize provider-specific reviewed-plan tool results");
+expect(adapter.includes("redactKnownProviderSecrets") && adapter.includes("openRouterKey()") && adapter.includes("[Redacted provider secret.]"), "provider output and metadata must redact exact configured provider secret values");
 expect(!adapter.includes("child_process") && !adapter.includes("writeFile") && !adapter.includes("exec("), "provider adapters must not execute local tools or write local files");
 
 const active = { message: null };
