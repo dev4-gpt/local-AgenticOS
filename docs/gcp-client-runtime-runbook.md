@@ -20,9 +20,9 @@ Client slug: veloce-cloud-test
 GCP project: veloce-agenticos-2026
 Region: asia-south1
 Cloud Run service: veloce-cloud-test
-Current verified image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v37
-Current verified image digest: sha256:7628cc0295f4fda1774def779a7a24c8e4b8622382a09722cafcb411ca112353
-Current verified revision: veloce-cloud-test-00041-9dd
+Current verified image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v38
+Current verified image digest: sha256:b0578ffc44d12cbff94a2f81fee8d84b6e8bcdbafba714b91a6418317d72880d
+Current verified revision: veloce-cloud-test-00042-s47
 Runtime service account: veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com
 Storage bucket: gs://veloce-agenticos-2026-veloce-cloud-test
 Primary URL: https://veloce-cloud-test-1075094991117.asia-south1.run.app
@@ -370,7 +370,7 @@ alias.
 
 The controls migration adds idempotent job enqueue, claim, completion, retry,
 cancel, and worker-budget functions. The application now has a Cloud Tasks
-submission route and an OIDC-verified worker route. The deployed v37 client
+submission route and an OIDC-verified worker route. The deployed v38 client
 shell keeps provider calls disabled; the active cloud-test revision has the
 worker flag, Secret Manager token binding, and artifacts capability. Successful
 text, media, and SEO work settles its bounded budget reservation after the
@@ -529,7 +529,7 @@ The image is built from `Dockerfile.client`. It contains no provider values.
 The current internal test image is:
 
 ```text
-asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v37
+asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v38
 ```
 
 ## Deploy The Prepared Runtime
