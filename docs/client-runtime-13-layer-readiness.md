@@ -107,10 +107,10 @@ retention. Same codebase does not mean same permissions.
 | 6 | Cloud and compute | **Cloud Tasks/OIDC worker path, artifact worker, delivery worker, queue, storage infrastructure, and worker binding provisioned** | Verify bounded retries, artifact output, delivery completion, workflow dispatch, and job status with an authenticated client job. |
 | 7 | CI/CD and version control | **Improved; client promotion evidence pending** | GitHub release checks, manifest validation, and versioned images are in use. Add image digest promotion, deployment provenance, and automated rollback checks. |
 | 8 | Security and row-level security | **Schema, explicit membership checks, secret promotion/rotation checks, tenant-safe exports, and boundary implemented; verification pending** | Secrets stay out of the browser, security headers are active, and the control-plane schema has RLS. Reapply the controls migration so `worker_token_hash` is excluded from authenticated reads, review signing IAM, rotate secrets, and run the two-token isolation script. |
-| 9 | Rate limiting | **Public intake ready; durable runtime limiter and four redacted client alert policies provisioned** | Verify 429 behavior for request, credential, provider, artifact, workflow, and job routes, and attach an operator notification channel. Rerun alert provisioning with the channel so existing policies are updated. |
+| 9 | Rate limiting | **Public intake ready; durable runtime limiter and four redacted client alert policies provisioned with an operator notification channel** | Verify 429 behavior for request, credential, provider, artifact, workflow, and job routes, and confirm the email destination is verified. |
 | 10 | Caching and CDN | **Partial with private artifact controls** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Private runtime responses use no-store and artifacts use expiring signed URLs; add provider-result caching only where safe. |
 | 11 | Load balancing and scaling | **Partial** | Cloud Run scales to zero and the test is capped at one instance. Queue-backed work is implemented; add concurrency/load tests, per-client quotas, and scaling rules for production workloads. |
-| 12 | Error tracking and logs | **Redacted runtime events, request IDs, provider failure classes, and alert provisioner implemented; evidence pending** | Safe audit metadata and structured rate/budget/delivery events are supported. Attach a notification channel, verify alert delivery, and document log retention. |
+| 12 | Error tracking and logs | **Redacted runtime events, request IDs, provider failure classes, four alert policies, and an attached operator notification channel** | Verify alert delivery and document log retention. |
 | 13 | Availability and recovery | **Lifecycle CLI implemented with credential-safe exports and explicit destructive confirmations; recovery evidence pending** | Revision rollback and operator export/restore/offboarding commands exist, including object restore and explicit queue deletion. Run them against a disposable second tenant, verify object/secret deletion, rotate a new worker token after restore, and document secret recovery and incident response. |
 
 ## Private operator dependency inventory
@@ -309,9 +309,10 @@ These are engineering work, not deployment switches:
   exists, but it has not yet been exercised against a disposable tenant.
 - Durable runtime rate limits and alerts beyond the public intake guard, plus
   deployment evidence for the new hosted branches and delivery worker. The
-  repository now includes four redacted alert policies and a two-token
-  read-only isolation probe, but it still needs a notification channel, two
-  approved Auth tenants, and live evidence.
+  repository now includes four redacted alert policies with an attached
+  operator notification channel and a two-token read-only isolation probe, but
+  it still needs notification-delivery confirmation, two approved Auth
+  tenants, and live evidence.
 
 Until these are complete, “production ready” means the public front door and
 approved intake control plane, not unrestricted access to every local tab.
