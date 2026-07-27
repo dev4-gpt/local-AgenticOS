@@ -4,7 +4,7 @@ Updated 2026-07-27 after reviewing the public intake deployment, the local
 operator runtime, Cloud Run client image `v11`, and the hosted adapter slice.
 The repository now contains a tenant-scoped records migration, explicit API
 provider aliases, queue-only client text execution, hosted Local/Engine
-replacement routes, and tenant-safe brief workspaces. The new `v13` image is
+replacement routes, and tenant-safe brief workspaces. The new `v14` image is
 built but not deployed until the records table is verified in Supabase.
 
 ## Executive answer
@@ -19,7 +19,7 @@ The current state is:
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
-| Cloud Run client shell | Live as historical image `v11`; image `v13` is built, but current auth, hosted-adapter, records, and worker changes await deployment | Controlled test only |
+| Cloud Run client shell | Live as historical image `v11`; image `v14` is built, but current auth, hosted-adapter, records, and worker changes await deployment | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |
 | Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
 
@@ -184,7 +184,7 @@ true:
   `npm audit --omit=dev --audit-level=high`.
 - [x] Cloud Run v11 is deployed and passes the prior client-runtime verification
   script with security headers enabled.
-- [ ] Deploy the built v13 image after Supabase returns one
+- [ ] Deploy the built v14 image after Supabase returns one
   `client_runtime_records` table row, then rerun authenticated client tests.
 - [ ] Review remaining development-toolchain advisories before allowing
   untrusted contributors or automated build scripts into the release process.
@@ -279,7 +279,7 @@ These are engineering work, not deployment switches:
   Tasks queue, store the worker token/hash, deploy the worker-enabled image,
   and run the end-to-end job/retry/budget evidence test. The application now
   contains the OIDC-verified worker path, job status route, and bounded retry
-  contract, but the built `v13` cloud test has not yet been deployed.
+  contract, but the built `v14` cloud test has not yet been deployed.
 - Cross-client isolation, backup/restore, export/deletion, and offboarding
   evidence using a second dry-run client manifest. The operator lifecycle CLI
   exists, but it has not yet been exercised against a disposable tenant.
