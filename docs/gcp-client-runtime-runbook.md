@@ -180,7 +180,9 @@ internal cloud test has this mode enabled and has verified request persistence.
 The additional controls migration is required before deploying the durable
 runtime throttles and budget reservations. If the verification query returns
 zero membership rows, invite or create the Auth user first and rerun the seed
-file; do not switch the manifest yet.
+file; do not switch the manifest yet. If this migration has already been
+applied, rerun the current repository copy when the controls SQL changes; it is
+idempotent and now prevents duplicate budget reservations for the same job.
 
 After the lifecycle migration, verify the artifact status columns and worker
 confirmation function before enabling the `artifacts` capability. Uploads are
