@@ -4,6 +4,7 @@ import { reserveClientRuntimeBudget } from "@/lib/clientDataPlane";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
 type Message = { role: "system" | "user" | "assistant"; content: string };
+type ProviderUsage = { inputTokens: number; outputTokens: number };
 
 interface ProviderSpec {
   key: string;
@@ -87,7 +88,7 @@ export async function runClientTextAdapter(input: {
       ? await callGemini(spec, key, model, messages, maxOutputTokens)
       : await callOpenAiCompatible(spec, key, model, messages, maxOutputTokens);
   if (!response.ok) return { ok: false as const, status: response.status, error: "provider_request_failed" };
-  return { ok: true as const, provider, model, output: response.output };
+  return { ok: true as const, provider, model, output: response.output, usage: response.usage };
 }
 
 function configuredModels() {
@@ -116,6 +117,15 @@ export function estimateClientTextCostMicros(model: string, messages: Message[],
   return Math.ceil((inputTokens / 1000) * rate.inputMicrosPer1k + (maxOutputTokens / 1000) * rate.outputMicrosPer1k);
 }
 
+export function clientTextUsageCostMicros(model: string, usage: ProviderUsage) {
+  let pricing: Record<string, { inputMicrosPer1k: number; outputMicrosPer1k: number }>;
+  try { pricing = JSON.parse(process.env.CLIENT_MODEL_PRICING_JSON ?? "{}"); } catch { return null; }
+  const rate = pricing[model];
+  if (!rate || !Number.isFinite(rate.inputMicrosPer1k) || !Number.isFinite(rate.outputMicrosPer1k)) return null;
+  if (!Number.isSafeInteger(usage.inputTokens) || !Number.isSafeInteger(usage.outputTokens) || usage.inputTokens < 0 || usage.outputTokens < 0) return null;
+  return Math.ceil((usage.inputTokens / 1000) * rate.inputMicrosPer1k + (usage.outputTokens / 1000) * rate.outputMicrosPer1k);
+}
+
 export function clientTextMaxOutputTokens() {
   return Math.min(4096, Math.max(256, Number(process.env.CLIENT_MAX_OUTPUT_TOKENS ?? 2048)));
 }
@@ -129,9 +139,9 @@ async function callOpenAiCompatible(spec: ProviderSpec, key: string, model: stri
     signal: providerAbortSignal(),
   }).catch(() => null);
   if (!response?.ok) return { ok: false as const, status: response?.status ?? 503, output: "" };
-  const data = await responseJson(response) as { choices?: Array<{ message?: { content?: unknown } }> } | null;
+  const data = await responseJson(response) as { choices?: Array<{ message?: { content?: unknown } }>; usage?: { prompt_tokens?: unknown; completion_tokens?: unknown } } | null;
   const output = data?.choices?.[0]?.message?.content;
-  return typeof output === "string" ? { ok: true as const, status: 200, output } : { ok: false as const, status: 502, output: "" };
+  return typeof output === "string" ? { ok: true as const, status: 200, output, usage: normalizeUsage(data?.usage?.prompt_tokens, data?.usage?.completion_tokens) } : { ok: false as const, status: 502, output: "" };
 }
 
 async function callAnthropic(spec: ProviderSpec, key: string, model: string, messages: Message[], maxTokens: number) {
@@ -144,9 +154,9 @@ async function callAnthropic(spec: ProviderSpec, key: string, model: string, mes
     signal: providerAbortSignal(),
   }).catch(() => null);
   if (!response?.ok) return { ok: false as const, status: response?.status ?? 503, output: "" };
-  const data = await responseJson(response) as { content?: Array<{ type?: string; text?: unknown }> } | null;
+  const data = await responseJson(response) as { content?: Array<{ type?: string; text?: unknown }>; usage?: { input_tokens?: unknown; output_tokens?: unknown } } | null;
   const output = data?.content?.find((item) => item.type === "text")?.text;
-  return typeof output === "string" ? { ok: true as const, status: 200, output } : { ok: false as const, status: 502, output: "" };
+  return typeof output === "string" ? { ok: true as const, status: 200, output, usage: normalizeUsage(data?.usage?.input_tokens, data?.usage?.output_tokens) } : { ok: false as const, status: 502, output: "" };
 }
 
 async function callGemini(spec: ProviderSpec, key: string, model: string, messages: Message[], maxTokens: number) {
@@ -159,9 +169,17 @@ async function callGemini(spec: ProviderSpec, key: string, model: string, messag
     signal: providerAbortSignal(),
   }).catch(() => null);
   if (!response?.ok) return { ok: false as const, status: response?.status ?? 503, output: "" };
-  const data = await responseJson(response) as { candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }> } | null;
+  const data = await responseJson(response) as { candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }>; usageMetadata?: { promptTokenCount?: unknown; candidatesTokenCount?: unknown } } | null;
   const output = data?.candidates?.[0]?.content?.parts?.map((part) => typeof part.text === "string" ? part.text : "").join("");
-  return output ? { ok: true as const, status: 200, output } : { ok: false as const, status: 502, output: "" };
+  return output ? { ok: true as const, status: 200, output, usage: normalizeUsage(data?.usageMetadata?.promptTokenCount, data?.usageMetadata?.candidatesTokenCount) } : { ok: false as const, status: 502, output: "" };
+}
+
+function normalizeUsage(inputTokens: unknown, outputTokens: unknown): ProviderUsage | undefined {
+  const input = Number(inputTokens);
+  const output = Number(outputTokens);
+  return Number.isSafeInteger(input) && Number.isSafeInteger(output) && input >= 0 && output >= 0
+    ? { inputTokens: input, outputTokens: output }
+    : undefined;
 }
 
 function providerAbortSignal() {

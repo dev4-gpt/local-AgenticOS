@@ -60,7 +60,7 @@ expect(deliveryRoute.includes("claim_client_delivery_action_worker") && delivery
 for (const marker of ["SUPABASE_SERVICE_ROLE_KEY", "ANTHROPIC_API_KEY=", "OPENAI_API_KEY="]) {
   expect(!workerRoute.includes(marker) && !jobRoute.includes(marker), `worker boundary must not contain ${marker}`);
 }
-for (const marker of ["retry_client_runtime_job", "cancel_client_runtime_job", "reserve_client_runtime_budget_worker"]) {
+for (const marker of ["retry_client_runtime_job", "cancel_client_runtime_job", "reserve_client_runtime_budget_worker", "settle_client_runtime_budget_worker"]) {
   expect(controlsSql.includes(marker), `controls migration must contain ${marker}`);
 }
 for (const marker of ["create_client_runtime_artifact_worker", "checkpoint_client_runtime_job_worker", "create_client_delivery_action", "claim_client_delivery_action_worker", "complete_client_delivery_action_worker", "p_error_code", "client_runtime_delivery_actions"]) {
@@ -110,6 +110,8 @@ expect(cloudTasks.includes("CLIENT_RUNTIME_BASE_URL") && cloudTasks.includes("ba
 expect(cloudTasks.includes("randomUUID") && cloudTasks.includes("const taskName") && cloudTasks.includes("${identifier}-${randomUUID()}"), "Cloud Tasks retries must use unique dispatch names");
 expect(provisioner.includes("secretVersionAdder") && provisioner.includes("CLIENT_CREDENTIAL_INBOX_SECRET"), "GCP provisioner must grant inbox version-write access explicitly");
 expect(workerRoute.includes("runtime.provider_failed") && workerRoute.includes("runtime.budget_exceeded") && deliveryRoute.includes("runtime.delivery_failed") && alerts.includes("runtime_budget_denied") && alerts.includes("runtime_provider_failed") && alerts.includes("runtime_delivery_failed"), "runtime must emit and provision redacted provider, budget, and delivery alerts");
+expect(workerRoute.includes("settleClientRuntimeBudgetWorker") && providerAdapter.includes("clientTextUsageCostMicros"), "successful text provider calls must settle bounded budget reservations using normalized usage");
+expect(providerAdapter.includes("prompt_tokens") && providerAdapter.includes("input_tokens") && providerAdapter.includes("promptTokenCount"), "provider adapters must normalize OpenAI-compatible, Anthropic, and Gemini usage");
 expect(alerts.includes('mimeType: "text/markdown"') && alerts.includes("undefined, metricName"), "runtime alert policies must include valid documentation MIME metadata and idempotent metric checks");
 expect(alerts.includes('"monitoring", "policies", "update"') && alerts.includes("add-notification-channels"), "rerunning alert provisioning with a channel must attach it to existing policies");
 expect(workerRoute.includes('provider: "elevenlabs"'), "speech failures must identify the speech provider in redacted logs");

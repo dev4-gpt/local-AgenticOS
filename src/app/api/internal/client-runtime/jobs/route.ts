@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { reserveClientRuntimeBudgetWorker, workerRpc } from "@/lib/clientDataPlane";
-import { clientProviderDefaultModel, estimateClientTextCostMicros, clientTextMaxOutputTokens, runClientTextAdapter } from "@/lib/clientProviderAdapter";
+import { reserveClientRuntimeBudgetWorker, settleClientRuntimeBudgetWorker, workerRpc } from "@/lib/clientDataPlane";
+import { clientProviderDefaultModel, clientTextMaxOutputTokens, clientTextUsageCostMicros, estimateClientTextCostMicros, runClientTextAdapter } from "@/lib/clientProviderAdapter";
 import { clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { estimateClientMediaCostMicros, runClientHeyGenAdapter, runClientMusicAdapter, runClientSpeechAdapter, safeProviderOutputUrl } from "@/lib/clientMediaAdapter";
 import { runClientSeoAdapter } from "@/lib/clientSeoAdapter";
@@ -52,6 +52,12 @@ export async function POST(request: Request) {
 
   const result = await runClientTextAdapter({ provider: job.provider, model, prompt: job.input_metadata.prompt, history, reserveBudget: false, jobId });
   if (result.ok) {
+    if (result.usage) {
+      const actualAmountMicros = clientTextUsageCostMicros(model, result.usage);
+      if (actualAmountMicros !== null) {
+        await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros, usageMetadata: result.usage, workerToken });
+      }
+    }
     await completeJob(tenantSlug, jobId, workerToken, "succeeded", { workflowId: workflowIdFrom(job.input_metadata), provider: result.provider, model: result.model, steps: workflowStepsFrom(job.input_metadata) });
     return NextResponse.json({ ok: true, status: "succeeded" });
   }

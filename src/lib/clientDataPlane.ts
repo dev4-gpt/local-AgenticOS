@@ -211,6 +211,24 @@ export async function reserveClientRuntimeBudgetWorker(input: {
   return result.ok && result.value === true;
 }
 
+export async function settleClientRuntimeBudgetWorker(input: {
+  jobId: string;
+  actualAmountMicros: number;
+  usageMetadata: Record<string, number>;
+  workerToken: string;
+}) {
+  const tenantSlug = process.env.CLIENT_SLUG?.trim();
+  if (!tenantSlug || !Number.isSafeInteger(input.actualAmountMicros) || input.actualAmountMicros < 0) return false;
+  const result = await workerRpc("settle_client_runtime_budget_worker", {
+    p_tenant_slug: tenantSlug,
+    p_job_id: input.jobId,
+    p_worker_token: input.workerToken,
+    p_actual_amount_micros: input.actualAmountMicros,
+    p_usage_metadata: input.usageMetadata,
+  });
+  return result.ok && result.value === true;
+}
+
 export async function recordClientAudit(eventType: string, metadata: Record<string, unknown> = {}) {
   const user = await currentClientUser();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();

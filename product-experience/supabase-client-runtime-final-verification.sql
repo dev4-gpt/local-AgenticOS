@@ -38,6 +38,7 @@ where n.nspname = 'public'
     'retry_client_runtime_job',
     'cancel_client_runtime_job',
     'reserve_client_runtime_budget_worker',
+    'settle_client_runtime_budget_worker',
     'create_client_runtime_artifact_worker',
     'confirm_client_runtime_artifact_worker',
     'checkpoint_client_runtime_job_worker',

@@ -360,6 +360,68 @@ revoke all on function public.reserve_client_runtime_budget_worker(text, text, t
 grant execute on function public.reserve_client_runtime_budget_worker(text, text, text, bigint, bigint, uuid, text)
   to anon;
 
+create or replace function public.settle_client_runtime_budget_worker(
+  p_tenant_slug text,
+  p_job_id uuid,
+  p_worker_token text,
+  p_actual_amount_micros bigint,
+  p_usage_metadata jsonb default '{}'::jsonb
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  reserved_id bigint;
+  reserved_micros bigint;
+begin
+  if p_worker_token is null
+     or length(p_worker_token) < 24
+     or p_job_id is null
+     or p_actual_amount_micros < 0
+     or p_usage_metadata is null
+     or jsonb_typeof(p_usage_metadata) <> 'object'
+     or pg_column_size(p_usage_metadata) > 4096
+     or not exists (
+       select 1 from public.client_tenants
+       where slug = p_tenant_slug
+         and status = 'active'
+         and worker_token_hash = encode(digest(p_worker_token, 'sha256'), 'hex')
+     ) then
+    return false;
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext(left(p_tenant_slug, 64)));
+
+  select id, amount_micros
+    into reserved_id, reserved_micros
+  from public.client_runtime_budget_ledger
+  where tenant_slug = p_tenant_slug
+    and job_id = p_job_id
+  order by created_at desc
+  limit 1
+  for update;
+
+  if reserved_micros is null or p_actual_amount_micros > reserved_micros then
+    return false;
+  end if;
+
+  update public.client_runtime_budget_ledger
+    set amount_micros = p_actual_amount_micros,
+        usage_metadata = p_usage_metadata
+  where id = reserved_id
+    and tenant_slug = p_tenant_slug;
+
+  return found;
+end;
+$$;
+
+revoke all on function public.settle_client_runtime_budget_worker(text, uuid, text, bigint, jsonb)
+  from public, authenticated;
+grant execute on function public.settle_client_runtime_budget_worker(text, uuid, text, bigint, jsonb)
+  to anon;
+
 create or replace function public.reserve_client_runtime_budget(
   p_tenant_slug text,
   p_provider text,
