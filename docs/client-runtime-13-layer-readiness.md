@@ -283,7 +283,10 @@ These are engineering work, not deployment switches:
   provider dispatch on hosted workflow surfaces; verify the worker-only RPC and
   a completed or failed execution state on the workflow record.
 - Use the redacted provider-secret promotion/rotation CLI after manual review;
-  provider adapters still must consume the promoted target secrets.
+  provider adapters still must consume the promoted target secrets. Enable
+  providers only with `providerCallsEnabled: true` plus matching secret slots,
+  model/provider allowlists, pricing, and `text-agents`; the provisioner owns
+  the runtime switch.
 - Apply `supabase-client-runtime-controls.sql`, provision the per-client Cloud
   Tasks queue, store the worker token/hash, deploy the worker-enabled image,
   and run the end-to-end job/retry/budget evidence test. The application now

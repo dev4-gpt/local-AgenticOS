@@ -49,8 +49,10 @@ following are true:
 - The controls migration is applied and the tenant row has a worker-token hash.
 - The raw worker token exists only as the client-scoped Secret Manager secret.
 - The Cloud Tasks queue and service-account token-minting IAM are verified.
-- `CLIENT_PROVIDER_CALLS_ENABLED=1` is set only after provider key, model
-  pricing, monthly budget, and human approval ownership are recorded.
+- `providerCallsEnabled: true` is set only after provider key, model pricing,
+  monthly budget, and human approval ownership are recorded. The provisioner
+  derives `CLIENT_PROVIDER_CALLS_ENABLED=1`; do not set that switch through
+  free-form runtime environment values.
 - A job moves through queued/running/succeeded or failed, and transient errors
   demonstrate bounded retry without exposing keys or local paths.
 

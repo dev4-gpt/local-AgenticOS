@@ -328,11 +328,16 @@ The GCP provisioner normalizes `CLIENT_CREDENTIAL_INBOX_SECRET` and
 keeps `CLIENT_STORAGE_NAMESPACE` equal to the tenant slug. Do not use a shared
 inbox, shared object prefix, or custom storage namespace across clients.
 
-When provider calls are enabled, the manifest must also provide a global
-`modelAllowlist`, a `providerModelAllowlist` mapping each provider alias to its
-allowed models, and `CLIENT_MODEL_PRICING_JSON` with input/output rates for
-every model. A model allowed for one provider cannot be selected through a
-different provider alias.
+Provider activation is an explicit manifest decision, separate from accepting
+credentials in the inbox. Set `providerCallsEnabled: true` only after review,
+then provide a global `modelAllowlist`, a `providerModelAllowlist` mapping each
+provider alias to its allowed models, and a non-secret `modelPricing` object
+with input/output rates for every model. The provisioner derives
+`CLIENT_PROVIDER_CALLS_ENABLED` and `CLIENT_MODEL_PRICING_JSON`; free-form
+`runtimeEnv` values cannot override them. It also requires the matching
+provider Secret Manager slots and the reviewed `text-agents` capability. A
+model allowed for one provider cannot be selected through a different provider
+alias.
 
 ## Worker identity and long jobs
 

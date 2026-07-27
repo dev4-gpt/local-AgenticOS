@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
 
 const args = process.argv.slice(2);
 const configPath = valueAfter("--config") ?? valueAfter("-c");
@@ -48,6 +49,18 @@ const enabledCapabilities = normalizeList(manifest.enabledCapabilities);
 const providerAllowlist = normalizeList(manifest.providerAllowlist, Object.keys(secretEnv));
 const modelAllowlist = normalizeList(manifest.modelAllowlist);
 const providerModelAllowlist = normalizeProviderModelAllowlist(manifest.providerModelAllowlist);
+const providerCallsEnabled = manifest.providerCallsEnabled === true;
+const modelPricing = normalizeModelPricing(manifest.modelPricing);
+validateProviderActivation({
+  enabled: providerCallsEnabled,
+  providerAllowlist,
+  secretNames: Object.keys(secretEnv),
+  modelAllowlist,
+  providerModelAllowlist,
+  modelPricing,
+  enabledCapabilities,
+  fail,
+});
 const configuredStorageNamespace = manifest.storage?.namespace;
 if (configuredStorageNamespace != null && sanitizeSlug(String(configuredStorageNamespace)) !== slug) {
   fail("storage.namespace must equal clientSlug so Supabase and Cloud Storage namespaces cannot diverge");
@@ -63,7 +76,7 @@ writeFileSync(storageCorsFile, JSON.stringify([{
 process.on("exit", () => {
   try { unlinkSync(storageCorsFile); } catch {}
 });
-const runtimeEnv = {
+const protectedRuntimeEnv = {
   VELOCE_CLIENT_EDITION: "1",
   AGENTIC_OS_DISABLE_LOCAL_CLI: "1",
   AGENTIC_OS_DISABLE_LOCAL_FILES: "1",
@@ -83,6 +96,7 @@ const runtimeEnv = {
   ...(manifest.budget?.monthlyCap ? { CLIENT_BUDGET_CAP: String(manifest.budget.monthlyCap) } : {}),
   ...(manifest.budget?.warningThreshold ? { CLIENT_BUDGET_WARNING_THRESHOLD: String(manifest.budget.warningThreshold) } : {}),
   CLIENT_STORAGE_NAMESPACE: slug,
+  CLIENT_RUNTIME_DATA_MODE: "supabase",
   ...(manifest.retention?.days ? { CLIENT_RETENTION_DAYS: String(manifest.retention.days) } : {}),
   ...(manifest.approvalPolicy ? { CLIENT_APPROVAL_POLICY: String(manifest.approvalPolicy) } : {}),
   CLIENT_STORAGE_BUCKET: bucket,
@@ -90,9 +104,10 @@ const runtimeEnv = {
   CLIENT_RUNTIME_TASK_REGION: region,
   CLIENT_RUNTIME_TASK_QUEUE: `veloce-${slug}`,
   CLIENT_TASK_INVOKER_SERVICE_ACCOUNT: serviceAccountEmail,
-  CLIENT_PROVIDER_CALLS_ENABLED: "0",
-  ...manifestRuntimeEnv,
+  CLIENT_PROVIDER_CALLS_ENABLED: providerCallsEnabled ? "1" : "0",
+  ...(providerCallsEnabled ? { CLIENT_MODEL_PRICING_JSON: JSON.stringify(modelPricing) } : {}),
 };
+const runtimeEnv = { ...manifestRuntimeEnv, ...protectedRuntimeEnv };
 
 const immutableRuntimeKeys = [
   "VELOCE_CLIENT_EDITION",
@@ -117,6 +132,11 @@ const immutableRuntimeKeys = [
   "CLIENT_RUNTIME_TASK_REGION",
   "CLIENT_RUNTIME_TASK_QUEUE",
   "CLIENT_TASK_INVOKER_SERVICE_ACCOUNT",
+  "CLIENT_PROVIDER_CALLS_ENABLED",
+  "CLIENT_MODEL_PRICING_JSON",
+  "CLIENT_ALLOWED_ROUTES",
+  "CLIENT_ALLOWED_API_ROUTES",
+  "CLIENT_RUNTIME_DATA_MODE",
 ];
 for (const key of immutableRuntimeKeys) {
   if (Object.hasOwn(manifestRuntimeEnv, key) && String(manifestRuntimeEnv[key]) !== String(runtimeEnv[key])) {

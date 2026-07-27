@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
 
 const file = process.argv[2];
 if (!file) fail("Usage: node scripts/validate-client-manifest.mjs path/to/client.json");
@@ -44,22 +45,21 @@ for (const [provider, values] of Object.entries(providerModels)) {
   if (!/^[a-z][a-z0-9-]{1,40}$/.test(provider) || !Array.isArray(values) || values.length === 0) fail(`Invalid providerModelAllowlist.${provider}`);
   if (values.some((model) => typeof model !== "string" || !models.includes(model))) fail(`providerModelAllowlist.${provider} must only reference modelAllowlist entries`);
 }
-if (String(env.CLIENT_PROVIDER_CALLS_ENABLED ?? "0") === "1") {
-  if (models.length === 0 || Object.keys(providerModels).length === 0) fail("Provider calls require modelAllowlist and providerModelAllowlist");
-  for (const provider of Object.keys(providerModels)) {
-    const providerKey = {
-      anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY", codex: "OPENAI_API_KEY",
-      openrouter: "OPENROUTER_API_KEY", openclaw: "OPENROUTER_API_KEY", hermes: "OPENROUTER_API_KEY",
-      freeclaude: "OPENROUTER_API_KEY", fusion: "OPENROUTER_API_KEY", moonshot: "MOONSHOT_API_KEY", kimi: "MOONSHOT_API_KEY",
-      glm: "GLM_API_KEY", "glm-code": "GLM_API_KEY", xai: "XAI_API_KEY", grok: "XAI_API_KEY",
-      sakana: "SAKANA_API_KEY", gemini: "GEMINI_API_KEY", antigravity: "GEMINI_API_KEY",
-    }[provider];
-    if (!providerKey || !secretNames.includes(providerKey)) fail(`Provider calls require a Secret Manager slot for ${providerKey ?? provider}`);
-  }
-  let pricing;
-  try { pricing = JSON.parse(String(env.CLIENT_MODEL_PRICING_JSON ?? "{}")); } catch { fail("CLIENT_MODEL_PRICING_JSON must be valid JSON when provider calls are enabled"); }
-  for (const model of models) if (!pricing[model] || !Number.isFinite(Number(pricing[model].inputMicrosPer1k)) || !Number.isFinite(Number(pricing[model].outputMicrosPer1k))) fail(`Missing pricing for allowlisted model: ${model}`);
+const providerCallsEnabled = manifest.providerCallsEnabled === true;
+if (String(env.CLIENT_PROVIDER_CALLS_ENABLED ?? "0") === "1" && !providerCallsEnabled) {
+  fail("runtimeEnv.CLIENT_PROVIDER_CALLS_ENABLED cannot enable providers; set providerCallsEnabled: true after review");
 }
+const modelPricing = normalizeModelPricing(manifest.modelPricing);
+validateProviderActivation({
+  enabled: providerCallsEnabled,
+  providerAllowlist: Array.isArray(manifest.providerAllowlist) ? manifest.providerAllowlist.map((item) => String(item).trim().toUpperCase()) : [],
+  secretNames,
+  modelAllowlist: models,
+  providerModelAllowlist: providerModels,
+  modelPricing,
+  enabledCapabilities: manifest.enabledCapabilities.map(String),
+  fail,
+});
 
 console.log(`Client manifest validation passed: ${manifest.clientSlug}`);
 function fail(message) { console.error(message); process.exit(1); }
