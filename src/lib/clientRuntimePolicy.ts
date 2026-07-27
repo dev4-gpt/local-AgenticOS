@@ -21,6 +21,9 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/internal/client-runtime/delivery",
   "/api/client-auth/session",
 ];
+const CAPABILITY_ALIASES: Record<string, string> = {
+  "delivery-actions": "delivery",
+};
 
 function configuredList(name: string, fallback: string[]) {
   const raw = process.env[name]?.trim();
@@ -38,9 +41,12 @@ export function clientConfiguredList(name: string) {
 
 export function clientCapabilityEnabled(id: string) {
   const configured = clientConfiguredList("CLIENT_ENABLED_CAPABILITIES");
+  const canonicalId = CAPABILITY_ALIASES[id] ?? id;
   // A client image must never become permissive because provisioning omitted
   // the manifest. Operator development keeps the historical open default.
-  return clientEdition() ? configured.includes(id) : configured.length === 0 || configured.includes(id);
+  return clientEdition()
+    ? configured.includes(id) || configured.includes(canonicalId)
+    : configured.length === 0 || configured.includes(id) || configured.includes(canonicalId);
 }
 
 export function clientProviderEnabled(key: string) {

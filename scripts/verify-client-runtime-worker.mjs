@@ -152,6 +152,7 @@ for (const provider of ["anthropic", "openai", "codex", "openrouter", "openclaw"
   expect(providerContracts.includes(marker), `provider contracts must explicitly register ${provider}`);
 }
 expect(providerContracts.includes('"HTTP-Referer"') && providerContracts.includes('"X-Title"'), "OpenRouter contract must define attribution headers");
+expect(runtimePolicy.includes("CAPABILITY_ALIASES") && runtimePolicy.includes('"delivery-actions": "delivery"'), "delivery capability aliases must resolve to the manifest capability");
 expect(!runtimePolicy.includes('"/api/client-runtime/provider-chat"'), "client policy must not allow the synchronous provider-chat bypass");
 expect(!provisioner.includes("/api/client-runtime/provider-chat"), "GCP client manifest must not allow the synchronous provider-chat bypass");
 expect(providerChat.includes("enqueueClientRuntimeJob") && providerChat.includes("enqueueClientRuntimeTask"), "legacy provider-chat route must use the queue-backed job contract");

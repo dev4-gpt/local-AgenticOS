@@ -1,13 +1,13 @@
 # Client Runtime 13-Layer Readiness
 
 Updated 2026-07-27 after reviewing the public intake deployment, the local
-operator runtime, Cloud Run client image `v42`, and the hosted adapter slice.
+operator runtime, Cloud Run client image `v43`, and the hosted adapter slice.
 The repository now contains a tenant-scoped records migration, explicit API
 provider aliases, queue-only client text execution, hosted Local/Engine
 replacement routes, tenant-safe brief workspaces, provider/model allowlists,
 and queued workflow dispatch with durable audit state on failed submission. The
-v42 image is deployed and passes the unauthenticated boundary checks. Revision
-`veloce-cloud-test-00047-fqc` has the worker flag, Secret Manager token
+v43 image is deployed and passes the unauthenticated boundary checks. Revision
+`veloce-cloud-test-00048-zk9` has the worker flag, Secret Manager token
 binding, and artifact capability enabled; provider calls remain disabled. The
 worker now has a bounded queued OpenAI image-artifact branch and settles successful text reservations against normalized provider
 usage when pricing is configured, settles fixed media/SEO estimates after
@@ -29,7 +29,7 @@ The current state is:
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
-| Cloud Run client shell | Live as image `v42` on revision `veloce-cloud-test-00047-fqc`; worker binding and artifacts are enabled, provider calls remain disabled, request correlation is active, workflow polling no longer self-throttles, limiter outages are separated from genuine throttles, failed task enqueue refunds are implemented, provider-secret output redaction is active, and authenticated job/artifact evidence is pending | Controlled test only |
+| Cloud Run client shell | Live as image `v43` on revision `veloce-cloud-test-00048-zk9`; worker binding and artifacts are enabled, provider calls remain disabled, request correlation is active, workflow polling no longer self-throttles, limiter outages are separated from genuine throttles, failed task enqueue refunds are implemented, provider-secret output redaction is active, and authenticated job/artifact evidence is pending | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |
 | Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
 
@@ -285,7 +285,7 @@ These are engineering work, not deployment switches:
   applying the workflow-reconciliation migration.
 - Apply or reapply `supabase-client-runtime-controls.sql` and verify durable
   runtime throttles, budget reservations, and worker-only budget settlement.
-  The deployed v42 worker calls `settle_client_runtime_budget_worker` only after
+  The deployed v43 worker calls `settle_client_runtime_budget_worker` only after
   a successful text response reports normalized token usage; the active
   cloud-test controls migration includes the worker-only settlement RPC.
 - Apply or reapply `supabase-client-runtime-workflow-reconciliation.sql` before
