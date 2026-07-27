@@ -13,6 +13,7 @@ function expect(condition, message) {
 const workerRoute = await readFile(join(root, "src/app/api/internal/client-runtime/jobs/route.ts"), "utf8");
 const deliveryRoute = await readFile(join(root, "src/app/api/internal/client-runtime/delivery/route.ts"), "utf8");
 const jobRoute = await readFile(join(root, "src/app/api/client-runtime/jobs/route.ts"), "utf8");
+const providerChat = await readFile(join(root, "src/app/api/client-runtime/provider-chat/route.ts"), "utf8");
 const hostedJobsRoute = await readFile(join(root, "src/app/api/client-runtime/hosted-jobs/route.ts"), "utf8");
 const artifactsRoute = await readFile(join(root, "src/app/api/client-runtime/artifacts/route.ts"), "utf8");
 const promotion = await readFile(join(root, "scripts/promote-client-credential.mjs"), "utf8");
@@ -152,6 +153,8 @@ for (const provider of ["anthropic", "openai", "codex", "openrouter", "openclaw"
 expect(providerContracts.includes('"HTTP-Referer"') && providerContracts.includes('"X-Title"'), "OpenRouter contract must define attribution headers");
 expect(!runtimePolicy.includes('"/api/client-runtime/provider-chat"'), "client policy must not allow the synchronous provider-chat bypass");
 expect(!provisioner.includes("/api/client-runtime/provider-chat"), "GCP client manifest must not allow the synchronous provider-chat bypass");
+expect(providerChat.includes("enqueueClientRuntimeJob") && providerChat.includes("enqueueClientRuntimeTask"), "legacy provider-chat route must use the queue-backed job contract");
+expect(!providerChat.includes("runClientTextAdapter") && !providerChat.includes("reserveClientRuntimeBudget"), "legacy provider-chat route must not call providers or reserve unsettled budget synchronously");
 expect(provisioner.includes("GOOGLE_CLOUD_PROJECT: projectId"), "GCP provisioner must inject the project identifier required by Cloud Tasks");
 expect(provisioner.includes("roles/cloudtasks.enqueuer"), "GCP provisioner must grant the runtime service account Cloud Tasks enqueue permission");
 expect(provisioner.includes("CLIENT_RUNTIME_BASE_URL") && provisioner.includes("configureRuntimeBaseUrl"), "GCP provisioner must configure the Cloud Run task callback URL");
