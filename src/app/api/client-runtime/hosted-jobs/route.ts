@@ -4,6 +4,7 @@ import { currentClientMember } from "@/lib/clientAuth";
 import { cancelClientRuntimeJob, consumeClientRuntimeRateLimit, enqueueClientRuntimeJob } from "@/lib/clientDataPlane";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
+import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
   const input = body.input && typeof body.input === "object" && !Array.isArray(body.input) ? body.input : {};
   const inputMetadata = JSON.stringify(input);
   if (inputMetadata.length < 3 || inputMetadata.length > spec.maxInput) return NextResponse.json({ ok: false, error: "job_input_invalid" }, { status: 400 });
+  if (containsClientSecretLike(inputMetadata)) return NextResponse.json({ ok: false, error: "secret_like_input_rejected" }, { status: 400 });
   const idempotencyKey = typeof body.idempotencyKey === "string" && body.idempotencyKey.trim().length >= 8 ? body.idempotencyKey.trim().slice(0, 180) : randomUUID();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!tenantSlug) return NextResponse.json({ ok: false, error: "tenant_not_configured" }, { status: 503 });

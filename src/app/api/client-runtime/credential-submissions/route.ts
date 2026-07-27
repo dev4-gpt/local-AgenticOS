@@ -4,6 +4,7 @@ import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { clientCredentialOption } from "@/lib/clientCredentialCatalog";
 import { consumeClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
+import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
   if (secretValue.length < 6 || secretValue.length > 12000) {
     return NextResponse.json({ ok: false, error: "invalid_secret_value" }, { status: 400 });
   }
+  if (containsClientSecretLike(notes)) return NextResponse.json({ ok: false, error: "secret_like_notes_rejected" }, { status: 400 });
 
   const projectId = await gcpProjectId();
   const token = await gcpAccessToken();

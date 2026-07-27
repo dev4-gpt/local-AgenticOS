@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { clientRpc, consumeClientRuntimeRateLimit, insertClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
+import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
   const artifactIds = Array.isArray(body.artifactIds) ? body.artifactIds.filter((id): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)).slice(0, 20) : [];
   const idempotencyKey = typeof body.idempotencyKey === "string" && body.idempotencyKey.trim().length >= 8 ? body.idempotencyKey.trim().slice(0, 180) : randomUUID();
   if (!ACTIONS.has(action) || title.length < 3 || details.length < 10) return NextResponse.json({ ok: false, error: "delivery_input_invalid" }, { status: 400 });
+  if (containsClientSecretLike(title, details, destination)) return NextResponse.json({ ok: false, error: "secret_like_input_rejected" }, { status: 400 });
   if (destination && !safeDestination(destination)) return NextResponse.json({ ok: false, error: "delivery_destination_invalid" }, { status: 400 });
 
   const tenantSlug = process.env.CLIENT_SLUG?.trim();

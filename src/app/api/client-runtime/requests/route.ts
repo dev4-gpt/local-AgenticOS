@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { consumeClientRuntimeRateLimit, insertClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
+import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
 
   if (!REQUEST_TYPES.has(type)) return NextResponse.json({ ok: false, error: "invalid_request_type" }, { status: 400 });
   if (title.length < 3 || details.length < 10) return NextResponse.json({ ok: false, error: "request_needs_detail" }, { status: 400 });
+  if (containsClientSecretLike(title, details, fields)) return NextResponse.json({ ok: false, error: "secret_like_input_rejected" }, { status: 400 });
 
   if (process.env.CLIENT_RUNTIME_DATA_MODE === "supabase") {
     const result = await insertClientRecord("client_runtime_requests", {

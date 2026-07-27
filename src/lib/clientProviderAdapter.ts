@@ -1,6 +1,7 @@
 import { clientProviderCallsEnabled, clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { providerEnvKey, openRouterKey } from "@/lib/providerKeys";
 import { reserveClientRuntimeBudget } from "@/lib/clientDataPlane";
+import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
 type Message = { role: "system" | "user" | "assistant"; content: string };
 
@@ -52,6 +53,7 @@ export async function runClientTextAdapter(input: {
   const models = configuredModels();
   if (models.length === 0 || !models.includes(model)) return { ok: false as const, status: 403, error: "model_not_allowlisted" };
   if (input.prompt.length < 1 || input.prompt.length > 20000) return { ok: false as const, status: 400, error: "prompt_invalid" };
+  if (containsClientSecretLike(input.prompt, input.history)) return { ok: false as const, status: 400, error: "secret_like_input_rejected" };
 
   const key = spec.key === "OPENROUTER_API_KEY" ? openRouterKey() : providerEnvKey(spec.key);
   if (!key) return { ok: false as const, status: 503, error: "provider_not_configured" };

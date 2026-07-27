@@ -4,6 +4,7 @@ import { currentClientUser } from "@/lib/clientAuth";
 import { cancelClientRuntimeJob, consumeClientRuntimeRateLimit, enqueueClientRuntimeJob } from "@/lib/clientDataPlane";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
+import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     : randomUUID();
   const history = Array.isArray(body.history) ? body.history.filter((item): item is Record<string, string> => Boolean(item && typeof item === "object" && ["system", "user", "assistant"].includes(String((item as Record<string, unknown>).role)) && typeof (item as Record<string, unknown>).content === "string")).slice(-16) : [];
   if (!provider || !prompt) return NextResponse.json({ ok: false, error: "job_input_invalid" }, { status: 400 });
+  if (containsClientSecretLike(prompt, history)) return NextResponse.json({ ok: false, error: "secret_like_input_rejected" }, { status: 400 });
 
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!tenantSlug) return NextResponse.json({ ok: false, error: "tenant_not_configured" }, { status: 503 });
