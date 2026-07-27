@@ -181,6 +181,7 @@ const prepareCommands = [
   ["gcloud", ["storage", "buckets", "update", `gs://${bucket}`, `--lifecycle-file=${storageLifecycleFile}`]],
   ["gcloud", ["storage", "buckets", "add-iam-policy-binding", `gs://${bucket}`, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/storage.objectAdmin"]],
   ["gcloud", ["iam", "service-accounts", "add-iam-policy-binding", serviceAccountEmail, "--project", projectId, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/iam.serviceAccountTokenCreator"]],
+  ["gcloud", ["projects", "add-iam-policy-binding", projectId, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/cloudtasks.enqueuer"]],
   ["gcloud", ["iam", "service-accounts", "add-iam-policy-binding", serviceAccountEmail, "--project", projectId, "--member", `serviceAccount:service-${projectNumber}@gcp-sa-cloudtasks.iam.gserviceaccount.com`, "--role", "roles/iam.serviceAccountTokenCreator"]],
   ["gcloud", ["tasks", "queues", "create", `veloce-${slug}`, "--location", region, "--project", projectId, "--max-concurrent-dispatches", "1", "--max-attempts", "10"]],
   ...Object.values(secretEnv).flatMap((secretRef) => {
