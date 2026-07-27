@@ -38,14 +38,20 @@ const secretEnv = normalizeSecretEnv(manifest.secretEnv ?? manifest.secretRefs ?
 const manifestRuntimeEnv = manifest.runtimeEnv && typeof manifest.runtimeEnv === "object" && !Array.isArray(manifest.runtimeEnv)
   ? manifest.runtimeEnv
   : {};
+const credentialInboxSecret = normalizeClientSecretName(slug, String(manifestRuntimeEnv.CLIENT_CREDENTIAL_INBOX_SECRET || "client-credential-inbox"));
+const requestInboxSecret = normalizeClientSecretName(slug, String(manifestRuntimeEnv.CLIENT_REQUEST_INBOX_SECRET || credentialInboxSecret));
 const inboxSecretNames = [...new Set([
-  manifest.runtimeEnv?.CLIENT_CREDENTIAL_INBOX_SECRET,
-  manifest.runtimeEnv?.CLIENT_REQUEST_INBOX_SECRET,
-].filter((value) => typeof value === "string" && value.trim()).map((value) => normalizeClientSecretName(slug, value)))];
+  credentialInboxSecret,
+  requestInboxSecret,
+])];
 const enabledCapabilities = normalizeList(manifest.enabledCapabilities);
 const providerAllowlist = normalizeList(manifest.providerAllowlist, Object.keys(secretEnv));
 const modelAllowlist = normalizeList(manifest.modelAllowlist);
 const providerModelAllowlist = normalizeProviderModelAllowlist(manifest.providerModelAllowlist);
+const configuredStorageNamespace = manifest.storage?.namespace;
+if (configuredStorageNamespace != null && sanitizeSlug(String(configuredStorageNamespace)) !== slug) {
+  fail("storage.namespace must equal clientSlug so Supabase and Cloud Storage namespaces cannot diverge");
+}
 const runtimeEnv = {
   VELOCE_CLIENT_EDITION: "1",
   AGENTIC_OS_DISABLE_LOCAL_CLI: "1",
@@ -54,6 +60,8 @@ const runtimeEnv = {
   CLIENT_SLUG: slug,
   CLIENT_NAME: clientName,
   CLIENT_RUNTIME_ENFORCE_AUTH: "1",
+  CLIENT_CREDENTIAL_INBOX_SECRET: credentialInboxSecret,
+  CLIENT_REQUEST_INBOX_SECRET: requestInboxSecret,
   CLIENT_ALLOWED_USER_EMAILS: allowedUserEmails.join(","),
   CLIENT_ALLOWED_ROUTES: "/,/context,/orchestrate,/create,/credentials,/capabilities,/deliver,/paperclip,/room,/pipeline,/claude,/openclaw,/hermes,/antigravity,/codex,/kimi,/glm,/glm-code,/grok,/freeclaude,/fusion,/sakana,/local,/engine,/agent-kanban,/loop,/ruflo,/goals,/journal,/seo,/opendesign,/web-studio,/flow-lab,/integrations,/video,/studio,/openmontage,/music,/games,/thumbnails,/notebook,/kanban,/memory,/leads,/radar,/guide",
   CLIENT_ALLOWED_API_ROUTES: "/api/capabilities,/api/client-runtime/credentials,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-runtime/artifacts,/api/client-runtime/hosted-jobs,/api/client-runtime/delivery,/api/client-runtime/records,/api/client-runtime/workflows,/api/client-runtime/jobs,/api/internal/client-runtime/jobs,/api/internal/client-runtime/delivery,/api/client-auth/session",
@@ -63,7 +71,7 @@ const runtimeEnv = {
   ...(Object.keys(providerModelAllowlist).length > 0 ? { CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON: JSON.stringify(providerModelAllowlist) } : {}),
   ...(manifest.budget?.monthlyCap ? { CLIENT_BUDGET_CAP: String(manifest.budget.monthlyCap) } : {}),
   ...(manifest.budget?.warningThreshold ? { CLIENT_BUDGET_WARNING_THRESHOLD: String(manifest.budget.warningThreshold) } : {}),
-  ...(manifest.storage?.namespace ? { CLIENT_STORAGE_NAMESPACE: sanitizeSlug(String(manifest.storage.namespace)) } : { CLIENT_STORAGE_NAMESPACE: slug }),
+  CLIENT_STORAGE_NAMESPACE: slug,
   ...(manifest.retention?.days ? { CLIENT_RETENTION_DAYS: String(manifest.retention.days) } : {}),
   ...(manifest.approvalPolicy ? { CLIENT_APPROVAL_POLICY: String(manifest.approvalPolicy) } : {}),
   CLIENT_STORAGE_BUCKET: bucket,
@@ -83,6 +91,8 @@ const immutableRuntimeKeys = [
   "CLIENT_SLUG",
   "CLIENT_NAME",
   "CLIENT_RUNTIME_ENFORCE_AUTH",
+  "CLIENT_CREDENTIAL_INBOX_SECRET",
+  "CLIENT_REQUEST_INBOX_SECRET",
   "CLIENT_ALLOWED_USER_EMAILS",
   "CLIENT_ENABLED_CAPABILITIES",
   "CLIENT_PROVIDER_ALLOWLIST",

@@ -279,6 +279,12 @@ active provider configuration. After manual review, promote one matching
 provider value into the client-scoped target secret without printing the raw
 value:
 
+The credentials screen can accept a catalogued provider key even while that
+provider is not active. This is intentional: submission only writes a reviewed
+inbox event. The provider remains unavailable until the operator promotes the
+value, adds the client-scoped target secret to the manifest, verifies its
+enabled Secret Manager version, and deploys an approved revision.
+
 ```bash
 npm run promote:client-credential -- \
   --project veloce-agenticos-2026 \
@@ -302,6 +308,11 @@ dry run.
 The target secret must already exist and must begin with
 `veloce-<clientSlug>-`. The promotion script verifies the source client and
 provider names before writing, and never prints the secret value.
+
+The GCP provisioner normalizes `CLIENT_CREDENTIAL_INBOX_SECRET` and
+`CLIENT_REQUEST_INBOX_SECRET` into the `veloce-<clientSlug>-` namespace and
+keeps `CLIENT_STORAGE_NAMESPACE` equal to the tenant slug. Do not use a shared
+inbox, shared object prefix, or custom storage namespace across clients.
 
 When provider calls are enabled, the manifest must also provide a global
 `modelAllowlist`, a `providerModelAllowlist` mapping each provider alias to its

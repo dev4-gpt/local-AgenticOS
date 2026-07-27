@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { clientCredentialOption } from "@/lib/clientCredentialCatalog";
 import { consumeClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
-import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
+import { clientCredentialSubmissionEnabled } from "@/lib/clientRuntimePolicy";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
 export const runtime = "nodejs";
@@ -22,6 +22,7 @@ export async function POST(request: Request) {
 
   const inboxSecret = process.env.CLIENT_CREDENTIAL_INBOX_SECRET?.trim();
   if (!inboxSecret) return NextResponse.json({ ok: false, error: "credential_inbox_not_configured" }, { status: 503 });
+  if (!clientCredentialSubmissionEnabled()) return NextResponse.json({ ok: false, error: "credential_submission_disabled" }, { status: 403 });
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const providerKey = typeof body.providerKey === "string" ? body.providerKey.trim().toUpperCase() : "";
@@ -29,8 +30,7 @@ export async function POST(request: Request) {
   const notes = typeof body.notes === "string" ? body.notes.trim().slice(0, 1200) : "";
   const option = clientCredentialOption(providerKey);
 
-  if (!option) return NextResponse.json({ ok: false, error: "unsupported_provider" }, { status: 400 });
-  if (!clientProviderEnabled(option.key)) return NextResponse.json({ ok: false, error: "provider_not_allowlisted" }, { status: 403 });
+  if (!option || !option.submitAllowed) return NextResponse.json({ ok: false, error: "unsupported_provider" }, { status: 400 });
   if (secretValue.length < 6 || secretValue.length > 12000) {
     return NextResponse.json({ ok: false, error: "invalid_secret_value" }, { status: 400 });
   }

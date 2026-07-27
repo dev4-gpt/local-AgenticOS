@@ -22,7 +22,7 @@ The local `8082` helper is currently healthy. The Cloud Run runtime must never d
 
 - Mission Control home.
 - Context intake, workflow requests, production briefs, and delivery review. These are Supabase-backed intake surfaces and do not need a model key to submit a request.
-- Credentials status and the client vault inbox, once the GCP inbox secret and IAM grant are configured.
+- Credentials status and catalogued provider submission to the client vault inbox, once the GCP inbox secret and IAM grant are configured. Submission does not activate a provider; promotion, manifest binding, and deployment are separate gates.
 - Capabilities registry, when it contains only built-in capabilities with no operator destination.
 
 ### Client-safe after provider API configuration and approval

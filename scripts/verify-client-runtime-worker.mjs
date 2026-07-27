@@ -19,6 +19,8 @@ const workerProvisioner = await readFile(join(root, "scripts/provision-client-wo
 const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
 const recordsRoute = await readFile(join(root, "src/app/api/client-runtime/records/route.ts"), "utf8");
 const workflowsRoute = await readFile(join(root, "src/app/api/client-runtime/workflows/route.ts"), "utf8");
+const credentialsRoute = await readFile(join(root, "src/app/api/client-runtime/credentials/route.ts"), "utf8");
+const credentialSubmissionRoute = await readFile(join(root, "src/app/api/client-runtime/credential-submissions/route.ts"), "utf8");
 const inputSafety = await readFile(join(root, "src/lib/clientInputSafety.ts"), "utf8");
 const controlsSql = await readFile(join(root, "product-experience/supabase-client-runtime-controls.sql"), "utf8");
 const hostedSql = await readFile(join(root, "product-experience/supabase-client-runtime-hosted-capabilities.sql"), "utf8");
@@ -26,6 +28,8 @@ const recordsSql = await readFile(join(root, "product-experience/supabase-client
 const lifecycleScript = await readFile(join(root, "scripts/client-lifecycle.mjs"), "utf8");
 const providerAdapter = await readFile(join(root, "src/lib/clientProviderAdapter.ts"), "utf8");
 const mediaAdapter = await readFile(join(root, "src/lib/clientMediaAdapter.ts"), "utf8");
+const seoAdapter = await readFile(join(root, "src/lib/clientSeoAdapter.ts"), "utf8");
+const deliveryAdapter = await readFile(join(root, "src/lib/clientDeliveryAdapter.ts"), "utf8");
 const runtimePolicy = await readFile(join(root, "src/lib/clientRuntimePolicy.ts"), "utf8");
 const cloudTasks = await readFile(join(root, "src/lib/cloudTasks.ts"), "utf8");
 const alerts = await readFile(join(root, "scripts/provision-client-runtime-alerts.mjs"), "utf8");
@@ -70,12 +74,15 @@ expect(lifecycleScript.includes('"client_runtime_records"'), "lifecycle export/r
 expect(lifecycleScript.includes("SUPABASE_SERVICE_ROLE_KEY") && lifecycleScript.includes("required for export/offboard"), "lifecycle export must require the service role key");
 expect(lifecycleScript.includes("confirm-restore") && lifecycleScript.includes("artifact metadata; pass --objects"), "lifecycle restore must require explicit confirmation and matching objects for artifact metadata");
 expect(promotion.includes("Source inbox secret must be inside the client namespace") && promotion.includes("Target secret must be a provider secret"), "credential promotion must enforce client-namespaced source and target secrets");
+expect(credentialsRoute.includes("item.submitAllowed") && credentialSubmissionRoute.includes("clientCredentialSubmissionEnabled") && credentialSubmissionRoute.includes("option.submitAllowed"), "credential intake must be available before provider activation but limited to catalogued secrets");
+expect(provisioner.includes("credentialInboxSecret") && provisioner.includes("requestInboxSecret") && provisioner.includes("CLIENT_CREDENTIAL_INBOX_SECRET"), "GCP provisioning must normalize inbox secret names into the client namespace");
 expect(workerProvisioner.includes("worker_token_hash") && workerProvisioner.includes("base64url") && workerProvisioner.includes("SUPABASE_SERVICE_ROLE_KEY"), "worker provisioning must rotate a random token and persist only its hash with operator credentials");
 expect(!workerProvisioner.includes("console.log(token") && !workerProvisioner.includes("console.log(hash"), "worker provisioning must never print the token or hash");
 expect(provisioner.includes("immutableRuntimeKeys") && provisioner.includes("cannot override the derived client isolation value"), "GCP provisioning must protect derived tenant isolation values");
+expect(provisioner.includes("storage.namespace must equal clientSlug") && provisioner.includes("CLIENT_STORAGE_NAMESPACE: slug"), "GCP provisioning must keep storage and tenant namespaces identical");
 expect(provisioner.includes("SUPABASE_SERVICE_ROLE_KEY") && provisioner.includes("Operator-only secret cannot be placed"), "GCP provisioning must reject operator-only secret slots");
 expect(inputSafety.includes("SECRET_LIKE") && inputSafety.includes("containsClientSecretLike"), "client input safety helper must reject secret-like text");
-for (const provider of ["anthropic", "codex", "openclaw", "hermes", "kimi", "glm-code", "grok", "antigravity", "freeclaude", "fusion", "sakana"]) {
+for (const provider of ["anthropic", "codex", "openrouter", "openclaw", "hermes", "kimi", "glm", "glm-code", "grok", "antigravity", "freeclaude", "fusion", "sakana"]) {
   const marker = provider.includes("-") ? `"${provider}"` : `${provider}:`;
   expect(providerAdapter.includes(marker), `provider adapter must explicitly register ${provider}`);
 }
@@ -86,6 +93,12 @@ expect(cloudTasks.includes("CLIENT_RUNTIME_BASE_URL") && cloudTasks.includes("ba
 expect(cloudTasks.includes("randomUUID") && cloudTasks.includes("const taskName") && cloudTasks.includes("${identifier}-${randomUUID()}"), "Cloud Tasks retries must use unique dispatch names");
 expect(provisioner.includes("secretVersionAdder") && provisioner.includes("CLIENT_CREDENTIAL_INBOX_SECRET"), "GCP provisioner must grant inbox version-write access explicitly");
 expect(workerRoute.includes("runtime.provider_failed") && alerts.includes("runtime_budget_denied") && alerts.includes("runtime_provider_failed"), "runtime must emit and provision redacted provider and budget alerts");
+expect(workerRoute.includes('provider: "elevenlabs"'), "speech failures must identify the speech provider in redacted logs");
+expect(providerAdapter.includes("AbortSignal.timeout") && providerAdapter.includes("2_000_000"), "provider adapters must bound request time and response size");
+expect(mediaAdapter.includes("runClientSpeechAdapter") && mediaAdapter.includes("runClientHeyGenAdapter") && mediaAdapter.includes("runClientMusicAdapter"), "media adapters must cover speech, video, and music contracts");
+expect(seoAdapter.includes("safePublicUrl") && seoAdapter.includes("isPrivateAddress"), "SEO adapter must enforce public host and private-address blocking");
+expect(deliveryAdapter.includes("approved-webhook") && deliveryAdapter.includes("safeDeliveryUrl"), "delivery adapter must require an allowlisted approved webhook");
+expect(hostedSql.includes("p_namespace <> p_tenant_slug"), "artifact RPC must enforce the tenant storage namespace");
 for (const surface of ["opendesign", "web-studio", "flow-lab", "openmontage", "games", "thumbnails", "integrations", "leads", "radar", "guide"]) {
   expect(shell.includes(`"/${surface}"`), `client shell must route ${surface}`);
   expect(briefWorkspace.includes(`${surface}:`) || briefWorkspace.includes(`"${surface}"`), `brief workspace must define ${surface}`);

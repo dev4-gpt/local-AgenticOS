@@ -94,7 +94,7 @@ async function processMediaJob(jobId: string, tenantSlug: string, workerToken: s
 
   const result = await runClientSpeechAdapter({ text, voiceId: typeof input.voiceId === "string" ? input.voiceId : undefined });
   if (!result.ok) {
-    logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: "suno", status: result.status, reason: result.error });
+    logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: "elevenlabs", status: result.status, reason: result.error });
     if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
     return NextResponse.json({ ok: true, status: "failed" });

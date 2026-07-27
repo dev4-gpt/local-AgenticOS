@@ -54,6 +54,11 @@ export function clientProviderCallsEnabled() {
   return process.env.CLIENT_PROVIDER_CALLS_ENABLED === "1";
 }
 
+export function clientCredentialSubmissionEnabled() {
+  return Boolean(process.env.CLIENT_CREDENTIAL_INBOX_SECRET?.trim())
+    && (clientEdition() || process.env.CLIENT_CREDENTIAL_SUBMISSIONS_ENABLED === "1");
+}
+
 export function clientAuthEnforced() {
   return process.env.CLIENT_RUNTIME_ENFORCE_AUTH === "1";
 }

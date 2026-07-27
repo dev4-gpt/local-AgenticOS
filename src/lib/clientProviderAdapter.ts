@@ -126,9 +126,10 @@ async function callOpenAiCompatible(spec: ProviderSpec, key: string, model: stri
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: 0.2 }),
     cache: "no-store",
+    signal: providerAbortSignal(),
   }).catch(() => null);
   if (!response?.ok) return { ok: false as const, status: response?.status ?? 503, output: "" };
-  const data = await response.json().catch(() => null) as { choices?: Array<{ message?: { content?: unknown } }> } | null;
+  const data = await responseJson(response) as { choices?: Array<{ message?: { content?: unknown } }> } | null;
   const output = data?.choices?.[0]?.message?.content;
   return typeof output === "string" ? { ok: true as const, status: 200, output } : { ok: false as const, status: 502, output: "" };
 }
@@ -140,9 +141,10 @@ async function callAnthropic(spec: ProviderSpec, key: string, model: string, mes
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
     body: JSON.stringify({ model, system: system || undefined, messages: messages.filter((item) => item.role !== "system"), max_tokens: maxTokens }),
     cache: "no-store",
+    signal: providerAbortSignal(),
   }).catch(() => null);
   if (!response?.ok) return { ok: false as const, status: response?.status ?? 503, output: "" };
-  const data = await response.json().catch(() => null) as { content?: Array<{ type?: string; text?: unknown }> } | null;
+  const data = await responseJson(response) as { content?: Array<{ type?: string; text?: unknown }> } | null;
   const output = data?.content?.find((item) => item.type === "text")?.text;
   return typeof output === "string" ? { ok: true as const, status: 200, output } : { ok: false as const, status: 502, output: "" };
 }
@@ -154,9 +156,22 @@ async function callGemini(spec: ProviderSpec, key: string, model: string, messag
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
     body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: maxTokens, temperature: 0.2 } }),
     cache: "no-store",
+    signal: providerAbortSignal(),
   }).catch(() => null);
   if (!response?.ok) return { ok: false as const, status: response?.status ?? 503, output: "" };
-  const data = await response.json().catch(() => null) as { candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }> } | null;
+  const data = await responseJson(response) as { candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }> } | null;
   const output = data?.candidates?.[0]?.content?.parts?.map((part) => typeof part.text === "string" ? part.text : "").join("");
   return output ? { ok: true as const, status: 200, output } : { ok: false as const, status: 502, output: "" };
+}
+
+function providerAbortSignal() {
+  const configured = Number(process.env.CLIENT_PROVIDER_TIMEOUT_MS ?? 90_000);
+  const timeout = Number.isFinite(configured) ? Math.min(120_000, Math.max(5_000, configured)) : 90_000;
+  return AbortSignal.timeout(timeout);
+}
+
+async function responseJson(response: Response) {
+  const body = await response.text().catch(() => "");
+  if (!body || body.length > 2_000_000) return null;
+  try { return JSON.parse(body); } catch { return null; }
 }

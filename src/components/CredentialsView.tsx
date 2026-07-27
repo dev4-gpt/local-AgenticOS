@@ -40,7 +40,7 @@ export default function CredentialsView() {
   const [formNotice, setFormNotice] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const credentialOptions = status?.credentialOptions?.length ? status.credentialOptions : CLIENT_CREDENTIAL_OPTIONS;
+  const credentialOptions = (status?.credentialOptions?.length ? status.credentialOptions : CLIENT_CREDENTIAL_OPTIONS).filter((option) => option.submitAllowed);
 
   async function load() {
     try {
