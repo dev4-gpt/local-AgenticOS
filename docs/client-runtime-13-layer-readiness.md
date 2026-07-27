@@ -1,13 +1,13 @@
 # Client Runtime 13-Layer Readiness
 
 Updated 2026-07-27 after reviewing the public intake deployment, the local
-operator runtime, Cloud Run client image `v30`, and the hosted adapter slice.
+operator runtime, Cloud Run client image `v33`, and the hosted adapter slice.
 The repository now contains a tenant-scoped records migration, explicit API
 provider aliases, queue-only client text execution, hosted Local/Engine
 replacement routes, tenant-safe brief workspaces, provider/model allowlists,
 and queued workflow dispatch with durable audit state on failed submission. The
-v30 image is deployed and passes the unauthenticated boundary checks. Revision
-`veloce-cloud-test-00033-n6p` has the worker flag, Secret Manager token
+v33 image is deployed and passes the unauthenticated boundary checks. Revision
+`veloce-cloud-test-00037-wdh` has the worker flag, Secret Manager token
 binding, and artifact capability enabled; provider calls remain disabled. The
 worker now settles successful text reservations against normalized provider
 usage when pricing is configured, settles fixed media/SEO estimates after
@@ -29,7 +29,7 @@ The current state is:
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
-| Cloud Run client shell | Live as image `v30`; worker binding and artifacts are enabled, provider calls remain disabled, and authenticated job/artifact evidence is pending | Controlled test only |
+| Cloud Run client shell | Live as image `v33`; worker binding and artifacts are enabled, provider calls remain disabled, request correlation is active, and authenticated job/artifact evidence is pending | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |
 | Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
 
@@ -110,7 +110,7 @@ retention. Same codebase does not mean same permissions.
 | 9 | Rate limiting | **Public intake ready; durable runtime limiter and four redacted client alert policies provisioned** | Verify 429 behavior for request, credential, provider, artifact, workflow, and job routes, and attach an operator notification channel. Rerun alert provisioning with the channel so existing policies are updated. |
 | 10 | Caching and CDN | **Partial with private artifact controls** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Private runtime responses use no-store and artifacts use expiring signed URLs; add provider-result caching only where safe. |
 | 11 | Load balancing and scaling | **Partial** | Cloud Run scales to zero and the test is capped at one instance. Queue-backed work is implemented; add concurrency/load tests, per-client quotas, and scaling rules for production workloads. |
-| 12 | Error tracking and logs | **Redacted runtime events, provider failure codes, and alert provisioner implemented; evidence pending** | Safe audit metadata and structured rate/budget/delivery events are supported. Add request IDs, provider failure classification, alert delivery, and a retention policy. |
+| 12 | Error tracking and logs | **Redacted runtime events, request IDs, provider failure classes, and alert provisioner implemented; evidence pending** | Safe audit metadata and structured rate/budget/delivery events are supported. Attach a notification channel, verify alert delivery, and document log retention. |
 | 13 | Availability and recovery | **Lifecycle CLI implemented with credential-safe exports and explicit destructive confirmations; recovery evidence pending** | Revision rollback and operator export/restore/offboarding commands exist, including object restore and explicit queue deletion. Run them against a disposable second tenant, verify object/secret deletion, rotate a new worker token after restore, and document secret recovery and incident response. |
 
 ## Private operator dependency inventory
@@ -192,7 +192,7 @@ true:
   without creating a request.
 - [x] Production dependency audit passes with
   `npm audit --omit=dev --audit-level=high`.
-- [x] Cloud Run v30 is deployed and passes the current client-runtime
+- [x] Cloud Run v33 is deployed and passes the current client-runtime
   verification script with security headers enabled.
 - [ ] Rerun authenticated client tests for queued jobs, artifacts, and delivery
   after the Supabase membership and worker-token gates are exercised end to end.

@@ -37,6 +37,7 @@ export async function POST(request: Request) {
   if (!user) return error("not_authenticated", 401);
   if (!(await consumeClientRuntimeRateLimit("workflow-write", 30, 900))) return error("runtime_rate_limited", 429);
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const requestId = safeRequestId(request.headers.get("x-request-id"));
   const surface = typeof body.surface === "string" ? body.surface.trim().toLowerCase() : "orchestrate";
   const operation = typeof body.operation === "string" ? body.operation.trim().toLowerCase() : "plan";
   const title = typeof body.title === "string" ? body.title.trim().slice(0, 240) : "";
@@ -59,13 +60,13 @@ export async function POST(request: Request) {
   if (!stored.ok) return error("workflow_write_failed", 502);
   if (operation === "dispatch") {
     if (!clientProviderCallsEnabled()) {
-      await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "approval_required" });
+      await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "approval_required", requestId });
       return error("provider_calls_require_approval", 403);
     }
     const provider = process.env.CLIENT_WORKFLOW_PROVIDER?.trim().toLowerCase() || "openrouter";
     const policy = clientProviderRequestAllowed(provider, process.env.CLIENT_WORKFLOW_MODEL);
     if (!policy.ok) {
-      await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", errorCode: policy.error });
+      await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", errorCode: policy.error, requestId });
       return error(policy.error, policy.status);
     }
     const prompt = `Execute the approved tenant workflow. Surface: ${surface}. Title: ${title}. Goal and constraints:\n${goal}`.slice(0, 20_000);
@@ -77,16 +78,16 @@ export async function POST(request: Request) {
       inputMetadata: { prompt, history: [], workflowId, surface, steps },
     });
     if (!jobId) {
-      await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", errorCode: "workflow_job_store_failed" });
+      await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", errorCode: "workflow_job_store_failed", requestId });
       return error("workflow_job_store_failed", 502);
     }
     const task = await enqueueClientRuntimeTask({ jobId, tenantSlug });
     if (!task.ok) {
       await cancelClientRuntimeJob(jobId, task.error ?? "task_enqueue_failed");
-      await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", jobId, errorCode: task.error ?? "task_enqueue_failed" });
+      await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", jobId, errorCode: task.error ?? "task_enqueue_failed", requestId });
       return error(task.error ?? "task_enqueue_failed", task.status >= 500 ? 503 : task.status);
     }
-    await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "queued", jobId, provider: policy.provider, model: policy.model });
+    await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "queued", jobId, provider: policy.provider, model: policy.model, requestId });
     await recordClientAudit("workflow.dispatched", { surface, provider: policy.provider });
     return NextResponse.json({ ok: true, workflowId, jobId, status: "queued" }, { status: 202, headers: { "cache-control": "private, no-store" } });
   }
@@ -96,17 +97,17 @@ export async function POST(request: Request) {
     inputMetadata: { workflowId, surface, operation, title, goal, steps },
   });
   if (!jobId) {
-    await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", errorCode: "workflow_job_store_failed" });
+    await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", errorCode: "workflow_job_store_failed", requestId });
     return error("workflow_job_store_failed", 502);
   }
   const task = await enqueueClientRuntimeTask({ jobId, tenantSlug });
   if (!task.ok) {
     const taskError = task.error ?? "task_enqueue_failed";
     await cancelClientRuntimeJob(jobId, taskError);
-    await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", jobId, errorCode: taskError });
+    await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", jobId, errorCode: taskError, requestId });
     return error(taskError, task.status >= 500 ? 503 : task.status);
   }
-  await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "queued", jobId, adapter: "tenant-workflow-runner", mode: "deterministic-free" });
+  await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "queued", jobId, adapter: "tenant-workflow-runner", mode: "deterministic-free", requestId });
   await recordClientAudit("workflow.queued", { surface, operation });
   return NextResponse.json({ ok: true, workflowId, jobId, status: "queued" }, { status: 202, headers: { "cache-control": "private, no-store" } });
 }
@@ -123,6 +124,7 @@ export async function PATCH(request: Request) {
   if (!user) return error("not_authenticated", 401);
   if (!(await consumeClientRuntimeRateLimit("workflow-write", 30, 900))) return error("runtime_rate_limited", 429);
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const requestId = safeRequestId(request.headers.get("x-request-id"));
   const id = typeof body.id === "string" ? body.id.trim() : "";
   const action = typeof body.action === "string" ? body.action.trim().toLowerCase() : null;
   const status = typeof body.status === "string" ? body.status.trim().toLowerCase() : null;
@@ -152,10 +154,10 @@ export async function PATCH(request: Request) {
     if (!task.ok) {
       const taskError = task.error ?? "task_enqueue_failed";
       await cancelClientRuntimeJob(jobId, taskError);
-      await updateExecution(id, tenantSlug, user.id, currentMetadata, { status: "failed", jobId, adapter: "tenant-workflow-runner", mode: "deterministic-free", errorCode: taskError });
+      await updateExecution(id, tenantSlug, user.id, currentMetadata, { status: "failed", jobId, adapter: "tenant-workflow-runner", mode: "deterministic-free", errorCode: taskError, requestId });
       return error(taskError, task.status >= 500 ? 503 : task.status);
     }
-    await updateExecution(id, tenantSlug, user.id, currentMetadata, { status: "queued", jobId, adapter: "tenant-workflow-runner", mode: "deterministic-free" });
+    await updateExecution(id, tenantSlug, user.id, currentMetadata, { status: "queued", jobId, adapter: "tenant-workflow-runner", mode: "deterministic-free", requestId });
     await recordClientAudit("workflow.retried", { surface: workflowSurface, operation: workflowOperation });
     return NextResponse.json({ ok: true, workflowId: id, jobId, status: "queued" }, { status: 202, headers: { "cache-control": "private, no-store" } });
   }
@@ -197,4 +199,9 @@ function error(code: string, status: number) {
       ...(code === "runtime_rate_limited" ? { "Retry-After": "900" } : {}),
     },
   });
+}
+
+function safeRequestId(value: string | null) {
+  const candidate = value?.trim() ?? "";
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate) ? candidate : undefined;
 }

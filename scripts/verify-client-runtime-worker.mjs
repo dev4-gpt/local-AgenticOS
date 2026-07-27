@@ -35,6 +35,8 @@ const deliveryAdapter = await readFile(join(root, "src/lib/clientDeliveryAdapter
 const runtimePolicy = await readFile(join(root, "src/lib/clientRuntimePolicy.ts"), "utf8");
 const cloudTasks = await readFile(join(root, "src/lib/cloudTasks.ts"), "utf8");
 const alerts = await readFile(join(root, "scripts/provision-client-runtime-alerts.mjs"), "utf8");
+const middleware = await readFile(join(root, "src/middleware.ts"), "utf8");
+const observability = await readFile(join(root, "src/lib/clientRuntimeObservability.ts"), "utf8");
 const shell = await readFile(join(root, "src/components/Shell.tsx"), "utf8");
 const briefWorkspace = await readFile(join(root, "src/components/ClientBriefWorkspace.tsx"), "utf8");
 const workflowRunner = await readFile(join(root, "src/lib/clientWorkflowRunner.ts"), "utf8");
@@ -120,6 +122,8 @@ expect(workerRoute.includes("provider_retryable") && workerRoute.includes("retry
 expect(workerRoute.includes("safeClientProviderOutput") && providerAdapter.includes("Provider output withheld"), "provider output must be bounded and withheld when it matches secret-like content");
 expect(providerAdapter.includes("prompt_tokens") && providerAdapter.includes("input_tokens") && providerAdapter.includes("promptTokenCount"), "provider adapters must normalize OpenAI-compatible, Anthropic, and Gemini usage");
 expect(alerts.includes('mimeType: "text/markdown"') && alerts.includes("undefined, metricName"), "runtime alert policies must include valid documentation MIME metadata and idempotent metric checks");
+expect(middleware.includes("x-request-id") && middleware.includes("crypto.randomUUID") && middleware.includes("response.headers.set(\"x-request-id\""), "client responses must carry generated request correlation IDs");
+expect(observability.includes("SAFE_ID") && observability.includes("SAFE_CODE") && observability.includes("classifyClientRuntimeFailure") && observability.includes("provider_rate_limited"), "runtime observability must strictly redact values and classify provider failures");
 expect(alerts.includes('"monitoring", "policies", "update"') && alerts.includes("add-notification-channels"), "rerunning alert provisioning with a channel must attach it to existing policies");
 expect(workerRoute.includes('provider: "elevenlabs"'), "speech failures must identify the speech provider in redacted logs");
 expect(providerAdapter.includes("AbortSignal.timeout") && providerAdapter.includes("2_000_000"), "provider adapters must bound request time and response size");
