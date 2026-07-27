@@ -12,9 +12,12 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/client-runtime/credential-submissions",
   "/api/client-runtime/requests",
   "/api/client-runtime/artifacts",
+  "/api/client-runtime/hosted-jobs",
+  "/api/client-runtime/delivery",
   "/api/client-runtime/provider-chat",
   "/api/client-runtime/jobs",
   "/api/internal/client-runtime/jobs",
+  "/api/internal/client-runtime/delivery",
   "/api/client-auth/session",
 ];
 
@@ -24,18 +27,26 @@ function configuredList(name: string, fallback: string[]) {
   return raw.split(",").map((value) => value.trim()).filter(Boolean);
 }
 
+function clientEdition() {
+  return process.env.VELOCE_CLIENT_EDITION === "1";
+}
+
 export function clientConfiguredList(name: string) {
   return configuredList(name, []);
 }
 
 export function clientCapabilityEnabled(id: string) {
   const configured = clientConfiguredList("CLIENT_ENABLED_CAPABILITIES");
-  return configured.length === 0 || configured.includes(id);
+  // A client image must never become permissive because provisioning omitted
+  // the manifest. Operator development keeps the historical open default.
+  return clientEdition() ? configured.includes(id) : configured.length === 0 || configured.includes(id);
 }
 
 export function clientProviderEnabled(key: string) {
   const configured = clientConfiguredList("CLIENT_PROVIDER_ALLOWLIST");
-  return configured.length === 0 || configured.includes(key);
+  // Provider access is an explicit per-client approval, never an implicit
+  // consequence of an empty environment variable.
+  return clientEdition() ? configured.includes(key) : configured.length === 0 || configured.includes(key);
 }
 
 export function clientProviderCallsEnabled() {

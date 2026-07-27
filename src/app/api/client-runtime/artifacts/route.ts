@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { currentClientUser } from "@/lib/clientAuth";
+import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { consumeClientRuntimeRateLimit, insertClientRecord } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientGcpAccessToken, clientServiceAccountEmail, clientStorageConfig, safeClientFileName, signedClientStorageUrl } from "@/lib/clientStorage";
@@ -17,6 +17,7 @@ const ALLOWED_TYPES = new Set([
 export async function POST(request: Request) {
   const user = await currentClientUser();
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+  if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!clientCapabilityEnabled("artifacts")) return NextResponse.json({ ok: false, error: "capability_not_enabled" }, { status: 403 });
   if (!(await consumeClientRuntimeRateLimit("artifact-uploads", 10, 900))) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
 

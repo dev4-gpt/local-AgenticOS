@@ -7,6 +7,7 @@ import Sidebar, { MobileNav } from "./Sidebar";
 import TopBar from "./TopBar";
 import ClientCapabilityGate from "./ClientCapabilityGate";
 import ClientProviderWorkspace from "./ClientProviderWorkspace";
+import ClientHostedWorkspace from "./ClientHostedWorkspace";
 
 const ROUTE_LENS: Array<[string[], string]> = [
   [["/context", "/memory", "/notebook", "/goals", "/journal"], "context"],
@@ -24,16 +25,28 @@ const CLIENT_SURFACE_ROUTES = new Set(["/", "/context", "/orchestrate", "/create
 const CLIENT_PROVIDER_ROUTES: Record<string, { provider: string; title: string }> = {
   "/claude": { provider: "anthropic", title: "Claude" },
   "/codex": { provider: "openai", title: "Codex" },
-  "/openclaw": { provider: "openrouter", title: "OpenClaw" },
-  "/hermes": { provider: "openrouter", title: "Hermes" },
+  "/openclaw": { provider: "openclaw", title: "OpenClaw" },
+  "/hermes": { provider: "hermes", title: "Hermes" },
   "/antigravity": { provider: "gemini", title: "Antigravity" },
-  "/kimi": { provider: "moonshot", title: "Kimi Code" },
+  "/kimi": { provider: "kimi", title: "Kimi Code" },
   "/glm": { provider: "glm", title: "GLM" },
-  "/glm-code": { provider: "glm", title: "GLM Code" },
+  "/glm-code": { provider: "glm-code", title: "GLM Code" },
   "/grok": { provider: "xai", title: "Grok" },
-  "/freeclaude": { provider: "openrouter", title: "Free Claude Code" },
-  "/fusion": { provider: "openrouter", title: "Fusion" },
+  "/freeclaude": { provider: "freeclaude", title: "Free Claude Code" },
+  "/fusion": { provider: "fusion", title: "Fusion" },
   "/sakana": { provider: "sakana", title: "Sakana" },
+};
+const CLIENT_HOSTED_ROUTES: Record<string, { kind: "orchestration" | "media" | "seo"; title: string; provider?: "elevenlabs" | "heygen" }> = {
+  "/paperclip": { kind: "orchestration", title: "Paperclip workflow" },
+  "/room": { kind: "orchestration", title: "AI Agent Mastermind" },
+  "/pipeline": { kind: "orchestration", title: "Pipeline" },
+  "/agent-kanban": { kind: "orchestration", title: "Agent Kanban" },
+  "/kanban": { kind: "orchestration", title: "Kanban" },
+  "/loop": { kind: "orchestration", title: "Loop" },
+  "/ruflo": { kind: "orchestration", title: "Ruflo" },
+  "/music": { kind: "media", title: "Hosted Audio" },
+  "/video": { kind: "media", title: "Hosted Video", provider: "heygen" },
+  "/seo": { kind: "seo", title: "SEO Research" },
 };
 
 export default function Shell({ children, clientEdition = false }: { children: ReactNode; clientEdition?: boolean }) {
@@ -44,6 +57,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
   const lens = lensFor(pathname);
   const gatedClientRoute = clientEdition && !CLIENT_SURFACE_ROUTES.has(pathname);
   const providerWorkspace = clientEdition ? CLIENT_PROVIDER_ROUTES[pathname] : null;
+  const hostedWorkspace = clientEdition ? CLIENT_HOSTED_ROUTES[pathname] : null;
 
   return (
     <div className={`workspace-shell workspace-shell--${lens}`} data-lens={lens}>
@@ -63,7 +77,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
             className={isHome ? "min-h-full w-full" : "workspace-shell__page max-w-[1500px] mx-auto px-5 md:px-10 py-7 md:py-9"}
           >
             {!isHome && <TopBar />}
-            {providerWorkspace ? <ClientProviderWorkspace {...providerWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
+            {providerWorkspace ? <ClientProviderWorkspace {...providerWorkspace} /> : hostedWorkspace ? <ClientHostedWorkspace {...hostedWorkspace} pathname={pathname} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
           </motion.div>
         </main>
       </div>

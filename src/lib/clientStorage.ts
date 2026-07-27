@@ -87,6 +87,22 @@ export async function clientStorageObjectMetadata(bucket: string, objectKey: str
   return Number.isFinite(size) && size >= 0 && typeof data?.contentType === "string" ? { size, contentType: data.contentType } : null;
 }
 
+export async function uploadClientStorageObject(input: {
+  bucket: string;
+  objectKey: string;
+  contentType: string;
+  bytes: Buffer;
+  token: string;
+}) {
+  const response = await fetch(`https://storage.googleapis.com/upload/storage/v1/b/${encodeURIComponent(input.bucket)}/o?uploadType=media&name=${encodeURIComponent(input.objectKey)}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${input.token}`, "Content-Type": input.contentType },
+    body: new Uint8Array(input.bytes) as unknown as BodyInit,
+    cache: "no-store",
+  }).catch(() => null);
+  return Boolean(response?.ok);
+}
+
 async function metadataText(path: string) {
   const response = await fetch(`${METADATA_ROOT}/${path}`, { headers: { "Metadata-Flavor": "Google" }, cache: "no-store" }).catch(() => null);
   return response?.ok ? response.text() : null;

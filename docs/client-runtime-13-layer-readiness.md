@@ -1,7 +1,8 @@
 # Client Runtime 13-Layer Readiness
 
 Updated 2026-07-27 after reviewing the public intake deployment, the local
-operator runtime, and Cloud Run client image `v11`.
+operator runtime, Cloud Run client image `v11`, and the next un-deployed hosted
+adapter slice.
 
 ## Executive answer
 
@@ -15,7 +16,7 @@ The current state is:
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
-| Cloud Run client shell | Live as image `v11`, Supabase data mode and session refresh enabled | Controlled test only |
+| Cloud Run client shell | Live as historical image `v11`; current auth, hosted-adapter, and worker changes are not deployed yet | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |
 | Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
 
@@ -86,17 +87,17 @@ retention. Same codebase does not mean same permissions.
 | # | Layer | Current state | What remains before external client readiness |
 |---:|---|---|---|
 | 1 | Frontend foundations | **Ready for public pages and the client shell; partial parity with 3939** | Replace gated placeholders only after the underlying adapter is ready; finish responsive/error-state review per enabled capability. |
-| 2 | APIs and backend logic | **Control-plane, API-only text adapter, and approval switch implemented; feature adapters partial** | Intake, Auth, client requests, credential status, safe audit metadata, manifest validation, and a disabled API-only text adapter boundary exist. Feature APIs still include local/operator implementations and need cloud contracts. |
-| 3 | Database and storage | **Tenant-scoped artifact upload/verification/download lifecycle implemented; evidence pending** | Tenant, membership, request, audit, job, artifact, budget, lifecycle, and runtime-control tables are defined. Apply the lifecycle migration, configure Cloud Storage IAM, and complete an object export/deletion drill. |
+| 2 | APIs and backend logic | **Control-plane, API-only text, workflow, Firecrawl SEO, media, and approval-only delivery contracts implemented; feature parity partial** | The new hosted routes and delivery worker are manifest-gated and need current-image deployment evidence. HeyGen, Suno, image/video production, publishing destinations, and the remaining local workspaces still need separate adapters. |
+| 3 | Database and storage | **Tenant-scoped artifact upload/verification/download plus worker artifact creation implemented; evidence pending** | Apply the lifecycle and hosted-capability migrations, configure Cloud Storage IAM, and complete an object export/deletion drill. |
 | 4 | Auth and permissions | **Partial, test-ready** | Supabase Auth and middleware protect the client test. Add client membership, roles, session lifecycle, operator/admin separation, and explicit RBAC tests. |
 | 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
-| 6 | Cloud and compute | **Cloud Tasks/OIDC worker path implemented in code; deployment evidence pending** | Apply the controls migration, provision the per-client queue, set the worker token hash/secret, deploy, and verify bounded retries and long-job status. |
+| 6 | Cloud and compute | **Cloud Tasks/OIDC worker path, artifact worker, and delivery worker implemented in code; deployment evidence pending** | Apply the controls and current hosted-capability migrations, provision the per-client queue, set the worker token hash/secret, deploy, and verify bounded retries, artifact output, delivery completion, and job status. |
 | 7 | CI/CD and version control | **Improved; client promotion evidence pending** | GitHub release checks, manifest validation, and versioned images are in use. Add image digest promotion, deployment provenance, and automated rollback checks. |
-| 8 | Security and row-level security | **Schema, secret promotion checks, and boundary implemented; verification pending** | Secrets stay out of the browser, security headers are active, and the control-plane schema has RLS. Apply controls, review signing IAM, rotate secrets, and run cross-tenant tests. |
+| 8 | Security and row-level security | **Schema, explicit membership checks, secret promotion checks, and boundary implemented; verification pending** | Secrets stay out of the browser, security headers are active, and the control-plane schema has RLS. Apply all migrations, review signing IAM, rotate secrets, and run cross-tenant tests. |
 | 9 | Rate limiting | **Public intake ready; durable runtime limiter and redacted alert metric implemented** | Apply the client controls migration, provision the per-client Monitoring policy, and verify 429 behavior for request, credential, provider, artifact, and job routes. |
 | 10 | Caching and CDN | **Partial with private artifact controls** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Private runtime responses use no-store and artifacts use expiring signed URLs; add provider-result caching only where safe. |
 | 11 | Load balancing and scaling | **Partial** | Cloud Run scales to zero and the test is capped at one instance. Add queue-backed work, concurrency/load tests, per-client quotas, and scaling rules for production workloads. |
-| 12 | Error tracking and logs | **Redacted runtime events and alert provisioner implemented; evidence pending** | Safe audit metadata and structured rate/budget events are supported. Add request IDs, provider failure classification, alert delivery, and a retention policy. |
+| 12 | Error tracking and logs | **Redacted runtime events, provider failure codes, and alert provisioner implemented; evidence pending** | Safe audit metadata and structured rate/budget/delivery events are supported. Add request IDs, provider failure classification, alert delivery, and a retention policy. |
 | 13 | Availability and recovery | **Lifecycle CLI implemented; recovery evidence pending** | Revision rollback and operator export/restore/offboarding commands exist. Run them against a disposable second tenant, verify object/secret deletion, and document secret recovery and incident response. |
 
 ## Private operator dependency inventory
@@ -115,12 +116,12 @@ or a loopback service.
 | Grok Build | Local/provider-specific execution | xAI API adapter and outbound-action approval |
 | Free Claude Code | `fcc-server` at `127.0.0.1:8082` and local Claude CLI | Replace with an approved API-backed workflow; never publish port 8082 |
 | Local, Local Engine, Ollama | Laptop models, filesystem, and local process state | Optional per-client model service or approved hosted model API; Cloud Storage/Supabase for state |
-| Paperclip | Local service at `localhost:3100` and local company/workspace data | Isolated hosted Paperclip deployment or a Veloce workflow adapter with its own database and service account |
+| Paperclip | Local service at `localhost:3100` and local company/workspace data | A tenant workflow-planning adapter now exists behind `orchestration`; full hosted Paperclip parity still needs its own reviewed work-item contract |
 | Open Design, Web Studio, Flow Lab, Video, Music, Agent Studio, OpenMontage, Game Studio, Thumbnails | Local creative services, provider keys, or local output paths | One adapter per workspace; provider API, Cloud Storage outputs, signed access, budget, and approval |
-| Pipeline, Agent Kanban, Loop, Ruflo | Local files, local models/CLI, operator vault, or orchestration state | Supabase/Cloud Storage state plus Cloud Tasks/Pub/Sub worker and tenant-scoped audit records |
+| Pipeline, Agent Kanban, Loop, Ruflo, Agent Mastermind | Local files, local models/CLI, operator vault, or orchestration state | A tenant workflow-planning adapter now exists behind `orchestration`; full agent execution, durable work-item editing, and parity remain gated |
 | Memory, Notebook, Journal, Goals, Context intake | Client-safe intake pieces exist, but local-memory parity is not complete | Supabase tables, tenant RLS, object storage for attachments, retention/export/delete |
-| SEO, Integrations, Build Guide | Operator configuration, local credential paths, private source material, or redistribution risk | Client-safe contracts, provider APIs, secret references, licensed/original content, approval, and audit |
-| Delivery and external actions | Approval-shaped UI exists; execution and delivery adapters vary | Per-action provider adapter, human approval, idempotency, audit, and client-specific destination |
+| SEO, Integrations, Build Guide | Operator configuration, local credential paths, private source material, or redistribution risk | A Firecrawl read-only adapter now exists behind `seo-research`; integrations, licensed/original content, publishing, and full SEO workflows remain gated |
+| Delivery and external actions | Approval-shaped UI exists; execution and delivery adapters vary | An idempotent approval-only delivery action record now exists; destination execution, rollback, and client-specific adapters remain gated |
 
 The current Cloud Run gate is therefore expected behavior. It prevents a client
 from reaching code that would otherwise attempt to use the operator laptop.
@@ -255,11 +256,16 @@ switching a client manifest to `CLIENT_RUNTIME_DATA_MODE=supabase`.
 
 These are engineering work, not deployment switches:
 
-- Provider adapters for each model/media/service tab; the shared API-only text
-  adapter is implemented but not enabled in the test manifest. Personal CLI
-  sessions cannot become client capacity by adding environment variables.
+- Provider adapters for each model/media/service tab; API-only text, workflow,
+  Firecrawl read-only SEO, and ElevenLabs artifact adapters are implemented but
+  not enabled in the test manifest. HeyGen, Suno, image/video production,
+  destination publishing, and provider-specific tool contracts remain.
+  Personal CLI sessions cannot become client capacity by adding environment
+  variables.
 - Tenant-scoped runtime tables and object storage for memory, files, jobs, and
-  deliverables, or a documented single-tenant-only equivalent for each route.
+  deliverables, or a documented single-tenant-only equivalent for each route;
+  the current hosted-capability migration must be rerun in the cloud test and
+  verified against the eleven-function query.
 - Apply `supabase-client-runtime-controls.sql` and verify durable runtime
   throttles and budget reservations.
 - Use the redacted provider-secret promotion/rotation CLI after manual review;
@@ -272,7 +278,8 @@ These are engineering work, not deployment switches:
 - Cross-client isolation, backup/restore, export/deletion, and offboarding
   evidence using a second dry-run client manifest. The operator lifecycle CLI
   exists, but it has not yet been exercised against a disposable tenant.
-- Durable runtime rate limits and alerts beyond the public intake guard.
+- Durable runtime rate limits and alerts beyond the public intake guard, plus
+  deployment evidence for the new hosted branches and delivery worker.
 
 Until these are complete, “production ready” means the public front door and
 approved intake control plane, not unrestricted access to every local tab.

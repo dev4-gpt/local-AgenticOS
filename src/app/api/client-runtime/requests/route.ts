@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
-import { currentClientUser } from "@/lib/clientAuth";
+import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { consumeClientRuntimeRateLimit, insertClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
 
 export const runtime = "nodejs";
@@ -12,13 +12,11 @@ const REQUEST_TYPES = new Set(["command", "context", "orchestrate", "create", "d
 export async function POST(request: Request) {
   const user = await currentClientUser();
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+  if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
 
   if (!(await consumeClientRuntimeRateLimit("requests", 20, 900))) {
     return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
   }
-
-  const inboxSecret = (process.env.CLIENT_REQUEST_INBOX_SECRET || process.env.CLIENT_CREDENTIAL_INBOX_SECRET)?.trim();
-  if (!inboxSecret) return NextResponse.json({ ok: false, error: "request_inbox_not_configured" }, { status: 503 });
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const type = typeof body.type === "string" ? body.type.trim().toLowerCase() : "";
@@ -42,6 +40,9 @@ export async function POST(request: Request) {
     await recordClientAudit("request.submitted", { requestType: type });
     return NextResponse.json({ ok: true, requestType: type }, { headers: { "cache-control": "no-store" } });
   }
+
+  const inboxSecret = (process.env.CLIENT_REQUEST_INBOX_SECRET || process.env.CLIENT_CREDENTIAL_INBOX_SECRET)?.trim();
+  if (!inboxSecret) return NextResponse.json({ ok: false, error: "request_inbox_not_configured" }, { status: 503 });
 
   const projectId = await gcpProjectId();
   const token = await gcpAccessToken();

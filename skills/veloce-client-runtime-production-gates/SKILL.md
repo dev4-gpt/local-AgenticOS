@@ -11,8 +11,9 @@ reviewing whether a `3939` operator feature can be enabled in Cloud Run.
 ## Required order
 
 1. Apply the four core control-plane migrations in the GCP client runbook,
-   then apply the additive artifact lifecycle migration:
-   `product-experience/supabase-client-runtime-lifecycle.sql`.
+   then apply the additive artifact lifecycle and hosted-capability migrations:
+   `product-experience/supabase-client-runtime-lifecycle.sql` and
+   `product-experience/supabase-client-runtime-hosted-capabilities.sql`.
 2. Create the Auth user and run
    `product-experience/supabase-seed-veloce-cloud-test.sql` with the client's
    approved email and slug.
@@ -41,7 +42,9 @@ or raw secret in a manifest, image, browser response, or log.
 
 The shared client runtime includes an API-only text adapter boundary, a
 tenant-scoped job table, a Cloud Tasks submission path, and an OIDC-verified
-worker path. Keep these disabled until all of the following are true:
+worker path. It also contains explicitly gated workflow, Firecrawl SEO, and
+ElevenLabs artifact adapters. Keep each path disabled until all of the
+following are true:
 
 - The controls migration is applied and the tenant row has a worker-token hash.
 - The raw worker token exists only as the client-scoped Secret Manager secret.

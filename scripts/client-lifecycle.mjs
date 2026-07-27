@@ -17,6 +17,7 @@ const namespace = valueAfter("--namespace") || slug;
 const includeObjects = args.includes("--include-objects");
 const destroySecrets = args.includes("--destroy-secrets");
 const deleteService = args.includes("--delete-service");
+const deleteBucket = args.includes("--delete-bucket");
 
 if (!["export", "restore", "offboard"].includes(mode)) fail("--mode must be export, restore, or offboard");
 if (mode === "restore" && !inputPath) fail("--input is required for restore");
@@ -43,6 +44,7 @@ const tables = [
   "client_runtime_jobs",
   "client_runtime_artifacts",
   "client_runtime_budget_ledger",
+  "client_runtime_delivery_actions",
 ];
 
 if (mode === "export") {
@@ -81,6 +83,7 @@ if (!apply) {
 
 await supabasePatch("client_tenants", `slug=eq.${encodeURIComponent(slug)}`, { status: "offboarding", updated_at: new Date().toISOString() });
 if (bucketHasObjects()) runGcloud(["storage", "rm", "--recursive", `gs://${resolvedBucket}/${resolvedNamespace}/**`, "--quiet"]);
+if (deleteBucket) runGcloud(["storage", "buckets", "delete", `gs://${resolvedBucket}`, "--project", project, "--quiet"]);
 const secretNames = listSecretNames();
 for (const name of secretNames) runGcloud(["secrets", "delete", name, "--project", project, "--quiet"]);
 if (deleteService) runGcloud(["run", "services", "delete", serviceName, "--region", gcp.region || "asia-south1", "--project", project, "--quiet"]);
@@ -89,15 +92,18 @@ console.log(`Client offboarding completed: ${slug}`);
 
 async function exportSnapshot() {
   const result = { schemaVersion: 1, slug, exportedAt: new Date().toISOString(), tables: {} };
-  for (const table of tables) result.tables[table] = await supabaseSelect(table);
+  for (const table of tables) result.tables[table] = await supabaseSelect(table, table === "client_tenants" ? `slug=eq.${encodeURIComponent(slug)}` : `tenant_slug=eq.${encodeURIComponent(slug)}`);
   return result;
 }
 
 async function restoreSnapshot(snapshot) {
-  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_runtime_budget_ledger"];
+  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_runtime_budget_ledger", "client_runtime_delivery_actions"];
   for (const table of ordered) {
     const rows = Array.isArray(snapshot.tables[table]) ? snapshot.tables[table] : [];
-    if (rows.length) await supabaseInsert(table, rows);
+    if (!rows.length) continue;
+    const tenantRows = rows.filter((row) => table === "client_tenants" ? row.slug === slug : row.tenant_slug === slug);
+    if (tenantRows.length !== rows.length) fail(`Restore contains rows outside requested tenant: ${table}`);
+    await supabaseInsert(table, tenantRows);
   }
 }
 
@@ -111,8 +117,8 @@ async function writeSnapshot(snapshot, filePath) {
   await chmod(filePath, 0o600);
 }
 
-async function supabaseSelect(table) {
-  const response = await supabaseRequest(`${table}?tenant_slug=eq.${encodeURIComponent(slug)}&select=*`);
+async function supabaseSelect(table, filter) {
+  const response = await supabaseRequest(`${table}?${filter}&select=*`);
   if (!response.ok) fail(`Export failed for ${table} (${response.status})`);
   const data = await response.json();
   return Array.isArray(data) ? data : [];
@@ -143,6 +149,8 @@ async function supabaseRequest(pathname, options = {}) {
 }
 
 function exportObjects(destination) {
+  spawnSync("mkdir", ["-p", destination], { stdio: "ignore" });
+  spawnSync("chmod", ["700", destination], { stdio: "ignore" });
   runGcloud(["storage", "cp", "--recursive", `gs://${resolvedBucket}/${resolvedNamespace}`, destination]);
 }
 

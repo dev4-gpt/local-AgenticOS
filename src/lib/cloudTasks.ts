@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer";
 
 const METADATA_ROOT = "http://metadata.google.internal/computeMetadata/v1";
 
-export async function enqueueClientRuntimeTask(input: { jobId: string; tenantSlug: string }) {
+export async function enqueueClientRuntimeTask(input: { jobId?: string; actionId?: string; tenantSlug: string; delaySeconds?: number; path?: "jobs" | "delivery" }) {
   const project = process.env.GOOGLE_CLOUD_PROJECT?.trim() || process.env.GCLOUD_PROJECT?.trim();
   const region = process.env.CLIENT_RUNTIME_TASK_REGION?.trim();
   const queue = process.env.CLIENT_RUNTIME_TASK_QUEUE?.trim();
@@ -18,19 +18,24 @@ export async function enqueueClientRuntimeTask(input: { jobId: string; tenantSlu
 
   const token = await metadataAccessToken();
   if (!token) return { ok: false, status: 503, error: "gcp_identity_unavailable" };
-  const taskUrl = `${baseUrl}/api/internal/client-runtime/jobs`;
-  const taskName = `projects/${project}/locations/${region}/queues/${queue}/tasks/${input.jobId}`;
+  const identifier = input.jobId || input.actionId;
+  if (!identifier) return { ok: false, status: 400, error: "task_identifier_missing" };
+  const taskPath = input.path === "delivery" ? "delivery" : "jobs";
+  const taskUrl = `${baseUrl}/api/internal/client-runtime/${taskPath}`;
+  const taskName = `projects/${project}/locations/${region}/queues/${queue}/tasks/${identifier}`;
+  const payload = { tenantSlug: input.tenantSlug, ...(input.jobId ? { jobId: input.jobId } : {}), ...(input.actionId ? { actionId: input.actionId } : {}) };
   const response = await fetch(`https://cloudtasks.googleapis.com/v2/projects/${encodeURIComponent(project)}/locations/${encodeURIComponent(region)}/queues/${encodeURIComponent(queue)}/tasks`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       task: {
         name: taskName,
+        ...(input.delaySeconds && input.delaySeconds > 0 ? { scheduleTime: new Date(Date.now() + Math.min(input.delaySeconds, 300) * 1000).toISOString() } : {}),
         httpRequest: {
           httpMethod: "POST",
           url: taskUrl,
           headers: { "Content-Type": "application/json" },
-          body: Buffer.from(JSON.stringify({ jobId: input.jobId, tenantSlug: input.tenantSlug }), "utf8").toString("base64"),
+          body: Buffer.from(JSON.stringify(payload), "utf8").toString("base64"),
           oidcToken: { serviceAccountEmail: serviceAccount, audience: baseUrl },
         },
       },

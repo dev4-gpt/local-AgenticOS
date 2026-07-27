@@ -52,3 +52,39 @@ revoke all on function public.confirm_client_runtime_artifact_worker(text, uuid,
   from public, authenticated;
 grant execute on function public.confirm_client_runtime_artifact_worker(text, uuid, text, bigint, text)
   to anon;
+
+create or replace function public.confirm_client_runtime_artifact(
+  p_tenant_slug text,
+  p_artifact_id uuid,
+  p_byte_size bigint,
+  p_content_type text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.client_member(p_tenant_slug)
+     or p_byte_size < 1
+     or length(coalesce(p_content_type, '')) = 0 then
+    return false;
+  end if;
+
+  update public.client_runtime_artifacts
+    set status = 'ready',
+        byte_size = p_byte_size,
+        content_type = left(p_content_type, 180),
+        uploaded_at = now()
+  where id = p_artifact_id
+    and tenant_slug = p_tenant_slug
+    and status = 'pending';
+
+  return found;
+end;
+$$;
+
+revoke all on function public.confirm_client_runtime_artifact(text, uuid, bigint, text)
+  from public, anon;
+grant execute on function public.confirm_client_runtime_artifact(text, uuid, bigint, text)
+  to authenticated;

@@ -28,6 +28,26 @@ export const CAPABILITIES: Capability[] = [
     dataScope: "Client-owned files in the current tenant namespace.", actionBoundary: "Pending uploads are not downloadable; signed URLs expire and never expose storage credentials.",
   },
   {
+    id: "orchestration", name: "Tenant Workflow Board", kind: "skill", audience: "built-in", status: "reviewed", destination: "/orchestrate",
+    description: "Durable tenant-scoped workflow planning with explicit stages, ownership, audit, and human approval before external action.",
+    dataScope: "The current tenant's workflow request and generated plan.", actionBoundary: "Creates reviewable work state only; it cannot execute shell commands, local agents, or external actions.",
+  },
+  {
+    id: "media", name: "Tenant Media Adapter", kind: "skill", audience: "built-in", status: "reviewed", destination: "/music",
+    description: "Approved server-side media generation with a client provider key, budget reservation, and tenant-owned artifact output.",
+    dataScope: "Client-approved media prompts and generated artifacts.", actionBoundary: "Provider calls run in the queue worker; outputs are private artifacts and publishing remains approval-gated.",
+  },
+  {
+    id: "seo-research", name: "Tenant SEO Research", kind: "skill", audience: "built-in", status: "reviewed", destination: "/seo",
+    description: "Allowlisted read-only site research through a server-side Firecrawl adapter, with source URL and audit metadata retained.",
+    dataScope: "Public URLs explicitly allowlisted for the current tenant.", actionBoundary: "No localhost/private-network targets, credential forwarding, scraping bypass, or publishing.",
+  },
+  {
+    id: "delivery-actions", name: "Tenant Delivery Approval", kind: "skill", audience: "built-in", status: "reviewed", destination: "/deliver",
+    description: "Idempotent delivery requests that bind tenant artifacts to an approval record before any destination adapter runs.",
+    dataScope: "Selected tenant artifacts and a client-supplied destination request.", actionBoundary: "The hosted boundary records intent only; an operator must approve and execute a reviewed destination adapter.",
+  },
+  {
     id: "web-studio", name: "Veloce Web Studio", kind: "skill", audience: "built-in", status: "active", destination: "/web-studio",
     description: "Original conversion structure, responsive UI direction, controlled components, and implementation handoff.",
     dataScope: "Approved project brief and client-provided brand material.", actionBoundary: "Creates briefs and builds for human review; never publishes by itself.",

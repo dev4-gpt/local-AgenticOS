@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { currentClientUser } from "@/lib/clientAuth";
-import { selectClientRecords, workerRpc } from "@/lib/clientDataPlane";
+import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
+import { clientRpc, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientGcpAccessToken, clientStorageConfig, clientStorageObjectMetadata, safeClientObjectKey } from "@/lib/clientStorage";
 
@@ -12,13 +12,13 @@ const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentClientUser();
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+  if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!clientCapabilityEnabled("artifacts")) return NextResponse.json({ ok: false, error: "capability_not_enabled" }, { status: 403 });
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ ok: false, error: "invalid_artifact" }, { status: 400 });
   const config = clientStorageConfig();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
-  const workerToken = process.env.CLIENT_WORKER_TOKEN?.trim();
-  if (!config || !tenantSlug || !workerToken) return NextResponse.json({ ok: false, error: "storage_not_configured" }, { status: 503 });
+  if (!config || !tenantSlug) return NextResponse.json({ ok: false, error: "storage_not_configured" }, { status: 503 });
 
   const result = await selectClientRecords("client_runtime_artifacts", { id: `eq.${id}`, tenant_slug: `eq.${tenantSlug}`, limit: "1" });
   const artifact = result.records[0];
@@ -33,10 +33,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, error: "artifact_upload_not_verified" }, { status: 409 });
   }
 
-  const confirmed = await workerRpc("confirm_client_runtime_artifact_worker", {
+  const confirmed = await clientRpc("confirm_client_runtime_artifact", {
     p_tenant_slug: tenantSlug,
     p_artifact_id: id,
-    p_worker_token: workerToken,
     p_byte_size: metadata.size,
     p_content_type: metadata.contentType,
   });

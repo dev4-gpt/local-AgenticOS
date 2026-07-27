@@ -22,6 +22,19 @@ export async function insertClientRecord(table: string, record: Record<string, u
   return { ok: Boolean(response?.ok), status: response?.status ?? 503 };
 }
 
+export async function clientRpc(functionName: string, body: Record<string, unknown>) {
+  const config = supabaseAuthConfig();
+  const token = await currentClientAccessToken();
+  if (!config || !token) return { ok: false, status: 401, value: null as unknown };
+  const response = await fetch(`${config.url}/rest/v1/rpc/${functionName}`, {
+    method: "POST",
+    headers: { apikey: config.key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  }).catch(() => null);
+  return { ok: response?.ok === true, status: response?.status ?? 503, value: await response?.json().catch(() => null) };
+}
+
 export async function selectClientRecords(table: string, filters: Record<string, string>) {
   const config = supabaseAuthConfig();
   const token = await currentClientAccessToken();

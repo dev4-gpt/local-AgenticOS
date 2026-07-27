@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
-import { currentClientUser } from "@/lib/clientAuth";
+import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { clientCredentialOption } from "@/lib/clientCredentialCatalog";
 import { consumeClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
 
@@ -12,6 +12,7 @@ const METADATA_ROOT = "http://metadata.google.internal/computeMetadata/v1";
 export async function POST(request: Request) {
   const user = await currentClientUser();
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+  if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
 
   if (!(await consumeClientRuntimeRateLimit("credential-submissions", 5, 3600))) {
     return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });

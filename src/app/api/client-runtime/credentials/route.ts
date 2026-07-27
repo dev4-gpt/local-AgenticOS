@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { currentClientMember } from "@/lib/clientAuth";
 import { openRouterKey, providerEnvKey } from "@/lib/providerKeys";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { CLIENT_CREDENTIAL_OPTIONS } from "@/lib/clientCredentialCatalog";
@@ -7,6 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   const credentials = CLIENT_CREDENTIAL_OPTIONS.filter((item) => clientProviderEnabled(item.key)).map((item) => {
     const value = item.key === "OPENROUTER_API_KEY" ? openRouterKey() : providerEnvKey(item.key);
     return {

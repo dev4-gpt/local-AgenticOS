@@ -156,6 +156,7 @@ Supabase project:
 3. `product-experience/supabase-client-runtime-control-plane.sql`
 4. `product-experience/supabase-client-runtime-controls.sql`
 5. `product-experience/supabase-client-runtime-lifecycle.sql`
+6. `product-experience/supabase-client-runtime-hosted-capabilities.sql`
 
 Create the approved tenant and membership from the Supabase SQL editor or an
 operator-only migration job. Never accept membership creation from the
@@ -185,6 +186,62 @@ After the lifecycle migration, verify the artifact status columns and worker
 confirmation function before enabling the `artifacts` capability. Uploads are
 created as `pending`, checked against Cloud Storage metadata, and only then
 marked `ready`; downloads reject every other state.
+
+The hosted-capabilities migration is required before enabling the new hosted
+workflow, media, SEO, or delivery-action boundaries. It adds the worker-only
+artifact creation RPC and the approval-only delivery action table. It does not
+grant a client permission to publish, execute local tools, or read another
+tenant's artifacts.
+
+If an earlier copy of this migration was already applied, rerun the current
+repository copy. It is intentionally idempotent and upgrades the delivery
+action table with `error_code`, permits the `running` state, and removes the
+obsolete four-argument completion-function overload. Supabase may show a
+"Potential issue detected" warning because the migration drops policies and
+that old function signature; choose **Run query** only when you intend to
+apply this schema update. A successful run reports `Success. No rows returned`.
+
+For a read-only Supabase verification, open a new SQL Editor query and run:
+
+```sql
+select table_schema, table_name, column_name, data_type
+from information_schema.columns
+where table_schema = 'public'
+  and table_name = 'client_tenants'
+  and column_name = 'worker_token_hash';
+
+select n.nspname as schema_name,
+       p.proname as function_name,
+       pg_get_function_identity_arguments(p.oid) as arguments
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in (
+    'consume_client_runtime_rate_limit',
+    'enqueue_client_runtime_job',
+    'retry_client_runtime_job',
+    'cancel_client_runtime_job',
+    'reserve_client_runtime_budget_worker',
+    'confirm_client_runtime_artifact_worker',
+    'create_client_runtime_artifact_worker',
+    'checkpoint_client_runtime_job_worker',
+    'create_client_delivery_action',
+    'claim_client_delivery_action_worker',
+    'complete_client_delivery_action_worker'
+  )
+order by p.proname;
+```
+
+Run each SELECT separately in the Supabase SQL Editor so the result panel is
+not showing only the last statement. The first result should contain one row.
+The second should contain eleven function rows after all listed migrations are
+applied. The `complete_client_delivery_action_worker` row must show five
+identity arguments, including `p_error_code text`; an old four-argument row
+means the current hosted-capabilities migration has not been rerun. An empty
+result means
+the query was run in the wrong Supabase project or the migration stopped
+before completion; do not enable the worker or hosted capabilities in that
+case.
 
 ## Promote or rotate a provider credential
 
@@ -272,6 +329,30 @@ After deployment, submit a job through the authenticated client shell and poll
 `running` and then `succeeded` or `failed`, that a transient provider error can
 return to `queued`, and that the tenth attempt fails closed. The browser sees
 only the job record and output metadata; it never sees the worker token.
+
+## Approve and dispatch delivery
+
+Delivery actions are created as `pending_approval`. Only the operator may
+approve and enqueue them. The helper is a dry run unless `--apply` is present;
+`--enqueue` then creates a Cloud Tasks request using the worker service account.
+The destination must match the client manifest's HTTPS allowlist, and the
+adapter sends metadata and artifact identifiers only, never raw provider keys
+or private file contents.
+
+```bash
+npm run approve:client-delivery -- \
+  --project veloce-agenticos-2026 \
+  --slug veloce-cloud-test \
+  --action-id ACTION_UUID \
+  --service-url https://veloce-cloud-test-mquo4bf7aq-el.a.run.app \
+  --region asia-south1 \
+  --queue veloce-veloce-cloud-test \
+  --service-account veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com \
+  --apply --enqueue
+```
+
+Do not use this command until the current hosted-capabilities migration has
+been rerun and the eleven-function verification query passes.
 
 ## Build The Client Image
 
@@ -393,8 +474,13 @@ npm run client:lifecycle -- \
   --mode offboard \
   --slug veloce-cloud-test \
   --config .private-client-kits/veloce-cloud-test.gcp.json \
-  --apply --confirm-offboard --destroy-secrets
+  --apply --confirm-offboard --destroy-secrets --delete-bucket
 ```
+
+`--delete-bucket` is intentionally explicit. Use it only when the bucket is
+dedicated to that client and the export has been reviewed; otherwise the
+offboarding command removes the client namespace objects but leaves the empty
+bucket for an operator-controlled retention decision.
 
 Run export and restore in a disposable second tenant before using offboarding
 for a real client. Do not put the service-role key in a manifest, Vercel, Cloud

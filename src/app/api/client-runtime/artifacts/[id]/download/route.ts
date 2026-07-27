@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { currentClientUser } from "@/lib/clientAuth";
+import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { consumeClientRuntimeRateLimit, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 
@@ -12,6 +12,7 @@ const METADATA_ROOT = "http://metadata.google.internal/computeMetadata/v1";
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentClientUser();
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+  if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!clientCapabilityEnabled("artifacts")) return NextResponse.json({ ok: false, error: "capability_not_enabled" }, { status: 403 });
   if (!(await consumeClientRuntimeRateLimit("artifact-downloads", 40, 900))) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
 

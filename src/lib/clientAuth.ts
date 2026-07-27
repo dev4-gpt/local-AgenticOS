@@ -48,6 +48,21 @@ export async function currentClientAccessToken() {
   return jar.get(ACCESS_COOKIE)?.value ?? null;
 }
 
+export async function currentClientMember() {
+  const user = await currentClientUser();
+  const config = supabaseConfig();
+  const token = await currentClientAccessToken();
+  const tenantSlug = process.env.CLIENT_SLUG?.trim();
+  if (!user || !config || !token || !tenantSlug) return false;
+  const response = await fetch(`${config.url}/rest/v1/rpc/client_member`, {
+    method: "POST",
+    headers: { apikey: config.key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_tenant_slug: tenantSlug }),
+    cache: "no-store",
+  }).catch(() => null);
+  return response?.ok === true && (await response.json().catch(() => false)) === true;
+}
+
 export function authCookieNames() {
   return { access: ACCESS_COOKIE, refresh: REFRESH_COOKIE };
 }

@@ -29,16 +29,18 @@ expect(privateApi.status === 403, "operator API must return 403 in client mode")
 
 const statusResponse = await request("/api/client-runtime/credentials");
 const status = await statusResponse.json().catch(() => null);
-expect(statusResponse.status === 200, "client status endpoint must be reachable");
-expect(status?.mode?.clientEdition === true, "client status must identify client edition");
-expect(status?.mode?.localCliDisabled === true, "client status must disable local CLI");
-expect(status?.mode?.localFilesDisabled === true, "client status must disable local files");
-expect(status?.credentials?.every((item) => typeof item.connected === "boolean" && !("value" in item)), "status must expose booleans, never credential values");
+expect(statusResponse.status === 401, "client status endpoint must require login");
+expect(status?.error === "not_authenticated", "unauthenticated status must return a generic auth error");
 
 const capabilityResponse = await request("/api/capabilities");
 const capabilityData = await capabilityResponse.json().catch(() => null);
-expect(capabilityResponse.status === 200, "client capability endpoint must be reachable");
-expect(capabilityData?.capabilities?.every((item) => item.audience === "built-in" && !item.destination), "client capabilities must be client-ready and destination-free");
+expect(capabilityResponse.status === 401, "client capability endpoint must require login");
+expect(capabilityData?.error === "not_authenticated", "unauthenticated capabilities must return a generic auth error");
+
+for (const path of ["/api/client-runtime/hosted-jobs", "/api/client-runtime/delivery"]) {
+  const response = await request(path);
+  expect(response.status === 401, `${path} must require login`);
+}
 
 if (failures.length > 0) {
   console.error(`Client runtime verification failed for ${base}`);
