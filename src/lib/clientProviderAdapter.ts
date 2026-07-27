@@ -116,7 +116,9 @@ export function estimateClientTextCostMicros(model: string, messages: Message[],
   try { pricing = JSON.parse(process.env.CLIENT_MODEL_PRICING_JSON ?? "{}"); } catch { return null; }
   const rate = pricing[model];
   if (!rate || !Number.isFinite(rate.inputMicrosPer1k) || !Number.isFinite(rate.outputMicrosPer1k)) return null;
-  const inputTokens = Math.ceil(messages.reduce((total, item) => total + item.content.length, 0) / 4);
+  // Reserve against a character-level upper bound so settlement cannot exceed
+  // the worker reservation when a provider reports unusually dense token use.
+  const inputTokens = Math.max(1, messages.reduce((total, item) => total + item.content.length, 0));
   return Math.ceil((inputTokens / 1000) * rate.inputMicrosPer1k + (maxOutputTokens / 1000) * rate.outputMicrosPer1k);
 }
 

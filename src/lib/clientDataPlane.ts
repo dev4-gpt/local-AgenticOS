@@ -108,6 +108,15 @@ export async function consumeClientRuntimeRateLimit(bucket: string, limit: numbe
   return result.ok && result.allowed;
 }
 
+export async function refundClientRuntimeRateLimit(bucket: string, windowSeconds: number) {
+  const result = await clientRpc("refund_client_runtime_rate_limit", {
+    p_tenant_slug: process.env.CLIENT_SLUG?.trim() ?? "",
+    p_bucket: bucket,
+    p_window_seconds: windowSeconds,
+  });
+  return result.ok && result.value === true;
+}
+
 export async function reserveClientRuntimeBudget(provider: string, model: string | null, amountMicros: number, jobId?: string) {
   const config = supabaseAuthConfig();
   const token = await currentClientAccessToken();

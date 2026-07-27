@@ -76,6 +76,7 @@ expect(jobRoute.includes("enqueueClientRuntimeTask"), "client job route must enq
 expect(jobRoute.includes("cancelClientRuntimeJob"), "client job route must cancel orphaned queue rows");
 expect(jobRoute.includes("clientProviderRequestAllowed"), "client job route must enforce provider and model allowlists before enqueue");
 expect(workerRoute.includes("processMediaJob") && workerRoute.includes("processSeoJob") && workerRoute.includes("processOpenAiImageJob"), "worker must have hosted media, image, and SEO branches");
+expect(workerRoute.includes("usageFallback") && workerRoute.includes("actualAmountMicros: actualAmountMicros ?? estimate"), "worker must settle successful text reservations when provider usage is absent");
 expect(mediaAdapter.includes("runClientImageAdapter") && mediaAdapter.includes("OPENAI_IMAGE_ENDPOINT") && mediaAdapter.includes("isPng"), "image adapter must use the bounded server-side OpenAI image contract");
 expect(hostedJobsRoute.includes('"openai"') && hostedJobsRoute.includes('openai: "OPENAI_API_KEY"'), "hosted media jobs must expose the reviewed OpenAI image provider key only through the gated queue");
 expect(providerPolicy.includes('"OPENAI_API_KEY"') && providerPolicy.includes("media:"), "provider activation policy must require the OpenAI image secret for media capability activation");
@@ -90,12 +91,14 @@ for (const marker of ["SUPABASE_SERVICE_ROLE_KEY", "ANTHROPIC_API_KEY=", "OPENAI
 for (const marker of ["retry_client_runtime_job", "cancel_client_runtime_job", "reserve_client_runtime_budget_worker", "settle_client_runtime_budget_worker"]) {
   expect(controlsSql.includes(marker), `controls migration must contain ${marker}`);
 }
+expect(controlsSql.includes("refund_client_runtime_rate_limit") && controlsSql.includes("expected_key_hash"), "rate-limit refunds must be server-derived and tenant/user scoped");
 for (const marker of ["create_client_runtime_artifact_worker", "checkpoint_client_runtime_job_worker", "create_client_delivery_action", "claim_client_delivery_action_worker", "complete_client_delivery_action_worker", "p_error_code", "client_runtime_delivery_actions"]) {
   expect(hostedSql.includes(marker), `hosted capability migration must contain ${marker}`);
 }
 expect(workflowReconciliationSql.includes("update_client_runtime_record_worker") && workflowReconciliationSql.includes("worker_token_hash"), "workflow reconciliation migration must be worker-authenticated");
 expect(finalVerificationSql.includes("has_column_privilege") && finalVerificationSql.includes("worker_hash_select"), "final verification must prove the worker hash is not client-readable");
 expect(finalVerificationSql.includes("update_client_runtime_record_worker"), "final verification must include workflow reconciliation");
+expect(finalVerificationSql.includes("refund_client_runtime_rate_limit"), "final verification must include the task-failure rate-limit refund RPC");
 expect(workerRoute.includes("confirm_client_runtime_artifact_worker"), "worker artifact path must confirm storage metadata through the worker RPC");
 expect(artifactsRoute.includes('clientRpc("create_client_runtime_artifact"'), "client uploads must create artifact metadata through an authenticated RPC");
 expect(!artifactsRoute.includes("CLIENT_WORKER_TOKEN"), "authenticated artifact uploads must not depend on the worker token");
@@ -106,6 +109,7 @@ expect(recordsRoute.includes("SECRET_LIKE"), "tenant records route must reject s
 expect(workflowsRoute.includes("clientCapabilityEnabled(\"orchestration\")"), "hosted workflow route must be capability gated");
 expect(workflowsRoute.includes("client_runtime_records") && workflowsRoute.includes("workflow"), "hosted workflow route must use tenant records");
 expect(workflowsRoute.includes("checkClientRuntimeRateLimit") && workflowsRoute.includes("runtime_limit_unavailable"), "workflow routes must distinguish limiter outages from genuine rate limiting");
+expect(workflowsRoute.includes("refundClientRuntimeRateLimit") && jobRoute.includes("refundClientRuntimeRateLimit") && hostedJobsRoute.includes("refundClientRuntimeRateLimit"), "task enqueue failures must refund their consumed client rate-limit token");
 expect(authenticatedVerifier.includes("completedSteps === 4") && authenticatedVerifier.includes("signed artifact upload") && authenticatedVerifier.includes("equalBytes"), "authenticated verifier must prove four-step workflow completion and signed artifact byte integrity");
 expect(authenticatedVerifier.includes("cookie-file") && authenticatedVerifier.includes("must not be readable by group or other users") && !authenticatedVerifier.includes("console.log(cookie"), "authenticated verifier must accept a protected cookie file without printing credentials");
 for (const [relativePath, source] of runtimeRateLimitedRouteSources) {

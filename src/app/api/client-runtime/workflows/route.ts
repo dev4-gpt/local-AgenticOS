@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { cancelClientRuntimeJob, checkClientRuntimeRateLimit, deleteClientRecord, enqueueClientRuntimeJob, insertClientRecord, recordClientAudit, selectClientRecords, updateClientRecord } from "@/lib/clientDataPlane";
+import { cancelClientRuntimeJob, checkClientRuntimeRateLimit, deleteClientRecord, enqueueClientRuntimeJob, insertClientRecord, recordClientAudit, refundClientRuntimeRateLimit, selectClientRecords, updateClientRecord } from "@/lib/clientDataPlane";
 import { clientProviderRequestAllowed } from "@/lib/clientProviderAdapter";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
@@ -88,6 +88,7 @@ export async function POST(request: Request) {
     const task = await enqueueClientRuntimeTask({ jobId, tenantSlug });
     if (!task.ok) {
       await cancelClientRuntimeJob(jobId, task.error ?? "task_enqueue_failed");
+      await refundClientRuntimeRateLimit("workflow-write", 900);
       await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", jobId, errorCode: task.error ?? "task_enqueue_failed", requestId });
       return error(task.error ?? "task_enqueue_failed", task.status >= 500 ? 503 : task.status);
     }
@@ -108,6 +109,7 @@ export async function POST(request: Request) {
   if (!task.ok) {
     const taskError = task.error ?? "task_enqueue_failed";
     await cancelClientRuntimeJob(jobId, taskError);
+    await refundClientRuntimeRateLimit("workflow-write", 900);
     await updateExecution(workflowId, tenantSlug, user.id, metadata, { status: "failed", jobId, errorCode: taskError, requestId });
     return error(taskError, task.status >= 500 ? 503 : task.status);
   }
@@ -160,6 +162,7 @@ export async function PATCH(request: Request) {
     if (!task.ok) {
       const taskError = task.error ?? "task_enqueue_failed";
       await cancelClientRuntimeJob(jobId, taskError);
+      await refundClientRuntimeRateLimit("workflow-write", 900);
       await updateExecution(id, tenantSlug, user.id, currentMetadata, { status: "failed", jobId, adapter: "tenant-workflow-runner", mode: "deterministic-free", errorCode: taskError, requestId });
       return error(taskError, task.status >= 500 ? 503 : task.status);
     }

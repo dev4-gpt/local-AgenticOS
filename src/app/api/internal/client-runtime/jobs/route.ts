@@ -52,12 +52,13 @@ export async function POST(request: Request) {
 
   const result = await runClientTextAdapter({ provider: job.provider, model, prompt: job.input_metadata.prompt, history, reserveBudget: false, jobId });
   if (result.ok) {
-    if (result.usage) {
-      const actualAmountMicros = clientTextUsageCostMicros(model, result.usage);
-      if (actualAmountMicros !== null) {
-        await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros, usageMetadata: result.usage, workerToken });
-      }
-    }
+    const actualAmountMicros = result.usage ? clientTextUsageCostMicros(model, result.usage) : null;
+    await settleClientRuntimeBudgetWorker({
+      jobId,
+      actualAmountMicros: actualAmountMicros ?? estimate,
+      usageMetadata: result.usage ?? { estimatedCostMicros: estimate, usageFallback: 1 },
+      workerToken,
+    });
     await completeJob(tenantSlug, jobId, workerToken, "succeeded", { workflowId: workflowIdFrom(job.input_metadata), provider: result.provider, model: result.model, output: safeClientProviderOutput(result.output), steps: workflowStepsFrom(job.input_metadata) });
     return NextResponse.json({ ok: true, status: "succeeded" });
   }

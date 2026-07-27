@@ -64,6 +64,48 @@ revoke all on function public.consume_client_runtime_rate_limit(text, text, text
 grant execute on function public.consume_client_runtime_rate_limit(text, text, text, integer, integer)
   to authenticated;
 
+create or replace function public.refund_client_runtime_rate_limit(
+  p_tenant_slug text,
+  p_bucket text,
+  p_window_seconds integer default 900
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  expected_key_hash text;
+begin
+  if not public.client_member(p_tenant_slug)
+     or auth.uid() is null
+     or length(coalesce(p_bucket, '')) = 0
+     or p_window_seconds < 1 then
+    return false;
+  end if;
+
+  expected_key_hash := encode(digest(
+    left(p_tenant_slug, 64) || ':' || left(p_bucket, 64) || ':' || auth.uid()::text,
+    'sha256'
+  ), 'hex');
+
+  update public.client_runtime_rate_limits
+     set request_count = greatest(request_count - 1, 0)
+   where tenant_slug = left(p_tenant_slug, 64)
+     and bucket = left(p_bucket, 64)
+     and key_hash = expected_key_hash
+     and window_started_at + make_interval(secs => p_window_seconds) > now()
+     and request_count > 0;
+
+  return found;
+end;
+$$;
+
+revoke all on function public.refund_client_runtime_rate_limit(text, text, integer)
+  from public, anon;
+grant execute on function public.refund_client_runtime_rate_limit(text, text, integer)
+  to authenticated;
+
 create index if not exists client_runtime_rate_limits_window_idx
   on public.client_runtime_rate_limits (window_started_at);
 

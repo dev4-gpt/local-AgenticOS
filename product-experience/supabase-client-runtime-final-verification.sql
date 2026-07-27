@@ -32,6 +32,7 @@ join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
   and p.proname in (
     'consume_client_runtime_rate_limit',
+    'refund_client_runtime_rate_limit',
     'enqueue_client_runtime_job',
     'claim_client_runtime_job',
     'complete_client_runtime_job',

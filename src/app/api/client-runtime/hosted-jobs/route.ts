@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember } from "@/lib/clientAuth";
-import { cancelClientRuntimeJob, checkClientRuntimeRateLimit, enqueueClientRuntimeJob } from "@/lib/clientDataPlane";
+import { cancelClientRuntimeJob, checkClientRuntimeRateLimit, enqueueClientRuntimeJob, refundClientRuntimeRateLimit } from "@/lib/clientDataPlane";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
@@ -61,6 +61,7 @@ export async function POST(request: Request) {
   if (!task.ok) {
     const error = task.error ?? "task_enqueue_failed";
     await cancelClientRuntimeJob(jobId, error);
+    await refundClientRuntimeRateLimit("hosted-jobs", 900);
     return NextResponse.json({ ok: false, error }, { status: task.status >= 500 ? 503 : task.status });
   }
   return NextResponse.json({ ok: true, jobId, status: "queued", capability: spec.capability }, { status: 202, headers: { "cache-control": "no-store" } });

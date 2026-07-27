@@ -380,12 +380,12 @@ end-to-end job and artifact checks remain separate gates. The worker never recei
 Supabase service-role key or a client browser session.
 
 The workflow write limiter is durable per tenant, bucket, and authenticated
-user. It allows 30 writes per 15 minutes. A failed enqueue attempt still
-consumes one write because the limiter runs before job creation; after a
-transient queue configuration failure, wait for the `Retry-After` window or
-clear only the affected test bucket as an operator before retrying. Do not
-repeatedly refresh the submit action while a `429 runtime_rate_limited` result
-is visible.
+user. It allows 30 writes per 15 minutes. A failed enqueue attempt is refunded
+through the authenticated, server-derived refund RPC after the job is
+cancelled. Reapply the controls migration before relying on that recovery;
+without the refund function, wait for the `Retry-After` window or clear only
+the affected test bucket as an operator. Do not repeatedly refresh the submit
+action while a `429 runtime_rate_limited` result is visible.
 
 The supported operator path generates a random token, writes it to the client
 Secret Manager namespace, and patches only its SHA-256 hash into the matching
