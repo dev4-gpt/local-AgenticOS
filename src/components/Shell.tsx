@@ -9,6 +9,7 @@ import ClientCapabilityGate from "./ClientCapabilityGate";
 import ClientProviderWorkspace from "./ClientProviderWorkspace";
 import ClientHostedWorkspace from "./ClientHostedWorkspace";
 import ClientDataWorkspace from "./ClientDataWorkspace";
+import ClientWorkflowWorkspace from "./ClientWorkflowWorkspace";
 
 const ROUTE_LENS: Array<[string[], string]> = [
   [["/context", "/memory", "/notebook", "/goals", "/journal"], "context"],
@@ -38,16 +39,13 @@ const CLIENT_PROVIDER_ROUTES: Record<string, { provider: string; title: string }
   "/sakana": { provider: "sakana", title: "Sakana" },
 };
 const CLIENT_HOSTED_ROUTES: Record<string, { kind: "orchestration" | "media" | "seo"; title: string; provider?: "elevenlabs" | "heygen" }> = {
-  "/paperclip": { kind: "orchestration", title: "Paperclip workflow" },
-  "/room": { kind: "orchestration", title: "AI Agent Mastermind" },
-  "/pipeline": { kind: "orchestration", title: "Pipeline" },
-  "/agent-kanban": { kind: "orchestration", title: "Agent Kanban" },
-  "/kanban": { kind: "orchestration", title: "Kanban" },
-  "/loop": { kind: "orchestration", title: "Loop" },
-  "/ruflo": { kind: "orchestration", title: "Ruflo" },
   "/music": { kind: "media", title: "Hosted Audio" },
   "/video": { kind: "media", title: "Hosted Video", provider: "heygen" },
   "/seo": { kind: "seo", title: "SEO Research" },
+};
+const CLIENT_WORKFLOW_ROUTES: Record<string, "orchestrate" | "paperclip" | "room" | "pipeline" | "agent-kanban" | "kanban" | "loop" | "ruflo"> = {
+  "/orchestrate": "orchestrate", "/paperclip": "paperclip", "/room": "room", "/pipeline": "pipeline",
+  "/agent-kanban": "agent-kanban", "/kanban": "kanban", "/loop": "loop", "/ruflo": "ruflo",
 };
 const CLIENT_DATA_ROUTES: Record<string, "memory" | "journal" | "goals" | "notebook"> = {
   "/memory": "memory",
@@ -65,6 +63,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
   const gatedClientRoute = clientEdition && !CLIENT_SURFACE_ROUTES.has(pathname);
   const providerWorkspace = clientEdition ? CLIENT_PROVIDER_ROUTES[pathname] : null;
   const hostedWorkspace = clientEdition ? CLIENT_HOSTED_ROUTES[pathname] : null;
+  const workflowWorkspace = clientEdition ? CLIENT_WORKFLOW_ROUTES[pathname] : null;
   const dataWorkspace = clientEdition ? CLIENT_DATA_ROUTES[pathname] : null;
 
   return (
@@ -85,7 +84,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
             className={isHome ? "min-h-full w-full" : "workspace-shell__page max-w-[1500px] mx-auto px-5 md:px-10 py-7 md:py-9"}
           >
             {!isHome && <TopBar />}
-            {providerWorkspace ? <ClientProviderWorkspace {...providerWorkspace} /> : hostedWorkspace ? <ClientHostedWorkspace {...hostedWorkspace} pathname={pathname} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
+            {providerWorkspace ? <ClientProviderWorkspace {...providerWorkspace} /> : workflowWorkspace ? <ClientWorkflowWorkspace surface={workflowWorkspace} /> : hostedWorkspace ? <ClientHostedWorkspace {...hostedWorkspace} pathname={pathname} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
           </motion.div>
         </main>
       </div>

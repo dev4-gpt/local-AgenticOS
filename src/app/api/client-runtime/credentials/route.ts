@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
-  const credentials = CLIENT_CREDENTIAL_OPTIONS.filter((item) => clientProviderEnabled(item.key)).map((item) => {
+  const credentialOptions = CLIENT_CREDENTIAL_OPTIONS.filter((item) => clientProviderEnabled(item.key));
+  const credentials = credentialOptions.map((item) => {
     const value = item.key === "OPENROUTER_API_KEY" ? openRouterKey() : providerEnvKey(item.key);
     return {
       key: item.key,
@@ -34,7 +35,7 @@ export async function GET() {
         name: process.env.CLIENT_NAME || null,
       },
       credentials,
-      credentialOptions: CLIENT_CREDENTIAL_OPTIONS,
+      credentialOptions,
     },
     { headers: { "cache-control": "no-store" } },
   );

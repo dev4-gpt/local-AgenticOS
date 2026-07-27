@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { selectClientRecords } from "@/lib/clientDataPlane";
+import { consumeClientRuntimeRateLimit, selectClientRecords } from "@/lib/clientDataPlane";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +9,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const user = await currentClientUser();
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+  if (!(await consumeClientRuntimeRateLimit("job-status", 120, 900))) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
   const id = (await context.params).id;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ ok: false, error: "job_id_invalid" }, { status: 400 });
   const result = await selectClientRecords("client_runtime_jobs", { id: `eq.${id}`, tenant_slug: `eq.${process.env.CLIENT_SLUG ?? ""}`, limit: "1" });

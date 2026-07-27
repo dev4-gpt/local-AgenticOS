@@ -43,6 +43,7 @@ const tables = [
   "client_runtime_audit_events",
   "client_runtime_jobs",
   "client_runtime_artifacts",
+  "client_runtime_records",
   "client_runtime_budget_ledger",
   "client_runtime_delivery_actions",
 ];
@@ -97,7 +98,7 @@ async function exportSnapshot() {
 }
 
 async function restoreSnapshot(snapshot) {
-  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_runtime_budget_ledger", "client_runtime_delivery_actions"];
+  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_runtime_records", "client_runtime_budget_ledger", "client_runtime_delivery_actions"];
   for (const table of ordered) {
     const rows = Array.isArray(snapshot.tables[table]) ? snapshot.tables[table] : [];
     if (!rows.length) continue;

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { clientCredentialOption } from "@/lib/clientCredentialCatalog";
 import { consumeClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
+import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
   const option = clientCredentialOption(providerKey);
 
   if (!option) return NextResponse.json({ ok: false, error: "unsupported_provider" }, { status: 400 });
+  if (!clientProviderEnabled(option.key)) return NextResponse.json({ ok: false, error: "provider_not_allowlisted" }, { status: 403 });
   if (secretValue.length < 6 || secretValue.length > 12000) {
     return NextResponse.json({ ok: false, error: "invalid_secret_value" }, { status: 400 });
   }

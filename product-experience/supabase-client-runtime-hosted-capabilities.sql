@@ -6,7 +6,7 @@ create table if not exists public.client_runtime_records (
   id uuid primary key default gen_random_uuid(),
   tenant_slug text not null references public.client_tenants(slug) on delete cascade,
   created_by uuid not null default auth.uid() references auth.users(id),
-  kind text not null check (kind in ('memory', 'journal', 'goal', 'notebook')),
+  kind text not null check (kind in ('memory', 'journal', 'goal', 'notebook', 'workflow')),
   title text not null check (length(title) between 1 and 240),
   content text not null check (length(content) between 1 and 30000),
   status text not null default 'active' check (status in ('active', 'done', 'archived')),
@@ -14,6 +14,12 @@ create table if not exists public.client_runtime_records (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.client_runtime_records
+  drop constraint if exists client_runtime_records_kind_check;
+alter table public.client_runtime_records
+  add constraint client_runtime_records_kind_check
+  check (kind in ('memory', 'journal', 'goal', 'notebook', 'workflow'));
 
 create index if not exists client_runtime_records_tenant_kind_idx
   on public.client_runtime_records (tenant_slug, kind, created_at desc);

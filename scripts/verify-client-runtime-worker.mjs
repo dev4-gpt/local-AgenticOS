@@ -14,8 +14,10 @@ const workerRoute = await readFile(join(root, "src/app/api/internal/client-runti
 const deliveryRoute = await readFile(join(root, "src/app/api/internal/client-runtime/delivery/route.ts"), "utf8");
 const jobRoute = await readFile(join(root, "src/app/api/client-runtime/jobs/route.ts"), "utf8");
 const recordsRoute = await readFile(join(root, "src/app/api/client-runtime/records/route.ts"), "utf8");
+const workflowsRoute = await readFile(join(root, "src/app/api/client-runtime/workflows/route.ts"), "utf8");
 const controlsSql = await readFile(join(root, "product-experience/supabase-client-runtime-controls.sql"), "utf8");
 const hostedSql = await readFile(join(root, "product-experience/supabase-client-runtime-hosted-capabilities.sql"), "utf8");
+const lifecycleScript = await readFile(join(root, "scripts/client-lifecycle.mjs"), "utf8");
 
 expect(workerRoute.includes("validClientTaskIdentity"), "worker route must verify Cloud Tasks identity");
 expect(workerRoute.includes("claim_client_runtime_job"), "worker route must claim jobs through Supabase");
@@ -40,6 +42,10 @@ expect(workerRoute.includes("confirm_client_runtime_artifact_worker"), "worker a
 expect(recordsRoute.includes("clientCapabilityEnabled(\"tenant-data\")"), "tenant records route must be capability gated");
 expect(recordsRoute.includes("client_runtime_records"), "tenant records route must use the hosted records table");
 expect(recordsRoute.includes("SECRET_LIKE"), "tenant records route must reject secret-like content");
+expect(workflowsRoute.includes("clientCapabilityEnabled(\"orchestration\")"), "hosted workflow route must be capability gated");
+expect(workflowsRoute.includes("client_runtime_records") && workflowsRoute.includes("workflow"), "hosted workflow route must use tenant records");
+expect(workflowsRoute.includes("SECRET_LIKE"), "hosted workflow route must reject secret-like content");
+expect(lifecycleScript.includes('"client_runtime_records"'), "lifecycle export/restore must include tenant records");
 for (const marker of ["client_runtime_records", "client_runtime_records_member_select", "client_runtime_records_member_insert", "client_runtime_records_owner_update", "client_runtime_records_owner_delete"]) {
   expect(hostedSql.includes(marker), `hosted capability migration must contain ${marker}`);
 }

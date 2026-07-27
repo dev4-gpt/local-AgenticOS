@@ -312,6 +312,22 @@ begin
     return false;
   end if;
 
+  if p_job_id is not null and not exists (
+    select 1 from public.client_runtime_jobs
+    where id = p_job_id
+      and tenant_slug = p_tenant_slug
+  ) then
+    return false;
+  end if;
+
+  if p_job_id is not null and exists (
+    select 1 from public.client_runtime_budget_ledger
+    where tenant_slug = p_tenant_slug
+      and job_id = p_job_id
+  ) then
+    return true;
+  end if;
+
   perform pg_advisory_xact_lock(hashtext(left(p_tenant_slug, 64)));
 
   select coalesce(sum(amount_micros), 0)
@@ -360,6 +376,22 @@ begin
      or p_monthly_cap_micros < 0
      or p_amount_micros > p_monthly_cap_micros then
     return false;
+  end if;
+
+  if p_job_id is not null and not exists (
+    select 1 from public.client_runtime_jobs
+    where id = p_job_id
+      and tenant_slug = p_tenant_slug
+  ) then
+    return false;
+  end if;
+
+  if p_job_id is not null and exists (
+    select 1 from public.client_runtime_budget_ledger
+    where tenant_slug = p_tenant_slug
+      and job_id = p_job_id
+  ) then
+    return true;
   end if;
 
   perform pg_advisory_xact_lock(hashtext(left(p_tenant_slug, 64)));

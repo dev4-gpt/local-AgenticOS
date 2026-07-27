@@ -1,4 +1,4 @@
-import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
+import { clientProviderCallsEnabled, clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { providerEnvKey, openRouterKey } from "@/lib/providerKeys";
 import { reserveClientRuntimeBudget } from "@/lib/clientDataPlane";
 
@@ -46,6 +46,7 @@ export async function runClientTextAdapter(input: {
 }) {
   const provider = input.provider.trim().toLowerCase();
   const spec = PROVIDERS[provider];
+  if (!clientProviderCallsEnabled()) return { ok: false as const, status: 403, error: "provider_calls_require_approval" };
   if (!spec || !clientProviderEnabled(spec.key)) return { ok: false as const, status: 403, error: "provider_not_allowlisted" };
   const model = input.model?.trim() || spec.defaultModel;
   const models = configuredModels();
