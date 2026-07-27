@@ -10,6 +10,12 @@ export const dynamic = "force-dynamic";
 
 const ACTIONS = new Set(["review", "handoff", "release", "record"]);
 
+export async function GET() {
+  const user = await currentClientUser();
+  if (!user || !(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+  return NextResponse.json({ ok: false, error: "method_not_allowed" }, { status: 405 });
+}
+
 export async function POST(request: Request) {
   const user = await currentClientUser();
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });

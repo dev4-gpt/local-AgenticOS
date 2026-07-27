@@ -22,6 +22,11 @@ const PROVIDER_KEYS: Record<string, string> = {
   firecrawl: "FIRECRAWL_API_KEY",
 };
 
+export async function GET() {
+  if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+  return NextResponse.json({ ok: false, error: "method_not_allowed" }, { status: 405 });
+}
+
 export async function POST(request: Request) {
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!(await consumeClientRuntimeRateLimit("hosted-jobs", 20, 900))) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
