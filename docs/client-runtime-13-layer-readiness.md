@@ -90,7 +90,7 @@ retention. Same codebase does not mean same permissions.
 | 3 | Database and storage | **Control-plane schema and artifact download boundary implemented; evidence pending** | Tenant, membership, request, audit, job, artifact, budget, and runtime-control tables are defined. Apply the controls migration, configure Cloud Storage signing IAM, and complete export/deletion drills. |
 | 4 | Auth and permissions | **Partial, test-ready** | Supabase Auth and middleware protect the client test. Add client membership, roles, session lifecycle, operator/admin separation, and explicit RBAC tests. |
 | 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
-| 6 | Cloud and compute | **Control-plane foundation and storage signing interface implemented; workers/adapters partial** | Cloud Run and Secret Manager are live. Add provider API adapters, private workers, Cloud Tasks/Pub/Sub, bounded retries, idempotency, and long-job status. |
+| 6 | Cloud and compute | **Control-plane foundation, short API adapter, and job primitives implemented; workers/adapters partial** | Cloud Run and Secret Manager are live. Add Cloud Tasks/Pub/Sub OIDC worker execution, bounded retries, idempotency verification, and long-job status. |
 | 7 | CI/CD and version control | **Improved; client promotion evidence pending** | GitHub release checks, manifest validation, and versioned images are in use. Add image digest promotion, deployment provenance, and automated rollback checks. |
 | 8 | Security and row-level security | **Schema, secret promotion checks, and boundary implemented; verification pending** | Secrets stay out of the browser, security headers are active, and the control-plane schema has RLS. Apply controls, review signing IAM, rotate secrets, and run cross-tenant tests. |
 | 9 | Rate limiting | **Public intake ready; runtime limiter implemented, migration/evidence pending** | Apply the client controls migration and verify 429 behavior for request and credential routes. Add login/provider/job limits and alerts. |
@@ -264,7 +264,9 @@ These are engineering work, not deployment switches:
   throttles and budget reservations.
 - Use the redacted provider-secret promotion/rotation CLI after manual review;
   provider adapters still must consume the promoted target secrets.
-- Queue-backed jobs with idempotency, retries, budgets, and approval records.
+- A deployed queue-backed worker with OIDC verification, idempotency, retries,
+  budgets, and approval records. The database enqueue/claim primitives now
+  exist, but no worker is enabled yet.
 - Cross-client isolation, backup/restore, export/deletion, and offboarding
   evidence using a second dry-run client manifest.
 - Durable runtime rate limits and alerts beyond the public intake guard.

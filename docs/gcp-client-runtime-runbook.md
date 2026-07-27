@@ -206,6 +206,32 @@ The target secret must already exist and must begin with
 `veloce-<clientSlug>-`. The promotion script verifies the source client and
 provider names before writing, and never prints the secret value.
 
+## Worker identity and long jobs
+
+The controls migration also adds an idempotent job enqueue function and
+worker-token claim/complete functions. A future Cloud Tasks or self-hosted
+worker uses a per-client random token held in Secret Manager; it never receives
+the Supabase service-role key or a client browser session.
+
+Generate the token locally and add only its hash to the tenant record. Keep the
+raw token in the client Secret Manager namespace:
+
+```bash
+umask 077
+openssl rand -hex 32 > /tmp/veloce-cloud-test-worker-token
+shasum -a 256 /tmp/veloce-cloud-test-worker-token
+gcloud secrets versions add veloce-veloce-cloud-test-worker-token \
+  --project veloce-agenticos-2026 \
+  --data-file=/tmp/veloce-cloud-test-worker-token
+rm /tmp/veloce-cloud-test-worker-token
+```
+
+Add the displayed hash through the operator-only Supabase SQL editor, and add
+the raw token as a Secret Manager version named
+`veloce-<clientSlug>-worker-token`. The worker contract is intentionally not
+enabled in the current client manifest until Cloud Tasks/OIDC verification,
+retry limits, and completion tests are in place.
+
 ## Build The Client Image
 
 Cloud Build keeps Docker Desktop optional:

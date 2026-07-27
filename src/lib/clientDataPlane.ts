@@ -76,6 +76,36 @@ export async function reserveClientRuntimeBudget(provider: string, model: string
   return (await response.json().catch(() => false)) === true;
 }
 
+export async function enqueueClientRuntimeJob(input: {
+  capability: string;
+  provider?: string | null;
+  model?: string | null;
+  idempotencyKey: string;
+  inputMetadata?: Record<string, unknown>;
+}) {
+  const config = supabaseAuthConfig();
+  const token = await currentClientAccessToken();
+  const user = await currentClientUser();
+  const tenantSlug = process.env.CLIENT_SLUG?.trim();
+  if (!config || !token || !user || !tenantSlug) return null;
+  const response = await fetch(`${config.url}/rest/v1/rpc/enqueue_client_runtime_job`, {
+    method: "POST",
+    headers: { apikey: config.key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      p_tenant_slug: tenantSlug,
+      p_capability: input.capability,
+      p_provider: input.provider ?? null,
+      p_model: input.model ?? null,
+      p_idempotency_key: input.idempotencyKey,
+      p_input_metadata: input.inputMetadata ?? {},
+    }),
+    cache: "no-store",
+  }).catch(() => null);
+  if (!response?.ok) return null;
+  const jobId = await response.json().catch(() => null);
+  return typeof jobId === "string" ? jobId : null;
+}
+
 export async function recordClientAudit(eventType: string, metadata: Record<string, unknown> = {}) {
   const user = await currentClientUser();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
