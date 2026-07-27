@@ -324,7 +324,7 @@ different provider alias.
 
 The controls migration adds idempotent job enqueue, claim, completion, retry,
 cancel, and worker-budget functions. The application now has a Cloud Tasks
-submission route and an OIDC-verified worker route. The deployed v18 client
+submission route and an OIDC-verified worker route. The deployed v19 client
 shell keeps provider calls and worker execution disabled; the staged manifest
 enables the worker only after the token rotation and end-to-end checks below
 are complete. The worker never receives the Supabase service-role key or a
