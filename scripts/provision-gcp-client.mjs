@@ -31,6 +31,7 @@ const serviceAccountEmail = `${serviceAccount}@${projectId}.iam.gserviceaccount.
 const bucket = sanitizeBucket(gcp.storageBucket || `${projectId}-veloce-${slug}`);
 const repository = sanitizeRepository(gcp.artifactRegistryRepository || "veloce");
 const image = required(gcp.image, "gcp.image");
+let deployImage = image;
 const accessMode = manifest.access?.mode || "app-auth";
 if (!["app-auth", "cloud-run-iam"].includes(accessMode)) fail("access.mode must be app-auth or cloud-run-iam");
 const invokerEmails = normalizeList(manifest.access?.invokerEmails);
@@ -169,6 +170,7 @@ if (apply) {
   if (allowedUserEmails.length === 0) fail("Refusing --apply: access.allowedUserEmails must include at least one approved runtime user.");
   if (accessMode === "cloud-run-iam" && invokerEmails.length === 0) fail("Refusing --apply: access.invokerEmails must include at least one approved IAM invoker.");
   if (phase === "deploy" && Object.keys(secretEnv).length === 0) fail("Refusing --apply: deploy phase requires at least the Supabase anon key in secretEnv.");
+  if (phase === "deploy" || phase === "all") deployImage = resolveImageDigest(image);
 }
 
 const prepareCommands = [
@@ -202,7 +204,7 @@ const deployCommands = [
     "run", "deploy", serviceName,
     "--project", projectId,
     "--region", region,
-    "--image", image,
+    "--image", deployImage,
     "--service-account", serviceAccountEmail,
     accessMode === "app-auth" ? "--allow-unauthenticated" : "--no-allow-unauthenticated",
     "--min-instances", String(gcp.minInstances ?? 0),
@@ -233,6 +235,7 @@ console.log(`  service account: ${serviceAccountEmail}`);
 console.log(`  bucket: gs://${bucket}`);
 console.log(`  storage CORS origins: ${storageCorsOrigins.join(",")}`);
 console.log(`  image: ${image}`);
+if (apply && (phase === "deploy" || phase === "all")) console.log(`  deploy digest: ${deployImage}`);
 console.log(`  access: ${accessMode}`);
 console.log(`  approved users: ${allowedUserEmails.length}`);
 console.log(`  secret slots: ${Object.keys(secretEnv).length}`);
@@ -281,6 +284,17 @@ function verifySecretVersions() {
     const result = spawnSync("gcloud", ["secrets", "versions", "list", secretName, "--project", projectId, "--filter=state=ENABLED", "--limit=1", "--format=value(name)"], { encoding: "utf8" });
     if (result.status !== 0 || !result.stdout.trim()) fail(`Missing enabled secret version for ${secretName}. Add it before deploy.`);
   }
+}
+
+function resolveImageDigest(imageRef) {
+  if (/@sha256:[a-f0-9]{64}$/i.test(imageRef)) return imageRef;
+  const result = spawnSync("gcloud", ["artifacts", "docker", "images", "describe", imageRef, "--project", projectId, "--format=value(image_summary.digest)"], { encoding: "utf8" });
+  const digest = result.status === 0 ? result.stdout.trim() : "";
+  if (!/^sha256:[a-f0-9]{64}$/i.test(digest)) {
+    fail(`Image ${imageRef} is not available in Artifact Registry yet. Wait for Cloud Build to finish, then rerun the deploy.`);
+  }
+  const repositoryRef = imageRef.replace(/@sha256:[a-f0-9]{64}$/i, "").replace(/:[^/:]+$/, "");
+  return `${repositoryRef}@${digest}`;
 }
 
 function configureRuntimeBaseUrl() {

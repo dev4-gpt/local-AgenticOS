@@ -141,6 +141,7 @@ expect(workerProvisioner.includes("worker_token_hash") && workerProvisioner.incl
 expect(!workerProvisioner.includes("console.log(token") && !workerProvisioner.includes("console.log(hash"), "worker provisioning must never print the token or hash");
 expect(controlsSql.includes("revoke select on public.client_tenants from authenticated") && controlsSql.includes("grant select (slug, name, status, retention_days, created_at, updated_at)"), "worker token verifier must be excluded from client-readable tenant columns");
 expect(provisioner.includes("immutableRuntimeKeys") && provisioner.includes("cannot override the derived client isolation value"), "GCP provisioning must protect derived tenant isolation values");
+expect(provisioner.includes("resolveImageDigest") && provisioner.includes("image_summary.digest") && provisioner.includes('"--image", deployImage'), "GCP deploys must verify and pin the Artifact Registry image digest before Cloud Run");
 expect(provisioner.includes("storage.namespace must equal clientSlug") && provisioner.includes("CLIENT_STORAGE_NAMESPACE: slug"), "GCP provisioning must keep storage and tenant namespaces identical");
 expect(provisioner.includes("normalizeCorsOrigins") && provisioner.includes("--cors-file="), "GCP provisioning must configure bucket CORS for signed browser uploads");
 expect(provisioner.includes("SUPABASE_SERVICE_ROLE_KEY") && provisioner.includes("Operator-only secret cannot be placed"), "GCP provisioning must reject operator-only secret slots");
