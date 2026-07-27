@@ -197,6 +197,12 @@ HTTPS client origins; CORS does not make the bucket public. Keep the origins
 specific to the deployed client URL and rerun prepare when a custom domain is
 added.
 
+The same prepare phase applies a Cloud Storage lifecycle rule from
+`retention.days`. The rule deletes only objects below the client namespace
+prefix after that many days; it does not apply to other tenant prefixes in a
+shared bucket. Verify it with `gcloud storage buckets describe` and inspect
+`lifecycle_config.rule` before treating retention as live.
+
 The hosted-capabilities migration is required before enabling the new hosted
 workflow, media, SEO, artifact, or delivery-action boundaries. It adds separate
 authenticated and worker-only artifact creation RPCs and the approval-only

@@ -69,6 +69,7 @@ const configuredStorageNamespace = manifest.storage?.namespace;
 if (configuredStorageNamespace != null && sanitizeSlug(String(configuredStorageNamespace)) !== slug) {
   fail("storage.namespace must equal clientSlug so Supabase and Cloud Storage namespaces cannot diverge");
 }
+const retentionDays = normalizeRetentionDays(manifest.retention?.days);
 const storageCorsOrigins = normalizeCorsOrigins(manifest.storage?.corsOrigins);
 const storageCorsFile = `/tmp/veloce-${slug}-storage-cors.json`;
 writeFileSync(storageCorsFile, JSON.stringify([{
@@ -77,8 +78,16 @@ writeFileSync(storageCorsFile, JSON.stringify([{
   responseHeader: ["Content-Type", "ETag"],
   maxAgeSeconds: 900,
 }], null, 2), { mode: 0o600 });
+const storageLifecycleFile = `/tmp/veloce-${slug}-storage-lifecycle.json`;
+writeFileSync(storageLifecycleFile, JSON.stringify({
+  rule: [{
+    action: { type: "Delete" },
+    condition: { age: retentionDays, matchesPrefix: [`${slug}/`] },
+  }],
+}, null, 2), { mode: 0o600 });
 process.on("exit", () => {
   try { unlinkSync(storageCorsFile); } catch {}
+  try { unlinkSync(storageLifecycleFile); } catch {}
 });
 const protectedRuntimeEnv = {
   GOOGLE_CLOUD_PROJECT: projectId,
@@ -102,7 +111,7 @@ const protectedRuntimeEnv = {
   ...(manifest.budget?.warningThreshold ? { CLIENT_BUDGET_WARNING_THRESHOLD: String(manifest.budget.warningThreshold) } : {}),
   CLIENT_STORAGE_NAMESPACE: slug,
   CLIENT_RUNTIME_DATA_MODE: "supabase",
-  ...(manifest.retention?.days ? { CLIENT_RETENTION_DAYS: String(manifest.retention.days) } : {}),
+  CLIENT_RETENTION_DAYS: String(retentionDays),
   ...(manifest.approvalPolicy ? { CLIENT_APPROVAL_POLICY: String(manifest.approvalPolicy) } : {}),
   CLIENT_STORAGE_BUCKET: bucket,
   CLIENT_RUNTIME_SERVICE_ACCOUNT: serviceAccountEmail,
@@ -169,6 +178,7 @@ const prepareCommands = [
   ["gcloud", ["iam", "service-accounts", "create", serviceAccount, "--project", projectId, "--display-name", `Veloce ${clientName} runtime`]],
   ["gcloud", ["storage", "buckets", "create", `gs://${bucket}`, "--project", projectId, "--location", region, "--uniform-bucket-level-access"]],
   ["gcloud", ["storage", "buckets", "update", `gs://${bucket}`, `--cors-file=${storageCorsFile}`]],
+  ["gcloud", ["storage", "buckets", "update", `gs://${bucket}`, `--lifecycle-file=${storageLifecycleFile}`]],
   ["gcloud", ["storage", "buckets", "add-iam-policy-binding", `gs://${bucket}`, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/storage.objectAdmin"]],
   ["gcloud", ["iam", "service-accounts", "add-iam-policy-binding", serviceAccountEmail, "--project", projectId, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/iam.serviceAccountTokenCreator"]],
   ["gcloud", ["iam", "service-accounts", "add-iam-policy-binding", serviceAccountEmail, "--project", projectId, "--member", `serviceAccount:service-${projectNumber}@gcp-sa-cloudtasks.iam.gserviceaccount.com`, "--role", "roles/iam.serviceAccountTokenCreator"]],
@@ -330,6 +340,12 @@ function sanitizeBucket(value) {
   const name = value.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
   if (name.length < 3 || name.length > 63) fail(`Invalid bucket name length: ${name}`);
   return name;
+}
+
+function normalizeRetentionDays(value) {
+  const days = Number(value);
+  if (!Number.isSafeInteger(days) || days < 1 || days > 3650) fail("retention.days must be an integer between 1 and 3650");
+  return days;
 }
 
 function sanitizeRepository(value) {

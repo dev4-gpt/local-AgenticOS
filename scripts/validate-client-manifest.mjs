@@ -29,6 +29,7 @@ if (!Array.isArray(manifest.enabledCapabilities) || manifest.enabledCapabilities
 if (Number(manifest.gcp.minInstances) !== 0) fail("minInstances must be explicitly set to 0 for the low-cost default");
 if (Number(manifest.gcp.maxInstances) < 1) fail("maxInstances must be at least 1");
 if (Number(manifest.budget.warningThreshold) >= Number(manifest.budget.monthlyCap)) fail("warningThreshold must be below monthlyCap");
+if (!Number.isSafeInteger(Number(manifest.retention.days)) || Number(manifest.retention.days) < 1 || Number(manifest.retention.days) > 3650) fail("retention.days must be an integer between 1 and 3650");
 if (/sk-[A-Za-z0-9_-]{20,}|api[_ -]?key\s*[:=]|secret\s*[:=]|password\s*[:=]/i.test(raw)) fail("Manifest appears to contain a raw credential value");
 
 const models = Array.isArray(manifest.modelAllowlist) ? manifest.modelAllowlist.map(String) : [];

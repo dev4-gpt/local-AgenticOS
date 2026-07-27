@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 
 const root = new URL("..", import.meta.url).pathname;
 const lifecycle = await readFile(join(root, "scripts/client-lifecycle.mjs"), "utf8");
+const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
 const failures = [];
 
 function expect(condition, message) {
@@ -23,6 +24,8 @@ expect(lifecycle.includes("secretLikeValue") && lifecycle.includes("assertSnapsh
 expect(lifecycle.includes("confirm-restore") && lifecycle.includes("confirm-offboard"), "destructive lifecycle actions must require explicit confirmation");
 expect(lifecycle.includes("--delete-queue") && lifecycle.includes("--destroy-secrets"), "offboarding must require queue and secret deletion consent");
 expect(lifecycle.includes("deleteRuntimeAlerts") && lifecycle.includes("listSecretNames"), "offboarding must remove client alert and secret resources");
+expect(provisioner.includes("storageLifecycleFile") && provisioner.includes("matchesPrefix: [`${slug}/`]") && provisioner.includes('action: { type: "Delete" }'), "GCP provisioner must apply tenant-prefixed Cloud Storage retention");
+expect(provisioner.includes("normalizeRetentionDays") && provisioner.includes("retentionDays"), "GCP provisioner must derive storage retention from the validated manifest");
 
 const tempDir = await mkdtemp(join(tmpdir(), "veloce-client-lifecycle-"));
 const safeSnapshot = join(tempDir, "safe.json");
