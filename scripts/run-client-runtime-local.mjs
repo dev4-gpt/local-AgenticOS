@@ -31,6 +31,7 @@ env.AGENTIC_OS_DISABLE_LOCAL_FILES = env.AGENTIC_OS_DISABLE_LOCAL_FILES || "1";
 env.AGENTIC_OS_REQUIRE_APPROVALS = env.AGENTIC_OS_REQUIRE_APPROVALS || "1";
 env.AGENTIC_OS_LOCATION = env.AGENTIC_OS_LOCATION || "Client runtime";
 env.CLIENT_RUNTIME_ENFORCE_AUTH = env.CLIENT_RUNTIME_ENFORCE_AUTH || "1";
+env.CLIENT_RUNTIME_BASE_URL = env.CLIENT_RUNTIME_BASE_URL || `http://127.0.0.1:${port}`;
 env.CLIENT_ALLOWED_ROUTES = env.CLIENT_ALLOWED_ROUTES || "/,/context,/orchestrate,/create,/credentials,/capabilities,/deliver,/paperclip,/room,/pipeline,/claude,/openclaw,/hermes,/antigravity,/codex,/kimi,/glm,/glm-code,/grok,/freeclaude,/fusion,/sakana,/local,/engine,/agent-kanban,/loop,/ruflo,/goals,/journal,/seo,/opendesign,/web-studio,/flow-lab,/integrations,/video,/studio,/openmontage,/music,/games,/thumbnails,/notebook,/kanban,/memory,/leads,/radar,/guide";
 env.CLIENT_ALLOWED_API_ROUTES = env.CLIENT_ALLOWED_API_ROUTES || "/api/capabilities,/api/client-runtime/credentials,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-runtime/artifacts,/api/client-runtime/hosted-jobs,/api/client-runtime/delivery,/api/client-runtime/records,/api/client-runtime/workflows,/api/client-runtime/jobs,/api/internal/client-runtime/jobs,/api/internal/client-runtime/delivery,/api/client-auth/session";
 env.CLIENT_ENABLED_CAPABILITIES = env.CLIENT_ENABLED_CAPABILITIES || "web-studio,design-intelligence,immersive-scroll-site,asset-sequencing,flow-lab,knowledge,delivery,quality";

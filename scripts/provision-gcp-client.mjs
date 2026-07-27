@@ -35,6 +35,10 @@ if (!["app-auth", "cloud-run-iam"].includes(accessMode)) fail("access.mode must 
 const invokerEmails = normalizeList(manifest.access?.invokerEmails);
 const allowedUserEmails = normalizeList(manifest.access?.allowedUserEmails);
 const secretEnv = normalizeSecretEnv(manifest.secretEnv ?? manifest.secretRefs ?? {});
+const inboxSecretNames = [...new Set([
+  manifest.runtimeEnv?.CLIENT_CREDENTIAL_INBOX_SECRET,
+  manifest.runtimeEnv?.CLIENT_REQUEST_INBOX_SECRET,
+].filter((value) => typeof value === "string" && value.trim()).map((value) => normalizeClientSecretName(slug, value)))];
 const enabledCapabilities = normalizeList(manifest.enabledCapabilities);
 const providerAllowlist = normalizeList(manifest.providerAllowlist, Object.keys(secretEnv));
 const modelAllowlist = normalizeList(manifest.modelAllowlist);
@@ -91,6 +95,10 @@ const prepareCommands = [
       ["gcloud", ["secrets", "add-iam-policy-binding", secretName, "--project", projectId, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/secretmanager.secretAccessor"]],
     ];
   }),
+  ...inboxSecretNames.flatMap((secretName) => [
+    ["gcloud", ["secrets", "create", secretName, "--project", projectId, "--replication-policy", "automatic"]],
+    ["gcloud", ["secrets", "add-iam-policy-binding", secretName, "--project", projectId, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/secretmanager.secretVersionAdder"]],
+  ]),
 ];
 
 const deployCommands = [
@@ -131,12 +139,14 @@ console.log(`  image: ${image}`);
 console.log(`  access: ${accessMode}`);
 console.log(`  approved users: ${allowedUserEmails.length}`);
 console.log(`  secret slots: ${Object.keys(secretEnv).length}`);
+console.log(`  inbox secrets: ${inboxSecretNames.length}`);
 console.log("");
 
 if (phase === "prepare" || phase === "all") runCommands(prepareCommands);
 if (phase === "deploy" || phase === "all") {
   if (apply) verifySecretVersions();
   runCommands(deployCommands);
+  if (apply) configureRuntimeBaseUrl();
 }
 
 if (!apply) console.log("Dry run only. Use --apply --phase prepare, then add secret versions, then use --apply --phase deploy.");
@@ -174,6 +184,16 @@ function verifySecretVersions() {
     const result = spawnSync("gcloud", ["secrets", "versions", "list", secretName, "--project", projectId, "--filter=state=ENABLED", "--limit=1", "--format=value(name)"], { encoding: "utf8" });
     if (result.status !== 0 || !result.stdout.trim()) fail(`Missing enabled secret version for ${secretName}. Add it before deploy.`);
   }
+}
+
+function configureRuntimeBaseUrl() {
+  const result = spawnSync("gcloud", ["run", "services", "describe", serviceName, "--project", projectId, "--region", region, "--format=value(status.url)"], { encoding: "utf8" });
+  const serviceUrl = result.status === 0 ? result.stdout.trim().replace(/\/$/, "") : "";
+  if (!/^https:\/\//i.test(serviceUrl)) fail("Could not resolve the deployed Cloud Run HTTPS URL for CLIENT_RUNTIME_BASE_URL");
+  if (runtimeEnv.CLIENT_RUNTIME_BASE_URL === serviceUrl) return;
+  console.log(`Configuring task callback base URL: ${serviceUrl}`);
+  const update = spawnSync("gcloud", ["run", "services", "update", serviceName, "--project", projectId, "--region", region, "--update-env-vars", `CLIENT_RUNTIME_BASE_URL=${serviceUrl}`], { stdio: "inherit" });
+  if (update.status !== 0) process.exit(update.status ?? 1);
 }
 
 function valueAfter(flag) {
@@ -261,6 +281,12 @@ function shorten(value, max) {
 
 function secretNameFor(clientSlug, secretRef) {
   return `veloce-${clientSlug}-${secretRef}`;
+}
+
+function normalizeClientSecretName(clientSlug, value) {
+  const raw = value.trim();
+  const prefix = `veloce-${clientSlug}-`;
+  return raw.startsWith(prefix) ? raw : secretNameFor(clientSlug, sanitizeSecret(raw));
 }
 
 function envString(values) {

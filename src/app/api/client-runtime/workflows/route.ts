@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { consumeClientRuntimeRateLimit, deleteClientRecord, insertClientRecord, recordClientAudit, selectClientRecords, updateClientRecord } from "@/lib/clientDataPlane";
-import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
+import { cancelClientRuntimeJob, consumeClientRuntimeRateLimit, deleteClientRecord, enqueueClientRuntimeJob, insertClientRecord, recordClientAudit, selectClientRecords, updateClientRecord } from "@/lib/clientDataPlane";
+import { clientProviderRequestAllowed } from "@/lib/clientProviderAdapter";
+import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
+import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +46,7 @@ export async function POST(request: Request) {
   if (!tenantSlug) return error("tenant_not_configured", 503);
   const workflowId = randomUUID();
   const steps = buildSteps(surface, operation).map((step) => ({ id: randomUUID(), title: step, status: "todo" }));
+  const metadata = { version: 1, surface, operation, steps };
   const stored = await insertClientRecord("client_runtime_records", {
     id: workflowId,
     tenant_slug: tenantSlug,
@@ -51,9 +54,42 @@ export async function POST(request: Request) {
     kind: "workflow",
     title,
     content: goal,
-    metadata: { version: 1, surface, operation, steps },
+    metadata,
   });
   if (!stored.ok) return error("workflow_write_failed", 502);
+  if (operation === "dispatch") {
+    if (!clientProviderCallsEnabled()) {
+      await deleteClientRecord("client_runtime_records", { id: `eq.${workflowId}`, tenant_slug: `eq.${tenantSlug}`, kind: "eq.workflow", created_by: `eq.${user.id}` });
+      return error("provider_calls_require_approval", 403);
+    }
+    const provider = process.env.CLIENT_WORKFLOW_PROVIDER?.trim().toLowerCase() || "openrouter";
+    const policy = clientProviderRequestAllowed(provider, process.env.CLIENT_WORKFLOW_MODEL);
+    if (!policy.ok) {
+      await deleteClientRecord("client_runtime_records", { id: `eq.${workflowId}`, tenant_slug: `eq.${tenantSlug}`, kind: "eq.workflow", created_by: `eq.${user.id}` });
+      return error(policy.error, policy.status);
+    }
+    const prompt = `Execute the approved tenant workflow. Surface: ${surface}. Title: ${title}. Goal and constraints:\n${goal}`.slice(0, 20_000);
+    const jobId = await enqueueClientRuntimeJob({
+      capability: "text-agents",
+      provider: policy.provider,
+      model: policy.model,
+      idempotencyKey: `workflow-${workflowId}`,
+      inputMetadata: { prompt, history: [], workflowId, surface },
+    });
+    if (!jobId) {
+      await deleteClientRecord("client_runtime_records", { id: `eq.${workflowId}`, tenant_slug: `eq.${tenantSlug}`, kind: "eq.workflow", created_by: `eq.${user.id}` });
+      return error("workflow_job_store_failed", 502);
+    }
+    const task = await enqueueClientRuntimeTask({ jobId, tenantSlug });
+    if (!task.ok) {
+      await cancelClientRuntimeJob(jobId, task.error ?? "task_enqueue_failed");
+      await deleteClientRecord("client_runtime_records", { id: `eq.${workflowId}`, tenant_slug: `eq.${tenantSlug}`, kind: "eq.workflow", created_by: `eq.${user.id}` });
+      return error(task.error ?? "task_enqueue_failed", task.status >= 500 ? 503 : task.status);
+    }
+    await updateClientRecord("client_runtime_records", { id: `eq.${workflowId}`, tenant_slug: `eq.${tenantSlug}`, kind: "eq.workflow", created_by: `eq.${user.id}` }, { metadata: { ...metadata, jobId, execution: "queued" }, updated_at: new Date().toISOString() });
+    await recordClientAudit("workflow.dispatched", { surface, provider: policy.provider });
+    return NextResponse.json({ ok: true, workflowId, jobId, status: "queued" }, { status: 202, headers: { "cache-control": "private, no-store" } });
+  }
   await recordClientAudit("workflow.created", { surface, operation });
   return NextResponse.json({ ok: true, workflowId }, { status: 201, headers: { "cache-control": "private, no-store" } });
 }

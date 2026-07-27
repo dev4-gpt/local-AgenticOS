@@ -23,6 +23,7 @@ const lifecycleScript = await readFile(join(root, "scripts/client-lifecycle.mjs"
 const providerAdapter = await readFile(join(root, "src/lib/clientProviderAdapter.ts"), "utf8");
 const mediaAdapter = await readFile(join(root, "src/lib/clientMediaAdapter.ts"), "utf8");
 const runtimePolicy = await readFile(join(root, "src/lib/clientRuntimePolicy.ts"), "utf8");
+const cloudTasks = await readFile(join(root, "src/lib/cloudTasks.ts"), "utf8");
 const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
 const shell = await readFile(join(root, "src/components/Shell.tsx"), "utf8");
 const briefWorkspace = await readFile(join(root, "src/components/ClientBriefWorkspace.tsx"), "utf8");
@@ -33,6 +34,7 @@ expect(workerRoute.includes("retry_client_runtime_job"), "worker route must use 
 expect(workerRoute.includes("complete_client_runtime_job"), "worker route must complete jobs through Supabase");
 expect(jobRoute.includes("enqueueClientRuntimeTask"), "client job route must enqueue a durable task");
 expect(jobRoute.includes("cancelClientRuntimeJob"), "client job route must cancel orphaned queue rows");
+expect(jobRoute.includes("clientProviderRequestAllowed"), "client job route must enforce provider and model allowlists before enqueue");
 expect(workerRoute.includes("processMediaJob") && workerRoute.includes("processSeoJob"), "worker must have hosted media and SEO branches");
 expect(workerRoute.includes("processSunoJob") && workerRoute.includes("runClientMusicAdapter"), "worker must have a queued Suno music branch");
 expect(mediaAdapter.includes('clientProviderEnabled("SUNO_API_KEY")') && mediaAdapter.includes("record-info"), "Suno adapter must use an allowlisted server-side key and durable status polling");
@@ -55,6 +57,7 @@ expect(recordsRoute.includes("SECRET_LIKE"), "tenant records route must reject s
 expect(workflowsRoute.includes("clientCapabilityEnabled(\"orchestration\")"), "hosted workflow route must be capability gated");
 expect(workflowsRoute.includes("client_runtime_records") && workflowsRoute.includes("workflow"), "hosted workflow route must use tenant records");
 expect(workflowsRoute.includes("SECRET_LIKE"), "hosted workflow route must reject secret-like content");
+expect(workflowsRoute.includes("CLIENT_WORKFLOW_PROVIDER") && workflowsRoute.includes("enqueueClientRuntimeJob"), "workflow dispatch must use a manifest-selected queued provider job");
 expect(lifecycleScript.includes('"client_runtime_records"'), "lifecycle export/restore must include tenant records");
 expect(inputSafety.includes("SECRET_LIKE") && inputSafety.includes("containsClientSecretLike"), "client input safety helper must reject secret-like text");
 for (const provider of ["anthropic", "codex", "openclaw", "hermes", "kimi", "glm-code", "grok", "antigravity", "freeclaude", "fusion", "sakana"]) {
@@ -63,6 +66,10 @@ for (const provider of ["anthropic", "codex", "openclaw", "hermes", "kimi", "glm
 }
 expect(!runtimePolicy.includes('"/api/client-runtime/provider-chat"'), "client policy must not allow the synchronous provider-chat bypass");
 expect(!provisioner.includes("/api/client-runtime/provider-chat"), "GCP client manifest must not allow the synchronous provider-chat bypass");
+expect(provisioner.includes("CLIENT_RUNTIME_BASE_URL") && provisioner.includes("configureRuntimeBaseUrl"), "GCP provisioner must configure the Cloud Run task callback URL");
+expect(cloudTasks.includes("CLIENT_RUNTIME_BASE_URL") && cloudTasks.includes("baseUrl"), "Cloud Tasks helper must use the approved runtime callback URL");
+expect(cloudTasks.includes("randomUUID") && cloudTasks.includes("const taskName") && cloudTasks.includes("${identifier}-${randomUUID()}"), "Cloud Tasks retries must use unique dispatch names");
+expect(provisioner.includes("secretVersionAdder") && provisioner.includes("CLIENT_CREDENTIAL_INBOX_SECRET"), "GCP provisioner must grant inbox version-write access explicitly");
 for (const surface of ["opendesign", "web-studio", "flow-lab", "openmontage", "games", "thumbnails", "integrations", "leads", "radar", "guide"]) {
   expect(shell.includes(`"/${surface}"`), `client shell must route ${surface}`);
   expect(briefWorkspace.includes(`${surface}:`) || briefWorkspace.includes(`"${surface}"`), `brief workspace must define ${surface}`);

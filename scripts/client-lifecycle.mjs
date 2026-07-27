@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
@@ -11,6 +12,7 @@ const slug = required(valueAfter("--slug"), "--slug");
 const configPath = valueAfter("--config");
 const outputPath = path.resolve(process.cwd(), valueAfter("--out") || `.private-client-kits/exports/${slug}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
 const inputPath = valueAfter("--input");
+const objectsPath = valueAfter("--objects");
 const project = valueAfter("--project") || process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
 const bucket = valueAfter("--bucket");
 const namespace = valueAfter("--namespace") || slug;
@@ -18,6 +20,7 @@ const includeObjects = args.includes("--include-objects");
 const destroySecrets = args.includes("--destroy-secrets");
 const deleteService = args.includes("--delete-service");
 const deleteBucket = args.includes("--delete-bucket");
+const deleteQueue = args.includes("--delete-queue");
 
 if (!["export", "restore", "offboard"].includes(mode)) fail("--mode must be export, restore, or offboard");
 if (mode === "restore" && !inputPath) fail("--input is required for restore");
@@ -25,6 +28,7 @@ if (mode !== "restore" && !process.env.SUPABASE_URL) fail("SUPABASE_URL is requi
 if ((mode === "offboard" || mode === "restore") && !process.env.SUPABASE_SERVICE_ROLE_KEY) fail("SUPABASE_SERVICE_ROLE_KEY is required for operator lifecycle actions");
 if (mode === "offboard" && apply && !args.includes("--confirm-offboard")) fail("Refusing offboard apply without --confirm-offboard");
 if (mode === "offboard" && apply && !destroySecrets) fail("Refusing offboard apply without --destroy-secrets");
+if (mode === "offboard" && apply && !deleteQueue) fail("Refusing offboard apply without --delete-queue");
 if (mode === "offboard" && apply && !project) fail("--project is required for offboard apply");
 
 const manifest = configPath ? JSON.parse(await readFile(path.resolve(process.cwd(), configPath), "utf8")) : {};
@@ -35,6 +39,7 @@ const serviceName = gcp.serviceName || `veloce-${slug}`;
 
 if ((mode === "offboard" || includeObjects) && !resolvedBucket) fail("--bucket or a manifest storageBucket is required for bucket lifecycle work");
 if (mode === "restore" && (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)) fail("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for restore");
+if (mode === "restore" && objectsPath && !resolvedBucket) fail("--objects restore requires --bucket or a manifest storageBucket");
 
 const tables = [
   "client_tenants",
@@ -65,6 +70,7 @@ if (mode === "restore") {
     process.exit(0);
   }
   await restoreSnapshot(snapshot);
+  if (objectsPath) restoreObjects(objectsPath);
   console.log(`Client metadata restored: ${snapshot.slug}`);
   process.exit(0);
 }
@@ -85,6 +91,7 @@ if (!apply) {
 await supabasePatch("client_tenants", `slug=eq.${encodeURIComponent(slug)}`, { status: "offboarding", updated_at: new Date().toISOString() });
 if (bucketHasObjects()) runGcloud(["storage", "rm", "--recursive", `gs://${resolvedBucket}/${resolvedNamespace}/**`, "--quiet"]);
 if (deleteBucket) runGcloud(["storage", "buckets", "delete", `gs://${resolvedBucket}`, "--project", project, "--quiet"]);
+if (deleteQueue) deleteQueueIfPresent();
 const secretNames = listSecretNames();
 for (const name of secretNames) runGcloud(["secrets", "delete", name, "--project", project, "--quiet"]);
 if (deleteService) runGcloud(["run", "services", "delete", serviceName, "--region", gcp.region || "asia-south1", "--project", project, "--quiet"]);
@@ -110,6 +117,15 @@ async function restoreSnapshot(snapshot) {
 
 function validateSnapshot(snapshot) {
   if (!snapshot || snapshot.schemaVersion !== 1 || snapshot.slug !== slug || !snapshot.tables || typeof snapshot.tables !== "object") fail("Invalid lifecycle snapshot or slug mismatch");
+}
+
+function restoreObjects(input) {
+  const source = path.resolve(process.cwd(), input);
+  if (!existsSync(source)) fail(`Object backup directory not found: ${source}`);
+  if (!path.basename(source).startsWith(`${slug}-`)) fail("Object backup directory must begin with the requested client slug");
+  const namespacedSource = existsSync(path.join(source, resolvedNamespace)) ? path.join(source, resolvedNamespace) : source;
+  runGcloud(["storage", "cp", "--recursive", namespacedSource, `gs://${resolvedBucket}/${resolvedNamespace}`]);
+  console.log(`Client objects restored from ${namespacedSource}`);
 }
 
 async function writeSnapshot(snapshot, filePath) {
@@ -158,6 +174,17 @@ function exportObjects(destination) {
 function bucketHasObjects() {
   const result = spawnSync("gcloud", ["storage", "ls", `gs://${resolvedBucket}/${resolvedNamespace}/**`], { encoding: "utf8" });
   return result.status === 0 && result.stdout.trim().length > 0;
+}
+
+function deleteQueueIfPresent() {
+  const queue = gcp.taskQueue || `veloce-${slug}`;
+  const region = gcp.region || "asia-south1";
+  const existing = spawnSync("gcloud", ["tasks", "queues", "describe", queue, "--location", region, "--project", project], { stdio: "ignore" });
+  if (existing.status !== 0) {
+    console.log(`Cloud Tasks queue not found; continuing: ${queue}`);
+    return;
+  }
+  runGcloud(["tasks", "queues", "delete", queue, "--location", region, "--project", project, "--quiet"]);
 }
 
 function listSecretNames() {

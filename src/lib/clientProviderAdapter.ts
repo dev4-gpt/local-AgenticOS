@@ -40,6 +40,15 @@ export function clientProviderDefaultModel(provider: string) {
   return PROVIDERS[provider.trim().toLowerCase()]?.defaultModel ?? null;
 }
 
+export function clientProviderRequestAllowed(provider: string, requestedModel?: string | null) {
+  const normalizedProvider = provider.trim().toLowerCase();
+  const spec = PROVIDERS[normalizedProvider];
+  if (!spec || !clientProviderEnabled(spec.key)) return { ok: false as const, status: 403, error: "provider_not_allowlisted" };
+  const model = requestedModel?.trim() || spec.defaultModel;
+  if (!configuredModels().includes(model)) return { ok: false as const, status: 403, error: "model_not_allowlisted" };
+  return { ok: true as const, provider: normalizedProvider, model, key: spec.key };
+}
+
 export async function runClientTextAdapter(input: {
   provider: string;
   model?: string;
@@ -51,10 +60,9 @@ export async function runClientTextAdapter(input: {
   const provider = input.provider.trim().toLowerCase();
   const spec = PROVIDERS[provider];
   if (!clientProviderCallsEnabled()) return { ok: false as const, status: 403, error: "provider_calls_require_approval" };
-  if (!spec || !clientProviderEnabled(spec.key)) return { ok: false as const, status: 403, error: "provider_not_allowlisted" };
-  const model = input.model?.trim() || spec.defaultModel;
-  const models = configuredModels();
-  if (models.length === 0 || !models.includes(model)) return { ok: false as const, status: 403, error: "model_not_allowlisted" };
+  const requestPolicy = clientProviderRequestAllowed(provider, input.model);
+  if (!requestPolicy.ok) return requestPolicy;
+  const model = requestPolicy.model;
   if (input.prompt.length < 1 || input.prompt.length > 20000) return { ok: false as const, status: 400, error: "prompt_invalid" };
   if (containsClientSecretLike(input.prompt, input.history)) return { ok: false as const, status: 400, error: "secret_like_input_rejected" };
 

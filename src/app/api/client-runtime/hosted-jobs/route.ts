@@ -4,6 +4,7 @@ import { currentClientMember } from "@/lib/clientAuth";
 import { cancelClientRuntimeJob, consumeClientRuntimeRateLimit, enqueueClientRuntimeJob } from "@/lib/clientDataPlane";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
+import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
 export const runtime = "nodejs";
@@ -13,6 +14,12 @@ const SPECS: Record<string, { capability: string; providers: string[]; maxInput:
   orchestration: { capability: "orchestration", providers: [], maxInput: 16_000 },
   media: { capability: "media", providers: ["elevenlabs", "heygen", "suno"], maxInput: 10_000 },
   seo: { capability: "seo-research", providers: ["firecrawl"], maxInput: 2_500 },
+};
+const PROVIDER_KEYS: Record<string, string> = {
+  elevenlabs: "ELEVENLABS_API_KEY",
+  heygen: "HEYGEN_API_KEY",
+  suno: "SUNO_API_KEY",
+  firecrawl: "FIRECRAWL_API_KEY",
 };
 
 export async function POST(request: Request) {
@@ -26,6 +33,8 @@ export async function POST(request: Request) {
   const provider = typeof body.provider === "string" ? body.provider.trim().toLowerCase() : null;
   if (spec.providers.length > 0) {
     if (!clientProviderCallsEnabled() || !provider || !spec.providers.includes(provider)) return NextResponse.json({ ok: false, error: "provider_calls_require_approval" }, { status: 403 });
+    const key = PROVIDER_KEYS[provider];
+    if (!key || !clientProviderEnabled(key)) return NextResponse.json({ ok: false, error: "provider_not_allowlisted" }, { status: 403 });
   } else if (provider) {
     return NextResponse.json({ ok: false, error: "provider_not_allowed" }, { status: 400 });
   }

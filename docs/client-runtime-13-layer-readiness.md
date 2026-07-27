@@ -4,8 +4,9 @@ Updated 2026-07-27 after reviewing the public intake deployment, the local
 operator runtime, Cloud Run client image `v11`, and the hosted adapter slice.
 The repository now contains a tenant-scoped records migration, explicit API
 provider aliases, queue-only client text execution, hosted Local/Engine
-replacement routes, and tenant-safe brief workspaces. The new `v14` image is
-built but not deployed until the records table is verified in Supabase.
+replacement routes, tenant-safe brief workspaces, provider/model allowlists,
+and queued workflow dispatch with cleanup on failed submission. The newest
+image is built but not deployed until the records table is verified in Supabase.
 
 ## Executive answer
 
@@ -19,7 +20,7 @@ The current state is:
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
-| Cloud Run client shell | Live as historical image `v11`; image `v14` is built, but current auth, hosted-adapter, records, and worker changes await deployment | Controlled test only |
+| Cloud Run client shell | Live as historical image `v11`; a newer image is built, but current auth, hosted-adapter, records, and worker changes await deployment | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |
 | Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
 
@@ -94,14 +95,14 @@ retention. Same codebase does not mean same permissions.
 | 3 | Database and storage | **Tenant-scoped artifact upload/verification/download plus worker artifact creation and tenant records implemented; evidence pending** | Apply the standalone records migration if the larger hosted migration is stale, configure Cloud Storage IAM, and complete object and record export/deletion drills. |
 | 4 | Auth and permissions | **Partial, test-ready** | Supabase Auth and middleware protect the client test. Add client membership, roles, session lifecycle, operator/admin separation, and explicit RBAC tests. |
 | 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
-| 6 | Cloud and compute | **Cloud Tasks/OIDC worker path, artifact worker, and delivery worker implemented in code; deployment evidence pending** | Apply the controls and records migrations, provision the per-client queue, set the worker token hash/secret, deploy `v13`, and verify bounded retries, artifact output, delivery completion, and job status. |
+| 6 | Cloud and compute | **Cloud Tasks/OIDC worker path, artifact worker, delivery worker, and queued workflow dispatch implemented in code; deployment evidence pending** | Apply the controls and records migrations, provision the per-client queue, set the worker token hash/secret, deploy the newest verified image, and verify bounded retries, artifact output, delivery completion, workflow dispatch, and job status. |
 | 7 | CI/CD and version control | **Improved; client promotion evidence pending** | GitHub release checks, manifest validation, and versioned images are in use. Add image digest promotion, deployment provenance, and automated rollback checks. |
 | 8 | Security and row-level security | **Schema, explicit membership checks, secret promotion/rotation checks, and boundary implemented; verification pending** | Secrets stay out of the browser, security headers are active, and the control-plane schema has RLS. Apply all migrations, review signing IAM, rotate secrets, and run the two-token isolation script. |
 | 9 | Rate limiting | **Public intake ready; durable runtime limiter and redacted alert metric implemented** | Apply the current client controls migration, provision the per-client Monitoring policy, and verify 429 behavior for request, credential, provider, artifact, workflow, and job routes. |
 | 10 | Caching and CDN | **Partial with private artifact controls** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Private runtime responses use no-store and artifacts use expiring signed URLs; add provider-result caching only where safe. |
 | 11 | Load balancing and scaling | **Partial** | Cloud Run scales to zero and the test is capped at one instance. Queue-backed work is implemented; add concurrency/load tests, per-client quotas, and scaling rules for production workloads. |
 | 12 | Error tracking and logs | **Redacted runtime events, provider failure codes, and alert provisioner implemented; evidence pending** | Safe audit metadata and structured rate/budget/delivery events are supported. Add request IDs, provider failure classification, alert delivery, and a retention policy. |
-| 13 | Availability and recovery | **Lifecycle CLI implemented; recovery evidence pending** | Revision rollback and operator export/restore/offboarding commands exist. Run them against a disposable second tenant, verify object/secret deletion, and document secret recovery and incident response. |
+| 13 | Availability and recovery | **Lifecycle CLI implemented; recovery evidence pending** | Revision rollback and operator export/restore/offboarding commands exist, including object restore and explicit queue deletion. Run them against a disposable second tenant, verify object/secret deletion, and document secret recovery and incident response. |
 
 ## Private operator dependency inventory
 
@@ -119,9 +120,9 @@ or a loopback service.
 | Grok Build | Local/provider-specific execution | xAI API adapter and outbound-action approval |
 | Free Claude Code | `fcc-server` at `127.0.0.1:8082` and local Claude CLI | Private 3939 remains local; client edition uses the approved queued OpenRouter free-model adapter. Never publish port 8082 |
 | Local, Local Engine, Ollama | Laptop models, filesystem, and local process state | Client `/local` and `/engine` use the hosted queued API model workspace; Ollama and local process state remain private |
-| Paperclip | Local service at `localhost:3100` and local company/workspace data | A tenant workflow-planning adapter now exists behind `orchestration`; full hosted Paperclip parity still needs its own reviewed work-item contract |
+| Paperclip | Local service at `localhost:3100` and local company/workspace data | A tenant workflow-planning adapter now exists behind `orchestration`; approved provider dispatch is queued only when explicitly enabled, while full hosted Paperclip parity still needs its own reviewed work-item contract |
 | Open Design, Web Studio, Flow Lab, Agent Studio, OpenMontage, Game Studio, Thumbnails | Local creative services, provider keys, or local output paths | Tenant-safe brief/request workspaces now record approved work; provider generation still needs API, Cloud Storage outputs, signed access, budget, and approval adapters |
-| Pipeline, Agent Kanban, Loop, Ruflo, Agent Mastermind | Local files, local models/CLI, operator vault, or orchestration state | Tenant workflow boards now provide durable work items and step state behind `orchestration`; provider-backed agent execution remains gated until its key, queue, budget, and approval evidence passes |
+| Pipeline, Agent Kanban, Loop, Ruflo, Agent Mastermind | Local files, local models/CLI, operator vault, or orchestration state | Tenant workflow boards now provide durable work items and step state behind `orchestration`; explicit approved dispatch can queue provider work, but remains gated until its key, queue, budget, and approval evidence passes |
 | Memory, Notebook, Journal, Goals, Context intake | Tenant records adapter is implemented for the client edition; local-memory parity is not complete | Apply the current hosted-capability migration, enable `tenant-data`, then verify Supabase RLS, object storage for attachments, retention/export/delete |
 | SEO, Integrations, Build Guide | Operator configuration, local credential paths, private source material, or redistribution risk | Firecrawl read-only research and tenant-safe brief/request workspaces exist; integrations, licensed/original content, publishing, and full SEO workflows remain gated |
 | Delivery and external actions | Approval-shaped UI exists; execution and delivery adapters vary | An idempotent approval-only delivery action record now exists; destination execution, rollback, and client-specific adapters remain gated |
@@ -184,7 +185,7 @@ true:
   `npm audit --omit=dev --audit-level=high`.
 - [x] Cloud Run v11 is deployed and passes the prior client-runtime verification
   script with security headers enabled.
-- [ ] Deploy the built v14 image after Supabase returns one
+- [ ] Deploy the newest built image after Supabase returns one
   `client_runtime_records` table row, then rerun authenticated client tests.
 - [ ] Review remaining development-toolchain advisories before allowing
   untrusted contributors or automated build scripts into the release process.
@@ -279,7 +280,7 @@ These are engineering work, not deployment switches:
   Tasks queue, store the worker token/hash, deploy the worker-enabled image,
   and run the end-to-end job/retry/budget evidence test. The application now
   contains the OIDC-verified worker path, job status route, and bounded retry
-  contract, but the built `v14` cloud test has not yet been deployed.
+  contract, but the newest cloud-test image has not yet been deployed.
 - Cross-client isolation, backup/restore, export/deletion, and offboarding
   evidence using a second dry-run client manifest. The operator lifecycle CLI
   exists, but it has not yet been exercised against a disposable tenant.

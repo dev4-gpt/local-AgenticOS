@@ -1,12 +1,13 @@
 import { Buffer } from "node:buffer";
+import { randomUUID } from "node:crypto";
 
 const METADATA_ROOT = "http://metadata.google.internal/computeMetadata/v1";
 
-export async function enqueueClientRuntimeTask(input: { jobId?: string; actionId?: string; tenantSlug: string; delaySeconds?: number; path?: "jobs" | "delivery" }) {
+export async function enqueueClientRuntimeTask(input: { jobId?: string; actionId?: string; tenantSlug: string; delaySeconds?: number; path?: "jobs" | "delivery"; baseUrl?: string }) {
   const project = process.env.GOOGLE_CLOUD_PROJECT?.trim() || process.env.GCLOUD_PROJECT?.trim();
   const region = process.env.CLIENT_RUNTIME_TASK_REGION?.trim();
   const queue = process.env.CLIENT_RUNTIME_TASK_QUEUE?.trim();
-  const baseUrl = process.env.CLIENT_RUNTIME_BASE_URL?.trim().replace(/\/$/, "");
+  const baseUrl = (input.baseUrl?.trim() || process.env.CLIENT_RUNTIME_BASE_URL?.trim())?.replace(/\/$/, "");
   const serviceAccount = (process.env.CLIENT_TASK_INVOKER_SERVICE_ACCOUNT || process.env.CLIENT_RUNTIME_SERVICE_ACCOUNT)?.trim();
   if (!project || !region || !queue || !baseUrl || !serviceAccount) return { ok: false, status: 503, error: "task_runtime_not_configured" };
 
@@ -22,7 +23,10 @@ export async function enqueueClientRuntimeTask(input: { jobId?: string; actionId
   if (!identifier) return { ok: false, status: 400, error: "task_identifier_missing" };
   const taskPath = input.path === "delivery" ? "delivery" : "jobs";
   const taskUrl = `${baseUrl}/api/internal/client-runtime/${taskPath}`;
-  const taskName = `projects/${project}/locations/${region}/queues/${queue}/tasks/${identifier}`;
+  // The database job/action id remains the idempotency key. Cloud Tasks needs
+  // a fresh task name for retries because the previous task may still exist
+  // while its handler is returning.
+  const taskName = `projects/${project}/locations/${region}/queues/${queue}/tasks/${identifier}-${randomUUID()}`;
   const payload = { tenantSlug: input.tenantSlug, ...(input.jobId ? { jobId: input.jobId } : {}), ...(input.actionId ? { actionId: input.actionId } : {}) };
   const response = await fetch(`https://cloudtasks.googleapis.com/v2/projects/${encodeURIComponent(project)}/locations/${encodeURIComponent(region)}/queues/${encodeURIComponent(queue)}/tasks`, {
     method: "POST",

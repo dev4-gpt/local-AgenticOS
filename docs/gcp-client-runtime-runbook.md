@@ -20,7 +20,8 @@ Client slug: veloce-cloud-test
 GCP project: veloce-agenticos-2026
 Region: asia-south1
 Cloud Run service: veloce-cloud-test
-Artifact Registry image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v11
+Live Artifact Registry image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v11
+Next candidate image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v15
 Runtime service account: veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com
 Storage bucket: gs://veloce-agenticos-2026-veloce-cloud-test
 Primary URL: https://veloce-cloud-test-1075094991117.asia-south1.run.app
@@ -400,7 +401,7 @@ The image is built from `Dockerfile.client`. It contains no provider values.
 The current internal test image is:
 
 ```text
-asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v11
+asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v15
 ```
 
 ## Deploy The Prepared Runtime
@@ -489,13 +490,15 @@ npm run client:lifecycle -- \
 ```
 
 The export is written with mode `0600` and includes tenant-scoped Supabase
-metadata plus optional Cloud Storage objects. A restore is dry-run by default:
+metadata plus optional Cloud Storage objects. A restore is dry-run by default;
+pass the matching object backup directory to restore Cloud Storage objects too:
 
 ```bash
 npm run client:lifecycle -- \
   --mode restore \
   --slug veloce-cloud-test \
-  --input .private-client-kits/exports/EXPORT.json
+  --input .private-client-kits/exports/EXPORT.json \
+  --objects .private-client-kits/exports/EXPORT-objects
 ```
 
 Offboarding requires an explicit confirmation and destroys the client-scoped
@@ -506,10 +509,11 @@ npm run client:lifecycle -- \
   --mode offboard \
   --slug veloce-cloud-test \
   --config .private-client-kits/veloce-cloud-test.gcp.json \
-  --apply --confirm-offboard --destroy-secrets --delete-bucket
+  --apply --confirm-offboard --destroy-secrets --delete-queue --delete-bucket
 ```
 
-`--delete-bucket` is intentionally explicit. Use it only when the bucket is
+`--delete-queue` is required for an applied offboarding so no durable work can
+remain queued for a deleted tenant. `--delete-bucket` is intentionally explicit. Use it only when the bucket is
 dedicated to that client and the export has been reviewed; otherwise the
 offboarding command removes the client namespace objects but leaves the empty
 bucket for an operator-controlled retention decision.
