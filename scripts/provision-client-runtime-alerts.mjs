@@ -13,6 +13,7 @@ const metrics = [
   { suffix: "runtime_429", event: "runtime.rate_limited", description: "Rate-limit events", title: "runtime throttles" },
   { suffix: "runtime_budget_denied", event: "runtime.budget_exceeded", description: "Budget denial events", title: "budget denials" },
   { suffix: "runtime_provider_failed", event: "runtime.provider_failed", description: "Provider failure events", title: "provider failures" },
+  { suffix: "runtime_delivery_failed", event: "runtime.delivery_failed", description: "Delivery failure events", title: "delivery failures" },
 ];
 
 console.log(`Veloce runtime alerts: ${slug}`);
@@ -61,7 +62,14 @@ function run(command, commandArgs, policyCommand, policyName, metricName) {
   if (policyCommand) {
     const existing = spawnSync("gcloud", ["monitoring", "policies", "list", "--project", project, `--filter=displayName="${policyName}"`, "--format=value(name)"], { encoding: "utf8" });
     if (existing.status === 0 && existing.stdout.trim()) {
-      console.log("Alert policy already exists; leaving it unchanged.");
+      const policyResource = existing.stdout.split(/\r?\n/).map((value) => value.trim()).find(Boolean);
+      if (notificationChannel && policyResource) {
+        const updated = spawnSync("gcloud", ["monitoring", "policies", "update", policyResource, "--project", project, `--add-notification-channels=${notificationChannel}`], { stdio: "inherit" });
+        if (updated.status !== 0) process.exit(updated.status ?? 1);
+        console.log("Alert policy already existed; notification channel attached.");
+      } else {
+        console.log("Alert policy already exists; leaving it unchanged.");
+      }
       return;
     }
   } else {

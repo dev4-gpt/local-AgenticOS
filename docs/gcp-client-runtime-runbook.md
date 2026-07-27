@@ -521,8 +521,8 @@ curl http://127.0.0.1:3940/api/client-runtime/credentials
 
 ## Runtime Alerts
 
-Runtime throttles, budget denials, and provider failures are emitted as redacted
-structured Cloud Run log events. Provision three log-based metrics and alert
+Runtime throttles, budget denials, provider failures, and delivery failures are
+emitted as redacted structured Cloud Run log events. Provision four log-based metrics and alert
 policies per client:
 
 ```bash
@@ -534,8 +534,10 @@ npm run provision:runtime-alerts -- \
   --apply
 ```
 
-The command is idempotent. Without `--notification-channel`, the policy still
-appears in Cloud Monitoring but does not send email or another notification.
+The command is idempotent. If a policy already exists, rerunning with
+`--notification-channel CHANNEL_ID` attaches that channel instead of silently
+leaving the policy disconnected. Without a channel, the policy still appears
+in Cloud Monitoring but does not send email or another notification.
 The event payload contains only tenant slug, bucket/provider label, status, and
 reason-safe fields; it never contains prompts, keys, or file contents.
 
