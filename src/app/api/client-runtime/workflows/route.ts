@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { cancelClientRuntimeJob, consumeClientRuntimeRateLimit, deleteClientRecord, enqueueClientRuntimeJob, insertClientRecord, recordClientAudit, selectClientRecords, updateClientRecord } from "@/lib/clientDataPlane";
+import { cancelClientRuntimeJob, checkClientRuntimeRateLimit, deleteClientRecord, enqueueClientRuntimeJob, insertClientRecord, recordClientAudit, selectClientRecords, updateClientRecord } from "@/lib/clientDataPlane";
 import { clientProviderRequestAllowed } from "@/lib/clientProviderAdapter";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
@@ -18,7 +18,9 @@ const SECRET_LIKE = /(api[_ -]?key|secret|password|private[_ -]?key|access[_ -]?
 export async function GET(request: Request) {
   const user = await authenticatedMember();
   if (!user) return error("not_authenticated", 401);
-  if (!(await consumeClientRuntimeRateLimit("workflow-read", 120, 900))) return error("runtime_rate_limited", 429);
+  const readLimit = await checkClientRuntimeRateLimit("workflow-read", 120, 900);
+  if (!readLimit.ok) return error("runtime_limit_unavailable", 503);
+  if (!readLimit.allowed) return error("runtime_rate_limited", 429);
   const surface = new URL(request.url).searchParams.get("surface")?.trim().toLowerCase() ?? "";
   const filters: Record<string, string> = {
     tenant_slug: `eq.${process.env.CLIENT_SLUG ?? ""}`,
@@ -35,7 +37,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const user = await authenticatedMember();
   if (!user) return error("not_authenticated", 401);
-  if (!(await consumeClientRuntimeRateLimit("workflow-write", 30, 900))) return error("runtime_rate_limited", 429);
+  const writeLimit = await checkClientRuntimeRateLimit("workflow-write", 30, 900);
+  if (!writeLimit.ok) return error("runtime_limit_unavailable", 503);
+  if (!writeLimit.allowed) return error("runtime_rate_limited", 429);
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const requestId = safeRequestId(request.headers.get("x-request-id"));
   const surface = typeof body.surface === "string" ? body.surface.trim().toLowerCase() : "orchestrate";
@@ -122,7 +126,9 @@ async function updateExecution(workflowId: string, tenantSlug: string, userId: s
 export async function PATCH(request: Request) {
   const user = await authenticatedMember();
   if (!user) return error("not_authenticated", 401);
-  if (!(await consumeClientRuntimeRateLimit("workflow-write", 30, 900))) return error("runtime_rate_limited", 429);
+  const writeLimit = await checkClientRuntimeRateLimit("workflow-write", 30, 900);
+  if (!writeLimit.ok) return error("runtime_limit_unavailable", 503);
+  if (!writeLimit.allowed) return error("runtime_rate_limited", 429);
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const requestId = safeRequestId(request.headers.get("x-request-id"));
   const id = typeof body.id === "string" ? body.id.trim() : "";
@@ -170,7 +176,9 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   const user = await authenticatedMember();
   if (!user) return error("not_authenticated", 401);
-  if (!(await consumeClientRuntimeRateLimit("workflow-write", 30, 900))) return error("runtime_rate_limited", 429);
+  const writeLimit = await checkClientRuntimeRateLimit("workflow-write", 30, 900);
+  if (!writeLimit.ok) return error("runtime_limit_unavailable", 503);
+  if (!writeLimit.allowed) return error("runtime_rate_limited", 429);
   const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
   if (!/^[0-9a-f-]{36}$/i.test(id)) return error("workflow_id_invalid", 400);
   const result = await deleteClientRecord("client_runtime_records", { id: `eq.${id}`, tenant_slug: `eq.${process.env.CLIENT_SLUG ?? ""}`, kind: "eq.workflow", created_by: `eq.${user.id}` });

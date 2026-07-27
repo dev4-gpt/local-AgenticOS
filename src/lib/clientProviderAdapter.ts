@@ -133,6 +133,23 @@ export function safeClientProviderOutput(value: string) {
     : output;
 }
 
+export function safeClientProviderMetadata(value: unknown, depth = 0): unknown {
+  if (depth > 3) return "[Provider metadata truncated.]";
+  if (typeof value === "string") return safeClientProviderOutput(value.slice(0, 4_000));
+  if (typeof value === "number" || typeof value === "boolean" || value === null) return value;
+  if (Array.isArray(value)) return value.slice(0, 40).map((item) => safeClientProviderMetadata(item, depth + 1));
+  if (!value || typeof value !== "object") return null;
+  const safe: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value).slice(0, 40)) {
+    if (/(api[_ -]?key|secret|password|private[_ -]?key|access[_ -]?token)/i.test(key)) {
+      safe[key] = "[Redacted provider metadata field.]";
+      continue;
+    }
+    safe[key] = safeClientProviderMetadata(item, depth + 1);
+  }
+  return safe;
+}
+
 export function clientTextMaxOutputTokens() {
   return Math.min(4096, Math.max(256, Number(process.env.CLIENT_MAX_OUTPUT_TOKENS ?? 2048)));
 }

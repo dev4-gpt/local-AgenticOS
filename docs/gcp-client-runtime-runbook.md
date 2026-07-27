@@ -20,8 +20,8 @@ Client slug: veloce-cloud-test
 GCP project: veloce-agenticos-2026
 Region: asia-south1
 Cloud Run service: veloce-cloud-test
-Current verified image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v33
-Current verified revision: veloce-cloud-test-00037-wdh
+Current verified image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v34
+Current verified revision: veloce-cloud-test-00038-bnv
 Runtime service account: veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com
 Storage bucket: gs://veloce-agenticos-2026-veloce-cloud-test
 Primary URL: https://veloce-cloud-test-1075094991117.asia-south1.run.app
@@ -313,6 +313,9 @@ environment was deployed. Refresh the client runtime and use the circular-arrow
 retry action on that card. The retry creates a new tenant-scoped orchestration
 job and preserves the four bounded workflow steps; it does not retry provider
 dispatches while provider calls are gated.
+If the rate-limit RPC is unavailable, the current workflow routes return
+`runtime_limit_unavailable` with HTTP 503; that is a backend recovery signal,
+not a 15-minute user throttle.
 
 The credentials screen can accept a catalogued provider key even while that
 provider is not active. This is intentional: submission only writes a reviewed
@@ -366,7 +369,7 @@ alias.
 
 The controls migration adds idempotent job enqueue, claim, completion, retry,
 cancel, and worker-budget functions. The application now has a Cloud Tasks
-submission route and an OIDC-verified worker route. The deployed v33 client
+submission route and an OIDC-verified worker route. The deployed v34 client
 shell keeps provider calls disabled; the active cloud-test revision has the
 worker flag, Secret Manager token binding, and artifacts capability. Successful
 text, media, and SEO work settles its bounded budget reservation after the
@@ -493,7 +496,7 @@ The image is built from `Dockerfile.client`. It contains no provider values.
 The current internal test image is:
 
 ```text
-asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v33
+asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v34
 ```
 
 ## Deploy The Prepared Runtime

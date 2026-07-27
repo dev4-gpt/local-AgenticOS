@@ -32,7 +32,10 @@ export default function ClientWorkflowWorkspace({ surface }: { surface: Surface 
     const response = await fetch(`/api/client-runtime/workflows?surface=${encodeURIComponent(surface)}`, { cache: "no-store" }).catch(() => null);
     const data = await response?.json().catch(() => null);
     setWorkflows(Array.isArray(data?.workflows) ? data.workflows : []);
-    if (!response?.ok && data?.error === "capability_not_enabled") setError("Tenant workflow management is not enabled in this client manifest yet.");
+    if (!response?.ok) {
+      if (data?.error === "capability_not_enabled") setError("Tenant workflow management is not enabled in this client manifest yet.");
+      else if (data?.error === "runtime_limit_unavailable") setError("The runtime limit service is temporarily unavailable. Try again shortly.");
+    }
   }
   useEffect(() => { void load(); }, [surface]);
   useEffect(() => {
@@ -47,7 +50,7 @@ export default function ClientWorkflowWorkspace({ surface }: { surface: Surface 
     const response = await fetch("/api/client-runtime/workflows", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ surface, operation, title, goal }) }).catch(() => null);
     if (!response?.ok) {
       const data = await response?.json().catch(() => null);
-      setError(data?.error === "runtime_rate_limited" ? "Workflow writes are rate limited. Wait about 15 minutes before trying again." : data?.error || "The workflow could not be saved.");
+      setError(data?.error === "runtime_rate_limited" ? "Workflow writes are rate limited. Wait about 15 minutes before trying again." : data?.error === "runtime_limit_unavailable" ? "The runtime limit service is temporarily unavailable. Try again shortly." : data?.error || "The workflow could not be saved.");
     }
     else { setTitle(""); setGoal(""); await load(); }
     setBusy(false);
@@ -70,7 +73,7 @@ export default function ClientWorkflowWorkspace({ surface }: { surface: Surface 
     const response = await fetch("/api/client-runtime/workflows", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, action: "retry_execution" }) }).catch(() => null);
     if (!response?.ok) {
       const data = await response?.json().catch(() => null);
-      setError(data?.error === "runtime_rate_limited" ? "Workflow retries are rate limited. Wait about 15 minutes before trying again." : data?.error || "The workflow could not be retried.");
+      setError(data?.error === "runtime_rate_limited" ? "Workflow retries are rate limited. Wait about 15 minutes before trying again." : data?.error === "runtime_limit_unavailable" ? "The runtime limit service is temporarily unavailable. Try again shortly." : data?.error || "The workflow could not be retried.");
     }
     else await load();
     setBusy(false);

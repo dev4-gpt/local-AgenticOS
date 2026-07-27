@@ -81,12 +81,12 @@ export async function selectClientRecords(table: string, filters: Record<string,
   return { ok: true, status: response.status, records: Array.isArray(records) ? records : [] };
 }
 
-export async function consumeClientRuntimeRateLimit(bucket: string, limit: number, windowSeconds: number) {
+export async function checkClientRuntimeRateLimit(bucket: string, limit: number, windowSeconds: number) {
   const config = supabaseAuthConfig();
   const token = await currentClientAccessToken();
   const user = await currentClientUser();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
-  if (!config || !token || !user || !tenantSlug) return false;
+  if (!config || !token || !user || !tenantSlug) return { ok: false as const, status: 401, allowed: false };
   const keyHash = createHash("sha256").update(`${tenantSlug}:${bucket}:${user.id}`).digest("hex");
   const response = await fetch(`${config.url}/rest/v1/rpc/consume_client_runtime_rate_limit`, {
     method: "POST",
@@ -96,11 +96,16 @@ export async function consumeClientRuntimeRateLimit(bucket: string, limit: numbe
   }).catch(() => null);
   if (!response?.ok) {
     logClientRuntimeEvent("runtime.limit_check_failed", { tenant: tenantSlug ?? "unknown", bucket, status: response?.status ?? 503 });
-    return false;
+    return { ok: false as const, status: response?.status ?? 503, allowed: false };
   }
   const allowed = (await response.json().catch(() => false)) === true;
   if (!allowed) logClientRuntimeEvent("runtime.rate_limited", { tenant: tenantSlug ?? "unknown", bucket, status: 429 });
-  return allowed;
+  return { ok: true as const, status: response.status, allowed };
+}
+
+export async function consumeClientRuntimeRateLimit(bucket: string, limit: number, windowSeconds: number) {
+  const result = await checkClientRuntimeRateLimit(bucket, limit, windowSeconds);
+  return result.ok && result.allowed;
 }
 
 export async function reserveClientRuntimeBudget(provider: string, model: string | null, amountMicros: number, jobId?: string) {

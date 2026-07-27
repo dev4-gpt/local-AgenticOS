@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { reserveClientRuntimeBudgetWorker, settleClientRuntimeBudgetWorker, workerRpc } from "@/lib/clientDataPlane";
-import { clientProviderDefaultModel, clientTextMaxOutputTokens, clientTextUsageCostMicros, estimateClientTextCostMicros, runClientTextAdapter, safeClientProviderOutput } from "@/lib/clientProviderAdapter";
+import { clientProviderDefaultModel, clientTextMaxOutputTokens, clientTextUsageCostMicros, estimateClientTextCostMicros, runClientTextAdapter, safeClientProviderMetadata, safeClientProviderOutput } from "@/lib/clientProviderAdapter";
 import { clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { estimateClientMediaCostMicros, runClientHeyGenAdapter, runClientMusicAdapter, runClientSpeechAdapter, safeProviderOutputUrl } from "@/lib/clientMediaAdapter";
 import { runClientSeoAdapter } from "@/lib/clientSeoAdapter";
@@ -300,8 +300,8 @@ async function processSeoJob(jobId: string, tenantSlug: string, workerToken: str
     model: result.model,
     url: result.url,
     focus: result.focus,
-    markdown: result.markdown,
-    metadata: result.metadata,
+    markdown: safeClientProviderOutput(result.markdown),
+    metadata: safeClientProviderMetadata(result.metadata),
   });
   return NextResponse.json({ ok: true, status: "succeeded" });
 }

@@ -80,6 +80,7 @@ expect(recordsRoute.includes("client_runtime_records"), "tenant records route mu
 expect(recordsRoute.includes("SECRET_LIKE"), "tenant records route must reject secret-like content");
 expect(workflowsRoute.includes("clientCapabilityEnabled(\"orchestration\")"), "hosted workflow route must be capability gated");
 expect(workflowsRoute.includes("client_runtime_records") && workflowsRoute.includes("workflow"), "hosted workflow route must use tenant records");
+expect(workflowsRoute.includes("checkClientRuntimeRateLimit") && workflowsRoute.includes("runtime_limit_unavailable"), "workflow routes must distinguish limiter outages from genuine rate limiting");
 expect(workflowsRoute.includes("SECRET_LIKE"), "hosted workflow route must reject secret-like content");
 expect(workflowsRoute.includes("approval_required") && workflowsRoute.includes("updateExecution"), "denied workflow dispatch must retain an auditable execution state");
 expect(workflowsRoute.includes("CLIENT_WORKFLOW_PROVIDER") && workflowsRoute.includes("enqueueClientRuntimeJob"), "workflow dispatch must use a manifest-selected queued provider job");
@@ -119,7 +120,7 @@ expect(workerRoute.includes("settleClientRuntimeBudgetWorker") && providerAdapte
 expect((workerRoute.match(/actualAmountMicros: result\.estimatedCostMicros/g) ?? []).length >= 4, "successful speech, music, video, and SEO jobs must settle fixed provider budget reservations");
 expect(workerRoute.includes("settleTerminalBudget") && workerRoute.includes("providerFailure: 1") && workerRoute.includes("artifactStoreFailure: 1"), "terminal provider failures and artifact failures must settle their budget reservation explicitly");
 expect(workerRoute.includes("provider_retryable") && workerRoute.includes("retryJob(tenantSlug, jobId, workerToken"), "retryable provider failures must retain the reservation for the next bounded attempt");
-expect(workerRoute.includes("safeClientProviderOutput") && providerAdapter.includes("Provider output withheld"), "provider output must be bounded and withheld when it matches secret-like content");
+expect(workerRoute.includes("safeClientProviderOutput") && workerRoute.includes("safeClientProviderMetadata") && providerAdapter.includes("Provider output withheld") && providerAdapter.includes("Redacted provider metadata field"), "provider output and metadata must be bounded and withheld when they match secret-like content");
 expect(providerAdapter.includes("prompt_tokens") && providerAdapter.includes("input_tokens") && providerAdapter.includes("promptTokenCount"), "provider adapters must normalize OpenAI-compatible, Anthropic, and Gemini usage");
 expect(alerts.includes('mimeType: "text/markdown"') && alerts.includes("undefined, metricName"), "runtime alert policies must include valid documentation MIME metadata and idempotent metric checks");
 expect(middleware.includes("x-request-id") && middleware.includes("crypto.randomUUID") && middleware.includes("response.headers.set(\"x-request-id\""), "client responses must carry generated request correlation IDs");
