@@ -9,7 +9,9 @@ and queued workflow dispatch with durable audit state on failed submission. The
 v24 image is deployed and passes the unauthenticated boundary checks. Revision
 `veloce-cloud-test-00025-4np` has the worker flag, Secret Manager token
 binding, and artifact capability enabled; authenticated queued-job and
-artifact drills are still pending.
+artifact drills are still pending. The lifecycle export contract now uses an
+explicit credential-safe column allowlist, and tenant members cannot read the
+worker-token verifier after the controls migration is reapplied.
 
 ## Executive answer
 
@@ -95,17 +97,17 @@ retention. Same codebase does not mean same permissions.
 |---:|---|---|---|
 | 1 | Frontend foundations | **Ready for public pages and the client shell; partial parity with 3939** | Replace gated placeholders only after the underlying adapter is ready; finish responsive/error-state review per enabled capability. |
 | 2 | APIs and backend logic | **Control-plane, queue-backed API text aliases, workflow, Firecrawl SEO, Suno/HeyGen/ElevenLabs media adapters, approval-only delivery contracts, and workflow execution reconciliation implemented; feature parity partial** | Provider submission, promotion, manifest binding, migration application, and live adapter evidence remain separate gates. Image/video production, publishing destinations, and provider-specific tool contracts still need separate adapters. |
-| 3 | Database and storage | **Tenant-scoped artifact upload/verification/download, authenticated artifact metadata RPC, worker artifact creation, tenant records, and signed-upload CORS provisioned; namespace bucket drill passed** | Complete the authenticated signed-URL upload/download drill and record export/deletion drill. |
+| 3 | Database and storage | **Tenant-scoped artifact upload/verification/download, authenticated artifact metadata RPC, worker artifact creation, tenant records, and signed-upload CORS provisioned; namespace bucket drill passed** | Complete the authenticated signed-URL upload/download drill and record export/deletion drill. Run the final verification query and confirm the worker hash is not client-readable. |
 | 4 | Auth and permissions | **Partial, test-ready** | Supabase Auth and middleware protect the client test. Add client membership, roles, session lifecycle, operator/admin separation, and explicit RBAC tests. |
 | 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
 | 6 | Cloud and compute | **Cloud Tasks/OIDC worker path, artifact worker, delivery worker, queue, storage infrastructure, and worker binding provisioned** | Verify bounded retries, artifact output, delivery completion, workflow dispatch, and job status with an authenticated client job. |
 | 7 | CI/CD and version control | **Improved; client promotion evidence pending** | GitHub release checks, manifest validation, and versioned images are in use. Add image digest promotion, deployment provenance, and automated rollback checks. |
-| 8 | Security and row-level security | **Schema, explicit membership checks, secret promotion/rotation checks, and boundary implemented; verification pending** | Secrets stay out of the browser, security headers are active, and the control-plane schema has RLS. Apply all migrations, review signing IAM, rotate secrets, and run the two-token isolation script. |
-| 9 | Rate limiting | **Public intake ready; durable runtime limiter and three redacted client alert policies provisioned** | Verify 429 behavior for request, credential, provider, artifact, workflow, and job routes, and attach an operator notification channel. |
+| 8 | Security and row-level security | **Schema, explicit membership checks, secret promotion/rotation checks, tenant-safe exports, and boundary implemented; verification pending** | Secrets stay out of the browser, security headers are active, and the control-plane schema has RLS. Reapply the controls migration so `worker_token_hash` is excluded from authenticated reads, review signing IAM, rotate secrets, and run the two-token isolation script. |
+| 9 | Rate limiting | **Public intake ready; durable runtime limiter and four redacted client alert policies provisioned** | Verify 429 behavior for request, credential, provider, artifact, workflow, and job routes, and attach an operator notification channel. Rerun alert provisioning with the channel so existing policies are updated. |
 | 10 | Caching and CDN | **Partial with private artifact controls** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Private runtime responses use no-store and artifacts use expiring signed URLs; add provider-result caching only where safe. |
 | 11 | Load balancing and scaling | **Partial** | Cloud Run scales to zero and the test is capped at one instance. Queue-backed work is implemented; add concurrency/load tests, per-client quotas, and scaling rules for production workloads. |
 | 12 | Error tracking and logs | **Redacted runtime events, provider failure codes, and alert provisioner implemented; evidence pending** | Safe audit metadata and structured rate/budget/delivery events are supported. Add request IDs, provider failure classification, alert delivery, and a retention policy. |
-| 13 | Availability and recovery | **Lifecycle CLI implemented; recovery evidence pending** | Revision rollback and operator export/restore/offboarding commands exist, including object restore and explicit queue deletion. Run them against a disposable second tenant, verify object/secret deletion, and document secret recovery and incident response. |
+| 13 | Availability and recovery | **Lifecycle CLI implemented with credential-safe exports and explicit destructive confirmations; recovery evidence pending** | Revision rollback and operator export/restore/offboarding commands exist, including object restore and explicit queue deletion. Run them against a disposable second tenant, verify object/secret deletion, rotate a new worker token after restore, and document secret recovery and incident response. |
 
 ## Private operator dependency inventory
 
@@ -275,8 +277,8 @@ These are engineering work, not deployment switches:
 - Tenant-scoped runtime tables and object storage for memory, files, jobs, and
   deliverables, or a documented single-tenant-only equivalent for each route;
   apply the standalone records migration if the hosted-capabilities query is
-  stale, then verify the table and twelve-function query after applying the
-  workflow-reconciliation migration.
+  stale, then run `supabase-client-runtime-final-verification.sql` after
+  applying the workflow-reconciliation migration.
 - Apply `supabase-client-runtime-controls.sql` and verify durable runtime
   throttles and budget reservations.
 - Apply `supabase-client-runtime-workflow-reconciliation.sql` before enabling
@@ -298,8 +300,9 @@ These are engineering work, not deployment switches:
   exists, but it has not yet been exercised against a disposable tenant.
 - Durable runtime rate limits and alerts beyond the public intake guard, plus
   deployment evidence for the new hosted branches and delivery worker. The
-  repository now includes a two-token read-only isolation probe, but it still
-  needs two approved Auth tenants and live evidence.
+  repository now includes four redacted alert policies and a two-token
+  read-only isolation probe, but it still needs a notification channel, two
+  approved Auth tenants, and live evidence.
 
 Until these are complete, “production ready” means the public front door and
 approved intake control plane, not unrestricted access to every local tab.
