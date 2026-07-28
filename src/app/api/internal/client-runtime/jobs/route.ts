@@ -3,6 +3,7 @@ import { reserveClientRuntimeBudgetWorker, settleClientRuntimeBudgetWorker, work
 import { clientProviderDefaultModel, clientTextMaxOutputTokens, clientTextUsageCostMicros, estimateClientTextCostMicros, runClientTextAdapter, safeClientProviderMetadata, safeClientProviderOutput } from "@/lib/clientProviderAdapter";
 import { clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { estimateClientImageCostMicros, estimateClientMediaCostMicros, runClientHeyGenAdapter, runClientImageAdapter, runClientMusicAdapter, runClientSpeechAdapter, safeProviderOutputUrl } from "@/lib/clientMediaAdapter";
+import { readBoundedResponseBytes } from "@/lib/clientNetworkSafety";
 import { runClientSeoAdapter } from "@/lib/clientSeoAdapter";
 import { clientGcpAccessToken, clientStorageConfig, uploadClientStorageObject } from "@/lib/clientStorage";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
@@ -53,13 +54,12 @@ export async function POST(request: Request) {
   const result = await runClientTextAdapter({ provider: job.provider, model, prompt: job.input_metadata.prompt, history, reserveBudget: false, jobId });
   if (result.ok) {
     const actualAmountMicros = result.usage ? clientTextUsageCostMicros(model, result.usage) : null;
-    await settleClientRuntimeBudgetWorker({
-      jobId,
+    const outputMetadata = { workflowId: workflowIdFrom(job.input_metadata), provider: result.provider, model: result.model, output: safeClientProviderOutput(result.output), steps: workflowStepsFrom(job.input_metadata) };
+    if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, {
       actualAmountMicros: actualAmountMicros ?? estimate,
       usageMetadata: result.usage ?? { estimatedCostMicros: estimate, usageFallback: 1 },
-      workerToken,
-    });
-    await completeJob(tenantSlug, jobId, workerToken, "succeeded", { workflowId: workflowIdFrom(job.input_metadata), provider: result.provider, model: result.model, output: safeClientProviderOutput(result.output), steps: workflowStepsFrom(job.input_metadata) });
+    }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
+    await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
     return NextResponse.json({ ok: true, status: "succeeded" });
   }
   logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: job.provider, status: result.status, reason: result.error });
@@ -117,20 +117,16 @@ async function processMediaJob(jobId: string, tenantSlug: string, workerToken: s
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "artifact_store_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
-  await settleClientRuntimeBudgetWorker({
-    jobId,
-    actualAmountMicros: result.estimatedCostMicros,
-    usageMetadata: { estimatedCostMicros: result.estimatedCostMicros },
-    workerToken,
-  });
-  await completeJob(tenantSlug, jobId, workerToken, "succeeded", {
+  const outputMetadata = {
     adapter: "elevenlabs-speech",
     artifactId,
     provider: result.provider,
     model: result.model,
     contentType: result.contentType,
     byteSize: result.bytes.length,
-  });
+  };
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: result.estimatedCostMicros, usageMetadata: { estimatedCostMicros: result.estimatedCostMicros } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
 
@@ -153,8 +149,9 @@ async function processOpenAiImageJob(jobId: string, tenantSlug: string, workerTo
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "artifact_store_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
-  await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros: result.estimatedCostMicros, usageMetadata: { estimatedCostMicros: result.estimatedCostMicros }, workerToken });
-  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { adapter: "openai-image", artifactId, provider: result.provider, model: result.model, contentType: result.contentType, byteSize: result.bytes.length });
+  const outputMetadata = { adapter: "openai-image", artifactId, provider: result.provider, model: result.model, contentType: result.contentType, byteSize: result.bytes.length };
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: result.estimatedCostMicros, usageMetadata: { estimatedCostMicros: result.estimatedCostMicros } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
 
@@ -191,8 +188,8 @@ async function processSunoJob(jobId: string, tenantSlug: string, workerToken: st
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_output_download_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.length < 1 || bytes.length > 100 * 1024 * 1024) {
+  const bytes = await readBoundedResponseBytes(response, 100 * 1024 * 1024);
+  if (!bytes || bytes.length < 1) {
     await settleTerminalBudget(jobId, workerToken, result.estimatedCostMicros, { estimatedCostMicros: result.estimatedCostMicros, providerOutputFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_output_invalid");
     return NextResponse.json({ ok: true, status: "failed" });
@@ -203,13 +200,9 @@ async function processSunoJob(jobId: string, tenantSlug: string, workerToken: st
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "artifact_store_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
-  await settleClientRuntimeBudgetWorker({
-    jobId,
-    actualAmountMicros: result.estimatedCostMicros,
-    usageMetadata: { estimatedCostMicros: result.estimatedCostMicros },
-    workerToken,
-  });
-  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { adapter: "suno-music", artifactId, provider: result.provider, model: result.model, contentType: "audio/mpeg", byteSize: bytes.length });
+  const outputMetadata = { adapter: "suno-music", artifactId, provider: result.provider, model: result.model, contentType: "audio/mpeg", byteSize: bytes.length };
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: result.estimatedCostMicros, usageMetadata: { estimatedCostMicros: result.estimatedCostMicros } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
 
@@ -247,8 +240,8 @@ async function processHeyGenJob(jobId: string, tenantSlug: string, workerToken: 
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_output_download_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.length < 1 || bytes.length > 100 * 1024 * 1024) {
+  const bytes = await readBoundedResponseBytes(response, 100 * 1024 * 1024);
+  if (!bytes || bytes.length < 1) {
     await settleTerminalBudget(jobId, workerToken, result.estimatedCostMicros, { estimatedCostMicros: result.estimatedCostMicros, providerOutputFailure: 1 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_output_invalid");
     return NextResponse.json({ ok: true, status: "failed" });
@@ -259,13 +252,9 @@ async function processHeyGenJob(jobId: string, tenantSlug: string, workerToken: 
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "artifact_store_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
-  await settleClientRuntimeBudgetWorker({
-    jobId,
-    actualAmountMicros: result.estimatedCostMicros,
-    usageMetadata: { estimatedCostMicros: result.estimatedCostMicros },
-    workerToken,
-  });
-  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { adapter: "heygen-video", artifactId, provider: result.provider, model: result.model, contentType: "video/mp4", byteSize: bytes.length });
+  const outputMetadata = { adapter: "heygen-video", artifactId, provider: result.provider, model: result.model, contentType: "video/mp4", byteSize: bytes.length };
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: result.estimatedCostMicros, usageMetadata: { estimatedCostMicros: result.estimatedCostMicros } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
 
@@ -314,13 +303,7 @@ async function processSeoJob(jobId: string, tenantSlug: string, workerToken: str
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
     return NextResponse.json({ ok: true, status: "failed" });
   }
-  await settleClientRuntimeBudgetWorker({
-    jobId,
-    actualAmountMicros: result.estimatedCostMicros,
-    usageMetadata: { estimatedCostMicros: result.estimatedCostMicros },
-    workerToken,
-  });
-  await completeJob(tenantSlug, jobId, workerToken, "succeeded", {
+  const outputMetadata = {
     adapter: "firecrawl-scrape",
     provider: result.provider,
     model: result.model,
@@ -328,15 +311,21 @@ async function processSeoJob(jobId: string, tenantSlug: string, workerToken: str
     focus: result.focus,
     markdown: safeClientProviderOutput(result.markdown),
     metadata: safeClientProviderMetadata(result.metadata),
-  });
+  };
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: result.estimatedCostMicros, usageMetadata: { estimatedCostMicros: result.estimatedCostMicros } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
 
 async function completeJob(tenantSlug: string, jobId: string, workerToken: string, status: string, outputMetadata: Record<string, unknown>, errorCode?: string) {
-  await workerRpc("complete_client_runtime_job", { p_tenant_slug: tenantSlug, p_job_id: jobId, p_worker_token: workerToken, p_status: status, p_output_metadata: outputMetadata, p_error_code: errorCode ?? null });
+  const completed = await workerRpc("complete_client_runtime_job", { p_tenant_slug: tenantSlug, p_job_id: jobId, p_worker_token: workerToken, p_status: status, p_output_metadata: outputMetadata, p_error_code: errorCode ?? null });
+  if (!completed.ok || completed.value !== true) {
+    logClientRuntimeEvent("runtime.job_completion_failed", { tenant: tenantSlug, jobId, status: 503 });
+    throw new Error("job_completion_failed");
+  }
   const workflowId = typeof outputMetadata.workflowId === "string" && /^[0-9a-f-]{36}$/i.test(outputMetadata.workflowId) ? outputMetadata.workflowId : null;
   if (workflowId) {
-    await workerRpc("update_client_runtime_record_worker", {
+    const reconciled = await workerRpc("update_client_runtime_record_worker", {
       p_tenant_slug: tenantSlug,
       p_record_id: workflowId,
       p_worker_token: workerToken,
@@ -352,7 +341,16 @@ async function completeJob(tenantSlug: string, jobId: string, workerToken: strin
         updatedAt: new Date().toISOString(),
       },
     });
+    if (!reconciled.ok || reconciled.value !== true) logClientRuntimeEvent("runtime.workflow_reconciliation_failed", { tenant: tenantSlug, jobId, status: 503 });
   }
+}
+
+async function settleRequiredBudget(tenantSlug: string, jobId: string, workerToken: string, input: { actualAmountMicros: number; usageMetadata: Record<string, number> }, outputMetadata: Record<string, unknown>) {
+  const settled = await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros: input.actualAmountMicros, usageMetadata: input.usageMetadata, workerToken });
+  if (settled) return true;
+  logClientRuntimeEvent("runtime.budget_settlement_failed", { tenant: tenantSlug, jobId, status: 503 });
+  await completeJob(tenantSlug, jobId, workerToken, "failed", outputMetadata, "budget_settlement_failed");
+  return false;
 }
 
 async function settleTerminalBudget(jobId: string, workerToken: string, actualAmountMicros: number, usageMetadata: Record<string, number>) {

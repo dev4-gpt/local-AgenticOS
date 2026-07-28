@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { providerEnvKey } from "@/lib/providerKeys";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
+import { isPrivateAddress, readBoundedResponseBytes } from "@/lib/clientNetworkSafety";
 
 const ELEVENLABS_ENDPOINT = "https://api.elevenlabs.io/v1/text-to-speech";
 const OPENAI_IMAGE_ENDPOINT = "https://api.openai.com/v1/images/generations";
@@ -86,8 +87,8 @@ export async function runClientSpeechAdapter(input: {
   }).catch(() => null);
   if (!response?.ok) return { ok: false, status: response?.status ?? 503, error: "provider_request_failed" };
 
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.length < 1 || bytes.length > MAX_AUDIO_BYTES) return { ok: false, status: 502, error: "provider_output_invalid" };
+  const bytes = await readBoundedResponseBytes(response, MAX_AUDIO_BYTES);
+  if (!bytes || bytes.length < 1) return { ok: false, status: 502, error: "provider_output_invalid" };
   const slug = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "narration";
   return {
     ok: true,
@@ -232,7 +233,7 @@ export async function runClientMusicAdapter(input: {
 export function safeProviderOutputUrl(value: string) {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && !url.username && !url.password;
+    return url.protocol === "https:" && !url.username && !url.password && !isPrivateAddress(url.hostname);
   } catch {
     return false;
   }

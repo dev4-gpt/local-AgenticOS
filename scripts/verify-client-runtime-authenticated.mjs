@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-import { readFile, stat } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import process from "node:process";
 
 const args = process.argv.slice(2);
 const baseUrl = required("--url").replace(/\/$/, "");
 const cookieFile = required("--cookie-file");
 const runArtifacts = !args.includes("--workflow-only");
-const cookie = await readCookie(cookieFile);
+let cookie = await readCookie(cookieFile);
 const failures = [];
 let workflowId = null;
 let artifactId = null;
@@ -113,12 +113,14 @@ async function waitForWorkflow(id) {
 }
 
 async function api(pathname, options = {}) {
-  return fetch(`${baseUrl}${pathname}`, {
+  const response = await fetch(`${baseUrl}${pathname}`, {
     ...options,
     headers: { accept: "application/json", cookie, ...(options.headers || {}) },
     redirect: options.redirect || "manual",
     cache: "no-store",
   }).catch(() => new Response(null, { status: 503 }));
+  await persistRotatedCookies(response);
+  return response;
 }
 
 async function safeJson(response) {
@@ -129,8 +131,34 @@ async function readCookie(filePath) {
   const mode = (await stat(filePath)).mode & 0o777;
   if ((mode & 0o077) !== 0) fail("--cookie-file must not be readable by group or other users");
   const value = (await readFile(filePath, "utf8")).trim();
-  if (!value || !/\bveloce_access_token=/.test(value)) fail("--cookie-file must contain the runtime access cookie");
+  if (!value || !/\bveloce_access_token=/.test(value) || !/\bveloce_refresh_token=/.test(value)) fail("--cookie-file must contain both runtime session cookies");
   return value.replace(/^cookie:\s*/i, "").replace(/^['"]|['"]$/g, "").trim();
+}
+
+async function persistRotatedCookies(response) {
+  const headers = typeof response.headers.getSetCookie === "function"
+    ? response.headers.getSetCookie()
+    : splitSetCookieHeader(response.headers.get("set-cookie") ?? "");
+  if (!headers.length) return;
+
+  const jar = new Map();
+  for (const pair of cookie.split(";")) {
+    const separator = pair.indexOf("=");
+    if (separator > 0) jar.set(pair.slice(0, separator).trim(), pair.slice(separator + 1).trim());
+  }
+  for (const header of headers) {
+    const match = /^(veloce_(?:access|refresh)_token)=([^;]*)/i.exec(header.trim());
+    if (match && match[2]) jar.set(match[1], match[2]);
+  }
+  if (!jar.has("veloce_access_token") || !jar.has("veloce_refresh_token")) return;
+  const nextCookie = `veloce_access_token=${jar.get("veloce_access_token")}; veloce_refresh_token=${jar.get("veloce_refresh_token")}`;
+  if (nextCookie === cookie) return;
+  cookie = nextCookie;
+  await writeFile(cookieFile, `${cookie}\n`, { mode: 0o600 });
+}
+
+function splitSetCookieHeader(value) {
+  return value.split(/,(?=\s*veloce_(?:access|refresh)_token=)/i).map((item) => item.trim()).filter(Boolean);
 }
 
 function equalBytes(a, b) {

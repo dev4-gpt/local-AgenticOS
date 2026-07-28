@@ -4,6 +4,7 @@ import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, insertClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
+import { safeDeliveryUrl } from "@/lib/clientDeliveryAdapter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,8 +34,9 @@ export async function POST(request: Request) {
   const artifactIds = Array.isArray(body.artifactIds) ? body.artifactIds.filter((id): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)).slice(0, 20) : [];
   const idempotencyKey = typeof body.idempotencyKey === "string" && body.idempotencyKey.trim().length >= 8 ? body.idempotencyKey.trim().slice(0, 180) : randomUUID();
   if (!ACTIONS.has(action) || title.length < 3 || details.length < 10) return NextResponse.json({ ok: false, error: "delivery_input_invalid" }, { status: 400 });
+  if ((action === "handoff" || action === "release") && !destination) return NextResponse.json({ ok: false, error: "delivery_destination_required" }, { status: 400 });
   if (containsClientSecretLike(title, details, destination)) return NextResponse.json({ ok: false, error: "secret_like_input_rejected" }, { status: 400 });
-  if (destination && !safeDestination(destination)) return NextResponse.json({ ok: false, error: "delivery_destination_invalid" }, { status: 400 });
+  if (destination && !(await safeDeliveryUrl(destination))) return NextResponse.json({ ok: false, error: "delivery_destination_invalid" }, { status: 400 });
 
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!tenantSlug) return NextResponse.json({ ok: false, error: "tenant_not_configured" }, { status: 503 });
@@ -62,13 +64,4 @@ export async function POST(request: Request) {
   if (!created.ok || !actionId) return NextResponse.json({ ok: false, error: "delivery_action_store_failed" }, { status: 502 });
   await recordClientAudit("delivery.requested", { action, approvalRequired: true });
   return NextResponse.json({ ok: true, requestId, actionId, status: "pending_approval" }, { status: 202, headers: { "cache-control": "no-store" } });
-}
-
-function safeDestination(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" && !url.username && !url.password && !["localhost", "127.0.0.1", "::1"].includes(url.hostname);
-  } catch {
-    return false;
-  }
 }

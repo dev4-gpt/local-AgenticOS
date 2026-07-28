@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SURFACES = new Set(["orchestrate", "paperclip", "room", "pipeline", "agent-kanban", "kanban", "loop", "ruflo"]);
-const OPERATIONS = new Set(["plan", "review", "build", "improve", "dispatch", "iterate"]);
+const OPERATIONS = new Set(["plan", "review", "build", "improve", "dispatch", "iterate", "handoff"]);
 const STATUSES = new Set(["active", "done", "archived"]);
 const STEP_STATUSES = new Set(["todo", "in_progress", "done", "blocked"]);
 const SECRET_LIKE = /(api[_ -]?key|secret|password|private[_ -]?key|access[_ -]?token)\s*[:=]/i;

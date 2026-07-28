@@ -117,26 +117,35 @@ alter table public.client_runtime_jobs enable row level security;
 alter table public.client_runtime_artifacts enable row level security;
 alter table public.client_runtime_budget_ledger enable row level security;
 
+drop policy if exists client_tenants_member_select on public.client_tenants;
 create policy client_tenants_member_select on public.client_tenants
   for select to authenticated using (public.client_member(slug));
 
+drop policy if exists client_memberships_self_select on public.client_memberships;
 create policy client_memberships_self_select on public.client_memberships
   for select to authenticated using (user_id = auth.uid());
 
+drop policy if exists client_requests_member_select on public.client_runtime_requests;
 create policy client_requests_member_select on public.client_runtime_requests
   for select to authenticated using (public.client_member(tenant_slug));
+drop policy if exists client_requests_member_insert on public.client_runtime_requests;
 create policy client_requests_member_insert on public.client_runtime_requests
   for insert to authenticated with check (public.client_member(tenant_slug) and submitted_by = auth.uid());
 
+drop policy if exists client_audit_member_select on public.client_runtime_audit_events;
 create policy client_audit_member_select on public.client_runtime_audit_events
   for select to authenticated using (public.client_member(tenant_slug));
+drop policy if exists client_audit_member_insert on public.client_runtime_audit_events;
 create policy client_audit_member_insert on public.client_runtime_audit_events
   for insert to authenticated with check (public.client_member(tenant_slug) and actor_id = auth.uid());
 
+drop policy if exists client_jobs_member_select on public.client_runtime_jobs;
 create policy client_jobs_member_select on public.client_runtime_jobs
   for select to authenticated using (public.client_member(tenant_slug));
+drop policy if exists client_artifacts_member_select on public.client_runtime_artifacts;
 create policy client_artifacts_member_select on public.client_runtime_artifacts
   for select to authenticated using (public.client_member(tenant_slug));
+drop policy if exists client_budget_member_select on public.client_runtime_budget_ledger;
 create policy client_budget_member_select on public.client_runtime_budget_ledger
   for select to authenticated using (public.client_member(tenant_slug));
 

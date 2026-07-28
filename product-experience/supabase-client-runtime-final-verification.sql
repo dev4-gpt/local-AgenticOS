@@ -51,6 +51,32 @@ where n.nspname = 'public'
   )
 order by p.proname;
 
+select
+  has_function_privilege(
+    'authenticated',
+    'public.update_client_runtime_record_worker(text, uuid, text, jsonb)',
+    'EXECUTE'
+  ) as workflow_worker_authenticated_execute,
+  has_function_privilege(
+    'anon',
+    'public.update_client_runtime_record_worker(text, uuid, text, jsonb)',
+    'EXECUTE'
+  ) as workflow_worker_anon_execute;
+
+select
+  p.proname as function_name,
+  position('p_action in' in pg_get_functiondef(p.oid)) > 0
+    and position('handoff' in pg_get_functiondef(p.oid)) > 0
+    and position('release' in pg_get_functiondef(p.oid)) > 0
+    and position('p_destination' in pg_get_functiondef(p.oid)) > 0
+    as delivery_destination_guard_present
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname = 'create_client_delivery_action'
+order by p.oid desc
+limit 1;
+
 select slug, status, retention_days
 from public.client_tenants
 where slug = 'veloce-cloud-test';

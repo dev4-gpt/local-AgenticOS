@@ -31,7 +31,7 @@ export type ClientWorkflowRun = {
   completedAt: string;
 };
 
-const OPERATIONS = new Set(["plan", "review", "build", "improve", "iterate"]);
+const OPERATIONS = new Set(["plan", "review", "build", "improve", "iterate", "handoff"]);
 
 /**
  * Runs the provider-free portion of a hosted workflow. It prepares an
@@ -83,5 +83,6 @@ function defaultSteps(operation: string) {
 function stepResult(operation: string, title: string) {
   if (operation === "review") return `Reviewed ${title.toLowerCase()} as a bounded tenant workflow step.`;
   if (operation === "iterate" || operation === "improve") return `Prepared ${title.toLowerCase()} for a bounded iteration; external changes remain approval-gated.`;
+  if (operation === "handoff") return `Prepared ${title.toLowerCase()} for an approval-gated handoff; no external delivery was executed.`;
   return `Prepared ${title.toLowerCase()} from the supplied goal; external changes remain approval-gated.`;
 }

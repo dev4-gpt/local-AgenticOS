@@ -258,6 +258,7 @@ begin
      or p_action not in ('review', 'handoff', 'release', 'record')
      or length(coalesce(p_idempotency_key, '')) < 8
      or length(coalesce(p_idempotency_key, '')) > 180
+     or (p_action in ('handoff', 'release') and length(coalesce(p_destination, '')) = 0)
      or jsonb_typeof(coalesce(p_artifact_ids, '[]'::jsonb)) <> 'array'
      or not exists (
        select 1 from public.client_runtime_requests

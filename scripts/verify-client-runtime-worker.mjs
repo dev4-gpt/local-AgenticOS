@@ -12,6 +12,7 @@ function expect(condition, message) {
 
 const workerRoute = await readFile(join(root, "src/app/api/internal/client-runtime/jobs/route.ts"), "utf8");
 const deliveryRoute = await readFile(join(root, "src/app/api/internal/client-runtime/delivery/route.ts"), "utf8");
+const clientDeliveryRoute = await readFile(join(root, "src/app/api/client-runtime/delivery/route.ts"), "utf8");
 const jobRoute = await readFile(join(root, "src/app/api/client-runtime/jobs/route.ts"), "utf8");
 const providerChat = await readFile(join(root, "src/app/api/client-runtime/provider-chat/route.ts"), "utf8");
 const hostedJobsRoute = await readFile(join(root, "src/app/api/client-runtime/hosted-jobs/route.ts"), "utf8");
@@ -36,6 +37,7 @@ const providerContracts = await readFile(join(root, "src/lib/clientProviderContr
 const mediaAdapter = await readFile(join(root, "src/lib/clientMediaAdapter.ts"), "utf8");
 const seoAdapter = await readFile(join(root, "src/lib/clientSeoAdapter.ts"), "utf8");
 const deliveryAdapter = await readFile(join(root, "src/lib/clientDeliveryAdapter.ts"), "utf8");
+const networkSafety = await readFile(join(root, "src/lib/clientNetworkSafety.ts"), "utf8");
 const runtimePolicy = await readFile(join(root, "src/lib/clientRuntimePolicy.ts"), "utf8");
 const providerPolicy = await readFile(join(root, "scripts/client-provider-policy.mjs"), "utf8");
 const cloudTasks = await readFile(join(root, "src/lib/cloudTasks.ts"), "utf8");
@@ -75,6 +77,8 @@ expect(workerRoute.includes("complete_client_runtime_job"), "worker route must c
 expect(workerRoute.includes("update_client_runtime_record_worker") && workerRoute.includes("workflowIdFrom"), "worker must reconcile workflow execution state through the worker-only RPC");
 expect(workerRoute.includes("runClientWorkflowRunner") && workerRoute.includes("workflow_input_invalid"), "worker must run and fail closed on invalid provider-free workflow inputs");
 expect(workflowRunner.includes("deterministic-free") && workflowRunner.includes("externalActions: \"approval_required\""), "provider-free workflow runner must be explicit about its mode and approval boundary");
+expect(workflowRunner.includes('"handoff"') && workflowRunner.includes("approval-gated handoff"), "workflow runner must support the approval-gated handoff operation");
+expect(workflowsRoute.includes('"handoff"'), "workflow API must expose the approval-gated handoff operation");
 expect(workflowRunner.includes("slice(0, 8)") && workflowRunner.includes("slice(0, 5000)"), "workflow runner must bound steps and goal content");
 expect(jobRoute.includes("enqueueClientRuntimeTask"), "client job route must enqueue a durable task");
 expect(jobRoute.includes("cancelClientRuntimeJob"), "client job route must cancel orphaned queue rows");
@@ -89,7 +93,15 @@ expect(mediaAdapter.includes('clientProviderEnabled("SUNO_API_KEY")') && mediaAd
 expect(workerRoute.includes("create_client_runtime_artifact_worker"), "media worker must create tenant artifact records through RPC");
 expect(workerRoute.includes("checkpoint_client_runtime_job_worker"), "async media worker must checkpoint provider job state through RPC");
 expect(deliveryRoute.includes("claim_client_delivery_action_worker") && deliveryRoute.includes("runClientDeliveryAdapter"), "delivery worker must claim and execute only approved actions");
+expect(
+  clientDeliveryRoute.includes("delivery_destination_required")
+    && hostedSql.includes("p_action in")
+    && hostedSql.includes("length(coalesce(p_destination, '')) = 0"),
+  "delivery handoff and release actions must require a destination before approval",
+);
 expect(deliveryApproval.includes("delivery.approved") && deliveryApproval.includes("delivery.queued") && deliveryApproval.includes("client_runtime_audit_events"), "delivery approval CLI must record redacted approval and queue audit events");
+expect(networkSafety.includes("resolvesToPublicAddresses") && seoAdapter.includes("resolveSafePublicUrl") && deliveryAdapter.includes("resolveSafePublicUrl"), "outbound adapters must re-check DNS resolution before fetching public URLs");
+expect(seoAdapter.includes("readBoundedResponseBytes") && seoAdapter.includes("4_000_000"), "SEO adapter must bound provider response bytes before parsing");
 for (const marker of ["SUPABASE_SERVICE_ROLE_KEY", "ANTHROPIC_API_KEY=", "OPENAI_API_KEY="]) {
   expect(!workerRoute.includes(marker) && !jobRoute.includes(marker), `worker boundary must not contain ${marker}`);
 }
@@ -102,6 +114,8 @@ for (const marker of ["create_client_runtime_artifact_worker", "checkpoint_clien
 }
 expect(workflowReconciliationSql.includes("update_client_runtime_record_worker") && workflowReconciliationSql.includes("worker_token_hash"), "workflow reconciliation migration must be worker-authenticated");
 expect(finalVerificationSql.includes("has_column_privilege") && finalVerificationSql.includes("worker_hash_select"), "final verification must prove the worker hash is not client-readable");
+expect(finalVerificationSql.includes("workflow_worker_authenticated_execute") && finalVerificationSql.includes("workflow_worker_anon_execute"), "final verification must prove the workflow worker grant boundary");
+expect(finalVerificationSql.includes("delivery_destination_guard_present") && finalVerificationSql.includes("pg_get_functiondef"), "final verification must prove the delivery destination guard is live");
 expect(finalVerificationSql.includes("update_client_runtime_record_worker"), "final verification must include workflow reconciliation");
 expect(finalVerificationSql.includes("refund_client_runtime_rate_limit"), "final verification must include the task-failure rate-limit refund RPC");
 expect(workerRoute.includes("confirm_client_runtime_artifact_worker"), "worker artifact path must confirm storage metadata through the worker RPC");
@@ -168,6 +182,8 @@ expect(provisioner.includes("secretVersionAdder") && provisioner.includes("CLIEN
 expect(workerRoute.includes("runtime.provider_failed") && workerRoute.includes("runtime.budget_exceeded") && deliveryRoute.includes("runtime.delivery_failed") && alerts.includes("runtime_budget_denied") && alerts.includes("runtime_provider_failed") && alerts.includes("runtime_delivery_failed"), "runtime must emit and provision redacted provider, budget, and delivery alerts");
 expect(workerRoute.includes("settleClientRuntimeBudgetWorker") && providerAdapter.includes("clientTextUsageCostMicros"), "successful text provider calls must settle bounded budget reservations using normalized usage");
 expect((workerRoute.match(/actualAmountMicros: result\.estimatedCostMicros/g) ?? []).length >= 4, "successful speech, music, video, and SEO jobs must settle fixed provider budget reservations");
+expect(workerRoute.includes("settleRequiredBudget") && workerRoute.includes("budget_settlement_failed"), "successful provider jobs must fail closed when budget settlement is unavailable");
+expect(workerRoute.includes("job_completion_failed") && workerRoute.includes("runtime.job_completion_failed"), "worker completion RPC failures must surface as retryable failures");
 expect(workerRoute.includes("settleTerminalBudget") && workerRoute.includes("providerFailure: 1") && workerRoute.includes("artifactStoreFailure: 1"), "terminal provider failures and artifact failures must settle their budget reservation explicitly");
 expect(workerRoute.includes("provider_retryable") && workerRoute.includes("retryJob(tenantSlug, jobId, workerToken"), "retryable provider failures must retain the reservation for the next bounded attempt");
 expect(workerRoute.includes("safeClientProviderOutput") && workerRoute.includes("safeClientProviderMetadata") && providerAdapter.includes("Provider output withheld") && providerAdapter.includes("Redacted provider metadata field"), "provider output and metadata must be bounded and withheld when they match secret-like content");
@@ -180,6 +196,9 @@ expect(workerRoute.includes('provider: "elevenlabs"'), "speech failures must ide
 expect(providerAdapter.includes("AbortSignal.timeout") && providerAdapter.includes("2_000_000"), "provider adapters must bound request time and response size");
 expect(mediaAdapter.includes("runClientSpeechAdapter") && mediaAdapter.includes("runClientHeyGenAdapter") && mediaAdapter.includes("runClientMusicAdapter"), "media adapters must cover speech, video, and music contracts");
 expect(mediaAdapter.includes("MAX_IMAGE_BYTES") && mediaAdapter.includes("containsClientSecretLike"), "image adapter must bound output bytes and reject secret-like prompts");
+expect(networkSafety.includes("isPrivateAddress") && networkSafety.includes("readBoundedResponseBytes"), "network safety must reject private output hosts and stream provider bytes with a hard cap");
+expect(mediaAdapter.includes("readBoundedResponseBytes") && workerRoute.includes("readBoundedResponseBytes"), "media worker paths must enforce bounded provider response reads");
+expect(mediaAdapter.includes("isPrivateAddress") && mediaAdapter.includes("safeProviderOutputUrl"), "provider output URLs must reject private or internal hosts");
 expect(seoAdapter.includes("safePublicUrl") && seoAdapter.includes("isPrivateAddress"), "SEO adapter must enforce public host and private-address blocking");
 expect(deliveryAdapter.includes("approved-webhook") && deliveryAdapter.includes("safeDeliveryUrl") && deliveryAdapter.includes('parsed.protocol === "https:"'), "delivery adapter must require an allowlisted HTTPS approved webhook");
 expect(hostedSql.includes("p_namespace <> p_tenant_slug"), "artifact RPC must enforce the tenant storage namespace");

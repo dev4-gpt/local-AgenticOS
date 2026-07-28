@@ -1,4 +1,4 @@
-import { safePublicUrl } from "@/lib/clientSeoAdapter";
+import { resolveSafePublicUrl } from "@/lib/clientSeoAdapter";
 
 export async function runClientDeliveryAdapter(input: {
   action: string;
@@ -10,7 +10,7 @@ export async function runClientDeliveryAdapter(input: {
     return { ok: true as const, executed: false, adapter: "approval-record" };
   }
   if (input.action !== "handoff" && input.action !== "release") return { ok: false as const, status: 400, error: "delivery_action_not_supported" };
-  const destination = safeDeliveryUrl(input.destination ?? "");
+  const destination = await safeDeliveryUrl(input.destination ?? "");
   if (!destination) return { ok: false as const, status: 400, error: "delivery_destination_not_allowed" };
   const response = await fetch(destination, {
     method: "POST",
@@ -23,10 +23,10 @@ export async function runClientDeliveryAdapter(input: {
   return { ok: true as const, executed: true, adapter: "approved-webhook", status: response.status };
 }
 
-function safeDeliveryUrl(value: string) {
+export async function safeDeliveryUrl(value: string) {
   const allowlist = (process.env.CLIENT_DELIVERY_ALLOWED_HOSTS ?? "").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
   if (allowlist.length === 0) return null;
-  const safeUrl = safePublicUrl(value, allowlist);
+  const safeUrl = await resolveSafePublicUrl(value, allowlist);
   if (!safeUrl) return null;
   try {
     const parsed = new URL(safeUrl);
