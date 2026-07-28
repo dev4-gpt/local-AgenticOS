@@ -45,6 +45,9 @@ first unproven gate; do not repeat the green checks listed there.
   `false`, authenticated worker execution was `false`, anonymous worker
   execution was `true`, the delivery destination guard was `true`, and the
   tenant was `active`.
+- Anthropic credential inbox dry run passed for the client namespace. The
+  source envelope matched `ANTHROPIC_API_KEY`; the target secret was not
+  written and provider calls remain disabled.
 
 ## Remaining evidence and external inputs
 

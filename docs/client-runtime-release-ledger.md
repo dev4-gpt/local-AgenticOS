@@ -59,6 +59,10 @@ current manifest and Cloud Run service are v51/00058-9sf above.
 - Queue retry acceptance passed on 2026-07-28: the previously failed diagnostic
   workflow accepted `retry_execution` with HTTP 202 and reached `completed`
   with four `done` steps and no error code.
+- Anthropic credential inbox validation passed in dry-run mode on 2026-07-28.
+  The client-scoped envelope matched `ANTHROPIC_API_KEY`; no raw value was
+  printed, promoted, or activated. Model allowlist and budget remain
+  operator-side controls, and provider calls remain disabled.
 
 Evidence commands:
 
@@ -80,7 +84,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 1. Public intake and boundary | Proven | Public/runtime boundary checks and security release verifier passed. |
 | 2. Auth and capability gate | Proven for approved user | Authenticated acceptance passed with the approved tenant member and capability set. |
 | 3. Tenant data and storage | Proven for primary tenant | Authenticated acceptance proved signed upload/download byte integrity and cleanup. |
-| 4. Provider adapters | Pending external input | Adapters and policy are implemented, but live proof requires one approved provider key, model allowlist, pricing, budget, smoke test, redaction, and rollback evidence. Provider calls remain disabled. |
+| 4. Provider adapters | Credential dry run proven; activation pending external input | Anthropic inbox validation passed. Live proof still requires explicit target-secret promotion, an approved model/pricing/budget configuration, smoke, redaction, and rollback evidence. Provider calls remain disabled. |
 | 5. Workflow orchestration | Proven for deterministic runner | Authenticated acceptance reached `completed` with four `done` steps. |
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v51 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
