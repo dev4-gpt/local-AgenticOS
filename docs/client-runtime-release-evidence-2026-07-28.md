@@ -45,6 +45,11 @@ first unproven gate; do not repeat the green checks listed there.
   `false`, authenticated worker execution was `false`, anonymous worker
   execution was `true`, the delivery destination guard was `true`, and the
   tenant was `active`.
+- Two-token tenant isolation passed for `veloce-cloud-test` and disposable
+  `veloce-cloud-test-b` across `client_runtime_records`,
+  `client_runtime_jobs`, and `client_runtime_artifacts`. The project public
+  key was sent separately from the user JWTs; no token or row content was
+  printed.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.
@@ -58,9 +63,8 @@ first unproven gate; do not repeat the green checks listed there.
 - Run the read-only `supabase-client-runtime-final-verification.sql`; its last
   result is now a single-row release summary. The migrations are already
   applied and must not be re-run merely to resume work.
-- Run the two-token tenant isolation probe with a disposable second tenant;
-  pass the project public anon key separately. The probe accepts local `0600`
-  token files and never prints token values.
+- Isolation evidence is complete and must not be repeated unless memberships,
+  RLS policies, or the verifier changes.
 - Exercise delivery approval against real authenticated records. Terminal queue
   failure/recovery, rate-limit/refund, and queue-retry evidence already passed
   and must not be repeated.
@@ -71,7 +75,7 @@ first unproven gate; do not repeat the green checks listed there.
   Anthropic's credential, model, pricing, budget, and disabled local manifest
   wiring are now recorded; do not redeploy or enable it under this release
   scope.
-- Run credential promotion/rotation and disposable recovery/offboarding drills.
+- Run the lifecycle export/restore and disposable recovery/offboarding drills.
 
 These are deliberately marked pending because source-level checks and
 unauthenticated health checks cannot prove authenticated tenant behavior,

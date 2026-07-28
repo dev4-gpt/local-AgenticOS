@@ -92,7 +92,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 5. Workflow orchestration | Proven for deterministic runner | Authenticated acceptance reached `completed` with four `done` steps. |
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v51 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
-| 8. RLS and security | Primary database verification proven; isolation pending external input | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. A disposable second tenant and two Auth tokens are still required for cross-tenant proof. |
+| 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
 | 9. Approval and delivery | Pending external input | Code path is implemented; a disposable HTTPS destination is required to prove approval, one-time execution, audit, and rollback. |
 | 10. Budget enforcement | Pending external input | Code path and provider-free refunds are implemented; an approved test provider is required to prove reserve, settle, deny, refund, and failed-enqueue refund with live accounting. |
 | 11. Alerts and observability | Pending external input | Policies are provisioned; a verified Monitoring email destination and one controlled alert are required. |
@@ -113,9 +113,9 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 3. Keep the authenticated workflow, artifact, rate-limit/refund, queue failure,
    queue retry, rollback, and final SQL results already recorded above. The
    remaining live runtime drill is delivery approval.
-4. Supply two disposable Auth access tokens and run
-   `verify:client-isolation` using the project public anon key and local `0600`
-   token files, followed by the lifecycle export/restore drill.
+4. Gate 8 isolation is complete. Keep its two-token result as the baseline and
+   do not repeat it unless tenant memberships, RLS policies, or the verifier
+   changes.
 5. Complete alert email verification and the controlled alert check.
 6. Only after gates 1-5 are evidenced, activate one approved provider at a time.
    Never enable all providers together, and never place credentials in chat,
@@ -126,8 +126,8 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 
 These cannot be fabricated safely by the coding agent:
 
-- Two disposable tenant/Auth identities and their access tokens.
-- Two-token isolation evidence after creating a disposable second tenant.
+- Disposable second tenant/Auth identity remains available for the lifecycle
+  export/restore and offboarding drill; its access tokens are local-only.
 - Verified Monitoring email destination.
 - Disposable HTTPS delivery destination.
 - User-approved provider account/key, model, pricing, and spending limit for

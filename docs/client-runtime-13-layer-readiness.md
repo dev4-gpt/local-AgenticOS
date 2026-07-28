@@ -104,11 +104,11 @@ retention. Same codebase does not mean same permissions.
 | 1 | Frontend foundations | **Ready for public pages and the client shell; partial parity with 3939** | Replace gated placeholders only after the underlying adapter is ready; finish responsive/error-state review per enabled capability. |
 | 2 | APIs and backend logic | **Control-plane, queue-backed API text aliases, provider-specific reviewed-plan tool contracts, provider-free workflow runner, Firecrawl SEO, Suno/HeyGen/ElevenLabs media adapters, approval-only delivery contracts, and workflow execution reconciliation implemented; feature parity partial** | Provider submission, promotion, manifest binding, migration application, and live adapter evidence remain separate gates. Image/video production and publishing destinations still need separate adapters. |
 | 3 | Database and storage | **Primary tenant authenticated artifact roundtrip proven** | Complete the export/deletion drill and record the final verification query confirming the worker hash is not client-readable. |
-| 4 | Auth and permissions | **Approved user proven; isolation pending** | Supabase Auth, middleware, active membership, and owner access work for the approved user. Add the denied-user and second-tenant tests. |
+| 4 | Auth and permissions | **Approved user and tenant isolation proven** | Supabase Auth, middleware, active membership, owner access, and the two-token second-tenant isolation probe pass. Continue with lifecycle recovery evidence. |
 | 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
 | 6 | Cloud and compute | **Authenticated workflow, queue completion, failure, and recovery proven** | Delivery completion remains pending its disposable HTTPS destination and approval evidence. |
 | 7 | CI/CD and version control | **Versioned image, digest, and rollback checkpoint proven** | Continue recording promotion provenance for future releases. |
-| 8 | Security and row-level security | **Primary database verification and worker hash protection proven; isolation pending** | Keep secrets out of the browser and run the two-token isolation script with a disposable second tenant. |
+| 8 | Security and row-level security | **Primary database verification, worker hash protection, and tenant isolation proven** | Keep secrets out of the browser; the two-token probe passed across records, jobs, and artifacts for the primary and disposable tenants. |
 | 9 | Rate limiting | **Primary runtime allow/deny/refund/recovery probe passed; alerts pending** | Verify route-level 429 behavior and confirm the email destination is verified. |
 | 10 | Caching and CDN | **Partial with private artifact controls** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Private runtime responses use no-store and artifacts use expiring signed URLs; add provider-result caching only where safe. |
 | 11 | Load balancing and scaling | **Partial** | Cloud Run scales to zero and the test is capped at one instance. Queue-backed work is implemented; add concurrency/load tests, per-client quotas, and scaling rules for production workloads. |
@@ -308,9 +308,10 @@ These are engineering work, not deployment switches:
   authenticated workflow/artifact, terminal enqueue failure, and queue-retry
   recovery drills have passed. Delivery completion remains pending a
   disposable HTTPS destination and approval evidence.
-- Cross-client isolation, backup/restore, export/deletion, and offboarding
-  evidence using a second dry-run client manifest. The operator lifecycle CLI
-  exists, but it has not yet been exercised against a disposable tenant.
+- Backup/restore, export/deletion, and offboarding evidence using the
+  disposable second tenant. The two-token cross-client isolation probe now
+  passes across records, jobs, and artifacts; the operator lifecycle CLI still
+  needs to be exercised against the disposable tenant.
 - Durable runtime rate limits and alerts beyond the public intake guard, plus
   deployment evidence for the new hosted branches and delivery worker. The
   repository now includes four redacted alert policies with an attached
