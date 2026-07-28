@@ -65,7 +65,11 @@ first unproven gate; do not repeat the green checks listed there.
   applied and must not be re-run merely to resume work.
 - Isolation evidence is complete and must not be repeated unless memberships,
   RLS policies, or the verifier changes.
-- Exercise delivery approval against real authenticated records. Terminal queue
+- A disposable HTTPS delivery destination was supplied:
+  `https://webhook.site/af43bf9a-77f4-4a4b-b7c7-72af1782be86`. Its host is staged
+  in the ignored local manifest, but the current Cloud Run revision predates
+  that allowlist. Do not send a real delivery or call the approval CLI until a
+  separately approved configuration deployment is available. Terminal queue
   failure/recovery, rate-limit/refund, and queue-retry evidence already passed
   and must not be repeated.
 - Verify the Monitoring email channel; its current verification status is still
