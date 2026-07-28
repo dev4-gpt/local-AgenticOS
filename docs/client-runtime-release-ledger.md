@@ -100,7 +100,8 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
    depends on them. Reapply a migration only if the verification query
    directly proves that a required object is missing. The final query must
    show the expected tables/functions, `worker_hash_select = false`,
-   worker-only grants, and the delivery guard.
+   worker-only grants, and the delivery guard. The final result set is the
+   single-row release summary, so record that row as the Gate 8 evidence.
 2. Using the authenticated acceptance harness at
    `/private/tmp/veloce-runtime-cookie.txt`, keep the workflow/artifact result
    as the baseline evidence; do not repeat it unless the image, runtime env,

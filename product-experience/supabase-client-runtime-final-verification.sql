@@ -80,3 +80,85 @@ limit 1;
 select slug, status, retention_days
 from public.client_tenants
 where slug = 'veloce-cloud-test';
+
+-- Single-row release summary. Supabase displays the last result set, so keep
+-- the gate evidence visible without requiring interpretation of earlier rows.
+with expected_tables(table_name) as (
+  values
+    ('client_tenants'),
+    ('client_memberships'),
+    ('client_runtime_requests'),
+    ('client_runtime_jobs'),
+    ('client_runtime_artifacts'),
+    ('client_runtime_records'),
+    ('client_runtime_delivery_actions'),
+    ('client_runtime_rate_limits'),
+    ('client_runtime_budget_ledger')
+), expected_functions(function_name) as (
+  values
+    ('consume_client_runtime_rate_limit'),
+    ('refund_client_runtime_rate_limit'),
+    ('enqueue_client_runtime_job'),
+    ('claim_client_runtime_job'),
+    ('complete_client_runtime_job'),
+    ('retry_client_runtime_job'),
+    ('cancel_client_runtime_job'),
+    ('reserve_client_runtime_budget_worker'),
+    ('settle_client_runtime_budget_worker'),
+    ('create_client_runtime_artifact_worker'),
+    ('confirm_client_runtime_artifact_worker'),
+    ('delete_client_runtime_artifact'),
+    ('checkpoint_client_runtime_job_worker'),
+    ('create_client_delivery_action'),
+    ('claim_client_delivery_action_worker'),
+    ('complete_client_delivery_action_worker'),
+    ('update_client_runtime_record_worker')
+), table_status as (
+  select
+    e.table_name,
+    exists (
+      select 1
+      from information_schema.tables t
+      where t.table_schema = 'public'
+        and t.table_name = e.table_name
+    ) as present
+  from expected_tables e
+), function_status as (
+  select
+    e.function_name,
+    exists (
+      select 1
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname = e.function_name
+    ) as present
+  from expected_functions e
+), delivery_guard as (
+  select exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'create_client_delivery_action'
+      and position('p_action in' in pg_get_functiondef(p.oid)) > 0
+      and position('handoff' in pg_get_functiondef(p.oid)) > 0
+      and position('release' in pg_get_functiondef(p.oid)) > 0
+      and position('p_destination' in pg_get_functiondef(p.oid)) > 0
+  ) as present
+)
+select
+  not exists (select 1 from table_status where not present) as required_tables_present,
+  coalesce((select string_agg(table_name, ', ' order by table_name) from table_status where not present), '') as missing_tables,
+  not exists (select 1 from function_status where not present) as expected_worker_functions_present,
+  coalesce((select string_agg(function_name, ', ' order by function_name) from function_status where not present), '') as missing_worker_functions,
+  has_column_privilege('authenticated', 'public.client_tenants', 'worker_token_hash', 'SELECT') as worker_hash_select,
+  has_function_privilege('authenticated', 'public.update_client_runtime_record_worker(text, uuid, text, jsonb)', 'EXECUTE') as workflow_worker_authenticated_execute,
+  has_function_privilege('anon', 'public.update_client_runtime_record_worker(text, uuid, text, jsonb)', 'EXECUTE') as workflow_worker_anon_execute,
+  (select present from delivery_guard) as delivery_destination_guard_present,
+  exists (
+    select 1
+    from public.client_tenants
+    where slug = 'veloce-cloud-test'
+      and status = 'active'
+  ) as tenant_active;
