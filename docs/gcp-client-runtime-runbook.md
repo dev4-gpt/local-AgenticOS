@@ -718,13 +718,15 @@ npm run verify:client-isolation -- \
   --url https://YOUR_PROJECT.supabase.co \
   --tenant-a client-a \
   --tenant-b client-b \
-  --access-token-a "$CLIENT_A_ACCESS_TOKEN" \
-  --access-token-b "$CLIENT_B_ACCESS_TOKEN"
+  --access-token-file-a /private/tmp/client-a-access-token.txt \
+  --access-token-file-b /private/tmp/client-b-access-token.txt
 ```
 
-The script checks each token's own tenant and confirms the opposite tenant
-returns zero rows for records, jobs, and artifacts. It never prints tokens or
-row content. Run it before enabling a second client manifest.
+Store each token locally with mode `0600`; never put tokens in chat, shell
+arguments, source, or browser storage. The script checks each token's own
+tenant and confirms the opposite tenant returns zero rows for records, jobs,
+and artifacts. It never prints tokens or row content. Run it before enabling a
+second client manifest.
 
 - In `app-auth` mode, the Cloud Run URL reaches only the login shell and the
   application requires a valid individual Supabase Auth session for runtime

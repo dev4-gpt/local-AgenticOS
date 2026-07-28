@@ -114,7 +114,8 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
    queue retry, rollback, and final SQL results already recorded above. The
    remaining live runtime drill is delivery approval.
 4. Supply two disposable Auth access tokens and run
-   `verify:client-isolation`, followed by the lifecycle export/restore drill.
+   `verify:client-isolation` using local `0600` token files, followed by the
+   lifecycle export/restore drill.
 5. Complete alert email verification and the controlled alert check.
 6. Only after gates 1-5 are evidenced, activate one approved provider at a time.
    Never enable all providers together, and never place credentials in chat,
