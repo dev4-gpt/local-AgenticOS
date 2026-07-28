@@ -45,9 +45,11 @@ first unproven gate; do not repeat the green checks listed there.
   `false`, authenticated worker execution was `false`, anonymous worker
   execution was `true`, the delivery destination guard was `true`, and the
   tenant was `active`.
-- Anthropic credential inbox dry run passed for the client namespace. The
-  source envelope matched `ANTHROPIC_API_KEY`; the target secret was not
-  written and provider calls remain disabled.
+- Anthropic credential inbox validation and approved promotion passed for the
+  client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
+  Secret Manager version `1` was created without printing the raw value.
+  Provider calls remain disabled and the target secret is not wired into the
+  current manifest or Cloud Run revision.
 
 ## Remaining evidence and external inputs
 
@@ -60,8 +62,10 @@ first unproven gate; do not repeat the green checks listed there.
   and must not be repeated.
 - Verify the Monitoring email channel; its current verification status is still
   pending.
-- Add user-approved provider credentials, model allowlists, pricing, and live
-  smoke tests before enabling any provider calls.
+- Add user-approved provider model allowlists, pricing, budget, manifest
+  wiring, and live smoke tests before enabling any provider calls. Anthropic's
+  credential is already promoted to its client-scoped target Secret Manager
+  slot; do not redeploy or enable it until those approvals are recorded.
 - Run credential promotion/rotation and disposable recovery/offboarding drills.
 
 These are deliberately marked pending because source-level checks and
