@@ -80,35 +80,31 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 1. Public intake and boundary | Proven | Public/runtime boundary checks and security release verifier passed. |
 | 2. Auth and capability gate | Proven for approved user | Authenticated acceptance passed with the approved tenant member and capability set. |
 | 3. Tenant data and storage | Proven for primary tenant | Authenticated acceptance proved signed upload/download byte integrity and cleanup. |
-| 4. Provider adapters | Implemented, deliberately gated | Requires approved provider key, model allowlist, pricing, live smoke, redaction, and rollback evidence. |
+| 4. Provider adapters | Pending external input | Adapters and policy are implemented, but live proof requires one approved provider key, model allowlist, pricing, budget, smoke test, redaction, and rollback evidence. Provider calls remain disabled. |
 | 5. Workflow orchestration | Proven for deterministic runner | Authenticated acceptance reached `completed` with four `done` steps. |
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v51 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
-| 8. RLS and security | Static boundary proven; database proof pending | Reapply controls/workflow SQL and run the final verification query plus two-token isolation. |
-| 9. Approval and delivery | Code path implemented; external drill pending | Use a disposable HTTPS destination and prove approval, one-time execution, audit, and rollback. |
-| 10. Budget enforcement | Code path implemented; live accounting pending | Prove reserve, settle, deny, refund, and failed-enqueue refund using an approved test provider. |
-| 11. Alerts and observability | Policies provisioned; email unproven | Complete the Monitoring email verification and trigger one controlled alert. |
-| 12. Hosted Local/Engine/Free Claude replacements | Hosted surfaces implemented; provider parity pending | Keep provider calls gated until provider-backed parity is reviewed. |
-| 13. Recovery and offboarding | Credential-safe CLI implemented; drill pending | Use a disposable second tenant for export, restore, rotation, and deletion. |
+| 8. RLS and security | Primary database verification proven; isolation pending external input | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. A disposable second tenant and two Auth tokens are still required for cross-tenant proof. |
+| 9. Approval and delivery | Pending external input | Code path is implemented; a disposable HTTPS destination is required to prove approval, one-time execution, audit, and rollback. |
+| 10. Budget enforcement | Pending external input | Code path and provider-free refunds are implemented; an approved test provider is required to prove reserve, settle, deny, refund, and failed-enqueue refund with live accounting. |
+| 11. Alerts and observability | Pending external input | Policies are provisioned; a verified Monitoring email destination and one controlled alert are required. |
+| 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
+| 13. Recovery and offboarding | Pending external input | Credential-safe CLI is implemented; a disposable second tenant is required for export, restore, rotation, and deletion. |
 
 ## Exact Continuation Order
 
-1. In Supabase SQL Editor, run only the read-only
-   `supabase-client-runtime-final-verification.sql` now. The canonical
-   control-plane, controls, lifecycle, hosted-capabilities, and workflow-
-   reconciliation migrations have already been applied and live acceptance
-   depends on them. Reapply a migration only if the verification query
-   directly proves that a required object is missing. The final query must
-   show the expected tables/functions, `worker_hash_select = false`,
-   worker-only grants, and the delivery guard. The final result set is the
-   single-row release summary, so record that row as the Gate 8 evidence.
+1. Gate 8 final verification is complete. The read-only
+   `supabase-client-runtime-final-verification.sql` returned the single-row
+   summary with all required objects present, `worker_hash_select = false`,
+   worker-only grants, the delivery guard, and an active tenant. Do not rerun
+   it unless the SQL or live database state changes.
 2. Using the authenticated acceptance harness at
    `/private/tmp/veloce-runtime-cookie.txt`, keep the workflow/artifact result
    as the baseline evidence; do not repeat it unless the image, runtime env,
    SQL functions, or worker secret changes.
-3. Keep the authenticated workflow, artifact, rate-limit/refund, and queue
-   retry results already recorded above. The remaining live runtime drills are
-   terminal queue failure/recovery and delivery approval.
+3. Keep the authenticated workflow, artifact, rate-limit/refund, queue failure,
+   queue retry, rollback, and final SQL results already recorded above. The
+   remaining live runtime drill is delivery approval.
 4. Supply two disposable Auth access tokens and run
    `verify:client-isolation`, followed by the lifecycle export/restore drill.
 5. Complete alert email verification and the controlled alert check.
@@ -122,7 +118,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 These cannot be fabricated safely by the coding agent:
 
 - Two disposable tenant/Auth identities and their access tokens.
-- Supabase SQL Editor execution of the current migrations and final query.
+- Two-token isolation evidence after creating a disposable second tenant.
 - Verified Monitoring email destination.
 - Disposable HTTPS delivery destination.
 - User-approved provider account/key, model, pricing, and spending limit for

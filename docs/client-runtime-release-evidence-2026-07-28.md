@@ -40,6 +40,11 @@ first unproven gate; do not repeat the green checks listed there.
 - Rollback checkpoint: traffic shifted from `00058-9sf` to healthy `00057-9p4`
   and back to `00058-9sf`; both protected-route checks returned the expected
   auth redirect and the current revision was restored to 100% traffic.
+- Supabase final verification summary passed: required tables and worker
+  functions were present, no functions were missing, `worker_hash_select` was
+  `false`, authenticated worker execution was `false`, anonymous worker
+  execution was `true`, the delivery destination guard was `true`, and the
+  tenant was `active`.
 
 ## Remaining evidence and external inputs
 
