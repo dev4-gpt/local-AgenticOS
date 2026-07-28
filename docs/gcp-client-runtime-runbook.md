@@ -716,17 +716,19 @@ probe script:
 ```bash
 npm run verify:client-isolation -- \
   --url https://YOUR_PROJECT.supabase.co \
+  --anon-key "$SUPABASE_ANON_KEY" \
   --tenant-a client-a \
   --tenant-b client-b \
   --access-token-file-a /private/tmp/client-a-access-token.txt \
   --access-token-file-b /private/tmp/client-b-access-token.txt
 ```
 
-Store each token locally with mode `0600`; never put tokens in chat, shell
-arguments, source, or browser storage. The script checks each token's own
-tenant and confirms the opposite tenant returns zero rows for records, jobs,
-and artifacts. It never prints tokens or row content. Run it before enabling a
-second client manifest.
+Store each user token locally with mode `0600`; never put tokens in chat, shell
+arguments, source, or browser storage. The project public anon/publishable key
+is sent as `apikey`; each user token is sent only as the `Authorization` bearer
+token. The script checks each token's own tenant and confirms the opposite
+tenant returns zero rows for records, jobs, and artifacts. It never prints
+tokens or row content. Run it before enabling a second client manifest.
 
 - In `app-auth` mode, the Cloud Run URL reaches only the login shell and the
   application requires a valid individual Supabase Auth session for runtime

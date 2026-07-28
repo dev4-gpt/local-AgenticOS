@@ -59,7 +59,8 @@ first unproven gate; do not repeat the green checks listed there.
   result is now a single-row release summary. The migrations are already
   applied and must not be re-run merely to resume work.
 - Run the two-token tenant isolation probe with a disposable second tenant;
-  the probe accepts local `0600` token files and never prints token values.
+  pass the project public anon key separately. The probe accepts local `0600`
+  token files and never prints token values.
 - Exercise delivery approval against real authenticated records. Terminal queue
   failure/recovery, rate-limit/refund, and queue-retry evidence already passed
   and must not be repeated.

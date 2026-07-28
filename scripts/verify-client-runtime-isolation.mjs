@@ -6,11 +6,13 @@ const args = process.argv.slice(2);
 const baseUrl = required("--url").replace(/\/$/, "");
 const tenantA = required("--tenant-a");
 const tenantB = required("--tenant-b");
+const anonKey = valueAfter("--anon-key") || process.env.SUPABASE_ANON_KEY;
 const tokenA = token("--access-token-a", "--access-token-file-a");
 const tokenB = token("--access-token-b", "--access-token-file-b");
 
 if (tenantA === tenantB) fail("--tenant-a and --tenant-b must be different");
 if (!/^https:\/\//i.test(baseUrl)) fail("--url must use HTTPS");
+if (!anonKey) fail("--anon-key or SUPABASE_ANON_KEY is required");
 
 const probes = [
   ["records", "client_runtime_records"],
@@ -42,7 +44,7 @@ console.log(`Client isolation verification passed for ${tenantA} and ${tenantB}.
 
 async function select(table, tenant, token) {
   const response = await fetch(`${baseUrl}/rest/v1/${table}?select=id&tenant_slug=eq.${encodeURIComponent(tenant)}&limit=1`, {
-    headers: { apikey: token, Authorization: `Bearer ${token}` },
+    headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
     cache: "no-store",
   }).catch(() => null);
   const rows = await response?.json().catch(() => []) ?? [];
@@ -54,6 +56,11 @@ function required(flag) {
   const value = index >= 0 ? args[index + 1] : null;
   if (!value) fail(`${flag} is required`);
   return value.trim();
+}
+
+function valueAfter(flag) {
+  const index = args.indexOf(flag);
+  return index >= 0 && args[index + 1] ? args[index + 1].trim() : null;
 }
 
 function token(valueFlag, fileFlag) {
