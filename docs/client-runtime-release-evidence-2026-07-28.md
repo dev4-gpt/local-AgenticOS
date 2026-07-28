@@ -48,8 +48,10 @@ first unproven gate; do not repeat the green checks listed there.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.
-  Provider calls remain disabled and the target secret is not wired into the
-  current manifest or Cloud Run revision.
+  The approved `claude-sonnet-5` configuration is staged in the disabled local
+  private manifest with $2/M input, $10/M output, and a $1 test cap. Provider
+  calls remain disabled and the target secret is not wired into the current
+  Cloud Run revision.
 
 ## Remaining evidence and external inputs
 
@@ -62,10 +64,11 @@ first unproven gate; do not repeat the green checks listed there.
   and must not be repeated.
 - Verify the Monitoring email channel; its current verification status is still
   pending.
-- Add user-approved provider model allowlists, pricing, budget, manifest
-  wiring, and live smoke tests before enabling any provider calls. Anthropic's
-  credential is already promoted to its client-scoped target Secret Manager
-  slot; do not redeploy or enable it until those approvals are recorded.
+- Run the deliberate provider-enabled deployment and live smoke, redaction,
+  and rollback checks only under a separate approved activation step.
+  Anthropic's credential, model, pricing, budget, and disabled local manifest
+  wiring are now recorded; do not redeploy or enable it under this release
+  scope.
 - Run credential promotion/rotation and disposable recovery/offboarding drills.
 
 These are deliberately marked pending because source-level checks and

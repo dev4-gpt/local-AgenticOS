@@ -26,7 +26,7 @@ disposable delivery endpoint.
 | Traffic | 100% |
 | Runtime URL | `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` |
 | Provider calls | Disabled: `CLIENT_PROVIDER_CALLS_ENABLED=0` |
-| Provider secrets | Supabase runtime secrets only |
+| Provider secrets | Cloud Run uses Supabase runtime secrets only; Anthropic target slot staged but not deployed |
 | Authenticated acceptance | Passed 2026-07-28: workflow + four-step execution + artifact roundtrip |
 | Worker identity | Cloud Tasks OIDC binding and tenant worker hash synchronized |
 
@@ -43,8 +43,9 @@ current manifest and Cloud Run service are v51/00058-9sf above.
   TypeScript checks passed.
 - Cloud Tasks queue, OIDC worker binding, Cloud Storage bucket controls,
   tenant-prefix retention, and the runtime service account are provisioned.
-- Provider execution is intentionally gated; no provider key is present in the
-  client manifest or Cloud Run environment values.
+- Provider execution is intentionally gated; the deployed Cloud Run revision
+  has no provider key or provider runtime mapping. The approved Anthropic
+  target slot is staged in the local private manifest but is not deployed.
 - Network safety, bounded provider-output reads, delivery destination guards,
   workflow reconciliation, budget settlement fail-closed behavior, and secret
   output redaction are implemented in source.
@@ -62,9 +63,10 @@ current manifest and Cloud Run service are v51/00058-9sf above.
 - Anthropic credential inbox validation and approved Secret Manager promotion
   passed on 2026-07-28. The client-scoped envelope matched
   `ANTHROPIC_API_KEY`; target secret version `1` was created without printing
-  the raw value. Model allowlist, pricing, budget, manifest wiring, smoke
-  testing, and provider activation remain pending operator approval, and
-  provider calls remain disabled.
+  the raw value. The approved `claude-sonnet-5` model, $2/M input and $10/M
+  output pricing, and $1 test cap are staged in the disabled local private
+  manifest. Smoke testing and provider activation remain pending, and provider
+  calls remain disabled.
 
 Evidence commands:
 
@@ -86,7 +88,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 1. Public intake and boundary | Proven | Public/runtime boundary checks and security release verifier passed. |
 | 2. Auth and capability gate | Proven for approved user | Authenticated acceptance passed with the approved tenant member and capability set. |
 | 3. Tenant data and storage | Proven for primary tenant | Authenticated acceptance proved signed upload/download byte integrity and cleanup. |
-| 4. Provider adapters | Credential promotion proven; activation pending external input | Anthropic inbox validation and promotion to the client-scoped target Secret Manager secret passed. Live proof still requires an approved model/pricing/budget configuration, manifest wiring, smoke, redaction, and rollback evidence. Provider calls remain disabled. |
+| 4. Provider adapters | Credential and disabled configuration proven; activation pending | Anthropic inbox validation, target-secret promotion, approved model/pricing/budget, and disabled local manifest wiring passed. Live proof still requires a deliberate provider-enabled deployment, smoke, redaction, and rollback evidence; provider calls remain disabled by current release scope. |
 | 5. Workflow orchestration | Proven for deterministic runner | Authenticated acceptance reached `completed` with four `done` steps. |
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v51 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
