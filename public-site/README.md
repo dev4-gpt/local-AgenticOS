@@ -21,6 +21,11 @@ default production endpoint allows requests only from this Cloud Run origin and
 labels them `landing-cloud-run`. If it is unreachable, the fallback copies the
 visitor's brief and opens the configured contact route.
 
+Production verification on 2026-07-29: the exact-origin preflight returned
+HTTP 204, a synthetic `landing-cloud-run` submission returned HTTP 200, and
+the one matching Supabase row was removed with HTTP 204. This proves database
+capture only; it does not configure email notification.
+
 Do not place API keys, private dashboard URLs, local machine paths, or client information in this folder.
 
 ## Preview locally

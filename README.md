@@ -49,6 +49,10 @@ For the separate public-safe Veloce AgenticOS marketing site, pricing structure,
 
 Public beta: <https://veloce-agenticos-site-mquo4bf7aq-ew.a.run.app>
 
+The Cloud Run beta engagement form uses the verified server-side public intake
+endpoint and stores leads in Supabase without exposing a database credential.
+It does not send email notifications by itself.
+
 Current public/front-door links:
 
 - Landing page: <https://veloce-agenticos-public.vercel.app>

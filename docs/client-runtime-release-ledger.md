@@ -85,7 +85,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 
 | Gate | Status | Evidence or next action |
 |---|---|---|
-| 1. Public intake and boundary | Proven | On 2026-07-29 the Vercel production service-role credential was replaced and the product site was redeployed. Synthetic non-personal submissions to both `POST /api/lead` and `POST /api/deployment-request` returned HTTP 200; one row was found in each of `signups` and `deployment_requests`, then both rows were deleted with HTTP 204. |
+| 1. Public intake and boundary | Proven | On 2026-07-29 the Vercel production service-role credential was replaced and the product site was redeployed. Synthetic non-personal submissions to both `POST /api/lead` and `POST /api/deployment-request` returned HTTP 200; one row was found in each of `signups` and `deployment_requests`, then both rows were deleted with HTTP 204. The separate Cloud Run landing now calls that same server-side endpoint through an exact-origin CORS rule: its `OPTIONS` preflight returned 204, its synthetic `landing-cloud-run` lead returned HTTP 200, and its one matching row was deleted with HTTP 204. |
 | 2. Auth and capability gate | Proven for approved user | Authenticated acceptance passed with the approved tenant member and capability set. |
 | 3. Tenant data and storage | Proven for primary tenant | Authenticated acceptance proved signed upload/download byte integrity and cleanup. |
 | 4. Provider adapters | Proven | The authorized v53 smoke revision exposed only Anthropic / `claude-sonnet-5` with the $1 cap. Authenticated normal job `48701a99-f3ec-481d-be00-b3fa44525e41` succeeded; authenticated secret-shaped-output job `279e0bdd-52df-4af3-b010-4ea34bc3b976` succeeded with its output withheld by the provider-output redactor. No raw output or credential was printed. Traffic is now 100% to v54 `veloce-cloud-test-gate10restore`, where provider calls are disabled and `text-agents` is absent. |
@@ -104,7 +104,9 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 1. Gate 1 is proven. The Vercel production service-role credential was
    replaced, the product site was redeployed, and synthetic non-personal rows
    were stored then deleted from both public intake tables. The product page
-   and `/start` are safe to market for lead capture.
+   and `/start` are safe to market for lead capture. The separate Cloud Run
+   landing uses the same server-side capture endpoint and its synthetic row was
+   also stored and removed, so it is safe to market for Supabase lead capture.
 2. Gate 4 is complete. Keep its normal smoke, secret-shaped-output redaction,
    and disabled rollback results as the baseline. Do not re-enable the provider
    or repeat its calls unless the adapter, approved model, budget, or runtime

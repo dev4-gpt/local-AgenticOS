@@ -110,6 +110,14 @@ first unproven gate; do not repeat the green checks listed there.
   A service-role query found one matching row in `signups` and one in
   `deployment_requests`; both were removed with HTTP 204. No key, row content,
   or personal lead data was printed.
+- Cloud Run landing lead-capture completion on 2026-07-29: the public service
+  `veloce-agenticos-site` deployed revision `00005-fmk` at 100% traffic. Its
+  form posts only to the existing Vercel server-side `POST /api/lead` endpoint;
+  the endpoint permits CORS only from the exact Cloud Run origin. The live
+  preflight returned HTTP 204, the synthetic `landing-cloud-run` submission
+  returned HTTP 200, and the operator's service-role cleanup reported one
+  matching synthetic row and delete status HTTP 204. The browser receives no
+  Supabase credential. This proves Supabase capture, not email notification.
 - Gate 9 action-ID audit checkpoint on 2026-07-29: the operator's read-only
   query returned action `366e5d05-4918-486d-8227-6e0b30df865f` as `approved`
   with no error. Its action-ID audit correlation contains `delivery.approved`
