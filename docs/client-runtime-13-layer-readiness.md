@@ -1,13 +1,13 @@
 # Client Runtime 13-Layer Readiness
 
 Updated 2026-07-29 after reviewing the public intake deployment, the local
-operator runtime, Cloud Run client image `v53`, and the hosted adapter slice.
+operator runtime, Cloud Run client image `v54`, and the hosted adapter slice.
 The repository now contains a tenant-scoped records migration, explicit API
 provider aliases, queue-only client text execution, hosted Local/Engine
 replacement routes, tenant-safe brief workspaces, provider/model allowlists,
 and queued workflow dispatch with durable audit state on failed submission. The
-v53 image is deployed and passes the unauthenticated boundary checks. Revision
-`veloce-cloud-test-00061-rgc` has the worker flag, Secret Manager token
+v54 image is deployed and passes the unauthenticated boundary checks. Revision
+`veloce-cloud-test-gate10restore` has the worker flag, Secret Manager token
 binding, and artifact capability enabled; provider calls remain disabled. The
 worker now has a bounded queued OpenAI image-artifact branch and settles successful text reservations against normalized provider
 usage when pricing is configured, settles fixed media/SEO estimates after
@@ -29,7 +29,7 @@ The current state is:
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
-| Cloud Run client shell | Live as image `v53` on rollback revision `veloce-cloud-test-gate4rollback`; worker binding and artifacts are enabled while provider calls and the temporary `text-agents` capability are disabled. The authorized Anthropic normal smoke and secret-shaped-output redaction probe both succeeded on the isolated smoke revision under the $1 cap, then traffic returned 100% to this disabled revision. Request correlation is active, workflow polling no longer self-throttles, limiter outages are separated from genuine throttles, failed task enqueue refunds are implemented, provider-secret output redaction is active, successful provider jobs fail closed when budget settlement is unavailable, delivery approvals are audited, bounded provider response reads plus literal and DNS-resolved private-host output checks are active, and authenticated workflow/artifact evidence has passed | Controlled test only |
+| Cloud Run client shell | Live as image `v54` on provider-disabled revision `veloce-cloud-test-gate10restore`; worker binding and artifacts are enabled while provider calls and the temporary `text-agents` capability are disabled. The authorized Anthropic normal smoke and secret-shaped-output redaction probe both succeeded on the isolated smoke revision under the $1 cap. The same Gate 4 settlements plus the isolated zero-spend Gate 10 denial proved live accounting, then traffic returned to this disabled revision. Request correlation is active, workflow polling no longer self-throttles, limiter outages are separated from genuine throttles, failed task enqueue refunds are implemented, provider-secret output redaction is active, successful provider jobs fail closed when budget settlement is unavailable, delivery approvals are audited, bounded provider response reads plus literal and DNS-resolved private-host output checks are active, and authenticated workflow/artifact evidence has passed | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |
 | Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
 

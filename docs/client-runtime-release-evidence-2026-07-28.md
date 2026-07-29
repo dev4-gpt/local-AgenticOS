@@ -9,8 +9,8 @@ first unproven gate; do not repeat the green checks listed there.
 
 - Service: `veloce-cloud-test`
 - Region: `asia-south1`
-- Revision: `veloce-cloud-test-00061-rgc`
-- Traffic: 100% to `veloce-cloud-test-00061-rgc`
+- Revision: `veloce-cloud-test-gate10restore`
+- Traffic: 100% to `veloce-cloud-test-gate10restore`
 - Image: `asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v54`
 - Digest: `sha256:91ca3cf6d1bc15d5b7e7ce673173deb42de1f7f0b64528906321d977c81f99a9`
 - Provider calls: disabled (`CLIENT_PROVIDER_CALLS_ENABLED=0`)
@@ -149,6 +149,17 @@ first unproven gate; do not repeat the green checks listed there.
   usage metadata with final amounts of 204 and 1,392 micros respectively. This
   proves live reservation followed by usage-based settlement, not budget denial
   or either refund path.
+- Gate 10 completion on 2026-07-29: isolated live job
+  `56e3e67d-ae89-4aa9-88e9-af5ca4475c5e`, submitted only after traffic moved to
+  the approved $0.000001-cap revision, reached terminal `failed` with
+  `error_code: budget_exceeded`. Its service-role query returned no budget-ledger
+  row, and the redacted Cloud Run event recorded the matching budget denial
+  before provider dispatch. The prior authenticated temporary-bucket acceptance
+  remains the evidence for allow, deny, rate-limit refund, failed-enqueue
+  refund, recovery, and cleanup. No provider output, credential, or prompt was
+  printed. Provider calls, `text-agents`, and pricing were then removed and
+  traffic was routed 100% to the verified v54
+  `veloce-cloud-test-gate10restore` revision with the normal $1 cap.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.

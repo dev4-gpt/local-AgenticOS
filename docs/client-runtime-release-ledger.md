@@ -20,10 +20,10 @@ disposable delivery endpoint.
 | Item | Authoritative value |
 |---|---|
 | Client | `veloce-cloud-test` |
-| Cloud Run revision | `veloce-cloud-test-gate4rollback` |
+| Cloud Run revision | `veloce-cloud-test-gate10restore` |
 | Image | `client-runtime:v54` |
 | Image digest | `sha256:91ca3cf6d1bc15d5b7e7ce673173deb42de1f7f0b64528906321d977c81f99a9` |
-| Traffic | 100% to `veloce-cloud-test-gate4rollback` |
+| Traffic | 100% to `veloce-cloud-test-gate10restore` |
 | Runtime URL | `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` |
 | Provider calls | Disabled: `CLIENT_PROVIDER_CALLS_ENABLED=0` |
 | Provider secrets | Cloud Run uses Supabase runtime secrets only; Anthropic target slot staged but not deployed |
@@ -32,12 +32,12 @@ disposable delivery endpoint.
 
 The desktop terminal may still display historical deploy output. It is not the
 current service state and must not be used as a release signal; the current
-manifest and Cloud Run service are v53/00061-rgc above.
+manifest and Cloud Run service are v54/`veloce-cloud-test-gate10restore` above.
 
 ## Proven And Must Not Be Repeated
 
-- v53 production build, immutable Cloud Build image, manifest validation, and
-  Cloud Run deployment passed.
+- v53 production build and the immutable v54 delivery-correction image,
+  manifest validation, and Cloud Run deployment passed.
 - Live unauthenticated runtime verification passed against the canonical alias.
 - Worker boundary, provider policy, lifecycle, security, repository-secret, and
   TypeScript checks passed.
@@ -88,13 +88,13 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 1. Public intake and boundary | Proven | On 2026-07-29 the Vercel production service-role credential was replaced and the product site was redeployed. Synthetic non-personal submissions to both `POST /api/lead` and `POST /api/deployment-request` returned HTTP 200; one row was found in each of `signups` and `deployment_requests`, then both rows were deleted with HTTP 204. |
 | 2. Auth and capability gate | Proven for approved user | Authenticated acceptance passed with the approved tenant member and capability set. |
 | 3. Tenant data and storage | Proven for primary tenant | Authenticated acceptance proved signed upload/download byte integrity and cleanup. |
-| 4. Provider adapters | Proven | The authorized v53 smoke revision exposed only Anthropic / `claude-sonnet-5` with the $1 cap. Authenticated normal job `48701a99-f3ec-481d-be00-b3fa44525e41` succeeded; authenticated secret-shaped-output job `279e0bdd-52df-4af3-b010-4ea34bc3b976` succeeded with its output withheld by the provider-output redactor. No raw output or credential was printed. Traffic is restored 100% to `veloce-cloud-test-gate4rollback`, where provider calls are disabled and `text-agents` is absent. |
+| 4. Provider adapters | Proven | The authorized v53 smoke revision exposed only Anthropic / `claude-sonnet-5` with the $1 cap. Authenticated normal job `48701a99-f3ec-481d-be00-b3fa44525e41` succeeded; authenticated secret-shaped-output job `279e0bdd-52df-4af3-b010-4ea34bc3b976` succeeded with its output withheld by the provider-output redactor. No raw output or credential was printed. Traffic is now 100% to v54 `veloce-cloud-test-gate10restore`, where provider calls are disabled and `text-agents` is absent. |
 | 5. Workflow orchestration | Proven for deterministic runner | Authenticated acceptance reached `completed` with four `done` steps. |
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v53 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
 | 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
 | 9. Approval and delivery | Proven | After the original task exhausted ten HTTP 503 callbacks, provider-disabled v54 added safe claim-status logging, request-ID audit correlation, and collision-free task names. One corrected task returned HTTP 200, the approved Webhook.site destination recorded a POST, and action `366e5d05-4918-486d-8227-6e0b30df865f` is durably `executed` with `error_code=null` at 2026-07-29T09:44:12Z. |
-| 10. Budget enforcement | Pending external input | Live accounting is partially proven: the two authorized Anthropic Gate 4 jobs succeeded and their durable ledger rows show settled usage-based amounts (204 and 1,392 micros). Budget denial, refund, and failed-enqueue refund still need evidence under the approved provider/model before the provider-disabled rollback is restored. |
+| 10. Budget enforcement | Proven | The two authorized Anthropic jobs settled usage-based ledger amounts of 204 and 1,392 micros. Isolated live job `56e3e67d-ae89-4aa9-88e9-af5ca4475c5e` then failed terminally with `budget_exceeded` under the $0.000001 cap, with no ledger row; Cloud Run logged the matching redacted budget denial before provider dispatch. The authenticated temporary-bucket acceptance already proved allow, deny, rate-limit refund, failed-enqueue refund, recovery, and cleanup. Traffic was restored to the provider-disabled v54 revision. |
 | 11. Alerts and observability | Pending external input | Four policies are provisioned and attached to the enabled email channel `11435881475361291593`; a read-only Monitoring API check returned `verificationStatus: null`. Google email verification and one controlled alert remain required. |
 | 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
 | 13. Recovery and offboarding | Pending external input | Credential-safe CLI is implemented; a disposable second tenant is required for export, restore, rotation, and deletion. |
@@ -113,19 +113,18 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
    destination recorded a POST, and the existing action is durably `executed`
    with no error. Do not repeat this delivery check unless its worker, approval
    helper, destination guard, or runtime image changes.
-4. Gate 10 is now the first unproven gate. Prove reserve, settle, denial,
-   refund, and failed-enqueue refund with live accounting under the approved
-   provider/model. Reserve and settle are evidenced by the two prior authorized
-   Anthropic jobs; denial and both refund paths remain. Restore the
-   provider-disabled runtime state after any additional approved test.
-4. Keep the Gate 8 final verification, authenticated workflow/artifact,
+4. Gate 10 is proven. Keep its settled-usage rows, zero-spend denial, existing
+   refund acceptance, and provider-disabled v54 restore as the baseline; do
+   not repeat provider work or budget calls unless the accounting boundary
+   changes.
+5. Gate 11 is now the first unproven gate. Complete Google email verification
+   for the existing Monitoring channel, then run one controlled alert check.
+6. Keep the Gate 8 final verification, authenticated workflow/artifact,
    rate-limit/refund, queue recovery, rollback, and isolation results as the
    baseline. Do not repeat them unless their stated runtime or data boundaries
    change.
-5. Complete Google email verification for the existing Monitoring channel, then
-   run the controlled alert check. The channel is enabled but currently reports
-   `verificationStatus: null`.
-6. Run the final audit and update this ledger and the release-evidence document.
+7. After Gate 11, review Gate 12's distinct hosted-provider parity requirement,
+   then perform the Gate 13 lifecycle drill with a disposable tenant.
 
 ## External Inputs Still Required
 
@@ -134,8 +133,8 @@ These cannot be fabricated safely by the coding agent:
 - Disposable second tenant/Auth identity remains available for the lifecycle
   export/restore and offboarding drill; its access tokens are local-only.
 - Verified Monitoring email destination.
-- User-approved provider account/key, model, pricing, and spending limit for
-  each provider to be activated.
+- A reviewed provider account/key, model, pricing, and spending limit for any
+  distinct provider needed by the Gate 12 hosted-parity review.
 
 Until those inputs exist, the correct release state is a controlled hosted
 runtime with provider capabilities gated, not full 3939/provider parity.

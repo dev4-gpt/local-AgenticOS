@@ -22,7 +22,7 @@ Region: asia-south1
 Cloud Run service: veloce-cloud-test
 Current verified image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v54
 Current verified digest: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:91ca3cf6d1bc15d5b7e7ce673173deb42de1f7f0b64528906321d977c81f99a9
-Current verified revision: veloce-cloud-test-00061-rgc
+Current verified revision: veloce-cloud-test-gate10restore
 Runtime service account: veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com
 
 Gate 9 status: provider-disabled v54 is routed at 100%.
@@ -54,8 +54,12 @@ Operational evidence for the current revision:
   notification channel. Cloud Monitoring currently reports the channel as
   enabled with `verificationStatus: null`; complete Google's email verification
   step before treating alert delivery as proven.
-- Provider calls remain disabled (`CLIENT_PROVIDER_CALLS_ENABLED=0`), with no
-  provider secret slots or model allowlist enabled in this test manifest.
+- Gate 10 is proven: two approved Anthropic jobs settled usage-based ledger
+  amounts, the isolated $0.000001-cap job failed with `budget_exceeded` before
+  any ledger row or provider dispatch, and the existing authenticated refund
+  acceptance covers the rate-limit and failed-enqueue refund paths. The active
+  v54 revision restores `CLIENT_PROVIDER_CALLS_ENABLED=0`, removes
+  `text-agents` and model pricing, and restores the normal $1 cap.
 
 The runtime uses `app-auth` mode: Cloud Run allows unauthenticated edge access
 so `/login` can render, then the application requires a Supabase Auth session
