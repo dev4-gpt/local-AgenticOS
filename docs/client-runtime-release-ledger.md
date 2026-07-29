@@ -93,7 +93,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v51 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
 | 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
-| 9. Approval and delivery | Allowlist deployed; authenticated action pending | Disposable HTTPS destination `https://webhook.site/af43bf9a-77f4-4a4b-b7c7-72af1782be86` is supplied. The live revision now reports `CLIENT_DELIVERY_ALLOWED_HOSTS=webhook.site` with `CLIENT_PROVIDER_CALLS_ENABLED=0`; creating the redacted pending-approval action returned `401 not_authenticated` because the local runtime cookie is stale. |
+| 9. Approval and delivery | Authenticated request reached destination validation; pending a resolvable disposable endpoint | Disposable HTTPS destination `https://webhook.site/af43bf9a-77f4-4a4b-b7c7-72af1782be86` is supplied. The live revision reports `CLIENT_DELIVERY_ALLOWED_HOSTS=webhook.site` with `CLIENT_PROVIDER_CALLS_ENABLED=0`; the refreshed local cookie was accepted, but the redacted action returned `400 delivery_destination_invalid` because the destination failed the HTTPS/public-DNS safety check. No action was created and no delivery was sent. |
 | 10. Budget enforcement | Pending external input | Code path and provider-free refunds are implemented; an approved test provider is required to prove reserve, settle, deny, refund, and failed-enqueue refund with live accounting. |
 | 11. Alerts and observability | Pending external input | Four policies are provisioned and attached to the enabled email channel `11435881475361291593`; a read-only Monitoring API check returned `verificationStatus: null`. Google email verification and one controlled alert remain required. |
 | 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
@@ -112,10 +112,11 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
    SQL functions, or worker secret changes.
 3. Keep the authenticated workflow, artifact, rate-limit/refund, queue failure,
    queue retry, rollback, and final SQL results already recorded above. The
-   disposable delivery destination is supplied and the live revision now has
-   its host allowlist; refresh the authenticated runtime cookie, create the
-   redacted pending-approval action, and continue with the existing approval
-   and enqueue CLI.
+   live revision has its host allowlist and the refreshed runtime cookie is
+   valid. The supplied Webhook.site URL currently fails the runtime's
+   HTTPS/public-DNS safety check; obtain one replacement disposable HTTPS
+   endpoint whose hostname resolves publicly, then retry the redacted action
+   once and continue with the existing approval and enqueue CLI.
 4. Gate 8 isolation is complete. Keep its two-token result as the baseline and
    do not repeat it unless tenant memberships, RLS policies, or the verifier
    changes.
@@ -134,9 +135,10 @@ These cannot be fabricated safely by the coding agent:
 - Disposable second tenant/Auth identity remains available for the lifecycle
   export/restore and offboarding drill; its access tokens are local-only.
 - Verified Monitoring email destination.
-- The disposable HTTPS delivery destination is supplied and its host allowlist
-  is deployed; an authenticated runtime cookie is required to create the
-  pending-approval action.
+- The host allowlist is deployed and the runtime cookie is valid; the supplied
+  Webhook.site URL is currently rejected by the HTTPS/public-DNS safety check,
+  so a replacement disposable HTTPS endpoint is required before delivery can
+  be tested.
 - User-approved provider account/key, model, pricing, and spending limit for
   each provider to be activated.
 

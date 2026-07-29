@@ -67,14 +67,14 @@ first unproven gate; do not repeat the green checks listed there.
   RLS policies, or the verifier changes.
 - A disposable HTTPS delivery destination was supplied:
   `https://webhook.site/af43bf9a-77f4-4a4b-b7c7-72af1782be86`. Its host is staged
-  in the ignored local manifest, but the current Cloud Run revision predates
-  that allowlist. The deployed revision now reports
-  `CLIENT_DELIVERY_ALLOWED_HOSTS=webhook.site` and
-  `CLIENT_PROVIDER_CALLS_ENABLED=0`. Creating the redacted pending-approval
-  action returned `401 not_authenticated` because the local runtime cookie is
-  stale; refresh that cookie before continuing. Terminal queue
-  failure/recovery, rate-limit/refund, and queue-retry evidence already passed
-  and must not be repeated.
+  in the ignored local manifest and the deployed revision reports
+  `CLIENT_DELIVERY_ALLOWED_HOSTS=webhook.site` with
+  `CLIENT_PROVIDER_CALLS_ENABLED=0`. The refreshed cookie file was structurally
+  valid and accepted by the live route; the redacted pending-approval action
+  then returned `400 delivery_destination_invalid` because the destination
+  failed the HTTPS/public-DNS safety check. No action was created and no
+  delivery was sent. Terminal queue failure/recovery, rate-limit/refund, and
+  queue-retry evidence already passed and must not be repeated.
 - Read-only Monitoring verification confirmed the existing email channel is
   enabled but still reports `verificationStatus: null`. Verify Google's email
   destination before running the one controlled alert check.
