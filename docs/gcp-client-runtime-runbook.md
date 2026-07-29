@@ -20,16 +20,15 @@ Client slug: veloce-cloud-test
 GCP project: veloce-agenticos-2026
 Region: asia-south1
 Cloud Run service: veloce-cloud-test
-Current verified image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v51
-Current verified digest: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:87bb112e1d41815f67f40654803458a33e16f2851d9d39c10a12fcb497d13575
+Current verified image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v53
+Current verified digest: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:028ddee1f3857d5d3672283de005dc3f4edb24c3df1b57c409c8be57952201fe
 Current verified revision: veloce-cloud-test-00058-9sf
 Runtime service account: veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com
 
-Pending Gate 9 fix: the source includes an explicit A/AAAA DNS lookup fallback
-and IPv4-mapped IPv6 classification for allowlisted delivery destinations
-because v51's `dns.lookup` path rejected the public Webhook.site endpoint. Do
-not treat this fix as live until the next authorized Cloud Run revision is
-deployed and the redacted delivery test passes.
+Gate 9 status: v53 is live with explicit A/AAAA resolution and IPv4-mapped IPv6
+classification, but the redacted delivery test still returns
+`delivery_destination_invalid`. Do not mark delivery proven until the live
+resolver path is explained and the action/approval/queue flow passes.
 Storage bucket: gs://veloce-agenticos-2026-veloce-cloud-test
 Primary URL: https://veloce-cloud-test-1075094991117.asia-south1.run.app
 Product dropdown login URL: https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2F

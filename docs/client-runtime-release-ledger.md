@@ -21,8 +21,8 @@ disposable delivery endpoint.
 |---|---|
 | Client | `veloce-cloud-test` |
 | Cloud Run revision | `veloce-cloud-test-00058-9sf` |
-| Image | `client-runtime:v51` |
-| Image digest | `sha256:87bb112e1d41815f67f40654803458a33e16f2851d9d39c10a12fcb497d13575` |
+| Image | `client-runtime:v53` |
+| Image digest | `sha256:028ddee1f3857d5d3672283de005dc3f4edb24c3df1b57c409c8be57952201fe` |
 | Traffic | 100% |
 | Runtime URL | `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` |
 | Provider calls | Disabled: `CLIENT_PROVIDER_CALLS_ENABLED=0` |
@@ -32,11 +32,11 @@ disposable delivery endpoint.
 
 The desktop terminal may still display the historical failed `v42` deploy. It
 is not the current service state and must not be used as a release signal; the
-current manifest and Cloud Run service are v51/00058-9sf above.
+current manifest and Cloud Run service are v53/00058-9sf above.
 
 ## Proven And Must Not Be Repeated
 
-- v51 production build, immutable Cloud Build image, manifest validation, and
+- v53 production build, immutable Cloud Build image, manifest validation, and
   Cloud Run deployment passed.
 - Live unauthenticated runtime verification passed against the canonical alias.
 - Worker boundary, provider policy, lifecycle, security, repository-secret, and
@@ -91,9 +91,9 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 4. Provider adapters | Credential and disabled configuration proven; activation pending | Anthropic inbox validation, target-secret promotion, approved model/pricing/budget, and disabled local manifest wiring passed. Live proof still requires a deliberate provider-enabled deployment, smoke, redaction, and rollback evidence; provider calls remain disabled by current release scope. |
 | 5. Workflow orchestration | Proven for deterministic runner | Authenticated acceptance reached `completed` with four `done` steps. |
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
-| 7. CI/CD and rollback | Proven | Immutable v51 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
+| 7. CI/CD and rollback | Proven | Immutable v53 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
 | 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
-| 9. Approval and delivery | Resolver fallback and IPv4-mapped address handling implemented; deployment and live delivery evidence pending | Disposable HTTPS destination `https://webhook.site/af43bf9a-77f4-4a4b-b7c7-72af1782be86` is supplied. The live v51 revision reports `CLIENT_DELIVERY_ALLOWED_HOSTS=webhook.site` with `CLIENT_PROVIDER_CALLS_ENABLED=0`; the refreshed local cookie was accepted, but both the exact host and the allowlisted `www.webhook.site` form returned `400 delivery_destination_invalid`. Public DNS/HTTPS checks pass externally. Explicit A/AAAA lookups plus correct IPv4-mapped IPv6 classification are implemented and pass focused tests; deploy and re-test the redacted approval/delivery flow. No action was created and no delivery was sent. |
+| 9. Approval and delivery | v53 live retry still rejected; resolver guard investigation continues | Disposable HTTPS destination `https://webhook.site/af43bf9a-77f4-4a4b-b7c7-72af1782be86` is supplied. The v53 live revision reports `CLIENT_DELIVERY_ALLOWED_HOSTS=webhook.site` with `CLIENT_PROVIDER_CALLS_ENABLED=0`; the refreshed local cookie was accepted, but the exact host still returned `400 delivery_destination_invalid` after the explicit A/AAAA-first and IPv4-mapped fixes. No action was created and no delivery was sent. |
 | 10. Budget enforcement | Pending external input | Code path and provider-free refunds are implemented; an approved test provider is required to prove reserve, settle, deny, refund, and failed-enqueue refund with live accounting. |
 | 11. Alerts and observability | Pending external input | Four policies are provisioned and attached to the enabled email channel `11435881475361291593`; a read-only Monitoring API check returned `verificationStatus: null`. Google email verification and one controlled alert remain required. |
 | 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
@@ -137,7 +137,7 @@ These cannot be fabricated safely by the coding agent:
 - Disposable second tenant/Auth identity remains available for the lifecycle
   export/restore and offboarding drill; its access tokens are local-only.
 - Verified Monitoring email destination.
-- The host allowlist is deployed and the runtime cookie is valid; v51 rejected
+- The host allowlist is deployed and the runtime cookie is valid; v53 rejected
   both the supplied Webhook.site URL and its allowlisted `www` form. The
   guard-compatible explicit A/AAAA DNS fallback and IPv4-mapped address
   handling are implemented and await the authorized Cloud Run deployment and

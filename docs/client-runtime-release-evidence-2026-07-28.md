@@ -11,8 +11,8 @@ first unproven gate; do not repeat the green checks listed there.
 - Region: `asia-south1`
 - Revision: `veloce-cloud-test-00058-9sf`
 - Traffic: 100%
-- Image: `asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v51`
-- Digest: `sha256:87bb112e1d41815f67f40654803458a33e16f2851d9d39c10a12fcb497d13575`
+- Image: `asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v53`
+- Digest: `sha256:028ddee1f3857d5d3672283de005dc3f4edb24c3df1b57c409c8be57952201fe`
 - Provider calls: disabled (`CLIENT_PROVIDER_CALLS_ENABLED=0`)
 - Provider allowlist: Supabase runtime secrets only
 
@@ -27,7 +27,7 @@ first unproven gate; do not repeat the green checks listed there.
 - Client manifest validation: passed.
 - Production Next.js build: passed.
 - Hosted workflow UI exposes the approval-gated handoff operation; TypeScript and
-  boundary verification passed after the v51 build.
+  boundary verification passed after the v53 build.
 - Cloud Tasks queue: `RUNNING`, one concurrent dispatch, ten maximum attempts.
 - Cloud Storage: uniform bucket-level access, tenant-prefix deletion after 14 days,
   seven-day soft delete, and configured HTTPS CORS origins.
@@ -77,7 +77,9 @@ first unproven gate; do not repeat the green checks listed there.
   runtime resolver/safety path remains unproven. The source now includes an
   explicit A/AAAA lookup fallback plus IPv4-mapped IPv6 classification that
   preserves the allowlist and private address rejection; focused resolver and
-  worker checks pass, but v51 has not been changed. No action was created and no delivery was sent. Terminal queue
+  worker checks pass, but the v53 live retry still returned
+  `400 delivery_destination_invalid`. No action was created and no delivery was
+  sent. Terminal queue
   failure/recovery, rate-limit/refund, and queue-retry evidence already passed
   and must not be repeated.
 - Read-only Monitoring verification confirmed the existing email channel is

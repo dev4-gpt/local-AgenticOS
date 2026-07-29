@@ -28,17 +28,17 @@ export async function resolvesToPublicAddresses(hostname: string) {
   const normalized = hostname.trim().toLowerCase().replace(/^\[|\]$/g, "");
   if (isPrivateAddress(normalized)) return false;
   if (isIP(normalized)) return true;
-  const addresses = await lookup(normalized, { all: true, verbatim: true }).catch(() => []);
-  if (addresses.length > 0) return addresses.every((entry) => !isPrivateAddress(entry.address));
-
-  // Some managed runtimes expose DNS through a resolver that does not return
-  // results through getaddrinfo while explicit A/AAAA lookups still work.
   const [ipv4, ipv6] = await Promise.all([
     resolve4(normalized).catch(() => [] as string[]),
     resolve6(normalized).catch(() => [] as string[]),
   ]);
-  const fallbackAddresses = [...ipv4, ...ipv6];
-  return fallbackAddresses.length > 0 && fallbackAddresses.every((address) => !isPrivateAddress(address));
+  const explicitAddresses = [...ipv4, ...ipv6];
+  if (explicitAddresses.length > 0) return explicitAddresses.every((address) => !isPrivateAddress(address));
+
+  // Some managed runtimes expose DNS through a resolver that does not return
+  // results through explicit A/AAAA queries while getaddrinfo still works.
+  const addresses = await lookup(normalized, { all: true, verbatim: true }).catch(() => []);
+  return addresses.length > 0 && addresses.every((entry) => !isPrivateAddress(entry.address));
 }
 
 export async function readBoundedResponseBytes(response: Response, maxBytes: number) {

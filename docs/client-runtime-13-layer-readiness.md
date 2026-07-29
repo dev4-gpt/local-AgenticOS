@@ -1,12 +1,12 @@
 # Client Runtime 13-Layer Readiness
 
-Updated 2026-07-28 after reviewing the public intake deployment, the local
-operator runtime, Cloud Run client image `v51`, and the hosted adapter slice.
+Updated 2026-07-29 after reviewing the public intake deployment, the local
+operator runtime, Cloud Run client image `v53`, and the hosted adapter slice.
 The repository now contains a tenant-scoped records migration, explicit API
 provider aliases, queue-only client text execution, hosted Local/Engine
 replacement routes, tenant-safe brief workspaces, provider/model allowlists,
 and queued workflow dispatch with durable audit state on failed submission. The
-v51 image is deployed and passes the unauthenticated boundary checks. Revision
+v53 image is deployed and passes the unauthenticated boundary checks. Revision
 `veloce-cloud-test-00058-9sf` has the worker flag, Secret Manager token
 binding, and artifact capability enabled; provider calls remain disabled. The
 worker now has a bounded queued OpenAI image-artifact branch and settles successful text reservations against normalized provider
@@ -29,7 +29,7 @@ The current state is:
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
-| Cloud Run client shell | Live as image `v51` on revision `veloce-cloud-test-00058-9sf`; worker binding and artifacts are enabled, provider calls remain disabled, request correlation is active, workflow polling no longer self-throttles, limiter outages are separated from genuine throttles, failed task enqueue refunds are implemented, provider-secret output redaction is active, successful provider jobs fail closed when budget settlement is unavailable, delivery approvals are audited, bounded provider response reads plus literal and DNS-resolved private-host output checks are active, and authenticated workflow/artifact evidence has passed | Controlled test only |
+| Cloud Run client shell | Live as image `v53` on revision `veloce-cloud-test-00058-9sf`; worker binding and artifacts are enabled, provider calls remain disabled, request correlation is active, workflow polling no longer self-throttles, limiter outages are separated from genuine throttles, failed task enqueue refunds are implemented, provider-secret output redaction is active, successful provider jobs fail closed when budget settlement is unavailable, delivery approvals are audited, bounded provider response reads plus literal and DNS-resolved private-host output checks are active, and authenticated workflow/artifact evidence has passed | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |
 | Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
 
@@ -106,7 +106,7 @@ retention. Same codebase does not mean same permissions.
 | 3 | Database and storage | **Primary tenant authenticated artifact roundtrip proven** | Complete the export/deletion drill and record the final verification query confirming the worker hash is not client-readable. |
 | 4 | Auth and permissions | **Approved user and tenant isolation proven** | Supabase Auth, middleware, active membership, owner access, and the two-token second-tenant isolation probe pass. Continue with lifecycle recovery evidence. |
 | 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
-| 6 | Cloud and compute | **Authenticated workflow, queue completion, failure, and recovery proven** | The live host allowlist is configured and the refreshed cookie was accepted; v51 rejected both the supplied Webhook.site URL and its allowlisted `www` form. An explicit A/AAAA resolver fallback with IPv4-mapped address handling now preserves the HTTPS/public-DNS guard and awaits deployment plus live delivery evidence. |
+| 6 | Cloud and compute | **Authenticated workflow, queue completion, failure, and recovery proven** | The live host allowlist is configured and the refreshed cookie was accepted; v53 still rejected the supplied Webhook.site URL. Explicit A/AAAA resolution and IPv4-mapped address handling are live, but delivery evidence remains pending. |
 | 7 | CI/CD and version control | **Versioned image, digest, and rollback checkpoint proven** | Continue recording promotion provenance for future releases. |
 | 8 | Security and row-level security | **Primary database verification, worker hash protection, and tenant isolation proven** | Keep secrets out of the browser; the two-token probe passed across records, jobs, and artifacts for the primary and disposable tenants. |
 | 9 | Rate limiting | **Primary runtime allow/deny/refund/recovery probe passed; alerts pending** | Verify route-level 429 behavior and confirm the email destination is verified. |
