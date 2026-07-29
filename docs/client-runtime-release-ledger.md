@@ -20,19 +20,19 @@ disposable delivery endpoint.
 | Item | Authoritative value |
 |---|---|
 | Client | `veloce-cloud-test` |
-| Cloud Run revision | `veloce-cloud-test-gate10restore` |
+| Cloud Run revision | `veloce-cloud-test-00073-8gh` |
 | Image | `client-runtime:v54` |
 | Image digest | `sha256:91ca3cf6d1bc15d5b7e7ce673173deb42de1f7f0b64528906321d977c81f99a9` |
-| Traffic | 100% to `veloce-cloud-test-gate10restore` |
+| Traffic | 100% to `veloce-cloud-test-00073-8gh` |
 | Runtime URL | `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` |
 | Provider calls | Disabled: `CLIENT_PROVIDER_CALLS_ENABLED=0` |
-| Provider secrets | Cloud Run uses Supabase runtime secrets only; Anthropic target slot staged but not deployed |
+| Provider secrets | Cloud Run uses Supabase runtime secrets only; Anthropic and OpenRouter targets remain unreferenced in the current revision |
 | Authenticated acceptance | Passed 2026-07-28: workflow + four-step execution + artifact roundtrip |
 | Worker identity | Cloud Tasks OIDC binding and tenant worker hash synchronized |
 
 The desktop terminal may still display historical deploy output. It is not the
 current service state and must not be used as a release signal; the current
-manifest and Cloud Run service are v54/`veloce-cloud-test-gate10restore` above.
+manifest and Cloud Run service are v54/`veloce-cloud-test-00073-8gh` above.
 
 ## Proven And Must Not Be Repeated
 
@@ -96,7 +96,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 9. Approval and delivery | Proven | After the original task exhausted ten HTTP 503 callbacks, provider-disabled v54 added safe claim-status logging, request-ID audit correlation, and collision-free task names. One corrected task returned HTTP 200, the approved Webhook.site destination recorded a POST, and action `366e5d05-4918-486d-8227-6e0b30df865f` is durably `executed` with `error_code=null` at 2026-07-29T09:44:12Z. |
 | 10. Budget enforcement | Proven | The two authorized Anthropic jobs settled usage-based ledger amounts of 204 and 1,392 micros. Isolated live job `56e3e67d-ae89-4aa9-88e9-af5ca4475c5e` then failed terminally with `budget_exceeded` under the $0.000001 cap, with no ledger row; Cloud Run logged the matching redacted budget denial before provider dispatch. The authenticated temporary-bucket acceptance already proved allow, deny, rate-limit refund, failed-enqueue refund, recovery, and cleanup. Traffic was restored to the provider-disabled v54 revision. |
 | 11. Alerts and observability | Proven | Four policies are attached to enabled, verified email channel `11435881475361291593`. On 2026-07-29 a payload-free synthetic `runtime.rate_limited` event for `veloce-cloud-test` was evaluated through a temporary controlled threshold, and the operator received the `Veloce veloce-cloud-test runtime throttles` email. The normal policy was then restored and read back as `COMPARISON_GT 10` with a `300s` duration. |
-| 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
+| 12. Hosted Local/Engine/Free Claude replacements | Proven | The client shell maps Local and Local Engine to the OpenRouter queued adapter and Free Claude Code to its own OpenRouter adapter; private `/api/local*` and `/api/freeclaude*` handlers remain blocked. In scoped revision `00072-bz4`, authenticated synthetic jobs succeeded for Local `c885ec46-6974-4ef2-8dcf-be8da1534d6a`, Engine `3b193da3-5f60-45ec-ae17-ca7523fc84ce`, and Free Claude `b06fadad-9656-440a-a8af-7d8276dc4624`; all used reviewed `openrouter/free` and no provider output or credential was printed. Traffic is now back on provider-disabled v54 `00073-8gh`, without `text-agents`. |
 | 13. Recovery and offboarding | Pending external input | Credential-safe CLI is implemented; a disposable second tenant is required for export, restore, rotation, and deletion. |
 
 ## Exact Continuation Order
@@ -127,9 +127,11 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
    rate-limit/refund, queue recovery, rollback, and isolation results as the
    baseline. Do not repeat them unless their stated runtime or data boundaries
    change.
-7. Gate 12 is now the first unproven gate. Review its distinct hosted-provider
-   parity requirement, then perform the Gate 13 lifecycle drill with a
-   disposable tenant.
+7. Gate 12 is complete. Keep the scoped OpenRouter-free adapter smoke and
+   provider-disabled v54 restoration as its baseline. Do not reactivate it
+   unless its mappings, model, budget, or provider boundary changes.
+8. Gate 13 is now the first unproven gate. Perform the lifecycle drill only
+   with the disposable second tenant.
 
 ## External Inputs Still Required
 
@@ -137,11 +139,9 @@ These cannot be fabricated safely by the coding agent:
 
 - Disposable second tenant/Auth identity remains available for the lifecycle
   export/restore and offboarding drill; its access tokens are local-only.
-- A reviewed provider account/key, model, pricing, and spending limit for any
-  distinct provider needed by the Gate 12 hosted-parity review.
-
-Until those inputs exist, the correct release state is a controlled hosted
-runtime with provider capabilities gated, not full 3939/provider parity.
+Until the disposable lifecycle drill is proven, the correct release state is a
+controlled hosted runtime with provider capabilities gated, not full
+production readiness or full 3939/provider parity.
 
 ## Why This Is Not Restarted
 

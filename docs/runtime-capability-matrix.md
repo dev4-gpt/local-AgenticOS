@@ -44,12 +44,14 @@ These can be exposed only through server-side provider APIs, a per-client allowl
 
 Adding one of these keys does not automatically enable the route. The implementation must stop using local CLI/filesystem calls, use the client provider API, write to tenant-scoped storage, and be added to that client manifest.
 
-## Hosted replacement now available, full parity still gated
+## Hosted replacement evidenced, full parity still gated
 
-- Local and Local Engine routes now use the hosted, queued API model workspace
-  in the client edition. They do not expose Ollama, local files, or local
-  agent execution; provider access still requires a client-approved API key,
-  model allowlist, budget, and manifest capability.
+- Local and Local Engine routes use the hosted, queued API model workspace in
+  the client edition. Scoped Gate 12 jobs proved the Local, Engine, and Free
+  Claude adapters against reviewed `openrouter/free`; they do not expose
+  Ollama, local files, or local agent execution. The current client revision
+  has provider calls disabled again, so a future activation still requires the
+  approved key, model allowlist, budget, and manifest capability.
 - Open Design, Web Studio, Flow Lab, Agent Studio, OpenMontage, Game Studio,
   Thumbnail Studio, Integrations, Leads, Radar, and Build Guide now have a
   tenant-safe brief/request workspace. Provider generation, publishing, and
@@ -64,8 +66,9 @@ These currently rely on local infrastructure or personal operator state and ther
   filesystem/agent execution remain operator-only; the client edition uses the
   hosted API replacement described above.
 - The private 3939 Free Claude Code chat: local `fcc-server` on `8082` and
-  the local Claude CLI remain operator-only. The client edition uses the
-  separately approved OpenRouter free-model adapter instead.
+  the local Claude CLI remain operator-only. The client edition's separately
+  approved OpenRouter free-model adapter passed the scoped smoke and is
+  currently gated off with the rest of provider execution.
 - Private Open Design and related local production services: local service at
   `127.0.0.1:7456` or local output paths. The client brief workspace does not
   expose those dependencies.

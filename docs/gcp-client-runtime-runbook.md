@@ -22,7 +22,7 @@ Region: asia-south1
 Cloud Run service: veloce-cloud-test
 Current verified image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v54
 Current verified digest: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:91ca3cf6d1bc15d5b7e7ce673173deb42de1f7f0b64528906321d977c81f99a9
-Current verified revision: veloce-cloud-test-gate10restore
+Current verified revision: veloce-cloud-test-00073-8gh
 Runtime service account: veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com
 
 Gate 9 status: provider-disabled v54 is routed at 100%.

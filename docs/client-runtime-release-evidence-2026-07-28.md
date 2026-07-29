@@ -9,8 +9,8 @@ first unproven gate; do not repeat the green checks listed there.
 
 - Service: `veloce-cloud-test`
 - Region: `asia-south1`
-- Revision: `veloce-cloud-test-gate10restore`
-- Traffic: 100% to `veloce-cloud-test-gate10restore`
+- Revision: `veloce-cloud-test-00073-8gh`
+- Traffic: 100% to `veloce-cloud-test-00073-8gh`
 - Image: `asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v54`
 - Digest: `sha256:91ca3cf6d1bc15d5b7e7ce673173deb42de1f7f0b64528906321d977c81f99a9`
 - Provider calls: disabled (`CLIENT_PROVIDER_CALLS_ENABLED=0`)
@@ -196,6 +196,22 @@ first unproven gate; do not repeat the green checks listed there.
   printed. Provider calls, `text-agents`, and pricing were then removed and
   traffic was routed 100% to the verified v54
   `veloce-cloud-test-gate10restore` revision with the normal $1 cap.
+- Gate 12 completion on 2026-07-29: a scoped OpenRouter smoke revision exposed
+  only the temporary `text-agents` capability and reviewed `openrouter/free`
+  model mapping. The client-shell Local job
+  `c885ec46-6974-4ef2-8dcf-be8da1534d6a`, Local Engine job
+  `3b193da3-5f60-45ec-ae17-ca7523fc84ce`, and Free Claude job
+  `b06fadad-9656-440a-a8af-7d8276dc4624` each reached `succeeded` with no error.
+  Local and Engine recorded provider `openrouter`; Free Claude recorded
+  provider `freeclaude`; all used model `openrouter/free`. No prompt, provider
+  output, or secret was printed. The manifest-model default selection was
+  corrected in commit `3f19977` before the smoke image build.
+- Gate 12 restoration: after the scoped proof, Cloud Run traffic was shifted
+  100% to v54 revision `veloce-cloud-test-00073-8gh`. Its authenticated
+  capability and credential views confirm `text-agents` is absent,
+  `CLIENT_PROVIDER_CALLS_ENABLED=0`, and the OpenRouter secret is not attached.
+  The OpenRouter secret remains in Secret Manager for a future explicitly
+  approved activation, not in the live runtime configuration.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.
