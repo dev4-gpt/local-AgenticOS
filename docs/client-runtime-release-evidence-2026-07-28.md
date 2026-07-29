@@ -71,8 +71,10 @@ first unproven gate; do not repeat the green checks listed there.
   `CLIENT_DELIVERY_ALLOWED_HOSTS=webhook.site` with
   `CLIENT_PROVIDER_CALLS_ENABLED=0`. The refreshed cookie file was structurally
   valid and accepted by the live route; the redacted pending-approval action
-  then returned `400 delivery_destination_invalid` because the destination
-  failed the HTTPS/public-DNS safety check. No action was created and no
+  then returned `400 delivery_destination_invalid`. Retrying with the
+  allowlisted `www.webhook.site` hostname produced the same result. Public
+  DNS/HTTPS checks from the operator environment pass, so the deployed
+  runtime resolver/safety path remains unproven. No action was created and no
   delivery was sent. Terminal queue failure/recovery, rate-limit/refund, and
   queue-retry evidence already passed and must not be repeated.
 - Read-only Monitoring verification confirmed the existing email channel is
