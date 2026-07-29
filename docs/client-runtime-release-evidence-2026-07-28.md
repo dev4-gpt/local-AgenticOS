@@ -133,6 +133,14 @@ first unproven gate; do not repeat the green checks listed there.
   `CLIENT_PROVIDER_CALLS_ENABLED=0`; no provider smoke was repeated. The
   existing action remains `approved` and has not yet received its one corrected
   task.
+- Gate 9 completion on 2026-07-29: the updated operator helper queued exactly
+  one fresh task without reapproving action
+  `366e5d05-4918-486d-8227-6e0b30df865f`. The queue became empty and its
+  internal delivery callback returned HTTP 200 at 09:44:08Z. A payload-free
+  Webhook.site metadata check reported a POST receipt. The operator's
+  read-only Supabase query then returned `status: executed`, `error_code: null`,
+  and `updated_at: 2026-07-29T09:44:12.362105+00:00`. No secret or delivery
+  payload was printed.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.
