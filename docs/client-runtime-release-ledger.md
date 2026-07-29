@@ -93,7 +93,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v53 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
 | 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
-| 9. Approval and delivery | Pending external input | v53 is routed at 100% on `veloce-cloud-test-00061-rgc`. Action `366e5d05-4918-486d-8227-6e0b30df865f` is `approved` with no error; its action-ID audit query shows `delivery.approved` plus two `delivery.queued` events (latest 2026-07-29T08:35:14Z). No audits exist under request `f73940fe-afc8-4ba1-ba0a-dfbbda6d3159`, consistent with the helper's action-ID correlation. Webhook.site has no POST receipt; delivery is not proven and must not be reapproved or requeued. |
+| 9. Approval and delivery | Blocked | The approved action's task reached `/api/internal/client-runtime/delivery` ten times on 2026-07-29 and each callback returned HTTP 503; the queue is now empty and no webhook POST was received. The action remains `approved` with no error because its worker claim never succeeded. A provider-disabled correction is committed locally: log the safe claim status, retain the request ID in audits, and use a fresh task name for the single authorized retry. Deploy and verify that correction before retrying. |
 | 10. Budget enforcement | Pending external input | Code path and provider-free refunds are implemented; an approved test provider is required to prove reserve, settle, deny, refund, and failed-enqueue refund with live accounting. |
 | 11. Alerts and observability | Pending external input | Four policies are provisioned and attached to the enabled email channel `11435881475361291593`; a read-only Monitoring API check returned `verificationStatus: null`. Google email verification and one controlled alert remain required. |
 | 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
@@ -109,11 +109,12 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
    and disabled rollback results as the baseline. Do not re-enable the provider
    or repeat its calls unless the adapter, approved model, budget, or runtime
    environment changes.
-3. Gate 9 is now the first unproven gate. The stored action is still `approved`
-   with no error, and two `delivery.queued` audits exist under its action ID.
-   Do not reapprove or reenqueue it; prove the queued task's execution or
-   durable delivery failure, then obtain a POST receipt from the approved
-   destination.
+3. Gate 9 is now the first unproven gate and is blocked by a diagnosed worker
+   claim failure. The prior task exhausted ten HTTP 503 callbacks and the
+   action remains `approved`. Deploy the committed provider-disabled diagnostic
+   and collision-free retry correction, then enqueue exactly one fresh task for
+   the existing approved action. Use its safe claim-status event and the
+   destination POST receipt to classify the outcome; do not reapprove it.
 4. Keep the Gate 8 final verification, authenticated workflow/artifact,
    rate-limit/refund, queue recovery, rollback, and isolation results as the
    baseline. Do not repeat them unless their stated runtime or data boundaries

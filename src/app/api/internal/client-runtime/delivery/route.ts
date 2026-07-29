@@ -19,7 +19,10 @@ export async function POST(request: Request) {
   if (!/^[0-9a-f-]{36}$/i.test(actionId) || requestedTenant !== tenantSlug) return NextResponse.json({ ok: false, error: "worker_payload_invalid" }, { status: 400 });
 
   const claim = await workerRpc("claim_client_delivery_action_worker", { p_tenant_slug: tenantSlug, p_action_id: actionId, p_worker_token: workerToken });
-  if (!claim.ok) return NextResponse.json({ ok: false, error: "delivery_claim_failed" }, { status: 503 });
+  if (!claim.ok) {
+    logClientRuntimeEvent("runtime.delivery_claim_failed", { tenant: tenantSlug, status: claim.status, reason: "delivery_claim_failed" });
+    return NextResponse.json({ ok: false, error: "delivery_claim_failed" }, { status: 503 });
+  }
   const action = claim.value as { id?: string; action?: string; destination?: string; request_id?: string; artifact_ids?: unknown } | null;
   if (!action?.id || typeof action.action !== "string") return NextResponse.json({ ok: true, status: "already_claimed" });
   const artifactIds = Array.isArray(action.artifact_ids) ? action.artifact_ids.filter((value): value is string => typeof value === "string") : [];

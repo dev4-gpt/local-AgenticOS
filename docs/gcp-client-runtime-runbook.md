@@ -26,10 +26,12 @@ Current verified revision: veloce-cloud-test-00061-rgc
 Runtime service account: veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com
 
 Gate 9 status: v53 is routed at 100% on revision `veloce-cloud-test-00061-rgc`.
-The runtime service account has Secret Accessor on the single referenced
-Anthropic secret, provider calls remain disabled, and a redacted delivery
-request returned HTTP 202 with `pending_approval`. Do not mark delivery proven
-until the operator approval/enqueue flow and destination receipt pass.
+The approved delivery task exhausted ten HTTP 503 callbacks to the internal
+worker and left the queue without a destination POST. Provider calls remain
+disabled. A provider-disabled diagnostic and collision-free retry correction is
+committed but not yet deployed; do not reapprove the existing action or mark
+delivery proven before one corrected task produces a terminal action state and
+destination receipt.
 Storage bucket: gs://veloce-agenticos-2026-veloce-cloud-test
 Primary URL: https://veloce-cloud-test-1075094991117.asia-south1.run.app
 Product dropdown login URL: https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2F

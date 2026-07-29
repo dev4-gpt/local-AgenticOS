@@ -115,6 +115,16 @@ first unproven gate; do not repeat the green checks listed there.
   with no error. Its action-ID audit correlation contains `delivery.approved`
   and two `delivery.queued` events, latest at 08:35:14Z; the request-ID audit
   correlation remains empty. This proves queue submission, not delivery.
+- Gate 9 failure classification on 2026-07-29: read-only Cloud Tasks and
+  Cloud Run checks found no remaining task, but found ten callbacks to
+  `/api/internal/client-runtime/delivery` on revision
+  `veloce-cloud-test-00061-rgc`, each returning HTTP 503 between 06:01:50Z and
+  06:02:52Z. The OIDC audience matches the live
+  `CLIENT_RUNTIME_BASE_URL`, so authentication-audience mismatch is ruled out.
+  The action remains `approved`, which means the Supabase worker claim did not
+  complete. The next provider-disabled image adds a redacted claim-status event
+  and changes the operator helper to select `request_id` and create a fresh
+  Cloud Tasks name; it must be deployed before one retry is attempted.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.

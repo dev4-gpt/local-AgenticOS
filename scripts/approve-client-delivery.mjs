@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import process from "node:process";
 
 const args = process.argv.slice(2);
@@ -47,7 +48,7 @@ if (enqueue) {
 console.log(enqueue ? "Delivery approved and queued." : "Delivery approved. Run with --enqueue to dispatch it through the reviewed worker.");
 
 async function readAction() {
-  const response = await fetch(`${supabaseUrl}/rest/v1/client_runtime_delivery_actions?select=id,status,tenant_slug,action,destination,artifact_ids&id=eq.${encodeURIComponent(actionId)}&tenant_slug=eq.${encodeURIComponent(slug)}&limit=1`, {
+  const response = await fetch(`${supabaseUrl}/rest/v1/client_runtime_delivery_actions?select=id,request_id,status,tenant_slug,action,destination,artifact_ids&id=eq.${encodeURIComponent(actionId)}&tenant_slug=eq.${encodeURIComponent(slug)}&limit=1`, {
     headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }, cache: "no-store",
   }).catch(() => null);
   if (!response?.ok) fail(`Could not read delivery action (${response?.status ?? "no response"})`);
@@ -66,14 +67,13 @@ async function patchAction(status) {
 async function enqueueTask() {
   const access = spawnSync("gcloud", ["auth", "print-access-token"], { encoding: "utf8" });
   if (access.status !== 0 || !access.stdout.trim()) fail("gcloud authentication is required to enqueue the approved delivery");
-  const taskName = `projects/${project}/locations/${region}/queues/${queue}/tasks/${actionId}`;
+  const taskName = `projects/${project}/locations/${region}/queues/${queue}/tasks/${actionId}-${randomUUID()}`;
   const response = await fetch(`https://cloudtasks.googleapis.com/v2/projects/${encodeURIComponent(project)}/locations/${encodeURIComponent(region)}/queues/${encodeURIComponent(queue)}/tasks`, {
     method: "POST",
     headers: { Authorization: `Bearer ${access.stdout.trim()}`, "Content-Type": "application/json" },
     body: JSON.stringify({ task: { name: taskName, httpRequest: { httpMethod: "POST", url: `${serviceUrl}/api/internal/client-runtime/delivery`, headers: { "Content-Type": "application/json" }, body: Buffer.from(JSON.stringify({ actionId, tenantSlug: slug }), "utf8").toString("base64"), oidcToken: { serviceAccountEmail: serviceAccount, audience: serviceUrl } } } }),
     cache: "no-store",
   }).catch(() => null);
-  if (response?.status === 409) return;
   if (!response?.ok) fail(`Could not enqueue approved delivery (${response?.status ?? "no response"})`);
 }
 
