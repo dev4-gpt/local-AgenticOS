@@ -95,7 +95,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
 | 9. Approval and delivery | Proven | After the original task exhausted ten HTTP 503 callbacks, provider-disabled v54 added safe claim-status logging, request-ID audit correlation, and collision-free task names. One corrected task returned HTTP 200, the approved Webhook.site destination recorded a POST, and action `366e5d05-4918-486d-8227-6e0b30df865f` is durably `executed` with `error_code=null` at 2026-07-29T09:44:12Z. |
 | 10. Budget enforcement | Proven | The two authorized Anthropic jobs settled usage-based ledger amounts of 204 and 1,392 micros. Isolated live job `56e3e67d-ae89-4aa9-88e9-af5ca4475c5e` then failed terminally with `budget_exceeded` under the $0.000001 cap, with no ledger row; Cloud Run logged the matching redacted budget denial before provider dispatch. The authenticated temporary-bucket acceptance already proved allow, deny, rate-limit refund, failed-enqueue refund, recovery, and cleanup. Traffic was restored to the provider-disabled v54 revision. |
-| 11. Alerts and observability | Pending external input | Four policies are provisioned and attached to the enabled email channel `11435881475361291593`; a read-only Monitoring API check returned `verificationStatus: null`. Google email verification and one controlled alert remain required. |
+| 11. Alerts and observability | Pending controlled test | Four policies are provisioned and attached to enabled email channel `11435881475361291593`. On 2026-07-29 the operator received Google Monitoring's fresh verification code and verified the channel through the official API; it now returns `verificationStatus: VERIFIED` and HTTP 200. One controlled alert delivery remains. |
 | 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
 | 13. Recovery and offboarding | Pending external input | Credential-safe CLI is implemented; a disposable second tenant is required for export, restore, rotation, and deletion. |
 
@@ -119,8 +119,9 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
    refund acceptance, and provider-disabled v54 restore as the baseline; do
    not repeat provider work or budget calls unless the accounting boundary
    changes.
-5. Gate 11 is now the first unproven gate. Complete Google email verification
-   for the existing Monitoring channel, then run one controlled alert check.
+5. Gate 11 is now the first unproven gate. Its existing Monitoring email
+   channel is verified; run one controlled alert check and record the received
+   notification.
 6. Keep the Gate 8 final verification, authenticated workflow/artifact,
    rate-limit/refund, queue recovery, rollback, and isolation results as the
    baseline. Do not repeat them unless their stated runtime or data boundaries

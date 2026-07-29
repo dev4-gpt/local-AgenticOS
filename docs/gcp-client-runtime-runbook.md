@@ -649,7 +649,9 @@ leaving the policy disconnected. Without a channel, the policy still appears
 in Cloud Monitoring but does not send email or another notification.
 For the current cloud-test tenant, the four policies are attached to the
 operator channel `projects/veloce-agenticos-2026/notificationChannels/11435881475361291593`.
-Complete Google's email verification step before treating delivery as proven.
+Google's email verification completed on 2026-07-29 for channel
+`11435881475361291593`; one controlled alert delivery remains before treating
+alerting as proven.
 The event payload contains only tenant slug, bucket/provider label, status, and
 reason-safe fields; it never contains prompts, keys, or file contents.
 
