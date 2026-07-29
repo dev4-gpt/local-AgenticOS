@@ -65,6 +65,23 @@ first unproven gate; do not repeat the green checks listed there.
   for the recent window, and `gcloud tasks describe` for the named task returned
   `NOT_FOUND`. The next check is the stored Supabase action status/error before
   any retry.
+- Gate 9 stored-action checkpoint on 2026-07-29: the approved-user operator
+  shell queried action `366e5d05-4918-486d-8227-6e0b30df865f` and returned
+  `status: approved`, `error_code: null`, request ID
+  `f73940fe-afc8-4ba1-ba0a-dfbbda6d3159`, and no audit events under that request
+  ID. This does not prove delivery. The approval helper stores its queue audit
+  under the action ID when its selected action lacks `request_id`, so the next
+  read-only query must inspect both correlation IDs before a retry is
+  considered.
+- Gate 4 authorized activation checkpoint on 2026-07-29: the private manifest
+  passed provider-policy and manifest validation with `text-agents`, the single
+  Anthropic key/model allowlist, model pricing, and the $1 budget cap. The
+  pinned v53 digest was deployed with `CLIENT_PROVIDER_CALLS_ENABLED=1`; live
+  Cloud Run configuration confirmed only Secret Manager references, not raw
+  credentials. The first normal smoke submission returned `401
+  not_authenticated`, before it created a job, called Anthropic, or reserved
+  budget. The approved-user session must be refreshed before the normal smoke,
+  redaction probe, and explicit rollback can be evidenced.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.
@@ -89,24 +106,24 @@ first unproven gate; do not repeat the green checks listed there.
   `https://webhook.site/af43bf9a-77f4-4a4b-b7c7-72af1782be86`. Its host is staged
   in the ignored local manifest and the deployed revision reports
   `CLIENT_DELIVERY_ALLOWED_HOSTS=webhook.site` with
-  `CLIENT_PROVIDER_CALLS_ENABLED=0`. The refreshed cookie file was structurally
-  valid and accepted by the live route; the redacted pending-approval action
+  `CLIENT_PROVIDER_CALLS_ENABLED=1` for the authorized Gate 4 smoke. The prior
+  refreshed cookie is structurally valid but now returns `401
+  not_authenticated`; the redacted pending-approval action
   then returned `400 delivery_destination_invalid`. After routing 100% traffic
   to v53 revision `veloce-cloud-test-00061-rgc` and granting the runtime service
   account Secret Accessor on the single referenced secret, the same redacted
   request returned HTTP 202 with `pending_approval`. The operator CLI has now
-  confirmed approval and queue submission. Destination receipt and stored
-  action status/error remain to be verified. Terminal queue failure/recovery,
-  rate-limit/refund, and queue-retry evidence already passed and must not be
-  repeated.
+  confirmed approval and queue submission. The stored action is still
+  `approved` with no error and no audits under its request ID; inspect the
+  action-ID audit correlation before any retry. Destination receipt remains
+  unproven. Terminal queue failure/recovery, rate-limit/refund, and queue-retry
+  evidence already passed and must not be repeated.
 - Read-only Monitoring verification confirmed the existing email channel is
   enabled but still reports `verificationStatus: null`. Verify Google's email
   destination before running the one controlled alert check.
-- Run the deliberate provider-enabled deployment and live smoke, redaction,
-  and rollback checks only under a separate approved activation step.
-  Anthropic's credential, model, pricing, budget, and disabled local manifest
-  wiring are now recorded; do not redeploy or enable it under this release
-  scope.
+- Gate 4 activation is authorized and deployed. Refresh the approved-user
+  session, then run the normal smoke and redaction probe; restore the provider
+  switch to disabled with the same pinned image immediately afterwards.
 - Run the lifecycle export/restore and disposable recovery/offboarding drills.
 
 These are deliberately marked pending because source-level checks and

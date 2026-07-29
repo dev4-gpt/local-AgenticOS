@@ -88,12 +88,12 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 1. Public intake and boundary | Proven | Public/runtime boundary checks and security release verifier passed. |
 | 2. Auth and capability gate | Proven for approved user | Authenticated acceptance passed with the approved tenant member and capability set. |
 | 3. Tenant data and storage | Proven for primary tenant | Authenticated acceptance proved signed upload/download byte integrity and cleanup. |
-| 4. Provider adapters | Pending external input | Anthropic inbox validation, target-secret promotion, approved model/pricing/budget, and disabled local manifest wiring are proven. Live adapter proof still requires a deliberate provider-enabled deployment, smoke, redaction, and rollback evidence. This continuation did not enable providers because the release scope explicitly forbids provider activation; provider calls remain disabled. |
+| 4. Provider adapters | Blocked | The authorized Gate 4 configuration is deployed on v53: only `ANTHROPIC_API_KEY` / `claude-sonnet-5` are allowlisted, `text-agents` is enabled, provider calls are enabled, and the $1 cap is active. The first bounded smoke submission returned `401 not_authenticated`, before a job, provider call, or budget reservation could be created. A fresh approved-user session is required for the normal smoke, redaction probe, and rollback evidence. |
 | 5. Workflow orchestration | Proven for deterministic runner | Authenticated acceptance reached `completed` with four `done` steps. |
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v53 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
 | 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
-| 9. Approval and delivery | Approved and queued; receipt pending | v53 is routed at 100% on `veloce-cloud-test-00061-rgc` after granting the runtime service account Secret Accessor on the single Anthropic secret. Operator CLI output confirmed action `366e5d05-4918-486d-8227-6e0b30df865f` was already `approved` and then queued. Webhook.site token inspection returned only GET requests and no POST receipt; read-only Cloud Run delivery-route and `runtime.delivery_failed` log queries returned no entries, and the named Cloud Task returned `NOT_FOUND`. Inspect the stored Supabase action status/error before any retry. |
+| 9. Approval and delivery | Pending external input | v53 is routed at 100% on `veloce-cloud-test-00061-rgc`. Operator CLI output confirmed action `366e5d05-4918-486d-8227-6e0b30df865f` was approved and queued. The latest read-only Supabase check returned `status=approved`, `error_code=null`, `request_id=f73940fe-afc8-4ba1-ba0a-dfbbda6d3159`, and no audit events under that request ID. The helper writes queue audits under the action ID, so inspect both correlation IDs before any retry. Webhook.site has no POST receipt; delivery is not proven. |
 | 10. Budget enforcement | Pending external input | Code path and provider-free refunds are implemented; an approved test provider is required to prove reserve, settle, deny, refund, and failed-enqueue refund with live accounting. |
 | 11. Alerts and observability | Pending external input | Four policies are provisioned and attached to the enabled email channel `11435881475361291593`; a read-only Monitoring API check returned `verificationStatus: null`. Google email verification and one controlled alert remain required. |
 | 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
@@ -101,38 +101,26 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 
 ## Exact Continuation Order
 
-1. Gate 8 final verification is complete. The read-only
-   `supabase-client-runtime-final-verification.sql` returned the single-row
-   summary with all required objects present, `worker_hash_select = false`,
-   worker-only grants, the delivery guard, and an active tenant. Do not rerun
-   it unless the SQL or live database state changes.
-2. Using the authenticated acceptance harness at
-   `/private/tmp/veloce-runtime-cookie.txt`, keep the workflow/artifact result
-   as the baseline evidence; do not repeat it unless the image, runtime env,
-   SQL functions, or worker secret changes.
-3. Keep the authenticated workflow, artifact, rate-limit/refund, queue failure,
-   queue retry, rollback, and final SQL results already recorded above. The
-   live revision has its host allowlist and the refreshed runtime cookie is
-   valid. The authorized v53 fix is now serving at 100% traffic after the
-   runtime service account received access to the single referenced secret.
-   The redacted action request returned HTTP 202, and the operator helper
-   approved and queued it. A 2026-07-29 Webhook.site token API check showed no
-   POST receipt, only GET requests. Read-only Cloud Run delivery-route and
-   `runtime.delivery_failed` log queries returned no entries, and Cloud Tasks
-   no longer has the named task. Inspect the stored Supabase action
-   status/error before any retry.
-4. Gate 8 isolation is complete. Keep its two-token result as the baseline and
-   do not repeat it unless tenant memberships, RLS policies, or the verifier
-   changes.
-5. Complete Google email verification for the existing Monitoring channel, then
+1. Gate 4 is the first unproven gate. The authorized provider configuration is
+   live on `veloce-cloud-test-00061-rgc`, but the local approved-user cookie
+   has expired: the first normal smoke submission returned `401
+   not_authenticated` before it created a job or contacted Anthropic. Refresh
+   that one session, then run the normal and secret-shaped-output smoke probes,
+   record their terminal job status and redaction verdict without printing
+   output, and finally restore `providerCallsEnabled: false` with the same
+   pinned image for rollback proof.
+2. Gate 9 remains pending after Gate 4. The stored action is still `approved`
+   with no error. Before any retry, query the action plus `delivery.approved`
+   and `delivery.queued` audits under both its action ID and request ID; do not
+   reapprove or reenqueue it.
+3. Keep the Gate 8 final verification, authenticated workflow/artifact,
+   rate-limit/refund, queue recovery, rollback, and isolation results as the
+   baseline. Do not repeat them unless their stated runtime or data boundaries
+   change.
+4. Complete Google email verification for the existing Monitoring channel, then
    run the controlled alert check. The channel is enabled but currently reports
    `verificationStatus: null`.
-6. Gate 4 is classified as pending external input for this continuation. Do
-   not activate a provider while the current instruction forbids provider
-   enablement. If the release scope changes later, activate only one approved
-   provider at a time, and never place credentials in chat, source, browser
-   storage, or Cloud Run environment values.
-7. Run the final audit and update this ledger and the release-evidence document.
+5. Run the final audit and update this ledger and the release-evidence document.
 
 ## External Inputs Still Required
 
@@ -141,11 +129,9 @@ These cannot be fabricated safely by the coding agent:
 - Disposable second tenant/Auth identity remains available for the lifecycle
   export/restore and offboarding drill; its access tokens are local-only.
 - Verified Monitoring email destination.
-- The host allowlist is deployed and the runtime cookie is valid; v53 rejected
-  both the supplied Webhook.site URL and its allowlisted `www` form. The
-  guard-compatible explicit A/AAAA DNS fallback and IPv4-mapped address
-  handling are implemented and await the authorized Cloud Run deployment and
-  live delivery evidence.
+- A fresh approved-user Cloud Run session cookie. The prior local cookie now
+  returns `401 not_authenticated`; it is required to perform the already
+  authorized bounded Anthropic smoke and redaction probes.
 - User-approved provider account/key, model, pricing, and spending limit for
   each provider to be activated.
 
