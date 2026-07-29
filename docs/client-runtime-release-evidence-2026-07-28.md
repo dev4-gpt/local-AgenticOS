@@ -57,6 +57,14 @@ first unproven gate; do not repeat the green checks listed there.
   `pending_approval`; the operator helper subsequently approved and queued the
   action. Webhook.site has no POST yet, so the stored action status/error and
   final destination receipt remain open.
+- Gate 9 queue checkpoint on 2026-07-29: the local operator CLI output showed
+  action `366e5d05-4918-486d-8227-6e0b30df865f` was already `approved`, ran in
+  apply mode, and ended with `Delivery approved and queued.` Webhook.site token
+  inspection returned two GET requests and no POST receipt. Read-only Cloud Run
+  delivery-route and `runtime.delivery_failed` log queries returned no entries
+  for the recent window, and `gcloud tasks describe` for the named task returned
+  `NOT_FOUND`. The next check is the stored Supabase action status/error before
+  any retry.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.
@@ -86,10 +94,11 @@ first unproven gate; do not repeat the green checks listed there.
   then returned `400 delivery_destination_invalid`. After routing 100% traffic
   to v53 revision `veloce-cloud-test-00061-rgc` and granting the runtime service
   account Secret Accessor on the single referenced secret, the same redacted
-  request returned HTTP 202 with `pending_approval`. Approval, queue dispatch,
-  and destination receipt remain to be verified. Terminal queue
-  failure/recovery, rate-limit/refund, and queue-retry evidence already passed
-  and must not be repeated.
+  request returned HTTP 202 with `pending_approval`. The operator CLI has now
+  confirmed approval and queue submission. Destination receipt and stored
+  action status/error remain to be verified. Terminal queue failure/recovery,
+  rate-limit/refund, and queue-retry evidence already passed and must not be
+  repeated.
 - Read-only Monitoring verification confirmed the existing email channel is
   enabled but still reports `verificationStatus: null`. Verify Google's email
   destination before running the one controlled alert check.

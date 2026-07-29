@@ -93,7 +93,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v53 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
 | 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
-| 9. Approval and delivery | Approved and queued; receipt pending | v53 is routed at 100% on `veloce-cloud-test-00061-rgc` after granting the runtime service account Secret Accessor on the single Anthropic secret. Action `366e5d05-4918-486d-8227-6e0b30df865f` was approved and queued. Webhook.site has no POST yet; inspect the stored action status/error before any retry. |
+| 9. Approval and delivery | Approved and queued; receipt pending | v53 is routed at 100% on `veloce-cloud-test-00061-rgc` after granting the runtime service account Secret Accessor on the single Anthropic secret. Operator CLI output confirmed action `366e5d05-4918-486d-8227-6e0b30df865f` was already `approved` and then queued. Webhook.site token inspection returned only GET requests and no POST receipt; read-only Cloud Run delivery-route and `runtime.delivery_failed` log queries returned no entries, and the named Cloud Task returned `NOT_FOUND`. Inspect the stored Supabase action status/error before any retry. |
 | 10. Budget enforcement | Pending external input | Code path and provider-free refunds are implemented; an approved test provider is required to prove reserve, settle, deny, refund, and failed-enqueue refund with live accounting. |
 | 11. Alerts and observability | Pending external input | Four policies are provisioned and attached to the enabled email channel `11435881475361291593`; a read-only Monitoring API check returned `verificationStatus: null`. Google email verification and one controlled alert remain required. |
 | 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
@@ -116,8 +116,11 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
    valid. The authorized v53 fix is now serving at 100% traffic after the
    runtime service account received access to the single referenced secret.
    The redacted action request returned HTTP 202, and the operator helper
-   approved and queued it. Webhook.site has no POST yet; inspect the stored
-   action status/error before any retry.
+   approved and queued it. A 2026-07-29 Webhook.site token API check showed no
+   POST receipt, only GET requests. Read-only Cloud Run delivery-route and
+   `runtime.delivery_failed` log queries returned no entries, and Cloud Tasks
+   no longer has the named task. Inspect the stored Supabase action
+   status/error before any retry.
 4. Gate 8 isolation is complete. Keep its two-token result as the baseline and
    do not repeat it unless tenant memberships, RLS policies, or the verifier
    changes.
