@@ -85,7 +85,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 
 | Gate | Status | Evidence or next action |
 |---|---|---|
-| 1. Public intake and boundary | Blocked | The product-experience form route is live but `POST /api/lead` returns `502`. Vercel logs show its configured Supabase service-role credential receives `401` from both the durable public rate limiter and the `signups` insert. The form cannot be relied on for lead capture until the production service-role key is replaced and an end-to-end stored test lead is verified and removed. |
+| 1. Public intake and boundary | Proven | On 2026-07-29 the Vercel production service-role credential was replaced and the product site was redeployed. Synthetic non-personal submissions to both `POST /api/lead` and `POST /api/deployment-request` returned HTTP 200; one row was found in each of `signups` and `deployment_requests`, then both rows were deleted with HTTP 204. |
 | 2. Auth and capability gate | Proven for approved user | Authenticated acceptance passed with the approved tenant member and capability set. |
 | 3. Tenant data and storage | Proven for primary tenant | Authenticated acceptance proved signed upload/download byte integrity and cleanup. |
 | 4. Provider adapters | Proven | The authorized v53 smoke revision exposed only Anthropic / `claude-sonnet-5` with the $1 cap. Authenticated normal job `48701a99-f3ec-481d-be00-b3fa44525e41` succeeded; authenticated secret-shaped-output job `279e0bdd-52df-4af3-b010-4ea34bc3b976` succeeded with its output withheld by the provider-output redactor. No raw output or credential was printed. Traffic is restored 100% to `veloce-cloud-test-gate4rollback`, where provider calls are disabled and `text-agents` is absent. |
@@ -93,7 +93,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v53 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
 | 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
-| 9. Approval and delivery | Pending external input | v53 is routed at 100% on `veloce-cloud-test-00061-rgc`. Operator CLI output confirmed action `366e5d05-4918-486d-8227-6e0b30df865f` was approved and queued. The latest read-only Supabase check returned `status=approved`, `error_code=null`, `request_id=f73940fe-afc8-4ba1-ba0a-dfbbda6d3159`, and no audit events under that request ID. The helper writes queue audits under the action ID, so inspect both correlation IDs before any retry. Webhook.site has no POST receipt; delivery is not proven. |
+| 9. Approval and delivery | Pending external input | v53 is routed at 100% on `veloce-cloud-test-00061-rgc`. Action `366e5d05-4918-486d-8227-6e0b30df865f` is `approved` with no error; its action-ID audit query shows `delivery.approved` plus two `delivery.queued` events (latest 2026-07-29T08:35:14Z). No audits exist under request `f73940fe-afc8-4ba1-ba0a-dfbbda6d3159`, consistent with the helper's action-ID correlation. Webhook.site has no POST receipt; delivery is not proven and must not be reapproved or requeued. |
 | 10. Budget enforcement | Pending external input | Code path and provider-free refunds are implemented; an approved test provider is required to prove reserve, settle, deny, refund, and failed-enqueue refund with live accounting. |
 | 11. Alerts and observability | Pending external input | Four policies are provisioned and attached to the enabled email channel `11435881475361291593`; a read-only Monitoring API check returned `verificationStatus: null`. Google email verification and one controlled alert remain required. |
 | 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
@@ -101,20 +101,19 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 
 ## Exact Continuation Order
 
-1. Gate 1 is now the first unproven gate. Vercel production lead capture is
-   blocked by an invalid Supabase service-role credential: its `/api/lead`
-   route logs `401` from both its durable rate-limit RPC and `signups` write.
-   Replace the Vercel production credential, redeploy, submit one marked test
-   lead, verify it is stored, and remove that test row before marketing the
-   form as lead capture.
+1. Gate 1 is proven. The Vercel production service-role credential was
+   replaced, the product site was redeployed, and synthetic non-personal rows
+   were stored then deleted from both public intake tables. The product page
+   and `/start` are safe to market for lead capture.
 2. Gate 4 is complete. Keep its normal smoke, secret-shaped-output redaction,
    and disabled rollback results as the baseline. Do not re-enable the provider
    or repeat its calls unless the adapter, approved model, budget, or runtime
    environment changes.
-3. Gate 9 remains pending after Gate 1. The stored action is still `approved`
-   with no error. Before any retry, query the action plus `delivery.approved`
-   and `delivery.queued` audits under both its action ID and request ID; do not
-   reapprove or reenqueue it.
+3. Gate 9 is now the first unproven gate. The stored action is still `approved`
+   with no error, and two `delivery.queued` audits exist under its action ID.
+   Do not reapprove or reenqueue it; prove the queued task's execution or
+   durable delivery failure, then obtain a POST receipt from the approved
+   destination.
 4. Keep the Gate 8 final verification, authenticated workflow/artifact,
    rate-limit/refund, queue recovery, rollback, and isolation results as the
    baseline. Do not repeat them unless their stated runtime or data boundaries

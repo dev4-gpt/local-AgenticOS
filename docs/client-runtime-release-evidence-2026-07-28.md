@@ -102,6 +102,19 @@ first unproven gate; do not repeat the green checks listed there.
   service-role value is invalid or no longer accepted. Do not market this form
   as lead capture until the credential is replaced, a marked test lead is
   durably stored, and that test row is removed.
+- Gate 1 completion on 2026-07-29: the Vercel production
+  `SUPABASE_SERVICE_ROLE_KEY` was replaced and production deployment
+  `dpl_GF6ZuzaTsCSfMgzL95pbCmm9CaRS` was aliased to
+  `product-experience-five.vercel.app`. Synthetic non-personal submissions to
+  both `POST /api/lead` and `POST /api/deployment-request` returned HTTP 200.
+  A service-role query found one matching row in `signups` and one in
+  `deployment_requests`; both were removed with HTTP 204. No key, row content,
+  or personal lead data was printed.
+- Gate 9 action-ID audit checkpoint on 2026-07-29: the operator's read-only
+  query returned action `366e5d05-4918-486d-8227-6e0b30df865f` as `approved`
+  with no error. Its action-ID audit correlation contains `delivery.approved`
+  and two `delivery.queued` events, latest at 08:35:14Z; the request-ID audit
+  correlation remains empty. This proves queue submission, not delivery.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.
