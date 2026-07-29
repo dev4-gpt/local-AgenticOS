@@ -93,7 +93,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v51 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
 | 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
-| 9. Approval and delivery | Authenticated request reaches destination validation; deployed resolver path rejects the disposable endpoint | Disposable HTTPS destination `https://webhook.site/af43bf9a-77f4-4a4b-b7c7-72af1782be86` is supplied. The live revision reports `CLIENT_DELIVERY_ALLOWED_HOSTS=webhook.site` with `CLIENT_PROVIDER_CALLS_ENABLED=0`; the refreshed local cookie was accepted, but both the exact host and the allowlisted `www.webhook.site` form returned `400 delivery_destination_invalid`. Public DNS/HTTPS checks from the operator environment pass, so the remaining issue is the deployed runtime resolver/safety path. No action was created and no delivery was sent. |
+| 9. Approval and delivery | Resolver fallback implemented; deployment and live delivery evidence pending | Disposable HTTPS destination `https://webhook.site/af43bf9a-77f4-4a4b-b7c7-72af1782be86` is supplied. The live v51 revision reports `CLIENT_DELIVERY_ALLOWED_HOSTS=webhook.site` with `CLIENT_PROVIDER_CALLS_ENABLED=0`; the refreshed local cookie was accepted, but both the exact host and the allowlisted `www.webhook.site` form returned `400 delivery_destination_invalid`. Public DNS/HTTPS checks pass externally. A resolver fallback using explicit A/AAAA lookups is implemented and passes focused tests locally; it must be deployed and the redacted approval/delivery flow re-tested. No action was created and no delivery was sent. |
 | 10. Budget enforcement | Pending external input | Code path and provider-free refunds are implemented; an approved test provider is required to prove reserve, settle, deny, refund, and failed-enqueue refund with live accounting. |
 | 11. Alerts and observability | Pending external input | Four policies are provisioned and attached to the enabled email channel `11435881475361291593`; a read-only Monitoring API check returned `verificationStatus: null`. Google email verification and one controlled alert remain required. |
 | 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
@@ -114,10 +114,10 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
    queue retry, rollback, and final SQL results already recorded above. The
    live revision has its host allowlist and the refreshed runtime cookie is
    valid. Both the supplied Webhook.site URL and its allowlisted `www` form
-   fail the deployed runtime's HTTPS/public-DNS safety check despite resolving
-   publicly from the operator environment. Do not weaken the guard; fix or
-   explicitly authorize one runtime configuration deployment before retrying
-   the redacted action and continuing with the approval and enqueue CLI.
+   failed the v51 runtime's HTTPS/public-DNS check despite resolving publicly
+   from the operator environment. The resolver fallback is implemented and
+   tested; deploy the authorized fix, retry the redacted action, and continue
+   with the approval and enqueue CLI.
 4. Gate 8 isolation is complete. Keep its two-token result as the baseline and
    do not repeat it unless tenant memberships, RLS policies, or the verifier
    changes.
@@ -136,11 +136,10 @@ These cannot be fabricated safely by the coding agent:
 - Disposable second tenant/Auth identity remains available for the lifecycle
   export/restore and offboarding drill; its access tokens are local-only.
 - Verified Monitoring email destination.
-- The host allowlist is deployed and the runtime cookie is valid; both the
-  supplied Webhook.site URL and its allowlisted `www` form are rejected by the
-  deployed HTTPS/public-DNS safety path. A guard-compatible runtime fix or
-  explicitly authorized configuration deployment is required before delivery
-  can be tested.
+- The host allowlist is deployed and the runtime cookie is valid; v51 rejected
+  both the supplied Webhook.site URL and its allowlisted `www` form. The
+  guard-compatible explicit A/AAAA DNS fallback is implemented and awaits the
+  authorized Cloud Run deployment and live delivery evidence.
 - User-approved provider account/key, model, pricing, and spending limit for
   each provider to be activated.
 
