@@ -1,6 +1,6 @@
 # Veloce AgenticOS Public Site
 
-This Vite/React folder is intentionally independent from the private Veloce AgenticOS dashboard. It has no private API routes, provider credentials, agent controls, analytics key, filesystem access, or lead database.
+This Vite/React folder is intentionally independent from the private Veloce AgenticOS dashboard. It has no private API routes, provider credentials, agent controls, analytics key, filesystem access, or browser-accessible lead database credential.
 
 Previous Cloud Run beta: <https://veloce-agenticos-site-mquo4bf7aq-ew.a.run.app>
 
@@ -14,7 +14,12 @@ Edit `public/config.js` and set exactly one contact route:
 - `contactEmail`: a monitored business email; used if no booking link exists.
 - `contactUrl`: a safe external destination. The repository is the default fallback.
 
-The fallback copies the visitor's brief and opens the repository. It does not submit or retain form data. Replace it with a monitored booking URL before running paid acquisition.
+The engagement form posts to the configured Veloce server-side intake endpoint.
+That endpoint validates and rate-limits requests before inserting into Supabase;
+the service-role credential remains in Vercel, never in this static site. The
+default production endpoint allows requests only from this Cloud Run origin and
+labels them `landing-cloud-run`. If it is unreachable, the fallback copies the
+visitor's brief and opens the configured contact route.
 
 Do not place API keys, private dashboard URLs, local machine paths, or client information in this folder.
 
@@ -33,8 +38,8 @@ vercel deploy --prod
 ```
 
 `vercel.json` sets the Vite build and `dist/` output directory. Keep
-`public/config.js` free of secrets; the Supabase anon key is public-safe only
-when the `signups` table has insert-only RLS.
+`public/config.js` free of secrets. Its `leadCaptureUrl` is a public API URL,
+not a Supabase key.
 
 ## Deploy to Cloud Run
 
@@ -59,7 +64,8 @@ The container exposes `/status` for deployment verification. Cloud Run reserves 
 
 ## Production checklist
 
-1. The repository fallback is safe for launch; configure booking or monitored email routing before paid acquisition.
+1. Verify the configured server-side intake with a non-personal test lead and
+   delete that row before paid acquisition.
 2. Add a custom domain and HTTPS.
 3. Add privacy policy, terms, and a consent-aware analytics tool if you begin tracking visitors.
 4. Confirm no source folder exposes secrets with `rg -n --hidden '(API_KEY|sk-[A-Za-z0-9_-]{20,})' .`.

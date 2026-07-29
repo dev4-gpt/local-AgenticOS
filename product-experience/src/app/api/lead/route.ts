@@ -7,34 +7,58 @@ import { allowPublicRequest, payloadTooLarge } from "@/lib/publicRequestGuard";
 // then the route reports `not_configured` and the form falls back gracefully.
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const CLOUD_RUN_LANDING_ORIGIN = "https://veloce-agenticos-site-mquo4bf7aq-ew.a.run.app";
+
+function corsHeaders(req: Request): Record<string, string> {
+  return req.headers.get("origin") === CLOUD_RUN_LANDING_ORIGIN
+    ? {
+        "Access-Control-Allow-Origin": CLOUD_RUN_LANDING_ORIGIN,
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Max-Age": "86400",
+        Vary: "Origin",
+      }
+    : {};
+}
+
+function response(req: Request, body: Record<string, unknown>, init: ResponseInit = {}) {
+  return NextResponse.json(body, {
+    ...init,
+    headers: { ...corsHeaders(req), ...init.headers },
+  });
+}
+
+export function OPTIONS(req: Request) {
+  return new NextResponse(null, { status: 204, headers: corsHeaders(req) });
+}
 
 export async function POST(req: Request) {
   if (!(await allowPublicRequest(req, "lead"))) {
-    return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
+    return response(req, { ok: false, error: "rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
   }
 
   if (payloadTooLarge(req)) {
-    return NextResponse.json({ ok: false, error: "payload_too_large" }, { status: 413 });
+    return response(req, { ok: false, error: "payload_too_large" }, { status: 413 });
   }
 
   if (!SUPABASE_URL || !SERVICE_KEY) {
-    return NextResponse.json({ ok: false, error: "not_configured" }, { status: 503 });
+    return response(req, { ok: false, error: "not_configured" }, { status: 503 });
   }
 
   let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "bad_json" }, { status: 400 });
+    return response(req, { ok: false, error: "bad_json" }, { status: 400 });
   }
 
   const name = String(body.name ?? "").trim();
   const email = String(body.email ?? "").trim();
   if (!name || !email) {
-    return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
+    return response(req, { ok: false, error: "missing_fields" }, { status: 400 });
   }
   if (!/^\S+@\S+\.\S+$/.test(email) || name.length > 240 || email.length > 320) {
-    return NextResponse.json({ ok: false, error: "invalid_fields" }, { status: 400 });
+    return response(req, { ok: false, error: "invalid_fields" }, { status: 400 });
   }
 
   const row = {
@@ -42,7 +66,7 @@ export async function POST(req: Request) {
     email,
     company: body.company ? String(body.company).trim() : null,
     message: body.message ? String(body.message).trim() : null,
-    source: "edition-3565",
+    source: req.headers.get("origin") === CLOUD_RUN_LANDING_ORIGIN ? "landing-cloud-run" : "edition-3565",
     meta: { userAgent: req.headers.get("user-agent") ?? null },
   };
 
@@ -63,12 +87,12 @@ export async function POST(req: Request) {
 
     if (!res.ok) {
       console.error("lead store failed", { status: res.status });
-      return NextResponse.json({ ok: false, error: "store_failed" }, { status: 502 });
+      return response(req, { ok: false, error: "store_failed" }, { status: 502 });
     }
 
-    return NextResponse.json({ ok: true });
+    return response(req, { ok: true });
   } catch (e) {
     console.error("lead store unreachable", e instanceof Error ? e.message : "unknown error");
-    return NextResponse.json({ ok: false, error: "store_unreachable" }, { status: 502 });
+    return response(req, { ok: false, error: "store_unreachable" }, { status: 502 });
   }
 }

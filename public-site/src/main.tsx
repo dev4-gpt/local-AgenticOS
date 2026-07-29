@@ -12,6 +12,7 @@ import "./cosmic.css";
 import "./release.css";
 
 const DepthScene = lazy(() => import("./DepthScene"));
+const DEFAULT_LEAD_CAPTURE_URL = "https://product-experience-five.vercel.app/api/lead";
 
 function App() {
   const [notice, setNotice] = useState("");
@@ -51,26 +52,30 @@ function App() {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form = event.currentTarget; const data = new FormData(form);
     const brief = `Veloce AgenticOS discovery brief\n\nName: ${data.get("name")}\nEmail: ${data.get("email")}\nCompany: ${data.get("company")}\n\nBroken handoff:\n${data.get("challenge")}`;
-    // Preferred path: store the signup directly in Supabase (anon insert-only).
-    if (config.supabaseUrl && config.supabaseAnonKey) {
-      try {
-        const res = await fetch(`${config.supabaseUrl}/rest/v1/signups`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", apikey: config.supabaseAnonKey, Authorization: `Bearer ${config.supabaseAnonKey}`, Prefer: "return=minimal" },
-          body: JSON.stringify({ name: data.get("name"), email: data.get("email"), company: data.get("company"), message: data.get("challenge"), source: "landing-4321" }),
-        });
-        if (res.ok) { form.reset(); setNotice("Thanks — your note reached Veloce. We'll be in touch shortly."); return; }
-      } catch { /* fall through to the copy handoff below */ }
-    }
+    // The shared Vercel intake owns validation, rate limiting, and the
+    // service-role database write. No database credential reaches this site.
+    try {
+      const res = await fetch(config.leadCaptureUrl ?? DEFAULT_LEAD_CAPTURE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.get("name"),
+          email: data.get("email"),
+          company: data.get("company"),
+          message: data.get("challenge"),
+        }),
+      });
+      if (res.ok) { form.reset(); setNotice("Thanks — your note reached Veloce. We'll be in touch shortly."); return; }
+    } catch { /* fall through to the configured human handoff */ }
     if (config.bookingUrl) { await navigator.clipboard.writeText(brief).catch(() => {}); window.open(config.bookingUrl, "_blank", "noopener"); setNotice("Your brief was copied and the booking page is open."); return; }
     if (config.contactEmail) { window.location.href = `mailto:${encodeURIComponent(config.contactEmail)}?subject=${encodeURIComponent("Veloce AgenticOS discovery brief")}&body=${encodeURIComponent(brief)}`; setNotice("Your email app should open with the discovery brief."); return; }
     if (config.contactUrl) {
       await navigator.clipboard.writeText(brief).catch(() => {});
       window.open(config.contactUrl, "_blank", "noopener,noreferrer");
-      setNotice("Your brief was copied. The Veloce repository is open so you can start a conversation without this site storing your details.");
+      setNotice("We could not store your note, so your brief was copied and the Veloce repository is open.");
       return;
     }
-    await navigator.clipboard.writeText(brief).then(() => setNotice("Your discovery brief is copied. This site intentionally stores no leads.")).catch(() => setNotice("This site intentionally stores no leads. Add a booking URL or contact email to enable handoff."));
+    await navigator.clipboard.writeText(brief).then(() => setNotice("We could not store your note, so your discovery brief is copied.")).catch(() => setNotice("We could not store your note. Please contact Veloce directly."));
   }
   const jump = (id: string) => (event: MouseEvent) => { event.preventDefault(); jumpTo(id); };
   return <><a className="skip" href="#main" onClick={jump("main")}>Skip to content</a><header><a className="mark" href="#top" onClick={jump("top")}>Veloce <em>AgenticOS</em></a><nav><a href="#method" onClick={jump("method")}>Method</a><a href="#investment" onClick={jump("investment")}>Investment</a><a href="#engage" onClick={jump("engage")}>Engage</a></nav><a className="header-cta" href="#engage" onClick={jump("engage")}>Start with a handoff <b>↗</b></a></header><div className="edition-rail" aria-label="Veloce operating layers"><span>Operating layers</span>{CHAPTERS.map(([label], index) => <button key={label} onClick={() => moveToChapter(index)} className={index === active ? "rail-item active" : "rail-item"}>{String(index + 1).padStart(2, "0")} {label}</button>)}</div><main id="main" className={`site scene-${active}`}>
