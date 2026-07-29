@@ -46,9 +46,11 @@ export function clientProviderRequestAllowed(provider: string, requestedModel?: 
   const normalizedProvider = provider.trim().toLowerCase();
   const spec = PROVIDERS[normalizedProvider];
   if (!spec || !clientProviderEnabled(spec.key)) return { ok: false as const, status: 403, error: "provider_not_allowlisted" };
-  const model = requestedModel?.trim() || spec.defaultModel;
-  if (!configuredModels().includes(model)) return { ok: false as const, status: 403, error: "model_not_allowlisted" };
   const providerModels = configuredProviderModels(normalizedProvider);
+  // The hosted workspace deliberately does not let a browser pick an arbitrary
+  // model. When it omits a model, use the reviewed provider allowlist first.
+  const model = requestedModel?.trim() || providerModels?.[0] || spec.defaultModel;
+  if (!configuredModels().includes(model)) return { ok: false as const, status: 403, error: "model_not_allowlisted" };
   if (providerModels && !providerModels.includes(model)) return { ok: false as const, status: 403, error: "provider_model_not_allowlisted" };
   return { ok: true as const, provider: normalizedProvider, model, key: spec.key };
 }
