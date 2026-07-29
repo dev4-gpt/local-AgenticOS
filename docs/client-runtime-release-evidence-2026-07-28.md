@@ -1,9 +1,10 @@
 # Client Runtime Release Evidence
 
-Status: controlled hosted release candidate, not full provider parity.
+Status: all 13 gates proven for the controlled hosted release candidate; not
+full private-3939 or unrestricted provider parity.
 
-Continuation ledger: `docs/client-runtime-release-ledger.md`. Resume from its
-first unproven gate; do not repeat the green checks listed there.
+Continuation ledger: `docs/client-runtime-release-ledger.md`. All 13 gates are
+complete; do not repeat the green checks unless their boundaries change.
 
 ## Live deployment
 
@@ -212,6 +213,17 @@ first unproven gate; do not repeat the green checks listed there.
   `CLIENT_PROVIDER_CALLS_ENABLED=0`, and the OpenRouter secret is not attached.
   The OpenRouter secret remains in Secret Manager for a future explicitly
   approved activation, not in the live runtime configuration.
+- Gate 13 completion on 2026-07-29: disposable tenant
+  `veloce-cloud-test-b` exported a credential-safe metadata snapshot plus a
+  70-byte non-customer marker object. Applied offboarding removed that marker
+  and its dedicated bucket, original Cloud Tasks queue, verified tenant-B
+  notification channel, worker-token Secret Manager container, and tenant row.
+  The private backup then restored metadata and the marker object. A fresh
+  worker-token Secret Manager version and tenant hash were generated without
+  printing either value. Cloud Tasks temporarily reserved the deleted queue
+  name, so recovery created tenant-B-only replacement queue
+  `veloce-veloce-cloud-test-b-recovery`, verified `RUNNING`. No live tenant,
+  provider, or deployed service was modified.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.
@@ -219,43 +231,10 @@ first unproven gate; do not repeat the green checks listed there.
   private manifest with $2/M input, $10/M output, and a $1 test cap. Provider
   calls remain disabled and the target secret is not wired into the current
   Cloud Run revision.
-- Gate 4 continuation classification on 2026-07-29: pending external input.
-  Provider credential handling and disabled configuration are evidenced, but
-  live adapter proof requires a separate approved provider-enabled deployment,
-  smoke, redaction, and rollback check. This continuation did not enable
-  providers.
+## Completion Boundary
 
-## Remaining evidence and external inputs
-
-- Run the read-only `supabase-client-runtime-final-verification.sql`; its last
-  result is now a single-row release summary. The migrations are already
-  applied and must not be re-run merely to resume work.
-- Isolation evidence is complete and must not be repeated unless memberships,
-  RLS policies, or the verifier changes.
-- A disposable HTTPS delivery destination was supplied:
-  `https://webhook.site/af43bf9a-77f4-4a4b-b7c7-72af1782be86`. Its host is staged
-  in the ignored local manifest and the deployed revision reports
-  `CLIENT_DELIVERY_ALLOWED_HOSTS=webhook.site` with
-  `CLIENT_PROVIDER_CALLS_ENABLED=1` for the authorized Gate 4 smoke. The prior
-  refreshed cookie is structurally valid but now returns `401
-  not_authenticated`; the redacted pending-approval action
-  then returned `400 delivery_destination_invalid`. After routing 100% traffic
-  to v53 revision `veloce-cloud-test-00061-rgc` and granting the runtime service
-  account Secret Accessor on the single referenced secret, the same redacted
-  request returned HTTP 202 with `pending_approval`. The operator CLI has now
-  confirmed approval and queue submission. The stored action is still
-  `approved` with no error and no audits under its request ID; inspect the
-  action-ID audit correlation before any retry. Destination receipt remains
-  unproven. Terminal queue failure/recovery, rate-limit/refund, and queue-retry
-  evidence already passed and must not be repeated.
-- Read-only Monitoring verification confirmed the existing email channel is
-  enabled but still reports `verificationStatus: null`. Verify Google's email
-  destination before running the one controlled alert check.
-- Gate 4 is proven and rolled back to the disabled provider state. Do not
-  re-enable or repeat its smoke calls unless the adapter, approved model,
-  budget, or runtime environment changes.
-- Run the lifecycle export/restore and disposable recovery/offboarding drills.
-
-These are deliberately marked pending because source-level checks and
-unauthenticated health checks cannot prove authenticated tenant behavior,
-provider spending, email delivery, or recovery against real client data.
+No release-gate evidence remains outstanding. The completed checks must not be
+repeated unless their stated runtime, provider, membership, data, or alert
+boundaries change. The result is a controlled hosted release candidate, not a
+claim that the private 3939 operator OS or every future provider/client
+configuration is ready for unrestricted production use.

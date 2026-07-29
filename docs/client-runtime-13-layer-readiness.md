@@ -103,8 +103,8 @@ retention. Same codebase does not mean same permissions.
 |---:|---|---|---|
 | 1 | Frontend foundations | **Ready for public pages and the client shell; partial parity with 3939** | Replace gated placeholders only after the underlying adapter is ready; finish responsive/error-state review per enabled capability. |
 | 2 | APIs and backend logic | **Control-plane, queue-backed API text aliases, provider-specific reviewed-plan tool contracts, provider-free workflow runner, Firecrawl SEO, Suno/HeyGen/ElevenLabs media adapters, approval-only delivery contracts, and workflow execution reconciliation implemented; feature parity partial** | Provider submission, promotion, manifest binding, migration application, and live adapter evidence remain separate gates. Image/video production and publishing destinations still need separate adapters. |
-| 3 | Database and storage | **Primary tenant authenticated artifact roundtrip proven** | Complete the export/deletion drill and record the final verification query confirming the worker hash is not client-readable. |
-| 4 | Auth and permissions | **Approved user and tenant isolation proven** | Supabase Auth, middleware, active membership, owner access, and the two-token second-tenant isolation probe pass. Continue with lifecycle recovery evidence. |
+| 3 | Database and storage | **Primary tenant authenticated artifact roundtrip and disposable export/delete/restore drill proven** | Keep the worker hash non-client-readable and rerun lifecycle evidence only if its data or storage boundary changes. |
+| 4 | Auth and permissions | **Approved user, tenant isolation, and disposable lifecycle restoration proven** | Supabase Auth, middleware, active membership, owner access, and the two-token second-tenant isolation probe pass. |
 | 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
 | 6 | Cloud and compute | **Authenticated workflow, queue completion, failure, recovery, and approval-gated delivery proven** | The live host allowlist is configured and the refreshed cookie was accepted. After the original delivery task exhausted ten HTTP 503 callbacks, provider-disabled v54 supplied the claim-status and collision-free retry correction. One corrected task returned HTTP 200, the approved destination recorded a POST, and the stored action reached `executed` with no error. |
 | 7 | CI/CD and version control | **Versioned image, digest, and rollback checkpoint proven** | Continue recording promotion provenance for future releases. |
@@ -113,7 +113,7 @@ retention. Same codebase does not mean same permissions.
 | 10 | Caching and CDN | **Partial with private artifact controls** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Private runtime responses use no-store and artifacts use expiring signed URLs; add provider-result caching only where safe. |
 | 11 | Load balancing and scaling | **Partial** | Cloud Run scales to zero and the test is capped at one instance. Queue-backed work is implemented; add concurrency/load tests, per-client quotas, and scaling rules for production workloads. |
 | 12 | Error tracking and logs | **Redacted runtime events, request IDs, provider failure classes, four alert policies, and a verified operator notification channel with one received controlled alert** | Document log retention before a broader production rollout. |
-| 13 | Availability and recovery | **Lifecycle CLI implemented with credential-safe exports and explicit destructive confirmations; recovery evidence pending** | Revision rollback and operator export/restore/offboarding commands exist, including object restore and explicit queue deletion. Run them against a disposable second tenant, verify object/secret deletion, rotate a new worker token after restore, and document secret recovery and incident response. |
+| 13 | Availability and recovery | **Proven for the controlled release candidate** | Disposable tenant B completed credential-safe export, explicit deletion, object/metadata restore, worker-token rotation, and replacement queue recovery. Do not run destructive lifecycle actions against the primary tenant without a new approved drill. |
 
 ## Private operator dependency inventory
 
@@ -316,16 +316,17 @@ These are engineering work, not deployment switches:
   authenticated workflow/artifact, terminal enqueue failure, and queue-retry
   recovery drills have passed. Delivery completion remains pending a
   disposable HTTPS destination and approval evidence.
-- Backup/restore, export/deletion, and offboarding evidence using the
-  disposable second tenant. The two-token cross-client isolation probe now
-  passes across records, jobs, and artifacts; the operator lifecycle CLI still
-  needs to be exercised against the disposable tenant.
+- Backup/restore, export/deletion, and offboarding evidence now passed using
+  the disposable second tenant. The two-token cross-client isolation probe also
+  passes across records, jobs, and artifacts; do not repeat this destructive
+  lifecycle drill against the primary tenant.
 - Durable runtime rate limits and alerts beyond the public intake guard, plus
-  deployment evidence for the new hosted branches and delivery worker. The
-  repository now includes four redacted alert policies with a verified operator
-  channel, a received controlled runtime-throttle notification, and a two-token
-  read-only isolation probe. The remaining recovery evidence requires a
-  disposable lifecycle tenant and live export/restore/offboarding drill.
+  deployment evidence for the new hosted branches and delivery worker, are
+  proven for this release candidate. The repository includes four redacted
+  alert policies with a verified operator channel, a received controlled
+  runtime-throttle notification, a two-token isolation probe, and the
+  disposable lifecycle export/restore/offboarding drill.
 
-Until these are complete, “production ready” means the public front door and
-approved intake control plane, not unrestricted access to every local tab.
+All 13 release gates are complete for the controlled hosted release candidate.
+That does not make every private local tab or unrestricted provider execution
+ready for production use.

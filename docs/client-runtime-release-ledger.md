@@ -12,10 +12,9 @@ implemented but unproven, or waiting on an explicitly listed external input.
 The immediate finish target is a controlled hosted release candidate: the
 approved tenant can authenticate, use tenant-scoped data and storage, run a
 four-step queued workflow, retry a failed workflow, and remain provider-gated
-with auditable evidence. Full provider-enabled, multi-tenant production is a
-separate target and cannot be honestly closed without approved provider
-credentials, a disposable second tenant, a verified alert destination, and a
-disposable delivery endpoint.
+with auditable evidence. All 13 gates below are now proven for that target.
+This does not publish the private 3939 operator OS or claim unrestricted,
+permanently provider-enabled multi-client production parity.
 
 | Item | Authoritative value |
 |---|---|
@@ -60,13 +59,9 @@ manifest and Cloud Run service are v54/`veloce-cloud-test-00073-8gh` above.
 - Queue retry acceptance passed on 2026-07-28: the previously failed diagnostic
   workflow accepted `retry_execution` with HTTP 202 and reached `completed`
   with four `done` steps and no error code.
-- Anthropic credential inbox validation and approved Secret Manager promotion
-  passed on 2026-07-28. The client-scoped envelope matched
-  `ANTHROPIC_API_KEY`; target secret version `1` was created without printing
-  the raw value. The approved `claude-sonnet-5` model, $2/M input and $10/M
-  output pricing, and $1 test cap are staged in the disabled local private
-  manifest. Smoke testing and provider activation remain pending, and provider
-  calls remain disabled.
+- Provider adapter smoke, output redaction, budget settlement, and the
+  provider-disabled v54 restoration are proven. Provider calls remain disabled
+  in the live service and are not a requirement for this controlled release.
 
 Evidence commands:
 
@@ -97,7 +92,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 10. Budget enforcement | Proven | The two authorized Anthropic jobs settled usage-based ledger amounts of 204 and 1,392 micros. Isolated live job `56e3e67d-ae89-4aa9-88e9-af5ca4475c5e` then failed terminally with `budget_exceeded` under the $0.000001 cap, with no ledger row; Cloud Run logged the matching redacted budget denial before provider dispatch. The authenticated temporary-bucket acceptance already proved allow, deny, rate-limit refund, failed-enqueue refund, recovery, and cleanup. Traffic was restored to the provider-disabled v54 revision. |
 | 11. Alerts and observability | Proven | Four policies are attached to enabled, verified email channel `11435881475361291593`. On 2026-07-29 a payload-free synthetic `runtime.rate_limited` event for `veloce-cloud-test` was evaluated through a temporary controlled threshold, and the operator received the `Veloce veloce-cloud-test runtime throttles` email. The normal policy was then restored and read back as `COMPARISON_GT 10` with a `300s` duration. |
 | 12. Hosted Local/Engine/Free Claude replacements | Proven | The client shell maps Local and Local Engine to the OpenRouter queued adapter and Free Claude Code to its own OpenRouter adapter; private `/api/local*` and `/api/freeclaude*` handlers remain blocked. In scoped revision `00072-bz4`, authenticated synthetic jobs succeeded for Local `c885ec46-6974-4ef2-8dcf-be8da1534d6a`, Engine `3b193da3-5f60-45ec-ae17-ca7523fc84ce`, and Free Claude `b06fadad-9656-440a-a8af-7d8276dc4624`; all used reviewed `openrouter/free` and no provider output or credential was printed. Traffic is now back on provider-disabled v54 `00073-8gh`, without `text-agents`. |
-| 13. Recovery and offboarding | Pending external input | Credential-safe CLI is implemented; a disposable second tenant is required for export, restore, rotation, and deletion. |
+| 13. Recovery and offboarding | Proven | Disposable `veloce-cloud-test-b` was exported with a credential-safe metadata snapshot and one object backup. Applied offboarding deleted its marker object and dedicated bucket, original queue, verified tenant-B notification channel, worker-token secret container, and tenant row. The backup then restored metadata and the marker object; a new worker-token secret version and tenant hash were generated without printing either value. Because Cloud Tasks temporarily reserves deleted queue names, a tenant-B-only replacement queue `veloce-veloce-cloud-test-b-recovery` was created and verified `RUNNING`. No primary-tenant resource, provider, or deployed service was changed. |
 
 ## Exact Continuation Order
 
@@ -130,18 +125,23 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 7. Gate 12 is complete. Keep the scoped OpenRouter-free adapter smoke and
    provider-disabled v54 restoration as its baseline. Do not reactivate it
    unless its mappings, model, budget, or provider boundary changes.
-8. Gate 13 is now the first unproven gate. Perform the lifecycle drill only
-   with the disposable second tenant.
+8. Gate 13 is complete. Keep the tenant-B export, explicit deletion, object and
+   metadata restoration, fresh worker-token rotation, and replacement queue
+   evidence as the lifecycle baseline. Do not repeat the destructive drill
+   against the primary tenant.
+
+## Completion State
+
+All 13 release gates are proven for `veloce-cloud-test`'s controlled hosted
+release candidate. The current live service remains v54 provider-disabled at
+`veloce-cloud-test-00073-8gh`. This is not a claim that every private 3939
+surface or unrestricted provider execution is production-ready.
 
 ## External Inputs Still Required
 
-These cannot be fabricated safely by the coding agent:
-
-- Disposable second tenant/Auth identity remains available for the lifecycle
-  export/restore and offboarding drill; its access tokens are local-only.
-Until the disposable lifecycle drill is proven, the correct release state is a
-controlled hosted runtime with provider capabilities gated, not full
-production readiness or full 3939/provider parity.
+No external input remains for these 13 gates. Future provider activation,
+new-client onboarding, or full 3939 parity must start a separate reviewed
+release track with its own evidence.
 
 ## Why This Is Not Restarted
 

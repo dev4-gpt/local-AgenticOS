@@ -61,6 +61,14 @@ Operational evidence for the current revision:
   acceptance covers the rate-limit and failed-enqueue refund paths. The active
   v54 revision restores `CLIENT_PROVIDER_CALLS_ENABLED=0`, removes
   `text-agents` and model pricing, and restores the normal $1 cap.
+- Gate 13 is proven on disposable tenant `veloce-cloud-test-b`: a credential-safe
+  export plus marker-object backup survived an applied offboarding and restore;
+  the marker, bucket, original queue, verified test channel, and worker-token
+  secret were deleted before recovery. A fresh worker-token version was then
+  created without printing the token or hash. Cloud Tasks reserved the deleted
+  queue name, so a tenant-B-only replacement queue
+  `veloce-veloce-cloud-test-b-recovery` was created and verified `RUNNING`.
+  No primary-tenant resource, provider, or deployed service was changed.
 
 The runtime uses `app-auth` mode: Cloud Run allows unauthenticated edge access
 so `/login` can render, then the application requires a Supabase Auth session
