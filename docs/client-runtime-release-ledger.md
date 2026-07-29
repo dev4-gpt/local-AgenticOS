@@ -88,7 +88,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 1. Public intake and boundary | Proven | Public/runtime boundary checks and security release verifier passed. |
 | 2. Auth and capability gate | Proven for approved user | Authenticated acceptance passed with the approved tenant member and capability set. |
 | 3. Tenant data and storage | Proven for primary tenant | Authenticated acceptance proved signed upload/download byte integrity and cleanup. |
-| 4. Provider adapters | Credential and disabled configuration proven; activation pending | Anthropic inbox validation, target-secret promotion, approved model/pricing/budget, and disabled local manifest wiring passed. Live proof still requires a deliberate provider-enabled deployment, smoke, redaction, and rollback evidence; provider calls remain disabled by current release scope. |
+| 4. Provider adapters | Pending external input | Anthropic inbox validation, target-secret promotion, approved model/pricing/budget, and disabled local manifest wiring are proven. Live adapter proof still requires a deliberate provider-enabled deployment, smoke, redaction, and rollback evidence. This continuation did not enable providers because the release scope explicitly forbids provider activation; provider calls remain disabled. |
 | 5. Workflow orchestration | Proven for deterministic runner | Authenticated acceptance reached `completed` with four `done` steps. |
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v53 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
@@ -124,9 +124,11 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 5. Complete Google email verification for the existing Monitoring channel, then
    run the controlled alert check. The channel is enabled but currently reports
    `verificationStatus: null`.
-6. Only after gates 1-5 are evidenced, activate one approved provider at a time.
-   Never enable all providers together, and never place credentials in chat,
-   source, browser storage, or Cloud Run environment values.
+6. Gate 4 is classified as pending external input for this continuation. Do
+   not activate a provider while the current instruction forbids provider
+   enablement. If the release scope changes later, activate only one approved
+   provider at a time, and never place credentials in chat, source, browser
+   storage, or Cloud Run environment values.
 7. Run the final audit and update this ledger and the release-evidence document.
 
 ## External Inputs Still Required

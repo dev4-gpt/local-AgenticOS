@@ -29,7 +29,7 @@ The current state is:
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
-| Cloud Run client shell | Live as image `v53` on revision `veloce-cloud-test-00058-9sf`; worker binding and artifacts are enabled, provider calls remain disabled, request correlation is active, workflow polling no longer self-throttles, limiter outages are separated from genuine throttles, failed task enqueue refunds are implemented, provider-secret output redaction is active, successful provider jobs fail closed when budget settlement is unavailable, delivery approvals are audited, bounded provider response reads plus literal and DNS-resolved private-host output checks are active, and authenticated workflow/artifact evidence has passed | Controlled test only |
+| Cloud Run client shell | Live as image `v53` on revision `veloce-cloud-test-00061-rgc`; worker binding and artifacts are enabled, provider calls remain disabled, request correlation is active, workflow polling no longer self-throttles, limiter outages are separated from genuine throttles, failed task enqueue refunds are implemented, provider-secret output redaction is active, successful provider jobs fail closed when budget settlement is unavailable, delivery approvals are audited, bounded provider response reads plus literal and DNS-resolved private-host output checks are active, and authenticated workflow/artifact evidence has passed | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |
 | Per-client replicated runtime | Architecture and deployment track exist | Not until each enabled capability passes its adapter tests |
 
@@ -142,6 +142,13 @@ The current Cloud Run gate is therefore expected behavior. It prevents a client
 from reaching code that would otherwise attempt to use the operator laptop.
 Removing the gate before adapting the route would turn a visible limitation
 into a security and reliability problem.
+
+As of the 2026-07-29 continuation, the provider-adapter release gate remains
+pending external input rather than failed: the credential inbox, promotion path,
+approved Anthropic target, pricing, budget, and disabled local manifest wiring
+are evidenced, but live smoke/redaction/rollback proof requires an explicitly
+approved provider-enabled deployment. The current release instruction forbids
+provider activation, so the hosted runtime must remain provider-gated.
 
 ## Repeatable path for each capability
 

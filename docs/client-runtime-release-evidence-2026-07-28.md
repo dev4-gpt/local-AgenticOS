@@ -64,6 +64,11 @@ first unproven gate; do not repeat the green checks listed there.
   private manifest with $2/M input, $10/M output, and a $1 test cap. Provider
   calls remain disabled and the target secret is not wired into the current
   Cloud Run revision.
+- Gate 4 continuation classification on 2026-07-29: pending external input.
+  Provider credential handling and disabled configuration are evidenced, but
+  live adapter proof requires a separate approved provider-enabled deployment,
+  smoke, redaction, and rollback check. This continuation did not enable
+  providers.
 
 ## Remaining evidence and external inputs
 
