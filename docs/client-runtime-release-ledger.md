@@ -20,10 +20,10 @@ disposable delivery endpoint.
 | Item | Authoritative value |
 |---|---|
 | Client | `veloce-cloud-test` |
-| Cloud Run revision | `veloce-cloud-test-00061-rgc` |
+| Cloud Run revision | `veloce-cloud-test-gate4rollback` |
 | Image | `client-runtime:v53` |
 | Image digest | `sha256:028ddee1f3857d5d3672283de005dc3f4edb24c3df1b57c409c8be57952201fe` |
-| Traffic | 100% to `veloce-cloud-test-00061-rgc` |
+| Traffic | 100% to `veloce-cloud-test-gate4rollback` |
 | Runtime URL | `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` |
 | Provider calls | Disabled: `CLIENT_PROVIDER_CALLS_ENABLED=0` |
 | Provider secrets | Cloud Run uses Supabase runtime secrets only; Anthropic target slot staged but not deployed |
@@ -88,7 +88,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 1. Public intake and boundary | Proven | Public/runtime boundary checks and security release verifier passed. |
 | 2. Auth and capability gate | Proven for approved user | Authenticated acceptance passed with the approved tenant member and capability set. |
 | 3. Tenant data and storage | Proven for primary tenant | Authenticated acceptance proved signed upload/download byte integrity and cleanup. |
-| 4. Provider adapters | Blocked | The authorized Gate 4 configuration is deployed on v53: only `ANTHROPIC_API_KEY` / `claude-sonnet-5` are allowlisted, `text-agents` is enabled, provider calls are enabled, and the $1 cap is active. The first bounded smoke submission returned `401 not_authenticated`, before a job, provider call, or budget reservation could be created. A fresh approved-user session is required for the normal smoke, redaction probe, and rollback evidence. |
+| 4. Provider adapters | Proven | The authorized v53 smoke revision exposed only Anthropic / `claude-sonnet-5` with the $1 cap. Authenticated normal job `48701a99-f3ec-481d-be00-b3fa44525e41` succeeded; authenticated secret-shaped-output job `279e0bdd-52df-4af3-b010-4ea34bc3b976` succeeded with its output withheld by the provider-output redactor. No raw output or credential was printed. Traffic is restored 100% to `veloce-cloud-test-gate4rollback`, where provider calls are disabled and `text-agents` is absent. |
 | 5. Workflow orchestration | Proven for deterministic runner | Authenticated acceptance reached `completed` with four `done` steps. |
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v53 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
@@ -101,15 +101,11 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 
 ## Exact Continuation Order
 
-1. Gate 4 is the first unproven gate. The authorized provider configuration is
-   live on `veloce-cloud-test-00061-rgc`, but the local approved-user cookie
-   has expired: the first normal smoke submission returned `401
-   not_authenticated` before it created a job or contacted Anthropic. Refresh
-   that one session, then run the normal and secret-shaped-output smoke probes,
-   record their terminal job status and redaction verdict without printing
-   output, and finally restore `providerCallsEnabled: false` with the same
-   pinned image for rollback proof.
-2. Gate 9 remains pending after Gate 4. The stored action is still `approved`
+1. Gate 4 is complete. Keep its normal smoke, secret-shaped-output redaction,
+   and disabled rollback results as the baseline. Do not re-enable the provider
+   or repeat its calls unless the adapter, approved model, budget, or runtime
+   environment changes.
+2. Gate 9 is now the first unproven gate. The stored action is still `approved`
    with no error. Before any retry, query the action plus `delivery.approved`
    and `delivery.queued` audits under both its action ID and request ID; do not
    reapprove or reenqueue it.
@@ -129,9 +125,6 @@ These cannot be fabricated safely by the coding agent:
 - Disposable second tenant/Auth identity remains available for the lifecycle
   export/restore and offboarding drill; its access tokens are local-only.
 - Verified Monitoring email destination.
-- A fresh approved-user Cloud Run session cookie. The prior local cookie now
-  returns `401 not_authenticated`; it is required to perform the already
-  authorized bounded Anthropic smoke and redaction probes.
 - User-approved provider account/key, model, pricing, and spending limit for
   each provider to be activated.
 

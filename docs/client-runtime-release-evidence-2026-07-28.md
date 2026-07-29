@@ -82,6 +82,17 @@ first unproven gate; do not repeat the green checks listed there.
   not_authenticated`, before it created a job, called Anthropic, or reserved
   budget. The approved-user session must be refreshed before the normal smoke,
   redaction probe, and explicit rollback can be evidenced.
+- Gate 4 completion on 2026-07-29: after refreshing the approved-user session,
+  Cloud Run traffic moved to the verified `veloce-cloud-test-gate4smoke`
+  revision (the same pinned v53 digest). Its authenticated capability response
+  exposed `text-agents`. Normal Anthropic job
+  `48701a99-f3ec-481d-be00-b3fa44525e41` succeeded with no error; the
+  secret-shaped-output job `279e0bdd-52df-4af3-b010-4ea34bc3b976` also
+  succeeded and returned only the redaction verdict, not provider output. A
+  checked rollback revision, `veloce-cloud-test-gate4rollback`, restores
+  `CLIENT_PROVIDER_CALLS_ENABLED=0`, removes the temporary capability and
+  pricing value, and serves 100% traffic. Its authenticated capability response
+  confirms `textAgentsVisible: false`.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.
@@ -121,9 +132,9 @@ first unproven gate; do not repeat the green checks listed there.
 - Read-only Monitoring verification confirmed the existing email channel is
   enabled but still reports `verificationStatus: null`. Verify Google's email
   destination before running the one controlled alert check.
-- Gate 4 activation is authorized and deployed. Refresh the approved-user
-  session, then run the normal smoke and redaction probe; restore the provider
-  switch to disabled with the same pinned image immediately afterwards.
+- Gate 4 is proven and rolled back to the disabled provider state. Do not
+  re-enable or repeat its smoke calls unless the adapter, approved model,
+  budget, or runtime environment changes.
 - Run the lifecycle export/restore and disposable recovery/offboarding drills.
 
 These are deliberately marked pending because source-level checks and
