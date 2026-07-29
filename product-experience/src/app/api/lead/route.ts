@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { allowPublicRequest, payloadTooLarge } from "@/lib/publicRequestGuard";
+import { notifyLead } from "@/lib/leadNotification";
 
 // Server-side lead capture. Inserts into the shared Supabase `signups` table
 // using the service-role key, which stays on the server and bypasses RLS — the
@@ -90,7 +91,9 @@ export async function POST(req: Request) {
       return response(req, { ok: false, error: "store_failed" }, { status: 502 });
     }
 
-    return response(req, { ok: true });
+    const source = req.headers.get("origin") === CLOUD_RUN_LANDING_ORIGIN ? "landing-cloud-run" : "edition-3565";
+    const notification = await notifyLead({ kind: "lead", name, email, company: row.company, source });
+    return response(req, { ok: true, notification });
   } catch (e) {
     console.error("lead store unreachable", e instanceof Error ? e.message : "unknown error");
     return response(req, { ok: false, error: "store_unreachable" }, { status: 502 });

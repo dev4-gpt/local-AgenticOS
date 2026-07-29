@@ -26,6 +26,11 @@ HTTP 204, a synthetic `landing-cloud-run` submission returned HTTP 200, and
 the one matching Supabase row was removed with HTTP 204. This proves database
 capture only; it does not configure email notification.
 
+When the shared Vercel intake has its optional Resend variables configured,
+this landing receives the same operator notification as the Product Experience
+and `/start` forms. The static Cloud Run site still holds no email or database
+credential.
+
 Do not place API keys, private dashboard URLs, local machine paths, or client information in this folder.
 
 ## Preview locally

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { allowPublicRequest, payloadTooLarge } from "@/lib/publicRequestGuard";
+import { notifyLead } from "@/lib/leadNotification";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -108,7 +109,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "store_failed" }, { status: 502 });
     }
 
-    return NextResponse.json({ ok: true });
+    const notification = await notifyLead({
+      kind: "runtime request",
+      name: values.name,
+      email: values.email,
+      company: values.company,
+      source: "product-start",
+    });
+    return NextResponse.json({ ok: true, notification });
   } catch (e) {
     console.error("deployment request store unreachable", e instanceof Error ? e.message : "unknown error");
     return NextResponse.json({ ok: false, error: "store_unreachable" }, { status: 502 });

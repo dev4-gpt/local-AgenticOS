@@ -1,8 +1,9 @@
 # Veloce AgenticOS Product Experience
 
 This is the editorial front door for Veloce AgenticOS. It is safe to deploy as
-a public Next.js/Vercel surface because the only server route is `/api/lead`,
-which stores lead capture server-side when Supabase is configured.
+a public Next.js/Vercel surface because its server routes store lead capture
+server-side when Supabase is configured. Optional Resend notification is also
+server-side; no browser bundle receives either credential.
 
 Current production link: <https://product-experience-five.vercel.app>
 
@@ -57,6 +58,21 @@ Set these in Vercel when lead capture is ready:
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
+
+To receive one notification for every stored public lead and `/start` runtime
+request, configure these additional Vercel Production variables after verifying
+the sender domain in Resend:
+
+```bash
+RESEND_API_KEY=
+LEAD_NOTIFICATION_FROM="Veloce Leads <leads@your-domain.example>"
+LEAD_NOTIFICATION_TO="your-inbox@example.com"
+```
+
+Lead storage is deliberately independent of notification delivery: a Resend
+outage cannot discard a submitted lead. Notification email contains only the
+contact identity, source, and reply-to address; the full record remains in
+Supabase.
 
 Set this only after an authenticated, client-safe runtime exists:
 
