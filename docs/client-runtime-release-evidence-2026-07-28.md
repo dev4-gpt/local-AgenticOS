@@ -75,9 +75,9 @@ first unproven gate; do not repeat the green checks listed there.
   allowlisted `www.webhook.site` hostname produced the same result. Public
   DNS/HTTPS checks from the operator environment pass, so the deployed
   runtime resolver/safety path remains unproven. The source now includes an
-  explicit A/AAAA lookup fallback that preserves the allowlist and private
-  address rejection; focused resolver and worker checks pass, but v51 has not
-  been changed. No action was created and no delivery was sent. Terminal queue
+  explicit A/AAAA lookup fallback plus IPv4-mapped IPv6 classification that
+  preserves the allowlist and private address rejection; focused resolver and
+  worker checks pass, but v51 has not been changed. No action was created and no delivery was sent. Terminal queue
   failure/recovery, rate-limit/refund, and queue-retry evidence already passed
   and must not be repeated.
 - Read-only Monitoring verification confirmed the existing email channel is

@@ -2,7 +2,7 @@ import { isIP } from "node:net";
 import { Buffer } from "node:buffer";
 import { lookup, resolve4, resolve6 } from "node:dns/promises";
 
-export function isPrivateAddress(hostname: string) {
+export function isPrivateAddress(hostname: string): boolean {
   const normalized = hostname.trim().toLowerCase().replace(/^\[|\]$/g, "");
   if (!normalized || normalized === "localhost" || normalized.endsWith(".localhost") || normalized.endsWith(".internal")) return true;
   const version = isIP(normalized);
@@ -14,9 +14,12 @@ export function isPrivateAddress(hostname: string) {
       || a >= 224;
   }
   if (version === 6) {
+    if (normalized.startsWith("::ffff:")) {
+      const mappedIpv4 = normalized.slice("::ffff:".length);
+      return isIP(mappedIpv4) === 4 ? isPrivateAddress(mappedIpv4) : true;
+    }
     return normalized === "::1" || normalized === "::" || normalized.startsWith("fc") || normalized.startsWith("fd")
-      || normalized.startsWith("fe8") || normalized.startsWith("fe9") || normalized.startsWith("fea") || normalized.startsWith("feb")
-      || normalized.startsWith("::ffff:");
+      || normalized.startsWith("fe8") || normalized.startsWith("fe9") || normalized.startsWith("fea") || normalized.startsWith("feb");
   }
   return false;
 }

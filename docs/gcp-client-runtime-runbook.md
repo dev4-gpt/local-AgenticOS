@@ -26,10 +26,10 @@ Current verified revision: veloce-cloud-test-00058-9sf
 Runtime service account: veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com
 
 Pending Gate 9 fix: the source includes an explicit A/AAAA DNS lookup fallback
-for allowlisted delivery destinations because v51's `dns.lookup` path rejected
-the public Webhook.site endpoint. Do not treat this fallback as live until the
-next authorized Cloud Run revision is deployed and the redacted delivery test
-passes.
+and IPv4-mapped IPv6 classification for allowlisted delivery destinations
+because v51's `dns.lookup` path rejected the public Webhook.site endpoint. Do
+not treat this fix as live until the next authorized Cloud Run revision is
+deployed and the redacted delivery test passes.
 Storage bucket: gs://veloce-agenticos-2026-veloce-cloud-test
 Primary URL: https://veloce-cloud-test-1075094991117.asia-south1.run.app
 Product dropdown login URL: https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2F
