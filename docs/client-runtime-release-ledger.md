@@ -95,7 +95,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
 | 9. Approval and delivery | Proven | After the original task exhausted ten HTTP 503 callbacks, provider-disabled v54 added safe claim-status logging, request-ID audit correlation, and collision-free task names. One corrected task returned HTTP 200, the approved Webhook.site destination recorded a POST, and action `366e5d05-4918-486d-8227-6e0b30df865f` is durably `executed` with `error_code=null` at 2026-07-29T09:44:12Z. |
 | 10. Budget enforcement | Proven | The two authorized Anthropic jobs settled usage-based ledger amounts of 204 and 1,392 micros. Isolated live job `56e3e67d-ae89-4aa9-88e9-af5ca4475c5e` then failed terminally with `budget_exceeded` under the $0.000001 cap, with no ledger row; Cloud Run logged the matching redacted budget denial before provider dispatch. The authenticated temporary-bucket acceptance already proved allow, deny, rate-limit refund, failed-enqueue refund, recovery, and cleanup. Traffic was restored to the provider-disabled v54 revision. |
-| 11. Alerts and observability | Pending controlled test | Four policies are provisioned and attached to enabled email channel `11435881475361291593`. On 2026-07-29 the operator received Google Monitoring's fresh verification code and verified the channel through the official API; it now returns `verificationStatus: VERIFIED` and HTTP 200. One controlled alert delivery remains. |
+| 11. Alerts and observability | Proven | Four policies are attached to enabled, verified email channel `11435881475361291593`. On 2026-07-29 a payload-free synthetic `runtime.rate_limited` event for `veloce-cloud-test` was evaluated through a temporary controlled threshold, and the operator received the `Veloce veloce-cloud-test runtime throttles` email. The normal policy was then restored and read back as `COMPARISON_GT 10` with a `300s` duration. |
 | 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
 | 13. Recovery and offboarding | Pending external input | Credential-safe CLI is implemented; a disposable second tenant is required for export, restore, rotation, and deletion. |
 
@@ -119,15 +119,17 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
    refund acceptance, and provider-disabled v54 restore as the baseline; do
    not repeat provider work or budget calls unless the accounting boundary
    changes.
-5. Gate 11 is now the first unproven gate. Its existing Monitoring email
-   channel is verified; run one controlled alert check and record the received
-   notification.
+5. Gate 11 is complete. Keep the verified Monitoring channel, controlled
+   notification receipt, and restored `>10 events for five minutes` policy as
+   the baseline; do not repeat the synthetic alert check unless alert routing
+   or the policy changes.
 6. Keep the Gate 8 final verification, authenticated workflow/artifact,
    rate-limit/refund, queue recovery, rollback, and isolation results as the
    baseline. Do not repeat them unless their stated runtime or data boundaries
    change.
-7. After Gate 11, review Gate 12's distinct hosted-provider parity requirement,
-   then perform the Gate 13 lifecycle drill with a disposable tenant.
+7. Gate 12 is now the first unproven gate. Review its distinct hosted-provider
+   parity requirement, then perform the Gate 13 lifecycle drill with a
+   disposable tenant.
 
 ## External Inputs Still Required
 
@@ -135,7 +137,6 @@ These cannot be fabricated safely by the coding agent:
 
 - Disposable second tenant/Auth identity remains available for the lifecycle
   export/restore and offboarding drill; its access tokens are local-only.
-- Verified Monitoring email destination.
 - A reviewed provider account/key, model, pricing, and spending limit for any
   distinct provider needed by the Gate 12 hosted-parity review.
 

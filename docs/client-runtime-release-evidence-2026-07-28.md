@@ -127,13 +127,18 @@ first unproven gate; do not repeat the green checks listed there.
   with HTTP 204. The shared server-side notifier is implemented for the Product
   Experience, Cloud Run landing, and `/start` intake routes while keeping full records in
   Supabase.
-- Gate 11 email-channel verification on 2026-07-29: the prior verification
+- Gate 11 alert completion on 2026-07-29: the prior verification
   email was no longer present, so the existing Google Monitoring channel
   `11435881475361291593` was sent one fresh code through the official
   `sendVerificationCode` API. The operator received it and used the official
   `verify` API; the response returned HTTP 200 with `verificationStatus:
-  VERIFIED` and `enabled: true`. The four attached policies remain unchanged.
-  One controlled alert delivery is still required.
+  VERIFIED` and `enabled: true`. A payload-free synthetic
+  `runtime.rate_limited` event for `veloce-cloud-test` was then written after
+  temporarily configuring the existing throttle policy for immediate
+  evaluation. The operator received the `Veloce veloce-cloud-test runtime
+  throttles` email. The policy was restored and read back at its normal
+  `COMPARISON_GT 10` threshold with a `300s` duration; no provider, deployment,
+  customer data, or credential was involved.
 - `/start` lead-email notification completion on 2026-07-29: synthetic
   runtime-request submission to `POST /api/deployment-request` returned HTTP
   200 with `notification: sent`; the configured operator inbox confirmed the

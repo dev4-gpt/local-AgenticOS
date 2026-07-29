@@ -109,10 +109,10 @@ retention. Same codebase does not mean same permissions.
 | 6 | Cloud and compute | **Authenticated workflow, queue completion, failure, recovery, and approval-gated delivery proven** | The live host allowlist is configured and the refreshed cookie was accepted. After the original delivery task exhausted ten HTTP 503 callbacks, provider-disabled v54 supplied the claim-status and collision-free retry correction. One corrected task returned HTTP 200, the approved destination recorded a POST, and the stored action reached `executed` with no error. |
 | 7 | CI/CD and version control | **Versioned image, digest, and rollback checkpoint proven** | Continue recording promotion provenance for future releases. |
 | 8 | Security and row-level security | **Primary database verification, worker hash protection, and tenant isolation proven** | Keep secrets out of the browser; the two-token probe passed across records, jobs, and artifacts for the primary and disposable tenants. |
-| 9 | Rate limiting | **Primary runtime allow/deny/refund/recovery probe passed; alerts pending** | Verify route-level 429 behavior and confirm the email destination is verified. |
+| 9 | Rate limiting | **Primary runtime allow/deny/refund/recovery probe and alert delivery passed** | The verified Monitoring channel received the controlled runtime-throttle alert; do not repeat it unless the alert policy or routing changes. |
 | 10 | Caching and CDN | **Partial with private artifact controls** | Vercel and Cloud Run provide edge delivery for static/runtime responses. Private runtime responses use no-store and artifacts use expiring signed URLs; add provider-result caching only where safe. |
 | 11 | Load balancing and scaling | **Partial** | Cloud Run scales to zero and the test is capped at one instance. Queue-backed work is implemented; add concurrency/load tests, per-client quotas, and scaling rules for production workloads. |
-| 12 | Error tracking and logs | **Redacted runtime events, request IDs, provider failure classes, four alert policies, and a verified operator notification channel** | Run one controlled alert delivery and document log retention. |
+| 12 | Error tracking and logs | **Redacted runtime events, request IDs, provider failure classes, four alert policies, and a verified operator notification channel with one received controlled alert** | Document log retention before a broader production rollout. |
 | 13 | Availability and recovery | **Lifecycle CLI implemented with credential-safe exports and explicit destructive confirmations; recovery evidence pending** | Revision rollback and operator export/restore/offboarding commands exist, including object restore and explicit queue deletion. Run them against a disposable second tenant, verify object/secret deletion, rotate a new worker token after restore, and document secret recovery and incident response. |
 
 ## Private operator dependency inventory
@@ -210,8 +210,9 @@ true:
   untrusted contributors or automated build scripts into the release process.
 - [ ] Submit one real test request and confirm it appears in Supabase as
   `pending_approval`.
-- [ ] Confirm who reviews requests and how the owner is notified; the current
-  route stores requests but does not send an email notification.
+- [x] Confirm the request-notification route: both public intake endpoints
+  persist records server-side and send the configured Resend operator email;
+  synthetic delivery and cleanup were verified.
 - [ ] Confirm the public domain, contact destination, privacy wording, and
   terms with the business owner before paid traffic.
 
@@ -321,10 +322,10 @@ These are engineering work, not deployment switches:
   needs to be exercised against the disposable tenant.
 - Durable runtime rate limits and alerts beyond the public intake guard, plus
   deployment evidence for the new hosted branches and delivery worker. The
-  repository now includes four redacted alert policies with an attached
-  operator notification channel and a two-token read-only isolation probe, but
-  it still needs notification-delivery confirmation, two approved Auth
-  tenants, and live evidence.
+  repository now includes four redacted alert policies with a verified operator
+  channel, a received controlled runtime-throttle notification, and a two-token
+  read-only isolation probe. The remaining recovery evidence requires a
+  disposable lifecycle tenant and live export/restore/offboarding drill.
 
 Until these are complete, “production ready” means the public front door and
 approved intake control plane, not unrestricted access to every local tab.

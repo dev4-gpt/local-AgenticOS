@@ -51,9 +51,10 @@ Operational evidence for the current revision:
   lifecycle for the `veloce-cloud-test/` prefix, and seven-day soft-delete
   retention.
 - Four runtime alert policies are enabled and attached to the configured email
-  notification channel. Cloud Monitoring currently reports the channel as
-  enabled with `verificationStatus: null`; complete Google's email verification
-  step before treating alert delivery as proven.
+  notification channel. On 2026-07-29, the channel was verified, a controlled
+  payload-free runtime-throttle event delivered the expected email, and the
+  throttle policy was restored to its normal `>10 events for five minutes`
+  condition.
 - Gate 10 is proven: two approved Anthropic jobs settled usage-based ledger
   amounts, the isolated $0.000001-cap job failed with `budget_exceeded` before
   any ledger row or provider dispatch, and the existing authenticated refund
@@ -649,9 +650,10 @@ leaving the policy disconnected. Without a channel, the policy still appears
 in Cloud Monitoring but does not send email or another notification.
 For the current cloud-test tenant, the four policies are attached to the
 operator channel `projects/veloce-agenticos-2026/notificationChannels/11435881475361291593`.
-Google's email verification completed on 2026-07-29 for channel
-`11435881475361291593`; one controlled alert delivery remains before treating
-alerting as proven.
+Google's email verification and one controlled runtime-throttle delivery
+completed on 2026-07-29 for channel `11435881475361291593`. The temporary test
+condition was restored and read back as `COMPARISON_GT 10` with a `300s`
+duration; do not rerun this check unless the channel or policy changes.
 The event payload contains only tenant slug, bucket/provider label, status, and
 reason-safe fields; it never contains prompts, keys, or file contents.
 
