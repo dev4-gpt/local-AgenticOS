@@ -118,6 +118,15 @@ first unproven gate; do not repeat the green checks listed there.
   returned HTTP 200, and the operator's service-role cleanup reported one
   matching synthetic row and delete status HTTP 204. The browser receives no
   Supabase credential. This proves Supabase capture, not email notification.
+- Public lead-email notification completion on 2026-07-29: Resend verified the
+  `veloceos.cloud` sender domain through Hostinger DNS. The Vercel Production
+  intake has sensitive `RESEND_API_KEY`, sender, and recipient configuration;
+  no value was printed or committed. A synthetic non-personal lead returned
+  HTTP 200 with `notification: sent`; the configured operator inbox confirmed
+  delivery, and the service-role cleanup found one matching row and deleted it
+  with HTTP 204. The shared server-side notifier is implemented for the Product
+  Experience, Cloud Run landing, and `/start` intake routes while keeping full records in
+  Supabase.
 - Gate 9 action-ID audit checkpoint on 2026-07-29: the operator's read-only
   query returned action `366e5d05-4918-486d-8227-6e0b30df865f` as `approved`
   with no error. Its action-ID audit correlation contains `delivery.approved`

@@ -74,6 +74,11 @@ outage cannot discard a submitted lead. Notification email contains only the
 contact identity, source, and reply-to address; the full record remains in
 Supabase.
 
+Production notification verification on 2026-07-29: Resend verified the
+`veloceos.cloud` sender domain; one synthetic non-personal lead returned
+`notification: sent`, arrived at the configured operator inbox, and was deleted
+from Supabase with HTTP 204. No key or recipient address is recorded here.
+
 Set this only after an authenticated, client-safe runtime exists:
 
 ```bash

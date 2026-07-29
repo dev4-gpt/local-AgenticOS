@@ -24,9 +24,11 @@ visitor's brief and opens the configured contact route.
 Production verification on 2026-07-29: the exact-origin preflight returned
 HTTP 204, a synthetic `landing-cloud-run` submission returned HTTP 200, and
 the one matching Supabase row was removed with HTTP 204. This proves database
-capture only; it does not configure email notification.
+capture. Resend then verified the `veloceos.cloud` sender domain; a synthetic
+lead produced an accepted notification, confirmed inbox delivery, and a deleted
+test row.
 
-When the shared Vercel intake has its optional Resend variables configured,
+The shared Vercel intake is configured with its optional Resend variables, so
 this landing receives the same operator notification as the Product Experience
 and `/start` forms. The static Cloud Run site still holds no email or database
 credential.

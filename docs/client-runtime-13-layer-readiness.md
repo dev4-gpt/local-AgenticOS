@@ -25,7 +25,7 @@ The current state is:
 
 | Surface | Status | Safe to share? |
 |---|---|---|
-| Public landing page | Published on Vercel and Cloud Run; the Cloud Run engagement form posts to the verified server-side intake endpoint without exposing a Supabase credential | Yes, for Supabase lead capture |
+| Public landing page | Published on Vercel and Cloud Run; the Cloud Run engagement form posts to the verified server-side intake endpoint without exposing a Supabase credential, and the shared Vercel route sends a verified Resend operator notification | Yes, for Supabase lead capture and notification |
 | Public runtime request form | Published on Vercel | Yes |
 | Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |

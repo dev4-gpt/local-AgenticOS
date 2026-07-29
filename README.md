@@ -51,7 +51,8 @@ Public beta: <https://veloce-agenticos-site-mquo4bf7aq-ew.a.run.app>
 
 The Cloud Run beta engagement form uses the verified server-side public intake
 endpoint and stores leads in Supabase without exposing a database credential.
-It does not send email notifications by itself.
+The shared Vercel intake also sends a Resend notification to the configured
+operator inbox; no email credential is present in the browser or Cloud Run.
 
 Current public/front-door links:
 
