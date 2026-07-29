@@ -141,6 +141,14 @@ first unproven gate; do not repeat the green checks listed there.
   read-only Supabase query then returned `status: executed`, `error_code: null`,
   and `updated_at: 2026-07-29T09:44:12.362105+00:00`. No secret or delivery
   payload was printed.
+- Gate 10 reserve-and-settle checkpoint on 2026-07-29: read-only service-role
+  output confirmed the two authorized Anthropic jobs
+  `48701a99-f3ec-481d-be00-b3fa44525e41` and
+  `279e0bdd-52df-4af3-b010-4ea34bc3b976` both reached `succeeded` with no error.
+  Their durable budget-ledger rows use `claude-sonnet-5` and contain settled
+  usage metadata with final amounts of 204 and 1,392 micros respectively. This
+  proves live reservation followed by usage-based settlement, not budget denial
+  or either refund path.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.

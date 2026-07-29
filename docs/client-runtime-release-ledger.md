@@ -94,7 +94,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 7. CI/CD and rollback | Proven | Immutable v53 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
 | 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
 | 9. Approval and delivery | Proven | After the original task exhausted ten HTTP 503 callbacks, provider-disabled v54 added safe claim-status logging, request-ID audit correlation, and collision-free task names. One corrected task returned HTTP 200, the approved Webhook.site destination recorded a POST, and action `366e5d05-4918-486d-8227-6e0b30df865f` is durably `executed` with `error_code=null` at 2026-07-29T09:44:12Z. |
-| 10. Budget enforcement | Pending external input | Code path and provider-free refunds are implemented; an approved test provider is required to prove reserve, settle, deny, refund, and failed-enqueue refund with live accounting. |
+| 10. Budget enforcement | Pending external input | Live accounting is partially proven: the two authorized Anthropic Gate 4 jobs succeeded and their durable ledger rows show settled usage-based amounts (204 and 1,392 micros). Budget denial, refund, and failed-enqueue refund still need evidence under the approved provider/model before the provider-disabled rollback is restored. |
 | 11. Alerts and observability | Pending external input | Four policies are provisioned and attached to the enabled email channel `11435881475361291593`; a read-only Monitoring API check returned `verificationStatus: null`. Google email verification and one controlled alert remain required. |
 | 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
 | 13. Recovery and offboarding | Pending external input | Credential-safe CLI is implemented; a disposable second tenant is required for export, restore, rotation, and deletion. |
@@ -115,7 +115,9 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
    helper, destination guard, or runtime image changes.
 4. Gate 10 is now the first unproven gate. Prove reserve, settle, denial,
    refund, and failed-enqueue refund with live accounting under the approved
-   provider/model, then restore the provider-disabled runtime state.
+   provider/model. Reserve and settle are evidenced by the two prior authorized
+   Anthropic jobs; denial and both refund paths remain. Restore the
+   provider-disabled runtime state after any additional approved test.
 4. Keep the Gate 8 final verification, authenticated workflow/artifact,
    rate-limit/refund, queue recovery, rollback, and isolation results as the
    baseline. Do not repeat them unless their stated runtime or data boundaries

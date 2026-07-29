@@ -17,12 +17,18 @@ The product front door now has a `Runtime access` dropdown:
 - `Request runtime` routes to `/start`.
 - `Client login` routes to the approved internal Cloud Run test runtime.
 
-The product form is safe to market for lead capture. On 2026-07-29, the Vercel
-production service-role credential was replaced, the product was redeployed,
-and synthetic non-personal entries through both the front-door form and
-`/start` were verified in Supabase then removed. The Cloud Run site's contact
-surface intentionally does not store leads, so use the product form or `/start`
-when a durable submission is required.
+The Vercel product form and `/start` are safe to market for durable lead
+capture. On 2026-07-29, the production service-role credential was replaced,
+the product was redeployed, and synthetic non-personal entries through both
+forms were verified in Supabase then removed. These forms store records in
+Supabase; they do not send automatic email notifications.
+
+The public landing page and the Cloud Run site are not lead-capture surfaces:
+the landing page currently has Supabase capture and contact-email settings
+blank, so its form falls back to a GitHub handoff; the Cloud Run contact surface
+intentionally stores no leads. Use the product form or `/start` as the only
+marketing call to action until a shared capture and email-notification path is
+separately configured and verified.
 
 The Cloud Run links above are for the first internal pipeline test. They prove
 the client-safe runtime path works, but they are not the permanent shared
