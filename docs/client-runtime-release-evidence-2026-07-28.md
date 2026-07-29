@@ -54,8 +54,9 @@ first unproven gate; do not repeat the green checks listed there.
   `veloce-cloud-test-00061-rgc`; the runtime service account has Secret
   Accessor on the single referenced Anthropic secret while provider calls stay
   disabled. The redacted delivery request returned HTTP 202 with
-  `pending_approval`; operator approval, queue dispatch, and destination
-  receipt remain open.
+  `pending_approval`; the operator helper subsequently approved and queued the
+  action. Webhook.site has no POST yet, so the stored action status/error and
+  final destination receipt remain open.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.

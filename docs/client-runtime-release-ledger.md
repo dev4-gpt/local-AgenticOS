@@ -93,7 +93,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v53 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
 | 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
-| 9. Approval and delivery | Pending operator approval/enqueue | v53 is routed at 100% on `veloce-cloud-test-00061-rgc` after granting the runtime service account Secret Accessor on the single Anthropic secret. The redacted request to the supplied HTTPS destination returned HTTP 202 with action `366e5d05-4918-486d-8227-6e0b30df865f` and status `pending_approval`. Run the operator approval/enqueue helper; then verify the Cloud Tasks delivery and Webhook.site receipt. |
+| 9. Approval and delivery | Approved and queued; receipt pending | v53 is routed at 100% on `veloce-cloud-test-00061-rgc` after granting the runtime service account Secret Accessor on the single Anthropic secret. Action `366e5d05-4918-486d-8227-6e0b30df865f` was approved and queued. Webhook.site has no POST yet; inspect the stored action status/error before any retry. |
 | 10. Budget enforcement | Pending external input | Code path and provider-free refunds are implemented; an approved test provider is required to prove reserve, settle, deny, refund, and failed-enqueue refund with live accounting. |
 | 11. Alerts and observability | Pending external input | Four policies are provisioned and attached to the enabled email channel `11435881475361291593`; a read-only Monitoring API check returned `verificationStatus: null`. Google email verification and one controlled alert remain required. |
 | 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
@@ -115,8 +115,9 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
    live revision has its host allowlist and the refreshed runtime cookie is
    valid. The authorized v53 fix is now serving at 100% traffic after the
    runtime service account received access to the single referenced secret.
-   The redacted action request returned HTTP 202 and is pending approval;
-   continue with the approval and enqueue CLI.
+   The redacted action request returned HTTP 202, and the operator helper
+   approved and queued it. Webhook.site has no POST yet; inspect the stored
+   action status/error before any retry.
 4. Gate 8 isolation is complete. Keep its two-token result as the baseline and
    do not repeat it unless tenant memberships, RLS policies, or the verifier
    changes.
