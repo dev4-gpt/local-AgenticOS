@@ -13,7 +13,7 @@ the 3939-style client edition, not for exposing the private local operator OS.
 
 ## Current Internal Test Status
 
-As of 2026-07-28, the first client-safe Cloud Run test is live and verified.
+As of 2026-07-29, the first client-safe Cloud Run test is live and verified.
 
 ```text
 Client slug: veloce-cloud-test
@@ -22,13 +22,14 @@ Region: asia-south1
 Cloud Run service: veloce-cloud-test
 Current verified image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v53
 Current verified digest: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:028ddee1f3857d5d3672283de005dc3f4edb24c3df1b57c409c8be57952201fe
-Current verified revision: veloce-cloud-test-00058-9sf
+Current verified revision: veloce-cloud-test-00061-rgc
 Runtime service account: veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com
 
-Gate 9 status: v53 is live with explicit A/AAAA resolution and IPv4-mapped IPv6
-classification, but the redacted delivery test still returns
-`delivery_destination_invalid`. Do not mark delivery proven until the live
-resolver path is explained and the action/approval/queue flow passes.
+Gate 9 status: v53 is routed at 100% on revision `veloce-cloud-test-00061-rgc`.
+The runtime service account has Secret Accessor on the single referenced
+Anthropic secret, provider calls remain disabled, and a redacted delivery
+request returned HTTP 202 with `pending_approval`. Do not mark delivery proven
+until the operator approval/enqueue flow and destination receipt pass.
 Storage bucket: gs://veloce-agenticos-2026-veloce-cloud-test
 Primary URL: https://veloce-cloud-test-1075094991117.asia-south1.run.app
 Product dropdown login URL: https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2F

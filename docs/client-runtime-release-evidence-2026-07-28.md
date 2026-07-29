@@ -9,8 +9,8 @@ first unproven gate; do not repeat the green checks listed there.
 
 - Service: `veloce-cloud-test`
 - Region: `asia-south1`
-- Revision: `veloce-cloud-test-00058-9sf`
-- Traffic: 100%
+- Revision: `veloce-cloud-test-00061-rgc`
+- Traffic: 100% to `veloce-cloud-test-00061-rgc`
 - Image: `asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v53`
 - Digest: `sha256:028ddee1f3857d5d3672283de005dc3f4edb24c3df1b57c409c8be57952201fe`
 - Provider calls: disabled (`CLIENT_PROVIDER_CALLS_ENABLED=0`)
@@ -50,6 +50,12 @@ first unproven gate; do not repeat the green checks listed there.
   `client_runtime_jobs`, and `client_runtime_artifacts`. The project public
   key was sent separately from the user JWTs; no token or row content was
   printed.
+- Gate 9 runtime correction: Cloud Run traffic is routed to v53 revision
+  `veloce-cloud-test-00061-rgc`; the runtime service account has Secret
+  Accessor on the single referenced Anthropic secret while provider calls stay
+  disabled. The redacted delivery request returned HTTP 202 with
+  `pending_approval`; operator approval, queue dispatch, and destination
+  receipt remain open.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.
@@ -71,15 +77,11 @@ first unproven gate; do not repeat the green checks listed there.
   `CLIENT_DELIVERY_ALLOWED_HOSTS=webhook.site` with
   `CLIENT_PROVIDER_CALLS_ENABLED=0`. The refreshed cookie file was structurally
   valid and accepted by the live route; the redacted pending-approval action
-  then returned `400 delivery_destination_invalid`. Retrying with the
-  allowlisted `www.webhook.site` hostname produced the same result. Public
-  DNS/HTTPS checks from the operator environment pass, so the deployed
-  runtime resolver/safety path remains unproven. The source now includes an
-  explicit A/AAAA lookup fallback plus IPv4-mapped IPv6 classification that
-  preserves the allowlist and private address rejection; focused resolver and
-  worker checks pass, but the v53 live retry still returned
-  `400 delivery_destination_invalid`. No action was created and no delivery was
-  sent. Terminal queue
+  then returned `400 delivery_destination_invalid`. After routing 100% traffic
+  to v53 revision `veloce-cloud-test-00061-rgc` and granting the runtime service
+  account Secret Accessor on the single referenced secret, the same redacted
+  request returned HTTP 202 with `pending_approval`. Approval, queue dispatch,
+  and destination receipt remain to be verified. Terminal queue
   failure/recovery, rate-limit/refund, and queue-retry evidence already passed
   and must not be repeated.
 - Read-only Monitoring verification confirmed the existing email channel is

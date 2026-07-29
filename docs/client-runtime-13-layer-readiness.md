@@ -7,7 +7,7 @@ provider aliases, queue-only client text execution, hosted Local/Engine
 replacement routes, tenant-safe brief workspaces, provider/model allowlists,
 and queued workflow dispatch with durable audit state on failed submission. The
 v53 image is deployed and passes the unauthenticated boundary checks. Revision
-`veloce-cloud-test-00058-9sf` has the worker flag, Secret Manager token
+`veloce-cloud-test-00061-rgc` has the worker flag, Secret Manager token
 binding, and artifact capability enabled; provider calls remain disabled. The
 worker now has a bounded queued OpenAI image-artifact branch and settles successful text reservations against normalized provider
 usage when pricing is configured, settles fixed media/SEO estimates after
@@ -106,7 +106,7 @@ retention. Same codebase does not mean same permissions.
 | 3 | Database and storage | **Primary tenant authenticated artifact roundtrip proven** | Complete the export/deletion drill and record the final verification query confirming the worker hash is not client-readable. |
 | 4 | Auth and permissions | **Approved user and tenant isolation proven** | Supabase Auth, middleware, active membership, owner access, and the two-token second-tenant isolation probe pass. Continue with lifecycle recovery evidence. |
 | 5 | Hosting and deployment | **Ready for the test track** | Vercel hosts the public surfaces and Cloud Run hosts the client image. Automate per-client provisioning and promotion before selling it as a repeatable service. |
-| 6 | Cloud and compute | **Authenticated workflow, queue completion, failure, and recovery proven** | The live host allowlist is configured and the refreshed cookie was accepted; v53 still rejected the supplied Webhook.site URL. Explicit A/AAAA resolution and IPv4-mapped address handling are live, but delivery evidence remains pending. |
+| 6 | Cloud and compute | **Authenticated workflow, queue completion, failure, and recovery proven** | The live host allowlist is configured, v53 is routed at 100% on `veloce-cloud-test-00061-rgc`, and the refreshed cookie was accepted. The redacted delivery request returned HTTP 202 with `pending_approval`; approval, queue dispatch, and destination receipt remain pending. |
 | 7 | CI/CD and version control | **Versioned image, digest, and rollback checkpoint proven** | Continue recording promotion provenance for future releases. |
 | 8 | Security and row-level security | **Primary database verification, worker hash protection, and tenant isolation proven** | Keep secrets out of the browser; the two-token probe passed across records, jobs, and artifacts for the primary and disposable tenants. |
 | 9 | Rate limiting | **Primary runtime allow/deny/refund/recovery probe passed; alerts pending** | Verify route-level 429 behavior and confirm the email destination is verified. |

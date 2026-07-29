@@ -1,6 +1,6 @@
 # Client Runtime Release Ledger
 
-Updated 2026-07-28. This is the canonical continuation ledger for the hosted
+Updated 2026-07-29. This is the canonical continuation ledger for the hosted
 client-runtime release. Do not restart from the requirements document or infer
 completion from a screenshot. Each gate is either proven by the evidence below,
 implemented but unproven, or waiting on an explicitly listed external input.
@@ -20,19 +20,19 @@ disposable delivery endpoint.
 | Item | Authoritative value |
 |---|---|
 | Client | `veloce-cloud-test` |
-| Cloud Run revision | `veloce-cloud-test-00058-9sf` |
+| Cloud Run revision | `veloce-cloud-test-00061-rgc` |
 | Image | `client-runtime:v53` |
 | Image digest | `sha256:028ddee1f3857d5d3672283de005dc3f4edb24c3df1b57c409c8be57952201fe` |
-| Traffic | 100% |
+| Traffic | 100% to `veloce-cloud-test-00061-rgc` |
 | Runtime URL | `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` |
 | Provider calls | Disabled: `CLIENT_PROVIDER_CALLS_ENABLED=0` |
 | Provider secrets | Cloud Run uses Supabase runtime secrets only; Anthropic target slot staged but not deployed |
 | Authenticated acceptance | Passed 2026-07-28: workflow + four-step execution + artifact roundtrip |
 | Worker identity | Cloud Tasks OIDC binding and tenant worker hash synchronized |
 
-The desktop terminal may still display the historical failed `v42` deploy. It
-is not the current service state and must not be used as a release signal; the
-current manifest and Cloud Run service are v53/00058-9sf above.
+The desktop terminal may still display historical deploy output. It is not the
+current service state and must not be used as a release signal; the current
+manifest and Cloud Run service are v53/00061-rgc above.
 
 ## Proven And Must Not Be Repeated
 
@@ -93,7 +93,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 | 6. Queue and compute | Proven for failure and recovery | Live redacted workflow state contains terminal `task_enqueue_failed` executions; the authenticated retry accepted HTTP 202 and recovered one workflow to `completed` with four `done` steps. |
 | 7. CI/CD and rollback | Proven | Immutable v53 digest is recorded; traffic shifted to healthy revision `00057-9p4`, the protected route returned the expected redirect, and traffic restored to `00058-9sf` with the same boundary behavior. |
 | 8. RLS and security | Proven for primary and disposable second tenants | Final summary returned all required tables/functions, `worker_hash_select=false`, worker-only execution grants, delivery guard, and active tenant. The two-token probe passed for `veloce-cloud-test` and disposable `veloce-cloud-test-b` across records, jobs, and artifacts; tokens and row content were not printed. |
-| 9. Approval and delivery | v53 live retry still rejected; resolver guard investigation continues | Disposable HTTPS destination `https://webhook.site/af43bf9a-77f4-4a4b-b7c7-72af1782be86` is supplied. The v53 live revision reports `CLIENT_DELIVERY_ALLOWED_HOSTS=webhook.site` with `CLIENT_PROVIDER_CALLS_ENABLED=0`; the refreshed local cookie was accepted, but the exact host still returned `400 delivery_destination_invalid` after the explicit A/AAAA-first and IPv4-mapped fixes. No action was created and no delivery was sent. |
+| 9. Approval and delivery | Pending operator approval/enqueue | v53 is routed at 100% on `veloce-cloud-test-00061-rgc` after granting the runtime service account Secret Accessor on the single Anthropic secret. The redacted request to the supplied HTTPS destination returned HTTP 202 with action `366e5d05-4918-486d-8227-6e0b30df865f` and status `pending_approval`. Run the operator approval/enqueue helper; then verify the Cloud Tasks delivery and Webhook.site receipt. |
 | 10. Budget enforcement | Pending external input | Code path and provider-free refunds are implemented; an approved test provider is required to prove reserve, settle, deny, refund, and failed-enqueue refund with live accounting. |
 | 11. Alerts and observability | Pending external input | Four policies are provisioned and attached to the enabled email channel `11435881475361291593`; a read-only Monitoring API check returned `verificationStatus: null`. Google email verification and one controlled alert remain required. |
 | 12. Hosted Local/Engine/Free Claude replacements | Pending external input | Hosted surfaces are implemented; provider-backed parity requires approved provider access and review. |
@@ -113,12 +113,10 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 3. Keep the authenticated workflow, artifact, rate-limit/refund, queue failure,
    queue retry, rollback, and final SQL results already recorded above. The
    live revision has its host allowlist and the refreshed runtime cookie is
-   valid. Both the supplied Webhook.site URL and its allowlisted `www` form
-   failed the v51 runtime's HTTPS/public-DNS check despite resolving publicly
-   from the operator environment. The resolver fallback and mapped-address
-   correction are implemented and tested; deploy the authorized fix, retry
-   the redacted action, and continue
-   with the approval and enqueue CLI.
+   valid. The authorized v53 fix is now serving at 100% traffic after the
+   runtime service account received access to the single referenced secret.
+   The redacted action request returned HTTP 202 and is pending approval;
+   continue with the approval and enqueue CLI.
 4. Gate 8 isolation is complete. Keep its two-token result as the baseline and
    do not repeat it unless tenant memberships, RLS policies, or the verifier
    changes.
