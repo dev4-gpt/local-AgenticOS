@@ -1,8 +1,8 @@
 # Deployment Links
 
-Last checked: 2026-07-26
+Last checked: 2026-07-29
 
-## Shareable Now
+## Shareable Pages
 
 - Landing page: <https://veloce-agenticos-public.vercel.app>
 - Product/front door: <https://product-experience-five.vercel.app>
@@ -16,6 +16,12 @@ The product front door now has a `Runtime access` dropdown:
 
 - `Request runtime` routes to `/start`.
 - `Client login` routes to the approved internal Cloud Run test runtime.
+
+The product form is currently safe to view but **not** safe to market as lead
+capture: its Vercel production Supabase service-role credential is rejected
+with HTTP 401, causing `POST /api/lead` to return HTTP 502. Until a replacement
+credential and a stored-and-cleaned test lead are evidenced, use a comment or
+DM call to action rather than asking visitors to submit the form.
 
 The Cloud Run links above are for the first internal pipeline test. They prove
 the client-safe runtime path works, but they are not the permanent shared

@@ -93,6 +93,15 @@ first unproven gate; do not repeat the green checks listed there.
   `CLIENT_PROVIDER_CALLS_ENABLED=0`, removes the temporary capability and
   pricing value, and serves 100% traffic. Its authenticated capability response
   confirms `textAgentsVisible: false`.
+- Gate 1 lead-capture regression on 2026-07-29: the live product experience
+  (`product-experience-five.vercel.app`) and `/start` page returned HTTP 200,
+  but its public `POST /api/lead` returned HTTP 502. The linked Vercel project
+  has production `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` variable names,
+  yet Vercel function logs show `401` from both
+  `consume_public_request_rate_limit` and the `signups` insert. The deployed
+  service-role value is invalid or no longer accepted. Do not market this form
+  as lead capture until the credential is replaced, a marked test lead is
+  durably stored, and that test row is removed.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.

@@ -85,7 +85,7 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 
 | Gate | Status | Evidence or next action |
 |---|---|---|
-| 1. Public intake and boundary | Proven | Public/runtime boundary checks and security release verifier passed. |
+| 1. Public intake and boundary | Blocked | The product-experience form route is live but `POST /api/lead` returns `502`. Vercel logs show its configured Supabase service-role credential receives `401` from both the durable public rate limiter and the `signups` insert. The form cannot be relied on for lead capture until the production service-role key is replaced and an end-to-end stored test lead is verified and removed. |
 | 2. Auth and capability gate | Proven for approved user | Authenticated acceptance passed with the approved tenant member and capability set. |
 | 3. Tenant data and storage | Proven for primary tenant | Authenticated acceptance proved signed upload/download byte integrity and cleanup. |
 | 4. Provider adapters | Proven | The authorized v53 smoke revision exposed only Anthropic / `claude-sonnet-5` with the $1 cap. Authenticated normal job `48701a99-f3ec-481d-be00-b3fa44525e41` succeeded; authenticated secret-shaped-output job `279e0bdd-52df-4af3-b010-4ea34bc3b976` succeeded with its output withheld by the provider-output redactor. No raw output or credential was printed. Traffic is restored 100% to `veloce-cloud-test-gate4rollback`, where provider calls are disabled and `text-agents` is absent. |
@@ -101,22 +101,28 @@ CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app npm run ver
 
 ## Exact Continuation Order
 
-1. Gate 4 is complete. Keep its normal smoke, secret-shaped-output redaction,
+1. Gate 1 is now the first unproven gate. Vercel production lead capture is
+   blocked by an invalid Supabase service-role credential: its `/api/lead`
+   route logs `401` from both its durable rate-limit RPC and `signups` write.
+   Replace the Vercel production credential, redeploy, submit one marked test
+   lead, verify it is stored, and remove that test row before marketing the
+   form as lead capture.
+2. Gate 4 is complete. Keep its normal smoke, secret-shaped-output redaction,
    and disabled rollback results as the baseline. Do not re-enable the provider
    or repeat its calls unless the adapter, approved model, budget, or runtime
    environment changes.
-2. Gate 9 is now the first unproven gate. The stored action is still `approved`
+3. Gate 9 remains pending after Gate 1. The stored action is still `approved`
    with no error. Before any retry, query the action plus `delivery.approved`
    and `delivery.queued` audits under both its action ID and request ID; do not
    reapprove or reenqueue it.
-3. Keep the Gate 8 final verification, authenticated workflow/artifact,
+4. Keep the Gate 8 final verification, authenticated workflow/artifact,
    rate-limit/refund, queue recovery, rollback, and isolation results as the
    baseline. Do not repeat them unless their stated runtime or data boundaries
    change.
-4. Complete Google email verification for the existing Monitoring channel, then
+5. Complete Google email verification for the existing Monitoring channel, then
    run the controlled alert check. The channel is enabled but currently reports
    `verificationStatus: null`.
-5. Run the final audit and update this ledger and the release-evidence document.
+6. Run the final audit and update this ledger and the release-evidence document.
 
 ## External Inputs Still Required
 
