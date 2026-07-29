@@ -20,17 +20,17 @@ Client slug: veloce-cloud-test
 GCP project: veloce-agenticos-2026
 Region: asia-south1
 Cloud Run service: veloce-cloud-test
-Current verified image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v53
-Current verified digest: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:028ddee1f3857d5d3672283de005dc3f4edb24c3df1b57c409c8be57952201fe
+Current verified image: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v54
+Current verified digest: asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:91ca3cf6d1bc15d5b7e7ce673173deb42de1f7f0b64528906321d977c81f99a9
 Current verified revision: veloce-cloud-test-00061-rgc
 Runtime service account: veloce-cloud-test-run@veloce-agenticos-2026.iam.gserviceaccount.com
 
 Gate 9 status: v53 is routed at 100% on revision `veloce-cloud-test-00061-rgc`.
 The approved delivery task exhausted ten HTTP 503 callbacks to the internal
 worker and left the queue without a destination POST. Provider calls remain
-disabled. A provider-disabled diagnostic and collision-free retry correction is
-committed but not yet deployed; do not reapprove the existing action or mark
-delivery proven before one corrected task produces a terminal action state and
+disabled. The provider-disabled diagnostic and collision-free retry correction
+is deployed in v54; do not reapprove the existing action or mark delivery
+proven before one corrected task produces a terminal action state and
 destination receipt.
 Storage bucket: gs://veloce-agenticos-2026-veloce-cloud-test
 Primary URL: https://veloce-cloud-test-1075094991117.asia-south1.run.app

@@ -11,8 +11,8 @@ first unproven gate; do not repeat the green checks listed there.
 - Region: `asia-south1`
 - Revision: `veloce-cloud-test-00061-rgc`
 - Traffic: 100% to `veloce-cloud-test-00061-rgc`
-- Image: `asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v53`
-- Digest: `sha256:028ddee1f3857d5d3672283de005dc3f4edb24c3df1b57c409c8be57952201fe`
+- Image: `asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v54`
+- Digest: `sha256:91ca3cf6d1bc15d5b7e7ce673173deb42de1f7f0b64528906321d977c81f99a9`
 - Provider calls: disabled (`CLIENT_PROVIDER_CALLS_ENABLED=0`)
 - Provider allowlist: Supabase runtime secrets only
 
@@ -125,6 +125,14 @@ first unproven gate; do not repeat the green checks listed there.
   complete. The next provider-disabled image adds a redacted claim-status event
   and changes the operator helper to select `request_id` and create a fresh
   Cloud Tasks name; it must be deployed before one retry is attempted.
+- Gate 9 correction deployment on 2026-07-29: Cloud Build
+  `7494a396-6f67-4819-bf87-c4a30c43a811` produced immutable v54 digest
+  `sha256:91ca3cf6d1bc15d5b7e7ce673173deb42de1f7f0b64528906321d977c81f99a9`.
+  The existing private provider-disabled manifest validated and deployed this
+  digest at 100% traffic. Live configuration confirms
+  `CLIENT_PROVIDER_CALLS_ENABLED=0`; no provider smoke was repeated. The
+  existing action remains `approved` and has not yet received its one corrected
+  task.
 - Anthropic credential inbox validation and approved promotion passed for the
   client namespace. The source envelope matched `ANTHROPIC_API_KEY`; target
   Secret Manager version `1` was created without printing the raw value.
