@@ -26,8 +26,8 @@ The current state is:
 | Surface | Status | Safe to share? |
 |---|---|---|
 | Public landing page | Published on Vercel and Cloud Run; the Cloud Run engagement form posts to the verified server-side intake endpoint without exposing a Supabase credential, and the shared Vercel route sends a verified Resend operator notification | Yes, for Supabase lead capture and notification |
-| Public runtime request form | Published on Vercel | Yes |
-| Request records | Server-side insert into Supabase `deployment_requests` | Yes, after verifying the inbox/approval owner |
+| Public runtime request form | Published on Vercel; its server-side intake is verified to store a request and send the configured Resend notification | Yes, for request capture and notification |
+| Request records | Server-side insert into Supabase `deployment_requests`; synthetic record persistence, notification delivery, and cleanup are verified | Yes, after verifying the inbox/approval owner |
 | Cloud Run client login | Live for the approved cloud-test account | Controlled test only |
 | Cloud Run client shell | Live as image `v54` on provider-disabled revision `veloce-cloud-test-gate10restore`; worker binding and artifacts are enabled while provider calls and the temporary `text-agents` capability are disabled. The authorized Anthropic normal smoke and secret-shaped-output redaction probe both succeeded on the isolated smoke revision under the $1 cap. The same Gate 4 settlements plus the isolated zero-spend Gate 10 denial proved live accounting, then traffic returned to this disabled revision. Request correlation is active, workflow polling no longer self-throttles, limiter outages are separated from genuine throttles, failed task enqueue refunds are implemented, provider-secret output redaction is active, successful provider jobs fail closed when budget settlement is unavailable, delivery approvals are audited, bounded provider response reads plus literal and DNS-resolved private-host output checks are active, and authenticated workflow/artifact evidence has passed | Controlled test only |
 | Full 3939 operator OS | Local only | No, never publish directly |

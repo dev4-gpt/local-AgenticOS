@@ -77,7 +77,10 @@ Supabase.
 Production notification verification on 2026-07-29: Resend verified the
 `veloceos.cloud` sender domain; one synthetic non-personal lead returned
 `notification: sent`, arrived at the configured operator inbox, and was deleted
-from Supabase with HTTP 204. No key or recipient address is recorded here.
+from Supabase with HTTP 204. One synthetic `/start` runtime request independently
+returned `notification: sent`, arrived at that inbox, and was deleted from
+`deployment_requests` with HTTP 204. No key or recipient address is recorded
+here.
 
 Set this only after an authenticated, client-safe runtime exists:
 

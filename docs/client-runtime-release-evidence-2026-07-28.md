@@ -127,6 +127,13 @@ first unproven gate; do not repeat the green checks listed there.
   with HTTP 204. The shared server-side notifier is implemented for the Product
   Experience, Cloud Run landing, and `/start` intake routes while keeping full records in
   Supabase.
+- `/start` lead-email notification completion on 2026-07-29: synthetic
+  runtime-request submission to `POST /api/deployment-request` returned HTTP
+  200 with `notification: sent`; the configured operator inbox confirmed the
+  email arrived. The service-role cleanup then found one matching synthetic
+  `deployment_requests` row and deleted it with HTTP 204. This independently
+  proves the second public form's storage-and-notification path without
+  retaining test data.
 - Gate 9 action-ID audit checkpoint on 2026-07-29: the operator's read-only
   query returned action `366e5d05-4918-486d-8227-6e0b30df865f` as `approved`
   with no error. Its action-ID audit correlation contains `delivery.approved`
