@@ -309,7 +309,7 @@ security definer
 set search_path = public, extensions
 as $$
 declare
-  action jsonb;
+  claimed_action jsonb;
 begin
   if p_worker_token is null or length(p_worker_token) < 24
      or not exists (
@@ -321,21 +321,21 @@ begin
     return null;
   end if;
 
-  update public.client_runtime_delivery_actions
+  update public.client_runtime_delivery_actions as delivery_action
     set status = 'running', updated_at = now()
-  where id = p_action_id
-    and tenant_slug = p_tenant_slug
-    and status = 'approved'
+  where delivery_action.id = p_action_id
+    and delivery_action.tenant_slug = p_tenant_slug
+    and delivery_action.status = 'approved'
   returning jsonb_build_object(
-    'id', id,
-    'tenant_slug', tenant_slug,
-    'request_id', request_id,
-    'action', action,
-    'destination', destination,
-    'artifact_ids', artifact_ids
-  ) into action;
+    'id', delivery_action.id,
+    'tenant_slug', delivery_action.tenant_slug,
+    'request_id', delivery_action.request_id,
+    'action', delivery_action.action,
+    'destination', delivery_action.destination,
+    'artifact_ids', delivery_action.artifact_ids
+  ) into claimed_action;
 
-  return action;
+  return claimed_action;
 end;
 $$;
 
