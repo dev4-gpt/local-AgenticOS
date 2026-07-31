@@ -1,0 +1,4 @@
+interface:
+  display_name: "Veloce Client Capability Onboarding"
+  short_description: "Scope, activate, and prove client cloud capabilities"
+  default_prompt: "Use $veloce-client-capability-onboarding to create a capability matrix and safely onboard the approved cloud features for this Veloce client."

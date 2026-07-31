@@ -7,6 +7,10 @@ edition into a safe client edition. A provider key alone does not make a tab
 cloud-safe. Each capability needs a server contract, tenant-scoped data,
 secret references, budgets, approvals, and tests before it is enabled.
 
+For repeatable per-client scoping, credential handling, and evidence capture,
+use `skills/veloce-client-capability-onboarding/SKILL.md` and its client
+capability matrix template before activating any provider.
+
 ## Release rule
 
 The Cloud Run client image may expose the shared Veloce shell, but a capability
