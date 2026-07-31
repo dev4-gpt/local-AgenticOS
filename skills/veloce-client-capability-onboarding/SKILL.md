@@ -53,6 +53,9 @@ Read these before claiming readiness:
 - `docs/runtime-capability-matrix.md`
 - `docs/hosted-capability-adapter-roadmap.md`
 - `docs/gcp-client-runtime-runbook.md`
+- `docs/future-integrations/cloud-memory-and-inference.md` when the client
+  requests Obsidian-compatible memory, a knowledge graph, or a low-cost model
+  lane
 - `skills/veloce-single-tenant-client-deployment/SKILL.md`
 - `skills/veloce-client-runtime-production-gates/SKILL.md`
 
