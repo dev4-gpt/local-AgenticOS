@@ -191,6 +191,7 @@ expect(!providerChat.includes("runClientTextAdapter") && !providerChat.includes(
 expect(provisioner.includes("GOOGLE_CLOUD_PROJECT: projectId"), "GCP provisioner must inject the project identifier required by Cloud Tasks");
 expect(provisioner.includes("roles/cloudtasks.enqueuer"), "GCP provisioner must grant the runtime service account Cloud Tasks enqueue permission");
 expect(provisioner.includes("CLIENT_RUNTIME_BASE_URL") && provisioner.includes("configureRuntimeBaseUrl"), "GCP provisioner must configure the Cloud Run task callback URL");
+expect(provisioner.includes("routeTrafficToLatestRevision") && provisioner.includes("update-traffic") && provisioner.includes("--to-latest"), "GCP provisioner must route deploy traffic to the latest ready revision");
 expect(cloudTasks.includes("CLIENT_RUNTIME_BASE_URL") && cloudTasks.includes("baseUrl"), "Cloud Tasks helper must use the approved runtime callback URL");
 expect(cloudTasks.includes("randomUUID") && cloudTasks.includes("const taskName") && cloudTasks.includes("${identifier}-${randomUUID()}"), "Cloud Tasks retries must use unique dispatch names");
 expect(provisioner.includes("secretVersionAdder") && provisioner.includes("CLIENT_CREDENTIAL_INBOX_SECRET"), "GCP provisioner must grant inbox version-write access explicitly");

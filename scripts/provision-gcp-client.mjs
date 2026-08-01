@@ -246,7 +246,10 @@ if (phase === "prepare" || phase === "all") runCommands(prepareCommands);
 if (phase === "deploy" || phase === "all") {
   if (apply) verifySecretVersions();
   runCommands(deployCommands);
-  if (apply) configureRuntimeBaseUrl();
+  if (apply) {
+    configureRuntimeBaseUrl();
+    routeTrafficToLatestRevision();
+  }
 }
 
 if (!apply) console.log("Dry run only. Use --apply --phase prepare, then add secret versions, then use --apply --phase deploy.");
@@ -304,6 +307,12 @@ function configureRuntimeBaseUrl() {
   if (runtimeEnv.CLIENT_RUNTIME_BASE_URL === serviceUrl) return;
   console.log(`Configuring task callback base URL: ${serviceUrl}`);
   const update = spawnSync("gcloud", ["run", "services", "update", serviceName, "--project", projectId, "--region", region, "--update-env-vars", `CLIENT_RUNTIME_BASE_URL=${serviceUrl}`], { stdio: "inherit" });
+  if (update.status !== 0) process.exit(update.status ?? 1);
+}
+
+function routeTrafficToLatestRevision() {
+  console.log("Routing client traffic to the latest ready Cloud Run revision");
+  const update = spawnSync("gcloud", ["run", "services", "update-traffic", serviceName, "--project", projectId, "--region", region, "--to-latest"], { stdio: "inherit" });
   if (update.status !== 0) process.exit(update.status ?? 1);
 }
 

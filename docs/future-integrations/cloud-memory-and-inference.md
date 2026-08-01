@@ -1,7 +1,7 @@
 # Cloud Memory And Inference Options
 
-**Status:** tenant Markdown import/export and deterministic, visual tag graph
-deployed; interactive visual smoke confirmation pending
+**Status:** tenant Markdown import/export and deterministic, interactive visual
+tag graph deployed and smoke-proven
 
 **Last reviewed:** 2026-08-01
 
@@ -76,11 +76,12 @@ artifact linkage, memory record creation, Markdown export, deterministic
 tenant-only Markdown-tag graph refresh, RLS, object ownership, retention
 through the existing storage lifecycle, lifecycle export/restore coverage, and
 static boundary coverage. The Supabase graph migration was applied on
-2026-08-01. Cloud Run revision `veloce-cloud-test-00075-pjl` serves the
-visual document-to-tag map at 100% traffic with provider calls disabled; the
-signed-in import created one tenant record and two tenant graph edges. A
-post-rollout interactive visual smoke remains before presenting the map as
-available to clients.
+2026-08-01. Cloud Run revision `veloce-cloud-test-00076-hxw` serves the visual
+document-to-tag map at 100% traffic with provider calls disabled; the signed-in
+import created one tenant record and two tenant graph edges. The interactive
+smoke confirmed that selecting a tag reveals the related tenant record in the
+map. This is available as a bounded, explicit-tag memory feature, not as a
+claim of semantic Graphify parity.
 
 **Remaining build work:** selected-folder sync, broader document extraction,
 document metadata schema, indexing queue, retrieval, model-assisted graph
