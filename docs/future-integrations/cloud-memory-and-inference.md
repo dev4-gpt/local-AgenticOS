@@ -1,9 +1,9 @@
 # Cloud Memory And Inference Options
 
-**Status:** Level 2 source import/export and deterministic graph foundation
-committed; migration, deployment, and runtime evidence pending
+**Status:** tenant Markdown import/export and deterministic, visual tag graph
+deployed; interactive visual smoke confirmation pending
 
-**Last reviewed:** 2026-07-31
+**Last reviewed:** 2026-08-01
 
 **Decision:** Obsidian-compatible durable memory and Graphify-style knowledge
 graphs remain part of Veloce's identity. The hosted client runtime will not
@@ -75,13 +75,19 @@ foundation for retrieval and graph exploration.
 artifact linkage, memory record creation, Markdown export, deterministic
 tenant-only Markdown-tag graph refresh, RLS, object ownership, retention
 through the existing storage lifecycle, lifecycle export/restore coverage, and
-static boundary coverage. Deployment, migration, and end-to-end runtime
-evidence are still required before this is presented as available.
+static boundary coverage. The Supabase graph migration was applied on
+2026-08-01. Cloud Run revision `veloce-cloud-test-00075-pjl` serves the
+visual document-to-tag map at 100% traffic with provider calls disabled; the
+signed-in import created one tenant record and two tenant graph edges. A
+post-rollout interactive visual smoke remains before presenting the map as
+available to clients.
 
 **Remaining build work:** selected-folder sync, broader document extraction,
 document metadata schema, indexing queue, retrieval, model-assisted graph
 extraction, graph clustering, deletion coordination between records and source
-objects, and end-to-end test coverage.
+objects, and end-to-end test coverage. The current map represents explicit
+Markdown tags only; it is not semantic Graphify extraction or source-grounded
+question answering.
 
 ### Option B: Veloce local connector
 

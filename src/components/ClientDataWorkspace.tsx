@@ -5,8 +5,9 @@ import { Archive, Check, Download, FileText, LockKeyhole, Network, Plus, Refresh
 
 type Surface = "memory" | "journal" | "goals" | "notebook";
 type RecordItem = { id: string; title: string; content: string; status: "active" | "done" | "archived"; metadata?: Record<string, unknown>; created_at: string };
-type GraphNode = { id: string; label: string; kind: "document" | "tag" };
+type GraphNode = { id: string; label: string; kind: "document" | "tag"; record_id?: string | null };
 type GraphEdge = { source_node_id: string; target_node_id: string };
+type GraphPosition = { x: number; y: number };
 
 const COPY: Record<Surface, { title: string; eyebrow: string; kind: string; placeholder: string; content: string }> = {
   memory: { title: "Tenant Memory", eyebrow: "Context · Memory", kind: "memory", placeholder: "Name this decision or memory", content: "Write the approved project memory here..." },
@@ -25,6 +26,7 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   const [graphNodes, setGraphNodes] = useState<GraphNode[]>([]);
   const [graphEdges, setGraphEdges] = useState<GraphEdge[]>([]);
   const [graphBusy, setGraphBusy] = useState(false);
+  const [selectedGraphNodeId, setSelectedGraphNodeId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -120,7 +122,27 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   }
 
   const active = useMemo(() => records.filter((record) => record.status !== "archived"), [records]);
-  const tags = useMemo(() => graphNodes.filter((node) => node.kind === "tag"), [graphNodes]);
+  const selectedGraphNode = useMemo(() => graphNodes.find((node) => node.id === selectedGraphNodeId) ?? null, [graphNodes, selectedGraphNodeId]);
+  const visibleRecords = useMemo(() => {
+    if (!selectedGraphNode) return active;
+    if (selectedGraphNode.kind === "document") return active.filter((record) => record.id === selectedGraphNode.record_id);
+    const tag = selectedGraphNode.label.replace(/^#/, "").toLowerCase();
+    return active.filter((record) => `${record.title}\n${record.content}`.toLowerCase().includes(`#${tag}`));
+  }, [active, selectedGraphNode]);
+  const graphPositions = useMemo(() => {
+    const documents = graphNodes.filter((node) => node.kind === "document");
+    const graphTags = graphNodes.filter((node) => node.kind === "tag");
+    const positions = new Map<string, GraphPosition>();
+    const distribute = (nodes: GraphNode[], x: number) => nodes.forEach((node, index) => positions.set(node.id, { x, y: ((index + 1) / (nodes.length + 1)) * 100 }));
+    distribute(documents, documents.length === 1 ? 34 : 24);
+    distribute(graphTags, graphTags.length === 1 ? 66 : 76);
+    return positions;
+  }, [graphNodes]);
+
+  function selectGraphNode(nodeId: string) {
+    setSelectedGraphNodeId((current) => current === nodeId ? null : nodeId);
+  }
+
   return <div className="space-y-5">
     <section className="panel p-5 md:p-6">
       <div className="flex items-start gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg" style={{ background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.28)", color: "#60a5fa" }}><LockKeyhole size={18} /></div><div><p className="eyebrow">{copy.eyebrow}</p><h1 className="mt-2 text-[26px]" style={{ color: "var(--cream)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>{copy.title}</h1><p className="mt-2 max-w-3xl text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>This client edition stores records in the current tenant namespace with Supabase RLS. It does not read the operator vault or local filesystem.</p></div></div>
@@ -133,10 +155,11 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
       <div className="mt-4 flex items-center gap-3"><button type="button" onClick={add} disabled={busy || !title.trim() || !content.trim()} className="inline-flex items-center gap-2 rounded-md px-4 py-2.5 text-[11px] font-semibold" style={{ background: busy ? "rgba(255,255,255,0.1)" : "#60a5fa", color: busy ? "var(--cream-mute)" : "#07111d" }}><Save size={13} />{busy ? "Saving" : "Save to tenant"}</button><span className="text-[10px]" style={{ color: "var(--cream-mute)" }}>No secrets or credentials should be entered here.</span></div>
       {error && <p className="mt-3 text-[11px]" style={{ color: "#fda4af" }}>{error}</p>}
     </section>
-    {surface === "memory" && <section className="panel p-5 md:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2"><Network size={15} color="#a78bfa" /><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Knowledge graph</h2><span className="text-[10px]" style={{ color: "var(--cream-mute)" }}>{graphEdges.length} links</span></div><button type="button" onClick={refreshGraph} disabled={graphBusy} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><RefreshCw size={13} className={graphBusy ? "animate-spin" : ""} />{graphBusy ? "Refreshing" : "Refresh graph"}</button></div>{tags.length > 0 ? <div className="mt-4 flex flex-wrap gap-2">{tags.map((tag) => <span key={tag.id} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px]" style={{ borderColor: "rgba(167,139,250,0.28)", color: "#c4b5fd", background: "rgba(167,139,250,0.08)" }}><Tag size={11} />{tag.label}</span>)}</div> : <p className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>No graph links yet.</p>}</section>}
+    {surface === "memory" && <section className="panel p-5 md:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2"><Network size={15} color="#a78bfa" /><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Knowledge graph</h2><span className="text-[10px]" style={{ color: "var(--cream-mute)" }}>{graphEdges.length} links</span></div><div className="flex items-center gap-2">{selectedGraphNode && <button type="button" onClick={() => setSelectedGraphNodeId(null)} className="rounded-md border px-2.5 py-2 text-[10px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-mute)" }}>Clear selection</button>}<button type="button" onClick={refreshGraph} disabled={graphBusy} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><RefreshCw size={13} className={graphBusy ? "animate-spin" : ""} />{graphBusy ? "Refreshing" : "Refresh graph"}</button></div></div>{graphNodes.length > 0 ? <div className="relative mt-4 min-h-[240px] overflow-hidden rounded-md border" style={{ borderColor: "rgba(167,139,250,0.22)", background: "rgba(167,139,250,0.045)" }}><svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden="true">{graphEdges.map((edge) => { const source = graphPositions.get(edge.source_node_id); const target = graphPositions.get(edge.target_node_id); return source && target ? <line key={`${edge.source_node_id}-${edge.target_node_id}`} x1={source.x} y1={source.y} x2={target.x} y2={target.y} stroke="rgba(167,139,250,0.48)" strokeWidth="0.7" vectorEffect="non-scaling-stroke" /> : null; })}</svg>{graphNodes.map((node) => { const position = graphPositions.get(node.id); if (!position) return null; const selected = selectedGraphNodeId === node.id; const document = node.kind === "document"; return <button key={node.id} type="button" onClick={() => selectGraphNode(node.id)} title={node.label} className="absolute max-w-[42%] -translate-x-1/2 -translate-y-1/2 truncate rounded-md border px-3 py-2 text-[10px] font-medium shadow-sm transition" style={{ left: `${position.x}%`, top: `${position.y}%`, borderColor: selected ? (document ? "rgba(96,165,250,0.95)" : "rgba(196,181,253,0.95)") : (document ? "rgba(96,165,250,0.42)" : "rgba(167,139,250,0.42)"), background: selected ? (document ? "rgba(96,165,250,0.24)" : "rgba(167,139,250,0.24)") : (document ? "rgba(96,165,250,0.1)" : "rgba(167,139,250,0.1)"), color: document ? "#bfdbfe" : "#ddd6fe" }}>{document ? <FileText className="mr-1 inline-block" size={11} /> : <Tag className="mr-1 inline-block" size={11} />}{node.label}</button>; })}</div> : <p className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>No graph links yet.</p>}</section>}
     <section className="space-y-3">
       {active.length === 0 && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No tenant records yet.</div>}
-      {active.map((record) => <article key={record.id} className="panel p-4"><div className="flex items-start gap-3"><FileText size={15} color="#60a5fa" className="mt-0.5" /><div className="min-w-0 flex-1"><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>{record.title}</h2><p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>{record.content}</p><p className="mt-3 text-[10px]" style={{ color: "var(--cream-mute)" }}>{new Date(record.created_at).toLocaleString()} · {record.status}</p></div><div className="flex items-center gap-1"><button type="button" title={record.status === "done" ? "Mark active" : "Mark done"} onClick={() => update(record.id, record.status === "done" ? "active" : "done")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: record.status === "done" ? "#34d399" : "var(--cream-mute)" }}><Check size={13} /></button><button type="button" title="Archive" onClick={() => update(record.id, "archived")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "var(--cream-mute)" }}><Archive size={13} /></button><button type="button" title="Delete" onClick={() => remove(record.id)} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "#fda4af" }}><Trash2 size={13} /></button></div></div></article>)}
+      {active.length > 0 && visibleRecords.length === 0 && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No tenant records match this graph node.</div>}
+      {visibleRecords.map((record) => <article key={record.id} className="panel p-4"><div className="flex items-start gap-3"><FileText size={15} color="#60a5fa" className="mt-0.5" /><div className="min-w-0 flex-1"><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>{record.title}</h2><p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>{record.content}</p><p className="mt-3 text-[10px]" style={{ color: "var(--cream-mute)" }}>{new Date(record.created_at).toLocaleString()} · {record.status}</p></div><div className="flex items-center gap-1"><button type="button" title={record.status === "done" ? "Mark active" : "Mark done"} onClick={() => update(record.id, record.status === "done" ? "active" : "done")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: record.status === "done" ? "#34d399" : "var(--cream-mute)" }}><Check size={13} /></button><button type="button" title="Archive" onClick={() => update(record.id, "archived")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "var(--cream-mute)" }}><Archive size={13} /></button><button type="button" title="Delete" onClick={() => remove(record.id)} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "#fda4af" }}><Trash2 size={13} /></button></div></div></article>)}
     </section>
   </div>;
 }
