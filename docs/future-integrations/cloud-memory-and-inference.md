@@ -1,6 +1,7 @@
 # Cloud Memory And Inference Options
 
-**Status:** Product direction / implementation not yet started
+**Status:** Level 1 source import/export implementation committed; deployment and
+runtime evidence pending
 
 **Last reviewed:** 2026-07-31
 
@@ -25,8 +26,11 @@ and offline work.
 
 The hosted runtime is intentionally different. It already provides tenant
 records, artifacts, queues, audit state, budgets, and hosted provider-adapter
-boundaries. It does not yet provide a tenant document import/sync service,
-hosted Graphify worker, vector retrieval layer, or self-hosted model server.
+boundaries. Level 1 now adds an authenticated Markdown/text import path: the
+source is stored and verified in the tenant artifact namespace, then linked to
+a tenant memory record. The same tenant can export its memory records as
+Markdown. It does not yet provide document sync, a hosted Graphify worker, a
+vector retrieval layer, or a self-hosted model server.
 
 ## Product Principle
 
@@ -65,9 +69,15 @@ local vault or relying on a laptop being online.
 offboarding, preserves Markdown portability, and provides an auditable
 foundation for retrieval and graph exploration.
 
-**Required build work:** import/export contract, document metadata schema,
-tenant RLS, object ownership, content extraction, indexing queue, retention,
-deletion, signed downloads, and test coverage.
+**Level 1 implementation:** Markdown/text source import, verified tenant
+artifact linkage, memory record creation, Markdown export, RLS, object
+ownership, retention through the existing storage lifecycle, and static
+boundary coverage. Deployment and end-to-end runtime evidence are still
+required before this is presented as available.
+
+**Remaining build work:** selected-folder sync, broader document extraction,
+document metadata schema, indexing queue, retrieval, graph storage, deletion
+coordination between records and source objects, and end-to-end test coverage.
 
 ### Option B: Veloce local connector
 

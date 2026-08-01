@@ -25,6 +25,14 @@ The local `8082` helper is currently healthy. The Cloud Run runtime must never d
 - Credentials status and catalogued provider submission to the client vault inbox, once the GCP inbox secret and IAM grant are configured. Submission does not activate a provider; promotion, manifest binding, and deployment are separate gates.
 - Capabilities registry, when it contains only built-in capabilities with no operator destination.
 
+### Implemented, awaiting deployment evidence
+
+- Tenant Memory has a Markdown/text source import and Markdown export contract.
+  Import stores the original source as a verified tenant artifact and creates a
+  linked tenant memory record. It remains unavailable in the current deployed
+  `veloce-cloud-test` revision until the reviewed image is deployed and the
+  authenticated storage-to-record-to-export path is evidenced.
+
 ### Client-safe after provider API configuration and approval
 
 These can be exposed only through server-side provider APIs, a per-client allowlist, a model allowlist, budgets, and approval gates. Keys remain in the client secret namespace and are never returned to the browser.

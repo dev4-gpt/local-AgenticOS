@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Archive, Check, FileText, LockKeyhole, Plus, Save, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Archive, Check, Download, FileText, LockKeyhole, Plus, Save, Trash2, Upload } from "lucide-react";
 
 type Surface = "memory" | "journal" | "goals" | "notebook";
 type RecordItem = { id: string; title: string; content: string; status: "active" | "done" | "archived"; metadata?: Record<string, unknown>; created_at: string };
@@ -19,7 +19,9 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     const response = await fetch(`/api/client-runtime/records?kind=${copy.kind}`, { cache: "no-store" }).catch(() => null);
@@ -48,10 +50,54 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     await load();
   }
 
+  async function importMarkdown(file: File | undefined) {
+    if (!file || surface !== "memory" || importing) return;
+    const fileName = file.name.trim();
+    if (!/\.(?:md|markdown|txt)$/i.test(fileName) || file.size < 1 || file.size > 100_000) {
+      setError("Choose a Markdown or text file smaller than 100 KB.");
+      return;
+    }
+    setImporting(true); setError("");
+    try {
+      const content = (await file.text()).replace(/\r\n?/g, "\n").trim();
+      if (!content || content.length > 30_000) throw new Error("The file must contain no more than 30,000 characters.");
+      const contentType = /\.txt$/i.test(fileName) ? "text/plain" : "text/markdown";
+      const upload = await fetch("/api/client-runtime/artifacts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ fileName, contentType, byteSize: file.size }),
+      });
+      const uploadData = await upload.json().catch(() => null);
+      if (!upload.ok || !uploadData?.artifactId || !uploadData?.uploadUrl) throw new Error(uploadData?.error || "The source file could not be prepared.");
+      const written = await fetch(uploadData.uploadUrl, { method: "PUT", headers: uploadData.uploadHeaders ?? { "content-type": contentType }, body: file });
+      if (!written.ok) throw new Error("The source file could not be stored.");
+      const completed = await fetch(`/api/client-runtime/artifacts/${uploadData.artifactId}/complete`, { method: "POST" });
+      const completedData = await completed.json().catch(() => null);
+      if (!completed.ok) throw new Error(completedData?.error || "The source file could not be verified.");
+      const imported = await fetch("/api/client-runtime/memory-import", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ fileName, content, artifactId: uploadData.artifactId }),
+      });
+      const importedData = await imported.json().catch(() => null);
+      if (!imported.ok) throw new Error(importedData?.error || "The memory source could not be imported.");
+      await load();
+    } catch (importError) {
+      setError(importError instanceof Error ? importError.message : "The memory source could not be imported.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function exportMemory() {
+    window.location.assign("/api/client-runtime/memory-import?format=markdown");
+  }
+
   const active = useMemo(() => records.filter((record) => record.status !== "archived"), [records]);
   return <div className="space-y-5">
     <section className="panel p-5 md:p-6">
       <div className="flex items-start gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg" style={{ background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.28)", color: "#60a5fa" }}><LockKeyhole size={18} /></div><div><p className="eyebrow">{copy.eyebrow}</p><h1 className="mt-2 text-[26px]" style={{ color: "var(--cream)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>{copy.title}</h1><p className="mt-2 max-w-3xl text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>This client edition stores records in the current tenant namespace with Supabase RLS. It does not read the operator vault or local filesystem.</p></div></div>
+      {surface === "memory" && <div className="mt-5 flex flex-wrap gap-2"><input ref={fileInputRef} type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" className="sr-only" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void importMarkdown(file); }} /><button type="button" onClick={() => fileInputRef.current?.click()} disabled={importing} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Upload size={13} />{importing ? "Importing source" : "Import Markdown"}</button><button type="button" onClick={exportMemory} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Download size={13} />Export Markdown</button></div>}
     </section>
     <section className="panel p-5 md:p-6">
       <div className="flex items-center gap-2"><Plus size={15} color="#60a5fa" /><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Add tenant record</h2></div>

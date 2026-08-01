@@ -21,6 +21,7 @@ const promotion = await readFile(join(root, "scripts/promote-client-credential.m
 const workerProvisioner = await readFile(join(root, "scripts/provision-client-worker-token.mjs"), "utf8");
 const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
 const recordsRoute = await readFile(join(root, "src/app/api/client-runtime/records/route.ts"), "utf8");
+const memoryImportRoute = await readFile(join(root, "src/app/api/client-runtime/memory-import/route.ts"), "utf8");
 const workflowsRoute = await readFile(join(root, "src/app/api/client-runtime/workflows/route.ts"), "utf8");
 const workflowWorkspace = await readFile(join(root, "src/components/ClientWorkflowWorkspace.tsx"), "utf8");
 const credentialsRoute = await readFile(join(root, "src/app/api/client-runtime/credentials/route.ts"), "utf8");
@@ -62,6 +63,7 @@ const runtimeRateLimitedRoutes = [
   "src/app/api/client-runtime/artifacts/[id]/complete/route.ts",
   "src/app/api/client-runtime/artifacts/[id]/download/route.ts",
   "src/app/api/client-runtime/records/route.ts",
+  "src/app/api/client-runtime/memory-import/route.ts",
   "src/app/api/client-runtime/delivery/route.ts",
 ].map(async (relativePath) => [relativePath, await readFile(join(root, relativePath), "utf8")]);
 const runtimeRateLimitedRouteSources = await Promise.all(runtimeRateLimitedRoutes);
@@ -125,6 +127,10 @@ expect(hostedSql.includes("create_client_runtime_artifact(") && hostedSql.includ
 expect(recordsRoute.includes("clientCapabilityEnabled(\"tenant-data\")"), "tenant records route must be capability gated");
 expect(recordsRoute.includes("client_runtime_records"), "tenant records route must use the hosted records table");
 expect(recordsRoute.includes("SECRET_LIKE"), "tenant records route must reject secret-like content");
+expect(memoryImportRoute.includes("currentClientMember") && memoryImportRoute.includes("clientCapabilityEnabled(\"artifacts\")"), "memory import must require an authenticated tenant member and artifact capability");
+expect(memoryImportRoute.includes("containsClientSecretLike") && memoryImportRoute.includes("memory_import_source_not_verified"), "memory import must reject secret-like content and require a verified source artifact");
+expect(memoryImportRoute.includes("client_runtime_records") && memoryImportRoute.includes("tenant.memory.exported"), "memory import/export must use tenant records and write redacted audit events");
+expect(runtimePolicy.includes('"/api/client-runtime/memory-import"') && provisioner.includes("/api/client-runtime/memory-import"), "memory import must be included in the reviewed client API allowlist");
 expect(workflowsRoute.includes("clientCapabilityEnabled(\"orchestration\")"), "hosted workflow route must be capability gated");
 expect(workflowsRoute.includes("client_runtime_records") && workflowsRoute.includes("workflow"), "hosted workflow route must use tenant records");
 expect(workflowsRoute.includes("checkClientRuntimeRateLimit") && workflowsRoute.includes("runtime_limit_unavailable"), "workflow routes must distinguish limiter outages from genuine rate limiting");
