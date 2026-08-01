@@ -55,6 +55,8 @@ const tables = [
   "client_runtime_jobs",
   "client_runtime_artifacts",
   "client_runtime_records",
+  "client_runtime_memory_graph_nodes",
+  "client_runtime_memory_graph_edges",
   "client_runtime_budget_ledger",
   "client_runtime_delivery_actions",
 ];
@@ -70,6 +72,8 @@ const exportColumns = Object.freeze({
   client_runtime_jobs: "id,tenant_slug,requested_by,capability,provider,model,idempotency_key,status,attempt_count,input_metadata,output_metadata,error_code,created_at,started_at,finished_at",
   client_runtime_artifacts: "id,tenant_slug,job_id,created_by,object_key,original_name,content_type,byte_size,status,retention_expires_at,created_at",
   client_runtime_records: "id,tenant_slug,created_by,kind,title,content,status,metadata,created_at,updated_at",
+  client_runtime_memory_graph_nodes: "id,tenant_slug,record_id,graph_key,label,kind,metadata,created_at,updated_at",
+  client_runtime_memory_graph_edges: "id,tenant_slug,source_node_id,target_node_id,relation,weight,metadata,created_at",
   client_runtime_budget_ledger: "id,tenant_slug,job_id,provider,model,amount_micros,usage_metadata,created_at",
   client_runtime_delivery_actions: "id,tenant_slug,request_id,requested_by,action,destination,artifact_ids,status,error_code,idempotency_key,created_at,updated_at",
 });
@@ -135,7 +139,7 @@ await supabaseDelete("client_tenants", `slug=eq.${encodeURIComponent(slug)}`);
 console.log(`Client offboarding completed: ${slug}`);
 
 async function exportSnapshot() {
-  const result = { schemaVersion: 2, slug, exportedAt: new Date().toISOString(), tables: {} };
+  const result = { schemaVersion: 3, slug, exportedAt: new Date().toISOString(), tables: {} };
   for (const table of tables) {
     const rows = await supabaseSelect(table, table === "client_tenants" ? `slug=eq.${encodeURIComponent(slug)}` : `tenant_slug=eq.${encodeURIComponent(slug)}`, exportColumns[table]);
     assertSnapshotSafe(table, rows);
@@ -145,7 +149,7 @@ async function exportSnapshot() {
 }
 
 async function restoreSnapshot(snapshot) {
-  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_runtime_records", "client_runtime_budget_ledger", "client_runtime_delivery_actions"];
+  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_runtime_records", "client_runtime_memory_graph_nodes", "client_runtime_memory_graph_edges", "client_runtime_budget_ledger", "client_runtime_delivery_actions"];
   for (const table of ordered) {
     const rows = Array.isArray(snapshot.tables[table]) ? snapshot.tables[table] : [];
     if (!rows.length) continue;
@@ -157,7 +161,7 @@ async function restoreSnapshot(snapshot) {
 }
 
 function validateSnapshot(snapshot) {
-  if (!snapshot || ![1, 2].includes(snapshot.schemaVersion) || snapshot.slug !== slug || !snapshot.tables || typeof snapshot.tables !== "object") fail("Invalid lifecycle snapshot or slug mismatch");
+  if (!snapshot || ![1, 2, 3].includes(snapshot.schemaVersion) || snapshot.slug !== slug || !snapshot.tables || typeof snapshot.tables !== "object") fail("Invalid lifecycle snapshot or slug mismatch");
   for (const [table, rows] of Object.entries(snapshot.tables)) {
     if (!tables.includes(table) || !Array.isArray(rows)) fail(`Invalid lifecycle table: ${table}`);
     assertSnapshotSafe(table, rows);

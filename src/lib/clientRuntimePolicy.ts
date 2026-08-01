@@ -15,6 +15,7 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/client-runtime/hosted-jobs",
   "/api/client-runtime/delivery",
   "/api/client-runtime/memory-import",
+  "/api/client-runtime/memory-graph",
   "/api/client-runtime/records",
   "/api/client-runtime/workflows",
   "/api/client-runtime/jobs",

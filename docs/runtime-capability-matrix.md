@@ -32,6 +32,10 @@ The local `8082` helper is currently healthy. The Cloud Run runtime must never d
   linked tenant memory record. It remains unavailable in the current deployed
   `veloce-cloud-test` revision until the reviewed image is deployed and the
   authenticated storage-to-record-to-export path is evidenced.
+- The tenant memory graph foundation turns explicit `#tags` in active memory
+  records into tenant-scoped document/tag nodes and source-linked edges. It
+  requires the new graph migration, reviewed deployment, and end-to-end
+  evidence. It is not yet Graphify AI extraction or semantic retrieval.
 
 ### Client-safe after provider API configuration and approval
 

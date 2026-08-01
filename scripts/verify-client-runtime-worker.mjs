@@ -22,6 +22,7 @@ const workerProvisioner = await readFile(join(root, "scripts/provision-client-wo
 const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
 const recordsRoute = await readFile(join(root, "src/app/api/client-runtime/records/route.ts"), "utf8");
 const memoryImportRoute = await readFile(join(root, "src/app/api/client-runtime/memory-import/route.ts"), "utf8");
+const memoryGraphRoute = await readFile(join(root, "src/app/api/client-runtime/memory-graph/route.ts"), "utf8");
 const workflowsRoute = await readFile(join(root, "src/app/api/client-runtime/workflows/route.ts"), "utf8");
 const workflowWorkspace = await readFile(join(root, "src/components/ClientWorkflowWorkspace.tsx"), "utf8");
 const credentialsRoute = await readFile(join(root, "src/app/api/client-runtime/credentials/route.ts"), "utf8");
@@ -32,6 +33,7 @@ const hostedSql = await readFile(join(root, "product-experience/supabase-client-
 const workflowReconciliationSql = await readFile(join(root, "product-experience/supabase-client-runtime-workflow-reconciliation.sql"), "utf8");
 const finalVerificationSql = await readFile(join(root, "product-experience/supabase-client-runtime-final-verification.sql"), "utf8");
 const recordsSql = await readFile(join(root, "product-experience/supabase-client-runtime-records.sql"), "utf8");
+const memoryGraphSql = await readFile(join(root, "product-experience/supabase-client-runtime-memory-graph.sql"), "utf8");
 const lifecycleScript = await readFile(join(root, "scripts/client-lifecycle.mjs"), "utf8");
 const providerAdapter = await readFile(join(root, "src/lib/clientProviderAdapter.ts"), "utf8");
 const providerContracts = await readFile(join(root, "src/lib/clientProviderContracts.ts"), "utf8");
@@ -64,6 +66,7 @@ const runtimeRateLimitedRoutes = [
   "src/app/api/client-runtime/artifacts/[id]/download/route.ts",
   "src/app/api/client-runtime/records/route.ts",
   "src/app/api/client-runtime/memory-import/route.ts",
+  "src/app/api/client-runtime/memory-graph/route.ts",
   "src/app/api/client-runtime/delivery/route.ts",
 ].map(async (relativePath) => [relativePath, await readFile(join(root, relativePath), "utf8")]);
 const runtimeRateLimitedRouteSources = await Promise.all(runtimeRateLimitedRoutes);
@@ -131,6 +134,12 @@ expect(memoryImportRoute.includes("currentClientMember") && memoryImportRoute.in
 expect(memoryImportRoute.includes("containsClientSecretLike") && memoryImportRoute.includes("memory_import_source_not_verified"), "memory import must reject secret-like content and require a verified source artifact");
 expect(memoryImportRoute.includes("client_runtime_records") && memoryImportRoute.includes("tenant.memory.exported"), "memory import/export must use tenant records and write redacted audit events");
 expect(runtimePolicy.includes('"/api/client-runtime/memory-import"') && provisioner.includes("/api/client-runtime/memory-import"), "memory import must be included in the reviewed client API allowlist");
+expect(memoryGraphRoute.includes("refresh_client_runtime_memory_graph") && memoryGraphRoute.includes("currentClientMember"), "memory graph refresh must use the authenticated tenant RPC");
+expect(memoryGraphRoute.includes("runtime_limit_unavailable") && memoryGraphRoute.includes("runtime_rate_limited"), "memory graph route must distinguish a limiter outage from rate limiting");
+expect(memoryGraphSql.includes("client_runtime_memory_graph_nodes") && memoryGraphSql.includes("client_runtime_memory_graph_edges") && memoryGraphSql.includes("refresh_client_runtime_memory_graph"), "memory graph migration must define tenant graph nodes, edges, and refresh RPC");
+expect(memoryGraphSql.includes("public.client_member(p_tenant_slug)") && memoryGraphSql.includes("tenant_slug = p_tenant_slug"), "memory graph refresh must enforce tenant membership and tenant-scoped rebuilds");
+expect(runtimePolicy.includes('"/api/client-runtime/memory-graph"') && provisioner.includes("/api/client-runtime/memory-graph"), "memory graph must be included in the reviewed client API allowlist");
+expect(lifecycleScript.includes('"client_runtime_memory_graph_nodes"') && lifecycleScript.includes('"client_runtime_memory_graph_edges"'), "lifecycle export and restore must include tenant memory graph data");
 expect(workflowsRoute.includes("clientCapabilityEnabled(\"orchestration\")"), "hosted workflow route must be capability gated");
 expect(workflowsRoute.includes("client_runtime_records") && workflowsRoute.includes("workflow"), "hosted workflow route must use tenant records");
 expect(workflowsRoute.includes("checkClientRuntimeRateLimit") && workflowsRoute.includes("runtime_limit_unavailable"), "workflow routes must distinguish limiter outages from genuine rate limiting");

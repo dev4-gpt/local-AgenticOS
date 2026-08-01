@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Archive, Check, Download, FileText, LockKeyhole, Plus, Save, Trash2, Upload } from "lucide-react";
+import { Archive, Check, Download, FileText, LockKeyhole, Network, Plus, RefreshCw, Save, Tag, Trash2, Upload } from "lucide-react";
 
 type Surface = "memory" | "journal" | "goals" | "notebook";
 type RecordItem = { id: string; title: string; content: string; status: "active" | "done" | "archived"; metadata?: Record<string, unknown>; created_at: string };
+type GraphNode = { id: string; label: string; kind: "document" | "tag" };
+type GraphEdge = { source_node_id: string; target_node_id: string };
 
 const COPY: Record<Surface, { title: string; eyebrow: string; kind: string; placeholder: string; content: string }> = {
   memory: { title: "Tenant Memory", eyebrow: "Context · Memory", kind: "memory", placeholder: "Name this decision or memory", content: "Write the approved project memory here..." },
@@ -20,6 +22,9 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   const [content, setContent] = useState("");
   const [busy, setBusy] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [graphNodes, setGraphNodes] = useState<GraphNode[]>([]);
+  const [graphEdges, setGraphEdges] = useState<GraphEdge[]>([]);
+  const [graphBusy, setGraphBusy] = useState(false);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -30,6 +35,17 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     if (!response?.ok && data?.error === "capability_not_enabled") setError("Tenant data is not enabled in this client manifest yet.");
   }
   useEffect(() => { void load(); }, [copy.kind]);
+
+  async function loadGraph() {
+    if (surface !== "memory") return;
+    const response = await fetch("/api/client-runtime/memory-graph", { cache: "no-store" }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    if (response?.ok) {
+      setGraphNodes(Array.isArray(data?.nodes) ? data.nodes : []);
+      setGraphEdges(Array.isArray(data?.edges) ? data.edges : []);
+    }
+  }
+  useEffect(() => { void loadGraph(); }, [surface]);
 
   async function add() {
     if (!title.trim() || !content.trim() || busy) return;
@@ -81,7 +97,7 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
       });
       const importedData = await imported.json().catch(() => null);
       if (!imported.ok) throw new Error(importedData?.error || "The memory source could not be imported.");
-      await load();
+      await load(); await loadGraph();
     } catch (importError) {
       setError(importError instanceof Error ? importError.message : "The memory source could not be imported.");
     } finally {
@@ -93,7 +109,18 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     window.location.assign("/api/client-runtime/memory-import?format=markdown");
   }
 
+  async function refreshGraph() {
+    if (surface !== "memory" || graphBusy) return;
+    setGraphBusy(true); setError("");
+    const response = await fetch("/api/client-runtime/memory-graph", { method: "POST" }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    if (!response?.ok) setError(data?.error || "The knowledge graph could not be refreshed.");
+    else await loadGraph();
+    setGraphBusy(false);
+  }
+
   const active = useMemo(() => records.filter((record) => record.status !== "archived"), [records]);
+  const tags = useMemo(() => graphNodes.filter((node) => node.kind === "tag"), [graphNodes]);
   return <div className="space-y-5">
     <section className="panel p-5 md:p-6">
       <div className="flex items-start gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg" style={{ background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.28)", color: "#60a5fa" }}><LockKeyhole size={18} /></div><div><p className="eyebrow">{copy.eyebrow}</p><h1 className="mt-2 text-[26px]" style={{ color: "var(--cream)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>{copy.title}</h1><p className="mt-2 max-w-3xl text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>This client edition stores records in the current tenant namespace with Supabase RLS. It does not read the operator vault or local filesystem.</p></div></div>
@@ -106,6 +133,7 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
       <div className="mt-4 flex items-center gap-3"><button type="button" onClick={add} disabled={busy || !title.trim() || !content.trim()} className="inline-flex items-center gap-2 rounded-md px-4 py-2.5 text-[11px] font-semibold" style={{ background: busy ? "rgba(255,255,255,0.1)" : "#60a5fa", color: busy ? "var(--cream-mute)" : "#07111d" }}><Save size={13} />{busy ? "Saving" : "Save to tenant"}</button><span className="text-[10px]" style={{ color: "var(--cream-mute)" }}>No secrets or credentials should be entered here.</span></div>
       {error && <p className="mt-3 text-[11px]" style={{ color: "#fda4af" }}>{error}</p>}
     </section>
+    {surface === "memory" && <section className="panel p-5 md:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2"><Network size={15} color="#a78bfa" /><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Knowledge graph</h2><span className="text-[10px]" style={{ color: "var(--cream-mute)" }}>{graphEdges.length} links</span></div><button type="button" onClick={refreshGraph} disabled={graphBusy} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><RefreshCw size={13} className={graphBusy ? "animate-spin" : ""} />{graphBusy ? "Refreshing" : "Refresh graph"}</button></div>{tags.length > 0 ? <div className="mt-4 flex flex-wrap gap-2">{tags.map((tag) => <span key={tag.id} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px]" style={{ borderColor: "rgba(167,139,250,0.28)", color: "#c4b5fd", background: "rgba(167,139,250,0.08)" }}><Tag size={11} />{tag.label}</span>)}</div> : <p className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>No graph links yet.</p>}</section>}
     <section className="space-y-3">
       {active.length === 0 && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No tenant records yet.</div>}
       {active.map((record) => <article key={record.id} className="panel p-4"><div className="flex items-start gap-3"><FileText size={15} color="#60a5fa" className="mt-0.5" /><div className="min-w-0 flex-1"><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>{record.title}</h2><p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>{record.content}</p><p className="mt-3 text-[10px]" style={{ color: "var(--cream-mute)" }}>{new Date(record.created_at).toLocaleString()} · {record.status}</p></div><div className="flex items-center gap-1"><button type="button" title={record.status === "done" ? "Mark active" : "Mark done"} onClick={() => update(record.id, record.status === "done" ? "active" : "done")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: record.status === "done" ? "#34d399" : "var(--cream-mute)" }}><Check size={13} /></button><button type="button" title="Archive" onClick={() => update(record.id, "archived")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "var(--cream-mute)" }}><Archive size={13} /></button><button type="button" title="Delete" onClick={() => remove(record.id)} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "#fda4af" }}><Trash2 size={13} /></button></div></div></article>)}
