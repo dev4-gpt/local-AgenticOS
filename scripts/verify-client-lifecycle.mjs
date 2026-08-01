@@ -16,7 +16,7 @@ function expect(condition, message) {
   if (!condition) failures.push(message);
 }
 
-expect(lifecycle.includes("schemaVersion: 2"), "lifecycle exports must use the credential-safe schema version");
+expect(lifecycle.includes("schemaVersion: 3"), "lifecycle exports must use the current credential-safe schema version");
 expect(lifecycle.includes("const exportColumns = Object.freeze"), "lifecycle exports must use an explicit column allowlist");
 expect(!lifecycle.includes("select=*"), "lifecycle exports must never use select=*");
 expect(lifecycle.includes("client_tenants: \"slug,name,status,retention_days,created_at,updated_at\""), "tenant exports must exclude worker_token_hash");

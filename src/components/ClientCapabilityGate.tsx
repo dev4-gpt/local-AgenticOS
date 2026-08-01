@@ -22,7 +22,7 @@ const REQUIREMENTS: Record<string, string[]> = {
   "/grok": ["XAI_API_KEY"],
   "/freeclaude": ["OPENROUTER_API_KEY"],
   "/fusion": ["OPENROUTER_API_KEY"],
-  "/sakana": ["OPENROUTER_API_KEY"],
+  "/sakana": ["SAKANA_API_KEY"],
   "/video": ["HEYGEN_API_KEY"],
   "/music": ["SUNO_API_KEY"],
   "/web-studio": ["OPENAI_API_KEY"],

@@ -92,6 +92,7 @@ Use these mappings when the corresponding provider API and model are approved:
 | Claude | Anthropic text adapter | `ANTHROPIC_API_KEY` |
 | Codex | OpenAI code-plan adapter | `OPENAI_API_KEY` |
 | OpenClaw, Hermes, Free Claude, Fusion | Reviewed OpenRouter adapter, not the local CLI | `OPENROUTER_API_KEY` |
+| Sakana Fugu | Sakana OpenAI-compatible adapter | `SAKANA_API_KEY` |
 | Gemini, Antigravity | Gemini API adapter | `GEMINI_API_KEY` |
 | Kimi | Moonshot API adapter | `MOONSHOT_API_KEY` |
 | GLM / GLM Code | Z.ai API adapter | `GLM_API_KEY` |
@@ -184,3 +185,98 @@ server API, the client only has a consumer subscription, billing is not
 approved, a local dependency has no cloud replacement, or an end-to-end test
 does not pass. Do not silently broaden scopes, reuse another tenant's secret,
 or enable a provider to make a UI appear complete.
+
+----------
+
+The goal is not to copy every local dependency into the cloud. The goal is to give each client a **production-ready cloud edition that supports their approved workflows**, with the same Veloce experience and controls.
+
+Your local version stays your private operator OS. Each client gets a separate, safer edition from the same codebase.
+
+**The Repeatable Client Process**
+
+1. **Define the client’s first use case**  
+   Choose 1-3 workflows, such as content research, reviewed website planning, or AI-assisted operations. Do not start with every tab or every provider.
+
+2. **Create the client capability matrix**  
+   Use [client-capability-matrix-template.md](/Users/aryamandev/Documents/AgentOS/source/skills/veloce-client-capability-onboarding/references/client-capability-matrix-template.md).  
+   Mark every requested feature as:
+   - `proven`
+   - `adapter required`
+   - `operator-only`
+   - `pending external input`
+   - `blocked`
+
+3. **Create an isolated client edition**  
+   Each client gets their own:
+   - Supabase tenant and approved users
+   - Cloud Run service
+   - service account
+   - Secret Manager namespace
+   - Cloud Storage namespace
+   - Cloud Tasks queue
+   - budget cap, alerts, retention rule, and approval policy
+
+4. **Deploy the safe baseline first**  
+   Deploy the same tested Veloce image with providers disabled. Prove login, tenant isolation, records, artifacts, workflows, approvals, audit logs, backups, export, deletion, and recovery.
+
+5. **Onboard only required API credentials**  
+   The client uses `/credentials` to submit only the provider API keys needed for their selected workflow.  
+   They do not submit every key, passwords, cookies, Claude/Codex subscription sessions, or local credentials.
+
+6. **Promote and configure each approved provider**  
+   For one provider at a time, we:
+   - move the submitted key into that client’s Secret Manager slot;
+   - select the exact allowed model;
+   - add model pricing and a monthly budget cap;
+   - enable the matching capability;
+   - deploy a new client revision.
+
+7. **Prove the complete path**  
+   Every enabled capability must pass:
+
+```text
+client UI
+-> authenticated tenant request
+-> private queue/worker
+-> approved provider and model
+-> budget reservation
+-> redacted audit record
+-> client-scoped result or artifact
+```
+
+It must also prove a failure path: wrong tenant, missing key, unapproved model, exhausted budget, or denied external action.
+
+8. **Handle local-only features honestly**  
+   Local Claude/Codex CLI sessions, Ollama, Obsidian, Mac files, local agent workspaces, and personal subscriptions do not move directly to Cloud Run.  
+   Each needs a separate cloud replacement, usually an API adapter plus tenant storage.
+
+9. **Client acceptance and launch**  
+   Give the client a short onboarding guide showing:
+   - what is active;
+   - what it costs;
+   - who can approve spend or delivery;
+   - what data is stored;
+   - what remains unavailable.
+
+10. **Operate and expand carefully**  
+   Monitor budget, alerts, failures, queues, and feedback. Add one new provider or capability at a time, prove it, document it, and push the update. Do not turn on a whole category because a key exists.
+
+11. **Offboard cleanly when needed**  
+   Export approved data, revoke credentials, apply retention/deletion, remove client resources, and keep the offboarding evidence.
+
+**What you need to do**
+
+- Define the client workflow and budget.
+- Obtain client-owned API keys when required.
+- Decide who approves spend and external delivery.
+- Review the capability matrix with the client.
+
+**What I can handle**
+
+- Build the client matrix and manifest.
+- Provision the isolated cloud infrastructure.
+- Configure Secret Manager, storage, queues, alerts, and permissions.
+- Deploy, test, document, commit, push, and maintain the runtime.
+- Pause before any manual credential or billing action and give you one beginner-friendly step at a time.
+
+Use [Veloce Client Capability Onboarding](/Users/aryamandev/Documents/AgentOS/source/skills/veloce-client-capability-onboarding/SKILL.md) as the repeatable playbook. It is the answer to “what exactly can this client use, and is it actually proven?”

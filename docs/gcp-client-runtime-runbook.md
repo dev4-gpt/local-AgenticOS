@@ -409,13 +409,14 @@ alias.
 
 The controls migration adds idempotent job enqueue, claim, completion, retry,
 cancel, and worker-budget functions. The application now has a Cloud Tasks
-submission route and an OIDC-verified worker route. The deployed v51 client
-shell keeps provider calls disabled; the active cloud-test revision has the
-worker flag, Secret Manager token binding, and artifacts capability. Successful
-text, media, and SEO work settles its bounded budget reservation after the
-provider result is durably stored; terminal provider failures settle to zero,
-while retryable or still-processing work retains its reservation. Authenticated
-end-to-end job and artifact checks remain separate gates. The worker never receives the
+submission route and an OIDC-verified worker route. The release-gate baseline
+keeps provider calls disabled; the current owner-cloud test revision
+`veloce-cloud-test-00078-xbc` enables `text-agents` for approved Anthropic,
+OpenRouter, and Gemini/Antigravity lanes only. Successful text, media, and SEO
+work settles its bounded budget reservation after the provider result is
+durably stored; terminal provider failures settle to zero, while retryable or
+still-processing work retains its reservation. Authenticated end-to-end job
+and artifact checks remain separate gates. The worker never receives the
 Supabase service-role key or a client browser session.
 
 The workflow write limiter is durable per tenant, bucket, and authenticated

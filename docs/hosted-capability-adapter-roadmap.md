@@ -1,6 +1,6 @@
 # Hosted Capability Adapter Roadmap
 
-Updated 2026-07-27.
+Updated 2026-08-01.
 
 This is the implementation order for turning the private `3939` operator
 edition into a safe client edition. A provider key alone does not make a tab
@@ -22,8 +22,8 @@ private.
 
 | Group | Surfaces | Replacement | Gate evidence |
 |---|---|---|---|
-| Text agents | Claude, Codex, OpenClaw, Hermes, Kimi, GLM, Grok | Tenant-safe queued API workspace now routes these surfaces away from local CLI; provider-specific protocol and bounded reviewed-plan tool contracts are implemented, while manifest activation remains gated | Authenticated request, correct client key, capped spend, redacted logs, retry/idempotency test |
-| Local execution | Local, Local Engine, Free Claude Code | Client edition routes Local/Engine to the queued API model workspace and Free Claude Code to its OpenRouter adapter; all three passed the scoped Gate 12 `openrouter/free` smoke, while the 3939 local model/CLI remains operator-only | No shell or localhost dependency in the client image; scoped provider key, reviewed model, budget, and isolation smoke passed; the current runtime has provider calls disabled |
+| Text agents | Claude, Codex, OpenClaw, Hermes, Kimi, GLM, Grok | Tenant-safe queued API workspace routes these surfaces away from local CLI; Anthropic, OpenRouter, and Gemini/Antigravity are configured in the owner-cloud test manifest, while Codex/OpenAI and the remaining providers stay gated until their keys, billing, model allowlists, and smoke evidence exist | Authenticated request, correct client key, capped spend, redacted logs, retry/idempotency test |
+| Local execution | Local, Local Engine, Free Claude Code | Client edition routes Local/Engine to the queued API model workspace and Free Claude Code to its OpenRouter adapter; all three passed the scoped Gate 12 `openrouter/free` smoke, while the 3939 local model/CLI remains operator-only | No shell or localhost dependency in the client image; scoped provider key, reviewed model, budget, and isolation smoke passed; the owner-cloud runtime now has OpenRouter/Gemini provider calls enabled under a $1 test cap |
 | Orchestration | Paperclip, Pipeline, Agent Kanban, Loop, Ruflo | Tenant workflow board now persists scoped work items and step state in Supabase; provider-backed agent execution remains a separate opt-in adapter | Create, update, archive, delete, ownership/audit, tenant A/B test, then queue-backed provider execution where enabled |
 | Memory and context | Memory, Notebook, Journal, Goals, Context intake | Tenant-scoped Supabase records adapter is implemented for text records; Cloud Storage attachments and retention policy remain | Apply hosted-capabilities migration, then prove RLS, signed download, export, delete, retention, and private-cache behavior |
 | Creative workspaces | Open Design, Web Studio, Flow Lab, Video, Music, Agent Studio, OpenMontage, Game Studio, Thumbnails | Tenant brief/request workspaces are available for design surfaces; ElevenLabs speech, Suno music polling, HeyGen polling, and the tenant artifact pipeline are implemented; image/video/workspace parity remains | Provider allowlist, output object ownership, signed access, budget, approval |

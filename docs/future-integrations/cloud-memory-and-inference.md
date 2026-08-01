@@ -83,6 +83,17 @@ smoke confirmed that selecting a tag reveals the related tenant record in the
 map. This is available as a bounded, explicit-tag memory feature, not as a
 claim of semantic Graphify parity.
 
+**Owner-cloud inference checkpoint:** the owner-operated `veloce-cloud-test`
+manifest now enables `text-agents` with approved Secret Manager slots for
+Anthropic, OpenRouter, and Gemini. Revision `veloce-cloud-test-00078-xbc`
+serves 100% of Cloud Run traffic with OpenRouter pinned to
+`google/gemini-2.5-flash-lite` and Gemini/Antigravity pinned to
+`gemini-2.5-flash-lite`, both under the recorded $1 monthly test cap.
+Codex/OpenAI remains deliberately excluded from this checkpoint because API
+billing has not been approved. This activates a low-cost hosted API lane; it
+does not activate local Ollama, local CLI subscriptions, or arbitrary local
+tool execution in Cloud Run.
+
 **Remaining build work:** selected-folder sync, broader document extraction,
 document metadata schema, indexing queue, retrieval, model-assisted graph
 extraction, graph clustering, deletion coordination between records and source

@@ -1,6 +1,7 @@
 # Runtime Capability Matrix
 
-Updated 2026-07-26 after verifying the local processes and the first Cloud Run client-safe image.
+Updated 2026-08-01 after the tenant memory graph deployment and the
+owner-cloud OpenRouter/Gemini activation checkpoint.
 
 For the complete 13-layer business readiness assessment, shareability decision,
 and tab-by-tab operator dependency inventory, see
@@ -24,18 +25,13 @@ The local `8082` helper is currently healthy. The Cloud Run runtime must never d
 - Context intake, workflow requests, production briefs, and delivery review. These are Supabase-backed intake surfaces and do not need a model key to submit a request.
 - Credentials status and catalogued provider submission to the client vault inbox, once the GCP inbox secret and IAM grant are configured. Submission does not activate a provider; promotion, manifest binding, and deployment are separate gates.
 - Capabilities registry, when it contains only built-in capabilities with no operator destination.
-
-### Implemented, awaiting deployment evidence
-
-- Tenant Memory has a Markdown/text source import and Markdown export contract.
-  Import stores the original source as a verified tenant artifact and creates a
-  linked tenant memory record. It remains unavailable in the current deployed
-  `veloce-cloud-test` revision until the reviewed image is deployed and the
-  authenticated storage-to-record-to-export path is evidenced.
-- The tenant memory graph foundation turns explicit `#tags` in active memory
-  records into tenant-scoped document/tag nodes and source-linked edges. It
-  requires the new graph migration, reviewed deployment, and end-to-end
-  evidence. It is not yet Graphify AI extraction or semantic retrieval.
+- Tenant Memory Markdown/text import and Markdown export are deployed in the
+  client runtime. Import stores the original source as a verified tenant
+  artifact and creates a linked tenant memory record.
+- The tenant memory knowledge map turns explicit Markdown `#tags` in active
+  tenant memory records into document/tag nodes and source-linked edges. This
+  is a bounded hosted memory feature, not Graphify AI extraction or semantic
+  retrieval.
 
 ### Client-safe after provider API configuration and approval
 
@@ -45,7 +41,8 @@ These can be exposed only through server-side provider APIs, a per-client allowl
 |---|---|
 | Claude | `ANTHROPIC_API_KEY` |
 | Codex | `OPENAI_API_KEY` |
-| OpenClaw, Hermes, Free Claude Code, Fusion, Sakana | `OPENROUTER_API_KEY` or a reviewed replacement adapter |
+| OpenClaw, Hermes, Free Claude Code, Fusion | `OPENROUTER_API_KEY` or a reviewed replacement adapter |
+| Sakana Fugu | `SAKANA_API_KEY` through the reviewed Sakana adapter |
 | Antigravity | `GEMINI_API_KEY` |
 | Kimi Code | `MOONSHOT_API_KEY` |
 | GLM 5.2 and GLM Code | `GLM_API_KEY` |
@@ -61,9 +58,11 @@ Adding one of these keys does not automatically enable the route. The implementa
 - Local and Local Engine routes use the hosted, queued API model workspace in
   the client edition. Scoped Gate 12 jobs proved the Local, Engine, and Free
   Claude adapters against reviewed `openrouter/free`; they do not expose
-  Ollama, local files, or local agent execution. The current client revision
-  has provider calls disabled again, so a future activation still requires the
-  approved key, model allowlist, budget, and manifest capability.
+  Ollama, local files, or local agent execution. The current owner-cloud
+  `veloce-cloud-test` revision enables provider calls for the approved
+  Anthropic, OpenRouter, and Gemini/Antigravity lanes with exact model
+  allowlists, pricing, and a $1 monthly test cap. Codex/OpenAI remains gated
+  until a separate OpenAI API key and billing decision are approved.
 - Open Design, Web Studio, Flow Lab, Agent Studio, OpenMontage, Game Studio,
   Thumbnail Studio, Integrations, Leads, Radar, and Build Guide now have a
   tenant-safe brief/request workspace. Provider generation, publishing, and
@@ -89,16 +88,23 @@ These currently rely on local infrastructure or personal operator state and ther
 
 To move one of these into a client edition, build a separate adapter using Supabase/Cloud Storage/Cloud Tasks and provider APIs. Do not make the browser call a localhost service and do not copy the operator vault into the image.
 
-## First cloud test configuration
+## Cloud test configuration
 
-The current `veloce-cloud-test` manifest intentionally enables `tenant-data`,
-`orchestration`, `delivery`, and `quality`, and allowlists only `SUPABASE_URL`
-and `SUPABASE_ANON_KEY`. This is the correct narrow starting point for testing
-identity, tenant records, workflow state, intake, secret handling, route
-boundaries, and approval behavior. It is not yet the full hosted version of
-the local operator OS.
+The release-gate baseline for `veloce-cloud-test` intentionally proved
+`tenant-data`, `orchestration`, `delivery`, and `quality` with provider calls
+disabled. That remains the rollback-capable safety baseline.
 
-The next safe expansion is one adapter at a time: add its API contract, tenant-scoped persistence, approval behavior, provider secret reference, acceptance tests, and only then add the capability and route to a client manifest.
+The current owner-cloud checkpoint additionally enables `text-agents` for the
+operator-owned test account only. It allowlists Supabase, Anthropic,
+OpenRouter, and Gemini secrets, pins exact models, records pricing, and keeps
+the monthly test cap at $1. This is a controlled activation step toward local
+parity; it is not a claim that every local tab, CLI subscription, vault,
+Ollama model, or personal tool is now cloud-safe.
+
+The next safe expansion is still one adapter at a time: add its API contract,
+tenant-scoped persistence, approval behavior, provider secret reference,
+acceptance tests, and only then add the capability and route to a client
+manifest.
 
 ## Content and copyright boundary
 

@@ -30,6 +30,7 @@ Use one status only: `proven`, `adapter required`, `operator-only`, `pending ext
 | Claude |  | Anthropic API adapter | `ANTHROPIC_API_KEY`, model, pricing |  |  |
 | Codex |  | OpenAI API code-plan adapter | `OPENAI_API_KEY`, model, pricing |  |  |
 | OpenClaw / Hermes / Free Claude / Fusion |  | Reviewed OpenRouter adapter | `OPENROUTER_API_KEY`, model, pricing |  |  |
+| Sakana Fugu |  | Sakana OpenAI-compatible adapter | `SAKANA_API_KEY`, model, pricing |  |  |
 | Gemini / Antigravity |  | Gemini API adapter | `GEMINI_API_KEY`, model, pricing |  |  |
 | Kimi |  | Moonshot API adapter | `MOONSHOT_API_KEY`, model, pricing |  |  |
 | GLM / GLM Code |  | Z.ai API adapter | `GLM_API_KEY`, model, pricing |  |  |
