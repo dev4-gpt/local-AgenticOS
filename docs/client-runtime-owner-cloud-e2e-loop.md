@@ -64,3 +64,24 @@ A route is accepted only when one of these is true:
 - it is documented as intentionally gated for the current manifest.
 
 A route is not accepted when it returns a raw code with no explanation, silently fails, stores data outside the tenant namespace, calls an unapproved provider, or requires the user to inspect Cloud logs to understand normal runtime state.
+
+## Repeatable Harness
+
+Use the authenticated surface-map verifier when a protected runtime cookie file is available:
+
+```bash
+npm run verify:client-surface-map -- \
+  --url https://veloce-cloud-test-mquo4bf7aq-el.a.run.app \
+  --cookie-file /path/to/veloce-runtime-cookie.txt
+```
+
+Add `--provider-smoke` only when live provider spend is intentionally approved:
+
+```bash
+npm run verify:client-surface-map -- \
+  --url https://veloce-cloud-test-mquo4bf7aq-el.a.run.app \
+  --cookie-file /path/to/veloce-runtime-cookie.txt \
+  --provider-smoke
+```
+
+The cookie file must be mode `0600` and contain only the two runtime session cookies. The verifier updates rotated cookies in place without printing them.
