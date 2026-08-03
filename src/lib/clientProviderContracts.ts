@@ -39,6 +39,19 @@ const REVIEWED_PLAN_PARAMETERS = {
   required: ["summary", "steps"],
 };
 
+const GEMINI_FUNCTION_SCHEMA_FIELDS = new Set(["type", "format", "description", "nullable", "properties", "items", "enum", "required"]);
+
+function toGeminiFunctionSchema(value: unknown, parentKey = ""): unknown {
+  if (Array.isArray(value)) return value.map((item) => toGeminiFunctionSchema(item));
+  if (!value || typeof value !== "object") return value;
+  const output: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (parentKey !== "properties" && !GEMINI_FUNCTION_SCHEMA_FIELDS.has(key)) continue;
+    output[key] = toGeminiFunctionSchema(item, key);
+  }
+  return output;
+}
+
 const CONTRACTS: Record<string, ClientProviderContract> = {
   anthropic: { protocol: "anthropic", workspace: "tenant-records", toolMode: "none", maxPromptChars: 16000, maxHistoryMessages: 12, maxOutputTokens: 4096, attribution: "none" },
   openai: { protocol: "openai", workspace: "tenant-records", toolMode: "none", maxPromptChars: 20000, maxHistoryMessages: 16, maxOutputTokens: 4096, attribution: "none" },
@@ -88,7 +101,7 @@ export function clientProviderToolPayload(provider: string) {
   }
   if (contract.protocol === "gemini") {
     return {
-      tools: [{ functionDeclarations: [{ name: CLIENT_REVIEWED_PLAN_TOOL, description: "Propose a bounded plan for human review. This tool cannot execute work or access external systems.", parameters: REVIEWED_PLAN_PARAMETERS }] }],
+      tools: [{ functionDeclarations: [{ name: CLIENT_REVIEWED_PLAN_TOOL, description: "Propose a bounded plan for human review. This tool cannot execute work or access external systems.", parameters: toGeminiFunctionSchema(REVIEWED_PLAN_PARAMETERS) }] }],
       toolConfig: { functionCallingConfig: { mode: "ANY", allowedFunctionNames: [CLIENT_REVIEWED_PLAN_TOOL] } },
     };
   }

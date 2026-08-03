@@ -5,7 +5,19 @@ client-runtime release. Do not restart from the requirements document or infer
 completion from a screenshot. Each gate is either proven by the evidence below,
 implemented but unproven, or waiting on an explicitly listed external input.
 
+Owner-cloud provider activation and broader product-parity testing after the
+13-gate release candidate are tracked in
+[Owner Cloud End-to-End Loop](./client-runtime-owner-cloud-e2e-loop.md).
+
 ## Current Snapshot
+
+2026-08-03 owner-cloud note: the controlled 13-gate release remains the
+baseline below. A newer internal owner-cloud track enabled Anthropic,
+OpenRouter, and Gemini through the same tenant boundary for
+`veloce-cloud-test`; OpenAI/Codex remains intentionally excluded until separate
+API billing/key setup is approved. A Gemini reviewed-plan schema mismatch was
+diagnosed from live `provider_request_failed` logs and fixed in source with
+readable runtime notices across provider, hosted-job, and workflow surfaces.
 
 ## Finish Target
 

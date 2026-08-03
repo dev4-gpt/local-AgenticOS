@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Clock3, KeyRound, LockKeyhole, Send, ShieldCheck, XCircle } from "lucide-react";
+import ClientRuntimeNotice from "@/components/ClientRuntimeNotice";
 
 type Message = { role: "user" | "assistant"; content: string };
 type RuntimeStatus = { providerCallsEnabled?: boolean; clientEdition?: boolean };
@@ -70,7 +71,7 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
         setCredentials(data?.credentials ?? []);
         setStatus("ready");
       })
-      .catch(() => { if (!cancelled) { setStatus("error"); setError("Runtime status could not be loaded."); } });
+      .catch(() => { if (!cancelled) { setStatus("error"); setError("runtime_status_unavailable"); } });
     return () => { cancelled = true; if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
@@ -89,7 +90,7 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
     const data = await response?.json().catch(() => null);
     if (!response?.ok || !data?.jobId) {
       setStatus("error");
-      setError(data?.error === "provider_calls_require_approval" ? "Provider calls are awaiting Veloce approval." : data?.error || "The request could not be queued.");
+      setError(data?.error || "task_enqueue_failed");
       return;
     }
     poll(data.jobId);
@@ -109,7 +110,7 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
         if (pollRef.current) clearInterval(pollRef.current);
       } else if (job?.status === "failed" || job?.status === "cancelled" || attempts >= 90) {
         setStatus("error");
-        setError(job?.error_code || "The provider job did not complete.");
+        setError(job?.error_code || "provider_job_incomplete");
         if (pollRef.current) clearInterval(pollRef.current);
       }
     }, 1000);
@@ -126,15 +127,15 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
       </section>
 
       <section className="panel p-5">
-        <div className="flex items-center justify-between gap-3 flex-wrap"><div className="flex items-center gap-2"><ShieldCheck size={15} color="#fbbf24" /><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Provider boundary</h2></div><span className="text-[10px] uppercase tracking-[0.12em]" style={{ color: runtime.providerCallsEnabled && connected ? "#34d399" : "var(--cream-mute)" }}>{runtime.providerCallsEnabled && connected ? "Approved and connected" : "Not enabled"}</span></div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 text-[11px]" style={{ color: "var(--cream-dim)" }}><div className="flex items-center gap-2">{connected ? <CheckCircle2 size={14} color="#34d399" /> : <XCircle size={14} color="#fda4af" />} {providerLabel}: {connected ? "Connected" : "Not connected"}</div><div className="flex items-center gap-2"><Clock3 size={14} color="#60a5fa" /> Long work uses the tenant queue</div></div>
+        <div className="flex items-center justify-between gap-3 flex-wrap"><div className="flex items-center gap-2"><ShieldCheck size={15} color="#92400e" /><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Provider boundary</h2></div><span className="rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.12em]" style={{ color: runtime.providerCallsEnabled && connected ? "#047857" : "#92400e", background: runtime.providerCallsEnabled && connected ? "rgba(16,185,129,0.12)" : "rgba(251,191,36,0.14)", borderColor: runtime.providerCallsEnabled && connected ? "rgba(4,120,87,0.28)" : "rgba(146,64,14,0.28)" }}>{runtime.providerCallsEnabled && connected ? "Approved and connected" : "Not enabled"}</span></div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 text-[11px]" style={{ color: "var(--cream-dim)" }}><div className="flex items-center gap-2">{connected ? <CheckCircle2 size={14} color="#047857" /> : <XCircle size={14} color="#991b1b" />} {providerLabel}: {connected ? "Connected" : "Not connected"}</div><div className="flex items-center gap-2"><Clock3 size={14} color="#1d4ed8" /> Long work uses the tenant queue</div></div>
         {(!runtime.providerCallsEnabled || !connected) && <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px]" style={{ color: "var(--cream-mute)" }}>{!connected && <Link href="/credentials" className="inline-flex items-center gap-2 rounded-md border px-3 py-2" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><KeyRound size={13} /> Manage credentials</Link>}<span>{!runtime.providerCallsEnabled ? "Provider calls require manual Veloce approval." : "Add the approved provider key to continue."}</span></div>}
       </section>
 
       <section className="panel p-5">
         <div className="min-h-[260px] space-y-3">{messages.length === 0 && <div className="grid min-h-[220px] place-items-center text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>Ask an approved question when this provider is enabled.</div>}{messages.map((message, index) => <div key={`${message.role}-${index}`} className={`max-w-[88%] rounded-lg border p-3 text-[12px] leading-relaxed ${message.role === "user" ? "ml-auto" : "mr-auto"}`} style={{ borderColor: message.role === "user" ? "rgba(96,165,250,0.3)" : "var(--line-soft)", background: message.role === "user" ? "rgba(96,165,250,0.08)" : "rgba(255,255,255,0.025)", color: "var(--cream-dim)" }}>{message.content}</div>)}</div>
         <div className="mt-4 flex items-end gap-2 border-t pt-4" style={{ borderColor: "var(--line-soft)" }}><textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={blocked || status === "queued"} onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); submit(); } }} className="min-h-[48px] flex-1 resize-y rounded-md border px-3 py-2 text-[12px] outline-none" style={{ background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)", color: "var(--cream)" }} placeholder={blocked ? "Provider access is awaiting approval" : "Ask the approved provider..."} /><button type="button" onClick={submit} disabled={blocked || !prompt.trim() || status === "queued"} className="inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-[11px] font-semibold" style={{ background: blocked ? "rgba(255,255,255,0.08)" : "#60a5fa", color: blocked ? "var(--cream-mute)" : "#07111d" }}><Send size={13} />{status === "queued" ? "Working" : "Send"}</button></div>
-        {error && <p className="mt-3 text-[11px]" style={{ color: "#fda4af" }}>{error}</p>}
+        {error && <ClientRuntimeNotice code={error} />}
       </section>
     </div>
   );
