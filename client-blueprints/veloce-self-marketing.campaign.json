@@ -1,0 +1,167 @@
+{
+  "campaignId": "veloce-self-marketing-ai-product-teams-v1",
+  "campaignName": "Veloce Self-Marketing Acceptance Campaign",
+  "audience": "AI and product teams",
+  "cta": "https://product-experience-five.vercel.app/start",
+  "mode": "guided-drafts-and-test-delivery",
+  "records": [
+    {
+      "kind": "memory",
+      "title": "Veloce positioning",
+      "content": "Veloce AgenticOS is a governed AI operating system for turning context, research, decisions, workflows, creative production, and delivery into one controlled operating loop. It combines tenant memory, multiple AI providers, workflow orchestration, approval gates, artifacts, auditability, and lead capture without copying an operator's private laptop environment into the cloud. Tags #veloce #positioning #content"
+    },
+    {
+      "kind": "memory",
+      "title": "Ideal customer profile",
+      "content": "Primary audience is an AI or product team coordinating research, decisions, agents, content, delivery, and approvals across several tools. Strong signals include provider sprawl, unclear ownership, repeated context loss, unreviewed automation, and a need for tenant isolation. Tags #veloce #icp #gtm"
+    },
+    {
+      "kind": "memory",
+      "title": "Core customer problems",
+      "content": "The campaign should address fragmented AI tools, context that disappears between tasks, unclear human approval points, weak audit trails, unsafe external delivery, duplicated research, and difficulty proving which model or workflow produced an outcome. Tags #veloce #icp #content"
+    },
+    {
+      "kind": "memory",
+      "title": "Veloce capabilities",
+      "content": "Proven hosted capabilities include tenant-scoped authentication, tenant records, Markdown memory import and export, explicit tag-based knowledge graphs, multiple allowlisted provider adapters, deterministic workflow orchestration, approval-oriented plans, artifacts, delivery controls, audit records, budgets, monitoring, and public lead capture. Tags #veloce #proof"
+    },
+    {
+      "kind": "memory",
+      "title": "Proof and current limitations",
+      "content": "Proof must distinguish verified hosted behavior from future integrations. Current hosted proof includes tenant isolation, records, workflows, reviewed plans, approved provider calls, test delivery controls, and lead capture. Current limitations include no local Ollama execution, no Obsidian filesystem access, no full Graphify semantic extraction, no automatic social publishing, no live prospect discovery without an approved adapter, and no Codex access without separate API billing. Tags #veloce #proof #governance"
+    },
+    {
+      "kind": "memory",
+      "title": "Objections and responses",
+      "content": "Objection: Is this just a chat wrapper? Response: The product is organized around context, ownership, review, workflow state, artifacts, delivery, and audit evidence. Objection: Is it a copy of a laptop setup? Response: No; the hosted edition deliberately uses tenant-scoped replacements and makes its boundaries explicit. Objection: Does automation publish without approval? Response: This campaign uses drafts and test delivery only. Tags #veloce #content #governance"
+    },
+    {
+      "kind": "memory",
+      "title": "Brand voice",
+      "content": "Use precise, ambitious, calm language. Lead with the operational problem, show the loop, name the proof, and state limitations without hiding them. Avoid inflated claims such as fully autonomous, perfect parity, or zero oversight. Tags #veloce #content #governance"
+    },
+    {
+      "kind": "memory",
+      "title": "Offer and CTA",
+      "content": "Offer an owner-guided product walkthrough for AI and product teams. CTA: Want to see how a governed AI operating loop could work for your team? Start here: https://product-experience-five.vercel.app/start. Tags #veloce #gtm #content"
+    },
+    {
+      "kind": "memory",
+      "title": "Campaign governance rules",
+      "content": "Drafts and test delivery only. Human approval is required before publication, outreach, or consequential delivery. Use allowlisted providers and models within the owner-cloud budget. Never place credentials or private operator data in prompts or tenant records. Claims must separate proven hosted features from future integrations. Tags #veloce #governance"
+    },
+    {
+      "kind": "memory",
+      "title": "Campaign success metrics",
+      "content": "Measure completion of the guided acceptance loop, provider smoke outcomes, tenant record and workflow evidence, quality of the campaign assets, successful test delivery, distinguishable public lead capture from both forms, email receipt, qualified replies, and documented intentional gates. No public publishing is a success criterion for this first run. Tags #veloce #gtm #proof"
+    }
+  ],
+  "workflows": [
+    {
+      "surface": "orchestrate",
+      "operation": "plan",
+      "title": "Veloce AI product-team launch campaign",
+      "goal": "Produce a reviewed campaign that explains Veloce, demonstrates its governed AI workflow, generates qualified interest, and routes prospects to the public intake form. Stages: research audience pain; define product narrative; draft launch content; create a one-minute explanation; prepare SEO topics; prepare lead magnet; review claims and privacy boundaries; approve drafts; test delivery; measure responses. Human approval is required before external publication or outreach."
+    },
+    {
+      "surface": "paperclip",
+      "operation": "plan",
+      "title": "Veloce campaign paperclip workstream",
+      "goal": "Map campaign assets to bounded work items, owners, dependencies, review gates, and reversible handoffs. Capture the result as tenant workflow evidence; do not publish externally."
+    },
+    {
+      "surface": "room",
+      "operation": "plan",
+      "title": "Veloce campaign coordination room",
+      "goal": "Coordinate research, narrative, content, SEO, lead capture, and delivery review as separate workstreams with a final human approval checkpoint."
+    },
+    {
+      "surface": "pipeline",
+      "operation": "plan",
+      "title": "Veloce campaign pipeline",
+      "goal": "Move the internal campaign from brief to reviewed draft to test delivery while recording owner, priority, evidence, and blocked provider gates."
+    },
+    {
+      "surface": "agent-kanban",
+      "operation": "plan",
+      "title": "Veloce campaign agent kanban",
+      "goal": "Create bounded campaign work items for narrative, short-form video, SEO, lead magnet, FAQ, and evidence collection with approval required before delivery."
+    },
+    {
+      "surface": "kanban",
+      "operation": "plan",
+      "title": "Veloce campaign review board",
+      "goal": "Track each campaign asset through draft, evidence review, claim review, approval, test delivery, and measurement."
+    },
+    {
+      "surface": "loop",
+      "operation": "iterate",
+      "title": "Veloce campaign learning loop",
+      "goal": "Use audience response, provider results, lead capture evidence, and review findings to decide the next bounded campaign iteration."
+    },
+    {
+      "surface": "ruflo",
+      "operation": "plan",
+      "title": "Veloce campaign multi-agent handoff",
+      "goal": "Define a reviewed multi-agent handoff for research, copy, SEO, governance, and evidence without enabling autonomous external actions."
+    }
+  ],
+  "briefs": [
+    {
+      "surface": "create",
+      "type": "create",
+      "title": "Veloce master launch brief",
+      "details": "Create the governed campaign narrative and asset plan for AI and product teams. Include problem, mechanism, proof, limitations, CTA, review gates, and evidence requirements.",
+      "fields": { "campaignId": "veloce-self-marketing-ai-product-teams-v1", "audience": "AI and product teams", "cta": "https://product-experience-five.vercel.app/start", "approvalRequired": true }
+    },
+    {
+      "surface": "opendesign",
+      "type": "create",
+      "title": "Veloce landing page improvement brief",
+      "details": "Draft a clear product landing-page improvement brief showing the governed operating loop, tenant boundary, proof, limitations, and intake CTA.",
+      "fields": { "campaignId": "veloce-self-marketing-ai-product-teams-v1", "deliverable": "landing-page-brief", "approvalRequired": true }
+    },
+    {
+      "surface": "web-studio",
+      "type": "create",
+      "title": "Veloce public homepage brief",
+      "details": "Prepare homepage copy and structure for AI and product teams. Explain the operating loop without claiming full local/cloud parity.",
+      "fields": { "campaignId": "veloce-self-marketing-ai-product-teams-v1", "deliverable": "homepage-brief", "approvalRequired": true }
+    },
+    {
+      "surface": "flow-lab",
+      "type": "create",
+      "title": "Veloce visitor to lead flow brief",
+      "details": "Map the visitor journey from product proof to the public intake form, including source attribution, confirmation, notification, and human follow-up.",
+      "fields": { "campaignId": "veloce-self-marketing-ai-product-teams-v1", "deliverable": "conversion-flow", "cta": "https://product-experience-five.vercel.app/start", "approvalRequired": true }
+    },
+    {
+      "surface": "studio",
+      "type": "create",
+      "title": "Veloce content production brief",
+      "details": "Create drafts for a LinkedIn launch post, one-minute reel, three hooks, product explainer outline, lead magnet, FAQ, and objection handling.",
+      "fields": { "campaignId": "veloce-self-marketing-ai-product-teams-v1", "deliverable": "content-pack", "approvalRequired": true }
+    },
+    {
+      "surface": "openmontage",
+      "type": "create",
+      "title": "Veloce product demonstration video brief",
+      "details": "Draft a one-minute product demonstration storyboard showing context, orchestration, review, artifact, delivery, and lead capture. Media generation remains budget and provider gated.",
+      "fields": { "campaignId": "veloce-self-marketing-ai-product-teams-v1", "deliverable": "video-brief", "mediaExecution": "gated", "approvalRequired": true }
+    },
+    {
+      "surface": "games",
+      "type": "create",
+      "title": "Veloce interactive product demo concept",
+      "details": "Design a bounded interactive concept that lets a visitor follow a governed AI operating loop. Keep it demonstrative and do not imply that a live prospect is being acted on.",
+      "fields": { "campaignId": "veloce-self-marketing-ai-product-teams-v1", "deliverable": "interactive-demo-concept", "approvalRequired": true }
+    },
+    {
+      "surface": "thumbnails",
+      "type": "create",
+      "title": "Veloce campaign thumbnail brief",
+      "details": "Prepare thumbnail directions for the product explainer and one-minute reel using a clear governed-loop message and readable mobile-first typography.",
+      "fields": { "campaignId": "veloce-self-marketing-ai-product-teams-v1", "deliverable": "thumbnail-brief", "mediaExecution": "gated", "approvalRequired": true }
+    }
+  ]
+}

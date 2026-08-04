@@ -24,7 +24,7 @@ const recordKinds = ["memory", "journal", "goal", "notebook"];
 const briefSurfaces = ["opendesign", "web-studio", "flow-lab", "studio", "openmontage", "games", "thumbnails", "integrations", "leads", "radar", "guide"];
 const providerSmokes = [
   { provider: "anthropic", prompt: "Reply exactly: Claude owner-cloud smoke passed.", expected: "Claude owner-cloud smoke passed." },
-  { provider: "antigravity", prompt: "Reply exactly: Gemini owner-cloud smoke passed.", expected: "Gemini owner-cloud smoke passed." },
+  { provider: "antigravity", prompt: "Create a bounded reviewed plan for launching Veloce to AI product teams.", expectedKind: "reviewed_plan" },
   { provider: "openrouter", prompt: "Reply exactly: OpenRouter owner-cloud smoke passed.", expected: "OpenRouter owner-cloud smoke passed." },
 ];
 
@@ -111,7 +111,7 @@ async function verifyBrief(surface) {
   expect(response.status === 200, `${surface} brief capture failed (${response.status})`);
 }
 
-async function verifyProvider({ provider, prompt, expected }) {
+async function verifyProvider({ provider, prompt, expected, expectedKind }) {
   const created = await api("/api/client-runtime/jobs", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -124,7 +124,30 @@ async function verifyProvider({ provider, prompt, expected }) {
   expect(job !== null, `${provider} job did not reach a terminal state`);
   expect(job?.status === "succeeded", `${provider} job ended as ${String(job?.status ?? "unknown")}: ${String(job?.error_code ?? "")}`);
   const output = typeof job?.output_metadata?.output === "string" ? job.output_metadata.output : "";
-  expect(output.includes(expected), `${provider} output did not include expected smoke phrase`);
+  if (expectedKind === "reviewed_plan") {
+    const reviewed = parseReviewedPlan(output);
+    expect(Boolean(reviewed), `${provider} output was not a reviewed plan`);
+    expect(reviewed?.type === "reviewed_plan", `${provider} output has unexpected plan type`);
+    expect(reviewed?.tool === "propose_reviewed_plan", `${provider} output used an unexpected plan tool`);
+    expect(reviewed?.plan?.approvalRequired === true, `${provider} reviewed plan did not require approval`);
+  } else {
+    expect(output.includes(expected), `${provider} output did not include expected smoke phrase`);
+  }
+}
+
+function parseReviewedPlan(output) {
+  try {
+    const value = JSON.parse(output);
+    return value && typeof value === "object" ? value : null;
+  } catch {
+    const line = output.split("\n").map((item) => item.trim()).find((item) => item.startsWith("{\"type\":\"reviewed_plan\""));
+    if (!line) return null;
+    try {
+      return JSON.parse(line);
+    } catch {
+      return null;
+    }
+  }
 }
 
 async function waitForWorkflow(surface, id) {

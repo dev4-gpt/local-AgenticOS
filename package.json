@@ -29,6 +29,8 @@
     "verify:client-authenticated": "node scripts/verify-client-runtime-authenticated.mjs",
     "verify:client-worker": "node scripts/verify-client-runtime-worker.mjs",
     "verify:client-surface-map": "node scripts/verify-client-runtime-surface-map.mjs",
+    "verify:self-marketing": "node scripts/verify-client-self-marketing.mjs",
+    "client:self-marketing": "node scripts/run-client-self-marketing-campaign.mjs",
     "verify:client-provider-policy": "node scripts/verify-client-provider-policy.mjs",
     "verify:client-lifecycle": "node scripts/verify-client-lifecycle.mjs",
     "verify:client-isolation": "node scripts/verify-client-runtime-isolation.mjs",
