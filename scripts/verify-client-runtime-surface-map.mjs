@@ -6,6 +6,7 @@ const args = process.argv.slice(2);
 const baseUrl = required("--url").replace(/\/$/, "");
 const cookieFile = required("--cookie-file");
 const runProviderSmoke = args.includes("--provider-smoke");
+const providerOnly = args.includes("--provider-only");
 let cookie = await readCookie(cookieFile);
 const failures = [];
 const cleanup = [];
@@ -30,11 +31,14 @@ const providerSmokes = [
 
 try {
   for (const route of routes) await verifyRoute(route);
-  await verifyApi("/api/capabilities");
-  await verifyApi("/api/client-runtime/credentials");
-  for (const kind of recordKinds) await verifyRecord(kind);
-  for (const surface of workflowSurfaces) await verifyWorkflow(surface);
-  for (const surface of briefSurfaces) await verifyBrief(surface);
+  if (providerOnly && !runProviderSmoke) fail("--provider-only requires --provider-smoke");
+  if (!providerOnly) {
+    await verifyApi("/api/capabilities");
+    await verifyApi("/api/client-runtime/credentials");
+    for (const kind of recordKinds) await verifyRecord(kind);
+    for (const surface of workflowSurfaces) await verifyWorkflow(surface);
+    for (const surface of briefSurfaces) await verifyBrief(surface);
+  }
   if (runProviderSmoke) {
     for (const smoke of providerSmokes) await verifyProvider(smoke);
   }

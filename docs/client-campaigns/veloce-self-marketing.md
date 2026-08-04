@@ -84,6 +84,17 @@ npm run client:self-marketing -- \
 
 Antigravity is accepted when it returns a structured `reviewed_plan` with `tool` set to `propose_reviewed_plan` and `approvalRequired` set to `true`. It is not expected to return a plain-text smoke phrase.
 
+After the campaign has already seeded tenant records, use the focused route/provider check to avoid creating more writes during the runtime's rate-limit window:
+
+```bash
+npm run verify:client-surface-map -- \
+  --url https://veloce-cloud-test-mquo4bf7aq-el.a.run.app \
+  --cookie-file /private/tmp/veloce-runtime-cookie.txt \
+  --provider-smoke --provider-only
+```
+
+This checks the authenticated client route matrix and the three approved provider contracts without creating additional records, workflows, or briefs.
+
 ## Guided Portal Walkthrough
 
 Open these surfaces in order and record the visible result in the evidence file:
