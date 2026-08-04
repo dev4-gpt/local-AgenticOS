@@ -16,6 +16,7 @@ expect(campaign.mode === "guided-drafts-and-test-delivery", "campaign must be gu
 expect(Array.isArray(campaign.records) && campaign.records.length === 10, "campaign must contain 10 context records");
 expect(Array.isArray(campaign.workflows) && campaign.workflows.length === requiredSurfaces.length, "campaign must contain all workflow surfaces");
 expect(Array.isArray(campaign.briefs) && campaign.briefs.length === requiredBriefs.length, "campaign must contain all creation briefs");
+expect(Array.isArray(campaign.assets) && campaign.assets.length === 2, "campaign must contain two approved text asset jobs");
 for (const surface of requiredSurfaces) expect(campaign.workflows.some((item) => item.surface === surface), `missing workflow surface ${surface}`);
 for (const surface of requiredBriefs) expect(campaign.briefs.some((item) => item.surface === surface), `missing brief surface ${surface}`);
 const serialized = JSON.stringify(campaign);
@@ -23,6 +24,7 @@ expect(!secretLike.test(serialized), "campaign contains secret-like key/value sy
 expect(serialized.includes("Human approval"), "campaign is missing human approval language");
 expect(serialized.includes("limitations"), "campaign is missing limitation language");
 expect(serialized.includes("no local Ollama execution"), "campaign is missing the Ollama boundary");
+expect(campaign.assets?.every((item) => ["anthropic", "openrouter"].includes(item.provider)), "campaign contains a non-approved asset provider");
 
 if (errors.length) {
   console.error("Self-marketing campaign validation failed:");

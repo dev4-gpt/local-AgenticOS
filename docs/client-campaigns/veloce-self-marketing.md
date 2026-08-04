@@ -95,6 +95,18 @@ npm run verify:client-surface-map -- \
 
 This checks the authenticated client route matrix and the three approved provider contracts without creating additional records, workflows, or briefs.
 
+Generate the actual internal marketing drafts and save them as tenant notebook records:
+
+```bash
+npm run client:self-marketing-assets -- \
+  --url https://veloce-cloud-test-mquo4bf7aq-el.a.run.app \
+  --cookie-file /private/tmp/veloce-runtime-cookie.txt \
+  --apply \
+  --out /private/tmp/veloce-self-marketing-assets-evidence.json
+```
+
+This uses only the approved Anthropic and OpenRouter models, stays within the owner-cloud budget, and does not publish or contact anyone.
+
 ## Guided Portal Walkthrough
 
 Open these surfaces in order and record the visible result in the evidence file:

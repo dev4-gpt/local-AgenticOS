@@ -163,5 +163,19 @@
       "details": "Prepare thumbnail directions for the product explainer and one-minute reel using a clear governed-loop message and readable mobile-first typography.",
       "fields": { "campaignId": "veloce-self-marketing-ai-product-teams-v1", "deliverable": "thumbnail-brief", "mediaExecution": "gated", "approvalRequired": true }
     }
+  ],
+  "assets": [
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "title": "Veloce campaign narrative and content pack",
+      "prompt": "Act as the narrative and content lead for Veloce AgenticOS. Produce a governed draft pack for AI and product teams. Include: a LinkedIn launch post, a one-minute reel script with a strong opening hook, a product explainer outline, AI-product-team landing-page copy, an FAQ and objection-handling sheet, and an eight-slide pitch deck outline. Use this approved context: Veloce is a governed AI operating system for turning context, research, decisions, workflows, creative production, and delivery into one controlled operating loop. Proven hosted features are tenant records, Markdown memory import/export, explicit tag-based knowledge graphs, allowlisted provider adapters, deterministic workflows, reviewed plans, approvals, artifacts, delivery controls, audit records, budgets, monitoring, and public lead capture. State limitations plainly: no local Ollama execution, no Obsidian filesystem access, no full Graphify semantic extraction, no automatic social publishing, no live prospect discovery without an approved adapter, no fully automated SEO deployment, and no Codex access without separate API billing. CTA https://product-experience-five.vercel.app/start. Every asset must name audience, problem, mechanism, proof or limitation, CTA, and review status. Do not claim full local/cloud parity, autonomous publication, or unsupported integrations. Drafts only; no outreach or publication."
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-flash-lite",
+      "title": "Veloce growth, SEO, and short-form variants",
+      "prompt": "Create a governed growth variant pack for Veloce AgenticOS aimed at AI and product teams. Include three short-form hooks, five SEO article briefs with search intent and a cautious outline, a lead magnet titled The Governed AI Operating Loop, and three alternative LinkedIn openings. Use only this approved product context: Veloce connects tenant context, multiple approved AI providers, workflow orchestration, human approval gates, artifacts, auditability, delivery controls, and lead capture. Proven hosted features must be separated from limitations. Limitations include no local Ollama execution, no Obsidian filesystem access, no full Graphify semantic extraction, no automatic social publishing, no live prospect discovery without an approved adapter, no fully automated SEO deployment, and no Codex access without separate API billing. CTA https://product-experience-five.vercel.app/start. Avoid hype, unsupported rankings, guaranteed outcomes, and claims of complete local/cloud parity. Drafts only; no outreach or publication."
+    }
   ]
 }
