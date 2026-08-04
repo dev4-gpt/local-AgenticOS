@@ -14,6 +14,24 @@ const NOTICES: Record<string, ClientRuntimeNotice> = {
     body: "The upstream model provider rejected the request. The job was captured safely, but the adapter needs a key, model access, billing, or schema fix before this tab can complete.",
     next: "Try again after the provider adapter has been redeployed, or check the runtime logs for the provider status code.",
   },
+  provider_model_unavailable: {
+    tone: "danger",
+    title: "Model unavailable",
+    body: "The provider key is present, but Google rejected the selected model because it is unavailable to this account or API version.",
+    next: "Choose a currently supported model in the reviewed client manifest, then redeploy and retry.",
+  },
+  provider_auth_failed: {
+    tone: "danger",
+    title: "Provider authorization failed",
+    body: "The provider rejected the configured key or the key is not authorized for this API.",
+    next: "Reconnect the provider key and confirm the provider account has API access.",
+  },
+  provider_request_rejected: {
+    tone: "danger",
+    title: "Provider rejected the request",
+    body: "The provider received the request but rejected its contents or configuration.",
+    next: "Check the provider model, request contract, and current API requirements.",
+  },
   provider_rate_limited: {
     tone: "warning",
     title: "Provider rate limit reached",

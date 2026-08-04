@@ -30,8 +30,8 @@ const PROVIDERS: Record<string, ProviderSpec> = {
   xai: { key: "XAI_API_KEY", protocol: "openai", endpoint: "https://api.x.ai/v1/chat/completions", defaultModel: "grok-3-mini" },
   grok: { key: "XAI_API_KEY", protocol: "openai", endpoint: "https://api.x.ai/v1/chat/completions", defaultModel: "grok-3-mini" },
   sakana: { key: "SAKANA_API_KEY", protocol: "openai", endpoint: "https://api.sakana.ai/v1/chat/completions", defaultModel: "fugu-ultra-20260615" },
-  gemini: { key: "GEMINI_API_KEY", protocol: "gemini", endpoint: "https://generativelanguage.googleapis.com/v1beta/models", defaultModel: "gemini-2.0-flash" },
-  antigravity: { key: "GEMINI_API_KEY", protocol: "gemini", endpoint: "https://generativelanguage.googleapis.com/v1beta/models", defaultModel: "gemini-2.0-flash" },
+  gemini: { key: "GEMINI_API_KEY", protocol: "gemini", endpoint: "https://generativelanguage.googleapis.com/v1beta/models", defaultModel: "gemini-3.1-flash-lite" },
+  antigravity: { key: "GEMINI_API_KEY", protocol: "gemini", endpoint: "https://generativelanguage.googleapis.com/v1beta/models", defaultModel: "gemini-3.1-flash-lite" },
 };
 
 export function clientProviderNames() {
@@ -92,8 +92,17 @@ export async function runClientTextAdapter(input: {
     : spec.protocol === "gemini"
       ? await callGemini(spec, key, model, messages, maxOutputTokens, clientProviderToolPayload(provider))
       : await callOpenAiCompatible(spec, key, model, messages, maxOutputTokens, clientProviderAttributionHeaders(provider), clientProviderToolPayload(provider));
-  if (!response.ok) return { ok: false as const, status: response.status, error: "provider_request_failed" };
+  if (!response.ok) return { ok: false as const, status: response.status, error: providerFailureCode(response.status) };
   return { ok: true as const, provider, model, output: response.output, usage: response.usage };
+}
+
+function providerFailureCode(status: number) {
+  if (status === 401 || status === 403) return "provider_auth_failed";
+  if (status === 404) return "provider_model_unavailable";
+  if (status === 408 || status === 504) return "provider_timeout";
+  if (status === 429) return "provider_rate_limited";
+  if (status >= 400 && status < 500) return "provider_request_rejected";
+  return "provider_request_failed";
 }
 
 function configuredModels() {

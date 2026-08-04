@@ -15,7 +15,7 @@ The owner-cloud edition uses the same hosted client runtime boundary as client d
 - Cloud Tasks-backed long work;
 - explicit manifest allowlists for providers, models, capabilities, budgets, and outbound hosts.
 
-The current owner-cloud manifest has `text-agents`, `tenant-data`, `artifacts`, `orchestration`, `delivery`, and `quality` enabled. It allows Anthropic, OpenRouter, and Gemini keys. It does not currently allow OpenAI/Codex API calls because the OpenAI API billing/key step was intentionally skipped.
+The current owner-cloud manifest has `text-agents`, `tenant-data`, `artifacts`, `orchestration`, `delivery`, and `quality` enabled. It allows Anthropic, OpenRouter, and Gemini keys. It does not currently allow OpenAI/Codex API calls because the OpenAI API billing/key step was intentionally skipped. Gemini/Antigravity is pinned to `gemini-3.1-flash-lite`; older `gemini-2.5-flash-lite` access can return HTTP 404 for newer accounts.
 
 ## Route Matrix
 
