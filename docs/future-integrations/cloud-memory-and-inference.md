@@ -85,7 +85,7 @@ claim of semantic Graphify parity.
 
 **Owner-cloud inference checkpoint:** the owner-operated `veloce-cloud-test`
 manifest now enables `text-agents` with approved Secret Manager slots for
-Anthropic, OpenRouter, and Gemini. Revision `veloce-cloud-test-00078-xbc`
+Anthropic, OpenRouter, and Gemini. Revision `veloce-cloud-test-00081-b5c`
 serves 100% of Cloud Run traffic with OpenRouter pinned to
 `google/gemini-3.1-flash-lite` and Gemini/Antigravity pinned to
 `gemini-3.1-flash-lite`, both under the recorded $1 monthly test cap.

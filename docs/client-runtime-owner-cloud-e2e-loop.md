@@ -22,7 +22,7 @@ The current owner-cloud manifest has `text-agents`, `tenant-data`, `artifacts`, 
 | Lens | Routes | Expected current outcome |
 | --- | --- | --- |
 | Command | `/claude` | Live provider smoke should pass with the approved Anthropic key. |
-| Command | `/antigravity`, `/local`, `/engine` | Live provider smoke should pass after the Gemini schema fix and OpenRouter/Gemini deployment. |
+| Command | `/antigravity`, `/local`, `/engine` | Gemini/OpenRouter deployment is live; run one signed-in smoke per provider to close acceptance. |
 | Command | `/openclaw`, `/hermes`, `/freeclaude`, `/fusion` | Visible OpenRouter-backed workspace. Smoke passes only when the provider-model pair is explicitly allowlisted for that adapter. |
 | Command | `/codex` | Intentionally gated until OpenAI API billing/key is added. This is not covered by the ChatGPT subscription. |
 | Command | `/kimi`, `/glm`, `/glm-code`, `/grok`, `/sakana` | Intentionally gated until their provider keys and model pricing are added. |
