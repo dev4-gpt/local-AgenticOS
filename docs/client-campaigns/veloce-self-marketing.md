@@ -22,7 +22,7 @@ cd /Users/aryamandev/Documents/AgentOS/source
 npm run verify:self-marketing
 ```
 
-Create a protected cookie file from the authenticated client session. It must contain only the two runtime cookies, must not be committed, and must have mode `600`:
+For apply mode, create a protected cookie file from the authenticated client session. It must contain only the two runtime cookies, must not be committed, and must have mode `600`:
 
 ```text
 veloce_access_token=...; veloce_refresh_token=...
@@ -33,10 +33,22 @@ Run a dry-run first:
 ```bash
 npm run client:self-marketing -- \
   --url https://veloce-cloud-test-mquo4bf7aq-el.a.run.app \
-  --cookie-file /private/tmp/veloce-runtime-cookie.txt \
   --manifest client-blueprints/veloce-self-marketing.campaign.json \
   --out /private/tmp/veloce-self-marketing-evidence.json
 ```
+
+To create the cookie file without placing the values in shell history, copy the two cookie values from the authenticated browser's Application/Storage cookie view and enter them only at these hidden prompts:
+
+```bash
+umask 077
+read -r -s 'ACCESS?Paste access cookie value, then press Enter: '; printf '\n'
+read -r -s 'REFRESH?Paste refresh cookie value, then press Enter: '; printf '\n'
+printf 'veloce_access_token=%s; veloce_refresh_token=%s\n' "$ACCESS" "$REFRESH" > /private/tmp/veloce-runtime-cookie.txt
+unset ACCESS REFRESH
+chmod 600 /private/tmp/veloce-runtime-cookie.txt
+```
+
+Do not paste the cookie values into chat or commit the file.
 
 Apply context and workflows after reviewing the counts:
 

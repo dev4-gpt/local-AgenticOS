@@ -5,13 +5,14 @@ import process from "node:process";
 
 const args = process.argv.slice(2);
 const baseUrl = required("--url").replace(/\/$/, "");
-const cookieFile = required("--cookie-file");
+const cookieFile = value("--cookie-file");
 const manifestFile = value("--manifest") || "client-blueprints/veloce-self-marketing.campaign.json";
 const outputFile = value("--out") || "/private/tmp/veloce-self-marketing-evidence.json";
 const apply = args.includes("--apply");
 const includeBriefs = args.includes("--include-briefs");
 const providerSmoke = args.includes("--provider-smoke");
-let cookie = await readCookie(cookieFile);
+if (apply && !cookieFile) fail("--cookie-file is required with --apply");
+let cookie = apply ? await readCookie(cookieFile) : "";
 const campaign = JSON.parse(await readFile(manifestFile, "utf8"));
 const evidence = {
   campaignId: campaign.campaignId,
@@ -152,7 +153,14 @@ async function json(response) {
 }
 
 async function readCookie(filePath) {
-  const mode = (await stat(filePath)).mode & 0o777;
+  let fileStat;
+  try {
+    fileStat = await stat(filePath);
+  } catch (error) {
+    if (error?.code === "ENOENT") fail(`Cookie file not found: ${filePath}. Create it from the authenticated browser session, then rerun with --apply.`);
+    throw error;
+  }
+  const mode = fileStat.mode & 0o777;
   if ((mode & 0o077) !== 0) fail("--cookie-file must not be readable by group or other users");
   const value = (await readFile(filePath, "utf8")).trim().replace(/^cookie:\s*/i, "").replace(/^['"]|['"]$/g, "").trim();
   if (!value || !/\bveloce_access_token=/.test(value) || !/\bveloce_refresh_token=/.test(value)) fail("--cookie-file must contain both runtime session cookies");
