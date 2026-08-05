@@ -13,7 +13,7 @@ The hosted client runtime treats provider conversations as tenant-owned data.
 
 ## Retention and deletion
 
-The existing tenant `retention_days` policy applies to the runtime job ledger. A production rollout should add a scheduled cleanup job that soft-deletes or removes expired job input/output metadata while preserving minimum audit evidence. Client export and offboarding must include the job ledger, artifacts, records, and graph data as one tenant package.
+The live test client currently has a 14-day Cloud Storage lifecycle for generated artifacts. The Postgres job transcript is not automatically deleted by that object rule; it remains in the tenant database until an explicit retention or offboarding process removes it. A production rollout should add a scheduled cleanup job that soft-deletes or removes expired job input/output metadata while preserving minimum audit evidence. Client export and offboarding must include the job ledger, artifacts, records, and graph data as one tenant package.
 
 ## Why no second database yet
 
