@@ -2,13 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Archive, Check, Download, FileText, LockKeyhole, Network, Plus, RefreshCw, Save, Tag, Trash2, Upload } from "lucide-react";
+import ClientMemoryGraph3D, { type ClientGraphEdge, type ClientGraphNode } from "@/components/ClientMemoryGraph3D";
 
 type Surface = "memory" | "journal" | "goals" | "notebook";
 type RecordItem = { id: string; title: string; content: string; status: "active" | "done" | "archived"; metadata?: Record<string, unknown>; created_at: string };
-type GraphNode = { id: string; label: string; kind: "document" | "tag"; record_id?: string | null };
-type GraphEdge = { source_node_id: string; target_node_id: string };
-type GraphPosition = { x: number; y: number };
-
 const COPY: Record<Surface, { title: string; eyebrow: string; kind: string; placeholder: string; content: string }> = {
   memory: { title: "Tenant Memory", eyebrow: "Context · Memory", kind: "memory", placeholder: "Name this decision or memory", content: "Write the approved project memory here..." },
   journal: { title: "Tenant Journal", eyebrow: "Context · Journal", kind: "journal", placeholder: "Name this journal entry", content: "What happened, changed, or needs attention?" },
@@ -23,8 +20,8 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   const [content, setContent] = useState("");
   const [busy, setBusy] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [graphNodes, setGraphNodes] = useState<GraphNode[]>([]);
-  const [graphEdges, setGraphEdges] = useState<GraphEdge[]>([]);
+  const [graphNodes, setGraphNodes] = useState<ClientGraphNode[]>([]);
+  const [graphEdges, setGraphEdges] = useState<ClientGraphEdge[]>([]);
   const [graphBusy, setGraphBusy] = useState(false);
   const [selectedGraphNodeId, setSelectedGraphNodeId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -130,16 +127,6 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     const tag = selectedGraphNode.label.replace(/^#/, "").toLowerCase();
     return active.filter((record) => `${record.title}\n${record.content}`.toLowerCase().includes(`#${tag}`));
   }, [active, selectedGraphNode]);
-  const graphPositions = useMemo(() => {
-    const documents = graphNodes.filter((node) => node.kind === "document");
-    const graphTags = graphNodes.filter((node) => node.kind === "tag");
-    const positions = new Map<string, GraphPosition>();
-    const distribute = (nodes: GraphNode[], x: number) => nodes.forEach((node, index) => positions.set(node.id, { x, y: ((index + 1) / (nodes.length + 1)) * 100 }));
-    distribute(documents, documents.length === 1 ? 34 : 24);
-    distribute(graphTags, graphTags.length === 1 ? 66 : 76);
-    return positions;
-  }, [graphNodes]);
-
   function selectGraphNode(nodeId: string) {
     setSelectedGraphNodeId((current) => current === nodeId ? null : nodeId);
   }
@@ -158,15 +145,11 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     </section>
     {surface === "memory" && <section className="panel p-5 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2"><Network size={16} color="var(--gold-deep)" /><h2 className="text-[15px] font-semibold" style={{ color: "var(--cream)" }}>Knowledge map</h2><span className="rounded-md px-2 py-1 text-[10px] font-semibold" style={{ color: "var(--cream-soft)", background: "rgba(179,128,63,0.14)" }}>{graphEdges.length} relationships</span></div>
-        <div className="flex items-center gap-2">{selectedGraphNode && <button type="button" onClick={() => setSelectedGraphNodeId(null)} className="rounded-md border px-2.5 py-2 text-[10px] font-semibold" style={{ borderColor: "var(--line)", color: "var(--cream-dim)" }}>Clear selection</button>}<button type="button" onClick={refreshGraph} disabled={graphBusy} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px] font-semibold" style={{ borderColor: "rgba(179,128,63,0.42)", color: "var(--gold-deep)", background: "rgba(179,128,63,0.08)" }}><RefreshCw size={13} className={graphBusy ? "animate-spin" : ""} />{graphBusy ? "Refreshing" : "Refresh map"}</button></div>
+        <div className="flex items-center gap-2"><Network size={16} color="var(--gold-deep)" /><h2 className="text-[15px] font-semibold" style={{ color: "var(--cream)" }}>Knowledge map</h2><span className="rounded-md px-2 py-1 text-[10px] font-semibold" style={{ color: "var(--cream-soft)", background: "rgba(179,128,63,0.14)" }}>{graphEdges.length} relationships · {graphNodes.length} nodes</span></div>
+        <div className="flex items-center gap-2"><button type="button" onClick={refreshGraph} disabled={graphBusy} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px] font-semibold" style={{ borderColor: "rgba(179,128,63,0.42)", color: "var(--gold-deep)", background: "rgba(179,128,63,0.08)" }}><RefreshCw size={13} className={graphBusy ? "animate-spin" : ""} />{graphBusy ? "Refreshing" : "Refresh map"}</button></div>
       </div>
       {graphNodes.length > 0 ? <>
-        <div className="relative mt-5 min-h-[280px] overflow-hidden rounded-md border" style={{ borderColor: "rgba(179,128,63,0.38)", background: "#eee7d9", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.8), 0 14px 32px rgba(72,54,31,0.08)" }}>
-          <div className="absolute inset-0 opacity-50" style={{ backgroundImage: "linear-gradient(rgba(138,95,46,0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(138,95,46,0.09) 1px, transparent 1px)", backgroundSize: "26px 26px" }} />
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden="true">{graphEdges.map((edge) => { const source = graphPositions.get(edge.source_node_id); const target = graphPositions.get(edge.target_node_id); return source && target ? <line key={`${edge.source_node_id}-${edge.target_node_id}`} x1={source.x} y1={source.y} x2={target.x} y2={target.y} stroke="#b3803f" strokeOpacity="0.8" strokeWidth="1.4" strokeDasharray="3 2" vectorEffect="non-scaling-stroke" /> : null; })}</svg>
-          {graphNodes.map((node) => { const position = graphPositions.get(node.id); if (!position) return null; const selected = selectedGraphNodeId === node.id; const document = node.kind === "document"; const accent = document ? "#26785a" : "#8a3d56"; return <button key={node.id} type="button" onClick={() => selectGraphNode(node.id)} title={node.label} className={`absolute max-w-[46%] -translate-x-1/2 -translate-y-1/2 truncate rounded-md border px-3 py-2.5 text-[11px] font-semibold shadow-sm transition duration-300 hover:-translate-y-[54%] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${selected ? "scale-105" : ""}`} style={{ left: `${position.x}%`, top: `${position.y}%`, zIndex: selected ? 2 : 1, borderColor: selected ? accent : `${accent}88`, background: selected ? (document ? "#d9eadf" : "#f1dce3") : "rgba(250,247,239,0.95)", color: "var(--cream)", boxShadow: selected ? `0 12px 24px ${accent}33` : "0 4px 12px rgba(72,54,31,0.12)" }}>{document ? <FileText className="mr-1.5 inline-block" size={13} color={accent} /> : <Tag className="mr-1.5 inline-block" size={13} color={accent} />}{node.label}</button>; })}
-        </div>
+        <ClientMemoryGraph3D nodes={graphNodes} edges={graphEdges} selectedNodeId={selectedGraphNodeId} onSelectNode={selectGraphNode} onClearSelection={() => setSelectedGraphNodeId(null)} />
         {selectedGraphNode && <div className="mt-4 rounded-md border p-4" style={{ borderColor: selectedGraphNode.kind === "document" ? "rgba(47,143,107,0.42)" : "rgba(176,74,104,0.42)", background: selectedGraphNode.kind === "document" ? "rgba(47,143,107,0.08)" : "rgba(176,74,104,0.08)" }}>
           <div className="flex items-center gap-2 text-[10px] font-semibold uppercase" style={{ color: selectedGraphNode.kind === "document" ? "var(--emerald-dim)" : "var(--plum)" }}>{selectedGraphNode.kind === "document" ? <FileText size={13} /> : <Tag size={13} />}{selectedGraphNode.kind === "document" ? "Selected memory" : "Selected tag"}</div>
           {selectedRecord ? <><h3 className="mt-2 text-[15px]" style={{ color: "var(--cream)" }}>{selectedRecord.title}</h3><p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed" style={{ color: "var(--cream-soft)" }}>{selectedRecord.content}</p></> : <><h3 className="mt-2 text-[15px]" style={{ color: "var(--cream)" }}>{selectedGraphNode.label}</h3><div className="mt-3 flex flex-wrap gap-2">{visibleRecords.map((record) => <button key={record.id} type="button" onClick={() => { const documentNode = graphNodes.find((node) => node.kind === "document" && node.record_id === record.id); if (documentNode) setSelectedGraphNodeId(documentNode.id); }} className="rounded-md border px-3 py-2 text-left text-[11px] font-semibold" style={{ borderColor: "rgba(176,74,104,0.32)", color: "var(--plum)", background: "rgba(250,247,239,0.8)" }}>{record.title}</button>)}</div></>}

@@ -34,6 +34,8 @@ const PROVIDERS: Record<string, ProviderSpec> = {
   antigravity: { key: "GEMINI_API_KEY", protocol: "gemini", endpoint: "https://generativelanguage.googleapis.com/v1beta/models", defaultModel: "gemini-3.1-flash-lite" },
 };
 
+const OPENROUTER_ALIAS_PROVIDERS = new Set(["openclaw", "hermes", "freeclaude", "fusion"]);
+
 export function clientProviderNames() {
   return Object.keys(PROVIDERS);
 }
@@ -46,7 +48,8 @@ export function clientProviderRequestAllowed(provider: string, requestedModel?: 
   const normalizedProvider = provider.trim().toLowerCase();
   const spec = PROVIDERS[normalizedProvider];
   if (!spec || !clientProviderEnabled(spec.key)) return { ok: false as const, status: 403, error: "provider_not_allowlisted" };
-  const providerModels = configuredProviderModels(normalizedProvider);
+  const providerModels = configuredProviderModels(normalizedProvider)
+    ?? (OPENROUTER_ALIAS_PROVIDERS.has(normalizedProvider) ? configuredProviderModels("openrouter") : null);
   // The hosted workspace deliberately does not let a browser pick an arbitrary
   // model. When it omits a model, use the reviewed provider allowlist first.
   const model = requestedModel?.trim() || providerModels?.[0] || spec.defaultModel;
@@ -116,7 +119,7 @@ function configuredProviderModels(provider: string) {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
     const models = parsed[provider];
-    return Array.isArray(models) ? models.filter((value): value is string => typeof value === "string" && value.trim().length > 0).map((value) => value.trim()) : [];
+    return Array.isArray(models) ? models.filter((value): value is string => typeof value === "string" && value.trim().length > 0).map((value) => value.trim()) : null;
   } catch {
     return [];
   }
