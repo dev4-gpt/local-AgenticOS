@@ -78,6 +78,15 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
   const connected = useMemo(() => credentials.find((item) => item.key === requiredKey)?.connected === true, [credentials, requiredKey]);
   const visibleMessages = useMemo(() => collapseRepeatedMessages(messages), [messages]);
 
+  function track(event: string, properties: Record<string, unknown> = {}) {
+    void fetch("/api/client-runtime/telemetry", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ event, properties: { provider, ...properties } }),
+      keepalive: true,
+    }).catch(() => {});
+  }
+
   useEffect(() => {
     let cancelled = false;
     setHydratedStorageKey(null);
@@ -97,6 +106,7 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
           setMessages((current) => mergePersistentMessages(historyData.messages, current));
         }
         setStatus("ready");
+        track("client_runtime_provider_workspace_opened", { result: "ready" });
       })
       .catch(() => { if (!cancelled) { setStatus("error"); setError("runtime_status_unavailable"); } });
     return () => { cancelled = true; if (pollRef.current) clearTimeout(pollRef.current); activeRequestRef.current = null; };
@@ -125,9 +135,11 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
     if (!response?.ok || !data?.jobId) {
       setStatus("error");
       setError(data?.error || "task_enqueue_failed");
+      track("client_runtime_provider_request_failed", { result: data?.error || "task_enqueue_failed" });
       activeRequestRef.current = null;
       return;
     }
+    track("client_runtime_provider_prompt_submitted", { messageCount: messages.length + 1 });
     setMessages((current) => current.map((message) => message.id === requestId ? { ...message, jobId: data.jobId } : message));
     poll(data.jobId, requestId);
   }
@@ -147,11 +159,13 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
           ? current
           : [...current, { id: crypto.randomUUID(), role: "assistant", content: output, jobId, createdAt: Date.now() }]);
         setStatus("ready");
+        track("client_runtime_provider_response_succeeded", { messageCount: messages.length + 2 });
         activeRequestRef.current = null;
         if (pollRef.current) clearTimeout(pollRef.current);
       } else if (job?.status === "failed" || job?.status === "cancelled" || attempts >= 90) {
         setStatus("error");
         setError(job?.error_code || "provider_job_incomplete");
+        track("client_runtime_provider_response_failed", { result: job?.error_code || "provider_job_incomplete" });
         activeRequestRef.current = null;
         if (pollRef.current) clearTimeout(pollRef.current);
       } else if (!completedJobsRef.current.has(jobId)) {

@@ -48,6 +48,7 @@ const alerts = await readFile(join(root, "scripts/provision-client-runtime-alert
 const deliveryApproval = await readFile(join(root, "scripts/approve-client-delivery.mjs"), "utf8");
 const middleware = await readFile(join(root, "src/middleware.ts"), "utf8");
 const observability = await readFile(join(root, "src/lib/clientRuntimeObservability.ts"), "utf8");
+const telemetryRoute = await readFile(join(root, "src/app/api/client-runtime/telemetry/route.ts"), "utf8");
 const shell = await readFile(join(root, "src/components/Shell.tsx"), "utf8");
 const briefWorkspace = await readFile(join(root, "src/components/ClientBriefWorkspace.tsx"), "utf8");
 const workflowRunner = await readFile(join(root, "src/lib/clientWorkflowRunner.ts"), "utf8");
@@ -68,6 +69,7 @@ const runtimeRateLimitedRoutes = [
   "src/app/api/client-runtime/memory-import/route.ts",
   "src/app/api/client-runtime/memory-graph/route.ts",
   "src/app/api/client-runtime/delivery/route.ts",
+  "src/app/api/client-runtime/telemetry/route.ts",
 ].map(async (relativePath) => [relativePath, await readFile(join(root, relativePath), "utf8")]);
 const runtimeRateLimitedRouteSources = await Promise.all(runtimeRateLimitedRoutes);
 
@@ -107,6 +109,8 @@ expect(
 expect(deliveryApproval.includes("delivery.approved") && deliveryApproval.includes("delivery.queued") && deliveryApproval.includes("client_runtime_audit_events"), "delivery approval CLI must record redacted approval and queue audit events");
 expect(networkSafety.includes("resolvesToPublicAddresses") && seoAdapter.includes("resolveSafePublicUrl") && deliveryAdapter.includes("resolveSafePublicUrl"), "outbound adapters must re-check DNS resolution before fetching public URLs");
 expect(seoAdapter.includes("readBoundedResponseBytes") && seoAdapter.includes("4_000_000"), "SEO adapter must bound provider response bytes before parsing");
+expect(telemetryRoute.includes("captureClientProductEvent") && telemetryRoute.includes("telemetry-write") && telemetryRoute.includes("SAFE_KEYS"), "telemetry route must authenticate, rate-limit, and allowlist product event properties");
+expect(observability.includes("POSTHOG_API_KEY") && observability.includes("SENTRY_DSN") && observability.includes("application/x-sentry-envelope"), "observability must support optional PostHog capture and redacted Sentry envelopes");
 for (const marker of ["SUPABASE_SERVICE_ROLE_KEY", "ANTHROPIC_API_KEY=", "OPENAI_API_KEY="]) {
   expect(!workerRoute.includes(marker) && !jobRoute.includes(marker), `worker boundary must not contain ${marker}`);
 }

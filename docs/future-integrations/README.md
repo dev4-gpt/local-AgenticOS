@@ -35,8 +35,8 @@ gap and can fit the existing boundaries:
 | OpenHands | Coding automation plane | Explicitly deferred | [V2 candidate register](../../V2-INTEGRATION-CANDIDATES.md) |
 | Chatterbox | Local TTS fallback | Prototype after storage gate | [V2 candidate register](../../V2-INTEGRATION-CANDIDATES.md) |
 | Oracle/Coolify runtime | Optional persistent compute plane | Add only for a demonstrated long-lived workload | [Oracle option](../oracle-self-hosted-runtime-option.md) |
-| [PostHog](https://posthog.com/docs) | Product analytics, funnels, feature usage, and experiment evidence | **Next: add a privacy-reviewed, server-side and browser-safe analytics adapter** | Track activation, memory usage, workflow completion, provider failures, lead conversion, and delivery outcomes. Do not send prompts, provider keys, or raw client conversation content. |
-| [Sentry](https://docs.sentry.io/) | Error tracking, traces, and release diagnostics | **Next: add before wider client onboarding** | Capture route/provider/queue failures with tenant-safe redaction, release IDs, and correlation IDs. Keep prompt and artifact bodies out of event payloads. |
+| [PostHog](https://posthog.com/docs) | Product analytics, funnels, feature usage, and experiment evidence | **Adapter implemented; activate after account setup** | Track activation, memory usage, workflow completion, provider failures, lead conversion, and delivery outcomes. Do not send prompts, provider keys, or raw client conversation content. |
+| [Sentry](https://docs.sentry.io/) | Error tracking, traces, and release diagnostics | **Adapter implemented; activate before wider client onboarding** | Capture route/provider/queue failures with tenant-safe redaction, release IDs, and correlation IDs. Keep prompt and artifact bodies out of event payloads. |
 | [OpenSEO](https://github.com/every-app/open-seo) | Keyword research, rank tracking, competitor insights, backlinks, site audits, and AI visibility through MCP/skills | **Next: evaluate as a bounded SEO research adapter** | Strong fit for Veloce’s Govern and Deliver lanes and for marketing Veloce itself. Start read-only with a small allowlist and DataForSEO budget; do not embed its full application. |
 | [Stripe](https://stripe.com/docs) | Billing, subscriptions, checkout, invoices, and customer entitlements | Conditional next: add only when paid plans or paid pilots are ready | Keep Stripe as the billing system of record and mirror only tenant entitlement state into Veloce. Require webhook verification, idempotency, audit records, and approval for refunds or plan changes. |
 | [OpenWork](https://github.com/different-ai/openwork) | Shared skills, MCP connections, and agent capabilities across people, machines, and compatible agents | Research: adapter or interoperability study | Learn from its capability discovery and execution model. Do not make its remote MCP or organization control plane a hidden dependency; preserve Veloce’s own tenant, approval, budget, and audit boundaries. |
@@ -59,8 +59,9 @@ source rather than from a screenshot or an unverified copy.
 
 ### Highest-value next work
 
-1. **Observability:** add PostHog and Sentry with redaction, correlation IDs,
-   release tracking, tenant-safe event schemas, and opt-out/retention rules.
+1. **Observability activation:** create the PostHog and Sentry projects, add
+   their server-only configuration, then verify redaction, correlation IDs,
+   release tracking, tenant-safe event schemas, and retention rules.
 2. **SEO proof loop:** evaluate OpenSEO read-only for Veloce’s own content and
    SEO workflows. Prove one keyword brief, one competitor comparison, one
    technical audit, and one AI-visibility report before any broader adapter.
