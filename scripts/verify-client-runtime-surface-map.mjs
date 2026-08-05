@@ -35,6 +35,7 @@ try {
   if (!providerOnly) {
     await verifyApi("/api/capabilities");
     await verifyApi("/api/client-runtime/credentials");
+    await verifyApi("/api/client-runtime/provider-history?provider=anthropic");
     for (const kind of recordKinds) await verifyRecord(kind);
     for (const surface of workflowSurfaces) await verifyWorkflow(surface);
     for (const surface of briefSurfaces) await verifyBrief(surface);

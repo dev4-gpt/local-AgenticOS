@@ -85,12 +85,17 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
     setMessages(stored);
     completedJobsRef.current = new Set(stored.map((message) => message.jobId).filter((jobId): jobId is string => Boolean(jobId)));
     setHydratedStorageKey(storageKey);
-    fetch("/api/client-runtime/credentials", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => {
+    Promise.all([
+      fetch("/api/client-runtime/credentials", { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
+      fetch(`/api/client-runtime/provider-history?provider=${encodeURIComponent(provider)}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
+    ])
+      .then(([credentialData, historyData]) => {
         if (cancelled) return;
-        setRuntime(data?.mode ?? {});
-        setCredentials(data?.credentials ?? []);
+        setRuntime(credentialData?.mode ?? {});
+        setCredentials(credentialData?.credentials ?? []);
+        if (Array.isArray(historyData?.messages)) {
+          setMessages((current) => mergePersistentMessages(historyData.messages, current));
+        }
         setStatus("ready");
       })
       .catch(() => { if (!cancelled) { setStatus("error"); setError("runtime_status_unavailable"); } });
@@ -123,6 +128,7 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
       activeRequestRef.current = null;
       return;
     }
+    setMessages((current) => current.map((message) => message.id === requestId ? { ...message, jobId: data.jobId } : message));
     poll(data.jobId, requestId);
   }
 
@@ -290,6 +296,25 @@ function collapseRepeatedMessages(messages: Message[]): VisibleMessage[] {
     output.push({ ...message, repeatCount: 1 });
   }
   return output;
+}
+
+function mergePersistentMessages(serverMessages: Message[], localMessages: Message[]): Message[] {
+  const server = serverMessages
+    .filter((message) => (message?.role === "user" || message?.role === "assistant") && typeof message.content === "string")
+    .map((message, index) => ({
+      id: typeof message.id === "string" ? message.id : `server-${index}`,
+      role: message.role,
+      content: message.content,
+      jobId: typeof message.jobId === "string" ? message.jobId : undefined,
+      createdAt: typeof message.createdAt === "number" ? message.createdAt : Date.now(),
+    }));
+  const serverJobIds = new Set(server.map((message) => message.jobId).filter((jobId): jobId is string => Boolean(jobId)));
+  const serverMessageKeys = new Set(server.map((message) => `${message.role}:${message.content}`));
+  const pendingLocal = localMessages.filter((message) => {
+    if (message.jobId && serverJobIds.has(message.jobId)) return false;
+    return !serverMessageKeys.has(`${message.role}:${message.content}`);
+  });
+  return [...server, ...pendingLocal].sort((left, right) => left.createdAt - right.createdAt);
 }
 
 function loadStoredMessages(storageKey: string): Message[] {
