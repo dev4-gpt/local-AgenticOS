@@ -14,6 +14,7 @@ export function middleware(request: NextRequest) {
     pathname === "/favicon.ico" ||
     pathname === "/healthz" ||
     pathname === "/login" ||
+    pathname === "/client-unavailable" ||
     pathname.startsWith("/api/client-auth/")
   ) return next(requestHeaders, requestId);
 

@@ -48,10 +48,18 @@ export default function CredentialsView() {
         fetch("/api/client-runtime/credentials", { cache: "no-store" }),
         fetch("/api/client-auth/session", { cache: "no-store" }),
       ]);
-      setStatus(await credentialResponse.json());
+      const credentialData = await credentialResponse.json().catch(() => null);
+      if (!credentialResponse.ok || !credentialData?.ok) {
+        setStatus(null);
+        setNotice(credentialResponse.status === 401 ? "Sign in to view runtime credentials." : "Could not load runtime status.");
+      } else {
+        setStatus(credentialData);
+        setNotice("");
+      }
       const session = await sessionResponse.json();
       setEmail(session.user?.email ?? null);
     } catch {
+      setStatus(null);
       setNotice("Could not load runtime status.");
     }
   }
@@ -121,8 +129,8 @@ export default function CredentialsView() {
           </div>
           <div className="mt-4 space-y-2 text-[11px] text-[var(--fg-dim)]">
             <div>Login: <strong className="text-[var(--fg)]">{email || "Not signed in"}</strong></div>
-            <div>Edition: <strong className="text-[var(--fg)]">{status?.client.name || status?.client.slug || "Owner runtime"}</strong></div>
-            <div>Approvals: <strong className="text-[var(--fg)]">{status?.mode.approvalsRequired ? "Required" : "Not configured"}</strong></div>
+            <div>Edition: <strong className="text-[var(--fg)]">{status?.client?.name || status?.client?.slug || "Owner runtime"}</strong></div>
+            <div>Approvals: <strong className="text-[var(--fg)]">{status?.mode?.approvalsRequired ? "Required" : "Not configured"}</strong></div>
           </div>
           <button onClick={logout} className="mt-5 inline-flex items-center gap-1.5 rounded-lg border border-[var(--panel-border)] px-3 py-2 text-[11px] text-[var(--fg-dim)]">
             <LogOut size={13} /> Sign out
@@ -176,7 +184,7 @@ export default function CredentialsView() {
 
       <section className="panel overflow-hidden">
         <div className="border-b border-[var(--panel-border)] px-5 py-3 text-[12px] font-semibold text-[var(--fg)]">Provider connections</div>
-        {status?.credentials.map((credential) => (
+        {status?.credentials?.map((credential) => (
           <div key={credential.key} className="flex items-center justify-between gap-3 border-b border-[var(--panel-border)] px-5 py-3 last:border-b-0">
             <div>
               <div className="text-[12px] text-[var(--fg)]">{credential.label}</div>
