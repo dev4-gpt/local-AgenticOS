@@ -12,11 +12,14 @@ export function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/_next/") ||
     pathname === "/favicon.ico" ||
-    pathname === "/healthz" ||
     pathname === "/login" ||
     pathname === "/client-unavailable" ||
     pathname.startsWith("/api/client-auth/")
   ) return next(requestHeaders, requestId);
+
+  if (pathname === "/healthz") {
+    return withRequestId(NextResponse.json({ ok: true, service: "Veloce AgenticOS" }), requestId);
+  }
 
   if (pathname.startsWith("/api/")) {
     return clientApiRouteAllowed(pathname)
