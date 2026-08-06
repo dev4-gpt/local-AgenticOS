@@ -4,7 +4,7 @@ import { currentClientMember } from "@/lib/clientAuth";
 import { cancelClientRuntimeJob, checkClientRuntimeRateLimit, enqueueClientRuntimeJob, refundClientRuntimeRateLimit } from "@/lib/clientDataPlane";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
-import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
+import { clientCapabilityProviderEnabled, clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
 export const runtime = "nodejs";
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   if (spec.providers.length > 0) {
     if (!clientProviderCallsEnabled() || !provider || !spec.providers.includes(provider)) return NextResponse.json({ ok: false, error: "provider_calls_require_approval" }, { status: 403 });
     const key = PROVIDER_KEYS[provider];
-    if (!key || !clientProviderEnabled(key)) return NextResponse.json({ ok: false, error: "provider_not_allowlisted" }, { status: 403 });
+    if (!key || !clientCapabilityProviderEnabled(spec.capability, provider) || !clientProviderEnabled(key)) return NextResponse.json({ ok: false, error: "provider_not_allowlisted" }, { status: 403 });
   } else if (provider) {
     return NextResponse.json({ ok: false, error: "provider_not_allowed" }, { status: 400 });
   }

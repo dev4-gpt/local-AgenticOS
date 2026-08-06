@@ -65,6 +65,21 @@ export function clientProviderCallsEnabled() {
   return process.env.CLIENT_PROVIDER_CALLS_ENABLED === "1";
 }
 
+export function clientCapabilityProviderEnabled(capability: string, providerKey: string) {
+  const configured = process.env.CLIENT_CAPABILITY_PROVIDER_ALLOWLIST_JSON?.trim();
+  if (!configured) return clientProviderEnabled(providerKey);
+  try {
+    const parsed = JSON.parse(configured) as unknown;
+    const providers = parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)[capability]
+      : undefined;
+    if (!Array.isArray(providers)) return clientProviderEnabled(providerKey);
+    return providers.map((value) => String(value).trim()).includes(providerKey);
+  } catch {
+    return false;
+  }
+}
+
 export function clientCredentialSubmissionEnabled() {
   return Boolean(process.env.CLIENT_CREDENTIAL_INBOX_SECRET?.trim())
     && (clientEdition() || process.env.CLIENT_CREDENTIAL_SUBMISSIONS_ENABLED === "1");

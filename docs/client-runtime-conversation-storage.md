@@ -8,12 +8,13 @@ The hosted client runtime treats provider conversations as tenant-owned data.
 - Every successful text result is stored in `client_runtime_jobs.output_metadata.output`.
 - Rows are scoped by `tenant_slug` and protected by Supabase RLS through `client_member(tenant_slug)`.
 - `/api/client-runtime/provider-history?provider=...` reconstructs the provider thread from those rows.
+- `DELETE /api/client-runtime/provider-history?provider=...` removes the signed-in user's provider thread from the tenant job ledger; the client UI's Clear action calls this endpoint before clearing its optimistic browser cache.
 - The provider workspace hydrates from that endpoint after login, so the visible thread survives route changes, logout/login, hard reloads, and another device using the same account.
 - `localStorage` remains an optimistic browser cache only. It is not the source of truth.
 
 ## Retention and deletion
 
-The live test client currently has a 14-day Cloud Storage lifecycle for generated artifacts. The Postgres job transcript is not automatically deleted by that object rule; it remains in the tenant database until an explicit retention or offboarding process removes it. A production rollout should add a scheduled cleanup job that soft-deletes or removes expired job input/output metadata while preserving minimum audit evidence. Client export and offboarding must include the job ledger, artifacts, records, and graph data as one tenant package.
+The live test client currently has a 14-day Cloud Storage lifecycle for generated artifacts. The Postgres job transcript is not automatically deleted by that object rule; it remains in the tenant database until the user explicitly clears a provider thread or an explicit retention/offboarding process removes it. The deletion RPC is defined in `product-experience/supabase-client-runtime-conversation-lifecycle.sql`; it is tenant/member scoped and deletes only jobs requested by the signed-in user. A production rollout should add a scheduled cleanup job that soft-deletes or removes expired job input/output metadata while preserving minimum audit evidence. Client export and offboarding must include the job ledger, artifacts, records, and graph data as one tenant package.
 
 ## Why no second database yet
 

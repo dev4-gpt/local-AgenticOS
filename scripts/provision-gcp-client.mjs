@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import { normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
+import { normalizeCapabilityProviderAllowlist, normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
 
 const args = process.argv.slice(2);
 const configPath = valueAfter("--config") ?? valueAfter("-c");
@@ -50,6 +50,7 @@ const enabledCapabilities = normalizeList(manifest.enabledCapabilities);
 const providerAllowlist = normalizeList(manifest.providerAllowlist, Object.keys(secretEnv));
 const modelAllowlist = normalizeList(manifest.modelAllowlist);
 const providerModelAllowlist = normalizeProviderModelAllowlist(manifest.providerModelAllowlist);
+const capabilityProviderAllowlist = normalizeCapabilityProviderAllowlist(manifest.capabilityProviderAllowlist);
 const providerCallsEnabled = manifest.providerCallsEnabled === true;
 const modelPricing = normalizeModelPricing(manifest.modelPricing);
 const seoAllowedHosts = normalizeHostAllowlist(manifest.seoAllowedHosts);
@@ -62,6 +63,7 @@ validateProviderActivation({
   providerModelAllowlist,
   modelPricing,
   enabledCapabilities,
+  capabilityProviderAllowlist,
   seoAllowedHosts,
   deliveryAllowedHosts,
   fail,
@@ -108,6 +110,7 @@ const protectedRuntimeEnv = {
   CLIENT_PROVIDER_ALLOWLIST: providerAllowlist.join(","),
   ...(modelAllowlist.length > 0 ? { CLIENT_MODEL_ALLOWLIST: modelAllowlist.join(",") } : {}),
   ...(Object.keys(providerModelAllowlist).length > 0 ? { CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON: JSON.stringify(providerModelAllowlist) } : {}),
+  ...(Object.keys(capabilityProviderAllowlist).length > 0 ? { CLIENT_CAPABILITY_PROVIDER_ALLOWLIST_JSON: JSON.stringify(capabilityProviderAllowlist) } : {}),
   ...(manifest.budget?.monthlyCap ? { CLIENT_BUDGET_CAP: String(manifest.budget.monthlyCap) } : {}),
   ...(manifest.budget?.warningThreshold ? { CLIENT_BUDGET_WARNING_THRESHOLD: String(manifest.budget.warningThreshold) } : {}),
   CLIENT_STORAGE_NAMESPACE: slug,
@@ -142,6 +145,7 @@ const immutableRuntimeKeys = [
   "CLIENT_PROVIDER_ALLOWLIST",
   "CLIENT_MODEL_ALLOWLIST",
   "CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON",
+  "CLIENT_CAPABILITY_PROVIDER_ALLOWLIST_JSON",
   "CLIENT_BUDGET_CAP",
   "CLIENT_BUDGET_WARNING_THRESHOLD",
   "CLIENT_STORAGE_NAMESPACE",

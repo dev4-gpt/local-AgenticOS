@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
+import { normalizeCapabilityProviderAllowlist, normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
 const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
@@ -34,6 +34,20 @@ validateProviderActivation({
 });
 expect(active.message === null, "valid provider activation must pass");
 
+const selectedMedia = { message: null };
+validateProviderActivation({
+  enabled: true,
+  providerAllowlist: ["ANTHROPIC_API_KEY", "HEYGEN_API_KEY"],
+  secretNames: ["ANTHROPIC_API_KEY", "HEYGEN_API_KEY"],
+  modelAllowlist: ["claude-test"],
+  providerModelAllowlist: { anthropic: ["claude-test"] },
+  modelPricing: normalizeModelPricing({ "claude-test": { inputMicrosPer1k: 1, outputMicrosPer1k: 2 } }),
+  enabledCapabilities: ["text-agents", "media"],
+  capabilityProviderAllowlist: normalizeCapabilityProviderAllowlist({ media: ["heygen"] }),
+  fail: (message) => { selectedMedia.message = message; },
+});
+expect(selectedMedia.message === null, "one selected media provider must not require unrelated media secrets");
+
 for (const [label, config, expected] of [
   ["missing secret slot", { providerAllowlist: [], secretNames: [] }, "Secret Manager slot"],
   ["missing pricing", { modelPricing: {} }, "pricing"],
@@ -50,6 +64,7 @@ for (const [label, config, expected] of [
     providerModelAllowlist: { anthropic: ["claude-test"] },
     modelPricing: config.modelPricing ?? normalizeModelPricing({ "claude-test": { inputMicrosPer1k: 1, outputMicrosPer1k: 2 } }),
     enabledCapabilities: config.enabledCapabilities ?? ["text-agents"],
+    capabilityProviderAllowlist: config.capabilityProviderAllowlist ?? {},
     seoAllowedHosts: config.seoAllowedHosts ?? [],
     deliveryAllowedHosts: config.deliveryAllowedHosts ?? [],
     fail: (message) => { result.message = message; },

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { checkClientRuntimeRateLimit, selectClientRecords } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, clientRpc, recordClientAudit, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 
 export const runtime = "nodejs";
@@ -46,6 +46,29 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({ ok: true, provider, messages }, { headers: { "cache-control": "private, no-store" } });
+}
+
+export async function DELETE(request: Request) {
+  const user = await currentClientUser();
+  if (!user || !(await currentClientMember())) return jsonError("not_authenticated", 401);
+  if (!clientCapabilityEnabled("text-agents")) return jsonError("capability_not_enabled", 403);
+
+  const rateLimit = await checkClientRuntimeRateLimit("provider-history-delete", 10, 900);
+  if (!rateLimit.ok) return jsonError("runtime_limit_unavailable", 503);
+  if (!rateLimit.allowed) return jsonError("runtime_rate_limited", 429);
+
+  const provider = new URL(request.url).searchParams.get("provider")?.trim().toLowerCase() ?? "";
+  if (!PROVIDER.test(provider)) return jsonError("provider_invalid", 400);
+  const tenantSlug = process.env.CLIENT_SLUG?.trim();
+  if (!tenantSlug) return jsonError("tenant_not_configured", 503);
+
+  const deleted = await clientRpc("delete_client_runtime_provider_history", {
+    p_tenant_slug: tenantSlug,
+    p_provider: provider,
+  });
+  if (!deleted.ok || deleted.value !== true) return jsonError("provider_history_delete_failed", 502);
+  await recordClientAudit("provider.history.deleted", { provider, owner: user.id });
+  return NextResponse.json({ ok: true, provider, status: "deleted" }, { headers: { "cache-control": "private, no-store" } });
 }
 
 function asRecord(value: unknown) {

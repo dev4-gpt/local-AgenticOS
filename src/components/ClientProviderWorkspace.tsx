@@ -68,6 +68,7 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
   const [runtime, setRuntime] = useState<RuntimeStatus>({});
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [hydratedStorageKey, setHydratedStorageKey] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeRequestRef = useRef<string | null>(null);
@@ -176,11 +177,20 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
     pollRef.current = setTimeout(tick, 700);
   }
 
-  function clearChat() {
-    if (status === "queued") return;
+  async function clearChat() {
+    if (status === "queued" || deleting) return;
+    setDeleting(true);
+    const response = await fetch(`/api/client-runtime/provider-history?provider=${encodeURIComponent(provider)}`, { method: "DELETE" }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    if (!response?.ok || !data?.ok) {
+      setError(data?.error || "provider_history_delete_failed");
+      setDeleting(false);
+      return;
+    }
     setMessages([]);
     setError("");
     try { localStorage.removeItem(storageKey); } catch {}
+    setDeleting(false);
   }
 
   const blocked = !runtime.providerCallsEnabled || !connected;
@@ -202,7 +212,7 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
       <section className="panel p-5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--cream-mute)" }}>Provider thread</p>
-          {messages.length > 0 && <button type="button" onClick={clearChat} disabled={status === "queued"} className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Trash2 size={12} />Clear</button>}
+          {messages.length > 0 && <button type="button" onClick={() => void clearChat()} disabled={status === "queued" || deleting} className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Trash2 size={12} />{deleting ? "Deleting" : "Clear"}</button>}
         </div>
         <div className="min-h-[260px] space-y-4">
           {visibleMessages.length === 0 && <div className="grid min-h-[220px] place-items-center text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>Ask an approved question when this provider is enabled.</div>}

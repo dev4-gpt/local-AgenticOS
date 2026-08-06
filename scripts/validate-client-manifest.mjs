@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
+import { normalizeCapabilityProviderAllowlist, normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
 
 const file = process.argv[2];
 if (!file) fail("Usage: node scripts/validate-client-manifest.mjs path/to/client.json");
@@ -46,6 +46,7 @@ for (const [provider, values] of Object.entries(providerModels)) {
   if (!/^[a-z][a-z0-9-]{1,40}$/.test(provider) || !Array.isArray(values) || values.length === 0) fail(`Invalid providerModelAllowlist.${provider}`);
   if (values.some((model) => typeof model !== "string" || !models.includes(model))) fail(`providerModelAllowlist.${provider} must only reference modelAllowlist entries`);
 }
+const capabilityProviderAllowlist = normalizeCapabilityProviderAllowlist(manifest.capabilityProviderAllowlist);
 const providerCallsEnabled = manifest.providerCallsEnabled === true;
 if (String(env.CLIENT_PROVIDER_CALLS_ENABLED ?? "0") === "1" && !providerCallsEnabled) {
   fail("runtimeEnv.CLIENT_PROVIDER_CALLS_ENABLED cannot enable providers; set providerCallsEnabled: true after review");
@@ -59,6 +60,7 @@ validateProviderActivation({
   providerModelAllowlist: providerModels,
   modelPricing,
   enabledCapabilities: manifest.enabledCapabilities.map(String),
+  capabilityProviderAllowlist,
   seoAllowedHosts: normalizeHostAllowlist(manifest.seoAllowedHosts),
   deliveryAllowedHosts: normalizeHostAllowlist(manifest.deliveryAllowedHosts),
   fail,
