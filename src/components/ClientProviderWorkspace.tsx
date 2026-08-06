@@ -155,7 +155,7 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
       if (job?.status === "succeeded") {
         const output = typeof job.output_metadata?.output === "string" ? job.output_metadata.output : "The provider completed without text output.";
         completedJobsRef.current.add(jobId);
-        setMessages((current) => current.some((message) => message.jobId === jobId)
+        setMessages((current) => current.some((message) => message.role === "assistant" && message.jobId === jobId)
           ? current
           : [...current, { id: crypto.randomUUID(), role: "assistant", content: output, jobId, createdAt: Date.now() }]);
         setStatus("ready");

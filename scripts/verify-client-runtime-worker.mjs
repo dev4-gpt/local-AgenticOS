@@ -49,6 +49,7 @@ const deliveryApproval = await readFile(join(root, "scripts/approve-client-deliv
 const middleware = await readFile(join(root, "src/middleware.ts"), "utf8");
 const observability = await readFile(join(root, "src/lib/clientRuntimeObservability.ts"), "utf8");
 const telemetryRoute = await readFile(join(root, "src/app/api/client-runtime/telemetry/route.ts"), "utf8");
+const clientProviderWorkspace = await readFile(join(root, "src/components/ClientProviderWorkspace.tsx"), "utf8");
 const shell = await readFile(join(root, "src/components/Shell.tsx"), "utf8");
 const briefWorkspace = await readFile(join(root, "src/components/ClientBriefWorkspace.tsx"), "utf8");
 const workflowRunner = await readFile(join(root, "src/lib/clientWorkflowRunner.ts"), "utf8");
@@ -111,6 +112,7 @@ expect(networkSafety.includes("resolvesToPublicAddresses") && seoAdapter.include
 expect(seoAdapter.includes("readBoundedResponseBytes") && seoAdapter.includes("4_000_000"), "SEO adapter must bound provider response bytes before parsing");
 expect(telemetryRoute.includes("captureClientProductEvent") && telemetryRoute.includes("telemetry-write") && telemetryRoute.includes("SAFE_KEYS"), "telemetry route must authenticate, rate-limit, and allowlist product event properties");
 expect(observability.includes("POSTHOG_API_KEY") && observability.includes("SENTRY_DSN") && observability.includes("application/x-sentry-envelope"), "observability must support optional PostHog capture and redacted Sentry envelopes");
+expect(clientProviderWorkspace.includes('message.role === "assistant" && message.jobId === jobId'), "provider workspace must append assistant output even when the user prompt already has the job id");
 for (const marker of ["SUPABASE_SERVICE_ROLE_KEY", "ANTHROPIC_API_KEY=", "OPENAI_API_KEY="]) {
   expect(!workerRoute.includes(marker) && !jobRoute.includes(marker), `worker boundary must not contain ${marker}`);
 }
