@@ -5,6 +5,7 @@
 node_modules
 test-results
 coverage
+tmp
 .private-client-kits
 .claude-flow
 .swarm

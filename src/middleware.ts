@@ -17,7 +17,7 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/api/client-auth/")
   ) return next(requestHeaders, requestId);
 
-  if (pathname === "/healthz") {
+  if (pathname === "/status") {
     return withRequestId(NextResponse.json({ ok: true, service: "Veloce AgenticOS" }), requestId);
   }
 
