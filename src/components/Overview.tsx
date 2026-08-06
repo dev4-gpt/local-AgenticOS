@@ -9,6 +9,7 @@ import AgentAvatar from "./AgentAvatar";
 import Vitals from "./Vitals";
 import TokenUsage from "./TokenUsage";
 import ActivityStream from "./ActivityStream";
+import ClientRuntimeObservabilityPanel from "./ClientRuntimeObservabilityPanel";
 import { usePollWhileVisible } from "@/lib/usePollWhileVisible";
 
 interface VitalsData {
@@ -17,7 +18,7 @@ interface VitalsData {
   hermes: { ok: boolean; model: string; provider: string };
 }
 
-export default function Overview() {
+export default function Overview({ clientEdition = false }: { clientEdition?: boolean }) {
   const [v, setV] = useState<VitalsData | null>(null);
   const [recentCount, setRecentCount] = useState<number>(0);
 
@@ -40,6 +41,8 @@ export default function Overview() {
   return (
     <div className="space-y-10">
       <Vitals />
+
+      {clientEdition && <ClientRuntimeObservabilityPanel />}
 
       <div className="divider">
         <span className="rule" />

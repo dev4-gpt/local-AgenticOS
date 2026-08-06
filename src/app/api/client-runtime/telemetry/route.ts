@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { checkClientRuntimeRateLimit } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
 import { captureClientProductEvent } from "@/lib/clientRuntimeObservability";
 
 export const runtime = "nodejs";
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
   const tenant = process.env.CLIENT_SLUG?.trim() || "client";
   const distinctId = createHash("sha256").update(`${tenant}:${user.id}`).digest("hex");
   await captureClientProductEvent({ event, distinctId, properties: { ...safeProperties, tenant } });
+  await recordClientAudit(event, { ...safeProperties, source: "client-telemetry" });
   return NextResponse.json({ ok: true }, { headers: { "cache-control": "no-store" } });
 }
 

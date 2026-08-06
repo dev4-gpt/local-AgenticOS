@@ -111,6 +111,7 @@ expect(deliveryApproval.includes("delivery.approved") && deliveryApproval.includ
 expect(networkSafety.includes("resolvesToPublicAddresses") && seoAdapter.includes("resolveSafePublicUrl") && deliveryAdapter.includes("resolveSafePublicUrl"), "outbound adapters must re-check DNS resolution before fetching public URLs");
 expect(seoAdapter.includes("readBoundedResponseBytes") && seoAdapter.includes("4_000_000"), "SEO adapter must bound provider response bytes before parsing");
 expect(telemetryRoute.includes("captureClientProductEvent") && telemetryRoute.includes("telemetry-write") && telemetryRoute.includes("SAFE_KEYS"), "telemetry route must authenticate, rate-limit, and allowlist product event properties");
+expect(telemetryRoute.includes("recordClientAudit"), "telemetry route must retain redacted events in the tenant audit stream");
 expect(observability.includes("POSTHOG_API_KEY") && observability.includes("SENTRY_DSN") && observability.includes("application/x-sentry-envelope"), "observability must support optional PostHog capture and redacted Sentry envelopes");
 expect(clientProviderWorkspace.includes('message.role === "assistant" && message.jobId === jobId'), "provider workspace must append assistant output even when the user prompt already has the job id");
 for (const marker of ["SUPABASE_SERVICE_ROLE_KEY", "ANTHROPIC_API_KEY=", "OPENAI_API_KEY="]) {

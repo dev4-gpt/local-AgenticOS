@@ -601,7 +601,7 @@ export default function HomeImmersive({ clientEdition = false }: { clientEdition
           <DatabaseZap size={18} />
           <span>Dashboard substrate</span>
         </div>
-        <Overview />
+        <Overview clientEdition={clientEdition} />
       </section>
     </div>
   );
