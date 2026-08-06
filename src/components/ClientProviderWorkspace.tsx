@@ -61,7 +61,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   sakana: "Sakana API",
 };
 
-export default function ClientProviderWorkspace({ provider, title }: { provider: string; title: string }) {
+export default function ClientProviderWorkspace({ provider, title, initialPrompt }: { provider: string; title: string; initialPrompt?: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<"loading" | "ready" | "queued" | "error">("loading");
@@ -73,6 +73,7 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeRequestRef = useRef<string | null>(null);
   const completedJobsRef = useRef<Set<string>>(new Set());
+  const consumedInitialPromptRef = useRef("");
   const storageKey = `veloce-client-provider-chat:${provider}`;
   const requiredKey = PROVIDER_REQUIREMENTS[provider];
   const providerLabel = PROVIDER_LABELS[provider] ?? provider;
@@ -112,6 +113,13 @@ export default function ClientProviderWorkspace({ provider, title }: { provider:
       .catch(() => { if (!cancelled) { setStatus("error"); setError("runtime_status_unavailable"); } });
     return () => { cancelled = true; if (pollRef.current) clearTimeout(pollRef.current); activeRequestRef.current = null; };
   }, [storageKey]);
+
+  useEffect(() => {
+    const nextPrompt = initialPrompt?.trim() ?? "";
+    if (!nextPrompt || nextPrompt === consumedInitialPromptRef.current) return;
+    consumedInitialPromptRef.current = nextPrompt;
+    setPrompt(nextPrompt);
+  }, [initialPrompt]);
 
   useEffect(() => {
     if (hydratedStorageKey !== storageKey) return;

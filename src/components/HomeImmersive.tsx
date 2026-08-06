@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import * as THREE from "three";
 import { ArrowUpRight, Brain, Command, Cpu, DatabaseZap, Palette, RadioTower, ShieldCheck, Sparkles, Target, Workflow } from "lucide-react";
 import Overview from "./Overview";
+import ClientRuntimeDashboard from "./ClientRuntimeDashboard";
 
 const CHAPTERS = [
   {
@@ -601,7 +602,7 @@ export default function HomeImmersive({ clientEdition = false }: { clientEdition
           <DatabaseZap size={18} />
           <span>Dashboard substrate</span>
         </div>
-        <Overview clientEdition={clientEdition} />
+        {clientEdition ? <ClientRuntimeDashboard /> : <Overview clientEdition={false} />}
       </section>
     </div>
   );

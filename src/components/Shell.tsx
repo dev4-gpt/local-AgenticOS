@@ -6,11 +6,12 @@ import { motion, useReducedMotion } from "framer-motion";
 import Sidebar, { MobileNav } from "./Sidebar";
 import TopBar from "./TopBar";
 import ClientCapabilityGate from "./ClientCapabilityGate";
-import ClientProviderWorkspace from "./ClientProviderWorkspace";
+import ClientAgentConsole from "./ClientAgentConsole";
 import ClientHostedWorkspace from "./ClientHostedWorkspace";
 import ClientDataWorkspace from "./ClientDataWorkspace";
 import ClientWorkflowWorkspace from "./ClientWorkflowWorkspace";
 import ClientBriefWorkspace, { type ClientBriefSurface } from "./ClientBriefWorkspace";
+import { CLIENT_AGENT_BY_ROUTE } from "@/lib/clientAgentCatalog";
 
 const ROUTE_LENS: Array<[string[], string]> = [
   [["/context", "/memory", "/notebook", "/goals", "/journal"], "context"],
@@ -25,22 +26,6 @@ function lensFor(pathname: string) {
 }
 
 const CLIENT_SURFACE_ROUTES = new Set(["/", "/context", "/orchestrate", "/create", "/capabilities", "/credentials", "/deliver"]);
-const CLIENT_PROVIDER_ROUTES: Record<string, { provider: string; title: string }> = {
-  "/claude": { provider: "anthropic", title: "Claude" },
-  "/codex": { provider: "codex", title: "Codex" },
-  "/openclaw": { provider: "openclaw", title: "OpenClaw" },
-  "/hermes": { provider: "hermes", title: "Hermes" },
-  "/antigravity": { provider: "antigravity", title: "Antigravity" },
-  "/kimi": { provider: "kimi", title: "Kimi Code" },
-  "/glm": { provider: "glm", title: "GLM" },
-  "/glm-code": { provider: "glm-code", title: "GLM Code" },
-  "/grok": { provider: "grok", title: "Grok" },
-  "/freeclaude": { provider: "freeclaude", title: "Free Claude Code" },
-  "/fusion": { provider: "fusion", title: "Fusion" },
-  "/sakana": { provider: "sakana", title: "Sakana" },
-  "/local": { provider: "openrouter", title: "Hosted Model Workspace" },
-  "/engine": { provider: "openrouter", title: "Hosted Model Engine" },
-};
 const CLIENT_HOSTED_ROUTES: Record<string, { kind: "orchestration" | "media" | "seo"; title: string; provider?: "elevenlabs" | "heygen" | "suno" }> = {
   "/music": { kind: "media", title: "Hosted Music", provider: "suno" },
   "/video": { kind: "media", title: "Hosted Video", provider: "heygen" },
@@ -69,7 +54,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
   const reduceMotion = useReducedMotion();
   const lens = lensFor(pathname);
   const gatedClientRoute = clientEdition && !CLIENT_SURFACE_ROUTES.has(pathname);
-  const providerWorkspace = clientEdition ? CLIENT_PROVIDER_ROUTES[pathname] : null;
+  const agentWorkspace = clientEdition ? CLIENT_AGENT_BY_ROUTE[pathname] : null;
   const hostedWorkspace = clientEdition ? CLIENT_HOSTED_ROUTES[pathname] : null;
   const workflowWorkspace = clientEdition ? CLIENT_WORKFLOW_ROUTES[pathname] : null;
   const dataWorkspace = clientEdition ? CLIENT_DATA_ROUTES[pathname] : null;
@@ -93,7 +78,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
             className={isHome ? "min-h-full w-full" : "workspace-shell__page max-w-[1500px] mx-auto px-5 md:px-10 py-7 md:py-9"}
           >
             {!isHome && <TopBar />}
-            {providerWorkspace ? <ClientProviderWorkspace {...providerWorkspace} /> : workflowWorkspace ? <ClientWorkflowWorkspace surface={workflowWorkspace} /> : hostedWorkspace ? <ClientHostedWorkspace {...hostedWorkspace} pathname={pathname} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : briefWorkspace ? <ClientBriefWorkspace surface={briefWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
+            {agentWorkspace ? <ClientAgentConsole agent={agentWorkspace} /> : workflowWorkspace ? <ClientWorkflowWorkspace surface={workflowWorkspace} /> : hostedWorkspace ? <ClientHostedWorkspace {...hostedWorkspace} pathname={pathname} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : briefWorkspace ? <ClientBriefWorkspace surface={briefWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
           </motion.div>
         </main>
       </div>

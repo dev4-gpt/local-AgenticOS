@@ -17,7 +17,10 @@ export async function GET() {
 
   const tenantSlug = process.env.CLIENT_SLUG?.trim() ?? "";
   const since = new Date(Date.now() - WINDOW_HOURS * 60 * 60 * 1000).toISOString();
-  const [audit, jobs] = await Promise.all([
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+  const [audit, jobs, budget, artifacts] = await Promise.all([
     selectClientRecords("client_runtime_audit_events", {
       tenant_slug: `eq.${tenantSlug}`,
       created_at: `gte.${since}`,
@@ -31,9 +34,20 @@ export async function GET() {
       order: "created_at.desc",
       limit: "250",
     }),
+    selectClientRecords("client_runtime_budget_ledger", {
+      tenant_slug: `eq.${tenantSlug}`,
+      created_at: `gte.${monthStart.toISOString()}`,
+      order: "created_at.desc",
+      limit: "1000",
+    }),
+    selectClientRecords("client_runtime_artifacts", {
+      tenant_slug: `eq.${tenantSlug}`,
+      order: "created_at.desc",
+      limit: "1",
+    }),
   ]);
 
-  if (!audit.ok || !jobs.ok) return jsonError("observability_read_failed", 502);
+  if (!audit.ok || !jobs.ok || !budget.ok || !artifacts.ok) return jsonError("observability_read_failed", 502);
 
   const events = audit.records.map((record) => ({
     event: typeof record.event_type === "string" ? record.event_type : "runtime.event",
@@ -41,14 +55,18 @@ export async function GET() {
     metadata: safeMetadata(record.metadata),
   }));
   const jobRecords = jobs.records.map((record) => ({
+    id: safeId(record.id),
     provider: safeCode(record.provider),
+    model: safeCode(record.model),
     status: safeCode(record.status),
     createdAt: typeof record.created_at === "string" ? record.created_at : null,
+    startedAt: typeof record.started_at === "string" ? record.started_at : null,
     finishedAt: typeof record.finished_at === "string" ? record.finished_at : null,
     errorCode: safeCode(record.error_code),
   }));
   const counts = countEvents(events.map((event) => event.event));
   const providerCounts = countJobs(jobRecords);
+  const monthlyUsage = summarizeBudget(budget.records);
 
   return NextResponse.json({
     ok: true,
@@ -56,6 +74,8 @@ export async function GET() {
     posthogConfigured: Boolean(process.env.POSTHOG_API_KEY?.trim()),
     counts,
     providerCounts,
+    monthlyUsage,
+    artifacts: { total: artifacts.records.length },
     recentEvents: events.slice(0, 12),
     recentJobs: jobRecords.slice(0, 12),
   }, { headers: { "cache-control": "private, no-store" } });
@@ -68,17 +88,46 @@ function countEvents(events: string[]) {
   }, {});
 }
 
-function countJobs(jobs: Array<{ provider: string | null; status: string | null }>) {
-  return jobs.reduce<Record<string, { total: number; succeeded: number; failed: number; active: number }>>((result, job) => {
+function countJobs(jobs: Array<{ provider: string | null; model: string | null; status: string | null; createdAt: string | null; startedAt: string | null; finishedAt: string | null }>) {
+  return jobs.reduce<Record<string, { total: number; succeeded: number; failed: number; active: number; averageLatencyMs: number | null; lastModel: string | null; latencyTotal: number; latencyCount: number }>>((result, job) => {
     const provider = job.provider ?? "unknown";
-    const current = result[provider] ?? { total: 0, succeeded: 0, failed: 0, active: 0 };
+    const current = result[provider] ?? { total: 0, succeeded: 0, failed: 0, active: 0, averageLatencyMs: null, lastModel: null, latencyTotal: 0, latencyCount: 0 };
     current.total += 1;
     if (job.status === "succeeded") current.succeeded += 1;
     else if (job.status === "failed" || job.status === "cancelled") current.failed += 1;
     else current.active += 1;
+    if (!current.lastModel && job.model) current.lastModel = job.model;
+    const start = Date.parse(job.startedAt ?? job.createdAt ?? "");
+    const finish = Date.parse(job.finishedAt ?? "");
+    if (Number.isFinite(start) && Number.isFinite(finish) && finish >= start) {
+      current.latencyTotal += finish - start;
+      current.latencyCount += 1;
+      current.averageLatencyMs = Math.round(current.latencyTotal / current.latencyCount);
+    }
     result[provider] = current;
     return result;
-  }, {});
+  }, {} as Record<string, { total: number; succeeded: number; failed: number; active: number; averageLatencyMs: number | null; lastModel: string | null; latencyTotal: number; latencyCount: number }>);
+}
+
+function summarizeBudget(records: Record<string, unknown>[]) {
+  const summary = { totalCostMicros: 0, inputTokens: 0, outputTokens: 0, byProvider: {} as Record<string, { costMicros: number; inputTokens: number; outputTokens: number; model: string | null }> };
+  for (const record of records) {
+    const provider = safeCode(record.provider) ?? "unknown";
+    const amount = safeNonNegativeInteger(record.amount_micros);
+    const usage = record.usage_metadata && typeof record.usage_metadata === "object" && !Array.isArray(record.usage_metadata) ? record.usage_metadata as Record<string, unknown> : {};
+    const inputTokens = safeNonNegativeInteger(usage.inputTokens ?? usage.promptTokens);
+    const outputTokens = safeNonNegativeInteger(usage.outputTokens ?? usage.completionTokens);
+    const entry = summary.byProvider[provider] ?? { costMicros: 0, inputTokens: 0, outputTokens: 0, model: safeCode(record.model) };
+    entry.costMicros += amount;
+    entry.inputTokens += inputTokens;
+    entry.outputTokens += outputTokens;
+    if (!entry.model) entry.model = safeCode(record.model);
+    summary.byProvider[provider] = entry;
+    summary.totalCostMicros += amount;
+    summary.inputTokens += inputTokens;
+    summary.outputTokens += outputTokens;
+  }
+  return summary;
 }
 
 function safeMetadata(value: unknown) {
@@ -88,6 +137,15 @@ function safeMetadata(value: unknown) {
 
 function safeCode(value: unknown) {
   return typeof value === "string" && /^[a-z0-9_.:-]{1,96}$/i.test(value.trim()) ? value.trim() : null;
+}
+
+function safeId(value: unknown) {
+  return typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value) ? value : null;
+}
+
+function safeNonNegativeInteger(value: unknown) {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isSafeInteger(number) && number >= 0 ? number : 0;
 }
 
 function jsonError(error: string, status: number) {

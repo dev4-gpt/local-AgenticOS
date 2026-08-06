@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const KINDS = new Set(["memory", "journal", "goal", "notebook"]);
+const GOAL_CATEGORIES = new Set(["Work", "Business", "Content", "SEO", "Health", "Personal", "Learning"]);
 const SECRET_LIKE = /(api[_ -]?key|secret|password|private[_ -]?key|access[_ -]?token)\s*[:=]/i;
 
 export async function GET(request: Request) {
@@ -40,12 +41,12 @@ export async function POST(request: Request) {
   const kind = typeof body.kind === "string" ? body.kind.trim().toLowerCase() : "";
   const title = typeof body.title === "string" ? body.title.trim().slice(0, 240) : "";
   const content = typeof body.content === "string" ? body.content.trim().slice(0, 30000) : "";
+  const category = typeof body.category === "string" && GOAL_CATEGORIES.has(body.category.trim()) ? body.category.trim() : null;
   if (!KINDS.has(kind) || !title || !content || SECRET_LIKE.test(`${title}\n${content}`)) return jsonError("record_input_invalid", 400);
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!tenantSlug) return jsonError("tenant_not_configured", 503);
-  // Metadata is server-owned so a client cannot smuggle a secret into a record
-  // field that is outside the title/content validation boundary.
-  const stored = await insertClientRecord("client_runtime_records", { id: randomUUID(), tenant_slug: tenantSlug, created_by: user.id, kind, title, content, metadata: {} });
+  const metadata = kind === "goal" && category ? { category } : {};
+  const stored = await insertClientRecord("client_runtime_records", { id: randomUUID(), tenant_slug: tenantSlug, created_by: user.id, kind, title, content, metadata });
   if (!stored.ok) return jsonError("record_write_failed", 502);
   await recordClientAudit("tenant.record.created", { kind });
   return NextResponse.json({ ok: true }, { status: 201, headers: { "cache-control": "private, no-store" } });

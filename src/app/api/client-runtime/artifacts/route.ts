@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { checkClientRuntimeRateLimit, clientRpc } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, clientRpc, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientGcpAccessToken, clientServiceAccountEmail, clientStorageConfig, safeClientFileName, signedClientStorageUrl } from "@/lib/clientStorage";
 
@@ -13,6 +13,36 @@ const ALLOWED_TYPES = new Set([
   "application/json", "application/pdf", "text/plain", "text/markdown", "text/csv",
   "image/png", "image/jpeg", "image/webp", "audio/mpeg", "audio/wav", "video/mp4",
 ]);
+
+export async function GET() {
+  const user = await currentClientUser();
+  if (!user || !(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+  if (!clientCapabilityEnabled("artifacts")) return NextResponse.json({ ok: false, error: "capability_not_enabled" }, { status: 403 });
+  const rateLimit = await checkClientRuntimeRateLimit("artifact-list", 60, 900);
+  if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });
+  if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
+
+  const tenantSlug = process.env.CLIENT_SLUG?.trim();
+  if (!tenantSlug) return NextResponse.json({ ok: false, error: "runtime_not_configured" }, { status: 503 });
+  const result = await selectClientRecords("client_runtime_artifacts", {
+    tenant_slug: `eq.${tenantSlug}`,
+    created_by: `eq.${user.id}`,
+    order: "created_at.desc",
+    limit: "100",
+  });
+  if (!result.ok) return NextResponse.json({ ok: false, error: "artifact_list_failed" }, { status: 502 });
+  const artifacts = result.records.map((record) => ({
+    id: typeof record.id === "string" ? record.id : "",
+    original_name: typeof record.original_name === "string" ? record.original_name : null,
+    content_type: typeof record.content_type === "string" ? record.content_type : null,
+    byte_size: typeof record.byte_size === "number" ? record.byte_size : null,
+    status: typeof record.status === "string" ? record.status : null,
+    created_at: typeof record.created_at === "string" ? record.created_at : null,
+    retention_expires_at: typeof record.retention_expires_at === "string" ? record.retention_expires_at : null,
+    job_id: typeof record.job_id === "string" ? record.job_id : null,
+  })).filter((artifact) => artifact.id);
+  return NextResponse.json({ ok: true, artifacts }, { headers: { "cache-control": "private, no-store" } });
+}
 
 export async function POST(request: Request) {
   const user = await currentClientUser();
