@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Activity, Bot, CheckCircle2, Code2, FileText, FolderOpen, Gauge, Layers, LockKeyhole, MessageSquare, Mic, PackageOpen, PanelTop, Radar, Settings2, ShieldCheck, Sparkles, Terminal, XCircle } from "lucide-react";
 import ClientProviderWorkspace from "@/components/ClientProviderWorkspace";
+import ClientAgentTabSurface from "@/components/ClientAgentTabSurface";
 import VoiceButton from "@/components/VoiceButton";
 import type { ClientAgentDefinition } from "@/lib/clientAgentCatalog";
 
@@ -41,7 +42,7 @@ export default function ClientAgentConsole({ agent }: { agent: ClientAgentDefini
   const connected = credentials.some((credential) => credential.key === agent.credentialKey && credential.connected);
   const providerStats = observability.providerCounts?.[agent.provider];
   const canCaptureVoice = ["talk", "factory", "build"].includes(tab);
-  const chatTab = tab === "chat" || tab === "boardroom" || tab === "terminal";
+  const chatTab = tab === "chat";
   const selectedTab = useMemo(() => agent.tabs.find((item) => item.id === tab) ?? agent.tabs[0], [agent.tabs, tab]);
 
   return (
@@ -72,11 +73,7 @@ export default function ClientAgentConsole({ agent }: { agent: ClientAgentDefini
         {agent.modes?.length ? <span className="ml-auto flex flex-wrap items-center gap-1 rounded-md border p-1" style={{ borderColor: "var(--line-soft)" }}>{agent.modes.map((item) => <button key={item} type="button" onClick={() => setMode(item)} className="rounded px-2 py-1 text-[10px]" style={{ color: mode === item ? "#08111d" : "var(--cream-mute)", background: mode === item ? agent.accent : "transparent" }}>{item}</button>)}</span> : null}
       </section>
 
-      {chatTab ? <>
-        {tab === "boardroom" && <section className="panel p-5"><p className="text-[12px] font-semibold" style={{ color: "var(--cream)" }}>Ask the whole board, not one model.</p><p className="mt-2 text-[11px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>A panel deliberates with approved providers and a final verdict is stored in the tenant workspace. Full panels can take 30 to 90 seconds after the provider lane is enabled.</p><div className="mt-4 flex flex-wrap gap-2">{(agent.quickPrompts ?? []).map((prompt) => <button key={prompt} type="button" onClick={() => setVoiceDraft(prompt)} className="rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}>{prompt}</button>)}</div></section>}
-        {tab === "terminal" && <section className="panel p-5"><div className="flex items-center gap-2"><Terminal size={15} color={agent.accent} /><p className="text-[12px] font-semibold" style={{ color: "var(--cream)" }}>Hosted terminal lane</p></div><pre className="mt-4 overflow-x-auto rounded-md border p-4 text-[11px] leading-relaxed" style={{ color: "var(--cream-dim)", borderColor: "var(--line-soft)", background: "rgba(4,10,18,0.55)" }}>{`provider: ${agent.model}\nexecution: Cloud Tasks + approved provider adapter\npersistence: tenant records + Cloud Storage artifacts\nlocal shell: unavailable by design\n\nTell the agent what to build or analyze...`}</pre></section>}
-        <ClientProviderWorkspace provider={agent.provider} title={tab === "boardroom" ? `${agent.title} · Boardroom` : agent.title} initialPrompt={voiceDraft} />
-      </> : <HostedAgentSurface agent={agent} tab={selectedTab} connected={connected} artifacts={artifacts} providerStats={providerStats} voiceDraft={voiceDraft} setVoiceDraft={setVoiceDraft} canCaptureVoice={canCaptureVoice} onOpenChat={() => setTab("chat")} />}
+      {chatTab ? <ClientProviderWorkspace provider={agent.provider} title={agent.title} initialPrompt={voiceDraft} compact /> : <ClientAgentTabSurface agent={agent} tab={selectedTab} connected={connected} artifacts={artifacts} providerStats={providerStats} onOpenChat={(prompt) => { if (prompt) setVoiceDraft(prompt); setTab("chat"); }} />}
     </div>
   );
 }

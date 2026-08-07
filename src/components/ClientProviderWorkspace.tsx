@@ -61,7 +61,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   sakana: "Sakana API",
 };
 
-export default function ClientProviderWorkspace({ provider, title, initialPrompt }: { provider: string; title: string; initialPrompt?: string }) {
+export default function ClientProviderWorkspace({ provider, title, initialPrompt, compact = false }: { provider: string; title: string; initialPrompt?: string; compact?: boolean }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<"loading" | "ready" | "queued" | "error">("loading");
@@ -204,18 +204,18 @@ export default function ClientProviderWorkspace({ provider, title, initialPrompt
   const blocked = !runtime.providerCallsEnabled || !connected;
   return (
     <div className="space-y-5">
-      <section className="panel p-5 md:p-6">
+      {!compact && <section className="panel p-5 md:p-6">
         <div className="flex items-start gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg" style={{ background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.28)", color: "#60a5fa" }}><LockKeyhole size={18} /></div>
           <div className="min-w-0"><p className="eyebrow">Client API workspace</p><h1 className="mt-2 text-[26px]" style={{ color: "var(--cream)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>{title}</h1><p className="mt-2 max-w-3xl text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>Tenant-scoped provider access through an approved API adapter. No local CLI, operator vault, or laptop filesystem is used.</p></div>
         </div>
-      </section>
+      </section>}
 
-      <section className="panel p-5">
+      {!compact && <section className="panel p-5">
         <div className="flex items-center justify-between gap-3 flex-wrap"><div className="flex items-center gap-2"><ShieldCheck size={15} color="#92400e" /><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Provider boundary</h2></div><span className="rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.12em]" style={{ color: runtime.providerCallsEnabled && connected ? "#047857" : "#92400e", background: runtime.providerCallsEnabled && connected ? "rgba(16,185,129,0.12)" : "rgba(251,191,36,0.14)", borderColor: runtime.providerCallsEnabled && connected ? "rgba(4,120,87,0.28)" : "rgba(146,64,14,0.28)" }}>{runtime.providerCallsEnabled && connected ? "Approved and connected" : "Not enabled"}</span></div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 text-[11px]" style={{ color: "var(--cream-dim)" }}><div className="flex items-center gap-2">{connected ? <CheckCircle2 size={14} color="#047857" /> : <XCircle size={14} color="#991b1b" />} {providerLabel}: {connected ? "Connected" : "Not connected"}</div><div className="flex items-center gap-2"><Clock3 size={14} color="#1d4ed8" /> Long work uses the tenant queue</div></div>
         {(!runtime.providerCallsEnabled || !connected) && <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px]" style={{ color: "var(--cream-mute)" }}>{!connected && <Link href="/credentials" className="inline-flex items-center gap-2 rounded-md border px-3 py-2" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><KeyRound size={13} /> Manage credentials</Link>}<span>{!runtime.providerCallsEnabled ? "Provider calls require manual Veloce approval." : "Add the approved provider key to continue."}</span></div>}
-      </section>
+      </section>}
 
       <section className="panel p-5">
         <div className="mb-3 flex items-center justify-between gap-3">
