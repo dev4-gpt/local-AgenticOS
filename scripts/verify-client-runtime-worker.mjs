@@ -14,6 +14,8 @@ const workerRoute = await readFile(join(root, "src/app/api/internal/client-runti
 const deliveryRoute = await readFile(join(root, "src/app/api/internal/client-runtime/delivery/route.ts"), "utf8");
 const clientDeliveryRoute = await readFile(join(root, "src/app/api/client-runtime/delivery/route.ts"), "utf8");
 const jobRoute = await readFile(join(root, "src/app/api/client-runtime/jobs/route.ts"), "utf8");
+const executionRoute = await readFile(join(root, "src/app/api/client-runtime/executions/route.ts"), "utf8");
+const dispatchRoute = await readFile(join(root, "src/app/api/internal/client-runtime/dispatch/route.ts"), "utf8");
 const providerChat = await readFile(join(root, "src/app/api/client-runtime/provider-chat/route.ts"), "utf8");
 const hostedJobsRoute = await readFile(join(root, "src/app/api/client-runtime/hosted-jobs/route.ts"), "utf8");
 const artifactsRoute = await readFile(join(root, "src/app/api/client-runtime/artifacts/route.ts"), "utf8");
@@ -44,6 +46,9 @@ const networkSafety = await readFile(join(root, "src/lib/clientNetworkSafety.ts"
 const runtimePolicy = await readFile(join(root, "src/lib/clientRuntimePolicy.ts"), "utf8");
 const providerPolicy = await readFile(join(root, "scripts/client-provider-policy.mjs"), "utf8");
 const cloudTasks = await readFile(join(root, "src/lib/cloudTasks.ts"), "utf8");
+const cloudRunJobs = await readFile(join(root, "src/lib/clientCloudRunJobs.ts"), "utf8");
+const workspaceExecution = await readFile(join(root, "src/lib/clientWorkspaceExecution.ts"), "utf8");
+const executionWorkspace = await readFile(join(root, "src/components/ClientExecutionWorkspace.tsx"), "utf8");
 const alerts = await readFile(join(root, "scripts/provision-client-runtime-alerts.mjs"), "utf8");
 const deliveryApproval = await readFile(join(root, "scripts/approve-client-delivery.mjs"), "utf8");
 const middleware = await readFile(join(root, "src/middleware.ts"), "utf8");
@@ -61,6 +66,7 @@ const runtimeRateLimitedRoutes = [
   "src/app/api/client-runtime/requests/route.ts",
   "src/app/api/client-runtime/jobs/route.ts",
   "src/app/api/client-runtime/jobs/[id]/route.ts",
+  "src/app/api/client-runtime/executions/route.ts",
   "src/app/api/client-runtime/hosted-jobs/route.ts",
   "src/app/api/client-runtime/artifacts/route.ts",
   "src/app/api/client-runtime/artifacts/[id]/route.ts",
@@ -75,6 +81,13 @@ const runtimeRateLimitedRoutes = [
 const runtimeRateLimitedRouteSources = await Promise.all(runtimeRateLimitedRoutes);
 
 expect(workerRoute.includes("validClientTaskIdentity"), "worker route must verify Cloud Tasks identity");
+expect(executionRoute.includes('capability: "workspace-execution"') && executionRoute.includes("clientProviderRequestAllowed") && executionRoute.includes("containsClientSecretLike"), "workspace execution must create tenant-bound, policy-checked durable jobs");
+expect(executionRoute.includes("clientWorkspaceJobConfigured") && executionRoute.includes('path: clientWorkspaceJobConfigured() ? "dispatch" : "jobs"'), "workspace execution must prefer the configured Cloud Run Job dispatcher with a queue-worker fallback");
+expect(workerRoute.includes("processWorkspaceExecutionJob") && workerRoute.includes("artifactFromWorkspaceOutput") && workerRoute.includes("cloud-run-ephemeral-workspace"), "worker must turn valid provider output into a stored hosted workspace artifact");
+expect(workspaceExecution.includes("workspacePrompt") && workspaceExecution.includes("artifactFromWorkspaceOutput") && workspaceExecution.includes("36_000"), "workspace execution contract must bound prompts and artifact output");
+expect(executionWorkspace.includes("sandbox=\"\"") && executionWorkspace.includes("srcDoc") && executionWorkspace.includes("/api/client-runtime/executions"), "workspace UI must render sandboxed previews from durable execution records");
+expect(dispatchRoute.includes("validClientTaskIdentity") && dispatchRoute.includes("executeClientWorkspaceJob"), "Cloud Tasks dispatcher must authenticate before starting a Cloud Run Job");
+expect(cloudRunJobs.includes("run.googleapis.com/v2") && cloudRunJobs.includes("CLIENT_WORKSPACE_RUN_JOB") && cloudRunJobs.includes("containerOverrides"), "Cloud Run Job launcher must use a configured job and per-run isolated overrides");
 expect(providerAdapter.includes("CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON") && providerAdapter.includes("provider_model_not_allowlisted"), "provider adapter must enforce provider-specific model allowlists");
 expect(providerAdapter.includes("clientProviderContract") && providerAdapter.includes("clientProviderAttributionHeaders"), "provider adapter must enforce the reviewed provider contract layer");
 expect(providerContracts.includes('toolMode: "none"') && providerContracts.includes('toolMode: "reviewed-plan"') && providerContracts.includes("maxPromptChars") && providerContracts.includes("maxHistoryMessages"), "provider contracts must define bounded workspace and tool modes");
@@ -196,6 +209,8 @@ expect(!provisioner.includes("/api/client-runtime/provider-chat"), "GCP client m
 expect(providerChat.includes("enqueueClientRuntimeJob") && providerChat.includes("enqueueClientRuntimeTask"), "legacy provider-chat route must use the queue-backed job contract");
 expect(!providerChat.includes("runClientTextAdapter") && !providerChat.includes("reserveClientRuntimeBudget"), "legacy provider-chat route must not call providers or reserve unsettled budget synchronously");
 expect(provisioner.includes("GOOGLE_CLOUD_PROJECT: projectId"), "GCP provisioner must inject the project identifier required by Cloud Tasks");
+expect(provisioner.includes("workspaceJobName") && provisioner.includes('"run", "jobs", "deploy"') && provisioner.includes("roles/run.jobsExecutorWithOverrides"), "GCP provisioner must deploy and narrowly authorize the isolated workspace job");
+expect(provisioner.includes("CLIENT_EXECUTION_BACKEND: \"cloud-run-job\"") && provisioner.includes("CLIENT_WORKSPACE_RUN_JOB: workspaceJobName"), "GCP provisioner must configure the cloud execution backend rather than a generic workspace placeholder");
 expect(provisioner.includes("roles/cloudtasks.enqueuer"), "GCP provisioner must grant the runtime service account Cloud Tasks enqueue permission");
 expect(provisioner.includes("CLIENT_RUNTIME_BASE_URL") && provisioner.includes("configureRuntimeBaseUrl"), "GCP provisioner must configure the Cloud Run task callback URL");
 expect(provisioner.includes("routeTrafficToLatestRevision") && provisioner.includes("update-traffic") && provisioner.includes("--to-latest"), "GCP provisioner must route deploy traffic to the latest ready revision");

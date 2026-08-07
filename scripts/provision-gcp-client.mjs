@@ -26,6 +26,7 @@ const projectNumberResult = spawnSync("gcloud", ["projects", "describe", project
 const projectNumber = projectNumberResult.status === 0 && projectNumberResult.stdout.trim() ? projectNumberResult.stdout.trim() : "PROJECT_NUMBER";
 const region = required(gcp.region, "gcp.region");
 const serviceName = sanitizeServiceName(gcp.serviceName || `veloce-${slug}`);
+const workspaceJobName = sanitizeServiceName(gcp.workspaceJobName || `${serviceName}-workspace`);
 const serviceAccount = sanitizeServiceAccount(gcp.runtimeServiceAccount || `veloce-${shorten(slug, 14)}-run`);
 const serviceAccountEmail = `${serviceAccount}@${projectId}.iam.gserviceaccount.com`;
 const bucket = sanitizeBucket(gcp.storageBucket || `${projectId}-veloce-${slug}`);
@@ -105,7 +106,7 @@ const protectedRuntimeEnv = {
   CLIENT_REQUEST_INBOX_SECRET: requestInboxSecret,
   CLIENT_ALLOWED_USER_EMAILS: allowedUserEmails.join(","),
   CLIENT_ALLOWED_ROUTES: "/,/context,/orchestrate,/create,/credentials,/capabilities,/deliver,/paperclip,/room,/pipeline,/claude,/openclaw,/hermes,/antigravity,/codex,/kimi,/glm,/glm-code,/grok,/freeclaude,/fusion,/sakana,/local,/engine,/agent-kanban,/loop,/ruflo,/goals,/journal,/seo,/seo-guide,/opendesign,/web-studio,/flow-lab,/integrations,/video,/studio,/openmontage,/music,/games,/thumbnails,/notebook,/kanban,/memory,/leads,/radar,/guide",
-  CLIENT_ALLOWED_API_ROUTES: "/api/capabilities,/api/client-runtime/credentials,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-runtime/artifacts,/api/client-runtime/hosted-jobs,/api/client-runtime/delivery,/api/client-runtime/memory-import,/api/client-runtime/memory-graph,/api/client-runtime/provider-history,/api/client-runtime/telemetry,/api/client-runtime/observability,/api/client-runtime/records,/api/client-runtime/workflows,/api/client-runtime/jobs,/api/internal/client-runtime/jobs,/api/internal/client-runtime/delivery,/api/client-auth/session",
+  CLIENT_ALLOWED_API_ROUTES: "/api/capabilities,/api/client-runtime/credentials,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-runtime/artifacts,/api/client-runtime/hosted-jobs,/api/client-runtime/executions,/api/client-runtime/delivery,/api/client-runtime/memory-import,/api/client-runtime/memory-graph,/api/client-runtime/provider-history,/api/client-runtime/telemetry,/api/client-runtime/observability,/api/client-runtime/records,/api/client-runtime/workflows,/api/client-runtime/jobs,/api/internal/client-runtime/jobs,/api/internal/client-runtime/dispatch,/api/internal/client-runtime/delivery,/api/client-auth/session",
   CLIENT_ENABLED_CAPABILITIES: enabledCapabilities.join(","),
   CLIENT_PROVIDER_ALLOWLIST: providerAllowlist.join(","),
   ...(modelAllowlist.length > 0 ? { CLIENT_MODEL_ALLOWLIST: modelAllowlist.join(",") } : {}),
@@ -122,6 +123,8 @@ const protectedRuntimeEnv = {
   CLIENT_RUNTIME_TASK_REGION: region,
   CLIENT_RUNTIME_TASK_QUEUE: `veloce-${slug}`,
   CLIENT_TASK_INVOKER_SERVICE_ACCOUNT: serviceAccountEmail,
+  CLIENT_EXECUTION_BACKEND: "cloud-run-job",
+  CLIENT_WORKSPACE_RUN_JOB: workspaceJobName,
   CLIENT_PROVIDER_CALLS_ENABLED: providerCallsEnabled ? "1" : "0",
   ...(providerCallsEnabled ? { CLIENT_MODEL_PRICING_JSON: JSON.stringify(modelPricing) } : {}),
   ...(seoAllowedHosts.length > 0 ? { CLIENT_SEO_ALLOWED_HOSTS: seoAllowedHosts.join(",") } : {}),
@@ -154,6 +157,8 @@ const immutableRuntimeKeys = [
   "CLIENT_RUNTIME_TASK_REGION",
   "CLIENT_RUNTIME_TASK_QUEUE",
   "CLIENT_TASK_INVOKER_SERVICE_ACCOUNT",
+  "CLIENT_EXECUTION_BACKEND",
+  "CLIENT_WORKSPACE_RUN_JOB",
   "CLIENT_PROVIDER_CALLS_ENABLED",
   "CLIENT_MODEL_PRICING_JSON",
   "CLIENT_ALLOWED_ROUTES",
@@ -235,6 +240,7 @@ console.log(`  project: ${projectId}`);
 console.log(`  region: ${region}`);
 console.log(`  repository: ${repository}`);
 console.log(`  service: ${serviceName}`);
+console.log(`  workspace job: ${workspaceJobName}`);
 console.log(`  service account: ${serviceAccountEmail}`);
 console.log(`  bucket: gs://${bucket}`);
 console.log(`  storage CORS origins: ${storageCorsOrigins.join(",")}`);
@@ -251,8 +257,11 @@ if (phase === "deploy" || phase === "all") {
   if (apply) verifySecretVersions();
   runCommands(deployCommands);
   if (apply) {
-    configureRuntimeBaseUrl();
+    const serviceUrl = configureRuntimeBaseUrl();
+    deployWorkspaceJob(serviceUrl);
     routeTrafficToLatestRevision();
+  } else {
+    printWorkspaceJobCommand("DEPLOYED_SERVICE_URL");
   }
 }
 
@@ -308,10 +317,44 @@ function configureRuntimeBaseUrl() {
   const result = spawnSync("gcloud", ["run", "services", "describe", serviceName, "--project", projectId, "--region", region, "--format=value(status.url)"], { encoding: "utf8" });
   const serviceUrl = result.status === 0 ? result.stdout.trim().replace(/\/$/, "") : "";
   if (!/^https:\/\//i.test(serviceUrl)) fail("Could not resolve the deployed Cloud Run HTTPS URL for CLIENT_RUNTIME_BASE_URL");
-  if (runtimeEnv.CLIENT_RUNTIME_BASE_URL === serviceUrl) return;
-  console.log(`Configuring task callback base URL: ${serviceUrl}`);
-  const update = spawnSync("gcloud", ["run", "services", "update", serviceName, "--project", projectId, "--region", region, "--update-env-vars", `CLIENT_RUNTIME_BASE_URL=${serviceUrl}`], { stdio: "inherit" });
-  if (update.status !== 0) process.exit(update.status ?? 1);
+  if (runtimeEnv.CLIENT_RUNTIME_BASE_URL !== serviceUrl) {
+    console.log(`Configuring task callback base URL: ${serviceUrl}`);
+    const update = spawnSync("gcloud", ["run", "services", "update", serviceName, "--project", projectId, "--region", region, "--update-env-vars", `CLIENT_RUNTIME_BASE_URL=${serviceUrl}`], { stdio: "inherit" });
+    if (update.status !== 0) process.exit(update.status ?? 1);
+  }
+  return serviceUrl;
+}
+
+function workspaceJobArgs(serviceUrl) {
+  return [
+    "run", "jobs", "deploy", workspaceJobName,
+    "--project", projectId,
+    "--region", region,
+    "--service-account", serviceAccountEmail,
+    "--tasks", "1",
+    "--max-retries", "2",
+    "--task-timeout", String(gcp.timeout ?? "900s"),
+    "--container", "workspace-runner",
+    "--image", deployImage,
+    "--cpu", String(gcp.cpu ?? "1"),
+    "--memory", String(gcp.memory ?? "1Gi"),
+    "--command", "node",
+    "--args", "scripts/run-client-workspace-job.mjs",
+    "--set-env-vars", `CLIENT_RUNTIME_BASE_URL=${serviceUrl}`,
+  ];
+}
+
+function printWorkspaceJobCommand(serviceUrl) {
+  printCommand("gcloud", workspaceJobArgs(serviceUrl));
+  printCommand("gcloud", ["run", "jobs", "add-iam-policy-binding", workspaceJobName, "--project", projectId, "--region", region, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/run.jobsExecutorWithOverrides"]);
+}
+
+function deployWorkspaceJob(serviceUrl) {
+  console.log(`Deploying isolated workspace job: ${workspaceJobName}`);
+  const deploy = spawnSync("gcloud", workspaceJobArgs(serviceUrl), { stdio: "inherit" });
+  if (deploy.status !== 0) process.exit(deploy.status ?? 1);
+  const binding = spawnSync("gcloud", ["run", "jobs", "add-iam-policy-binding", workspaceJobName, "--project", projectId, "--region", region, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/run.jobsExecutorWithOverrides"], { stdio: "inherit" });
+  if (binding.status !== 0) process.exit(binding.status ?? 1);
 }
 
 function routeTrafficToLatestRevision() {

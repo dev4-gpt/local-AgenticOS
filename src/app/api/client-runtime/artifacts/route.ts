@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
-import { clientGcpAccessToken, clientServiceAccountEmail, clientStorageConfig, safeClientFileName, signedClientStorageUrl } from "@/lib/clientStorage";
+import { clientGcpAccessToken, clientServiceAccountEmail, clientStorageConfig, safeClientFileName, safeClientObjectKey, signedClientStorageUrl } from "@/lib/clientStorage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ const ALLOWED_TYPES = new Set([
   "image/png", "image/jpeg", "image/webp", "audio/mpeg", "audio/wav", "video/mp4",
 ]);
 
-export async function GET() {
+export async function GET(request: Request) {
   const user = await currentClientUser();
   if (!user || !(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!clientCapabilityEnabled("artifacts")) return NextResponse.json({ ok: false, error: "capability_not_enabled" }, { status: 403 });
@@ -24,6 +24,8 @@ export async function GET() {
 
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!tenantSlug) return NextResponse.json({ ok: false, error: "runtime_not_configured" }, { status: 503 });
+  const artifactId = new URL(request.url).searchParams.get("id")?.trim();
+  if (artifactId) return signedDownload(user.id, tenantSlug, artifactId);
   const result = await selectClientRecords("client_runtime_artifacts", {
     tenant_slug: `eq.${tenantSlug}`,
     created_by: `eq.${user.id}`,
@@ -42,6 +44,30 @@ export async function GET() {
     job_id: typeof record.job_id === "string" ? record.job_id : null,
   })).filter((artifact) => artifact.id);
   return NextResponse.json({ ok: true, artifacts }, { headers: { "cache-control": "private, no-store" } });
+}
+
+async function signedDownload(userId: string, tenantSlug: string, artifactId: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(artifactId)) return NextResponse.json({ ok: false, error: "artifact_id_invalid" }, { status: 400 });
+  const config = clientStorageConfig();
+  if (!config) return NextResponse.json({ ok: false, error: "storage_not_configured" }, { status: 503 });
+  const artifactResult = await selectClientRecords("client_runtime_artifacts", { id: `eq.${artifactId}`, tenant_slug: `eq.${tenantSlug}`, limit: "1" });
+  const artifact = artifactResult.records[0];
+  const objectKey = typeof artifact?.object_key === "string" ? artifact.object_key : "";
+  const jobId = typeof artifact?.job_id === "string" ? artifact.job_id : "";
+  const createdBy = typeof artifact?.created_by === "string" ? artifact.created_by : "";
+  if (!artifactResult.ok || !artifact || !safeClientObjectKey(objectKey, config.namespace)) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+  if (jobId) {
+    const job = await selectClientRecords("client_runtime_jobs", { id: `eq.${jobId}`, tenant_slug: `eq.${tenantSlug}`, requested_by: `eq.${userId}`, limit: "1" });
+    if (!job.ok || !job.records[0]) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+  } else if (createdBy !== userId) {
+    return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+  }
+  const token = await clientGcpAccessToken();
+  const serviceAccount = await clientServiceAccountEmail(config.serviceAccount);
+  if (!token || !serviceAccount) return NextResponse.json({ ok: false, error: "storage_identity_unavailable" }, { status: 503 });
+  const downloadUrl = await signedClientStorageUrl({ method: "GET", bucket: config.bucket, objectKey, serviceAccount, token });
+  if (!downloadUrl) return NextResponse.json({ ok: false, error: "signed_download_unavailable" }, { status: 503 });
+  return NextResponse.json({ ok: true, downloadUrl, expiresInSeconds: 900 }, { headers: { "cache-control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {

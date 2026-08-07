@@ -10,6 +10,7 @@ import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { validClientTaskIdentity } from "@/lib/clientTaskAuth";
 import { logClientRuntimeEvent } from "@/lib/clientRuntimeObservability";
 import { runClientWorkflowRunner } from "@/lib/clientWorkflowRunner";
+import { artifactFromWorkspaceOutput, isClientWorkspaceSurface, workspacePrompt, workspaceTerminalEvents } from "@/lib/clientWorkspaceExecution";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, status: "failed" });
   }
   if (job.capability === "orchestration") return processOrchestrationJob(jobId, tenantSlug, workerToken, job);
+  if (job.capability === "workspace-execution") return processWorkspaceExecutionJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "media") return processMediaJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "seo-research") return processSeoJob(jobId, tenantSlug, workerToken, job);
   if (job.capability !== "text-agents" || typeof job.provider !== "string" || typeof job.input_metadata?.prompt !== "string") {
@@ -77,6 +79,60 @@ async function processOrchestrationJob(jobId: string, tenantSlug: string, worker
     return NextResponse.json({ ok: true, status: "failed" });
   }
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", execution);
+  return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; model?: string; input_metadata?: Record<string, unknown> | null }) {
+  const input = job.input_metadata ?? {};
+  const surface = typeof input.surface === "string" ? input.surface.trim().toLowerCase() : "";
+  const title = typeof input.title === "string" ? input.title.trim().slice(0, 240) : "";
+  const goal = typeof input.goal === "string" ? input.goal.trim().slice(0, 10_000) : "";
+  const artifactIntent = input.artifactIntent === "brief" ? "brief" : "preview";
+  if (!isClientWorkspaceSurface(surface) || !title || !goal || !job.provider) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: workspaceTerminalEvents("orchestrate", "failed", "Workspace execution input is incomplete.") }, "workspace_execution_input_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const model = job.model || clientProviderDefaultModel(job.provider) || "";
+  const prompt = workspacePrompt({ surface, title, goal, artifactIntent });
+  const estimate = model ? estimateClientTextCostMicros(model, [{ role: "user", content: prompt }], clientTextMaxOutputTokens()) : null;
+  if (!model || estimate === null || !(await reserveClientRuntimeBudgetWorker({ provider: job.provider, model, amountMicros: estimate, jobId, workerToken }))) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: workspaceTerminalEvents(surface, "failed", "The tenant budget or model policy did not approve this execution.") }, "budget_exceeded");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const result = await runClientTextAdapter({ provider: job.provider, model, prompt, reserveBudget: false, jobId });
+  if (!result.ok) {
+    logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: job.provider, status: result.status, reason: result.error });
+    if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
+    await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", result.error)] }, result.error);
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const safeOutput = safeClientProviderOutput(result.output);
+  const artifact = artifactFromWorkspaceOutput({ surface, title, artifactIntent, output: safeOutput });
+  if (!artifact) {
+    await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, artifactValidationFailure: 1 });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", "The approved provider did not return a usable tenant artifact.")] }, "workspace_artifact_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const artifactId = await storeArtifact(tenantSlug, jobId, workerToken, artifact.fileName, artifact.contentType, artifact.bytes);
+  if (!artifactId) {
+    await settleTerminalBudget(jobId, workerToken, result.usage ? clientTextUsageCostMicros(model, result.usage) ?? estimate : estimate, { artifactStoreFailure: 1 });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", "The workspace result could not be committed to tenant storage.")] }, "artifact_store_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const actualAmountMicros = result.usage ? clientTextUsageCostMicros(model, result.usage) ?? estimate : estimate;
+  const outputMetadata = {
+    adapter: "cloud-run-ephemeral-workspace",
+    mode: "provider-artifact",
+    provider: result.provider,
+    model: result.model,
+    artifactId,
+    artifactIntent,
+    ...(artifact.previewHtml ? { previewHtml: artifact.previewHtml } : {}),
+    terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "completed", `Committed ${artifact.fileName} to tenant storage.`)],
+  };
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros, usageMetadata: result.usage ?? { estimatedCostMicros: estimate, usageFallback: 1 } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
 

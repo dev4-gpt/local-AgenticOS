@@ -8,9 +8,9 @@ import TopBar from "./TopBar";
 import ClientCapabilityGate from "./ClientCapabilityGate";
 import ClientAgentConsole from "./ClientAgentConsole";
 import ClientDataWorkspace from "./ClientDataWorkspace";
-import ClientWorkflowWorkspace from "./ClientWorkflowWorkspace";
-import ClientProductionWorkspace, { type ClientProductionSurface } from "./ClientProductionWorkspace";
+import ClientExecutionWorkspace from "./ClientExecutionWorkspace";
 import { CLIENT_AGENT_BY_ROUTE } from "@/lib/clientAgentCatalog";
+import type { ClientWorkspaceSurface } from "@/lib/clientWorkspaceExecution";
 
 const ROUTE_LENS: Array<[string[], string]> = [
   [["/context", "/memory", "/notebook", "/goals", "/journal"], "context"],
@@ -25,9 +25,13 @@ function lensFor(pathname: string) {
 }
 
 const CLIENT_SURFACE_ROUTES = new Set(["/", "/context", "/orchestrate", "/create", "/capabilities", "/credentials", "/deliver"]);
-const CLIENT_WORKFLOW_ROUTES: Record<string, "orchestrate" | "paperclip" | "room" | "pipeline" | "agent-kanban" | "kanban" | "loop" | "ruflo"> = {
+const CLIENT_EXECUTION_ROUTES: Record<string, ClientWorkspaceSurface> = {
   "/orchestrate": "orchestrate", "/paperclip": "paperclip", "/room": "room", "/pipeline": "pipeline",
   "/agent-kanban": "agent-kanban", "/kanban": "kanban", "/loop": "loop", "/ruflo": "ruflo",
+  "/create": "create", "/opendesign": "opendesign", "/web-studio": "web-studio", "/flow-lab": "flow-lab",
+  "/video": "video", "/studio": "studio", "/openmontage": "openmontage", "/music": "music", "/games": "games",
+  "/thumbnails": "thumbnails", "/integrations": "integrations", "/seo": "seo", "/seo-guide": "seo-guide",
+  "/guide": "guide", "/deliver": "deliver", "/leads": "leads", "/radar": "radar",
 };
 const CLIENT_DATA_ROUTES: Record<string, "memory" | "journal" | "goals" | "notebook"> = {
   "/memory": "memory",
@@ -35,11 +39,11 @@ const CLIENT_DATA_ROUTES: Record<string, "memory" | "journal" | "goals" | "noteb
   "/goals": "goals",
   "/notebook": "notebook",
 };
-const CLIENT_PRODUCTION_ROUTES: Record<string, ClientProductionSurface> = {
-  "/create": "create", "/opendesign": "opendesign", "/web-studio": "web-studio", "/flow-lab": "flow-lab",
-  "/video": "video", "/studio": "studio", "/openmontage": "openmontage", "/music": "music", "/games": "games",
-  "/thumbnails": "thumbnails", "/integrations": "integrations", "/seo": "seo", "/seo-guide": "seo-guide",
-  "/guide": "guide", "/deliver": "deliver", "/leads": "leads", "/radar": "radar",
+// The cloud edition exposes the same agent destinations through an approved
+// provider adapter; this map intentionally contains no localhost transport.
+const CLIENT_HOSTED_PROVIDER_ROUTES: Record<string, { provider: "openrouter" }> = {
+  "/local": { provider: "openrouter" },
+  "/engine": { provider: "openrouter" },
 };
 
 export default function Shell({ children, clientEdition = false }: { children: ReactNode; clientEdition?: boolean }) {
@@ -50,9 +54,9 @@ export default function Shell({ children, clientEdition = false }: { children: R
   const lens = lensFor(pathname);
   const gatedClientRoute = clientEdition && !CLIENT_SURFACE_ROUTES.has(pathname);
   const agentWorkspace = clientEdition ? CLIENT_AGENT_BY_ROUTE[pathname] : null;
-  const workflowWorkspace = clientEdition ? CLIENT_WORKFLOW_ROUTES[pathname] : null;
+  const hostedProviderRoute = clientEdition ? CLIENT_HOSTED_PROVIDER_ROUTES[pathname] : null;
+  const executionWorkspace = clientEdition ? CLIENT_EXECUTION_ROUTES[pathname] : null;
   const dataWorkspace = clientEdition ? CLIENT_DATA_ROUTES[pathname] : null;
-  const productionWorkspace = clientEdition ? CLIENT_PRODUCTION_ROUTES[pathname] : null;
 
   return (
     <div className={`workspace-shell workspace-shell--${lens}`} data-lens={lens}>
@@ -72,7 +76,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
             className={isHome ? "min-h-full w-full" : "workspace-shell__page max-w-[1500px] mx-auto px-5 md:px-10 py-7 md:py-9"}
           >
             {!isHome && <TopBar />}
-            {agentWorkspace ? <ClientAgentConsole agent={agentWorkspace} /> : workflowWorkspace ? <ClientWorkflowWorkspace surface={workflowWorkspace} /> : productionWorkspace ? <ClientProductionWorkspace surface={productionWorkspace} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
+            {agentWorkspace ? <ClientAgentConsole agent={agentWorkspace} /> : hostedProviderRoute ? <ClientCapabilityGate pathname={pathname} /> : executionWorkspace ? <ClientExecutionWorkspace surface={executionWorkspace} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
           </motion.div>
         </main>
       </div>
