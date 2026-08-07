@@ -11,15 +11,15 @@ type Workflow = { id: string; title: string; content: string; status: "active" |
 
 const WORKFLOW_VISIBLE_ERROR_CODES = ["runtime_rate_limited", "runtime_limit_unavailable", "capability_not_enabled"];
 
-const COPY: Record<Surface, { title: string; eyebrow: string }> = {
-  orchestrate: { title: "Workflow Board", eyebrow: "Orchestrate · Tenant workflow" },
-  paperclip: { title: "Paperclip Workspace", eyebrow: "Orchestrate · Work ownership" },
-  room: { title: "AI Agent Mastermind", eyebrow: "Orchestrate · Coordination" },
-  pipeline: { title: "Pipeline", eyebrow: "Orchestrate · Delivery flow" },
-  "agent-kanban": { title: "Agent Kanban", eyebrow: "Orchestrate · Work items" },
-  kanban: { title: "Kanban", eyebrow: "Orchestrate · Work items" },
-  loop: { title: "Loop Engineering", eyebrow: "Orchestrate · Iterations" },
-  ruflo: { title: "Ruflo", eyebrow: "Orchestrate · Coordination" },
+const COPY: Record<Surface, { title: string; eyebrow: string; description: string; tabs: string[]; lanes: string[] }> = {
+  orchestrate: { title: "Orchestration Control", eyebrow: "III. Orchestrate · Tenant workflow", description: "Shape a request into a governed work plan, then inspect its queue, handoffs, and approval evidence.", tabs: ["Overview", "Workflows", "Queue", "Evidence"], lanes: ["Intake", "Plan", "Review", "Approved"] },
+  paperclip: { title: "Paperclip", eyebrow: "III. Orchestrate · Work ownership", description: "A hosted issue and build ledger. The local Paperclip app is not embedded; tenant work, artifacts, and delivery ownership are represented here.", tabs: ["Builds", "Issues", "Active", "Done", "Org", "Costs"], lanes: ["Captured", "Assigned", "Review", "Shipped"] },
+  room: { title: "AI Agent Mastermind", eyebrow: "III. Orchestrate · Coordination", description: "Coordinate reviewed workstreams in a tenant room. Provider calls occur only through approved queued adapters.", tabs: ["Room", "Agenda", "Decisions", "Handoffs"], lanes: ["Brief", "Perspectives", "Decision", "Owner"] },
+  pipeline: { title: "Pipeline", eyebrow: "III. Orchestrate · Delivery flow", description: "Move a captured idea through classification, human review, execution, and a tenant-owned artifact trail.", tabs: ["Board", "Capture", "Review", "Gallery"], lanes: ["Capture", "Human gate", "Execute", "Filed"] },
+  "agent-kanban": { title: "Agent Kanban", eyebrow: "III. Orchestrate · Work items", description: "A managed board for scoped agent tasks, workspace artifacts, and the reviewer checkpoint.", tabs: ["Board", "Team", "Workspace", "Activity"], lanes: ["Backlog", "Building", "Review", "Done"] },
+  kanban: { title: "Kanban", eyebrow: "III. Orchestrate · Work items", description: "A tenant work board with explicit ownership, review, and completion states.", tabs: ["Boards", "Tasks", "Assignees", "Archive"], lanes: ["Queued", "In progress", "Review", "Complete"] },
+  loop: { title: "Loop Engineering", eyebrow: "III. Orchestrate · Iterations", description: "Run bounded improvement loops and retain the evidence behind each next-step decision.", tabs: ["Loops", "Hypotheses", "Checks", "History"], lanes: ["Target", "Change", "Check", "Decision"] },
+  ruflo: { title: "Ruflo", eyebrow: "III. Orchestrate · Coordination", description: "Coordinate a multi-workstream plan with dependencies, human gates, and durable hosted records.", tabs: ["Command", "Flows", "Dependencies", "Reports"], lanes: ["Scope", "Routes", "Resolve", "Report"] },
 };
 
 export default function ClientWorkflowWorkspace({ surface }: { surface: Surface }) {
@@ -28,6 +28,7 @@ export default function ClientWorkflowWorkspace({ surface }: { surface: Surface 
   const [title, setTitle] = useState("");
   const [goal, setGoal] = useState("");
   const [operation, setOperation] = useState("plan");
+  const [tab, setTab] = useState(copy.tabs[0]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -114,8 +115,9 @@ export default function ClientWorkflowWorkspace({ surface }: { surface: Surface 
   const submitLabel = operation === "dispatch" ? "Queue approved job" : operation === "handoff" ? "Request handoff" : "Save workflow";
 
   return (
-    <div className="space-y-5">
-      <section className="panel p-5 md:p-6">
+    <div className="space-y-5 pb-8">
+      <section className="panel overflow-hidden p-0">
+        <div className="p-5 md:p-6">
         <div className="flex items-start gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg" style={{ background: "rgba(90,184,150,0.12)", border: "1px solid rgba(90,184,150,0.28)", color: "#5ab896" }}>
             <LockKeyhole size={18} />
@@ -124,14 +126,18 @@ export default function ClientWorkflowWorkspace({ surface }: { surface: Surface 
             <p className="eyebrow">{copy.eyebrow}</p>
             <h1 className="mt-2 text-[26px]" style={{ color: "var(--cream)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>{copy.title}</h1>
             <p className="mt-2 max-w-3xl text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>
-              This hosted workspace stores tenant-owned work state and review steps in Supabase. It does not execute a local agent, read the operator vault, or expose shell access.
+              {copy.description}
             </p>
           </div>
         </div>
+        </div>
+        <div className="flex overflow-x-auto border-t px-4" style={{ borderColor: "var(--line-soft)" }}>{copy.tabs.map((item) => <button key={item} onClick={() => setTab(item)} className="shrink-0 border-b-2 px-3 py-3 text-[11px] font-semibold" style={{ color: item === tab ? "#5ab896" : "var(--cream-mute)", borderColor: item === tab ? "#5ab896" : "transparent" }}>{item}</button>)}</div>
       </section>
 
+      <section className="grid gap-3 md:grid-cols-4">{copy.lanes.map((lane, index) => <div key={lane} className="panel p-3" style={{ borderTop: `2px solid ${index === 2 ? "#fbbf24" : "#5ab896"}` }}><div className="flex items-center gap-2"><span className="text-[10px]" style={{ color: "#5ab896" }}>0{index + 1}</span><span className="text-[11px] font-semibold" style={{ color: "var(--cream)" }}>{lane}</span></div><p className="mt-3 text-[10px]" style={{ color: "var(--cream-mute)" }}>{tab === "Overview" ? "Tenant-scoped work state" : `${tab} lane ready for reviewed work`}</p></div>)}</section>
+
       <section className="panel p-5 md:p-6">
-        <div className="flex items-center gap-2"><Plus size={15} color="#5ab896" /><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Create a workflow</h2></div>
+        <div className="flex items-center gap-2"><Plus size={15} color="#5ab896" /><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>{surface === "paperclip" ? "Open hosted issue" : surface === "room" ? "Set room agenda" : surface === "pipeline" ? "Capture pipeline item" : surface === "loop" ? "Start a bounded loop" : "Create a workflow"}</h2></div>
         <div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]">
           <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Name this workflow" className="rounded-md border px-3 py-2.5 text-[12px]" style={{ color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" }} />
           <select value={operation} onChange={(event) => setOperation(event.target.value)} className="runtime-request-select rounded-md border px-3 py-2.5 text-[12px]" style={{ borderColor: "var(--line-soft)" }}>

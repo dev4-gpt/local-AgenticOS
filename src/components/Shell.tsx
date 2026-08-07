@@ -7,10 +7,9 @@ import Sidebar, { MobileNav } from "./Sidebar";
 import TopBar from "./TopBar";
 import ClientCapabilityGate from "./ClientCapabilityGate";
 import ClientAgentConsole from "./ClientAgentConsole";
-import ClientHostedWorkspace from "./ClientHostedWorkspace";
 import ClientDataWorkspace from "./ClientDataWorkspace";
 import ClientWorkflowWorkspace from "./ClientWorkflowWorkspace";
-import ClientBriefWorkspace, { type ClientBriefSurface } from "./ClientBriefWorkspace";
+import ClientProductionWorkspace, { type ClientProductionSurface } from "./ClientProductionWorkspace";
 import { CLIENT_AGENT_BY_ROUTE } from "@/lib/clientAgentCatalog";
 
 const ROUTE_LENS: Array<[string[], string]> = [
@@ -26,11 +25,6 @@ function lensFor(pathname: string) {
 }
 
 const CLIENT_SURFACE_ROUTES = new Set(["/", "/context", "/orchestrate", "/create", "/capabilities", "/credentials", "/deliver"]);
-const CLIENT_HOSTED_ROUTES: Record<string, { kind: "orchestration" | "media" | "seo"; title: string; provider?: "elevenlabs" | "heygen" | "suno" }> = {
-  "/music": { kind: "media", title: "Hosted Music", provider: "suno" },
-  "/video": { kind: "media", title: "Hosted Video", provider: "heygen" },
-  "/seo": { kind: "seo", title: "SEO Research" },
-};
 const CLIENT_WORKFLOW_ROUTES: Record<string, "orchestrate" | "paperclip" | "room" | "pipeline" | "agent-kanban" | "kanban" | "loop" | "ruflo"> = {
   "/orchestrate": "orchestrate", "/paperclip": "paperclip", "/room": "room", "/pipeline": "pipeline",
   "/agent-kanban": "agent-kanban", "/kanban": "kanban", "/loop": "loop", "/ruflo": "ruflo",
@@ -41,10 +35,11 @@ const CLIENT_DATA_ROUTES: Record<string, "memory" | "journal" | "goals" | "noteb
   "/goals": "goals",
   "/notebook": "notebook",
 };
-const CLIENT_BRIEF_ROUTES: Record<string, ClientBriefSurface> = {
-  "/opendesign": "opendesign", "/web-studio": "web-studio", "/flow-lab": "flow-lab", "/studio": "studio",
-  "/openmontage": "openmontage", "/games": "games", "/thumbnails": "thumbnails", "/integrations": "integrations",
-  "/leads": "leads", "/radar": "radar", "/guide": "guide",
+const CLIENT_PRODUCTION_ROUTES: Record<string, ClientProductionSurface> = {
+  "/create": "create", "/opendesign": "opendesign", "/web-studio": "web-studio", "/flow-lab": "flow-lab",
+  "/video": "video", "/studio": "studio", "/openmontage": "openmontage", "/music": "music", "/games": "games",
+  "/thumbnails": "thumbnails", "/integrations": "integrations", "/seo": "seo", "/seo-guide": "seo-guide",
+  "/guide": "guide", "/deliver": "deliver", "/leads": "leads", "/radar": "radar",
 };
 
 export default function Shell({ children, clientEdition = false }: { children: ReactNode; clientEdition?: boolean }) {
@@ -55,10 +50,9 @@ export default function Shell({ children, clientEdition = false }: { children: R
   const lens = lensFor(pathname);
   const gatedClientRoute = clientEdition && !CLIENT_SURFACE_ROUTES.has(pathname);
   const agentWorkspace = clientEdition ? CLIENT_AGENT_BY_ROUTE[pathname] : null;
-  const hostedWorkspace = clientEdition ? CLIENT_HOSTED_ROUTES[pathname] : null;
   const workflowWorkspace = clientEdition ? CLIENT_WORKFLOW_ROUTES[pathname] : null;
   const dataWorkspace = clientEdition ? CLIENT_DATA_ROUTES[pathname] : null;
-  const briefWorkspace = clientEdition ? CLIENT_BRIEF_ROUTES[pathname] : null;
+  const productionWorkspace = clientEdition ? CLIENT_PRODUCTION_ROUTES[pathname] : null;
 
   return (
     <div className={`workspace-shell workspace-shell--${lens}`} data-lens={lens}>
@@ -78,7 +72,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
             className={isHome ? "min-h-full w-full" : "workspace-shell__page max-w-[1500px] mx-auto px-5 md:px-10 py-7 md:py-9"}
           >
             {!isHome && <TopBar />}
-            {agentWorkspace ? <ClientAgentConsole agent={agentWorkspace} /> : workflowWorkspace ? <ClientWorkflowWorkspace surface={workflowWorkspace} /> : hostedWorkspace ? <ClientHostedWorkspace {...hostedWorkspace} pathname={pathname} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : briefWorkspace ? <ClientBriefWorkspace surface={briefWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
+            {agentWorkspace ? <ClientAgentConsole agent={agentWorkspace} /> : workflowWorkspace ? <ClientWorkflowWorkspace surface={workflowWorkspace} /> : productionWorkspace ? <ClientProductionWorkspace surface={productionWorkspace} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
           </motion.div>
         </main>
       </div>
