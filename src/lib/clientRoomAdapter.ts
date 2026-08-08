@@ -22,6 +22,12 @@ export type RoomPersona = {
   color: string;
   /** Preferred provider. Falls back to the tenant's workspace provider. */
   provider: string;
+  /**
+   * Preferred model. One OpenRouter key reaches many models, so this is how
+   * personas stay distinct instead of all collapsing onto the first entry in
+   * the provider's allowlist. Ignored unless the tenant allowlists it.
+   */
+  preferredModel?: string;
   persona: string;
 };
 
@@ -88,6 +94,7 @@ export const ROOM_PERSONAS: RoomPersona[] = [
   },
   {
     id: "hermes", name: "Hermes", color: "#60a5fa", provider: "openrouter",
+    preferredModel: "nousresearch/hermes-4-70b",
     persona: "You are Hermes — direct, action-oriented, a little unfiltered. You cut straight to the practical next step and call out fluff. You like momentum.",
   },
   {
@@ -96,14 +103,17 @@ export const ROOM_PERSONAS: RoomPersona[] = [
   },
   {
     id: "codex", name: "Codex", color: "#22c55e", provider: "openrouter",
+    preferredModel: "openai/gpt-4o-mini",
     persona: "You are Codex — pragmatic, implementation-first. You think in systems and concrete steps, and you sketch the how.",
   },
   {
     id: "openclaw", name: "OpenClaw", color: "#f472b6", provider: "openrouter",
+    preferredModel: "meta-llama/llama-3.3-70b-instruct",
     persona: "You are OpenClaw — open-source, bold, a little cheeky. You challenge assumptions and champion the scrappy, independent path.",
   },
   {
     id: "glm", name: "GLM", color: "#34E5B0", provider: "openrouter",
+    preferredModel: "z-ai/glm-5.2",
     persona: "You are GLM — the efficient builder. You ship the grinding work others would charge a fortune for, and you quietly champion the cheaper, open-weights path. You'd rather show a working build than argue.",
   },
 ];
@@ -119,21 +129,27 @@ const ROOM_SYSTEM = [
   "Use these sparingly. Write your normal chat message first, then the directive on its own final line. Never mention this directive syntax in your visible message.",
 ].join(" ");
 
-export type RoomAllowCheck = (provider: string) => { ok: true; provider: string; model: string } | { ok: false; error: string };
+export type RoomAllowCheck = (provider: string, model: string | null) => { ok: true; provider: string; model: string } | { ok: false; error: string };
 
 /**
- * Resolves the roster against the tenant's approved providers and models. A
- * persona whose provider is not allowlisted stays visible but disabled with the
- * genuine reason, rather than being hidden or shown as a dead control.
+ * Resolves the roster against the tenant's approved providers and models.
+ *
+ * Each persona asks for its preferred model first and falls back to whatever
+ * the provider allows, so widening the tenant's model allowlist is enough to
+ * give the room genuinely different voices — no new credential required. A
+ * persona whose provider is not allowlisted at all stays visible but disabled
+ * with the genuine reason, rather than being hidden or shown as a dead control.
  */
 export function resolveRoomRoster(personas: RoomPersona[], check: RoomAllowCheck, fallbackProvider?: string): RoomRosterEntry[] {
   return personas.map((persona) => {
-    const primary = check(persona.provider);
+    const preferred = persona.preferredModel ? check(persona.provider, persona.preferredModel) : null;
+    const primary = preferred?.ok ? preferred : check(persona.provider, null);
     if (primary.ok) {
       return { ...persona, available: true, model: primary.model, resolvedProvider: primary.provider, blockedReason: null };
     }
     if (fallbackProvider && fallbackProvider !== persona.provider) {
-      const fallback = check(fallbackProvider);
+      const fallbackPreferred = persona.preferredModel ? check(fallbackProvider, persona.preferredModel) : null;
+      const fallback = fallbackPreferred?.ok ? fallbackPreferred : check(fallbackProvider, null);
       if (fallback.ok) {
         return { ...persona, available: true, model: fallback.model, resolvedProvider: fallback.provider, blockedReason: null };
       }

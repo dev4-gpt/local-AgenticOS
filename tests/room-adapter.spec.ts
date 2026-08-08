@@ -50,6 +50,32 @@ test("an unavailable persona falls back to the tenant workspace provider when on
   expect(gemini?.model).toBe("fallback-model");
 });
 
+test("a persona gets its preferred model when the tenant allowlists it", () => {
+  const allowed = new Set(["nousresearch/hermes-4-70b", "google/gemini-3.1-flash-lite"]);
+  const roster = resolveRoomRoster(ROOM_PERSONAS, (provider, model) => {
+    if (provider !== "openrouter") return { ok: false, error: "provider_not_allowlisted" };
+    if (model && !allowed.has(model)) return { ok: false, error: "model_not_allowlisted" };
+    return { ok: true, provider: "openrouter", model: model ?? "google/gemini-3.1-flash-lite" };
+  });
+  // Hermes' preference is allowlisted, so it gets a distinct model.
+  expect(roster.find((entry) => entry.id === "hermes")?.model).toBe("nousresearch/hermes-4-70b");
+  // Codex's preference is not, so it falls back rather than becoming unavailable.
+  const codex = roster.find((entry) => entry.id === "codex");
+  expect(codex?.available).toBe(true);
+  expect(codex?.model).toBe("google/gemini-3.1-flash-lite");
+});
+
+test("with a single-model allowlist every openrouter persona collapses onto it", () => {
+  const roster = resolveRoomRoster(ROOM_PERSONAS, (provider, model) => {
+    if (provider !== "openrouter") return { ok: false, error: "provider_not_allowlisted" };
+    if (model) return { ok: false, error: "model_not_allowlisted" };
+    return { ok: true, provider: "openrouter", model: "only-model" };
+  });
+  const openrouterModels = roster.filter((entry) => entry.resolvedProvider === "openrouter").map((entry) => entry.model);
+  expect(openrouterModels.length).toBeGreaterThan(1);
+  expect(new Set(openrouterModels)).toEqual(new Set(["only-model"]));
+});
+
 test("mentions narrow a round, and an unknown or absent mention does not empty it", () => {
   const present = ["claude", "hermes", "gemini"];
   expect(roomMentionedIds("@claude what do you think?", present)).toEqual(["claude"]);

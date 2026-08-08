@@ -68,8 +68,8 @@ export function roomWriteLimit() {
  */
 export function roomRoster() {
   const fallback = process.env.CLIENT_WORKSPACE_PROVIDER?.trim().toLowerCase() || "openrouter";
-  return resolveRoomRoster(ROOM_PERSONAS, (provider) => {
-    const policy = clientProviderRequestAllowed(provider, null);
+  return resolveRoomRoster(ROOM_PERSONAS, (provider, model) => {
+    const policy = clientProviderRequestAllowed(provider, model);
     return policy.ok
       ? { ok: true as const, provider: policy.provider, model: policy.model }
       : { ok: false as const, error: policy.error };
