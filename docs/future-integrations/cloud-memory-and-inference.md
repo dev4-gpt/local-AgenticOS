@@ -278,3 +278,21 @@ service, Obsidian vault, or laptop API is mounted into Cloud Run.
   media or self-hosted inference demand.
 - Cloudflare remains optional for a custom domain, WAF, edge caching, or
   reverse-proxy telemetry. It does not replace the hosted adapter work above.
+
+## Hosted Orchestration UI Checkpoint (2026-08-08)
+
+The Section III cloud routes now use dedicated, durable orchestration surfaces
+instead of the shared `Run in hosted workspace` screen. Paperclip has hosted
+build-issue, active, done, organization, and cost views; the room has an
+in-room provider roster and a reviewed dispatch action; Pipeline and Kanban
+use tenant workflow boards; Loop records target/change/check/decision runs;
+and Ruflo shows tenant workstreams and their dependency state. Every create,
+status, step, archive, refresh, and approved dispatch control calls the
+tenant-scoped workflow API and stores a record before it queues work.
+
+This corrects the structural mismatch without misrepresenting a laptop-only
+service as cloud capability. It is not yet a literal Paperclip `:3100` iframe,
+Hermes SQLite board, Ruflo CLI graph, or local multi-model loop. Those exact
+local implementations need their own hosted service/image or a behaviorally
+equivalent, provider-specific adapter before their corresponding controls can
+claim the same execution semantics.

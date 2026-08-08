@@ -246,6 +246,10 @@ for (const surface of ["opendesign", "web-studio", "flow-lab", "openmontage", "g
   expect(briefWorkspace.includes(`${surface}:`) || briefWorkspace.includes(`"${surface}"`), `brief workspace must define ${surface}`);
 }
 expect(shell.includes('"/local": { provider: "openrouter"') && shell.includes('"/engine": { provider: "openrouter"'), "local and engine must use the hosted API replacement");
+expect(shell.includes("ClientOrchestrationWorkspace") && shell.includes("CLIENT_ORCHESTRATION_ROUTES"), "orchestration routes must use dedicated hosted workflow surfaces instead of the generic execution workspace");
+for (const surface of ["paperclip", "room", "pipeline", "agent-kanban", "kanban", "loop", "ruflo"]) {
+  expect(shell.includes(`"/${surface}"`) && shell.includes(`"${surface}"`), `client shell must route ${surface} through the hosted orchestration workspace`);
+}
 for (const marker of ["client_runtime_records", "client_runtime_records_member_select", "client_runtime_records_member_insert", "client_runtime_records_owner_update", "client_runtime_records_owner_delete"]) {
   expect(hostedSql.includes(marker), `hosted capability migration must contain ${marker}`);
   expect(recordsSql.includes(marker), `standalone records migration must contain ${marker}`);
