@@ -10,6 +10,7 @@ import ClientAgentConsole from "./ClientAgentConsole";
 import ClientDataWorkspace from "./ClientDataWorkspace";
 import ClientExecutionWorkspace from "./ClientExecutionWorkspace";
 import ClientOrchestrationWorkspace, { type ClientOrchestrationSurface } from "./ClientOrchestrationWorkspace";
+import ClientPaperclipWorkspace from "./ClientPaperclipWorkspace";
 import { CLIENT_AGENT_BY_ROUTE } from "@/lib/clientAgentCatalog";
 import type { ClientWorkspaceSurface } from "@/lib/clientWorkspaceExecution";
 
@@ -32,9 +33,10 @@ const CLIENT_EXECUTION_ROUTES: Record<string, ClientWorkspaceSurface> = {
   "/thumbnails": "thumbnails", "/integrations": "integrations", "/seo": "seo", "/seo-guide": "seo-guide",
   "/guide": "guide", "/deliver": "deliver", "/leads": "leads", "/radar": "radar",
 };
+// `/paperclip` is no longer a generic workflow surface: it has its own hosted
+// company, roster, issue board, and build gallery in ClientPaperclipWorkspace.
 const CLIENT_ORCHESTRATION_ROUTES: Record<string, ClientOrchestrationSurface> = {
   "/orchestrate": "orchestrate",
-  "/paperclip": "paperclip",
   "/room": "room",
   "/pipeline": "pipeline",
   "/agent-kanban": "agent-kanban",
@@ -66,6 +68,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
   const hostedProviderRoute = clientEdition ? CLIENT_HOSTED_PROVIDER_ROUTES[pathname] : null;
   const executionWorkspace = clientEdition ? CLIENT_EXECUTION_ROUTES[pathname] : null;
   const orchestrationWorkspace = clientEdition ? CLIENT_ORCHESTRATION_ROUTES[pathname] : null;
+  const paperclipWorkspace = clientEdition && pathname === "/paperclip";
   const dataWorkspace = clientEdition ? CLIENT_DATA_ROUTES[pathname] : null;
 
   return (
@@ -86,7 +89,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
             className={isHome ? "min-h-full w-full" : "workspace-shell__page max-w-[1500px] mx-auto px-5 md:px-10 py-7 md:py-9"}
           >
             {!isHome && <TopBar />}
-            {agentWorkspace ? <ClientAgentConsole agent={agentWorkspace} /> : hostedProviderRoute ? <ClientCapabilityGate pathname={pathname} /> : orchestrationWorkspace ? <ClientOrchestrationWorkspace surface={orchestrationWorkspace} /> : executionWorkspace ? <ClientExecutionWorkspace surface={executionWorkspace} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
+            {agentWorkspace ? <ClientAgentConsole agent={agentWorkspace} /> : hostedProviderRoute ? <ClientCapabilityGate pathname={pathname} /> : paperclipWorkspace ? <ClientPaperclipWorkspace /> : orchestrationWorkspace ? <ClientOrchestrationWorkspace surface={orchestrationWorkspace} /> : executionWorkspace ? <ClientExecutionWorkspace surface={executionWorkspace} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
           </motion.div>
         </main>
       </div>

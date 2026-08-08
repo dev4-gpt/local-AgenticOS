@@ -296,3 +296,84 @@ Hermes SQLite board, Ruflo CLI graph, or local multi-model loop. Those exact
 local implementations need their own hosted service/image or a behaviorally
 equivalent, provider-specific adapter before their corresponding controls can
 claim the same execution semantics.
+
+## Hosted Paperclip Adapter Checkpoint (2026-08-08)
+
+**Status:** implemented and statically verified; awaiting the tenant migration
+and a signed-in dogfood run.
+
+`/paperclip` no longer renders the shared orchestration workflow surface. It now
+has a literal hosted Paperclip domain, built by reading the real local service's
+contract rather than guessing at it:
+
+| Local Paperclip (`:3100`) | Hosted equivalent |
+| --- | --- |
+| company: `issuePrefix`, `issueCounter`, budget/spend | `client_paperclip_companies`, one row per tenant, bootstrapped on first authenticated visit |
+| projects | `client_paperclip_projects` |
+| agents: role, icon, `reportsTo`, `adapterConfig`, budget, heartbeat | `client_paperclip_agents`, with the provider/model constrained to the tenant allowlist |
+| issues: `identifier` (`VEL-1`), priority, status, assignee, project | `client_paperclip_issues`, identifiers allocated atomically by `allocate_client_paperclip_issue` |
+| issue comments | `client_paperclip_comments` |
+| heartbeat runs: status, timing, result, cost | `client_paperclip_runs`, one row per queued Cloud Run Job |
+| `/builds/*.html` live page + image attachment | a committed tenant Cloud Storage artifact plus its sandboxed preview |
+
+The seven local tabs — Builds, Issues, Active, Done, Org, Dashboard, Costs —
+are reproduced, including the builds gallery's card composition, `SHIPPED`
+badge, and hover-to-open behaviour. Every control performs a real hosted
+operation: creating an issue writes a numbered tenant record, "Ship it" queues
+a `workspace-execution` job through Cloud Tasks and the Cloud Run Job lane under
+the provider allowlist and budget reservation, and the worker reconciles the run,
+the issue lifecycle, the agent heartbeat, and the build artifact through the
+token-verified `complete_client_paperclip_run_worker` function.
+
+**Deliberate differences from local.** The gallery thumbnail is a sandboxed
+render of the artifact rather than a screenshot attachment, because the hosted
+lane has no headless browser; a build opens through a signed artifact download
+rather than a public `/builds/` URL; and there is no "Open full" control, because
+there is no laptop service to open. The build preview is rendered with scripts
+stripped under a restrictive CSP, so provider-generated HTML can never reach the
+tenant session.
+
+**Deployment step that is easy to miss.** The `veloce-cloud-test` service's
+`CLIENT_ALLOWED_API_ROUTES` does not yet list the Paperclip API prefix, and the
+proxy blocks any API path outside that allowlist. The new surface will render
+and then fail every call until the deploy adds:
+
+```text
+/api/client-runtime/paperclip
+```
+
+The in-repo defaults in `src/lib/clientRuntimePolicy.ts` and
+`scripts/run-client-runtime-local.mjs` already include it; the deployed service
+overrides both with its own explicit value, so it must be updated there too.
+
+**Required before this can be called done:**
+
+1. Apply `product-experience/supabase-client-paperclip.sql` to the tenant
+   Supabase project. Until then the surface states plainly that the tables are
+   missing instead of rendering an empty-but-healthy board. Verified against
+   `veloce-cloud-test` on 2026-08-08: signed in, the surface renders all seven
+   tabs and reports `paperclip_schema_missing` rather than an empty board.
+2. Run the signed-in dogfood proof: create an issue, hire an agent, ship it, and
+   retain the issue identifier, run row, Cloud Run execution, artifact, and
+   PostHog event IDs together. Confirm `queued -> running -> succeeded` plus one
+   controlled failure. This step must happen on Cloud Run. A local client-edition
+   runtime cannot prove it: `enqueueClientRuntimeTask` rejects a loopback
+   `CLIENT_RUNTIME_BASE_URL` with `task_base_url_not_public` and there is no GCP
+   metadata identity off Cloud Run. Local runs prove the UI, the tenant data
+   layer, the schema-missing state, and the controlled dispatch failure; the
+   job/artifact lane is only provable in the deployed service.
+3. Re-run the two-tenant isolation, export, deletion, and offboarding drills —
+   six new persistent tables were introduced.
+4. Confirm `CLIENT_ENABLED_CAPABILITIES` includes `orchestration` and that
+   `CLIENT_PROVIDER_CALLS_ENABLED=1`, otherwise "Ship it" correctly refuses with
+   `provider_calls_require_approval` instead of queueing.
+
+**Left for later, deliberately:** agent-authored comments (the thread accepts
+member notes today, and an agent-authored entry needs its own provenance and
+audit rule); label management UI; project lead assignment; run cancellation,
+which the current Cloud Run Job lane cannot honour mid-flight and so is not
+offered as a control; and a screenshot-grade gallery thumbnail, which needs a
+headless renderer in the worker image.
+
+Room, Pipeline, Kanban, Agent Kanban, Loop, and Ruflo still use the shared
+orchestration workflow surface and need the same treatment.

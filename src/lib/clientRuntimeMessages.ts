@@ -98,6 +98,30 @@ const NOTICES: Record<string, ClientRuntimeNotice> = {
     body: "This tab is part of the product shell, but the matching hosted capability is not enabled for this tenant yet.",
     next: "Enable the capability only after its providers, data scope, and budget are reviewed.",
   },
+  paperclip_schema_missing: {
+    tone: "warning",
+    title: "Paperclip tables not applied",
+    body: "The hosted Paperclip company, agents, projects, issues, and runs live in tenant Supabase tables that have not been created in this project yet.",
+    next: "Apply product-experience/supabase-client-paperclip.sql to this Supabase project, then reload the page.",
+  },
+  paperclip_run_already_active: {
+    tone: "info",
+    title: "A run is already in flight",
+    body: "This build issue already has a queued or running agent run. Starting a second one would spend the tenant budget twice for the same work.",
+    next: "Wait for the current run to reach a terminal state, then ship again if the result was not what you wanted.",
+  },
+  paperclip_agent_unavailable: {
+    tone: "warning",
+    title: "Assigned agent is not available",
+    body: "The agent assigned to this issue is paused or terminated, so the run was not queued.",
+    next: "Resume the agent in the Org tab, or reassign the issue to an active agent.",
+  },
+  paperclip_issue_not_found: {
+    tone: "warning",
+    title: "Build issue not found",
+    body: "This issue is no longer in the tenant board. It may have been deleted in another session.",
+    next: "Refresh the board and pick a current issue.",
+  },
   secret_like_input_rejected: {
     tone: "danger",
     title: "Secret-like input rejected",

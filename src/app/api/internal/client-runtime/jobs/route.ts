@@ -88,14 +88,21 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   const title = typeof input.title === "string" ? input.title.trim().slice(0, 240) : "";
   const goal = typeof input.goal === "string" ? input.goal.trim().slice(0, 10_000) : "";
   const artifactIntent = input.artifactIntent === "brief" ? "brief" : "preview";
+  // A Paperclip agent run is still a workspace execution, but it carries its own
+  // agent-persona prompt and reconciles the tenant issue and run rows.
+  const paperclipRun = typeof input.paperclipRunId === "string" && /^[0-9a-f-]{36}$/i.test(input.paperclipRunId);
   if (!isClientWorkspaceSurface(surface) || !title || !goal || !job.provider) {
+    if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "workspace_execution_input_invalid" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: workspaceTerminalEvents("orchestrate", "failed", "Workspace execution input is incomplete.") }, "workspace_execution_input_invalid");
     return NextResponse.json({ ok: true, status: "failed" });
   }
+  if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "running", {});
   const model = job.model || clientProviderDefaultModel(job.provider) || "";
-  const prompt = workspacePrompt({ surface, title, goal, artifactIntent });
+  const promptOverride = typeof input.promptOverride === "string" ? input.promptOverride.trim().slice(0, 20_000) : "";
+  const prompt = promptOverride || workspacePrompt({ surface, title, goal, artifactIntent });
   const estimate = model ? estimateClientTextCostMicros(model, [{ role: "user", content: prompt }], clientTextMaxOutputTokens()) : null;
   if (!model || estimate === null || !(await reserveClientRuntimeBudgetWorker({ provider: job.provider, model, amountMicros: estimate, jobId, workerToken }))) {
+    if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "budget_exceeded" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: workspaceTerminalEvents(surface, "failed", "The tenant budget or model policy did not approve this execution.") }, "budget_exceeded");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -104,6 +111,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
     logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: job.provider, status: result.status, reason: result.error });
     if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
     await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
+    if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: result.error });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", result.error)] }, result.error);
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -111,12 +119,14 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   const artifact = artifactFromWorkspaceOutput({ surface, title, artifactIntent, output: safeOutput });
   if (!artifact) {
     await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, artifactValidationFailure: 1 });
+    if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "workspace_artifact_invalid" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", "The approved provider did not return a usable tenant artifact.")] }, "workspace_artifact_invalid");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const artifactId = await storeArtifact(tenantSlug, jobId, workerToken, artifact.fileName, artifact.contentType, artifact.bytes);
   if (!artifactId) {
     await settleTerminalBudget(jobId, workerToken, result.usage ? clientTextUsageCostMicros(model, result.usage) ?? estimate : estimate, { artifactStoreFailure: 1 });
+    if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "artifact_store_failed" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", "The workspace result could not be committed to tenant storage.")] }, "artifact_store_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -131,9 +141,48 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
     ...(artifact.previewHtml ? { previewHtml: artifact.previewHtml } : {}),
     terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "completed", `Committed ${artifact.fileName} to tenant storage.`)],
   };
-  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros, usageMetadata: result.usage ?? { estimatedCostMicros: estimate, usageFallback: 1 } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros, usageMetadata: result.usage ?? { estimatedCostMicros: estimate, usageFallback: 1 } }, outputMetadata))) {
+    if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "budget_settlement_failed" });
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  if (paperclipRun) {
+    await settlePaperclipRun(tenantSlug, workerToken, jobId, "succeeded", {
+      costMicros: actualAmountMicros,
+      artifactId,
+      previewHtml: artifact.previewHtml,
+      summary: `Shipped ${artifact.fileName} to tenant storage.`,
+    });
+  }
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+/**
+ * Reconciles a Paperclip run and its issue. The Cloud Run job has no member
+ * session, so this goes through the token-verified worker function; a failure
+ * here is logged rather than thrown so the job itself still settles.
+ */
+async function settlePaperclipRun(
+  tenantSlug: string,
+  workerToken: string,
+  jobId: string,
+  status: "running" | "succeeded" | "failed" | "cancelled",
+  detail: { summary?: string; errorCode?: string; costMicros?: number; artifactId?: string; previewHtml?: string },
+) {
+  const result = await workerRpc("complete_client_paperclip_run_worker", {
+    p_tenant_slug: tenantSlug,
+    p_worker_token: workerToken,
+    p_job_id: jobId,
+    p_status: status,
+    p_summary: detail.summary ?? null,
+    p_error_code: detail.errorCode?.slice(0, 120) ?? null,
+    p_cost_micros: typeof detail.costMicros === "number" ? Math.max(0, Math.round(detail.costMicros)) : null,
+    p_build_artifact_id: detail.artifactId ?? null,
+    p_build_preview_html: detail.previewHtml?.slice(0, 40_000) ?? null,
+  });
+  if (!result.ok || result.value !== true) {
+    logClientRuntimeEvent("runtime.paperclip_reconciliation_failed", { tenant: tenantSlug, jobId, status: 503 });
+  }
 }
 
 async function processMediaJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; input_metadata?: Record<string, unknown> | null }) {
