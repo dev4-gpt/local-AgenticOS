@@ -18,6 +18,12 @@ const probes = [
   ["records", "client_runtime_records"],
   ["jobs", "client_runtime_jobs"],
   ["artifacts", "client_runtime_artifacts"],
+  ["paperclip companies", "client_paperclip_companies"],
+  ["paperclip projects", "client_paperclip_projects"],
+  ["paperclip agents", "client_paperclip_agents"],
+  ["paperclip issues", "client_paperclip_issues"],
+  ["paperclip comments", "client_paperclip_comments"],
+  ["paperclip runs", "client_paperclip_runs"],
 ];
 const failures = [];
 
@@ -43,7 +49,9 @@ if (failures.length) {
 console.log(`Client isolation verification passed for ${tenantA} and ${tenantB}. Tokens and row content were not printed.`);
 
 async function select(table, tenant, token) {
-  const response = await fetch(`${baseUrl}/rest/v1/${table}?select=id&tenant_slug=eq.${encodeURIComponent(tenant)}&limit=1`, {
+  // Select tenant_slug rather than id: it is the one column every probed table
+  // shares, and client_paperclip_companies is keyed by tenant_slug with no id.
+  const response = await fetch(`${baseUrl}/rest/v1/${table}?select=tenant_slug&tenant_slug=eq.${encodeURIComponent(tenant)}&limit=1`, {
     headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
     cache: "no-store",
   }).catch(() => null);

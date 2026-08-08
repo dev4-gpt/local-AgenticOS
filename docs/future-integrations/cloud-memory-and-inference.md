@@ -323,8 +323,66 @@ evidence that the job lane actually did the work. A controlled failure was
 separately proven locally (`task_runtime_not_configured` settling the run to
 `failed` without stranding the issue).
 
-Still owed: a controlled *cloud* failure (provider or artifact-validation), and
-the two-tenant isolation, export, and deletion drills against the six new tables.
+### Controlled cloud failure (passed)
+
+`VEL-10` was shipped with a description instructing the model to emit plain
+prose. The provider complied, artifact validation rejected the output, and the
+lane settled correctly:
+
+| Check | Result |
+| --- | --- |
+| Run | `failed`, `workspace_artifact_invalid`, 18:41:01→18:41:03Z |
+| Did not strand | never left `queued`/`running` |
+| Issue | `blocked`, `executionState: failed`, `hasBuild: false`, no artifact |
+| Budget | 0 micros charged; tenant spend unchanged at 243 |
+| Stats | 3 runs / 1 succeeded / 2 failed / 33% |
+
+That run exposed one defect, now fixed: the worker passed no summary on
+failure, and the reconciliation function keeps the previous value when it
+receives null, so a failed run still displayed "Queued for the approved hosted
+runner". `settlePaperclipRun` now always derives a terminal summary through
+`paperclipRunSummary`.
+
+### Deletion drill (passed)
+
+Run through the tenant API as a signed-in member:
+
+| Check | Result |
+| --- | --- |
+| Issue delete | `200`; subsequent read `404 paperclip_issue_not_found` |
+| Comment cascade | the issue's one comment went with it |
+| Project delete | `200`; a referencing issue survived with `projectId` nulled |
+| Agent delete | `200`; a referencing issue survived with `assigneeAgentId` nulled |
+| Unauthenticated access | all six GET routes plus issue/run POST return `401` |
+
+### Export and offboarding wiring (fixed)
+
+Adding six tables without registering them left a real data-ownership hole:
+`scripts/client-lifecycle.mjs` would have exported and offboarded a tenant while
+silently dropping every Paperclip company, project, agent, issue, comment, and
+run. All six are now in the lifecycle `tables` list, the explicit
+`exportColumns` map, and the restore order.
+`scripts/verify-client-runtime-isolation.mjs` now probes all six as well, and
+its select column moved from `id` to `tenant_slug` because
+`client_paperclip_companies` is keyed by slug and has no `id`.
+
+`client_paperclip_issues.build_preview_html` is deliberately excluded from the
+export: it duplicates an artifact already held in Cloud Storage, and
+`build_artifact_id` is the durable reference.
+
+### Still owed on Paperclip
+
+- A real two-tenant isolation run and a service-role export/restore. Both
+  scripts are wired and syntax-checked, but executing them needs a second
+  tenant access token and `SUPABASE_SERVICE_ROLE_KEY`, which the porting work
+  does not hold:
+  `node scripts/verify-client-runtime-isolation.mjs --url <supabase-url> --tenant-a veloce-cloud-test --tenant-b <slug-b> --access-token-file-a <a> --access-token-file-b <b>`
+  and `npm run client:lifecycle -- --slug veloce-cloud-test --mode export`.
+- Splitting `ClientPaperclipWorkspace.tsx` (568 lines, over the 500-line rule).
+- Agent-authored comments, label management, project lead assignment, run
+  cancellation, and a screenshot-grade gallery thumbnail.
+
+**Next surface: Room.** Pipeline, Agent Kanban, Kanban, Loop, and Ruflo follow.
 
 `/paperclip` no longer renders the shared orchestration workflow surface. It now
 has a literal hosted Paperclip domain, built by reading the real local service's

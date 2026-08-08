@@ -59,6 +59,13 @@ const tables = [
   "client_runtime_memory_graph_edges",
   "client_runtime_budget_ledger",
   "client_runtime_delivery_actions",
+  // Ordered parent-first so a restore can satisfy foreign keys.
+  "client_paperclip_companies",
+  "client_paperclip_projects",
+  "client_paperclip_agents",
+  "client_paperclip_issues",
+  "client_paperclip_comments",
+  "client_paperclip_runs",
 ];
 
 // Lifecycle exports are portable backups, not credential backups. Keep this
@@ -76,6 +83,15 @@ const exportColumns = Object.freeze({
   client_runtime_memory_graph_edges: "id,tenant_slug,source_node_id,target_node_id,relation,weight,metadata,created_at",
   client_runtime_budget_ledger: "id,tenant_slug,job_id,provider,model,amount_micros,usage_metadata,created_at",
   client_runtime_delivery_actions: "id,tenant_slug,request_id,requested_by,action,destination,artifact_ids,status,error_code,idempotency_key,created_at,updated_at",
+  client_paperclip_companies: "tenant_slug,name,description,issue_prefix,issue_counter,brand_color,budget_monthly_micros,status,created_at,updated_at",
+  client_paperclip_projects: "id,tenant_slug,created_by,name,url_key,description,color,icon,status,target_date,created_at,updated_at",
+  client_paperclip_agents: "id,tenant_slug,created_by,name,role,title,icon,status,reports_to,provider,model,budget_monthly_micros,last_heartbeat_at,url_key,created_at,updated_at",
+  // build_preview_html is a provider-generated copy of the artifact already
+  // captured in Cloud Storage; the artifact id is the durable reference, so the
+  // export keeps the pointer rather than duplicating the payload.
+  client_paperclip_issues: "id,tenant_slug,created_by,issue_number,identifier,title,description,status,priority,project_id,assignee_agent_id,labels,execution_state,execution_job_id,build_artifact_id,started_at,completed_at,created_at,updated_at",
+  client_paperclip_comments: "id,tenant_slug,issue_id,created_by,author_agent_id,body,created_at",
+  client_paperclip_runs: "id,tenant_slug,created_by,issue_id,agent_id,job_id,status,provider,model,summary,error_code,cost_micros,started_at,finished_at,created_at,updated_at",
 });
 
 const forbiddenExportFields = new Set([
@@ -149,14 +165,14 @@ async function exportSnapshot() {
 }
 
 async function restoreSnapshot(snapshot) {
-  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_runtime_records", "client_runtime_memory_graph_nodes", "client_runtime_memory_graph_edges", "client_runtime_budget_ledger", "client_runtime_delivery_actions"];
+  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_runtime_records", "client_runtime_memory_graph_nodes", "client_runtime_memory_graph_edges", "client_runtime_budget_ledger", "client_runtime_delivery_actions", "client_paperclip_companies", "client_paperclip_projects", "client_paperclip_agents", "client_paperclip_issues", "client_paperclip_comments", "client_paperclip_runs"];
   for (const table of ordered) {
     const rows = Array.isArray(snapshot.tables[table]) ? snapshot.tables[table] : [];
     if (!rows.length) continue;
     const tenantRows = rows.filter((row) => table === "client_tenants" ? row.slug === slug : row.tenant_slug === slug);
     if (tenantRows.length !== rows.length) fail(`Restore contains rows outside requested tenant: ${table}`);
     assertSnapshotSafe(table, tenantRows);
-    await supabaseInsert(table, tenantRows.map((row) => pickExportColumns(table, row)));
+    await supabaseInsert(table, orderForRestore(table, tenantRows).map((row) => pickExportColumns(table, row)));
   }
 }
 
@@ -192,6 +208,34 @@ function scanSnapshotValue(table, value, pathLabel) {
 function pickExportColumns(table, row) {
   const columns = exportColumns[table]?.split(",") ?? [];
   return Object.fromEntries(columns.filter((column) => Object.prototype.hasOwnProperty.call(row, column)).map((column) => [column, row[column]]));
+}
+
+/**
+ * client_paperclip_agents.reports_to points at the same table, so a manager has
+ * to be inserted before anyone reporting to them. Export order is not
+ * guaranteed, so sort managers first and append any row whose manager is
+ * missing or cyclic rather than dropping it.
+ */
+function orderForRestore(table, rows) {
+  if (table !== "client_paperclip_agents") return rows;
+  const remaining = [...rows];
+  const placed = new Set();
+  const ordered = [];
+  let progressed = true;
+  while (remaining.length && progressed) {
+    progressed = false;
+    for (let index = remaining.length - 1; index >= 0; index -= 1) {
+      const row = remaining[index];
+      const manager = row.reports_to;
+      if (!manager || placed.has(manager)) {
+        ordered.push(row);
+        placed.add(row.id);
+        remaining.splice(index, 1);
+        progressed = true;
+      }
+    }
+  }
+  return [...ordered, ...remaining];
 }
 
 function restoreObjects(input) {

@@ -11,6 +11,7 @@ import { validClientTaskIdentity } from "@/lib/clientTaskAuth";
 import { logClientRuntimeEvent } from "@/lib/clientRuntimeObservability";
 import { runClientWorkflowRunner } from "@/lib/clientWorkflowRunner";
 import { artifactFromWorkspaceOutput, isClientWorkspaceSurface, workspacePrompt, workspaceTerminalEvents } from "@/lib/clientWorkspaceExecution";
+import { paperclipRunSummary } from "@/lib/clientPaperclipAdapter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -169,12 +170,20 @@ async function settlePaperclipRun(
   status: "running" | "succeeded" | "failed" | "cancelled",
   detail: { summary?: string; errorCode?: string; costMicros?: number; artifactId?: string; previewHtml?: string },
 ) {
+  // Always carry a summary for a terminal state. The reconciliation function
+  // keeps the previous value when it receives null, which would otherwise leave
+  // a failed run still reading "Queued for the approved hosted runner".
+  const summary = detail.summary ?? paperclipRunSummary({
+    status,
+    errorCode: detail.errorCode ?? null,
+    artifactCommitted: Boolean(detail.artifactId),
+  });
   const result = await workerRpc("complete_client_paperclip_run_worker", {
     p_tenant_slug: tenantSlug,
     p_worker_token: workerToken,
     p_job_id: jobId,
     p_status: status,
-    p_summary: detail.summary ?? null,
+    p_summary: summary,
     p_error_code: detail.errorCode?.slice(0, 120) ?? null,
     p_cost_micros: typeof detail.costMicros === "number" ? Math.max(0, Math.round(detail.costMicros)) : null,
     p_build_artifact_id: detail.artifactId ?? null,
