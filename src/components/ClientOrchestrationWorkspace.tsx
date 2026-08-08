@@ -37,6 +37,12 @@ type Workflow = {
     execution?: { status?: string; errorCode?: string; provider?: string; model?: string; completedSteps?: number };
   };
 };
+type UsageSummary = {
+  totalCostMicros: number;
+  inputTokens: number;
+  outputTokens: number;
+  byProvider: Record<string, { costMicros: number; inputTokens: number; outputTokens: number; model: string | null }>;
+};
 
 type SurfaceConfig = {
   title: string;
@@ -80,6 +86,7 @@ export default function ClientOrchestrationWorkspace({ surface }: { surface: Cli
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [monthlyUsage, setMonthlyUsage] = useState<UsageSummary | null>(null);
 
   async function load() {
     const response = await fetch(`/api/client-runtime/workflows?surface=${encodeURIComponent(surface)}`, { cache: "no-store" }).catch(() => null);
@@ -91,6 +98,12 @@ export default function ClientOrchestrationWorkspace({ surface }: { surface: Cli
     const next = Array.isArray(data?.workflows) ? data.workflows as Workflow[] : [];
     setWorkflows(next);
     setSelectedId((current) => current && next.some((workflow) => workflow.id === current) ? current : (next[0]?.id ?? null));
+    if (surface === "paperclip") {
+      const observability = await fetch("/api/client-runtime/observability", { cache: "no-store" }).catch(() => null);
+      const observabilityData = await observability?.json().catch(() => null);
+      if (observability?.ok && observabilityData?.monthlyUsage && typeof observabilityData.monthlyUsage === "object") setMonthlyUsage(observabilityData.monthlyUsage as UsageSummary);
+      else setMonthlyUsage(null);
+    } else setMonthlyUsage(null);
   }
 
   useEffect(() => { setTab(CONFIG[surface].tabs[0]); setComposer(false); setError(""); void load(); }, [surface]);
@@ -143,7 +156,8 @@ export default function ClientOrchestrationWorkspace({ surface }: { surface: Cli
       <div className="mt-5 flex flex-wrap gap-1 border-b" style={{ borderColor: "var(--line-soft)" }}>{config.tabs.map((item) => <button key={item} type="button" onClick={() => setTab(item)} className="border-b-2 px-3 py-2 text-[11px] font-medium" style={{ borderColor: tab === item ? "#60a5fa" : "transparent", color: tab === item ? "#bfdbfe" : "var(--cream-mute)" }}>{item}</button>)}</div>
     </section>
 
-    {surface === "paperclip" && <PaperclipSummary total={workflows.length} active={active.length} done={done.length} />}
+    {surface === "paperclip" && <PaperclipSummary total={workflows.length} active={active.length} done={done.length} usage={monthlyUsage} />}
+    {surface === "paperclip" && tab === "Cost" && <CostBreakdown usage={monthlyUsage} />}
     {surface === "room" && tab === "In the room" && <RoomPanel onCompose={() => { setComposer(true); setTitle("Room decision"); setGoal("Prepare a concise decision memo with assumptions, options, risks, and a recommended owner."); }} />}
     {(surface === "pipeline" || surface === "agent-kanban" || surface === "kanban") && (tab === "Pipeline" || tab === "Board" || tab === "Tasks") && <WorkflowBoard workflows={workflows} onSelect={setSelectedId} />}
     {surface === "loop" && tab === "Loops" && <LoopPanel active={active.length} done={done.length} onCompose={() => { setComposer(true); setTitle("Improvement loop"); setGoal("Define the target, measurable check, change, and next decision."); }} />}
@@ -166,8 +180,19 @@ export default function ClientOrchestrationWorkspace({ surface }: { surface: Cli
   </div>;
 }
 
-function PaperclipSummary({ total, active, done }: { total: number; active: number; done: number }) {
-  return <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[["Build issues", total, "#60a5fa"], ["Active", active, "#fbbf24"], ["Done", done, "#5ab896"], ["Settled provider cost", "$0.00", "#c4b5fd"]].map(([label, value, color]) => <div key={String(label)} className="panel px-4 py-3"><p className="text-[10px] uppercase" style={{ color: "var(--cream-mute)" }}>{label}</p><p className="mt-1 text-[22px] font-semibold" style={{ color: String(color) }}>{value}</p>{label === "Settled provider cost" && <p className="mt-1 text-[10px]" style={{ color: "var(--cream-mute)" }}>Provider usage appears after a settled provider run.</p>}</div>)}</section>;
+function PaperclipSummary({ total, active, done, usage }: { total: number; active: number; done: number; usage: UsageSummary | null }) {
+  const summary: Array<[string, string | number, string, string?]> = [
+    ["Build issues", total, "#60a5fa"],
+    ["Active", active, "#fbbf24"],
+    ["Done", done, "#5ab896"],
+    ["Settled provider cost", usage ? formatCost(usage.totalCostMicros) : "Unavailable", "#c4b5fd", usage ? `${usage.inputTokens.toLocaleString()} input / ${usage.outputTokens.toLocaleString()} output tokens` : "Observability data could not be read."],
+  ];
+  return <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{summary.map(([label, value, color, note]) => <div key={label} className="panel px-4 py-3"><p className="text-[10px] uppercase" style={{ color: "var(--cream-mute)" }}>{label}</p><p className="mt-1 text-[22px] font-semibold" style={{ color }}>{value}</p>{note && <p className="mt-1 text-[10px]" style={{ color: "var(--cream-mute)" }}>{note}</p>}</div>)}</section>;
+}
+
+function CostBreakdown({ usage }: { usage: UsageSummary | null }) {
+  const providers = usage ? Object.entries(usage.byProvider) : [];
+  return <section className="panel p-4 md:p-5"><div className="flex items-center gap-2"><Activity size={14} color="#c4b5fd" /><div><p className="eyebrow">Monthly settled usage</p><h2 className="mt-1 text-[15px] font-semibold" style={{ color: "var(--cream)" }}>Provider cost ledger</h2></div></div>{usage ? providers.length ? <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">{providers.map(([provider, entry]) => <div key={provider} className="rounded-md border p-3" style={{ borderColor: "var(--line-soft)", background: "rgba(255,255,255,0.02)" }}><p className="text-[12px] font-medium" style={{ color: "var(--cream)" }}>{provider}</p><p className="mt-1 text-[17px] font-semibold" style={{ color: "#c4b5fd" }}>{formatCost(entry.costMicros)}</p><p className="mt-1 text-[10px]" style={{ color: "var(--cream-mute)" }}>{entry.inputTokens.toLocaleString()} input / {entry.outputTokens.toLocaleString()} output tokens{entry.model ? ` · ${entry.model}` : ""}</p></div>)}</div> : <p className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>No settled provider usage this month. Provider-free workflow planning does not create a cost entry.</p> : <p className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>The tenant cost ledger is currently unavailable.</p>}</section>;
 }
 
 function RoomPanel({ onCompose }: { onCompose: () => void }) {
@@ -252,4 +277,8 @@ function StatusDot({ workflow }: { workflow: Workflow }) {
 function formatDate(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "unknown time" : date.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function formatCost(micros: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 4 }).format(micros / 1_000_000);
 }
