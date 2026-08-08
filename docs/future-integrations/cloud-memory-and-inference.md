@@ -3,7 +3,7 @@
 **Status:** tenant Markdown import/export and deterministic, interactive visual
 tag graph deployed and smoke-proven
 
-**Last reviewed:** 2026-08-01
+**Last reviewed:** 2026-08-08
 
 **Decision:** Obsidian-compatible durable memory and Graphify-style knowledge
 graphs remain part of Veloce's identity. The hosted client runtime will not
@@ -226,3 +226,55 @@ justify operating model infrastructure.
 
 Do not claim that this note enables cloud Obsidian, Graphify, or Ollama today.
 It records the product direction and the conditions for building them safely.
+
+## Hosted Execution Checkpoint (2026-08-08)
+
+The initial remote-execution foundation is deployed for the dogfood tenant. A
+hosted Paperclip, Web Studio, Loop, Ruflo, or other Section III-VI action now
+creates a tenant-scoped `workspace-execution` job, enqueues Cloud Tasks, and
+starts the dedicated `veloce-cloud-test-workspace` Cloud Run Job. The request
+is constrained by authenticated tenant membership, capability enablement,
+provider/model allowlists, a budget reservation, an idempotency key, audit
+state, and a signed Cloud Storage artifact boundary. The workspace surface
+shows the durable queued/running/terminal state, the redacted terminal trail,
+and a sandboxed preview or signed artifact download only after an artifact is
+committed.
+
+The current job is deliberately a bounded provider-artifact runner, not an
+interactive desktop or a claim of full local-terminal parity. It gets only the
+job ID, tenant slug, callback URL, and service identity; provider credentials
+remain in the protected runtime secret boundary and no local disk, localhost
+service, Obsidian vault, or laptop API is mounted into Cloud Run.
+
+### Evidence still required
+
+1. Run the signed-in dogfood proof from Web Studio or Paperclip and retain the
+   job, Cloud Run execution, Cloud Tasks dispatch, artifact, and PostHog event
+   IDs together. Confirm `queued -> running -> succeeded` and a downloaded
+   tenant artifact; retain a controlled failed run as well.
+2. Add an E2B project and `E2B_API_KEY` only when the interactive terminal,
+   file editing, and live-preview session lane is ready. E2B must be invoked
+   by a separate approved adapter, with session TTL, per-tenant workspace
+   hydration, cancellation, deletion, signed preview access, and cleanup
+   evidence. It must not be presented as enabled before this proof exists.
+3. Port each local workflow by observable behavior: Paperclip issue/build
+   lifecycle, Ruflo role/dependency/result lifecycle, Loop builder/judge
+   iteration, and Local Engine/Free Claude capabilities. A generic build brief
+   is not a replacement for one of these workflows.
+4. Enable media, SEO, publishing, and workplace adapters one provider at a
+   time, after its credential, model/price allowlist, budget, approval,
+   idempotency, retry, rollback, and tenant-isolation evidence exists.
+5. Re-run export, explicit deletion, offboarding/restore, and two-tenant
+   isolation drills after every new persistent table, object prefix, provider
+   adapter, connector, or execution backend is introduced.
+
+### Deliberate non-decisions
+
+- Do not introduce Oracle/Coolify/Redis as a parallel execution plane. Cloud
+  Run Jobs, Cloud Tasks, Supabase, and Cloud Storage remain the production
+  execution/data foundation.
+- Do not enable GPU infrastructure, Modal, or RunPod under the current $1
+  dogfood provider cap. Those become candidates only for measured GPU-heavy
+  media or self-hosted inference demand.
+- Cloudflare remains optional for a custom domain, WAF, edge caching, or
+  reverse-proxy telemetry. It does not replace the hosted adapter work above.

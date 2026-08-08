@@ -169,6 +169,7 @@ expect(workflowWorkspace.includes("runtime_rate_limited"), "workflow read thrott
 expect(workflowsRoute.includes("refundClientRuntimeRateLimit") && jobRoute.includes("refundClientRuntimeRateLimit") && hostedJobsRoute.includes("refundClientRuntimeRateLimit"), "task enqueue failures must refund their consumed client rate-limit token");
 expect(authenticatedVerifier.includes("completedSteps === 4") && authenticatedVerifier.includes("signed artifact upload") && authenticatedVerifier.includes("equalBytes"), "authenticated verifier must prove four-step workflow completion and signed artifact byte integrity");
 expect(authenticatedVerifier.includes("cookie-file") && authenticatedVerifier.includes("must not be readable by group or other users") && !authenticatedVerifier.includes("console.log(cookie"), "authenticated verifier must accept a protected cookie file without printing credentials");
+expect(authenticatedVerifier.includes("--workspace-smoke") && authenticatedVerifier.includes("verifyWorkspaceExecution") && authenticatedVerifier.includes("/api/client-runtime/executions"), "authenticated verifier must retain the hosted workspace execution acceptance path");
 for (const [relativePath, source] of runtimeRateLimitedRouteSources) {
   expect(source.includes("checkClientRuntimeRateLimit"), `${relativePath} must use the structured limiter result`);
   expect(source.includes("runtime_limit_unavailable") && source.includes("runtime_rate_limited"), `${relativePath} must distinguish limiter outages from genuine throttles`);

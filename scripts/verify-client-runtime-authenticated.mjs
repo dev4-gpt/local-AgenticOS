@@ -6,6 +6,7 @@ const args = process.argv.slice(2);
 const baseUrl = required("--url").replace(/\/$/, "");
 const cookieFile = required("--cookie-file");
 const runArtifacts = !args.includes("--workflow-only");
+const runWorkspaceSmoke = args.includes("--workspace-smoke");
 let cookie = await readCookie(cookieFile);
 const failures = [];
 let workflowId = null;
@@ -43,6 +44,7 @@ try {
   }
 
   if (runArtifacts) await verifyArtifactRoundTrip();
+  if (runWorkspaceSmoke) await verifyWorkspaceExecution();
 } finally {
   if (artifactId) {
     const deletedArtifact = await api(`/api/client-runtime/artifacts/${artifactId}`, { method: "DELETE" });
@@ -60,7 +62,43 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Authenticated client runtime verification passed for ${baseUrl}${runArtifacts ? " (workflow + artifact)" : " (workflow only)"}.`);
+console.log(`Authenticated client runtime verification passed for ${baseUrl}${runArtifacts ? " (workflow + artifact)" : " (workflow only)"}${runWorkspaceSmoke ? " + workspace execution" : ""}.`);
+
+async function verifyWorkspaceExecution() {
+  const title = `Web Studio execution acceptance ${Date.now()}`;
+  const created = await api("/api/client-runtime/executions", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      surface: "web-studio",
+      title,
+      artifactIntent: "preview",
+      goal: "Create a complete, self-contained HTML landing page with one heading that says Veloce hosted workspace acceptance. Use inline CSS only and return only the requested HTML fence.",
+      idempotencyKey: `workspace-acceptance-${Date.now()}`,
+    }),
+  });
+  const createdBody = await safeJson(created);
+  expect(created.status === 202 && isUuid(createdBody?.jobId), `workspace execution enqueue failed (${created.status}: ${String(createdBody?.error ?? "no error")})`);
+  if (!isUuid(createdBody?.jobId)) return;
+
+  const execution = await waitForWorkspaceExecution(createdBody.jobId);
+  expect(execution !== null, "workspace execution did not reach a terminal state within 150 seconds");
+  if (!execution) return;
+  expect(execution.status === "succeeded", `workspace execution ended as ${String(execution.status ?? "unknown")}: ${String(execution.errorCode ?? "")}`);
+  expect(Array.isArray(execution.terminalEvents) && execution.terminalEvents.length >= 3, "workspace execution did not retain a terminal trail");
+  expect(isUuid(execution.artifactId), "workspace execution did not retain a tenant artifact");
+  expect(typeof execution.previewHtml === "string" && /veloce hosted workspace acceptance/i.test(execution.previewHtml), "workspace execution did not retain the expected preview output");
+  if (!isUuid(execution.artifactId)) return;
+
+  const artifact = await api(`/api/client-runtime/artifacts?id=${encodeURIComponent(execution.artifactId)}`);
+  const artifactBody = await safeJson(artifact);
+  const downloadUrl = typeof artifactBody?.downloadUrl === "string" ? artifactBody.downloadUrl : null;
+  expect(artifact.status === 200 && Boolean(downloadUrl), `workspace artifact signed download failed (${artifact.status})`);
+  if (!downloadUrl) return;
+  const downloaded = await fetch(downloadUrl, { cache: "no-store" }).catch(() => null);
+  const html = downloaded?.ok ? await downloaded.text().catch(() => "") : "";
+  expect(downloaded?.ok === true && /veloce hosted workspace acceptance/i.test(html), "workspace artifact download did not contain the expected preview output");
+}
 
 async function verifyArtifactRoundTrip() {
   const bytes = new TextEncoder().encode("veloce-client-runtime-acceptance\n");
@@ -107,6 +145,18 @@ async function waitForWorkflow(id) {
     const workflow = Array.isArray(body?.workflows) ? body.workflows.find((item) => item?.id === id) : null;
     const status = workflow?.metadata?.execution?.status;
     if (status === "completed" || status === "failed") return workflow;
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+  }
+  return null;
+}
+
+async function waitForWorkspaceExecution(id) {
+  const deadline = Date.now() + 150_000;
+  while (Date.now() < deadline) {
+    const response = await api("/api/client-runtime/executions?surface=web-studio");
+    const body = await safeJson(response);
+    const execution = Array.isArray(body?.executions) ? body.executions.find((item) => item?.id === id) : null;
+    if (execution?.status === "succeeded" || execution?.status === "failed" || execution?.status === "cancelled") return execution;
     await new Promise((resolve) => setTimeout(resolve, 3_000));
   }
   return null;
