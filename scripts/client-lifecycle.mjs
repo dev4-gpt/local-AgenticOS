@@ -66,6 +66,9 @@ const tables = [
   "client_paperclip_issues",
   "client_paperclip_comments",
   "client_paperclip_runs",
+  "client_room_conversations",
+  "client_room_messages",
+  "client_room_rounds",
 ];
 
 // Lifecycle exports are portable backups, not credential backups. Keep this
@@ -92,6 +95,9 @@ const exportColumns = Object.freeze({
   client_paperclip_issues: "id,tenant_slug,created_by,issue_number,identifier,title,description,status,priority,project_id,assignee_agent_id,labels,execution_state,execution_job_id,build_artifact_id,started_at,completed_at,created_at,updated_at",
   client_paperclip_comments: "id,tenant_slug,issue_id,created_by,author_agent_id,body,created_at",
   client_paperclip_runs: "id,tenant_slug,created_by,issue_id,agent_id,job_id,status,provider,model,summary,error_code,cost_micros,started_at,finished_at,created_at,updated_at",
+  client_room_conversations: "id,tenant_slug,created_by,title,status,present_agents,created_at,updated_at",
+  client_room_messages: "id,tenant_slug,conversation_id,created_by,role,kind,agent_id,agent_name,agent_color,content,provider,model,cost_micros,error_code,linked_record_id,seq,created_at",
+  client_room_rounds: "id,tenant_slug,conversation_id,created_by,job_id,status,agent_ids,speaking_agent_id,completed_agents,cost_micros,error_code,created_at,updated_at",
 });
 
 const forbiddenExportFields = new Set([
@@ -165,7 +171,7 @@ async function exportSnapshot() {
 }
 
 async function restoreSnapshot(snapshot) {
-  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_runtime_records", "client_runtime_memory_graph_nodes", "client_runtime_memory_graph_edges", "client_runtime_budget_ledger", "client_runtime_delivery_actions", "client_paperclip_companies", "client_paperclip_projects", "client_paperclip_agents", "client_paperclip_issues", "client_paperclip_comments", "client_paperclip_runs"];
+  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_runtime_records", "client_runtime_memory_graph_nodes", "client_runtime_memory_graph_edges", "client_runtime_budget_ledger", "client_runtime_delivery_actions", "client_paperclip_companies", "client_paperclip_projects", "client_paperclip_agents", "client_paperclip_issues", "client_paperclip_comments", "client_paperclip_runs", "client_room_conversations", "client_room_messages", "client_room_rounds"];
   for (const table of ordered) {
     const rows = Array.isArray(snapshot.tables[table]) ? snapshot.tables[table] : [];
     if (!rows.length) continue;

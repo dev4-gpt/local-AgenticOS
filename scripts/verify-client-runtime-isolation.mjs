@@ -24,6 +24,9 @@ const probes = [
   ["paperclip issues", "client_paperclip_issues"],
   ["paperclip comments", "client_paperclip_comments"],
   ["paperclip runs", "client_paperclip_runs"],
+  ["room conversations", "client_room_conversations"],
+  ["room messages", "client_room_messages"],
+  ["room rounds", "client_room_rounds"],
 ];
 const failures = [];
 

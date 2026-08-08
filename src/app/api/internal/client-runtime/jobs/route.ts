@@ -12,6 +12,7 @@ import { logClientRuntimeEvent } from "@/lib/clientRuntimeObservability";
 import { runClientWorkflowRunner } from "@/lib/clientWorkflowRunner";
 import { artifactFromWorkspaceOutput, isClientWorkspaceSurface, workspacePrompt, workspaceTerminalEvents } from "@/lib/clientWorkspaceExecution";
 import { paperclipRunSummary } from "@/lib/clientPaperclipAdapter";
+import { parseRoomDirectives, roomActionSummary, roomPersona, roomPrompt } from "@/lib/clientRoomAdapter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,12 +32,13 @@ export async function POST(request: Request) {
   if (!claim.ok) return NextResponse.json({ ok: false, error: "job_claim_failed" }, { status: 503 });
   const job = claim.value as { id?: string; capability?: string; provider?: string; model?: string; input_metadata?: Record<string, unknown> | null } | null;
   if (!job?.id || typeof job.capability !== "string") return NextResponse.json({ ok: true, status: "already_claimed" });
-  if (["text-agents", "media", "seo-research"].includes(job.capability) && !clientProviderCallsEnabled()) {
+  if (["text-agents", "media", "seo-research", "room-round"].includes(job.capability) && !clientProviderCallsEnabled()) {
     await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, "provider_calls_require_approval");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   if (job.capability === "orchestration") return processOrchestrationJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "workspace-execution") return processWorkspaceExecutionJob(jobId, tenantSlug, workerToken, job);
+  if (job.capability === "room-round") return processRoomRoundJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "media") return processMediaJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "seo-research") return processSeoJob(jobId, tenantSlug, workerToken, job);
   if (job.capability !== "text-agents" || typeof job.provider !== "string" || typeof job.input_metadata?.prompt !== "string") {
@@ -192,6 +194,164 @@ async function settlePaperclipRun(
   if (!result.ok || result.value !== true) {
     logClientRuntimeEvent("runtime.paperclip_reconciliation_failed", { tenant: tenantSlug, jobId, status: 503 });
   }
+}
+
+type RoomRoundAgent = { id: string; name: string; color: string; provider: string | null; model: string | null };
+
+/**
+ * Walks a room round: each agent speaks in turn, its reply is appended as soon
+ * as it lands so the transcript fills in progressively, and any NOTE:: /
+ * PIPELINE:: directive becomes a real tenant record. Budget is reserved once
+ * for the round and settled once at the end, matching the one-reservation-per-
+ * job contract the ledger expects.
+ */
+async function processRoomRoundJob(jobId: string, tenantSlug: string, workerToken: string, job: { input_metadata?: Record<string, unknown> | null }) {
+  const input = job.input_metadata ?? {};
+  const conversationId = typeof input.conversationId === "string" ? input.conversationId : "";
+  const contextText = typeof input.contextText === "string" ? input.contextText : "";
+  const agents = Array.isArray(input.agents) ? input.agents.filter(isRoomRoundAgent).slice(0, 8) : [];
+  const transcript = Array.isArray(input.transcript)
+    ? input.transcript.flatMap((turn) => turn && typeof turn === "object" && typeof (turn as Record<string, unknown>).speaker === "string" && typeof (turn as Record<string, unknown>).text === "string"
+      ? [{ speaker: String((turn as Record<string, unknown>).speaker).slice(0, 60), text: String((turn as Record<string, unknown>).text).slice(0, 2000) }]
+      : [])
+    : [];
+  if (!/^[0-9a-f-]{36}$/i.test(conversationId) || agents.length === 0) {
+    await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "failed", null, 0, 0, "room_round_input_invalid");
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "room_round_input_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+
+  // Reserve for the whole round up front so a mid-round agent cannot push the
+  // tenant past its cap after earlier turns already spent.
+  const estimates = agents.map((agent) => {
+    const persona = roomPersona(agent.id);
+    if (!persona || !agent.model) return null;
+    const prompt = roomPrompt({ persona, transcript, context: contextText });
+    return estimateClientTextCostMicros(agent.model, [{ role: "user", content: `${prompt.system}\n${prompt.user}` }], clientTextMaxOutputTokens());
+  });
+  const totalEstimate = estimates.reduce<number>((total, value) => total + (value ?? 0), 0);
+  const primary = agents.find((agent) => agent.provider && agent.model);
+  if (!primary?.provider || !primary.model || estimates.some((value) => value === null)
+    || !(await reserveClientRuntimeBudgetWorker({ provider: primary.provider, model: primary.model, amountMicros: totalEstimate, jobId, workerToken }))) {
+    await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "failed", null, 0, 0, "budget_exceeded");
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+
+  const working = [...transcript];
+  let spent = 0;
+  let completed = 0;
+  for (const agent of agents) {
+    await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "running", agent.id, completed, spent, null);
+    const persona = roomPersona(agent.id);
+    if (!agent.provider || !agent.model || !persona) {
+      await appendRoomMessageWorker(tenantSlug, workerToken, conversationId, {
+        role: "system", kind: "error", content: `${agent.name} could not speak: provider_not_allowlisted`,
+        agentId: agent.id, agentName: agent.name, agentColor: agent.color, errorCode: "provider_not_allowlisted",
+      });
+      completed += 1;
+      continue;
+    }
+    const prompt = roomPrompt({ persona, transcript: working, context: contextText });
+    const result = await runClientTextAdapter({ provider: agent.provider, model: agent.model, prompt: prompt.user, history: [{ role: "system", content: prompt.system }], reserveBudget: false, jobId });
+    if (!result.ok) {
+      logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: agent.provider, status: result.status, reason: result.error });
+      // One agent failing must not abort the round; the others still speak.
+      await appendRoomMessageWorker(tenantSlug, workerToken, conversationId, {
+        role: "system", kind: "error", content: `${agent.name} could not reply (${result.error})`,
+        agentId: agent.id, agentName: agent.name, agentColor: agent.color,
+        provider: agent.provider, model: agent.model, errorCode: result.error,
+      });
+      completed += 1;
+      continue;
+    }
+    const turnCost = result.usage ? clientTextUsageCostMicros(agent.model, result.usage) ?? 0 : 0;
+    spent += turnCost;
+    const { clean, directives } = parseRoomDirectives(safeClientProviderOutput(result.output));
+    working.push({ speaker: agent.name, text: clean });
+    await appendRoomMessageWorker(tenantSlug, workerToken, conversationId, {
+      role: "agent", kind: "message", content: clean || "…",
+      agentId: agent.id, agentName: agent.name, agentColor: agent.color,
+      provider: result.provider, model: result.model, costMicros: turnCost,
+    });
+    for (const directive of directives) {
+      const recordId = await createRoomDirectiveRecord(tenantSlug, workerToken, directive, clean);
+      await appendRoomMessageWorker(tenantSlug, workerToken, conversationId, {
+        role: "system", kind: "action", content: roomActionSummary(directive, agent.name, Boolean(recordId)),
+        agentId: agent.id, agentName: agent.name, agentColor: agent.color, linkedRecordId: recordId,
+      });
+    }
+    completed += 1;
+  }
+
+  const settled = await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros: Math.min(spent, totalEstimate), usageMetadata: { roomTurns: completed, actualAmountMicros: spent }, workerToken });
+  if (!settled) logClientRuntimeEvent("runtime.budget_settlement_failed", { tenant: tenantSlug, jobId, status: 503 });
+  await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "succeeded", null, completed, spent, null);
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { conversationId, turns: completed, costMicros: spent });
+  return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+function isRoomRoundAgent(value: unknown): value is RoomRoundAgent {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const agent = value as Record<string, unknown>;
+  return typeof agent.id === "string" && typeof agent.name === "string" && typeof agent.color === "string";
+}
+
+async function appendRoomMessageWorker(tenantSlug: string, workerToken: string, conversationId: string, message: {
+  role: string; kind: string; content: string;
+  agentId?: string | null; agentName?: string | null; agentColor?: string | null;
+  provider?: string | null; model?: string | null; costMicros?: number; errorCode?: string | null; linkedRecordId?: string | null;
+}) {
+  const result = await workerRpc("append_client_room_message_worker", {
+    p_tenant_slug: tenantSlug,
+    p_worker_token: workerToken,
+    p_conversation_id: conversationId,
+    p_role: message.role,
+    p_kind: message.kind,
+    p_content: message.content,
+    p_agent_id: message.agentId ?? null,
+    p_agent_name: message.agentName ?? null,
+    p_agent_color: message.agentColor ?? null,
+    p_provider: message.provider ?? null,
+    p_model: message.model ?? null,
+    p_cost_micros: Math.max(0, Math.round(message.costMicros ?? 0)),
+    p_error_code: message.errorCode ?? null,
+    p_linked_record_id: message.linkedRecordId ?? null,
+  });
+  if (!result.ok || result.value !== true) logClientRuntimeEvent("runtime.room_message_append_failed", { tenant: tenantSlug, status: 503 });
+}
+
+async function updateRoomRoundWorker(tenantSlug: string, workerToken: string, jobId: string, status: string, speakingAgentId: string | null, completed: number, costMicros: number, errorCode: string | null) {
+  const result = await workerRpc("update_client_room_round_worker", {
+    p_tenant_slug: tenantSlug,
+    p_worker_token: workerToken,
+    p_job_id: jobId,
+    p_status: status,
+    p_speaking_agent_id: speakingAgentId,
+    p_completed_agents: completed,
+    p_cost_micros: Math.max(0, Math.round(costMicros)),
+    p_error_code: errorCode,
+  });
+  if (!result.ok || result.value !== true) logClientRuntimeEvent("runtime.room_round_update_failed", { tenant: tenantSlug, jobId, status: 503 });
+}
+
+/**
+ * A NOTE:: directive becomes a tenant memory record; PIPELINE:: becomes a
+ * pipeline workflow record. Both are real rows the other surfaces already
+ * render, so a room action is visible outside the room.
+ */
+async function createRoomDirectiveRecord(tenantSlug: string, workerToken: string, directive: { kind: "note" | "pipeline"; label: string }, body: string) {
+  const result = await workerRpc("create_client_runtime_record_worker", {
+    p_tenant_slug: tenantSlug,
+    p_worker_token: workerToken,
+    p_kind: directive.kind === "note" ? "memory" : "workflow",
+    p_title: directive.label.slice(0, 240),
+    p_content: (directive.kind === "note" ? body : directive.label).slice(0, 30_000) || directive.label,
+    p_metadata: directive.kind === "note"
+      ? { source: "agent-room" }
+      : { version: 1, surface: "pipeline", operation: "plan", source: "agent-room", steps: [] },
+  });
+  return result.ok && typeof result.value === "string" ? result.value : null;
 }
 
 async function processMediaJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; input_metadata?: Record<string, unknown> | null }) {

@@ -122,6 +122,30 @@ const NOTICES: Record<string, ClientRuntimeNotice> = {
     body: "This issue is no longer in the tenant board. It may have been deleted in another session.",
     next: "Refresh the board and pick a current issue.",
   },
+  room_schema_missing: {
+    tone: "warning",
+    title: "Room tables not applied",
+    body: "Hosted room conversations, messages, and round state live in tenant Supabase tables that have not been created in this project yet.",
+    next: "Apply product-experience/supabase-client-room.sql to this Supabase project, then reload the page.",
+  },
+  room_round_already_active: {
+    tone: "info",
+    title: "The room is still replying",
+    body: "A round is already in flight for this conversation. Starting another would interleave two transcripts and spend the tenant budget twice on the same exchange.",
+    next: "Wait for the current round to finish, then send again.",
+  },
+  room_no_available_agents: {
+    tone: "warning",
+    title: "No agents available",
+    body: "None of the agents in this room resolve to a provider and model this tenant is approved to call.",
+    next: "Add an approved provider credential, or add an available agent to the room from the roster.",
+  },
+  room_conversation_not_found: {
+    tone: "warning",
+    title: "Conversation not found",
+    body: "This chat is no longer in the tenant. It may have been deleted in another session.",
+    next: "Pick a chat from History, or start a new one.",
+  },
   secret_like_input_rejected: {
     tone: "danger",
     title: "Secret-like input rejected",
