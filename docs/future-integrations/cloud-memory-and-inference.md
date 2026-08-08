@@ -382,7 +382,81 @@ export: it duplicates an artifact already held in Cloud Storage, and
 - Agent-authored comments, label management, project lead assignment, run
   cancellation, and a screenshot-grade gallery thumbnail.
 
-**Next surface: Room.** Pipeline, Agent Kanban, Kanban, Loop, and Ruflo follow.
+## Hosted Room Checkpoint (2026-08-09)
+
+**Status:** deployed and proven end to end on `veloce-cloud-test`.
+
+`/room` is the real Agent Room, not the shared workflow surface: a toggleable
+roster, agents replying in turn, `@mention` narrowing, memory-context notices,
+conversation history, and `NOTE::` / `PIPELINE::` side effects.
+
+| Local room | Hosted equivalent |
+| --- | --- |
+| NDJSON stream, agent by agent | one queued round job; the worker appends each reply as it lands and advances `speaking_agent_id`, and the client polls |
+| history as vault JSON + localStorage | `client_room_conversations` / `client_room_messages` under tenant RLS |
+| seven personas on seven models | personas resolved against the tenant provider/model allowlist; an unapproved one stays visible but disabled with the real reason |
+| Obsidian vault context | tenant `client_runtime_records` memory, shown in the same context pill |
+| `NOTE::` writes a vault note, `PIPELINE::` writes a pipeline item | both create real tenant records through `create_client_runtime_record_worker`, visible on Memory and Pipeline |
+
+**Signed-in evidence** on revision `veloce-cloud-test-00106-xvr`:
+
+| Check | Evidence |
+| --- | --- |
+| Send | `202 queued`, round `00010c52…`, job `6585450a…` |
+| Concurrent send | refused `409 room_round_already_active` |
+| Turn-taking | Claude then Gemini; Gemini's reply opened "I agree with Claude, but…", so it genuinely read the prior turn |
+| Memory context | pill listed real records; round 2 retrieved the memory round 1 had just created |
+| `NOTE::` | created memory record `f95fcdea…`; the action pill's `linkedRecordId` matches that row |
+| `@mention` | `@claude …` narrowed the round to Claude alone |
+| Budget | 2864 micros for the two-agent round, 4912 total, well under the $1 cap |
+
+The round finished inside the first 2.5s poll, so the intermediate
+`speaking_agent_id` transitions were not observed in the browser; the durable
+round row and per-message costs are the evidence that each turn ran separately.
+
+**No Stop control.** A queued round cannot be cancelled mid-flight, so the
+composer reports round progress rather than offering a control that would not
+work. Adding one requires a real cancellation path in the job lane.
+
+### Model diversity (2026-08-09)
+
+The first smoke showed four of six personas resolving to the same
+`google/gemini-3.1-flash-lite`, because the roster requested the provider
+default — `providerModels[0]` — and the tenant allowlisted exactly one
+OpenRouter model. Personas now carry a preferred model and fall back when it is
+not allowlisted, and the tenant allowlist was widened to the models the local
+room actually uses. One OpenRouter key reaches all of them; no new credential
+was added.
+
+| Persona | Model | in/out micros per 1k |
+| --- | --- | --- |
+| Claude | `claude-sonnet-5` (anthropic) | 2000 / 10000 |
+| Hermes | `nousresearch/hermes-4-70b` | 13 / 40 |
+| Gemini | `gemini-3.1-flash-lite` (direct) | 100 / 400 |
+| Codex | `openai/gpt-4o-mini` | 15 / 60 |
+| OpenClaw | `meta-llama/llama-3.3-70b-instruct` | 10 / 32 |
+| GLM | `z-ai/glm-5.2` | 18 / 57 |
+
+Pricing was taken from OpenRouter's live model list rather than estimated. That
+check also found the manifest pricing `google/gemini-3.1-flash-lite` at 100/400
+when the live rate is 25/150; the ledger was over-counting spend, so the $1 cap
+tripped earlier than real usage warranted. Corrected to 25/150. The non-prefixed
+`gemini-3.1-flash-lite` is the direct Google API — a different route with its
+own pricing — and was left alone.
+
+A model with no `modelPricing` entry is unusable: the estimate returns null and
+the round fails `budget_exceeded`. Any future model must be added to
+`modelAllowlist`, `providerModelAllowlist`, and `modelPricing` together.
+
+### Still owed on Room
+
+- A controlled cloud failure for a room round (provider error mid-round; the
+  worker is written to continue the round and post an error pill, untested).
+- Round cancellation, if a cancellation path is added to the job lane.
+- Agent-to-agent addressing beyond `@mention`, and the local room's
+  per-agent config overrides.
+
+**Next surface: Pipeline.** Agent Kanban, Kanban, Loop, and Ruflo follow.
 
 `/paperclip` no longer renders the shared orchestration workflow surface. It now
 has a literal hosted Paperclip domain, built by reading the real local service's
