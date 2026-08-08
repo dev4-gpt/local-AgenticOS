@@ -253,7 +253,10 @@ async function processRoomRoundJob(jobId: string, tenantSlug: string, workerToke
       continue;
     }
     const prompt = roomPrompt({ persona, transcript: working, context: contextText });
-    const result = await runClientTextAdapter({ provider: agent.provider, model: agent.model, prompt: prompt.user, history: [{ role: "system", content: prompt.system }], reserveBudget: false, jobId });
+    // Send persona + transcript as one user turn. The Gemini path drops
+    // system-role messages entirely, so a separate system message would strip
+    // this agent's character and its memory context on that provider alone.
+    const result = await runClientTextAdapter({ provider: agent.provider, model: agent.model, prompt: `${prompt.system}\n\n${prompt.user}`, reserveBudget: false, jobId });
     if (!result.ok) {
       logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: agent.provider, status: result.status, reason: result.error });
       // One agent failing must not abort the round; the others still speak.
