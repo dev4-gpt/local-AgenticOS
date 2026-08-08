@@ -299,8 +299,32 @@ claim the same execution semantics.
 
 ## Hosted Paperclip Adapter Checkpoint (2026-08-08)
 
-**Status:** implemented and statically verified; awaiting the tenant migration
-and a signed-in dogfood run.
+**Status:** deployed and proven end to end on `veloce-cloud-test`.
+
+Revision `veloce-cloud-test-00104-2gt` (image `v73-hosted-paperclip`, release
+`hosted-paperclip-20260808`) serves 100% of traffic. Signed-in evidence:
+
+| Check | Evidence |
+| --- | --- |
+| Issue created | `VEL-9`, assigned to Bo Rivera on project Launch Site |
+| Dispatch | `202 queued`, job `f1853207-c2d1-4dbd-ba3b-4ef6f4b46dc1`, run `0c9245a9-5539-4b1c-b524-421171d6d5ba` |
+| Cloud Run Job | execution `veloce-cloud-test-workspace-qrg2n`, 15:39:12→15:39:27Z, succeeded=1 |
+| Run settled | `succeeded`, openrouter / `google/gemini-3.1-flash-lite`, 15:39:19→15:39:23Z, inside the job window |
+| Artifact | `fa2a0b55-745e-42f3-8bdc-e9235b123ee0`, 1286 bytes `text/html`, signed GCS download returns 200, contains no `<script>` |
+| Issue lifecycle | `done` / `executionState: succeeded` / `hasBuild: true` |
+| Agent heartbeat | Bo Rivera `lastHeartbeatAt` 15:39:23Z, status back to `idle` |
+| Budget | 243 micros settled against the $1 cap; UI shows `$0.0002 of $0.60` |
+| Gallery | one card, SHIPPED badge, live sandboxed preview of the generated artifact |
+
+The run completed in about four seconds, faster than the first UI poll, so the
+intermediate `queued`/`running` states were not directly observed in the browser;
+the Cloud Run execution window and the run's own start/finish timestamps are the
+evidence that the job lane actually did the work. A controlled failure was
+separately proven locally (`task_runtime_not_configured` settling the run to
+`failed` without stranding the issue).
+
+Still owed: a controlled *cloud* failure (provider or artifact-validation), and
+the two-tenant isolation, export, and deletion drills against the six new tables.
 
 `/paperclip` no longer renders the shared orchestration workflow surface. It now
 has a literal hosted Paperclip domain, built by reading the real local service's
