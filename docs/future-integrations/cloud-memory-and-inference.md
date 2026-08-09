@@ -664,13 +664,23 @@ artifact count the fixed gallery now returns.
 The migration narrowing `error_code` on `settle_client_ruflo_swarm_worker` was
 applied by the owner in the Supabase SQL editor and returned success.
 
-### Two-tenant isolation: still owed, and why
+### Two-tenant isolation (owed item, done)
 
-Both tenants exist and are active in `client_tenants`, each with one active
-membership, so the fixture is in place. The run additionally needs a Supabase
-user JWT for the tenant B member, which the service-role key cannot substitute
-for: service role bypasses RLS, so it cannot prove RLS. The remaining input is
-a signed-in session for that account.
+`verify-client-runtime-isolation.mjs` passed for `veloce-cloud-test` and
+`veloce-cloud-test-b` across all twenty tenant tables: each token reads its own
+rows and returns nothing from the other tenant. Tokens and row content were not
+printed. Sessions for both existing members were minted through the admin
+magic-link flow with the service-role key, which issues a JWT for an account
+that already exists; no tenant, service, or deployment was created.
+
+**The first run failed and the failure was misleading.** Tenant A's token had
+expired, and because the script asserted `ok && rows.length === 0` as one
+condition, every one of the twenty tables reported "tenant A token crossed into
+tenant B" — twenty apparent isolation breaches that were really one stale
+token. A failed cross-read is inconclusive, not proof, and reporting it as a
+crossing is the kind of noise that would hide one real breach among twenty
+false ones. The two conditions are now asserted separately: a bad token yields
+zero "crossed" claims and says the run is inconclusive instead.
 
 ## Batch B finding: the Notebook tabs are decorative
 

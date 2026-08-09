@@ -47,8 +47,14 @@ for (const [label, table] of probes) {
   ]);
   expect(aOwn.ok, `${label}: tenant A own read failed (${aOwn.status})`);
   expect(bOwn.ok, `${label}: tenant B own read failed (${bOwn.status})`);
-  expect(aOther.ok && aOther.rows.length === 0, `${label}: tenant A token crossed into tenant B`);
-  expect(bOther.ok && bOther.rows.length === 0, `${label}: tenant B token crossed into tenant A`);
+  // A failed cross-read is inconclusive, not proof of isolation, and must not
+  // be reported as a crossing. An expired token once made every table read as
+  // "crossed into tenant B", which is exactly the noise that would hide one
+  // real crossing among twenty false ones.
+  expect(aOther.ok, `${label}: tenant A cross-read failed (${aOther.status}) - inconclusive, refresh the token and re-run`);
+  expect(!aOther.ok || aOther.rows.length === 0, `${label}: tenant A token crossed into tenant B`);
+  expect(bOther.ok, `${label}: tenant B cross-read failed (${bOther.status}) - inconclusive, refresh the token and re-run`);
+  expect(!bOther.ok || bOther.rows.length === 0, `${label}: tenant B token crossed into tenant A`);
 }
 
 if (failures.length) {
