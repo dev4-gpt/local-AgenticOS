@@ -507,9 +507,12 @@ Four of the six would have passed every unit test written for them:
 
 ### Still owed on Section III
 
-- Loop's multi-round iteration. The first run passed at round 1, which proves
-  the lane but not the build → judge → revise → pass cycle. A harder goal was
-  queued for this and needs re-running.
+- ~~Loop's multi-round iteration~~ **proven**. A deliberately demanding pricing
+  page ran 3/3 rounds, artifact `c0be62f2`, 146 micros: round 1 failed at 85 on
+  a badge contrast ratio, round 2 failed at 85 on a *different* contrast defect
+  the builder introduced while fixing the first, round 3 passed at 100. The
+  changing objections are the evidence that the builder acted on feedback and
+  the judge kept grading adversarially rather than rubber-stamping.
 - A controlled cloud failure for a Ruflo swarm and a room round.
 - The two-tenant isolation run and a service-role export, which need a second
   tenant token and `SUPABASE_SERVICE_ROLE_KEY`.
