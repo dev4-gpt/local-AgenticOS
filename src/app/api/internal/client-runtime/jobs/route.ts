@@ -14,6 +14,7 @@ import { artifactFromWorkspaceOutput, isClientWorkspaceSurface, workspacePrompt,
 import { paperclipRunSummary } from "@/lib/clientPaperclipAdapter";
 import { parseRoomDirectives, roomActionSummary, roomPersona, roomPrompt } from "@/lib/clientRoomAdapter";
 import { parsePipelineShape, pipelineStageAfterShaping } from "@/lib/clientPipelineAdapter";
+import { loopBuilderPrompt, loopFinalStatus, loopJudgePrompt, parseLoopVerdict } from "@/lib/clientLoopAdapter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
   if (!claim.ok) return NextResponse.json({ ok: false, error: "job_claim_failed" }, { status: 503 });
   const job = claim.value as { id?: string; capability?: string; provider?: string; model?: string; input_metadata?: Record<string, unknown> | null } | null;
   if (!job?.id || typeof job.capability !== "string") return NextResponse.json({ ok: true, status: "already_claimed" });
-  if (["text-agents", "media", "seo-research", "room-round", "pipeline-shape"].includes(job.capability) && !clientProviderCallsEnabled()) {
+  if (["text-agents", "media", "seo-research", "room-round", "pipeline-shape", "loop-run"].includes(job.capability) && !clientProviderCallsEnabled()) {
     await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, "provider_calls_require_approval");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
   if (job.capability === "workspace-execution") return processWorkspaceExecutionJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "room-round") return processRoomRoundJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "pipeline-shape") return processPipelineShapeJob(jobId, tenantSlug, workerToken, job);
+  if (job.capability === "loop-run") return processLoopRunJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "media") return processMediaJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "seo-research") return processSeoJob(jobId, tenantSlug, workerToken, job);
   if (job.capability !== "text-agents" || typeof job.provider !== "string" || typeof job.input_metadata?.prompt !== "string") {
@@ -288,6 +290,119 @@ async function processPipelineShapeJob(jobId: string, tenantSlug: string, worker
   });
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+type LoopSide = { provider: string; model: string };
+
+/**
+ * Runs a bounded builder/judge loop. The builder produces the work, the judge
+ * grades it adversarially, and the builder gets those exact issues to fix next
+ * round. It stops on a pass, on the round cap, or on a failure — and only the
+ * final artifact is committed, so a rejected draft never becomes a deliverable.
+ */
+async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken: string, job: { input_metadata?: Record<string, unknown> | null }) {
+  const input = job.input_metadata ?? {};
+  const goal = typeof input.goal === "string" ? input.goal.trim().slice(0, 10_000) : "";
+  const maxRounds = Math.min(5, Math.max(1, Math.round(Number(input.maxRounds) || 3)));
+  const builder = loopSide(input.builder);
+  const judge = loopSide(input.judge);
+  if (!goal || !builder || !judge) {
+    await settleLoopRun(tenantSlug, workerToken, jobId, "failed", null, null, null, "loop_input_invalid");
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "loop_input_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+
+  // Reserve for the worst case up front: every round is a build plus a judge.
+  const perCall = estimateClientTextCostMicros(builder.model, [{ role: "user", content: goal.padEnd(4000, " ") }], clientTextMaxOutputTokens());
+  if (perCall === null || !(await reserveClientRuntimeBudgetWorker({ provider: builder.provider, model: builder.model, amountMicros: perCall * maxRounds * 2, jobId, workerToken }))) {
+    await settleLoopRun(tenantSlug, workerToken, jobId, "failed", null, null, null, "budget_exceeded");
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  await settleLoopRun(tenantSlug, workerToken, jobId, "running", null, null, null, null);
+
+  let artifactText = "";
+  let issues: string[] = [];
+  let passed = false;
+  let spent = 0;
+  let round = 0;
+  let lastSummary = "";
+
+  while (round < maxRounds && !passed) {
+    round += 1;
+    const buildResult = await runClientTextAdapter({
+      provider: builder.provider, model: builder.model,
+      prompt: loopBuilderPrompt({ goal, previous: artifactText, issues }),
+      reserveBudget: false, jobId,
+    });
+    if (!buildResult.ok) {
+      await appendLoopRound(tenantSlug, workerToken, jobId, round, false, 0, [], "", 0, 0, buildResult.error);
+      await settleTerminalBudget(jobId, workerToken, spent, { loopRounds: round, providerFailure: 1 });
+      await settleLoopRun(tenantSlug, workerToken, jobId, "failed", lastSummary || null, null, null, buildResult.error);
+      await completeJob(tenantSlug, jobId, workerToken, "failed", { loopRounds: round }, buildResult.error);
+      return NextResponse.json({ ok: true, status: "failed" });
+    }
+    spent += buildResult.usage ? clientTextUsageCostMicros(builder.model, buildResult.usage) ?? 0 : 0;
+    artifactText = safeClientProviderOutput(buildResult.output);
+
+    const judgeResult = await runClientTextAdapter({
+      provider: judge.provider, model: judge.model,
+      prompt: loopJudgePrompt({ goal, artifact: artifactText }),
+      reserveBudget: false, jobId,
+    });
+    const judgeCost = judgeResult.ok && judgeResult.usage ? clientTextUsageCostMicros(judge.model, judgeResult.usage) ?? 0 : 0;
+    spent += judgeCost;
+    const verdict = judgeResult.ok ? parseLoopVerdict(safeClientProviderOutput(judgeResult.output)) : null;
+    if (!verdict) {
+      // An unreadable verdict is recorded as a failed round rather than being
+      // treated as a pass, which would ship unjudged work.
+      await appendLoopRound(tenantSlug, workerToken, jobId, round, false, 0, [], "", artifactText.length, judgeCost, judgeResult.ok ? "loop_verdict_unparsable" : judgeResult.error);
+      issues = ["The verification gate did not return a readable verdict."];
+      lastSummary = "Judge output could not be read.";
+      continue;
+    }
+    passed = verdict.pass;
+    issues = verdict.issues;
+    lastSummary = verdict.summary;
+    await appendLoopRound(tenantSlug, workerToken, jobId, round, verdict.pass, verdict.score, verdict.issues, verdict.summary, artifactText.length, judgeCost, null);
+  }
+
+  const artifact = artifactFromWorkspaceOutput({ surface: "loop", title: `loop-${jobId.slice(0, 8)}`, artifactIntent: "preview", output: artifactText });
+  const artifactId = artifact ? await storeArtifact(tenantSlug, jobId, workerToken, artifact.fileName, artifact.contentType, artifact.bytes) : null;
+  const status = loopFinalStatus({ passed, rounds: round, maxRounds });
+
+  const settled = await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros: spent, usageMetadata: { loopRounds: round, actualAmountMicros: spent }, workerToken });
+  if (!settled) logClientRuntimeEvent("runtime.budget_settlement_failed", { tenant: tenantSlug, jobId, status: 503 });
+  await settleLoopRun(tenantSlug, workerToken, jobId, status, lastSummary || null, artifactId, artifact?.previewHtml ?? null, null);
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { loopRounds: round, passed, artifactId, costMicros: spent });
+  return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+function loopSide(value: unknown): LoopSide | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const side = value as Record<string, unknown>;
+  return typeof side.provider === "string" && typeof side.model === "string" && side.provider && side.model
+    ? { provider: side.provider, model: side.model }
+    : null;
+}
+
+async function appendLoopRound(tenantSlug: string, workerToken: string, jobId: string, round: number, passed: boolean, score: number, issues: string[], summary: string, artifactChars: number, costMicros: number, errorCode: string | null) {
+  const result = await workerRpc("append_client_loop_round_worker", {
+    p_tenant_slug: tenantSlug, p_worker_token: workerToken, p_job_id: jobId,
+    p_round: round, p_passed: passed, p_score: Math.round(score),
+    p_issues: issues.slice(0, 8), p_summary: summary,
+    p_artifact_chars: artifactChars, p_cost_micros: Math.max(0, Math.round(costMicros)), p_error_code: errorCode,
+  });
+  if (!result.ok || result.value !== true) logClientRuntimeEvent("runtime.loop_round_append_failed", { tenant: tenantSlug, jobId, status: 503 });
+}
+
+async function settleLoopRun(tenantSlug: string, workerToken: string, jobId: string, status: string, summary: string | null, artifactId: string | null, previewHtml: string | null, errorCode: string | null) {
+  const result = await workerRpc("settle_client_loop_run_worker", {
+    p_tenant_slug: tenantSlug, p_worker_token: workerToken, p_job_id: jobId,
+    p_status: status, p_final_summary: summary, p_build_artifact_id: artifactId,
+    p_build_preview_html: previewHtml?.slice(0, 40_000) ?? null, p_error_code: errorCode,
+  });
+  if (!result.ok || result.value !== true) logClientRuntimeEvent("runtime.loop_settlement_failed", { tenant: tenantSlug, jobId, status: 503 });
 }
 
 async function settleBoardTask(tenantSlug: string, workerToken: string, jobId: string, patch: Record<string, unknown>) {

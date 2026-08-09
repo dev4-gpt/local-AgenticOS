@@ -176,6 +176,18 @@ const NOTICES: Record<string, ClientRuntimeNotice> = {
     body: "Only an Agent Kanban card in Queued or Building can start a build, and not while one is already running.",
     next: "Wait for the current run to settle, or move the card back to Queued.",
   },
+  loop_schema_missing: {
+    tone: "warning",
+    title: "Loop tables not applied",
+    body: "Loop runs and their rounds live in tenant Supabase tables that have not been created in this project yet.",
+    next: "Apply product-experience/supabase-client-loop.sql, then reload the page.",
+  },
+  loop_verdict_unparsable: {
+    tone: "warning",
+    title: "The judge did not return a readable verdict",
+    body: "That round was recorded as a failure rather than counted as a pass, so unjudged work is never shipped.",
+    next: "The loop continues to the next round with that noted as the issue to fix.",
+  },
   secret_like_input_rejected: {
     tone: "danger",
     title: "Secret-like input rejected",

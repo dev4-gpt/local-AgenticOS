@@ -31,6 +31,8 @@ const probes = [
   ["board tasks", "client_board_tasks"],
   ["board comments", "client_board_comments"],
   ["board events", "client_board_events"],
+  ["loop runs", "client_loop_runs"],
+  ["loop rounds", "client_loop_rounds"],
 ];
 const failures = [];
 
