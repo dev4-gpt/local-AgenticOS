@@ -644,7 +644,14 @@ retrieval. Nothing on the surface crawls or reaches Search Console.
 
 ## Batch C, surfaces 2-6 (2026-08-10)
 
-**Status:** deployed on `veloce-cloud-test-00121-mrw` (`v89-notebook-containers`).
+**Status:** deployed on `veloce-cloud-test-00122-72s` (`v89-daecb7d`).
+
+The first v89 image was built from a working tree that also held a parallel
+session's uncommitted changes, so the running image contained code no commit
+recorded. It was rebuilt from an isolated worktree checked out at `daecb7d` and
+redeployed, so the live image now corresponds exactly to a commit. The parallel
+work was operator-surface only and never leaked: the live `/api/capabilities`
+returns seven capabilities, all `built-in`, on both images.
 
 **Video, Radar and Leads** each got a multi-mode surface rather than the shared
 studio screen, because each runs several distinct kinds of work and has to name
