@@ -456,7 +456,69 @@ the round fails `budget_exceeded`. Any future model must be added to
 - Agent-to-agent addressing beyond `@mention`, and the local room's
   per-agent config overrides.
 
-**Next surface: Pipeline.** Agent Kanban, Kanban, Loop, and Ruflo follow.
+## Section III Complete (2026-08-09)
+
+All seven Orchestrate routes are hosted surfaces with live evidence. Revision
+`veloce-cloud-test-00113-zb2` (`v82-session-refresh`) serves 100% of traffic.
+
+| Surface | Evidence |
+| --- | --- |
+| Paperclip | `VEL-9` shipped artifact; `VEL-10` controlled failure settled without stranding |
+| Room | six personas on six distinct models; `NOTE::` created memory record `f95fcdea` |
+| Pipeline | capture → shape → gate → approve → build → `shipped`, artifact `5943283d` |
+| Kanban | create, move, comment, event trail `created → moved:ready` |
+| Agent Kanban | card built artifact `33060f97` |
+| Loop | `passed` at round 1, score 100, artifact `e42ed54d`, 22 micros |
+| Ruflo | 5/5 agents, 0 failed, artifact `fa32a9cc` (4565 chars), 230 micros |
+
+The Ruflo poll captured genuine sequential fan-out —
+`done,done,done,idle,idle` → `done,done,done,done,running` → all done — so
+agents visibly report one at a time rather than appearing at once.
+
+### Ruflo was simpler than first assessed
+
+An earlier note claimed Ruflo needed a parent-run/child-run job topology. That
+was wrong. The local `SEO_ROSTER` is a flat fan-out: every agent receives
+`"<role> for: <objective>"` and results are collected. The dependency language
+came from the placeholder cloud copy, not the local implementation, so Ruflo
+adapts from the room-round pattern like the others.
+
+### Session refresh (fixed and proven)
+
+`currentClientUser` returned null on a missing access cookie before consulting
+the refresh cookie. Because the access cookie's `maxAge` equals the JWT's
+`expires_in`, the browser deletes it exactly when the token expires, so the
+refresh path only covered a case that effectively never occurs — every hosted
+client was signed out roughly hourly despite holding a 30-day refresh token.
+
+Proven live: an expired session that returned `401` on `v81` returned `200`
+on `v82` with no sign-in, restoring itself from the refresh cookie.
+
+### Bugs this cycle found only by running the product
+
+Four of the six would have passed every unit test written for them:
+
+1. failed Paperclip runs displayed a stale "Queued…" summary;
+2. `callGemini` drops system messages, so that persona lost its character;
+3. Markdown requested inside JSON string values broke pipeline shaping outright;
+4. the portal told cloud clients their work "lives in your vault";
+5. `coalesce(...)[1:8]` is invalid Postgres — caught only on apply;
+6. the session refresh path above.
+
+### Still owed on Section III
+
+- Loop's multi-round iteration. The first run passed at round 1, which proves
+  the lane but not the build → judge → revise → pass cycle. A harder goal was
+  queued for this and needs re-running.
+- A controlled cloud failure for a Ruflo swarm and a room round.
+- The two-tenant isolation run and a service-role export, which need a second
+  tenant token and `SUPABASE_SERVICE_ROLE_KEY`.
+
+**Next: Sections IV-VI**, planned as three batches rather than twenty ports.
+Batch A covers eight shallow Create/Govern surfaces behind one config-driven
+component on the existing artifact lane; batch B covers Context; batch C covers
+the deep surfaces — SEO, Video, Notebook, Memory, Radar, Leads — where cloud
+genuinely diverges from local.
 
 `/paperclip` no longer renders the shared orchestration workflow surface. It now
 has a literal hosted Paperclip domain, built by reading the real local service's
