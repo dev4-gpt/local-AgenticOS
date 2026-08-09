@@ -614,6 +614,36 @@ personas spoke, and a `NOTE::` directive still executed. The manifest was
 restored and redeployed as `veloce-cloud-test-00118-4zs`, with the Claude
 persona confirmed back on `claude-sonnet-5`.
 
+## Service-role export (owed item, done)
+
+`client-lifecycle.mjs --mode export --slug veloce-cloud-test` ran against the
+real project with `SUPABASE_SERVICE_ROLE_KEY` and wrote a 948 KB export of
+**28 tables**, covering every surface built to date:
+
+```
+board comments/events/tasks · loop rounds/runs · memberships
+paperclip agents/comments/companies/issues/projects/runs
+pipeline items · room conversations/messages/rounds
+ruflo agents/swarms · runtime artifacts/audit/budget/delivery
+runtime jobs/records/requests · memory graph edges/nodes · tenants
+```
+
+All twenty tables the isolation probe enumerates are present, so adding the
+newer surfaces did not open the export/offboarding hole this project has hit
+before. `client_runtime_artifacts` exported 17 rows, independently matching the
+artifact count the fixed gallery now returns.
+
+The migration narrowing `error_code` on `settle_client_ruflo_swarm_worker` was
+applied by the owner in the Supabase SQL editor and returned success.
+
+### Two-tenant isolation: still owed, and why
+
+Both tenants exist and are active in `client_tenants`, each with one active
+membership, so the fixture is in place. The run additionally needs a Supabase
+user JWT for the tenant B member, which the service-role key cannot substitute
+for: service role bypasses RLS, so it cannot prove RLS. The remaining input is
+a signed-in session for that account.
+
 ## Batch B finding: the Notebook tabs are decorative
 
 `NotebookSurface` in `ClientDataWorkspace` renders four tabs — research, chat,
