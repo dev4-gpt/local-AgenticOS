@@ -25,6 +25,7 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   const [journalDay, setJournalDay] = useState<string | null>(null);
   const [notebookTab, setNotebookTab] = useState<"library" | "research" | "chat" | "studio" | "assets">("library");
   const [memoryView, setMemoryView] = useState<"recent" | "search" | "graph" | "galaxy">("recent");
+  const [memoryQuery, setMemoryQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [importing, setImporting] = useState(false);
   const [graphNodes, setGraphNodes] = useState<ClientGraphNode[]>([]);
@@ -143,6 +144,18 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   useEffect(() => { if (surface === "journal" && !journalDay && journalDays[0]) setJournalDay(journalDays[0]); }, [surface, journalDay, journalDays]);
   const journalRecords = useMemo(() => journalDay ? active.filter((record) => new Date(record.created_at).toISOString().slice(0, 10) === journalDay) : active, [active, journalDay]);
   const goalRecords = useMemo(() => goalFilter === "all" ? active : active.filter((record) => goalFilter === "done" ? record.status === "done" : record.status !== "done"), [active, goalFilter]);
+  // Memory search runs over the tenant's own records: titles, content, and the
+  // #tags already used to build the graph. It reaches nothing outside this
+  // tenant, which is why the empty state says so rather than implying more.
+  const searchedRecords = useMemo(() => {
+    const query = memoryQuery.trim().toLowerCase();
+    if (!query) return visibleRecords;
+    const terms = query.split(/\s+/).filter(Boolean);
+    return visibleRecords.filter((record) => {
+      const haystack = `${record.title}\n${record.content}`.toLowerCase();
+      return terms.every((term) => haystack.includes(term));
+    });
+  }, [visibleRecords, memoryQuery]);
   // What the notebook's chat and studio lanes are allowed to draw on.
   const notebookSources = useMemo(() => active.map((record) => ({ id: record.id, title: record.title, content: record.content })), [active]);
   function selectGraphNode(nodeId: string) {
@@ -169,7 +182,13 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
         <div className="flex items-center gap-2"><button type="button" onClick={refreshGraph} disabled={graphBusy} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px] font-semibold" style={{ borderColor: "rgba(179,128,63,0.42)", color: "var(--gold-deep)", background: "rgba(179,128,63,0.08)" }}><RefreshCw size={13} className={graphBusy ? "animate-spin" : ""} />{graphBusy ? "Refreshing" : "Refresh map"}</button></div>
       </div>
       <div className="mt-4 flex flex-wrap gap-2" aria-label="Memory views">{(["recent", "search", "graph", "galaxy"] as const).map((view) => <button key={view} type="button" onClick={() => setMemoryView(view)} className="rounded-md border px-3 py-2 text-[11px] capitalize" style={{ color: memoryView === view ? "#07111d" : "var(--cream-dim)", background: memoryView === view ? "#f0c94a" : "rgba(255,255,255,0.03)", borderColor: memoryView === view ? "#f0c94a" : "var(--line-soft)" }}>{view === "galaxy" ? "Galaxy" : view}</button>)}</div>
-      {memoryView === "search" && <p className="mt-4 text-[11px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>Smart search is based on tenant record titles, content, and approved tags. Add or import a source, then refresh the map to see conceptual links.</p>}
+      {memoryView === "search" && <div className="mt-4">
+        <input value={memoryQuery} onChange={(event) => setMemoryQuery(event.target.value)} placeholder="Search titles, content, and #tags in this tenant"
+          className="w-full rounded-md border px-3 py-2.5 text-[12px]" style={{ color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" }} />
+        <p className="mt-2 text-[10px]" style={{ color: "var(--cream-mute)" }}>
+          {memoryQuery.trim() ? `${searchedRecords.length} of ${active.length} tenant memories match` : `${active.length} tenant memories. Searches titles, content, and #tags in this tenant only.`}
+        </p>
+      </div>}
       {graphNodes.length > 0 && (memoryView === "graph" || memoryView === "galaxy") ? <>
         <ClientMemoryGraph3D nodes={graphNodes} edges={graphEdges} selectedNodeId={selectedGraphNodeId} onSelectNode={selectGraphNode} onClearSelection={() => setSelectedGraphNodeId(null)} />
         {selectedGraphNode && <div className="mt-4 rounded-md border p-4" style={{ borderColor: selectedGraphNode.kind === "document" ? "rgba(47,143,107,0.42)" : "rgba(176,74,104,0.42)", background: selectedGraphNode.kind === "document" ? "rgba(47,143,107,0.08)" : "rgba(176,74,104,0.08)" }}>
@@ -181,7 +200,7 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     {surface !== "journal" && !(surface === "notebook" && notebookTab !== "library") && <section className="space-y-3">
       {active.length === 0 && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No tenant records yet.</div>}
       {active.length > 0 && visibleRecords.length === 0 && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No tenant records match this graph node.</div>}
-      {(surface === "goals" ? goalRecords : visibleRecords).map((record) => <article key={record.id} className="panel p-4"><div className="flex items-start gap-3"><FileText size={15} color="#60a5fa" className="mt-0.5" /><div className="min-w-0 flex-1"><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>{record.title}</h2><p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>{record.content}</p><p className="mt-3 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}>{surface === "goals" && typeof record.metadata?.category === "string" && <span className="inline-flex items-center gap-1"><Tag size={10} />{record.metadata.category}</span>}<span>{new Date(record.created_at).toLocaleString()} · {record.status}</span></p></div><div className="flex items-center gap-1"><button type="button" title={record.status === "done" ? "Mark active" : "Mark done"} onClick={() => update(record.id, record.status === "done" ? "active" : "done")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: record.status === "done" ? "#34d399" : "var(--cream-mute)" }}><Check size={13} /></button><button type="button" title="Archive" onClick={() => update(record.id, "archived")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "var(--cream-mute)" }}><Archive size={13} /></button><button type="button" title="Delete" onClick={() => remove(record.id)} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "#fda4af" }}><Trash2 size={13} /></button></div></div></article>)}
+      {(surface === "goals" ? goalRecords : surface === "memory" && memoryView === "search" ? searchedRecords : visibleRecords).map((record) => <article key={record.id} className="panel p-4"><div className="flex items-start gap-3"><FileText size={15} color="#60a5fa" className="mt-0.5" /><div className="min-w-0 flex-1"><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>{record.title}</h2><p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>{record.content}</p><p className="mt-3 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}>{surface === "goals" && typeof record.metadata?.category === "string" && <span className="inline-flex items-center gap-1"><Tag size={10} />{record.metadata.category}</span>}<span>{new Date(record.created_at).toLocaleString()} · {record.status}</span></p></div><div className="flex items-center gap-1"><button type="button" title={record.status === "done" ? "Mark active" : "Mark done"} onClick={() => update(record.id, record.status === "done" ? "active" : "done")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: record.status === "done" ? "#34d399" : "var(--cream-mute)" }}><Check size={13} /></button><button type="button" title="Archive" onClick={() => update(record.id, "archived")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "var(--cream-mute)" }}><Archive size={13} /></button><button type="button" title="Delete" onClick={() => remove(record.id)} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "#fda4af" }}><Trash2 size={13} /></button></div></div></article>)}
     </section>}
   </div>;
 }
