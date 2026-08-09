@@ -74,9 +74,21 @@ test("progress counts settled agents, including failures", () => {
 
 test("status labels admit partial failure rather than claiming a clean run", () => {
   expect(rufloStatusLabel(swarm({ id: "1", status: "running", agentCount: 12, completedCount: 5 }))).toBe("5/12 agents reported");
-  expect(rufloStatusLabel(swarm({ id: "2", status: "completed", failedCount: 2 }))).toContain("2 agents failing");
-  expect(rufloStatusLabel(swarm({ id: "3", status: "completed" }))).toBe("Completed");
+  expect(rufloStatusLabel(swarm({ id: "2", status: "completed", failedCount: 2, reportArtifactId: "a" }))).toContain("2 agents failing");
+  expect(rufloStatusLabel(swarm({ id: "3", status: "completed", reportArtifactId: "a" }))).toBe("Completed");
   expect(rufloStatusLabel(swarm({ id: "4", status: "failed", errorCode: "budget_exceeded" }))).toContain("budget_exceeded");
+});
+
+test("a swarm whose coordinator report failed does not read as a clean run", () => {
+  // Found by the controlled cloud failure drill: twelve agents reported, the
+  // coordinator's output failed artifact validation, and the swarm still said
+  // "Completed" with a null error code and no report to show for it.
+  const noReport = swarm({ id: "5", status: "completed", completedCount: 12, reportArtifactId: null });
+  expect(rufloStatusLabel(noReport)).toContain("coordinator report was not usable");
+  expect(rufloStatusLabel(noReport)).not.toBe("Completed");
+
+  // The agents' own work is still reported honestly alongside the caveat.
+  expect(rufloStatusLabel(swarm({ id: "6", status: "completed", failedCount: 2, reportArtifactId: null }))).toContain("2 agents failing");
 });
 
 test("normalizers reject unknown enum values from the row", () => {

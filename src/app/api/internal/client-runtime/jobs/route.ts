@@ -364,7 +364,11 @@ async function processRufloSwarmJob(jobId: string, tenantSlug: string, workerTok
 
   const settled = await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros: spent, usageMetadata: { rufloAgents: findings.length, actualAmountMicros: spent }, workerToken });
   if (!settled) logClientRuntimeEvent("runtime.budget_settlement_failed", { tenant: tenantSlug, jobId, status: 503 });
-  await settleRufloSwarm(tenantSlug, workerToken, jobId, "completed", reportHtml, artifactId, null);
+  // The agents' findings are real and stored, so this is not a total failure.
+  // But a swarm with no coordinator report must not read as a clean run: record
+  // why the synthesis is missing instead of settling with a null error code.
+  const reportError = artifactId ? null : (report.ok ? "ruflo_report_invalid" : "ruflo_report_failed");
+  await settleRufloSwarm(tenantSlug, workerToken, jobId, "completed", reportHtml, artifactId, reportError);
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", { rufloAgents: findings.length, artifactId, costMicros: spent });
   return NextResponse.json({ ok: true, status: "succeeded" });
 }

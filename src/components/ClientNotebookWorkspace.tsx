@@ -278,7 +278,7 @@ function AssetsLane({ onError }: { onError: (value: string) => void }) {
   }
 
   return <LanePanel icon={<FolderOpen size={17} />} eyebrow="Tenant Notebook · assets" title="Tenant artifacts"
-    body="Everything this tenant has imported or produced, with signed, time-limited downloads. Retention follows the tenant's storage lifecycle.">
+    body="Everything you have imported here or produced through a run, with signed, time-limited downloads. Retention follows the tenant's storage lifecycle.">
     {loading ? <p className="text-[11px]" style={{ color: "var(--cream-mute)" }}>Loading tenant artifacts…</p>
       : artifacts.length === 0 ? <p className="text-[11px]" style={{ color: "var(--cream-mute)" }}>No tenant artifacts yet. Import a source or build a document to create one.</p>
       : <div className="space-y-2">{artifacts.map((artifact) => <div key={artifact.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3" style={{ borderColor: "var(--line-soft)" }}>

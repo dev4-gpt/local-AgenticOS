@@ -26,13 +26,41 @@ export async function GET(request: Request) {
   if (!tenantSlug) return NextResponse.json({ ok: false, error: "runtime_not_configured" }, { status: 503 });
   const artifactId = new URL(request.url).searchParams.get("id")?.trim();
   if (artifactId) return signedDownload(user.id, tenantSlug, artifactId);
-  const result = await selectClientRecords("client_runtime_artifacts", {
+  // Two ways an artifact belongs to this member: they uploaded it, or a job they
+  // requested produced it. The worker's create RPC sets no created_by, so a
+  // created_by-only list hides every artifact the runtime built — exactly the
+  // ones the gallery exists to show. Signed download already authorises by job
+  // ownership, so listing them the same way keeps read and download consistent.
+  const owned = await selectClientRecords("client_runtime_artifacts", {
     tenant_slug: `eq.${tenantSlug}`,
     created_by: `eq.${user.id}`,
     order: "created_at.desc",
     limit: "100",
   });
-  if (!result.ok) return NextResponse.json({ ok: false, error: "artifact_list_failed" }, { status: 502 });
+  if (!owned.ok) return NextResponse.json({ ok: false, error: "artifact_list_failed" }, { status: 502 });
+  const jobs = await selectClientRecords("client_runtime_jobs", {
+    tenant_slug: `eq.${tenantSlug}`,
+    requested_by: `eq.${user.id}`,
+    order: "created_at.desc",
+    limit: "100",
+  });
+  const jobIds = jobs.ok ? jobs.records.map((record) => typeof record.id === "string" ? record.id : "").filter(Boolean) : [];
+  const produced = jobIds.length
+    ? await selectClientRecords("client_runtime_artifacts", {
+        tenant_slug: `eq.${tenantSlug}`,
+        job_id: `in.(${jobIds.join(",")})`,
+        order: "created_at.desc",
+        limit: "100",
+      })
+    : { ok: true as const, records: [] as Record<string, unknown>[] };
+  const merged = new Map<string, Record<string, unknown>>();
+  for (const record of [...owned.records, ...(produced.ok ? produced.records : [])]) {
+    const id = typeof record.id === "string" ? record.id : "";
+    if (id && !merged.has(id)) merged.set(id, record);
+  }
+  const result = {
+    records: [...merged.values()].sort((left, right) => String(right.created_at ?? "").localeCompare(String(left.created_at ?? ""))).slice(0, 100),
+  };
   const artifacts = result.records.map((record) => ({
     id: typeof record.id === "string" ? record.id : "",
     original_name: typeof record.original_name === "string" ? record.original_name : null,

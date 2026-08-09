@@ -210,9 +210,12 @@ export function rufloStatusLabel(swarm: RufloSwarm) {
   if (swarm.status === "queued") return "Queued for the hosted runner";
   if (swarm.status === "running") return `${swarm.completedCount + swarm.failedCount}/${swarm.agentCount} agents reported`;
   if (swarm.status === "completed") {
-    return swarm.failedCount > 0
+    // Agents can all report while the coordinator's synthesis fails validation.
+    // Saying "Completed" there would claim a plan the client never received.
+    const agents = swarm.failedCount > 0
       ? `Completed with ${swarm.failedCount} agent${swarm.failedCount === 1 ? "" : "s"} failing`
       : "Completed";
+    return swarm.reportArtifactId ? agents : `${agents}, but the coordinator report was not usable`;
   }
   if (swarm.status === "cancelled") return "Cancelled";
   return `Failed${swarm.errorCode ? `: ${swarm.errorCode}` : ""}`;
