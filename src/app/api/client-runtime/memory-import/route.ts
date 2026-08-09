@@ -11,6 +11,9 @@ export const dynamic = "force-dynamic";
 
 const MAX_CONTENT_CHARS = 30_000;
 const MARKDOWN_EXTENSIONS = new Set(["md", "markdown", "txt"]);
+// The Notebook research tab imports through this same verified path, so the
+// destination record kind is a parameter. Export below stays memory-only.
+const IMPORT_KINDS = new Set(["memory", "notebook"]);
 
 export async function GET(request: Request) {
   const user = await currentClientUser();
@@ -54,8 +57,9 @@ export async function POST(request: Request) {
   const fileName = typeof body.fileName === "string" ? safeClientFileName(body.fileName) : null;
   const content = typeof body.content === "string" ? body.content.replace(/\r\n?/g, "\n").trim() : "";
   const artifactId = typeof body.artifactId === "string" ? body.artifactId.trim() : "";
+  const kind = typeof body.kind === "string" ? body.kind.trim().toLowerCase() : "memory";
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
-  if (!tenantSlug || !fileName || !isMarkdownFile(fileName) || !content || content.length > MAX_CONTENT_CHARS || !isUuid(artifactId) || containsClientSecretLike(fileName, content)) {
+  if (!tenantSlug || !fileName || !isMarkdownFile(fileName) || !content || content.length > MAX_CONTENT_CHARS || !isUuid(artifactId) || !IMPORT_KINDS.has(kind) || containsClientSecretLike(fileName, content)) {
     return jsonError("memory_import_input_invalid", 400);
   }
 
@@ -74,7 +78,7 @@ export async function POST(request: Request) {
     id: randomUUID(),
     tenant_slug: tenantSlug,
     created_by: user.id,
-    kind: "memory",
+    kind,
     title: titleFromFileName(fileName),
     content,
     metadata: {
@@ -86,7 +90,7 @@ export async function POST(request: Request) {
     },
   });
   if (!stored.ok) return jsonError("memory_import_write_failed", 502);
-  await recordClientAudit("tenant.memory.imported", { fileName, artifactId });
+  await recordClientAudit("tenant.memory.imported", { fileName, artifactId, kind });
   return NextResponse.json({ ok: true }, { status: 201, headers: { "cache-control": "private, no-store" } });
 }
 

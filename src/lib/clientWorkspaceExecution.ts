@@ -3,7 +3,8 @@ import { Buffer } from "node:buffer";
 export type ClientWorkspaceSurface =
   | "orchestrate" | "paperclip" | "room" | "pipeline" | "agent-kanban" | "kanban" | "loop" | "ruflo"
   | "create" | "opendesign" | "web-studio" | "flow-lab" | "video" | "studio" | "openmontage" | "music" | "games" | "thumbnails"
-  | "integrations" | "seo" | "seo-guide" | "guide" | "deliver" | "leads" | "radar";
+  | "integrations" | "seo" | "seo-guide" | "guide" | "deliver" | "leads" | "radar"
+  | "notebook";
 
 export type ClientTerminalEvent = {
   at: string;
@@ -22,6 +23,7 @@ const SURFACES = new Set<ClientWorkspaceSurface>([
   "orchestrate", "paperclip", "room", "pipeline", "agent-kanban", "kanban", "loop", "ruflo",
   "create", "opendesign", "web-studio", "flow-lab", "video", "studio", "openmontage", "music", "games", "thumbnails",
   "integrations", "seo", "seo-guide", "guide", "deliver", "leads", "radar",
+  "notebook",
 ]);
 
 export function isClientWorkspaceSurface(value: string): value is ClientWorkspaceSurface {

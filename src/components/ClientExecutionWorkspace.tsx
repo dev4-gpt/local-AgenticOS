@@ -20,7 +20,10 @@ type Execution = {
   terminalEvents: ClientTerminalEvent[];
 };
 
-const SURFACE_COPY: Record<ClientWorkspaceSurface, { title: string; eyebrow: string; description: string; actions: string[]; preview: boolean }> = {
+// Partial because not every job surface is routed to this generic screen: the
+// notebook queues workspace executions from its own studio lane, and the
+// seventeen Batch A surfaces render through ClientStudioWorkspace instead.
+const SURFACE_COPY: Partial<Record<ClientWorkspaceSurface, { title: string; eyebrow: string; description: string; actions: string[]; preview: boolean }>> = {
   orchestrate: { title: "Orchestration Control", eyebrow: "III. Orchestrate", description: "Create a bounded tenant runtime job with a transcript, durable result, and explicit approval boundary.", actions: ["Plan a launch sequence", "Review an operating workflow", "Prepare a stakeholder handoff"], preview: false },
   paperclip: { title: "Paperclip", eyebrow: "III. Orchestrate · Build ledger", description: "Prepare a real hosted build artifact and preserve the job record, terminal trail, and output in this tenant.", actions: ["Build a landing page", "Create a client dashboard", "Prepare a product issue brief"], preview: true },
   room: { title: "AI Agent Mastermind", eyebrow: "III. Orchestrate · Room", description: "Turn a room agenda into an approved tenant artifact. Provider work stays queued and auditable.", actions: ["Decision memo", "Red-team an offer", "Create a research brief"], preview: false },
@@ -83,7 +86,7 @@ export default function ClientExecutionWorkspace({ surface }: { surface: ClientW
     const response = await fetch("/api/client-runtime/executions", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ surface, title, goal, artifactIntent: copy.preview ? "preview" : "brief" }),
+      body: JSON.stringify({ surface, title, goal, artifactIntent: copy?.preview ? "preview" : "brief" }),
     }).catch(() => null);
     const data = await response?.json().catch(() => null);
     if (!response?.ok) setError(typeof data?.error === "string" ? data.error : "workspace_execution_queue_failed");
@@ -109,6 +112,10 @@ export default function ClientExecutionWorkspace({ surface }: { surface: ClientW
   const selected = useMemo(() => executions.find((item) => item.id === selectedId) ?? executions[0] ?? null, [executions, selectedId]);
   const preview = selected?.previewHtml ? safePreviewDocument(selected.previewHtml) : null;
   const terminalEvents = selected?.terminalEvents ?? [];
+
+  // A surface with no generic copy is rendered by its own component, so
+  // reaching this screen for one means the route table is wrong.
+  if (!copy) return <ClientRuntimeNotice code="capability_not_enabled" />;
 
   return <div className="space-y-5 pb-8">
     <section className="panel p-5 md:p-6"><div className="flex flex-wrap items-start gap-4"><div className="grid h-10 w-10 place-items-center rounded-md border" style={{ color: "#60a5fa", borderColor: "rgba(96,165,250,0.32)", background: "rgba(96,165,250,0.12)" }}><Terminal size={18} /></div><div className="min-w-0 flex-1"><p className="eyebrow">{copy.eyebrow}</p><h1 className="mt-2 text-[26px]" style={{ color: "var(--cream)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>{copy.title}</h1><p className="mt-2 max-w-3xl text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>{copy.description}</p></div><div className="rounded-md border px-3 py-2 text-[10px]" style={{ borderColor: "rgba(90,184,150,0.28)", color: "#5ab896", background: "rgba(90,184,150,0.1)" }}>Cloud Tasks + tenant storage</div></div></section>

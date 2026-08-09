@@ -20,7 +20,11 @@ export async function POST(request: Request) {
   if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
-  const provider = typeof body.provider === "string" ? body.provider.trim().toLowerCase() : "";
+  // A caller that names no provider gets the tenant's workspace default, the
+  // same resolution the executions lane uses. Surfaces such as the Notebook
+  // chat should not have to guess a provider name in the browser.
+  const requestedProvider = typeof body.provider === "string" ? body.provider.trim().toLowerCase() : "";
+  const provider = requestedProvider || (process.env.CLIENT_WORKSPACE_PROVIDER?.trim().toLowerCase() || "openrouter");
   const model = typeof body.model === "string" ? body.model.trim() : null;
   const prompt = typeof body.prompt === "string" ? body.prompt.trim().slice(0, 20000) : "";
   const idempotencyKey = typeof body.idempotencyKey === "string" && body.idempotencyKey.trim().length >= 8
