@@ -5,7 +5,9 @@ import { isClientWorkspaceSurface } from "../src/lib/clientWorkspaceExecution";
 const KEYS = Object.keys(DEEP_SURFACES);
 
 test("covers the multi-mode surfaces this batch was meant to reach", () => {
-  expect(KEYS.sort()).toEqual(["leads", "radar", "video"]);
+  // radar moved to its own surface so it could keep the local structure
+  // (signals/published) and the oracle orb.
+  expect(KEYS.sort()).toEqual(["leads", "video"]);
 });
 
 test("every surface queues a lane the runner accepts", () => {
@@ -66,8 +68,8 @@ test("goals forbid claiming retrieval, and label pasted material as supplied", (
 });
 
 test("goals stay inside the executions route's limit with large pasted material", () => {
-  const config = deepSurface("radar")!;
-  const goal = deepGoal({ mode: deepMode(config, "draft"), subject: "s", direction: "d", source: "x".repeat(40_000) });
+  const config = deepSurface("video")!;
+  const goal = deepGoal({ mode: deepMode(config, "script"), subject: "s", direction: "d", source: "x".repeat(40_000) });
   expect(goal.length).toBeLessThanOrEqual(10_000);
 });
 

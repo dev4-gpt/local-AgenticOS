@@ -92,44 +92,6 @@ export const DEEP_SURFACES: Record<string, DeepSurface> = {
     ],
   },
 
-  radar: {
-    surface: "radar",
-    eyebrow: "VI. Deliver · Publishing",
-    title: "Radar",
-    description: "Turn what you are watching into a published point of view. Scanning sources and publishing to destinations each activate through their own approved adapter.",
-    accent: "#f472b6",
-    outputNoun: "drafts",
-    modes: [
-      {
-        key: "draft", label: "Draft", action: "Write the draft", artifactIntent: "brief",
-        description: "Turn a signal you have already found into a piece worth publishing.",
-        presets: [
-          { label: "Point of view", direction: "Write a point of view on this: what happened, why it matters to this audience, and the position we are taking. Argue it, do not summarise it." },
-          { label: "Briefing note", direction: "Write a briefing note: the facts as given, what changes because of them, and what to watch next." },
-          { label: "Social thread", direction: "Write a thread: one idea per post, the strongest one first, and no throat-clearing." },
-        ],
-        subjectLabel: "The signal", subjectPlaceholder: "What did you notice?",
-        directionLabel: "The angle", directionPlaceholder: "Who this is for and the position you want to take.",
-        sourceLabel: "What you found · optional", sourcePlaceholder: "Paste the article, post, or notes. This surface does not fetch them.",
-      },
-      {
-        key: "plan", label: "Distribution", action: "Plan the distribution", artifactIntent: "brief",
-        description: "Decide what goes where, in what order, and how each piece is adapted per channel.",
-        presets: [
-          { label: "Publish sequence", direction: "Plan a publish sequence: what goes to which channel, in what order, and how the piece is adapted for each." },
-          { label: "Cadence", direction: "Plan a cadence: how often, on which days, and what to do when a piece underperforms." },
-          { label: "Campaign report", direction: "Prepare a campaign report from the figures given: what ran, what it produced, and what to change." },
-        ],
-        subjectLabel: "What to distribute", subjectPlaceholder: "The asset or campaign",
-        directionLabel: "Channels and audience", directionPlaceholder: "The channels in scope and who you are trying to reach.",
-        sourceLabel: "Your figures · optional", sourcePlaceholder: "Paste performance data you already have.",
-      },
-    ],
-    gates: [
-      { title: "Source scanning", detail: "Watching external sources runs through the approved research adapter, budgeted separately. Nothing here crawls, subscribes, or fetches a feed, so drafts are written from signals you supply." },
-      { title: "Publishing", detail: "Publishing to a destination requires that destination's approved adapter and its own audit record. No destination is contacted from this surface; every draft stays a downloadable tenant artifact." },
-    ],
-  },
 
   leads: {
     surface: "leads",
