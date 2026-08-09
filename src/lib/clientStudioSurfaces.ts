@@ -125,21 +125,6 @@ export const STUDIO_SURFACES: Partial<Record<ClientWorkspaceSurface, StudioSurfa
       { key: "goal", label: "The direction", placeholder: "Audience, message, tone, and any brand constraints.", multiline: true },
     ],
   },
-  video: {
-    eyebrow: "IV. Create · Video", title: "Video Studio", accent: "#f87171",
-    description: "Prepare a production-ready video brief. Rendering activates when an approved video provider is enabled for this tenant.",
-    action: "Prepare the video brief", artifactIntent: "brief", outputNoun: "video briefs",
-    pendingCapability: "Video rendering needs an approved media provider and its own budget. This surface prepares the brief; it does not claim to have rendered anything.",
-    presets: [
-      { label: "Product explainer", title: "Product explainer", goal: "Prepare an explainer video brief: hook, problem, how it works, proof, and call to action, with timings." },
-      { label: "Launch reel", title: "Launch reel", goal: "Prepare a launch reel brief: beat-by-beat storyboard, on-screen text, and pacing." },
-      { label: "Avatar script", title: "Avatar script", goal: "Prepare a presenter script with delivery notes and shot changes." },
-    ],
-    fields: [
-      { key: "title", label: "Name this video", placeholder: "Explainer, launch reel…" },
-      { key: "goal", label: "What it must say", placeholder: "Audience, message, length, and tone.", multiline: true },
-    ],
-  },
   openmontage: {
     eyebrow: "IV. Create · Video assembly", title: "OpenMontage", accent: "#fb923c",
     description: "Plan an edit: scenes, order, and transitions. Assembly runs when a render worker is approved.",
@@ -183,22 +168,6 @@ export const STUDIO_SURFACES: Partial<Record<ClientWorkspaceSurface, StudioSurfa
     fields: [
       { key: "title", label: "Name this thumbnail", placeholder: "Episode, launch…" },
       { key: "goal", label: "What it is for", placeholder: "The subject, the promise, and the competing content it sits beside.", multiline: true },
-    ],
-  },
-  seo: {
-    eyebrow: "V. Govern · Search", title: "SEO", accent: "#5ab896",
-    description: "Produce a governed SEO plan. Live crawling and rank data activate through their own approved adapters.",
-    action: "Build the SEO plan", artifactIntent: "brief", outputNoun: "SEO plans",
-    pendingCapability: "Live crawling runs through the approved research adapter and is budgeted separately. This surface plans from what you provide.",
-    presets: [
-      { label: "Content opportunity", title: "Content opportunity audit", goal: "Assess a content opportunity: the queries worth targeting, the intent behind them, and what would have to be true to rank." },
-      { label: "Technical plan", title: "Technical SEO plan", goal: "Produce a technical SEO plan: crawlability, indexation, performance, and structured data, ordered by leverage." },
-      { label: "Content brief", title: "SEO content brief", goal: "Write an SEO content brief: target query, intent, required sections, internal links, and success measure." },
-    ],
-    fields: [
-      { key: "title", label: "Name this plan", placeholder: "Topic or site area" },
-      { key: "goal", label: "What to plan", placeholder: "The site, the target audience, and the queries or pages in scope.", multiline: true },
-      { key: "reference", label: "Reference URL", placeholder: "https://example.com — optional context", optional: true },
     ],
   },
   "seo-guide": {
@@ -257,36 +226,6 @@ export const STUDIO_SURFACES: Partial<Record<ClientWorkspaceSurface, StudioSurfa
     fields: [
       { key: "title", label: "Name this delivery", placeholder: "What is being delivered" },
       { key: "goal", label: "What it contains", placeholder: "The work, the audience, and what they need to decide.", multiline: true },
-    ],
-  },
-  leads: {
-    eyebrow: "VI. Deliver · Lead operations", title: "Leads", accent: "#fbbf24",
-    description: "Work out who to reach and what to say. Enrichment and outbound sending stay separately gated.",
-    action: "Build the lead plan", artifactIntent: "brief", outputNoun: "lead plans",
-    pendingCapability: "No enrichment provider is contacted and no message is sent from this surface. Both are separate approvals.",
-    presets: [
-      { label: "Define an ICP", title: "ICP definition", goal: "Define an ideal customer profile: the firmographics, the trigger, the buying committee, and the disqualifiers." },
-      { label: "Research brief", title: "Lead research brief", goal: "Write a lead research brief: the segments, the signals to look for, and the sources to check." },
-      { label: "Outreach copy", title: "Outreach copy", goal: "Write outreach copy: the opening line that earns a reply, the proof, and one clear ask." },
-    ],
-    fields: [
-      { key: "title", label: "Name this plan", placeholder: "Segment or campaign" },
-      { key: "goal", label: "Who and why", placeholder: "The offer, the segment, and the trigger that makes now the right time.", multiline: true },
-    ],
-  },
-  radar: {
-    eyebrow: "VI. Deliver · Publishing", title: "Radar", accent: "#f472b6",
-    description: "Plan distribution and keep the record. No destination receives anything until its adapter is approved.",
-    action: "Plan the distribution", artifactIntent: "brief", outputNoun: "distribution plans",
-    pendingCapability: "Publishing to a destination requires that destination's approved adapter. This surface plans and records only.",
-    presets: [
-      { label: "Publish plan", title: "Publish plan", goal: "Plan a publish sequence: what goes where, in what order, and how each piece is adapted per channel." },
-      { label: "Distribution brief", title: "Distribution brief", goal: "Write a distribution brief: the channels, the cadence, and the measure of success." },
-      { label: "Campaign report", title: "Campaign report", goal: "Prepare a campaign report: what ran, what it produced, and what to change next." },
-    ],
-    fields: [
-      { key: "title", label: "Name this plan", placeholder: "Campaign or launch" },
-      { key: "goal", label: "What to distribute", placeholder: "The asset, the audiences, and the channels in scope.", multiline: true },
     ],
   },
 };

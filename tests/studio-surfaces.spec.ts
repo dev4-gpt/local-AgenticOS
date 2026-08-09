@@ -5,11 +5,16 @@ import { isClientWorkspaceSurface, type ClientWorkspaceSurface } from "../src/li
 const SURFACES = Object.keys(STUDIO_SURFACES) as ClientWorkspaceSurface[];
 
 test("covers every Create, Govern, and Deliver route the batch was meant to reach", () => {
+  // seo, video, leads and radar moved to their own surfaces in batch C, so they
+  // must NOT also be configured here: two configs for one route is two sources
+  // of truth, and the one that never renders is the one that rots.
   const expected = [
-    "create", "opendesign", "web-studio", "flow-lab", "video", "studio", "openmontage", "music", "games", "thumbnails",
-    "seo", "seo-guide", "guide", "integrations",
-    "deliver", "leads", "radar",
+    "create", "opendesign", "web-studio", "flow-lab", "studio", "openmontage", "music", "games", "thumbnails",
+    "seo-guide", "guide", "integrations", "deliver",
   ];
+  for (const moved of ["seo", "video", "leads", "radar"]) {
+    expect(isStudioSurface(moved as ClientWorkspaceSurface), `${moved} should have moved off the shared screen`).toBe(false);
+  }
   for (const surface of expected) expect(isStudioSurface(surface as ClientWorkspaceSurface), `${surface} missing`).toBe(true);
   expect(SURFACES).toHaveLength(expected.length);
 });
@@ -47,9 +52,9 @@ test("presets carry a usable title and goal, not just a label", () => {
 });
 
 test("surfaces whose capability is not active say so", () => {
-  // These four cannot produce their real output yet; each must explain why
-  // rather than implying the asset was made.
-  for (const surface of ["video", "music", "thumbnails", "openmontage"] as ClientWorkspaceSurface[]) {
+  // These cannot produce their real output yet; each must explain why rather
+  // than implying the asset was made.
+  for (const surface of ["music", "thumbnails", "openmontage"] as ClientWorkspaceSurface[]) {
     expect(studioSurface(surface)!.pendingCapability, `${surface} must state its blocked prerequisite`).toBeTruthy();
   }
   // A surface that fully works should not carry a caveat.
@@ -62,13 +67,13 @@ test("preview surfaces are the ones that genuinely render something", () => {
     expect(studioSurface(surface)!.artifactIntent).toBe("preview");
   }
   // A brief surface must not claim a preview it cannot produce.
-  for (const surface of ["video", "leads", "deliver", "guide"] as ClientWorkspaceSurface[]) {
+  for (const surface of ["deliver", "guide", "flow-lab"] as ClientWorkspaceSurface[]) {
     expect(studioSurface(surface)!.artifactIntent).toBe("brief");
   }
 });
 
 test("a reference URL is passed as context, never as an instruction to fetch it", () => {
-  const goal = studioGoal({ goal: "Plan the SEO work", reference: "https://example.com" });
+  const goal = studioGoal({ goal: "Plan the integration", reference: "https://example.com" });
   expect(goal).toContain("https://example.com");
   expect(goal).toContain("do not claim to have visited it");
   // Nothing on this surface crawls; the research adapter does, separately.
