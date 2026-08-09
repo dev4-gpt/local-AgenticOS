@@ -58,6 +58,7 @@ export async function POST(request: Request) {
   const content = typeof body.content === "string" ? body.content.replace(/\r\n?/g, "\n").trim() : "";
   const artifactId = typeof body.artifactId === "string" ? body.artifactId.trim() : "";
   const kind = typeof body.kind === "string" ? body.kind.trim().toLowerCase() : "memory";
+  const notebookId = typeof body.notebookId === "string" && isUuid(body.notebookId.trim()) ? body.notebookId.trim() : null;
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!tenantSlug || !fileName || !isMarkdownFile(fileName) || !content || content.length > MAX_CONTENT_CHARS || !isUuid(artifactId) || !IMPORT_KINDS.has(kind) || containsClientSecretLike(fileName, content)) {
     return jsonError("memory_import_input_invalid", 400);
@@ -79,6 +80,8 @@ export async function POST(request: Request) {
     tenant_slug: tenantSlug,
     created_by: user.id,
     kind,
+    // Only notebook imports file into a notebook; a memory import never does.
+    notebook_id: kind === "notebook" ? notebookId : null,
     title: titleFromFileName(fileName),
     content,
     metadata: {

@@ -26,7 +26,7 @@ type Artifact = { id: string; original_name: string | null; content_type: string
 
 const FIELD = { color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" } as const;
 
-export default function ClientNotebookWorkspace({ tab, sources, onImported }: { tab: Tab; sources: NotebookSource[]; onImported: () => void | Promise<void> }) {
+export default function ClientNotebookWorkspace({ tab, sources, notebookId, onImported }: { tab: Tab; sources: NotebookSource[]; notebookId: string | null; onImported: () => void | Promise<void> }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [error, setError] = useState("");
 
@@ -39,7 +39,7 @@ export default function ClientNotebookWorkspace({ tab, sources, onImported }: { 
 
   return <div className="space-y-4">
     {error && <p className="panel p-3 text-[11px]" style={{ color: "#fda4af" }}>{error}</p>}
-    {tab === "research" && <ResearchLane onError={setError} onImported={onImported} />}
+    {tab === "research" && <ResearchLane notebookId={notebookId} onError={setError} onImported={onImported} />}
     {tab === "chat" && <ChatLane sources={sources} selected={selected} selectedIds={selectedIds} onToggle={toggle} onError={setError} />}
     {tab === "studio" && <StudioLane sources={sources} selected={selected} selectedIds={selectedIds} onToggle={toggle} onError={setError} />}
     {tab === "assets" && <AssetsLane onError={setError} />}
@@ -47,7 +47,7 @@ export default function ClientNotebookWorkspace({ tab, sources, onImported }: { 
 }
 
 /** Research: the verified memory-import path, writing a notebook record. */
-function ResearchLane({ onError, onImported }: { onError: (value: string) => void; onImported: () => void | Promise<void> }) {
+function ResearchLane({ notebookId, onError, onImported }: { notebookId: string | null; onError: (value: string) => void; onImported: () => void | Promise<void> }) {
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,7 +76,7 @@ function ResearchLane({ onError, onImported }: { onError: (value: string) => voi
       if (!completed.ok) throw new Error((await completed.json().catch(() => null))?.error || "The source file could not be verified.");
       const stored = await fetch("/api/client-runtime/memory-import", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ fileName, content, artifactId: uploadData.artifactId, kind: "notebook" }),
+        body: JSON.stringify({ fileName, content, artifactId: uploadData.artifactId, kind: "notebook", notebookId }),
       });
       if (!stored.ok) throw new Error((await stored.json().catch(() => null))?.error || "The source could not be added to the notebook.");
       setImported(fileName);
@@ -90,6 +90,7 @@ function ResearchLane({ onError, onImported }: { onError: (value: string) => voi
 
   return <LanePanel icon={<BookOpen size={17} />} eyebrow="Tenant Notebook · research" title="Add a source"
     body="Import a Markdown or text source into this tenant's notebook library. The file is stored and verified as a tenant artifact first, then linked to a notebook record you can read, use as chat grounding, and export.">
+    {notebookId ? null : <p className="mb-3 text-[11px]" style={{ color: "var(--cream-mute)" }}>No notebook is selected, so this source will be imported unfiled. Pick one above to file it.</p>}
     <input ref={fileInputRef} type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" className="sr-only"
       onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void importSource(file); }} />
     <button type="button" onClick={() => fileInputRef.current?.click()} disabled={importing}

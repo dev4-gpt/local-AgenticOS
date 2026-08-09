@@ -26,6 +26,9 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   const [notebookTab, setNotebookTab] = useState<"library" | "research" | "chat" | "studio" | "assets">("library");
   const [memoryView, setMemoryView] = useState<"recent" | "search" | "graph" | "galaxy">("recent");
   const [memoryQuery, setMemoryQuery] = useState("");
+  const [notebooks, setNotebooks] = useState<Array<{ id: string; title: string; summary: string; status: string }>>([]);
+  const [activeNotebook, setActiveNotebook] = useState<string>("all");
+  const [newNotebook, setNewNotebook] = useState("");
   const [busy, setBusy] = useState(false);
   const [importing, setImporting] = useState(false);
   const [graphNodes, setGraphNodes] = useState<ClientGraphNode[]>([]);
@@ -36,12 +39,37 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function load() {
-    const response = await fetch(`/api/client-runtime/records?kind=${copy.kind}`, { cache: "no-store" }).catch(() => null);
+    // "all" is the only view that is not scoped to one notebook, so a client
+    // can always see everything they imported regardless of how it is filed.
+    const scope = surface === "notebook" && activeNotebook !== "all" ? `&notebook=${encodeURIComponent(activeNotebook)}` : "";
+    const response = await fetch(`/api/client-runtime/records?kind=${copy.kind}${scope}`, { cache: "no-store" }).catch(() => null);
     const data = await response?.json().catch(() => null);
     setRecords(Array.isArray(data?.records) ? data.records : []);
     if (!response?.ok && data?.error === "capability_not_enabled") setError("Tenant data is not enabled in this client manifest yet.");
   }
-  useEffect(() => { void load(); }, [copy.kind]);
+  useEffect(() => { void load(); }, [copy.kind, activeNotebook]);
+
+  async function loadNotebooks() {
+    if (surface !== "notebook") return;
+    const response = await fetch("/api/client-runtime/notebooks", { cache: "no-store" }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    if (response?.ok) setNotebooks(Array.isArray(data?.notebooks) ? data.notebooks : []);
+    else if (data?.error === "notebook_schema_missing") setError("Notebooks need their migration applied before they can be used.");
+  }
+  useEffect(() => { void loadNotebooks(); }, [surface]);
+
+  async function createNotebook() {
+    const title = newNotebook.trim();
+    if (!title || busy) return;
+    setBusy(true); setError("");
+    const response = await fetch("/api/client-runtime/notebooks", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ title }),
+    }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    if (!response?.ok) setError(data?.error === "notebook_schema_missing" ? "Notebooks need their migration applied first." : "The notebook could not be created.");
+    else { setNewNotebook(""); await loadNotebooks(); if (typeof data?.notebookId === "string") setActiveNotebook(data.notebookId); }
+    setBusy(false);
+  }
 
   async function loadGraph() {
     if (surface !== "memory") return;
@@ -166,10 +194,26 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     <section className="panel p-5 md:p-6">
       <div className="flex items-start gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg" style={{ background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.28)", color: "#60a5fa" }}><LockKeyhole size={18} /></div><div><p className="eyebrow">{copy.eyebrow}</p><h1 className="mt-2 text-[26px]" style={{ color: "var(--cream)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>{copy.title}</h1><p className="mt-2 max-w-3xl text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>This client edition stores records in the current tenant namespace with Supabase RLS. It does not read the operator vault or local filesystem.</p></div></div>
       {surface === "memory" && <><div className="mt-4 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}><span className="rounded-md px-2 py-1" style={{ background: "rgba(179,128,63,0.14)", color: "var(--gold-deep)" }}>{active.length} tenant memories</span><span>{graphNodes.length} nodes · {graphEdges.length} edges</span><span>Sources are scoped to this client tenant</span></div><div className="mt-4 flex flex-wrap gap-2"><input ref={fileInputRef} type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" className="sr-only" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void importMarkdown(file); }} /><button type="button" onClick={() => fileInputRef.current?.click()} disabled={importing} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Upload size={13} />{importing ? "Importing source" : "Import Markdown"}</button><button type="button" onClick={exportMemory} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Download size={13} />Export Markdown</button><button type="button" onClick={() => { setTitle(""); setContent(""); document.getElementById("client-memory-composer")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "rgba(179,128,63,0.42)", color: "var(--gold-deep)", background: "rgba(179,128,63,0.08)" }}><Plus size={13} />Add note</button></div></>}
-      {surface === "notebook" && <><div className="mt-4 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}><span className="rounded-md px-2 py-1" style={{ background: "rgba(52,211,153,0.1)", color: "#34d399" }}>Tenant authenticated</span><span>{records.length} notebook records</span><span>{records.filter((record) => record.status !== "archived").length} active sources</span></div><div className="mt-5 flex flex-wrap gap-2" aria-label="Notebook workspace sections">{(["library", "research", "chat", "studio", "assets"] as const).map((item) => <button key={item} type="button" onClick={() => setNotebookTab(item)} className="rounded-md border px-3 py-2 text-[11px] capitalize" style={{ color: notebookTab === item ? "#07111d" : "var(--cream-dim)", background: notebookTab === item ? "#60a5fa" : "rgba(255,255,255,0.03)", borderColor: notebookTab === item ? "#60a5fa" : "var(--line-soft)" }}>{item}</button>)}</div></>}
+      {surface === "notebook" && <><div className="mt-4 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}><span className="rounded-md px-2 py-1" style={{ background: "rgba(52,211,153,0.1)", color: "#34d399" }}>Tenant authenticated</span><span>{records.length} notebook records</span><span>{records.filter((record) => record.status !== "archived").length} active sources</span></div><div className="mt-5 flex flex-wrap gap-2" aria-label="Notebook workspace sections">{(["library", "research", "chat", "studio", "assets"] as const).map((item) => <button key={item} type="button" onClick={() => setNotebookTab(item)} className="rounded-md border px-3 py-2 text-[11px] capitalize" style={{ color: notebookTab === item ? "#07111d" : "var(--cream-dim)", background: notebookTab === item ? "#60a5fa" : "rgba(255,255,255,0.03)", borderColor: notebookTab === item ? "#60a5fa" : "var(--line-soft)" }}>{item}</button>)}</div>
+      <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--line-soft)" }}>
+        <p className="text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--cream-mute)" }}>Notebook</p>
+        <p className="mt-1 text-[10px]" style={{ color: "var(--cream-mute)" }}>Chat and studio only see the sources in the notebook you pick here.</p>
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          {[{ id: "all", title: "All sources" }, ...notebooks.filter((item) => item.status !== "archived"), { id: "unfiled", title: "Unfiled" }].map((item) => <button key={item.id} type="button" onClick={() => setActiveNotebook(item.id)}
+            className="max-w-full truncate rounded-md border px-3 py-1.5 text-[11px]"
+            style={{ color: activeNotebook === item.id ? "#07111d" : "var(--cream-dim)", background: activeNotebook === item.id ? "#60a5fa" : "rgba(255,255,255,0.03)", borderColor: activeNotebook === item.id ? "#60a5fa" : "var(--line-soft)" }}>{item.title}</button>)}
+        </div>
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          <input value={newNotebook} onChange={(event) => setNewNotebook(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void createNotebook(); } }}
+            placeholder="Name a new notebook" className="min-w-[200px] flex-1 rounded-md border px-3 py-2 text-[11px]" style={{ color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" }} />
+          <button type="button" onClick={() => void createNotebook()} disabled={busy || !newNotebook.trim()}
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-[11px] disabled:opacity-40"
+            style={{ borderColor: "rgba(96,165,250,0.42)", color: "#60a5fa", background: "rgba(96,165,250,0.08)" }}><Plus size={12} />Create</button>
+        </div>
+      </div></>}
     </section>
     {surface === "goals" && <section className="grid grid-cols-2 gap-3 md:grid-cols-4"><StatCard label="Total" value={String(goalStats.total)} color="#60a5fa" /><StatCard label="Active" value={String(goalStats.active)} color="#c4b5fd" /><StatCard label="Completed" value={String(goalStats.completed)} color="#34d399" /><StatCard label="Progress" value={`${goalStats.progress}%`} color="#f0c94a" progress={goalStats.progress} /></section>}
-    {surface === "notebook" && notebookTab !== "library" ? <ClientNotebookWorkspace tab={notebookTab} sources={notebookSources} onImported={load} /> : surface === "goals" ? <GoalComposer title={title} content={content} category={category} busy={busy} filter={goalFilter} stats={goalStats} onTitle={setTitle} onContent={setContent} onCategory={setCategory} onFilter={setGoalFilter} onAdd={add} /> : surface === "journal" ? <JournalComposer title={title} content={content} busy={busy} days={journalDays} selectedDay={journalDay} entries={journalRecords} onTitle={setTitle} onContent={setContent} onSelectDay={setJournalDay} onAdd={add} /> : <section id={surface === "memory" ? "client-memory-composer" : undefined} className="panel p-5 md:p-6">
+    {surface === "notebook" && notebookTab !== "library" ? <ClientNotebookWorkspace tab={notebookTab} sources={notebookSources} notebookId={activeNotebook === "all" || activeNotebook === "unfiled" ? null : activeNotebook} onImported={load} /> : surface === "goals" ? <GoalComposer title={title} content={content} category={category} busy={busy} filter={goalFilter} stats={goalStats} onTitle={setTitle} onContent={setContent} onCategory={setCategory} onFilter={setGoalFilter} onAdd={add} /> : surface === "journal" ? <JournalComposer title={title} content={content} busy={busy} days={journalDays} selectedDay={journalDay} entries={journalRecords} onTitle={setTitle} onContent={setContent} onSelectDay={setJournalDay} onAdd={add} /> : <section id={surface === "memory" ? "client-memory-composer" : undefined} className="panel p-5 md:p-6">
       <div className="flex items-center gap-2"><Plus size={15} color="#60a5fa" /><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Add tenant record</h2></div>
       <div className="mt-4 flex gap-3"><VoiceButton size={38} onTranscript={(transcript, options) => { if (options.final) setContent((current) => `${current}${current ? "\n" : ""}${transcript}`); }} /><div className="min-w-0 flex-1"><input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={copy.placeholder} className="w-full rounded-md border px-3 py-2.5 text-[12px]" style={{ color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" }} />
       <textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder={copy.content} className="mt-3 min-h-[130px] w-full resize-y rounded-md border px-3 py-2.5 text-[12px] leading-relaxed" style={{ color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" }} /></div></div>

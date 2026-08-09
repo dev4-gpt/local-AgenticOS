@@ -20,9 +20,17 @@ export async function GET(request: Request) {
   if (!rateLimit.allowed) return jsonError("runtime_rate_limited", 429);
   const kind = new URL(request.url).searchParams.get("kind")?.trim().toLowerCase() ?? "";
   if (!KINDS.has(kind)) return jsonError("record_kind_invalid", 400);
+  // notebook=<uuid> scopes to one notebook; notebook=unfiled returns the records
+  // that belong to none, so nothing a tenant imported can become unreachable
+  // just because it predates notebooks.
+  const notebook = new URL(request.url).searchParams.get("notebook")?.trim() ?? "";
+  const scope: Record<string, string> = notebook === "unfiled" ? { notebook_id: "is.null" }
+    : /^[0-9a-f-]{36}$/i.test(notebook) ? { notebook_id: `eq.${notebook}` }
+    : {};
   const result = await selectClientRecords("client_runtime_records", {
     tenant_slug: `eq.${process.env.CLIENT_SLUG ?? ""}`,
     kind: `eq.${kind}`,
+    ...scope,
     order: "created_at.desc",
     limit: "100",
   });
@@ -46,7 +54,8 @@ export async function POST(request: Request) {
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!tenantSlug) return jsonError("tenant_not_configured", 503);
   const metadata = kind === "goal" && category ? { category } : {};
-  const stored = await insertClientRecord("client_runtime_records", { id: randomUUID(), tenant_slug: tenantSlug, created_by: user.id, kind, title, content, metadata });
+  const notebookId = typeof body.notebookId === "string" && /^[0-9a-f-]{36}$/i.test(body.notebookId.trim()) ? body.notebookId.trim() : null;
+  const stored = await insertClientRecord("client_runtime_records", { id: randomUUID(), tenant_slug: tenantSlug, created_by: user.id, kind, title, content, metadata, notebook_id: kind === "notebook" ? notebookId : null });
   if (!stored.ok) return jsonError("record_write_failed", 502);
   await recordClientAudit("tenant.record.created", { kind });
   return NextResponse.json({ ok: true }, { status: 201, headers: { "cache-control": "private, no-store" } });
