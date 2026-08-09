@@ -27,6 +27,7 @@ const probes = [
   ["room conversations", "client_room_conversations"],
   ["room messages", "client_room_messages"],
   ["room rounds", "client_room_rounds"],
+  ["pipeline items", "client_pipeline_items"],
 ];
 const failures = [];
 

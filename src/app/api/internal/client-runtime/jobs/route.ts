@@ -13,6 +13,7 @@ import { runClientWorkflowRunner } from "@/lib/clientWorkflowRunner";
 import { artifactFromWorkspaceOutput, isClientWorkspaceSurface, workspacePrompt, workspaceTerminalEvents } from "@/lib/clientWorkspaceExecution";
 import { paperclipRunSummary } from "@/lib/clientPaperclipAdapter";
 import { parseRoomDirectives, roomActionSummary, roomPersona, roomPrompt } from "@/lib/clientRoomAdapter";
+import { parsePipelineShape, pipelineStageAfterShaping } from "@/lib/clientPipelineAdapter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,13 +33,14 @@ export async function POST(request: Request) {
   if (!claim.ok) return NextResponse.json({ ok: false, error: "job_claim_failed" }, { status: 503 });
   const job = claim.value as { id?: string; capability?: string; provider?: string; model?: string; input_metadata?: Record<string, unknown> | null } | null;
   if (!job?.id || typeof job.capability !== "string") return NextResponse.json({ ok: true, status: "already_claimed" });
-  if (["text-agents", "media", "seo-research", "room-round"].includes(job.capability) && !clientProviderCallsEnabled()) {
+  if (["text-agents", "media", "seo-research", "room-round", "pipeline-shape"].includes(job.capability) && !clientProviderCallsEnabled()) {
     await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, "provider_calls_require_approval");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   if (job.capability === "orchestration") return processOrchestrationJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "workspace-execution") return processWorkspaceExecutionJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "room-round") return processRoomRoundJob(jobId, tenantSlug, workerToken, job);
+  if (job.capability === "pipeline-shape") return processPipelineShapeJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "media") return processMediaJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "seo-research") return processSeoJob(jobId, tenantSlug, workerToken, job);
   if (job.capability !== "text-agents" || typeof job.provider !== "string" || typeof job.input_metadata?.prompt !== "string") {
@@ -94,6 +96,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   // A Paperclip agent run is still a workspace execution, but it carries its own
   // agent-persona prompt and reconciles the tenant issue and run rows.
   const paperclipRun = typeof input.paperclipRunId === "string" && /^[0-9a-f-]{36}$/i.test(input.paperclipRunId);
+  const pipelineItem = typeof input.pipelineItemId === "string" && /^[0-9a-f-]{36}$/i.test(input.pipelineItemId);
   if (!isClientWorkspaceSurface(surface) || !title || !goal || !job.provider) {
     if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "workspace_execution_input_invalid" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: workspaceTerminalEvents("orchestrate", "failed", "Workspace execution input is incomplete.") }, "workspace_execution_input_invalid");
@@ -106,6 +109,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   const estimate = model ? estimateClientTextCostMicros(model, [{ role: "user", content: prompt }], clientTextMaxOutputTokens()) : null;
   if (!model || estimate === null || !(await reserveClientRuntimeBudgetWorker({ provider: job.provider, model, amountMicros: estimate, jobId, workerToken }))) {
     if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "budget_exceeded" });
+    if (pipelineItem) await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "budget_exceeded" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: workspaceTerminalEvents(surface, "failed", "The tenant budget or model policy did not approve this execution.") }, "budget_exceeded");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -115,6 +119,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
     if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
     await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
     if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: result.error });
+    if (pipelineItem) await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: result.error });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", result.error)] }, result.error);
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -123,6 +128,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   if (!artifact) {
     await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, artifactValidationFailure: 1 });
     if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "workspace_artifact_invalid" });
+    if (pipelineItem) await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "workspace_artifact_invalid" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", "The approved provider did not return a usable tenant artifact.")] }, "workspace_artifact_invalid");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -130,6 +136,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   if (!artifactId) {
     await settleTerminalBudget(jobId, workerToken, result.usage ? clientTextUsageCostMicros(model, result.usage) ?? estimate : estimate, { artifactStoreFailure: 1 });
     if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "artifact_store_failed" });
+    if (pipelineItem) await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "artifact_store_failed" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", "The workspace result could not be committed to tenant storage.")] }, "artifact_store_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -146,7 +153,17 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   };
   if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros, usageMetadata: result.usage ?? { estimatedCostMicros: estimate, usageFallback: 1 } }, outputMetadata))) {
     if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "budget_settlement_failed" });
+    if (pipelineItem) await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "budget_settlement_failed" });
     return NextResponse.json({ ok: true, status: "failed" });
+  }
+  if (pipelineItem) {
+    // A shipped pipeline item carries its artifact the same way Paperclip does.
+    await settlePipelineItem(tenantSlug, workerToken, jobId, {
+      execution_state: "succeeded",
+      stage: "shipped",
+      build_artifact_id: artifactId,
+      ...(artifact.previewHtml ? { build_preview_html: artifact.previewHtml.slice(0, 40_000) } : {}),
+    });
   }
   if (paperclipRun) {
     await settlePaperclipRun(tenantSlug, workerToken, jobId, "succeeded", {
@@ -193,6 +210,81 @@ async function settlePaperclipRun(
   });
   if (!result.ok || result.value !== true) {
     logClientRuntimeEvent("runtime.paperclip_reconciliation_failed", { tenant: tenantSlug, jobId, status: 503 });
+  }
+}
+
+/**
+ * Shapes a captured idea: one structured provider call produces the route,
+ * classification, plan, and tasks, then the item advances to the human gate.
+ * The job never crosses that gate itself.
+ */
+async function processPipelineShapeJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; model?: string; input_metadata?: Record<string, unknown> | null }) {
+  const input = job.input_metadata ?? {};
+  const prompt = typeof input.prompt === "string" ? input.prompt : "";
+  const model = job.model || (job.provider ? clientProviderDefaultModel(job.provider) : "") || "";
+  if (!job.provider || !model || !prompt) {
+    await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "pipeline_shape_input_invalid" });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "pipeline_shape_input_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const estimate = estimateClientTextCostMicros(model, [{ role: "user", content: prompt }], clientTextMaxOutputTokens());
+  if (estimate === null || !(await reserveClientRuntimeBudgetWorker({ provider: job.provider, model, amountMicros: estimate, jobId, workerToken }))) {
+    await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "budget_exceeded" });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "running" });
+
+  const result = await runClientTextAdapter({ provider: job.provider, model, prompt, reserveBudget: false, jobId });
+  if (!result.ok) {
+    logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: job.provider, status: result.status, reason: result.error });
+    if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
+    await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
+    await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: result.error });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+
+  const shaped = parsePipelineShape(safeClientProviderOutput(result.output));
+  if (!shaped) {
+    // Half-parsed shaping would write junk onto the tenant board, so fail
+    // honestly and leave the item where the member can retry it.
+    await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, shapeParseFailure: 1 });
+    await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "pipeline_shape_unparsable" });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "pipeline_shape_unparsable");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+
+  const actualAmountMicros = result.usage ? clientTextUsageCostMicros(model, result.usage) ?? estimate : estimate;
+  const outputMetadata = { adapter: "pipeline-shape", provider: result.provider, model: result.model, route: shaped.route };
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros, usageMetadata: result.usage ?? { estimatedCostMicros: estimate, usageFallback: 1 } }, outputMetadata))) {
+    await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "budget_settlement_failed" });
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  await settlePipelineItem(tenantSlug, workerToken, jobId, {
+    execution_state: "succeeded",
+    stage: pipelineStageAfterShaping(),
+    route: shaped.route,
+    title: shaped.title,
+    confidence: String(shaped.confidence),
+    tags: shaped.tags,
+    classification: shaped.classification,
+    plan: shaped.plan,
+    tasks: shaped.tasks,
+  });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
+  return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+async function settlePipelineItem(tenantSlug: string, workerToken: string, jobId: string, patch: Record<string, unknown>) {
+  const result = await workerRpc("update_client_pipeline_item_worker", {
+    p_tenant_slug: tenantSlug,
+    p_worker_token: workerToken,
+    p_job_id: jobId,
+    p_patch: patch,
+  });
+  if (!result.ok || result.value !== true) {
+    logClientRuntimeEvent("runtime.pipeline_reconciliation_failed", { tenant: tenantSlug, jobId, status: 503 });
   }
 }
 

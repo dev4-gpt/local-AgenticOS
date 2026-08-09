@@ -12,6 +12,7 @@ import ClientExecutionWorkspace from "./ClientExecutionWorkspace";
 import ClientOrchestrationWorkspace, { type ClientOrchestrationSurface } from "./ClientOrchestrationWorkspace";
 import ClientPaperclipWorkspace from "./ClientPaperclipWorkspace";
 import ClientRoomWorkspace from "./ClientRoomWorkspace";
+import ClientPipelineWorkspace from "./ClientPipelineWorkspace";
 import { CLIENT_AGENT_BY_ROUTE } from "@/lib/clientAgentCatalog";
 import type { ClientWorkspaceSurface } from "@/lib/clientWorkspaceExecution";
 
@@ -38,7 +39,6 @@ const CLIENT_EXECUTION_ROUTES: Record<string, ClientWorkspaceSurface> = {
 // company, roster, issue board, and build gallery in ClientPaperclipWorkspace.
 const CLIENT_ORCHESTRATION_ROUTES: Record<string, ClientOrchestrationSurface> = {
   "/orchestrate": "orchestrate",
-  "/pipeline": "pipeline",
   "/agent-kanban": "agent-kanban",
   "/kanban": "kanban",
   "/loop": "loop",
@@ -70,6 +70,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
   const orchestrationWorkspace = clientEdition ? CLIENT_ORCHESTRATION_ROUTES[pathname] : null;
   const paperclipWorkspace = clientEdition && pathname === "/paperclip";
   const roomWorkspace = clientEdition && pathname === "/room";
+  const pipelineWorkspace = clientEdition && pathname === "/pipeline";
   const dataWorkspace = clientEdition ? CLIENT_DATA_ROUTES[pathname] : null;
 
   return (
@@ -90,7 +91,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
             className={isHome ? "min-h-full w-full" : "workspace-shell__page max-w-[1500px] mx-auto px-5 md:px-10 py-7 md:py-9"}
           >
             {!isHome && <TopBar />}
-            {agentWorkspace ? <ClientAgentConsole agent={agentWorkspace} /> : hostedProviderRoute ? <ClientCapabilityGate pathname={pathname} /> : paperclipWorkspace ? <ClientPaperclipWorkspace /> : roomWorkspace ? <ClientRoomWorkspace /> : orchestrationWorkspace ? <ClientOrchestrationWorkspace surface={orchestrationWorkspace} /> : executionWorkspace ? <ClientExecutionWorkspace surface={executionWorkspace} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
+            {agentWorkspace ? <ClientAgentConsole agent={agentWorkspace} /> : hostedProviderRoute ? <ClientCapabilityGate pathname={pathname} /> : paperclipWorkspace ? <ClientPaperclipWorkspace /> : roomWorkspace ? <ClientRoomWorkspace /> : pipelineWorkspace ? <ClientPipelineWorkspace /> : orchestrationWorkspace ? <ClientOrchestrationWorkspace surface={orchestrationWorkspace} /> : executionWorkspace ? <ClientExecutionWorkspace surface={executionWorkspace} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
           </motion.div>
         </main>
       </div>
