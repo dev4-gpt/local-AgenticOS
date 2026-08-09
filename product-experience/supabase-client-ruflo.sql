@@ -196,7 +196,12 @@ begin
     set status = p_status,
         report = coalesce(left(p_report, 40000), report),
         report_artifact_id = coalesce(p_report_artifact_id, report_artifact_id),
-        error_code = case when p_status in ('completed', 'running') then null else p_error_code end,
+        -- A running swarm has no verdict yet, so its error is always cleared.
+        -- 'completed' must be able to carry one: a swarm whose agents all
+        -- reported but whose coordinator report failed validation is completed
+        -- and defective at once, and nulling the code here made that state
+        -- indistinguishable from a clean run.
+        error_code = case when p_status = 'running' then null else p_error_code end,
         updated_at = now()
   where tenant_slug = p_tenant_slug
     and job_id = p_job_id;

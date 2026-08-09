@@ -541,6 +541,79 @@ media provider and that they produce the brief. A reference URL on SEO is passed
 as context with an explicit instruction not to claim it was visited, because
 nothing on that surface crawls.
 
+## Batch B: the Notebook lanes are real (2026-08-09)
+
+**Status:** deployed on `veloce-cloud-test-00116-gsj` (`v86`), all four lanes
+proven live. No migration was needed for the lanes themselves.
+
+Research imports a Markdown or text source through the verified artifact path
+and files it as a notebook record; chat answers strictly from selected records
+over the queued text-agent lane; studio turns selected records into a tenant
+artifact through workspace-execution; assets lists tenant artifacts with signed
+downloads. Both grounded lanes tell the model it may answer only from supplied
+sources and must not claim to have opened a link or run a search, and a
+truncated source is marked as truncated. Audio and presentation outputs are
+deliberately absent from studio because they need a media provider this lane
+does not have.
+
+**Evidence.** Source artifact `ec52c057` uploaded and verified, imported as
+notebook record `a181112b`, with zero leakage into the `memory` kind — the new
+`kind` parameter genuinely scopes the import. Chat job `03013f53` answered from
+the sources alone. Studio queued surface `notebook` and returned artifact
+`66b9593f` (2009 bytes) whose signed download succeeded.
+
+### Two defects the smoke found that tests did not
+
+1. **The artifact gallery hid everything the runtime produced.** The list
+   filtered on `created_by`, but the worker's create RPC sets no `created_by`,
+   so only member uploads appeared. Signed download already authorised by job
+   ownership, so the list now matches it. The gallery went from 2 artifacts to
+   17, recovering every artifact this project has produced — `6723612e`,
+   `6f41711f`, `c0be62f2`, `fa32a9cc` among them.
+2. **A Ruflo swarm with no coordinator report read as a clean run.** See below.
+
+## Controlled cloud failures (both owed items, now done)
+
+### Ruflo — the drill found a real defect
+
+An objective instructing plain prose made the provider comply, the HTML fence
+extraction failed, and swarm `0033794e` settled as `completed`, 12 of 12 agents
+done, `failedCount` 0, `errorCode` null, `report` null, `reportArtifactId`
+null. A swarm that produced no plan claimed a clean run.
+
+The agents' findings are real and stored, so this is not a total failure, but
+the surface must not imply a plan the client never received.
+`rufloStatusLabel` now reads *"Completed, but the coordinator report was not
+usable"* whenever `reportArtifactId` is absent, proven on swarm `c8dcb58a`.
+
+A second layer sits in the database: `settle_client_ruflo_swarm_worker` set
+`error_code` to null for any `completed` status, so the worker's error code was
+discarded on write. `completed` and defective are not exclusive. The migration
+narrowing that to `running` only is in `supabase-client-ruflo.sql` and is
+**not yet applied** — the status label does not depend on it.
+
+### Room — the path is unreachable by design, and now proven
+
+A failing speaker cannot be injected from the client: the messages route
+resolves every persona against the tenant allowlist and refuses to queue unless
+all of them clear it. Proving the mid-round failure therefore required a
+deliberate, reverted config break — the tenant's anthropic model was pointed at
+a non-existent model id, which clears the allowlist but fails at the provider.
+
+Conversation `afa0d914`, round `214f4495`, three speakers:
+
+```
+[error]   Claude: Claude could not reply (provider_model_unavailable)
+[message] Hermes: ...
+[message] GLM:    ...
+[action]  GLM:    GLM saved a memory note: Governance drift ...
+```
+
+One agent failed, the pill was posted, the round continued, the remaining
+personas spoke, and a `NOTE::` directive still executed. The manifest was
+restored and redeployed as `veloce-cloud-test-00118-4zs`, with the Claude
+persona confirmed back on `claude-sonnet-5`.
+
 ## Batch B finding: the Notebook tabs are decorative
 
 `NotebookSurface` in `ClientDataWorkspace` renders four tabs — research, chat,
