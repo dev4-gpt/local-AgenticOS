@@ -700,6 +700,49 @@ that ships. A test now pins all three together, and it immediately found that
 the local runner was missing `/api/client-runtime/executions` — a lane that
 worked deployed and 404'd locally.
 
+## Parity pass: Radar and Video (2026-08-10)
+
+**Status:** deployed on `veloce-cloud-test-00123-cg6` (`v90-radar-video`).
+
+An audit of the local surfaces found that the hosted versions were correct but
+not recognisably the same product. Only `RadarView` and `MemoryPanel` carry a
+distinctive visual, and Memory's was already ported; Radar's was not.
+
+**Radar** now matches local: Signals and Published, with the oracle between
+them. `RadarOrb` needed no change - it is pure three.js against a static asset,
+and `ClientMemoryGraph3D` had already proved three.js runs in the client
+edition. The orb's sweeping state is driven by whether a draft is actually in
+flight, so it reports real work rather than decorating the page. Only the sweep
+is unportable: it searches X through the operator's own xAI Grok account,
+writes to their Obsidian vault, and wakes on a local cron.
+
+**Video** now has Script, Storyboard and a Library. The library is the point:
+local shows a body of work through its render history and avatar history, and
+having no equivalent was the whole difference. The gates name HeyGen and
+Hyperframes rather than saying generation is unavailable, because naming the
+provider tells a client what to approve.
+
+Both left the shared configs, which now hold Leads alone. Tests assert each has
+exactly one hosted implementation, so a route cannot acquire competing
+definitions again.
+
+**Evidence.** Radar returned artifact `4baa629a`; Video returned `db25fcc7`
+(script with duration and tone) and `92b33d94` (a shot-list table). The two
+Video lanes produce visibly different documents from the same lane.
+
+### Defect this smoke exposed: the runner overrides the surface's intent
+
+`workspacePrompt` appends *"Return a concise Markdown implementation brief"*
+after the goal for every `brief` surface, so it wins over whatever the surface
+asked for. Radar requested a publishable thread and received
+`# Content Brief: Competitor Annual Billing Launch` - a brief *about* the post
+rather than the post. For a surface whose local counterpart exists to produce
+the post-it-today story with a ready hook, that defeats the purpose.
+
+The intent vocabulary is the cause: `preview` renders, `brief` plans, and there
+is no value for *finished copy*. Most surfaces genuinely want a brief, so the
+shared instruction should not simply be reworded. A third intent is the fix.
+
 ## Service-role export (owed item, done)
 
 `client-lifecycle.mjs --mode export --slug veloce-cloud-test` ran against the
