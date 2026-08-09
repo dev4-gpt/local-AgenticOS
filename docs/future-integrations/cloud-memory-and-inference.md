@@ -614,6 +614,34 @@ personas spoke, and a `NOTE::` directive still executed. The manifest was
 restored and redeployed as `veloce-cloud-test-00118-4zs`, with the Claude
 persona confirmed back on `claude-sonnet-5`.
 
+## Batch C, surface 1: SEO (2026-08-09)
+
+**Status:** deployed on `veloce-cloud-test-00119-qxw` (`v87-seo-surface`), both
+lanes proven. No migration.
+
+Local SEO is eight tabs standing on machine-local capability: `research` shells
+out to a Python script holding the operator's own Search Console OAuth token,
+`generate` streams the blog-post skill through the local Claude CLI and writes
+into site post directories, `deploy` spawns the netlify CLI, and `history` and
+`transcripts` are files under the operator's home directory. This is therefore
+not a port of the implementation — the outcomes were rebuilt on tenant lanes.
+
+Four tabs: **Plan** and **Write** queue the same proven workspace-execution
+lane but ask for different work and take different input, which the single
+Batch A brief screen could not express. **Library** lists the tenant's SEO runs
+with signed downloads. **Publish** states that deployment runs through an
+approved delivery adapter and that no destination is contacted here.
+
+`research` and `deploy` are absent as controls rather than present and inert,
+and a test asserts they stay absent so neither returns as decoration.
+
+**Evidence.** Plan returned artifact `0e682fbc` (2732 chars) as a content brief
+with search intent and success measures; the article returned `b959e6ef` (3537
+chars) as prose with regional tiers. Different work from the same lane. The
+plan visibly used the client-supplied figures — position 14, 71% bounce — which
+were passed labelled as supplied, with an explicit instruction not to claim
+retrieval. Nothing on the surface crawls or reaches Search Console.
+
 ## Service-role export (owed item, done)
 
 `client-lifecycle.mjs --mode export --slug veloce-cloud-test` ran against the
