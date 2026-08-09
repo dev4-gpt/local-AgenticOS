@@ -34,10 +34,16 @@ export async function currentClientUser(): Promise<ClientUser | null> {
   if (!config) return null;
   const jar = await cookies();
   const token = jar.get(ACCESS_COOKIE)?.value;
-  if (!token) return null;
-  const user = await fetchClientUser(config, token);
-  if (user) return user;
+  if (token) {
+    const user = await fetchClientUser(config, token);
+    if (user) return user;
+  }
 
+  // The access cookie's maxAge matches the JWT lifetime, so the browser drops
+  // it at the moment it expires rather than presenting a stale one. Refresh
+  // whenever the access cookie is absent or rejected — checking only the
+  // rejected case left the 30-day refresh token unreachable and signed clients
+  // out roughly hourly.
   const refreshToken = jar.get(REFRESH_COOKIE)?.value;
   if (!refreshToken) return null;
   return refreshClientSession(config, refreshToken, jar);
@@ -45,7 +51,14 @@ export async function currentClientUser(): Promise<ClientUser | null> {
 
 export async function currentClientAccessToken() {
   const jar = await cookies();
-  return jar.get(ACCESS_COOKIE)?.value ?? null;
+  const token = jar.get(ACCESS_COOKIE)?.value;
+  if (token) return token;
+  // Callers reach this helper through several paths, not all of which resolve
+  // the user first. Refresh here too so a data-plane read is not the one thing
+  // that fails after the access cookie expires.
+  if (!jar.get(REFRESH_COOKIE)?.value) return null;
+  await currentClientUser();
+  return (await cookies()).get(ACCESS_COOKIE)?.value ?? null;
 }
 
 export async function currentClientMember() {
