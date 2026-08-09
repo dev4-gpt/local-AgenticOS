@@ -75,6 +75,8 @@ const tables = [
   "client_board_events",
   "client_loop_runs",
   "client_loop_rounds",
+  "client_ruflo_swarms",
+  "client_ruflo_agents",
 ];
 
 // Lifecycle exports are portable backups, not credential backups. Keep this
@@ -111,6 +113,8 @@ const exportColumns = Object.freeze({
   client_board_events: "id,tenant_slug,task_id,kind,detail,created_at",
   client_loop_runs: "id,tenant_slug,created_by,goal,title,status,job_id,builder_provider,builder_model,judge_provider,judge_model,max_rounds,rounds_completed,best_score,final_summary,build_artifact_id,cost_micros,error_code,created_at,updated_at",
   client_loop_rounds: "id,tenant_slug,run_id,round,passed,score,issues,summary,artifact_chars,cost_micros,error_code,created_at",
+  client_ruflo_swarms: "id,tenant_slug,created_by,objective,topology,preset,status,job_id,provider,model,agent_count,completed_count,failed_count,report_artifact_id,cost_micros,error_code,created_at,updated_at",
+  client_ruflo_agents: "id,tenant_slug,swarm_id,agent_type,name,task,position,status,output,error_code,cost_micros,started_at,finished_at,created_at",
 });
 
 const forbiddenExportFields = new Set([
@@ -184,7 +188,7 @@ async function exportSnapshot() {
 }
 
 async function restoreSnapshot(snapshot) {
-  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_runtime_records", "client_runtime_memory_graph_nodes", "client_runtime_memory_graph_edges", "client_runtime_budget_ledger", "client_runtime_delivery_actions", "client_paperclip_companies", "client_paperclip_projects", "client_paperclip_agents", "client_paperclip_issues", "client_paperclip_comments", "client_paperclip_runs", "client_room_conversations", "client_room_messages", "client_room_rounds", "client_pipeline_items", "client_board_tasks", "client_board_comments", "client_board_events", "client_loop_runs", "client_loop_rounds"];
+  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_runtime_records", "client_runtime_memory_graph_nodes", "client_runtime_memory_graph_edges", "client_runtime_budget_ledger", "client_runtime_delivery_actions", "client_paperclip_companies", "client_paperclip_projects", "client_paperclip_agents", "client_paperclip_issues", "client_paperclip_comments", "client_paperclip_runs", "client_room_conversations", "client_room_messages", "client_room_rounds", "client_pipeline_items", "client_board_tasks", "client_board_comments", "client_board_events", "client_loop_runs", "client_loop_rounds", "client_ruflo_swarms", "client_ruflo_agents"];
   for (const table of ordered) {
     const rows = Array.isArray(snapshot.tables[table]) ? snapshot.tables[table] : [];
     if (!rows.length) continue;

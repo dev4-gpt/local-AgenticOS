@@ -15,6 +15,7 @@ import { paperclipRunSummary } from "@/lib/clientPaperclipAdapter";
 import { parseRoomDirectives, roomActionSummary, roomPersona, roomPrompt } from "@/lib/clientRoomAdapter";
 import { parsePipelineShape, pipelineStageAfterShaping } from "@/lib/clientPipelineAdapter";
 import { loopBuilderPrompt, loopFinalStatus, loopJudgePrompt, parseLoopVerdict } from "@/lib/clientLoopAdapter";
+import { rufloAgentPrompt, rufloReportPrompt, rufloRoster } from "@/lib/clientRufloAdapter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
   if (!claim.ok) return NextResponse.json({ ok: false, error: "job_claim_failed" }, { status: 503 });
   const job = claim.value as { id?: string; capability?: string; provider?: string; model?: string; input_metadata?: Record<string, unknown> | null } | null;
   if (!job?.id || typeof job.capability !== "string") return NextResponse.json({ ok: true, status: "already_claimed" });
-  if (["text-agents", "media", "seo-research", "room-round", "pipeline-shape", "loop-run"].includes(job.capability) && !clientProviderCallsEnabled()) {
+  if (["text-agents", "media", "seo-research", "room-round", "pipeline-shape", "loop-run", "ruflo-swarm"].includes(job.capability) && !clientProviderCallsEnabled()) {
     await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, "provider_calls_require_approval");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
   if (job.capability === "room-round") return processRoomRoundJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "pipeline-shape") return processPipelineShapeJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "loop-run") return processLoopRunJob(jobId, tenantSlug, workerToken, job);
+  if (job.capability === "ruflo-swarm") return processRufloSwarmJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "media") return processMediaJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "seo-research") return processSeoJob(jobId, tenantSlug, workerToken, job);
   if (job.capability !== "text-agents" || typeof job.provider !== "string" || typeof job.input_metadata?.prompt !== "string") {
@@ -290,6 +292,99 @@ async function processPipelineShapeJob(jobId: string, tenantSlug: string, worker
   });
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+/**
+ * Runs a Ruflo swarm: every roster agent works the shared objective from its
+ * own angle, its finding is written the moment it lands, and a coordinator
+ * synthesises whatever came back. One agent failing does not stop the swarm —
+ * it contributes nothing and the report says so.
+ */
+async function processRufloSwarmJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; model?: string; input_metadata?: Record<string, unknown> | null }) {
+  const input = job.input_metadata ?? {};
+  const objective = typeof input.objective === "string" ? input.objective.trim().slice(0, 4000) : "";
+  const preset = typeof input.preset === "string" ? input.preset : "seo";
+  const provider = typeof input.provider === "string" ? input.provider : job.provider ?? "";
+  const model = typeof input.model === "string" ? input.model : job.model ?? "";
+  const roster = rufloRoster(preset);
+  if (!objective || !provider || !model || roster.length === 0) {
+    await settleRufloSwarm(tenantSlug, workerToken, jobId, "failed", null, null, "ruflo_input_invalid");
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "ruflo_input_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+
+  // Reserve for every agent plus the coordinator up front.
+  const perCall = estimateClientTextCostMicros(model, [{ role: "user", content: objective.padEnd(3000, " ") }], clientTextMaxOutputTokens());
+  if (perCall === null || !(await reserveClientRuntimeBudgetWorker({ provider, model, amountMicros: perCall * (roster.length + 1), jobId, workerToken }))) {
+    await settleRufloSwarm(tenantSlug, workerToken, jobId, "failed", null, null, "budget_exceeded");
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  await settleRufloSwarm(tenantSlug, workerToken, jobId, "running", null, null, null);
+
+  const findings: Array<{ name: string; output: string }> = [];
+  let spent = 0;
+  for (const entry of roster) {
+    await settleRufloAgent(tenantSlug, workerToken, jobId, entry.name, "running", null, null, 0);
+    const result = await runClientTextAdapter({
+      provider, model, prompt: rufloAgentPrompt({ entry, objective }), reserveBudget: false, jobId,
+    });
+    if (!result.ok) {
+      logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider, status: result.status, reason: result.error });
+      await settleRufloAgent(tenantSlug, workerToken, jobId, entry.name, "failed", null, result.error, 0);
+      continue;
+    }
+    const cost = result.usage ? clientTextUsageCostMicros(model, result.usage) ?? 0 : 0;
+    spent += cost;
+    const output = safeClientProviderOutput(result.output);
+    findings.push({ name: entry.name, output });
+    await settleRufloAgent(tenantSlug, workerToken, jobId, entry.name, "done", output, null, cost);
+  }
+
+  if (findings.length === 0) {
+    await settleTerminalBudget(jobId, workerToken, spent, { rufloAgents: 0, providerFailure: 1 });
+    await settleRufloSwarm(tenantSlug, workerToken, jobId, "failed", null, null, "ruflo_no_agent_output");
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "ruflo_no_agent_output");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+
+  const report = await runClientTextAdapter({
+    provider, model, prompt: rufloReportPrompt({ objective, findings }), reserveBudget: false, jobId,
+  });
+  let artifactId: string | null = null;
+  let reportHtml: string | null = null;
+  if (report.ok) {
+    spent += report.usage ? clientTextUsageCostMicros(model, report.usage) ?? 0 : 0;
+    const artifact = artifactFromWorkspaceOutput({ surface: "ruflo", title: `swarm-${jobId.slice(0, 8)}`, artifactIntent: "preview", output: safeClientProviderOutput(report.output) });
+    if (artifact) {
+      reportHtml = artifact.previewHtml ?? null;
+      artifactId = await storeArtifact(tenantSlug, jobId, workerToken, artifact.fileName, artifact.contentType, artifact.bytes);
+    }
+  }
+
+  const settled = await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros: spent, usageMetadata: { rufloAgents: findings.length, actualAmountMicros: spent }, workerToken });
+  if (!settled) logClientRuntimeEvent("runtime.budget_settlement_failed", { tenant: tenantSlug, jobId, status: 503 });
+  await settleRufloSwarm(tenantSlug, workerToken, jobId, "completed", reportHtml, artifactId, null);
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { rufloAgents: findings.length, artifactId, costMicros: spent });
+  return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+async function settleRufloAgent(tenantSlug: string, workerToken: string, jobId: string, name: string, status: string, output: string | null, errorCode: string | null, costMicros: number) {
+  const result = await workerRpc("settle_client_ruflo_agent_worker", {
+    p_tenant_slug: tenantSlug, p_worker_token: workerToken, p_job_id: jobId,
+    p_agent_name: name, p_status: status, p_output: output,
+    p_error_code: errorCode, p_cost_micros: Math.max(0, Math.round(costMicros)),
+  });
+  if (!result.ok || result.value !== true) logClientRuntimeEvent("runtime.ruflo_agent_settle_failed", { tenant: tenantSlug, jobId, status: 503 });
+}
+
+async function settleRufloSwarm(tenantSlug: string, workerToken: string, jobId: string, status: string, report: string | null, artifactId: string | null, errorCode: string | null) {
+  const result = await workerRpc("settle_client_ruflo_swarm_worker", {
+    p_tenant_slug: tenantSlug, p_worker_token: workerToken, p_job_id: jobId,
+    p_status: status, p_report: report?.slice(0, 40_000) ?? null,
+    p_report_artifact_id: artifactId, p_error_code: errorCode,
+  });
+  if (!result.ok || result.value !== true) logClientRuntimeEvent("runtime.ruflo_swarm_settle_failed", { tenant: tenantSlug, jobId, status: 503 });
 }
 
 type LoopSide = { provider: string; model: string };

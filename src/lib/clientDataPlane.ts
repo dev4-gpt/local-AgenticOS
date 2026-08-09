@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import { currentClientAccessToken, currentClientUser, supabaseAuthConfig } from "@/lib/clientAuth";
 import { logClientRuntimeEvent } from "@/lib/clientRuntimeObservability";
 
-export async function insertClientRecord(table: string, record: Record<string, unknown>) {
+// PostgREST accepts an array for a bulk insert, which lets a caller write a
+// whole roster in one request instead of a row at a time.
+export async function insertClientRecord(table: string, record: Record<string, unknown> | Record<string, unknown>[]) {
   const config = supabaseAuthConfig();
   const token = await currentClientAccessToken();
   if (!config || !token) return { ok: false, status: 401 };

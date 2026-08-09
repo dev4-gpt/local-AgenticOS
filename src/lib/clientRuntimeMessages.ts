@@ -188,6 +188,18 @@ const NOTICES: Record<string, ClientRuntimeNotice> = {
     body: "That round was recorded as a failure rather than counted as a pass, so unjudged work is never shipped.",
     next: "The loop continues to the next round with that noted as the issue to fix.",
   },
+  ruflo_schema_missing: {
+    tone: "warning",
+    title: "Ruflo tables not applied",
+    body: "Swarms and their agent rosters live in tenant Supabase tables that have not been created in this project yet.",
+    next: "Apply product-experience/supabase-client-ruflo.sql, then reload the page.",
+  },
+  ruflo_no_agent_output: {
+    tone: "warning",
+    title: "No agent produced a finding",
+    body: "Every specialist in the roster failed, so there was nothing for the coordinator to synthesise and no report was written.",
+    next: "Check the provider status, then launch the swarm again.",
+  },
   secret_like_input_rejected: {
     tone: "danger",
     title: "Secret-like input rejected",

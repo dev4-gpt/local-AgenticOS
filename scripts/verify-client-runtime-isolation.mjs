@@ -33,6 +33,8 @@ const probes = [
   ["board events", "client_board_events"],
   ["loop runs", "client_loop_runs"],
   ["loop rounds", "client_loop_rounds"],
+  ["ruflo swarms", "client_ruflo_swarms"],
+  ["ruflo agents", "client_ruflo_agents"],
 ];
 const failures = [];
 
