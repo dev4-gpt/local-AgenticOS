@@ -4,6 +4,8 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { REVIEWED_ADDITIONS } from "@/lib/reviewedAdditions";
+import { V90_CURATED_SKILL_PACK } from "@/lib/v90SkillPack";
 
 const execFileAsync = promisify(execFile);
 const HOME = os.homedir();
@@ -63,6 +65,13 @@ async function version(bin: string, args: string[]): Promise<string | null> {
   if (!existsSync(bin)) return null;
   try { const { stdout, stderr } = await execFileAsync(bin, args, { timeout: 8_000 }); return (stdout || stderr).trim().split(/\r?\n/)[0]?.slice(0, 100) || "installed"; }
   catch { return null; }
+}
+
+async function versionAny(bin: string, args: string[]): Promise<string | null> {
+  try {
+    const { stdout, stderr } = await execFileAsync(bin, args, { timeout: 8_000 });
+    return (stdout || stderr).trim().split(/\r?\n/)[0]?.slice(0, 100) || "installed";
+  } catch { return null; }
 }
 
 async function reachable(url: string): Promise<boolean> {
@@ -163,6 +172,15 @@ async function agentReachStatus() {
 }
 
 export async function integrationOverview() {
+  if (process.env.VELOCE_CLIENT_EDITION === "1") {
+    return {
+      local: [],
+      external: [],
+      reviewed: REVIEWED_ADDITIONS.map((item) => ({ ...item, detected: false })),
+      skillPack: V90_CURATED_SKILL_PACK,
+      configPath: "client-safe reviewed catalog",
+    };
+  }
   const config = await readConfig();
   const local = await Promise.all([
     agentReachStatus(),
@@ -171,6 +189,11 @@ export async function integrationOverview() {
     version(path.join(HOME, ".local", "bin", "browser-use"), ["--version"]).then((v) => ({ id: "browser-use", name: "Browser Use", description: "Interactive browser actions and QA", state: v ? "working" : "missing", detail: v || "Install Browser Use and its skill." })),
     Promise.resolve({ id: "claude-ads", name: "Claude Ads", description: "Paid-ad planning, audit, and creative skills", state: existsSync(path.join(HOME, ".codex", "skills", "ads", "SKILL.md")) && existsSync(path.join(HOME, ".claude-ads-env", "bin", "python")) ? "working" : "missing", detail: "23 skills + isolated Python runtime" }),
     version(path.join(HOME, ".local", "bin", "graphify"), ["--version"]).then((v) => ({ id: "graphify", name: "Graphify", description: "Knowledge graph for the Obsidian vault", state: v && existsSync(path.join(HOME, ".agentic-os", "graphify", "graphify-out", "graph.json")) ? "working" : v ? "waiting" : "missing", detail: v && existsSync(path.join(HOME, ".agentic-os", "graphify", "graphify-out", "graph.json")) ? "Obsidian export ready" : v ? "Installed; build the vault graph from Memory." : "Install graphifyy with uv." })),
+    versionAny("sonar", ["--version"]).then((v) => ({ id: "sonarqube-cli", name: "SonarQube CLI", description: "Secrets and code-quality preflight", state: v ? "working" : "missing", detail: v || "Optional; configure SonarQube before scanning private code." })),
+    versionAny("ao", ["--version"]).then((v) => ({ id: "agent-orchestrator", name: "Agent Orchestrator", description: "Parallel agents in isolated worktrees", state: v ? "working" : "missing", detail: v || "Optional operator lane; install AO separately if a worktree pilot is approved." })),
+    versionAny("shepherd", ["--version"]).then((v) => ({ id: "shepherd", name: "Shepherd", description: "Reversible agent execution traces", state: v ? "working" : "missing", detail: v || "Research candidate; no direct runtime integration is enabled." })),
+    versionAny("qm", ["--version"]).then((v) => ({ id: "qm", name: "QM", description: "Multiplayer agent harness", state: v ? "working" : "missing", detail: v || "Deferred; overlaps with the hosted runtime and Paperclip." })),
+    versionAny("prime-agent", ["--version"]).then((v) => ({ id: "prime-agent", name: "Prime Agent", description: "Long-running RLM agent", state: v ? "working" : "missing", detail: v || "Optional operator lane; pilot only in a disposable worktree." })),
   ]);
 
   const external = await Promise.all(EXTERNAL.map(async (def) => {
@@ -186,7 +209,14 @@ export async function integrationOverview() {
       url: values.baseUrl || "",
     };
   }));
-  return { local, external, configPath: CONFIG_FILE };
+  const detected = new Set(local.map((item) => item.id));
+  return {
+    local,
+    external,
+    reviewed: REVIEWED_ADDITIONS.map((item) => ({ ...item, detected: item.detectedId ? detected.has(item.detectedId) && local.find((candidate) => candidate.id === item.detectedId)?.state === "working" : false })),
+    skillPack: V90_CURATED_SKILL_PACK,
+    configPath: CONFIG_FILE,
+  };
 }
 
 export async function saveIntegration(id: string, incoming: Record<string, unknown>) {

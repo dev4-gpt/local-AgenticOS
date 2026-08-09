@@ -39,6 +39,10 @@ For the current V1 completion snapshot, known gaps, and recommended V1.1 priorit
 
 For V2 local open-source tool planning, storage analysis, and the CANCEL Guide review, see [V2-LOCAL-AI-TOOLS-ROADMAP.md](./V2-LOCAL-AI-TOOLS-ROADMAP.md).
 
+For the complete v90 infrastructure STAR plan and reviewed candidate portfolio,
+see
+[docs/V90-INFRASTRUCTURE-STAR-PLAN.md](./docs/V90-INFRASTRUCTURE-STAR-PLAN.md).
+
 For launch copy across Medium, Substack, and LinkedIn, see [MARKETING-LAUNCH-CONTENT.md](./MARKETING-LAUNCH-CONTENT.md).
 
 For the deck, diagram, carousel, outreach, and Open Design production briefs behind the public launch, see [LAUNCH-ASSET-SYSTEM.md](./LAUNCH-ASSET-SYSTEM.md).

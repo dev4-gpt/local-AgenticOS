@@ -94,13 +94,18 @@ export const CAPABILITIES: Capability[] = [
   },
   {
     id: "quality", name: "Veloce Quality Review", kind: "skill", audience: "built-in", status: "reviewed", destination: "/guide",
-    description: "Responsive, accessibility, visual-regression, source-attribution, and secret-leakage review guidance.",
+    description: "Responsive, accessibility, visual-regression, source-attribution, and secret-leakage review guidance, with an optional SonarQube CLI preflight for operator-owned code.",
     dataScope: "Veloce-owned or authorized preview environments.", actionBoundary: "Read-only checks before release; no unattended fixes or deployments.",
   },
   {
     id: "security-release-review", name: "Veloce Security Release Review", kind: "skill", audience: "operator", status: "active",
     description: "Authorization, release-gate, finding, remediation, and retest workflow informed by PentAGI and HexStrike AI.",
     dataScope: "Veloce-owned loopback or explicitly authorized staging environments and private assessment reports.", actionBoundary: "Manual, isolated, human-supervised assessment only; neither pentest framework is exposed as a product MCP or client tool.",
+  },
+  {
+    id: "sonarqube-cli", name: "SonarQube CLI Preflight", kind: "connector", audience: "operator", status: "reviewed", destination: "/integrations",
+    description: "Optional operator-side secrets and code-quality scan before an agent-built change is accepted.",
+    dataScope: "The explicitly selected local repository or file set, sent only to the configured SonarQube destination.", actionBoundary: "Read-only by default; never auto-fixes, deploys, or exposes scan results in the client cloud runtime.",
   },
   {
     id: "single-tenant-client-deployment", name: "Veloce Client Deployment", kind: "skill", audience: "operator", status: "reviewed",
