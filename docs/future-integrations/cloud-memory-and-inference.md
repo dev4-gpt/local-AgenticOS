@@ -517,6 +517,46 @@ Four of the six would have passed every unit test written for them:
 - The two-tenant isolation run and a service-role export, which need a second
   tenant token and `SUPABASE_SERVICE_ROLE_KEY`.
 
+## Batch A: Create, Govern, Deliver studios (2026-08-09)
+
+**Status:** deployed on `veloce-cloud-test-00114-9bv` (`v83-studio-surfaces`).
+
+Seventeen routes shared one "Run in hosted workspace" screen. They now each have
+their own presets, fields, output language, and gallery, driven by a per-surface
+config over the same proven workspace-execution lane. No migration was needed:
+executions already live in `client_runtime_jobs` and artifacts in
+`client_runtime_artifacts`.
+
+Covered: Create Brief, OpenDesign, Web Studio, Flow Lab, Video, Agent Studio,
+OpenMontage, Music, Game Studio, Thumbnails, SEO, SEO Guide, Build Guide,
+Integrations, Delivery, Leads, Radar.
+
+**Evidence.** Web Studio queued `preview` and returned artifact `6723612e` with
+3300 preview characters; Leads queued `brief` and returned artifact `6f41711f`
+with none. The intent split is real — a brief surface does not fake a preview it
+cannot produce.
+
+Video, Music, Thumbnails and OpenMontage state that generation needs an approved
+media provider and that they produce the brief. A reference URL on SEO is passed
+as context with an explicit instruction not to claim it was visited, because
+nothing on that surface crawls.
+
+## Batch B finding: the Notebook tabs are decorative
+
+`NotebookSurface` in `ClientDataWorkspace` renders four tabs — research, chat,
+studio, assets — and each is only a paragraph of description. There is no input
+and no action behind any of them. This breaks the project's own rule that no
+visible control may be decorative, and it predates the current porting work.
+
+All four now have a real lane available: research maps to the memory-import
+path, chat to the text-agent lane grounded in selected records, studio to the
+artifact lane, and assets to the artifacts API. They should be made real rather
+than removed.
+
+The rest of Context is further along than expected. `ClientDataWorkspace`
+already provides tenant records for memory, journal, goals and notebook, plus
+memory search, the tag graph, a 3D view, and Markdown import/export.
+
 **Next: Sections IV-VI**, planned as three batches rather than twenty ports.
 Batch A covers eight shallow Create/Govern surfaces behind one config-driven
 component on the existing artifact lane; batch B covers Context; batch C covers
