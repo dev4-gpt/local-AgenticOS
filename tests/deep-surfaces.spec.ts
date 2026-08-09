@@ -7,7 +7,7 @@ const KEYS = Object.keys(DEEP_SURFACES);
 test("covers the multi-mode surfaces this batch was meant to reach", () => {
   // radar moved to its own surface so it could keep the local structure
   // (signals/published) and the oracle orb.
-  expect(KEYS.sort()).toEqual(["leads", "video"]);
+  expect(KEYS.sort()).toEqual(["leads"]);
 });
 
 test("every surface queues a lane the runner accepts", () => {
@@ -68,13 +68,13 @@ test("goals forbid claiming retrieval, and label pasted material as supplied", (
 });
 
 test("goals stay inside the executions route's limit with large pasted material", () => {
-  const config = deepSurface("video")!;
-  const goal = deepGoal({ mode: deepMode(config, "script"), subject: "s", direction: "d", source: "x".repeat(40_000) });
+  const config = deepSurface("leads")!;
+  const goal = deepGoal({ mode: deepMode(config, "icp"), subject: "s", direction: "d", source: "x".repeat(40_000) });
   expect(goal.length).toBeLessThanOrEqual(10_000);
 });
 
 test("an unknown surface or mode resolves rather than producing a broken screen", () => {
   expect(deepSurface("not-a-surface")).toBeNull();
-  const config = deepSurface("video")!;
+  const config = deepSurface("leads")!;
   expect(deepMode(config, "nonsense").key).toBe(config.modes[0].key);
 });

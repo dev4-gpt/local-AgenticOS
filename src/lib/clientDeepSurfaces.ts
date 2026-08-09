@@ -1,4 +1,8 @@
-// Video, Radar, and Leads as hosted surfaces.
+// Leads as a hosted multi-mode surface.
+//
+// Video and Radar started here and outgrew it: each needed the local product's
+// own structure and, for Radar, its oracle. This config remains the right shape
+// for a surface whose modes differ only in what they ask for.
 //
 // Each is a real product locally, standing on capability a tenant does not
 // have: Video drives HeyGen and Hyperframes render APIs, Radar scans external
@@ -53,44 +57,6 @@ const NO_RETRIEVAL =
   "Do not claim to have visited a site, run a search, contacted a service, or read anything you were not given. Where a judgement needs data you were not given, say which data is needed.";
 
 export const DEEP_SURFACES: Record<string, DeepSurface> = {
-  video: {
-    surface: "video",
-    eyebrow: "IV. Create · Video",
-    title: "Video",
-    description: "Take a video from idea to a production-ready script and shot plan. Rendering activates when this client has an approved video provider.",
-    accent: "#f87171",
-    outputNoun: "video briefs",
-    modes: [
-      {
-        key: "script", label: "Script", action: "Write the script", artifactIntent: "brief",
-        description: "Write the spoken script with timing, so a presenter or a render provider has something exact to work from.",
-        presets: [
-          { label: "Product explainer", direction: "Write an explainer script: hook in the first five seconds, the problem, how it works, the proof, and one call to action. Mark timings." },
-          { label: "Launch reel", direction: "Write a launch reel script: beat by beat, with on-screen text called out and pacing notes." },
-          { label: "Presenter piece", direction: "Write a presenter script with delivery notes, where to pause, and where the shot changes." },
-        ],
-        subjectLabel: "What the video is about", subjectPlaceholder: "The subject and the audience",
-        directionLabel: "What it must land", directionPlaceholder: "The one thing a viewer should remember, the tone, and the length.",
-        sourceLabel: "Source material · optional", sourcePlaceholder: "Paste notes, a transcript, or an article this should be built from.",
-      },
-      {
-        key: "storyboard", label: "Storyboard", action: "Build the storyboard", artifactIntent: "brief",
-        description: "Break the script into shots: what is on screen, how long it holds, and how it cuts to the next.",
-        presets: [
-          { label: "Shot list", direction: "Break this into a shot list: each shot's duration, what is on screen, the on-screen text, and the transition into the next." },
-          { label: "B-roll plan", direction: "Plan the b-roll: what each cutaway shows, why it earns its place, and what it must not contradict." },
-          { label: "Thumbnail direction", direction: "Work out the thumbnail direction: the single idea, the focal element, the text, and why it earns the click at small size." },
-        ],
-        subjectLabel: "The video", subjectPlaceholder: "Which video is this for?",
-        directionLabel: "The edit", directionPlaceholder: "Target length, pacing, and any footage you already have.",
-        sourceLabel: "Script · optional", sourcePlaceholder: "Paste the script this storyboard should follow.",
-      },
-    ],
-    gates: [
-      { title: "Avatar and voice rendering", detail: "Rendering a presenter video runs through an approved video provider with its own credentials and budget. No provider is contacted from this surface, and nothing here produces a video file." },
-      { title: "Programmatic render", detail: "Frame-level rendering needs a dedicated render worker, which is not enabled for this tenant. This surface produces the script and the plan a render step would consume." },
-    ],
-  },
 
 
   leads: {
