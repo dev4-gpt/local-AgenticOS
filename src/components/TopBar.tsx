@@ -7,6 +7,29 @@ import CommandPalette from "./CommandPalette";
 
 interface PageMeta { numeral: string; label: string; title: string; sub: string; }
 
+// The default copy below describes the operator product, which runs against an
+// Obsidian vault, local Hermes, and models on the owner's Mac. None of that
+// exists in the hosted client edition, so a client would be told their work
+// "lives in your vault" when it lives in tenant Supabase and Cloud Storage.
+// These overrides replace the sub-copy on every route whose default mentions a
+// laptop-only dependency.
+const CLIENT_SUBS: Record<string, string> = {
+  "/room": "A live group chat with your agents — each on its own approved model. They read this workspace's memory, reply in turn, and can save notes or start pipeline items. Tag one with @claude.",
+  "/pipeline": "Capture an idea → the shaping agent classifies and plans it → you approve once at the human gate → the hosted runner builds it. Items are tenant records.",
+  "/kanban": "A tenant work board with real stages, assignees, priorities, comments, and an event trail.",
+  "/agent-kanban": "Cards an agent builds. Each build runs through the approved hosted lane and ships a tenant artifact.",
+  "/memory": "Search this workspace's approved memory records and their tag graph.",
+  "/notebook": "Working notes kept as tenant records, exportable as Markdown.",
+  "/claude": "Send a reviewed prompt through the approved Anthropic lane. Every call is budgeted and audited.",
+  "/openclaw": "Send a reviewed prompt through the approved provider lane. Every call is budgeted and audited.",
+  "/hermes": "Send a reviewed prompt through the approved provider lane. Every call is budgeted and audited.",
+  "/local": "The hosted equivalent of the local model lane, served by an approved provider under this tenant's budget.",
+  "/engine": "The hosted equivalent of the local engine lane, served by an approved provider under this tenant's budget.",
+  "/studio": "Generate media through approved provider adapters. Output is stored as a tenant artifact.",
+  "/thumbnails": "Prepare a thumbnail direction. Image generation activates per approved media provider.",
+  "/radar": "Prepare a publishing artifact with a durable trail. No destination receives data until its adapter is approved.",
+};
+
 // Roman numeral + chapter label per route (Midnight Aubergine design system).
 // numeral renders in Caveat gold, label in small-caps Manrope. See globals.css `.eyebrow`.
 const TITLES: Record<string, PageMeta> = {
@@ -60,9 +83,12 @@ const TITLES: Record<string, PageMeta> = {
 
 export default function TopBar() {
   const pathname = usePathname();
-  const t = TITLES[pathname] ?? TITLES["/"];
+  const base = TITLES[pathname] ?? TITLES["/"];
   const [time, setTime] = useState<string>("");
   const [clientEdition, setClientEdition] = useState(false);
+  // Swap in hosted-accurate copy, so a client is never told their work lives in
+  // a vault this runtime does not have.
+  const t = clientEdition && CLIENT_SUBS[pathname] ? { ...base, sub: CLIENT_SUBS[pathname] } : base;
 
   useEffect(() => {
     const set = () =>
@@ -112,7 +138,7 @@ export default function TopBar() {
         <div className="mt-4 status-meta">
           <span className="hand">{time}</span>
           <span className="mx-2 opacity-40">·</span>
-          {clientEdition ? "Client · Vault" : "Local · Studio"}
+          {clientEdition ? "Client · Cloud" : "Local · Studio"}
         </div>
       </motion.div>
     </header>
