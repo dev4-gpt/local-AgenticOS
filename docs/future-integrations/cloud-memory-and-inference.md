@@ -642,6 +642,57 @@ plan visibly used the client-supplied figures — position 14, 71% bounce — wh
 were passed labelled as supplied, with an explicit instruction not to claim
 retrieval. Nothing on the surface crawls or reaches Search Console.
 
+## Batch C, surfaces 2-6 (2026-08-10)
+
+**Status:** deployed on `veloce-cloud-test-00121-mrw` (`v89-notebook-containers`).
+
+**Video, Radar and Leads** each got a multi-mode surface rather than the shared
+studio screen, because each runs several distinct kinds of work and has to name
+what it cannot reach. Video has Script and Storyboard; Radar has Draft and
+Distribution; Leads has ICP, Scoring and Outreach. Proven live: Video returned
+`8d906c23`, a timed script with a timing table; Radar returned `fc246fc9`, an
+argued point of view that used the supplied anecdote; Leads returned `7dc1f7b1`,
+an ICP with firmographics. Their local counterparts drive HeyGen, Hyperframes,
+external scanning and publishing, and Hunter/Apollo, none of which lift into a
+tenant, so each surface states what is not happening: no provider contacted, no
+destination reached, no recipient mailed.
+
+`seo`, `video`, `leads` and `radar` were removed from the Batch A config now
+that each has its own component, since two configs for one route means the one
+that never renders is the one that rots.
+
+**Memory's search view was decorative.** Selecting Search rendered a paragraph
+describing what search would be based on, with no input and no result — the same
+violation as the Notebook tabs, in the surface beside them. It now filters the
+tenant's own records on every term across titles, content and `#tags`.
+
+**Notebooks are containers.** The local Notebook is organised around several
+notebooks, each scoping its own sources; the hosted edition had one flat
+library, so "ask this notebook" meant "ask everything this tenant ever
+imported". `client_notebooks` plus a nullable `notebook_id` on
+`client_runtime_records` closes that. Nullable and `on delete set null` are
+deliberate: applying the migration cannot orphan anything, and deleting a
+notebook must not take the client's sources with it.
+
+**Evidence.** The migration was applied by the owner and verified before use:
+both the table and the column read back, and the three pre-existing notebook
+records became unfiled rather than lost. Two notebooks were created, one source
+filed into each, and each scope returned only its own record while the three
+pre-existing ones stayed reachable as unfiled. Deleting a notebook kept its
+source and moved it to unfiled, with the other notebook untouched.
+
+**Ownership wiring, in the same change.** `client_notebooks` is registered in
+`client-lifecycle.mjs` and the isolation drill. Isolation passed across all
+twenty-one tables with the new one included, and a fresh export covered 29
+tables with `client_notebooks` present and `notebook_id` carried on every record
+row, so offboarding cannot silently drop a tenant's notebooks.
+
+**A drift the new allowlist test caught.** The client API allowlist lives in
+three places, and the hardcoded value in `provision-gcp-client.mjs` is the one
+that ships. A test now pins all three together, and it immediately found that
+the local runner was missing `/api/client-runtime/executions` — a lane that
+worked deployed and 404'd locally.
+
 ## Service-role export (owed item, done)
 
 `client-lifecycle.mjs --mode export --slug veloce-cloud-test` ran against the
