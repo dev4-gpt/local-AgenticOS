@@ -25,6 +25,7 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/client-runtime/paperclip",
   "/api/client-runtime/room",
   "/api/client-runtime/pipeline",
+  "/api/client-runtime/boards",
   "/api/client-runtime/jobs",
   "/api/internal/client-runtime/jobs",
   "/api/internal/client-runtime/dispatch",

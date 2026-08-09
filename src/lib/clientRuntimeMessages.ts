@@ -146,6 +146,36 @@ const NOTICES: Record<string, ClientRuntimeNotice> = {
     body: "This chat is no longer in the tenant. It may have been deleted in another session.",
     next: "Pick a chat from History, or start a new one.",
   },
+  pipeline_schema_missing: {
+    tone: "warning",
+    title: "Pipeline table not applied",
+    body: "Pipeline items live in a tenant Supabase table that has not been created in this project yet.",
+    next: "Apply product-experience/supabase-client-pipeline.sql, then reload the page.",
+  },
+  pipeline_decision_not_allowed: {
+    tone: "info",
+    title: "Not at the gate yet",
+    body: "Only an item sitting at the Human Gate can be approved or rejected. Shape it first so there is something to decide on.",
+    next: "Run Shape it, then decide once it reaches the gate.",
+  },
+  pipeline_shape_unparsable: {
+    tone: "warning",
+    title: "Shaping output could not be read",
+    body: "The model did not return the expected sections, so nothing was written to the board rather than saving a half-filled item.",
+    next: "Run Shape it again. If it keeps failing, the model may need a clearer idea to work from.",
+  },
+  board_schema_missing: {
+    tone: "warning",
+    title: "Board tables not applied",
+    body: "Kanban and Agent Kanban tasks live in tenant Supabase tables that have not been created in this project yet.",
+    next: "Apply product-experience/supabase-client-boards.sql, then reload the page.",
+  },
+  board_build_not_allowed: {
+    tone: "info",
+    title: "This card cannot build right now",
+    body: "Only an Agent Kanban card in Queued or Building can start a build, and not while one is already running.",
+    next: "Wait for the current run to settle, or move the card back to Queued.",
+  },
   secret_like_input_rejected: {
     tone: "danger",
     title: "Secret-like input rejected",

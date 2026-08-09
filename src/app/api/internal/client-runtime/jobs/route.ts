@@ -97,6 +97,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   // agent-persona prompt and reconciles the tenant issue and run rows.
   const paperclipRun = typeof input.paperclipRunId === "string" && /^[0-9a-f-]{36}$/i.test(input.paperclipRunId);
   const pipelineItem = typeof input.pipelineItemId === "string" && /^[0-9a-f-]{36}$/i.test(input.pipelineItemId);
+  const boardTask = typeof input.boardTaskId === "string" && /^[0-9a-f-]{36}$/i.test(input.boardTaskId);
   if (!isClientWorkspaceSurface(surface) || !title || !goal || !job.provider) {
     if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "workspace_execution_input_invalid" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: workspaceTerminalEvents("orchestrate", "failed", "Workspace execution input is incomplete.") }, "workspace_execution_input_invalid");
@@ -110,6 +111,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   if (!model || estimate === null || !(await reserveClientRuntimeBudgetWorker({ provider: job.provider, model, amountMicros: estimate, jobId, workerToken }))) {
     if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "budget_exceeded" });
     if (pipelineItem) await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "budget_exceeded" });
+    if (boardTask) await settleBoardTask(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "budget_exceeded" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: workspaceTerminalEvents(surface, "failed", "The tenant budget or model policy did not approve this execution.") }, "budget_exceeded");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -120,6 +122,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
     await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
     if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: result.error });
     if (pipelineItem) await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: result.error });
+    if (boardTask) await settleBoardTask(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: result.error });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", result.error)] }, result.error);
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -129,6 +132,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
     await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, artifactValidationFailure: 1 });
     if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "workspace_artifact_invalid" });
     if (pipelineItem) await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "workspace_artifact_invalid" });
+    if (boardTask) await settleBoardTask(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "workspace_artifact_invalid" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", "The approved provider did not return a usable tenant artifact.")] }, "workspace_artifact_invalid");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -137,6 +141,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
     await settleTerminalBudget(jobId, workerToken, result.usage ? clientTextUsageCostMicros(model, result.usage) ?? estimate : estimate, { artifactStoreFailure: 1 });
     if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "artifact_store_failed" });
     if (pipelineItem) await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "artifact_store_failed" });
+    if (boardTask) await settleBoardTask(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "artifact_store_failed" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", "The workspace result could not be committed to tenant storage.")] }, "artifact_store_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -154,7 +159,16 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros, usageMetadata: result.usage ?? { estimatedCostMicros: estimate, usageFallback: 1 } }, outputMetadata))) {
     if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "budget_settlement_failed" });
     if (pipelineItem) await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "budget_settlement_failed" });
+    if (boardTask) await settleBoardTask(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "budget_settlement_failed" });
     return NextResponse.json({ ok: true, status: "failed" });
+  }
+  if (boardTask) {
+    await settleBoardTask(tenantSlug, workerToken, jobId, {
+      execution_state: "succeeded",
+      status: "reviewing",
+      build_artifact_id: artifactId,
+      ...(artifact.previewHtml ? { build_preview_html: artifact.previewHtml.slice(0, 40_000) } : {}),
+    });
   }
   if (pipelineItem) {
     // A shipped pipeline item carries its artifact the same way Paperclip does.
@@ -274,6 +288,18 @@ async function processPipelineShapeJob(jobId: string, tenantSlug: string, worker
   });
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+async function settleBoardTask(tenantSlug: string, workerToken: string, jobId: string, patch: Record<string, unknown>) {
+  const result = await workerRpc("update_client_board_task_worker", {
+    p_tenant_slug: tenantSlug,
+    p_worker_token: workerToken,
+    p_job_id: jobId,
+    p_patch: patch,
+  });
+  if (!result.ok || result.value !== true) {
+    logClientRuntimeEvent("runtime.board_reconciliation_failed", { tenant: tenantSlug, jobId, status: 503 });
+  }
 }
 
 async function settlePipelineItem(tenantSlug: string, workerToken: string, jobId: string, patch: Record<string, unknown>) {

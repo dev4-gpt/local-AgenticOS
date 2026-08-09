@@ -117,6 +117,9 @@ export function normalizePipelineItem(row: Record<string, unknown>): PipelineIte
  * makes the result parseable without three round trips.
  */
 export function pipelineShapePrompt(input: { idea: string; title: string }) {
+  // Deliberately line-oriented rather than JSON. The plan and tasks are
+  // Markdown with real newlines; asking for those inside JSON string values
+  // makes models emit unescaped newlines and the parse fails.
   return [
     "You are the Veloce pipeline shaping agent. Classify an incoming idea and prepare it for a human approval gate.",
     "",
@@ -124,19 +127,47 @@ export function pipelineShapePrompt(input: { idea: string; title: string }) {
     "Idea as captured:",
     input.idea,
     "",
-    "Return exactly one JSON object in a single ```json code fence, with these keys:",
-    '  "route": one of "project" | "action" | "idea" | "reference" | "escalate"',
-    '  "title": a sharper title, at most 80 characters',
-    '  "confidence": a number between 0 and 1 for how sure you are about the route',
-    '  "tags": 2 to 5 short lowercase tags',
-    '  "classification": two or three sentences explaining what this is and why that route fits',
-    '  "plan": a short Markdown plan with 3-6 bullet steps',
-    '  "tasks": a Markdown checklist of 3-8 concrete tasks, each starting "- [ ] "',
+    "Reply in exactly this format, with these headings on their own lines and nothing before or after:",
+    "",
+    "ROUTE: <project|action|idea|reference|escalate>",
+    "TITLE: <a sharper title, at most 80 characters>",
+    "CONFIDENCE: <a number between 0 and 1>",
+    "TAGS: <2 to 5 short lowercase tags, comma separated>",
+    "--- CLASSIFICATION ---",
+    "<two or three sentences on what this is and why that route fits>",
+    "--- PLAN ---",
+    "<3 to 6 Markdown bullet steps>",
+    "--- TASKS ---",
+    "<3 to 8 Markdown checklist items, each starting \"- [ ] \">",
     "",
     "Route meanings: project = multi-step build worth its own workstream; action = a single concrete task;",
     "idea = worth keeping but not yet actionable; reference = information to file; escalate = needs a human decision first.",
-    "Do not invent facts about the business. Do not include credentials. Output only the JSON fence.",
+    "Do not invent facts about the business. Do not include credentials.",
   ].join("\n").slice(0, 20_000);
+}
+
+function parseShapeSections(output: string): PipelineShapeResult | null {
+  const route = output.match(/^\s*ROUTE:\s*(.+)$/im)?.[1]?.trim().toLowerCase() ?? "";
+  if (!(PIPELINE_ROUTES as readonly string[]).includes(route)) return null;
+  const section = (name: string) => {
+    const match = output.match(new RegExp(`---\\s*${name}\\s*---\\s*\\n([\\s\\S]*?)(?=\\n---\\s*[A-Z]+\\s*---|$)`, "i"));
+    return match?.[1]?.trim() ?? "";
+  };
+  const classification = section("CLASSIFICATION").slice(0, 8000);
+  const plan = section("PLAN").slice(0, 20000);
+  const tasks = section("TASKS").slice(0, 20000);
+  if (!classification || !plan || !tasks) return null;
+  const rawConfidence = Number(output.match(/^\s*CONFIDENCE:\s*([0-9.]+)/im)?.[1]);
+  return {
+    route: route as PipelineRoute,
+    title: (output.match(/^\s*TITLE:\s*(.+)$/im)?.[1]?.trim() ?? "").slice(0, 80) || "Untitled idea",
+    confidence: Number.isFinite(rawConfidence) ? Math.min(1, Math.max(0, rawConfidence)) : 0.5,
+    tags: (output.match(/^\s*TAGS:\s*(.+)$/im)?.[1] ?? "")
+      .split(",").map((tag) => tag.trim().toLowerCase().replace(/^["'#]|["']$/g, "").slice(0, 32)).filter(Boolean).slice(0, 5),
+    classification,
+    plan,
+    tasks,
+  };
 }
 
 /**
@@ -145,6 +176,10 @@ export function pipelineShapePrompt(input: { idea: string; title: string }) {
  * honestly instead of writing junk into the tenant board.
  */
 export function parsePipelineShape(output: string): PipelineShapeResult | null {
+  // Sections first, since that is what the prompt asks for. JSON stays as a
+  // fallback so a model that answers in the older shape still works.
+  const sections = parseShapeSections(output);
+  if (sections) return sections;
   const fence = output.match(/```(?:json)?\s*\n([\s\S]*?)```/i)?.[1] ?? output;
   let parsed: unknown;
   try {

@@ -35,7 +35,39 @@ test("build is only available after approval moved the item to Execute", () => {
   expect(pipelineCanBuild(item({ id: "3", stage: "building", executionState: "queued" }))).toBe(false);
 });
 
-test("parses a well-formed shaping response", () => {
+test("parses the section format, including Markdown with real newlines", () => {
+  const parsed = parsePipelineShape([
+    "ROUTE: project",
+    "TITLE: Ship the status board",
+    "CONFIDENCE: 0.78",
+    "TAGS: internal, status, web",
+    "--- CLASSIFICATION ---",
+    "A multi-step build worth its own workstream.",
+    "It needs a page, data, and a deploy.",
+    "--- PLAN ---",
+    "- Draft the layout",
+    "- Wire the data",
+    "--- TASKS ---",
+    "- [ ] Build the page",
+    "- [ ] Hook up the source",
+  ].join("\n"));
+  expect(parsed?.route).toBe("project");
+  expect(parsed?.title).toBe("Ship the status board");
+  expect(parsed?.confidence).toBeCloseTo(0.78);
+  expect(parsed?.tags).toEqual(["internal", "status", "web"]);
+  // Multi-line Markdown must survive intact — this is the case JSON broke on.
+  expect(parsed?.plan).toContain("- Draft the layout");
+  expect(parsed?.plan).toContain("- Wire the data");
+  expect(parsed?.tasks).toContain("- [ ] Hook up the source");
+  expect(parsed?.classification).toContain("multi-step build");
+});
+
+test("a section response missing a required block is rejected", () => {
+  const parsed = parsePipelineShape("ROUTE: action\nTITLE: x\n--- CLASSIFICATION ---\nonly this");
+  expect(parsed).toBeNull();
+});
+
+test("still parses a well-formed JSON shaping response", () => {
   const parsed = parsePipelineShape('```json\n{"route":"project","title":"Ship pricing","confidence":0.82,"tags":["pricing","web"],"classification":"A multi-step build.","plan":"- step one\\n- step two","tasks":"- [ ] one\\n- [ ] two"}\n```');
   expect(parsed?.route).toBe("project");
   expect(parsed?.confidence).toBeCloseTo(0.82);
@@ -85,8 +117,12 @@ test("status labels report the real state", () => {
 
 test("prompts carry the item and ask for the right output, with no local paths", () => {
   const shape = pipelineShapePrompt({ idea: "Build a pricing page", title: "Pricing" });
-  expect(shape).toContain("```json");
+  expect(shape).toContain("--- TASKS ---");
+  expect(shape).toContain("ROUTE:");
   expect(shape).toContain("Build a pricing page");
+  // The shaping prompt must not ask for Markdown inside JSON — that is the
+  // shape that produced unescaped newlines and an unparsable response.
+  expect(shape).not.toContain("```json");
   const build = pipelineBuildPrompt(item({ id: "1", title: "Pricing", idea: "tiers", plan: "- a", tasks: "- [ ] b" }));
   expect(build).toContain("```html");
   expect(build).toContain("- [ ] b");
