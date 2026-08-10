@@ -43,6 +43,10 @@ For the complete v90 infrastructure STAR plan and reviewed candidate portfolio,
 see
 [docs/V90-INFRASTRUCTURE-STAR-PLAN.md](./docs/V90-INFRASTRUCTURE-STAR-PLAN.md).
 
+For what has actually shipped against that plan, the live tenant configuration,
+and the next setup steps, see
+[docs/V90-EXECUTION-LOG.md](./docs/V90-EXECUTION-LOG.md).
+
 For launch copy across Medium, Substack, and LinkedIn, see [MARKETING-LAUNCH-CONTENT.md](./MARKETING-LAUNCH-CONTENT.md).
 
 For the deck, diagram, carousel, outreach, and Open Design production briefs behind the public launch, see [LAUNCH-ASSET-SYSTEM.md](./LAUNCH-ASSET-SYSTEM.md).
