@@ -164,6 +164,83 @@ export function validateV96ResearchRequest(input: Partial<V96StructuredResearchR
   return errors;
 }
 
+/**
+ * The closed vocabulary a curated role may draw on.
+ *
+ * Agency Agents is a source library, not a second runtime, so importing a role
+ * must never widen what the platform can do. That is the skill pack's exit gate
+ * in the STAR plan: a role improves a task *without increasing tool
+ * permissions*. Without a closed list, `allowedTools` is free text and a future
+ * manifest could grant `execute-shell` past every existing check.
+ *
+ * Every verb here is read-only, a test run, or writing a reviewable
+ * deliverable. Nothing executes a shell, reaches the network directly, reads
+ * credentials, or mutates tenant data. Adding an entry is a deliberate
+ * permission grant — argue for it on its own merits rather than letting it
+ * arrive attached to a new role.
+ */
+export const V96_PERMITTED_SKILL_TOOLS = [
+  "read-artifacts",
+  "read-files",
+  "read-preview",
+  "read-public-source",
+  "run-tests",
+  "write-citations",
+  "write-draft",
+  "write-review",
+  "write-storyboard",
+  "write-worktree",
+] as const;
+
+/**
+ * Surfaces a role may claim. A role advertising a surface that does not exist
+ * is a control a client can see and never reach, so the list is closed too.
+ */
+export const V96_PERMITTED_SKILL_SURFACES = [
+  "agent-kanban",
+  "agent-room",
+  "flow-lab",
+  "loop",
+  "memory",
+  "openmontage",
+  "product-experience",
+  "quality-review",
+  "radar",
+  "seo",
+  "video",
+  "web-studio",
+] as const;
+
+const PERMITTED_TOOLS = new Set<string>(V96_PERMITTED_SKILL_TOOLS);
+const PERMITTED_SURFACES = new Set<string>(V96_PERMITTED_SKILL_SURFACES);
+
+/**
+ * Validates one curated role manifest. Returns the reasons it is unpublishable,
+ * empty when it is sound.
+ */
+export function validateV96SkillManifest(input: V96SkillManifest) {
+  const errors: string[] = [];
+  if (!input.id || !/^[a-z0-9][a-z0-9-]{1,62}$/.test(input.id)) errors.push("id must be a lowercase slug");
+  if (!input.label?.trim()) errors.push("label is required");
+  // Provenance is what makes a role auditable rather than something a client
+  // takes on trust, so it is required, not merely encouraged.
+  if (!/^https:\/\/[^\s]+$/.test(input.sourceRepository ?? "")) errors.push("sourceRepository must be an https URL");
+  if (!input.sourceCommit || input.sourceCommit.length < 5) errors.push("sourceCommit must be a pinned revision");
+  if (!input.license?.trim()) errors.push("license is required");
+  if (!input.supportedSurfaces?.length) errors.push("supportedSurfaces must not be empty");
+  for (const surface of input.supportedSurfaces ?? []) {
+    if (!PERMITTED_SURFACES.has(surface)) errors.push(`surface is not a real Veloce surface: ${surface}`);
+  }
+  if (!input.allowedContext?.length) errors.push("allowedContext must not be empty");
+  if (!input.allowedTools?.length) errors.push("allowedTools must not be empty");
+  for (const tool of input.allowedTools ?? []) {
+    if (!PERMITTED_TOOLS.has(tool)) errors.push(`tool is outside the permitted vocabulary: ${tool}`);
+  }
+  if (!input.deliverable?.kind) errors.push("deliverable.kind is required");
+  if (!input.deliverable?.requiredFields?.length) errors.push("deliverable.requiredFields must not be empty");
+  return errors;
+}
+
 export function normalizeV96ResearchRecord(input: V96StructuredResearchRecord): V96StructuredResearchRecord | null {
   if (input.contractVersion !== V96_CONTRACT_VERSION || !input.id || !input.tenantSlug || !isAllowedV96ResearchUrl(input.sourceUrl)) return null;
   if (!Number.isFinite(input.confidence)) return null;

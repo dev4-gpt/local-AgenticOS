@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit } from "@/lib/clientDataPlane";
 import { V96_AGENCY_AGENTS_REVISION, V96_CURATED_SKILL_PACK } from "@/lib/v96SkillPack";
+import { validateV96SkillManifest } from "@/lib/v96Contracts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,10 +28,18 @@ export async function GET() {
     // Pinned upstream revision, so a role's provenance is checkable rather than
     // asserted.
     sourceRevision: V96_AGENCY_AGENTS_REVISION,
-    // Roles on the local model lane are operator-only: a tenant has no local
-    // model, so publishing one would offer a client something that cannot run.
-    // The pack keeps them; this route does not hand them out.
-    roles: V96_CURATED_SKILL_PACK.filter((role) => role.modelLane === "approved-provider").map((role) => ({
+    // Two filters, for two different reasons.
+    //
+    // Local-lane roles are operator-only: a tenant has no local model, so
+    // publishing one would offer a client something that cannot run. The pack
+    // keeps them; this route does not hand them out.
+    //
+    // The manifest check is defence in depth. tests/skill-pack-surface.spec.ts
+    // is the real gate and fails the build on an unsound role, but a role that
+    // claims a tool outside the permitted vocabulary must not reach a client
+    // even if that test is ever skipped or the pack is edited in a hurry.
+    roles: V96_CURATED_SKILL_PACK.filter((role) => role.modelLane === "approved-provider"
+      && validateV96SkillManifest(role).length === 0).map((role) => ({
       id: role.id,
       label: role.label,
       sourceRepository: role.sourceRepository,

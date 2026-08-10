@@ -10,7 +10,7 @@ next.* Update this file rather than opening a second log.
 **Last updated:** 2026-08-11
 **Live:** `veloce-cloud-test-00137-j6j` · image `v99-integrations-hub`
 **Branch:** `codex/reviewed-additions-2026-08-10` = `origin/main`
-**Tests:** 221 passing · **19 failing (pre-existing, unrelated)** · build clean ·
+**Tests:** 227 passing · **19 failing (pre-existing, unrelated)** · build clean ·
 three security gates passing
 
 The 19 failures are in `product-experience`, `public-edition`, `sidebar-smoke`
@@ -451,7 +451,7 @@ say so and change the decision deliberately rather than reopening the analysis.
 |---|---|---|
 | 4.1 Curated skill pack in client UI | **Done** | — |
 | 4.2 Supervision visual QA | **Deferred** (decided) | A client who needs it |
-| 4.3 Agency Agents skill packs | Open, extends 4.1 | Nothing — buildable now |
+| 4.3 Agency Agents skill packs | **Done** — exit gate now enforced | — |
 | 4.4 ScrapeGraphAI | **Closed** — superseded by Firecrawl | — |
 | 4.5 SkyReels V2 | **Closed** — contract only | GPU host + license review |
 | 4.6 Prime Agent | **Closed** — operator-side by design | — |
@@ -495,10 +495,49 @@ it yet.
 `V96VisualQaReport` is already the contract for that day, so reopening costs
 design time, not discovery time.
 
-### 4.3 Agency Agents skill packs — extends 4.1
-Once 4.1 exists, importing curated role manifests has somewhere to land. Keep
-the rule from the plan: client cloud receives only Veloce-authored reviewed
-contracts, never third-party prompt files.
+### 4.3 Agency Agents skill packs — **DONE (2026-08-11)**
+
+This entry read as "import more roles". That was already finished. The STAR plan
+asks for a *small initial pack* — "architecture, code review, accessibility,
+research, technical writing, video, and minimal-change" — and those are exactly
+the seven manifests in `V96_CURATED_SKILL_PACK`, with six published live (§2f).
+The plan also offers "a local/operator skill-pack importer **or** checked-in
+curated manifests"; checked-in manifests is the path taken.
+
+**What was actually unmet was the plan's exit gate:** *a selected role improves a
+task without increasing tool permissions or changing the cloud manifest.* The
+first half had no enforcement at all.
+
+`allowedTools` was free text. The only assertion was `length > 0`, so a future
+manifest could have declared `allowedTools: ["execute-shell"]` and passed every
+test in the suite. A curated role would have silently granted a permission the
+platform never agreed to — the precise failure the exit gate exists to prevent.
+
+Now closed:
+
+- **`V96_PERMITTED_SKILL_TOOLS`** is a closed vocabulary in `v96Contracts.ts`.
+  Every verb is read-only, a test run, or writing a reviewable deliverable.
+  Nothing executes a shell, reaches the network, reads credentials, or mutates
+  tenant data. A second test asserts the *vocabulary itself* stays that way, so
+  widening it is a deliberate act rather than something that arrives attached to
+  a new role.
+- **`V96_PERMITTED_SKILL_SURFACES`** is closed too — a role advertising a
+  surface that does not exist is a control a client can see and never reach.
+- **`validateV96SkillManifest`** returns the reasons a role is unpublishable.
+  The test suite is the gate; the skills route also filters on it as defence in
+  depth, so an unsound role cannot reach a client even if the test is skipped.
+- **The manifest half of the gate** is asserted directly: roles carry no
+  `provider` or `capability` of their own and reach a model only through the
+  existing lane, so publishing the pack requires nothing new from the cloud
+  manifest. A test pins that shape.
+
+**The gate was verified by planting `execute-shell` in a real role**, not by
+reading the assertions. The suite failed with `tool is outside the permitted
+vocabulary: execute-shell`, and passed again once reverted. Six new tests, 227
+passing.
+
+The rule from the plan is unchanged and now mechanically enforced: client cloud
+receives Veloce-authored reviewed contracts, never third-party prompt files.
 
 ### 4.4 ScrapeGraphAI — superseded in practice
 Firecrawl covers structured research through the same contract. Revisit only if
