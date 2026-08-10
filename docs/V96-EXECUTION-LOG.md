@@ -367,6 +367,26 @@ provider_credit_balance_exhausted`, failing 1.6 s after start with
 job record nests state under `job.status`, not top level — a poller reading the
 top level sees an empty string and records a false hang.
 
+### A Gemini image provider was evaluated and declined (2026-08-11)
+
+`GEMINI_API_KEY` is already in this tenant's `providerAllowlist` and Secret
+Manager, so routing images to Gemini looked like a way to unblock the lane
+without any OpenAI balance. It is a real option, and it is **not** a config
+line:
+
+- `capabilityProviderAllowlist.media` is `[elevenlabs, elevenlabs-music,
+  openai, heygen]` — Gemini is absent, and so is any Gemini branch in the code.
+- `runClientImageAdapter` (`clientMediaAdapter.ts:135`) is hardcoded to OpenAI:
+  a fixed `OPENAI_IMAGE_ENDPOINT`, a literal `provider: "openai"` on the result,
+  a `CLIENT_IMAGE_MODEL` defaulting to `gpt-image-1`, and an `isPng` magic-byte
+  check that Imagen output would likely fail because it can return JPEG.
+
+So it means a new adapter branch, provider key map, media allowlist entry, cost
+estimator, a generalized image-type check, tests, a new image build, a redeploy
+and a live smoke. **Declined:** topping up the OpenAI balance costs minutes and
+no deploy risk, against roughly a session of work to avoid it. Revisit only if
+OpenAI credit becomes an ongoing obstacle rather than a one-time top-up.
+
 ### Cost per run
 
 | Provider | Micros | Per run | Runs per $1 |
