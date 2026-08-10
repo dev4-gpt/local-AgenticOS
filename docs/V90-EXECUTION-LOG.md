@@ -8,7 +8,7 @@ This one answers a narrower question: *what changed, what is live, and what is
 next.* Update this file rather than opening a second log.
 
 **Last updated:** 2026-08-10
-**Live:** `veloce-cloud-test-00134-fsm` · image `v98-provider-diagnostics`
+**Live:** `veloce-cloud-test-00136-p5j` · image `v98-provider-diagnostics`
 **Branch:** `codex/reviewed-additions-2026-08-10` = `origin/main`
 **Tests:** 215 passing · build clean · three security gates passing
 
@@ -22,9 +22,9 @@ Facts, not intentions. Read from the manifest and the live revision.
 |---|---|
 | `enabledCapabilities` | `tenant-data`, `artifacts`, `orchestration`, `delivery`, `quality`, `text-agents`, `seo-research`, **`media`** |
 | `providerAllowlist` | Supabase, Anthropic, OpenRouter, Gemini, **Firecrawl**, **ElevenLabs**, **ElevenLabs Music** |
-| `capabilityProviderAllowlist` | `{ "media": ["elevenlabs", "elevenlabs-music", "openai"] }` |
+| `capabilityProviderAllowlist` | `{ "media": ["elevenlabs", "elevenlabs-music", "openai", "heygen"] }` |
 | `seoAllowedHosts` | `markexis.com` |
-| `budget.monthlyCap` | **$10** shared across every lane — **2% used** ($0.158) |
+| `budget.monthlyCap` | **$10** shared across every lane — **3% used** ($0.261) |
 | `budget.warningThreshold` | `0.8` — warns at **$8.00** |
 
 `media` is enabled for **speech and music only**. `capabilityProviderAllowlist`
@@ -211,12 +211,38 @@ design. A harness must either batch under twelve or wait out the window.
 
 ## 2e. Media provider status (2026-08-10)
 
-| Lane | Provider | State |
-|---|---|---|
-| Speech | ElevenLabs | **live** — artifact `29025b7b` |
-| Music | ElevenLabs Music | **live** — artifact `e1e95906` |
-| Images | OpenAI `gpt-image-1` | wired, correct, **blocked: no OpenAI credit** |
-| Video | HeyGen | secret container + IAM ready, **needs the key** |
+| Lane | Provider | State | Cost |
+|---|---|---|---|
+| Speech | ElevenLabs | **live** — `29025b7b`, valid mp3 | $0.0002 |
+| Music | ElevenLabs Music | **live** — `e1e95906`, valid mp3 | $0.10 |
+| Video | HeyGen | **live** — `cbb8da42`, valid mp4 (2.4 MB, `ftyp/isom`) | $0.10 |
+| Images | OpenAI `gpt-image-1` | wired and correct, **blocked: no OpenAI credit** | — |
+
+Three of four are live. The gap is a balance on the owner's OpenAI account, not
+anything in the codebase.
+
+### HeyGen needs an avatar and a voice, and refuses without them
+
+The first render failed `video_input_invalid`, which is **our** validation
+rather than HeyGen's: the adapter requires `avatar_id` and `voice_id` and
+refuses rather than guessing, so no call was made and nothing was charged.
+
+Those ids are account-specific. The account holds 1,276 avatars and 2,461
+voices; the tenant defaults are now set in `runtimeEnv`:
+
+```
+CLIENT_HEYGEN_AVATAR_ID   11c86ee5b38a41e389b75bc6120f1aa8
+CLIENT_HEYGEN_VOICE_ID    b28d98301ed04b849591e98c2598d5b4
+```
+
+A render takes about 50 seconds and moves through `queued -> running ->
+succeeded`. This is a better failure than the image lane's: it caught missing
+configuration *before* spending anything, where OpenAI's only surfaced after a
+round trip.
+
+`outputUrl` is `none` on a succeeded video job by design. The worker downloads
+the render and commits it to tenant storage, so the client owns a durable file
+rather than a link to the provider's CDN that expires.
 
 ### The image lane is blocked at the provider, not in the code
 
@@ -249,9 +275,9 @@ same way — but it will now say so on the job rather than in the logs.
 
 ## 3. Next setup — media providers
 
-Speech and music are **done**. Images are wired and correct but blocked on an
-empty OpenAI balance; video needs a HeyGen key. Neither is constrained by the
-Veloce cap, which sits at 2% of $10 — they are constrained by provider credit.
+Speech, music and video are **done**. Images are wired and correct but blocked
+on an empty OpenAI balance. Nothing is constrained by the Veloce cap, which sits
+at 3% of $10 — only by provider credit.
 
 ### Cost per run
 
