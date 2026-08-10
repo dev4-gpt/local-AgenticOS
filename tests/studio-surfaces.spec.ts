@@ -9,10 +9,10 @@ test("covers every Create, Govern, and Deliver route the batch was meant to reac
   // must NOT also be configured here: two configs for one route is two sources
   // of truth, and the one that never renders is the one that rots.
   const expected = [
-    "create", "opendesign", "web-studio", "flow-lab", "studio", "openmontage", "music", "games", "thumbnails",
+    "create", "opendesign", "web-studio", "flow-lab", "games",
     "seo-guide", "guide", "integrations", "deliver",
   ];
-  for (const moved of ["seo", "video", "leads", "radar"]) {
+  for (const moved of ["seo", "video", "leads", "radar", "studio", "music", "openmontage", "thumbnails"]) {
     expect(isStudioSurface(moved as ClientWorkspaceSurface), `${moved} should have moved off the shared screen`).toBe(false);
   }
   for (const surface of expected) expect(isStudioSurface(surface as ClientWorkspaceSurface), `${surface} missing`).toBe(true);
@@ -54,7 +54,7 @@ test("presets carry a usable title and goal, not just a label", () => {
 test("surfaces whose capability is not active say so", () => {
   // These cannot produce their real output yet; each must explain why rather
   // than implying the asset was made.
-  for (const surface of ["music", "thumbnails", "openmontage"] as ClientWorkspaceSurface[]) {
+  for (const surface of ["integrations", "deliver"] as ClientWorkspaceSurface[]) {
     expect(studioSurface(surface)!.pendingCapability, `${surface} must state its blocked prerequisite`).toBeTruthy();
   }
   // A surface that fully works should not carry a caveat.

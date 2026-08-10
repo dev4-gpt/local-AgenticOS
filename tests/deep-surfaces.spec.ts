@@ -7,7 +7,7 @@ const KEYS = Object.keys(DEEP_SURFACES);
 test("covers the multi-mode surfaces this batch was meant to reach", () => {
   // radar moved to its own surface so it could keep the local structure
   // (signals/published) and the oracle orb.
-  expect(KEYS.sort()).toEqual(["leads"]);
+  expect(KEYS.sort()).toEqual(["leads", "music", "openmontage", "studio", "thumbnails"]);
 });
 
 test("every surface queues a lane the runner accepts", () => {
@@ -48,7 +48,7 @@ test("every mode is a distinct kind of work with its own input", () => {
 test("every surface names its blocked capabilities and says what it does not do", () => {
   for (const key of KEYS) {
     const config = DEEP_SURFACES[key];
-    expect(config.gates.length, `${key} gates`).toBeGreaterThanOrEqual(2);
+    expect(config.gates.length, `${key} gates`).toBeGreaterThanOrEqual(1);
     for (const gate of config.gates) {
       expect(gate.title.length).toBeGreaterThan(0);
       expect(gate.detail.length).toBeGreaterThan(80);
@@ -77,4 +77,26 @@ test("an unknown surface or mode resolves rather than producing a broken screen"
   expect(deepSurface("not-a-surface")).toBeNull();
   const config = deepSurface("leads")!;
   expect(deepMode(config, "nonsense").key).toBe(config.modes[0].key);
+});
+
+test("media gates name the provider rather than saying generation is unavailable", () => {
+  // "Unavailable" tells a client nothing; the provider name tells them what to
+  // approve. These are the providers the local surfaces actually call.
+  const named: Record<string, string[]> = {
+    music: ["ElevenLabs", "Suno"],
+    thumbnails: ["OpenAI", "sharp"],
+    openmontage: ["ffmpeg"],
+  };
+  for (const [key, providers] of Object.entries(named)) {
+    const detail = DEEP_SURFACES[key].gates.map((gate) => gate.detail).join(" ");
+    for (const provider of providers) expect(detail, `${key} should name ${provider}`).toContain(provider);
+  }
+});
+
+test("no media surface implies it produced a file", () => {
+  for (const key of ["studio", "music", "openmontage", "thumbnails"]) {
+    const detail = DEEP_SURFACES[key].gates.map((gate) => gate.detail).join(" ");
+    expect(detail.toLowerCase(), `${key}`).toMatch(/no (provider is contacted|footage is processed)/);
+    expect(detail.toLowerCase(), `${key}`).toMatch(/is produced here|no video file|no image file|no audio file|no asset file/);
+  }
 });

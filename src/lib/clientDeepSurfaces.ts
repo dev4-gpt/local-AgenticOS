@@ -1,4 +1,4 @@
-// Leads as a hosted multi-mode surface.
+// The multi-mode hosted surfaces.
 //
 // Video and Radar started here and outgrew it: each needed the local product's
 // own structure and, for Radar, its oracle. This config remains the right shape
@@ -57,6 +57,159 @@ const NO_RETRIEVAL =
   "Do not claim to have visited a site, run a search, contacted a service, or read anything you were not given. Where a judgement needs data you were not given, say which data is needed.";
 
 export const DEEP_SURFACES: Record<string, DeepSurface> = {
+  studio: {
+    surface: "studio",
+    eyebrow: "IV. Create · Media",
+    title: "Agent Studio",
+    description: "Set the creative direction a media run needs before anyone spends on generation. Image, speech and video each activate with their own approved provider.",
+    accent: "#c4b5fd",
+    outputNoun: "directions",
+    modes: [
+      {
+        key: "direction", label: "Direction", action: "Set the direction", artifactIntent: "brief",
+        description: "Decide what every asset in this campaign has to have in common before any of them exist.",
+        presets: [
+          { label: "Campaign direction", direction: "Set the creative direction: the single idea, the visual language, the tone, and what must be true in every asset for it to belong to this campaign." },
+          { label: "Brand rules", direction: "Write the rules a generated asset must follow to look like it came from this brand, and the ones that would make it obviously off-brand." },
+          { label: "Reference brief", direction: "Describe the references worth matching and, more usefully, exactly what about each one is worth matching." },
+        ],
+        subjectLabel: "What this is for", subjectPlaceholder: "The campaign or launch",
+        directionLabel: "The audience and the message", directionPlaceholder: "Who sees this, where, and what they should feel.",
+        sourceLabel: "Existing brand notes · optional", sourcePlaceholder: "Paste guidelines or notes you already have.",
+      },
+      {
+        key: "assets", label: "Asset list", action: "List the assets", artifactIntent: "brief",
+        description: "Turn the direction into the specific list of assets someone has to produce.",
+        presets: [
+          { label: "Asset list", direction: "List every asset this campaign needs: what each one is, where it runs, its dimensions or duration, and the one job it does." },
+          { label: "Prompt set", direction: "Write the generation prompt for each asset, specific enough that two people would get comparable results from it." },
+          { label: "Review checklist", direction: "Write the checklist for accepting or rejecting a generated asset, with the failure modes to look for." },
+        ],
+        subjectLabel: "The campaign", subjectPlaceholder: "Which campaign is this for?",
+        directionLabel: "Channels and constraints", directionPlaceholder: "Where these run, and any hard limits on size or length.",
+        sourceLabel: "The direction · optional", sourcePlaceholder: "Paste the creative direction these assets must follow.",
+      },
+    ],
+    gates: [
+      { title: "Image, speech and video generation", detail: "Locally this runs through the operator's own media pipeline. Each generator needs its own approved provider, credentials and per-asset budget for this client. No provider is contacted from this surface and no asset file is produced here." },
+      { title: "Asset storage and rehydration", detail: "Reprocessing stored media needs the media worker, which is not enabled for this tenant. Directions and asset lists are kept as tenant artifacts you can act on elsewhere." },
+    ],
+  },
+
+  music: {
+    surface: "music",
+    eyebrow: "IV. Create · Audio",
+    title: "Music Studio",
+    description: "Work out how it should sound and where it will be used. Generation activates with an approved music provider.",
+    accent: "#22d3ee",
+    outputNoun: "compositions",
+    modes: [
+      {
+        key: "track", label: "Track", action: "Brief the track", artifactIntent: "brief",
+        description: "Describe the piece precisely enough that a composer or a generator could produce it.",
+        presets: [
+          { label: "Brand theme", direction: "Brief a brand theme: mood, tempo, instrumentation, length, and the moment it plays. Say what it must not sound like." },
+          { label: "Podcast intro", direction: "Brief a podcast intro: length, feel, and how it hands off to the host without stepping on the first line." },
+          { label: "Background score", direction: "Brief a background score that supports narration without competing with it: dynamics, where it recedes, where it lifts." },
+        ],
+        subjectLabel: "What the music is for", subjectPlaceholder: "The piece and where it plays",
+        directionLabel: "The feeling", directionPlaceholder: "Mood, tempo, instruments, length, and any reference feel.",
+        sourceLabel: "Script or timing · optional", sourcePlaceholder: "Paste the narration or cue timings this has to fit.",
+      },
+      {
+        key: "identity", label: "Sonic identity", action: "Define the identity", artifactIntent: "brief",
+        description: "Decide what this brand consistently sounds like, so separate pieces feel related.",
+        presets: [
+          { label: "Sonic identity", direction: "Define the sonic identity: the palette, the tempo range, the instruments that recur, and the rules that keep separate pieces recognisably related." },
+          { label: "Cue library", direction: "Plan a cue library: each cue's purpose, length, and where it is used, so a team can pick without asking." },
+          { label: "Voice direction", direction: "Write the voice direction: pace, register, warmth, and the delivery notes that keep reads consistent between sessions." },
+        ],
+        subjectLabel: "The brand", subjectPlaceholder: "Whose sound is this?",
+        directionLabel: "How it should feel", directionPlaceholder: "The impression you want, and what would feel wrong.",
+        sourceLabel: "Existing audio notes · optional", sourcePlaceholder: "Paste anything already decided about the sound.",
+      },
+    ],
+    gates: [
+      { title: "Music and voice generation", detail: "Locally this runs through ElevenLabs and Suno. Each needs its own approved credentials and per-generation budget for this client. No provider is contacted from this surface and no audio file is produced here." },
+    ],
+  },
+
+  openmontage: {
+    surface: "openmontage",
+    eyebrow: "IV. Create · Video assembly",
+    title: "OpenMontage",
+    description: "Plan the edit: what appears, in what order, and how it cuts. Assembly activates when a render worker is approved.",
+    accent: "#fb923c",
+    outputNoun: "edit plans",
+    modes: [
+      {
+        key: "edit", label: "Edit plan", action: "Plan the edit", artifactIntent: "brief",
+        description: "Decide the arc and the order before anyone opens an editor.",
+        presets: [
+          { label: "Trailer", direction: "Plan a trailer: the arc, the scene order, the pacing, and exactly where the title lands." },
+          { label: "Montage", direction: "Plan a montage: the through-line that makes it more than a sequence, the beats, and the music feel." },
+          { label: "Recut", direction: "Plan a recut of existing footage: what to keep, what to cut, and what the new order argues that the old one did not." },
+        ],
+        subjectLabel: "What is being edited", subjectPlaceholder: "The film or sequence",
+        directionLabel: "The story and the length", directionPlaceholder: "What it has to say, the target length, and the footage you have.",
+        sourceLabel: "Footage notes · optional", sourcePlaceholder: "Paste your shot log or footage list.",
+      },
+      {
+        key: "scenes", label: "Scene list", action: "Build the scene list", artifactIntent: "brief",
+        description: "Break the plan into scenes with duration, purpose, and the transition into the next.",
+        presets: [
+          { label: "Scene list", direction: "Build a scene list: each scene's duration, its purpose, what is on screen, and the transition into the next." },
+          { label: "Cut points", direction: "Identify the cut points and justify each one: what makes this the right frame to leave on." },
+          { label: "Sound plan", direction: "Plan the sound: where music enters and drops, where silence does the work, and where dialogue must be clear." },
+        ],
+        subjectLabel: "The edit", subjectPlaceholder: "Which edit is this for?",
+        directionLabel: "Pacing and constraints", directionPlaceholder: "The rhythm you want and any fixed durations.",
+        sourceLabel: "The edit plan · optional", sourcePlaceholder: "Paste the plan these scenes should follow.",
+      },
+    ],
+    gates: [
+      { title: "Assembly and rendering", detail: "Locally this drives ffmpeg on the operator's own machine to assemble the cut. It needs a dedicated render worker, which is not enabled for this tenant. No footage is processed here and no video file is produced." },
+    ],
+  },
+
+  thumbnails: {
+    surface: "thumbnails",
+    eyebrow: "IV. Create · Thumbnails",
+    title: "Thumbnail Studio",
+    description: "Work out the one idea a thumbnail has to carry. Image generation activates with an approved provider.",
+    accent: "#fbbf24",
+    outputNoun: "thumbnail directions",
+    modes: [
+      {
+        key: "direction", label: "Direction", action: "Set the direction", artifactIntent: "brief",
+        description: "Decide the single idea, the focal element, and why it earns the click at small size.",
+        presets: [
+          { label: "Video thumbnail", direction: "Set the thumbnail direction: the one idea, the focal element, the text if any, and why it earns the click beside the content it competes with." },
+          { label: "Launch visual", direction: "Set a launch visual direction that survives being small and being surrounded by noise." },
+          { label: "Social cover", direction: "Set a social cover direction with the safe areas and platform crops accounted for." },
+        ],
+        subjectLabel: "What it is for", subjectPlaceholder: "The video, post, or launch",
+        directionLabel: "The promise and the competition", directionPlaceholder: "What the click promises, and what it sits beside.",
+        sourceLabel: "Title or script · optional", sourcePlaceholder: "Paste the title or opening lines this has to match.",
+      },
+      {
+        key: "variants", label: "Variants", action: "Plan the variants", artifactIntent: "brief",
+        description: "Plan a set worth testing against each other, where each variant changes one thing.",
+        presets: [
+          { label: "Test set", direction: "Plan a set of thumbnail variants where each one changes exactly one variable, and say what a win on each would tell you." },
+          { label: "Text treatments", direction: "Plan the text treatments: how few words, at what size, and where they can sit without covering the subject." },
+          { label: "Crop plan", direction: "Plan the crops for each platform's aspect ratio, keeping the focal element intact in every one." },
+        ],
+        subjectLabel: "The thumbnail", subjectPlaceholder: "Which thumbnail is this for?",
+        directionLabel: "What to test", directionPlaceholder: "The question you want the test to answer.",
+        sourceLabel: "The direction · optional", sourcePlaceholder: "Paste the direction these variants explore.",
+      },
+    ],
+    gates: [
+      { title: "Image generation", detail: "Locally this calls OpenAI for the image and processes it with sharp on the operator's machine. It needs an approved image provider, credentials and per-image budget for this client. No provider is contacted from this surface and no image file is produced here." },
+    ],
+  },
+
 
 
   leads: {

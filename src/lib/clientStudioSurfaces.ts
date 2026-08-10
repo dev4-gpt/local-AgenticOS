@@ -110,66 +110,6 @@ export const STUDIO_SURFACES: Partial<Record<ClientWorkspaceSurface, StudioSurfa
       { key: "goal", label: "How it plays", placeholder: "The rules, the win state, and the feel you want.", multiline: true },
     ],
   },
-  studio: {
-    eyebrow: "IV. Create · Media", title: "Agent Studio", accent: "#c4b5fd",
-    description: "Prepare production-ready media direction. Image, speech, and video generation each activate with their own approved provider.",
-    action: "Prepare the direction", artifactIntent: "brief", outputNoun: "directions",
-    pendingCapability: "Media generation runs through separate provider adapters. Until one is approved for this tenant, this surface produces the production direction rather than the asset.",
-    presets: [
-      { label: "Campaign brief", title: "Campaign creative brief", goal: "Prepare a creative direction: the idea, the visual language, the shot list, and what must be true in every asset." },
-      { label: "Narration script", title: "Narration script", goal: "Prepare a narration script with timing notes and the tone to read it in." },
-      { label: "Creative concept", title: "Creative concept", goal: "Prepare a creative concept: the insight, the expression, and three executions." },
-    ],
-    fields: [
-      { key: "title", label: "Name this direction", placeholder: "Campaign, narration…" },
-      { key: "goal", label: "The direction", placeholder: "Audience, message, tone, and any brand constraints.", multiline: true },
-    ],
-  },
-  openmontage: {
-    eyebrow: "IV. Create · Video assembly", title: "OpenMontage", accent: "#fb923c",
-    description: "Plan an edit: scenes, order, and transitions. Assembly runs when a render worker is approved.",
-    action: "Plan the montage", artifactIntent: "brief", outputNoun: "montage plans",
-    pendingCapability: "Assembly needs a dedicated render worker, which is not enabled for this tenant. This surface plans the edit only.",
-    presets: [
-      { label: "Trailer", title: "Trailer plan", goal: "Plan a trailer: the arc, scene order, pacing, and where the title lands." },
-      { label: "Scene list", title: "Scene list", goal: "Plan a scene list with duration, purpose, and the transition into the next." },
-      { label: "Montage", title: "Montage brief", goal: "Plan a montage: the through-line, the beats, and the music feel." },
-    ],
-    fields: [
-      { key: "title", label: "Name this edit", placeholder: "Trailer, montage…" },
-      { key: "goal", label: "The edit", placeholder: "Footage available, the story, and the target length.", multiline: true },
-    ],
-  },
-  music: {
-    eyebrow: "IV. Create · Audio", title: "Music Studio", accent: "#22d3ee",
-    description: "Prepare a composition brief. Audio generation activates per approved provider and budget.",
-    action: "Prepare the composition", artifactIntent: "brief", outputNoun: "compositions",
-    pendingCapability: "Audio generation needs an approved music provider. This surface prepares the composition brief.",
-    presets: [
-      { label: "Brand theme", title: "Brand theme", goal: "Prepare a brand theme brief: mood, instrumentation, tempo, and where it will be used." },
-      { label: "Podcast intro", title: "Podcast intro", goal: "Prepare a podcast intro brief: length, feel, and how it hands off to the host." },
-      { label: "Background score", title: "Background score", goal: "Prepare a background score brief that supports narration without competing with it." },
-    ],
-    fields: [
-      { key: "title", label: "Name this piece", placeholder: "Brand theme, intro…" },
-      { key: "goal", label: "The sound", placeholder: "Mood, tempo, instrumentation, length, and reference feel.", multiline: true },
-    ],
-  },
-  thumbnails: {
-    eyebrow: "IV. Create · Thumbnails", title: "Thumbnail Studio", accent: "#fbbf24",
-    description: "Work out the visual direction for a thumbnail. Image generation activates with an approved media provider.",
-    action: "Prepare the direction", artifactIntent: "brief", outputNoun: "thumbnail directions",
-    pendingCapability: "Image generation needs an approved media provider. This surface prepares the direction and the reasoning behind it.",
-    presets: [
-      { label: "YouTube thumbnail", title: "YouTube thumbnail", goal: "Prepare a thumbnail direction: the one idea, the focal element, the text, and why it earns the click." },
-      { label: "Launch visual", title: "Launch visual", goal: "Prepare a launch visual direction that works at small sizes and in a crowded feed." },
-      { label: "Social cover", title: "Social cover", goal: "Prepare a social cover direction with safe areas and platform crops accounted for." },
-    ],
-    fields: [
-      { key: "title", label: "Name this thumbnail", placeholder: "Episode, launch…" },
-      { key: "goal", label: "What it is for", placeholder: "The subject, the promise, and the competing content it sits beside.", multiline: true },
-    ],
-  },
   "seo-guide": {
     eyebrow: "V. Govern · Guidance", title: "SEO Guide", accent: "#5ab896",
     description: "Produce a durable SEO playbook the team can work from.",
