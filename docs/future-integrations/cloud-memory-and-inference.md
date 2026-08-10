@@ -743,6 +743,40 @@ The intent vocabulary is the cause: `preview` renders, `brief` plans, and there
 is no value for *finished copy*. Most surfaces genuinely want a brief, so the
 shared instruction should not simply be reworded. A third intent is the fix.
 
+## Create parity and the copy intent (2026-08-10)
+
+**Status:** deployed on `veloce-cloud-test-00124-548` (`v91-create-parity`).
+
+**A third artifact intent.** `preview` renders and `brief` plans, and there was
+no value meaning *finished copy*. Because the runner appends its format
+instruction after the goal, `brief` won every disagreement: Radar asked for a
+publishable thread and received `# Content Brief: Competitor Annual Billing
+Launch`. `copy` asks for the words as they would be published.
+
+Proven live on the same signal. Under `copy`, artifact `9a3238a4` opens
+*"Annual billing is no longer a 'pro' feature or a discount strategy. It is now
+table stakes."* - the thread itself, with no brief heading. Under `brief`,
+Music returned `# Brand Theme Brief` and Thumbnails `# Thumbnail Brief`, so the
+existing surfaces are untouched. The change is additive by design: most
+surfaces genuinely want a brief, so the shared instruction was not reworded.
+
+The worker previously collapsed anything that was not `brief` into `preview`,
+which would have rendered copy as HTML. It now validates the intent.
+
+**The four media Create surfaces** - Agent Studio, Music, OpenMontage and
+Thumbnails - shared one Batch A screen with a single input and a caveat that
+generation was unavailable, while locally each is a studio with its own
+gallery. Each now has two distinct modes and a library.
+
+Their gates name the provider the local surface actually calls: ElevenLabs and
+Suno for music, OpenAI and sharp for thumbnails, ffmpeg for assembly. "Unavailable"
+tells a client nothing; the provider name tells them what to approve. Tests
+assert those names stay and that no media surface implies it produced a file.
+
+Batch A's shared config now holds only surfaces that genuinely are one input and
+one output: Create Brief, OpenDesign, Web Studio, Flow Lab, Game Studio, the two
+Guides, Integrations and Delivery.
+
 ## Service-role export (owed item, done)
 
 `client-lifecycle.mjs --mode export --slug veloce-cloud-test` ran against the
