@@ -100,3 +100,35 @@ test("no media surface implies it produced a file", () => {
     expect(detail.toLowerCase(), `${key}`).toMatch(/is produced here|no video file|no image file|no audio file|no asset file/);
   }
 });
+
+test("only surfaces with a real hosted provider offer generation", () => {
+  // Assembly needs a render worker that does not exist hosted, so OpenMontage
+  // must not grow a generate button just because its siblings have one.
+  expect(DEEP_SURFACES.openmontage.generation).toBeUndefined();
+  expect(DEEP_SURFACES.leads.generation).toBeUndefined();
+  for (const key of ["studio", "music", "thumbnails"]) {
+    expect(DEEP_SURFACES[key].generation, `${key} should offer generation`).toBeTruthy();
+  }
+});
+
+test("each generation lane names a provider the media worker actually accepts", () => {
+  // The worker rejects anything outside this set with provider_not_allowed.
+  const accepted = new Set(["elevenlabs", "openai", "suno", "heygen"]);
+  for (const key of Object.keys(DEEP_SURFACES)) {
+    const generation = DEEP_SURFACES[key].generation;
+    if (!generation) continue;
+    expect(accepted.has(generation.provider), `${key} names ${generation.provider}`).toBe(true);
+    expect(generation.capability).toBe("media");
+  }
+});
+
+test("generation states its cost before the button is pressed", () => {
+  // These providers are metered per run, and one render is a visible fraction
+  // of a small monthly cap. A client should know that before clicking.
+  for (const key of Object.keys(DEEP_SURFACES)) {
+    const generation = DEEP_SURFACES[key].generation;
+    if (!generation) continue;
+    expect(generation.costHint.length, `${key} cost hint`).toBeGreaterThan(30);
+    expect(generation.costHint, `${key} should quote a figure`).toMatch(/\$[0-9]/);
+  }
+});

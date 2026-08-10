@@ -32,6 +32,9 @@ export default function ClientDeepWorkspace({ surfaceKey }: { surfaceKey: string
   const [source, setSource] = useState("");
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [busy, setBusy] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generated, setGenerated] = useState<string | null>(null);
+  const [capabilities, setCapabilities] = useState<string[] | null>(null);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -43,6 +46,16 @@ export default function ClientDeepWorkspace({ surfaceKey }: { surfaceKey: string
     setExecutions(Array.isArray(data?.executions) ? data.executions as Execution[] : []);
   }, [config]);
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    // The generation control is driven by the tenant's real capability list, so
+    // the same build plans for one client and generates for another.
+    (async () => {
+      const response = await fetch("/api/capabilities", { cache: "no-store" }).catch(() => null);
+      const data = await response?.json().catch(() => null);
+      setCapabilities(response?.ok && Array.isArray(data?.capabilities) ? data.capabilities.map((item: { id: string }) => item.id) : []);
+    })();
+  }, []);
 
   const inFlight = executions.some((item) => item.status === "queued" || item.status === "running");
   useEffect(() => {
@@ -70,6 +83,42 @@ export default function ClientDeepWorkspace({ surfaceKey }: { surfaceKey: string
     if (!response?.ok) setError(typeof data?.error === "string" ? data.error : "workspace_execution_queue_failed");
     else { setSource(""); await load(); setShowLibrary(true); }
     setBusy(false);
+  }
+
+  /** Runs the surface's generation lane on the text already written here. */
+  async function generate() {
+    if (!config?.generation || generating) return;
+    const material = [subject.trim(), direction.trim(), source.trim()].filter(Boolean).join("\n\n");
+    if (!material) return;
+    setGenerating(true); setError(""); setGenerated(null);
+    const payload = config.generation.inputKind === "image"
+      ? { prompt: material.slice(0, 4_000), size: "1024x1024", quality: "medium" }
+      : { text: material.slice(0, 4_000) };
+    const response = await fetch("/api/client-runtime/hosted-jobs", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ capability: config.generation.capability, provider: config.generation.provider, input: payload }),
+    }).catch(() => null);
+    const queued = await response?.json().catch(() => null);
+    if (!response?.ok || typeof queued?.jobId !== "string") {
+      setError(typeof queued?.error === "string" ? queued.error : "generation_queue_failed");
+      setGenerating(false);
+      return;
+    }
+    for (let attempt = 0; attempt < 90; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 2000));
+      const poll = await fetch(`/api/client-runtime/jobs/${queued.jobId}`, { cache: "no-store" }).catch(() => null);
+      const job = (await poll?.json().catch(() => null))?.job;
+      if (job?.status === "succeeded") {
+        const artifactId = typeof job.output_metadata?.artifactId === "string" ? job.output_metadata.artifactId : null;
+        setGenerated(artifactId);
+        if (!artifactId) setError("generation_produced_no_artifact");
+        break;
+      }
+      if (job?.status === "failed" || job?.status === "cancelled") { setError(job.error_code || "generation_failed"); break; }
+      if (attempt === 89) setError("generation_timed_out");
+    }
+    setGenerating(false);
+    await load();
   }
 
   async function download(artifactId: string) {
@@ -143,6 +192,24 @@ export default function ClientDeepWorkspace({ surfaceKey }: { surfaceKey: string
           {busy ? <LoaderCircle size={13} className="animate-spin" /> : <FileText size={13} />}{busy ? "Queueing" : mode.action}
         </button>
       </section>
+
+      {config.generation && (capabilities?.includes(config.generation.capability)
+        ? <section className="panel p-4 md:p-5">
+            <p className="text-[12px] font-semibold" style={{ color: "var(--cream)" }}>{config.generation.action}</p>
+            <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>
+              Runs the approved {config.generation.provider} lane on what you have written above. {config.generation.costHint}
+            </p>
+            <button type="button" disabled={generating || !subject.trim()} onClick={() => void generate()}
+              className="mt-3 inline-flex items-center gap-2 rounded-md border px-4 py-2.5 text-[11px] font-semibold disabled:opacity-40"
+              style={{ borderColor: `${config.accent}70`, color: config.accent, background: `${config.accent}14` }}>
+              {generating ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />}
+              {generating ? "Generating" : config.generation.action}
+            </button>
+            {generated && <button type="button" onClick={() => void download(generated)}
+              className="mt-3 ml-2 inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-[10px]"
+              style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Download size={12} />Download what it made</button>}
+          </section>
+        : null)}
 
       {config.gates.map((gate) => <section key={gate.title} className="panel flex items-start gap-2.5 p-3.5">
         <Info size={14} className="mt-0.5 shrink-0" style={{ color: "#fbbf24" }} />

@@ -51,6 +51,23 @@ export type DeepSurface = {
   modes: DeepMode[];
   /** Named blocked capabilities. Each says what is missing and what is not done here. */
   gates: Array<{ title: string; detail: string }>;
+  /**
+   * The hosted generation lane behind this surface, when one exists. The
+   * control only appears once the capability and provider are approved for the
+   * tenant, so the same build is a planning surface for one client and a
+   * generating one for another without a code change.
+   *
+   * `costHint` is shown before the button is pressed. These providers are
+   * metered per run rather than per token, and a client should know that a
+   * single render is a visible fraction of a small monthly cap.
+   */
+  generation?: {
+    provider: "elevenlabs" | "openai" | "suno" | "heygen";
+    capability: "media";
+    action: string;
+    inputKind: "text" | "image";
+    costHint: string;
+  };
 };
 
 const NO_RETRIEVAL =
@@ -90,6 +107,7 @@ export const DEEP_SURFACES: Record<string, DeepSurface> = {
         sourceLabel: "The direction · optional", sourcePlaceholder: "Paste the creative direction these assets must follow.",
       },
     ],
+    generation: { provider: "elevenlabs", capability: "media", action: "Generate the voiceover", inputKind: "text", costHint: "Speech is billed per character, roughly $0.003 per thousand." },
     gates: [
       { title: "Image, speech and video generation", detail: "Locally this runs through the operator's own media pipeline. Each generator needs its own approved provider, credentials and per-asset budget for this client. No provider is contacted from this surface and no asset file is produced here." },
       { title: "Asset storage and rehydration", detail: "Reprocessing stored media needs the media worker, which is not enabled for this tenant. Directions and asset lists are kept as tenant artifacts you can act on elsewhere." },
@@ -129,6 +147,7 @@ export const DEEP_SURFACES: Record<string, DeepSurface> = {
         sourceLabel: "Existing audio notes · optional", sourcePlaceholder: "Paste anything already decided about the sound.",
       },
     ],
+    generation: { provider: "suno", capability: "media", action: "Generate the track", inputKind: "text", costHint: "Each track is about $0.10, so ten runs consume a $1 monthly cap." },
     gates: [
       { title: "Music and voice generation", detail: "Locally this runs through ElevenLabs and Suno. Each needs its own approved credentials and per-generation budget for this client. No provider is contacted from this surface and no audio file is produced here." },
     ],
@@ -205,6 +224,7 @@ export const DEEP_SURFACES: Record<string, DeepSurface> = {
         sourceLabel: "The direction · optional", sourcePlaceholder: "Paste the direction these variants explore.",
       },
     ],
+    generation: { provider: "openai", capability: "media", action: "Generate the thumbnail", inputKind: "image", costHint: "Each image is about $0.04, and around $0.12 at high quality in a non-square size." },
     gates: [
       { title: "Image generation", detail: "Locally this calls OpenAI for the image and processes it with sharp on the operator's machine. It needs an approved image provider, credentials and per-image budget for this client. No provider is contacted from this surface and no image file is produced here." },
     ],
