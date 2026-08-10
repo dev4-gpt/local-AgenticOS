@@ -804,6 +804,55 @@ ffmpeg, NotebookLM, Hunter and Apollo. The planning and writing half runs in a
 tenant; the generating and publishing half needs that client's own approved
 provider. That is the boundary, not a backlog.
 
+## SEO parity and the live research lane (2026-08-10)
+
+**Status:** deployed on `veloce-cloud-test-00126-srz` (`v93-hosted-jobs-fix`).
+
+SEO now carries the local information architecture exactly: Research, AEO,
+OpenSEO, Generate, Deploy, History, Transcripts, Skill. An earlier hosted
+version had four simplified tabs, which lost the structure even where the
+capability was portable. Research and AEO read the tenant's real capability
+list rather than hardcoded gate text, so each ungates the moment the adapter is
+approved for that client.
+
+OpenSEO is deliberately not an iframe. Local embeds the operator's own paid
+dashboard; showing a client an account they do not control is not parity.
+
+### The defect the first live call found
+
+Every setting was correct - capability enabled, `FIRECRAWL_API_KEY` in the
+allowlist, provider calls on, secret bound - and the route still returned
+`provider_not_allowlisted`.
+
+`hosted-jobs` passed the provider *name* into `clientCapabilityProviderEnabled`,
+whose parameter is `providerKey`. With the JSON override unset that falls
+through to `clientProviderEnabled("firecrawl")`, which searches a list of key
+names for the literal string `firecrawl` and can never match. **No provider
+capability had ever been reachable through hosted-jobs** - not research, not
+media - unless that JSON happened to be set with lowercase names, which the
+provisioner does not do. Every unit test passed while the path was unreachable.
+
+### Evidence
+
+Market search returned three real sources for "AI agent operating system
+platform for agencies": `agiresearch/AIOS`, PwC's Agent OS, and an architecture
+walkthrough. With scraping on, all three normalised to `complete` at confidence
+1 through the v90 contract. The comparison produced artifact `c5e62205` (3013
+chars) attributing each claim to a numbered source and URL, and separating
+Veloce's governance-and-isolation position from AIOS's kernel-scheduling
+position and PwC's enterprise orchestration.
+
+The AEO check on `markexis.com` found robots.txt and llms.txt present,
+structured data absent, and all six AI crawlers allowed. A check against a
+host outside `seoAllowedHosts` failed with `seo_url_not_allowed`, so the
+allowlist holds.
+
+**A quality note worth keeping.** With scraping off, two of three results
+normalised to `failed` because the provider returned no description and the
+contract refuses a record with no evidence. That is the contract working, but
+it means search alone yields thin records: scraping is what makes the
+comparison substantive, and it is off by default for cost.
+
 ## Service-role export (owed item, done)
 
 `client-lifecycle.mjs --mode export --slug veloce-cloud-test` ran against the
