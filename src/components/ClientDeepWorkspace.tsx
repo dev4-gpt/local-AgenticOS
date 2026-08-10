@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, FileText, Info, LoaderCircle, Sparkles, Upload } from "lucide-react";
 import ClientRuntimeNotice from "@/components/ClientRuntimeNotice";
+import ClientSpendMeter from "@/components/ClientSpendMeter";
 import { deepGoal, deepMode, deepSurface } from "@/lib/clientDeepSurfaces";
 
 type Execution = {
@@ -155,6 +156,7 @@ export default function ClientDeepWorkspace({ surfaceKey }: { surfaceKey: string
       </div>
     </section>
 
+    <ClientSpendMeter />
     {error && <ClientRuntimeNotice code={error} />}
 
     {!showLibrary && <>

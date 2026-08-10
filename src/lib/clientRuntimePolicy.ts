@@ -22,6 +22,7 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/client-runtime/observability",
   "/api/client-runtime/records",
   "/api/client-runtime/notebooks",
+  "/api/client-runtime/budget",
   "/api/client-runtime/workflows",
   "/api/client-runtime/paperclip",
   "/api/client-runtime/room",

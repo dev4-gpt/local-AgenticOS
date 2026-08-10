@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Bot, Download, ExternalLink, FileText, Info, LoaderCircle, Rocket, Search, Sparkles, TrendingUp } from "lucide-react";
 import ClientRuntimeNotice from "@/components/ClientRuntimeNotice";
+import ClientSpendMeter from "@/components/ClientSpendMeter";
 import {
   AEO_CRAWLERS,
   SEO_ARTICLE_PRESETS,
@@ -179,6 +180,7 @@ export default function ClientSeoWorkspace() {
       </div>
     </section>
 
+    <ClientSpendMeter />
     {error && <ClientRuntimeNotice code={error} />}
 
     {tab === "research" && <>

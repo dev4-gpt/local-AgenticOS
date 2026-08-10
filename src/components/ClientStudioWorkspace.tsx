@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Download, FileText, Info, LoaderCircle, Play, RotateCw, Sparkles, Terminal } from "lucide-react";
 import ClientRuntimeNotice from "@/components/ClientRuntimeNotice";
+import ClientSpendMeter from "@/components/ClientSpendMeter";
 import { studioGoal, studioSurface } from "@/lib/clientStudioSurfaces";
 import type { ClientTerminalEvent, ClientWorkspaceSurface } from "@/lib/clientWorkspaceExecution";
 
@@ -106,6 +107,8 @@ export default function ClientStudioWorkspace({ surface }: { surface: ClientWork
         </button>)}
       </div>
     </section>
+
+    <ClientSpendMeter />
 
     {config.pendingCapability && <section className="panel flex items-start gap-2.5 p-3.5">
       <Info size={14} className="mt-0.5 shrink-0" style={{ color: "#fbbf24" }} />

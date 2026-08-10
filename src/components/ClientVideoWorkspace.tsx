@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Clapperboard, Download, FileText, Info, LoaderCircle, Upload } from "lucide-react";
 import ClientRuntimeNotice from "@/components/ClientRuntimeNotice";
+import ClientSpendMeter from "@/components/ClientSpendMeter";
 import {
   VIDEO_GATES,
   VIDEO_LENGTHS,
@@ -115,6 +116,7 @@ export default function ClientVideoWorkspace() {
       </div>
     </section>
 
+    <ClientSpendMeter />
     {error && <ClientRuntimeNotice code={error} />}
 
     {tab !== "library" && <>

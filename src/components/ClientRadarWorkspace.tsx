@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Download, Info, LoaderCircle, Radar, Send } from "lucide-react";
 import ClientRuntimeNotice from "@/components/ClientRuntimeNotice";
+import ClientSpendMeter from "@/components/ClientSpendMeter";
 import {
   RADAR_FORMATS,
   RADAR_PUBLISH_NOTICE,
@@ -123,6 +124,7 @@ export default function ClientRadarWorkspace() {
       </div>
     </section>
 
+    <ClientSpendMeter />
     {error && <ClientRuntimeNotice code={error} />}
 
     {tab === "signals" && <>
