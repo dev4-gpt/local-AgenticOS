@@ -8,9 +8,9 @@ This one answers a narrower question: *what changed, what is live, and what is
 next.* Update this file rather than opening a second log.
 
 **Last updated:** 2026-08-10
-**Live:** `veloce-cloud-test-00132-xw5` · image `v97-media-capability-fix`
+**Live:** `veloce-cloud-test-00134-fsm` · image `v98-provider-diagnostics`
 **Branch:** `codex/reviewed-additions-2026-08-10` = `origin/main`
-**Tests:** 214 passing · build clean · three security gates passing
+**Tests:** 215 passing · build clean · three security gates passing
 
 ---
 
@@ -22,7 +22,7 @@ Facts, not intentions. Read from the manifest and the live revision.
 |---|---|
 | `enabledCapabilities` | `tenant-data`, `artifacts`, `orchestration`, `delivery`, `quality`, `text-agents`, `seo-research`, **`media`** |
 | `providerAllowlist` | Supabase, Anthropic, OpenRouter, Gemini, **Firecrawl**, **ElevenLabs**, **ElevenLabs Music** |
-| `capabilityProviderAllowlist` | `{ "media": ["elevenlabs", "elevenlabs-music"] }` |
+| `capabilityProviderAllowlist` | `{ "media": ["elevenlabs", "elevenlabs-music", "openai"] }` |
 | `seoAllowedHosts` | `markexis.com` |
 | `budget.monthlyCap` | **$10** shared across every lane — **2% used** ($0.158) |
 | `budget.warningThreshold` | `0.8` — warns at **$8.00** |
@@ -209,11 +209,49 @@ writing any harness against it.
 job: no client can sweep all surfaces inside one fifteen-minute window, by
 design. A harness must either batch under twelve or wait out the window.
 
+## 2e. Media provider status (2026-08-10)
+
+| Lane | Provider | State |
+|---|---|---|
+| Speech | ElevenLabs | **live** — artifact `29025b7b` |
+| Music | ElevenLabs Music | **live** — artifact `e1e95906` |
+| Images | OpenAI `gpt-image-1` | wired, correct, **blocked: no OpenAI credit** |
+| Video | HeyGen | secret container + IAM ready, **needs the key** |
+
+### The image lane is blocked at the provider, not in the code
+
+The first live call returned `provider_request_failed`, which was true and
+useless. The Cloud Run logs held the real answer: OpenAI replied **429**.
+
+That is ambiguous in an expensive way — a 429 there is either a real rate limit,
+which waiting fixes, or `insufficient_quota`, which waiting never fixes. So the
+image adapter now carries the provider's own short machine code through to the
+job. Retried on `v98`, the same request answered immediately:
+
+```
+-> failed: provider_credit_balance_exhausted
+```
+
+That is OpenAI's code, not our interpretation. The key is valid, the wiring is
+right, and the account has no prepaid balance. Image generation bills against
+purchased credit; a payment method on file is not sufficient.
+
+Only the machine code is propagated — the message body can echo request
+content, so it is deliberately dropped.
+
+**A failed provider call costs nothing.** Both attempts settled at `$0.0000`
+with the reservation refunded, visible as `openai $0.0000` in the ledger.
+
+### Expect the same shape from HeyGen
+
+HeyGen also runs on prepaid credit. If that balance is empty it will fail the
+same way — but it will now say so on the job rather than in the logs.
+
 ## 3. Next setup — media providers
 
-Speech and music are **done**. What remains is images (OpenAI) and video
-(HeyGen), both of which need keys that do not exist yet. The cap is now $10, so
-neither is constrained by budget — only by the keys.
+Speech and music are **done**. Images are wired and correct but blocked on an
+empty OpenAI balance; video needs a HeyGen key. Neither is constrained by the
+Veloce cap, which sits at 2% of $10 — they are constrained by provider credit.
 
 ### Cost per run
 
