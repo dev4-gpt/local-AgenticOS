@@ -181,6 +181,34 @@ with the ceiling.** At $10 an under-counting estimate can overspend by ten
 times what it could at $1. Set hard limits in the ElevenLabs and OpenAI
 dashboards too; that is the only ceiling the party billing you enforces.
 
+## 2d. Full-surface sweep (2026-08-10, `00132-xw5`)
+
+**Every surface is proven.** Twenty-one in one consolidated run, five already
+holding artifacts from earlier the same day on the same lane.
+
+| Group | Artifacts |
+|---|---|
+| Create | `d696f4f0` create · `f95c1a7b` opendesign · `6d6ff58d` web-studio · `d5971266` flow-lab · `4ea2f777` games · `1f338ea3` studio · `5b95f48e` openmontage · `7c960f43` thumbnails · `432dfc76` video |
+| Govern | `8b1cc84a` seo · `93c09ef8` seo-guide · `6058b210` guide · seo/research (3 sources) · seo/aeo |
+| Orchestrate | `756c95a6` ruflo · loop `passed` |
+| Media | `35e8392e` speech |
+| Context | memory, journal, goal, notebook records all `201` |
+| Earlier same day | `41719bcd` integrations · `eeba26e5` deliver · `7dc1f7b1` leads · `9a3238a4` radar · `66b9593f` notebook |
+
+**Cost: $0.0031** for twenty-one runs. Total spend $0.1610 of $10.00 (2%), and
+the music track from earlier is still most of it.
+
+### Two apparent failures that were not defects
+
+**Loop reports `passed`, not `succeeded`.** The sweep polled for the wrong word
+and recorded a failure against a lane that had worked. Worth knowing before
+writing any harness against it.
+
+**The rate limiter refused the last five.** `workspace-execution-write` allows
+**12 per 900s**, and the sweep queued seventeen. That is the guard doing its
+job: no client can sweep all surfaces inside one fifteen-minute window, by
+design. A harness must either batch under twelve or wait out the window.
+
 ## 3. Next setup — media providers
 
 Speech and music are **done**. What remains is images (OpenAI) and video
