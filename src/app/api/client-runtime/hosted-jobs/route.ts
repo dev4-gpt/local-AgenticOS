@@ -42,7 +42,11 @@ export async function POST(request: Request) {
   if (spec.providers.length > 0) {
     if (!clientProviderCallsEnabled() || !provider || !spec.providers.includes(provider)) return NextResponse.json({ ok: false, error: "provider_calls_require_approval" }, { status: 403 });
     const key = PROVIDER_KEYS[provider];
-    if (!key || !clientCapabilityProviderEnabled(spec.capability, provider) || !clientProviderEnabled(key)) return NextResponse.json({ ok: false, error: "provider_not_allowlisted" }, { status: 403 });
+    // Both checks take the provider KEY, not the provider name. Passing the
+    // name meant clientProviderEnabled searched a list of key names for
+    // "firecrawl" and never matched, so every hosted-jobs provider capability
+    // returned provider_not_allowlisted regardless of configuration.
+    if (!key || !clientCapabilityProviderEnabled(spec.capability, key) || !clientProviderEnabled(key)) return NextResponse.json({ ok: false, error: "provider_not_allowlisted" }, { status: 403 });
   } else if (provider) {
     return NextResponse.json({ ok: false, error: "provider_not_allowed" }, { status: 400 });
   }

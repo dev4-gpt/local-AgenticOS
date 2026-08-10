@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { evaluateRobotsForAgents, marketSearchToV90Records, resolveDiscoveredUrl, safePublicUrl } from "../src/lib/clientSeoAdapter";
 import { normalizeV90ResearchRecord } from "../src/lib/v90Contracts";
@@ -110,4 +111,14 @@ test("a result with neither content nor summary fails with a stated reason", () 
   expect(record.status).toBe("failed");
   expect(record.failureReason).toBeTruthy();
   expect(record.citations).toHaveLength(0);
+});
+
+test("the hosted-jobs provider check compares keys, not provider names", () => {
+  // Found by the first live call: the route passed the provider name
+  // ("firecrawl") into a check that compares against the allowlist of provider
+  // KEYS ("FIRECRAWL_API_KEY"), so no provider capability could ever be
+  // enabled through hosted-jobs. This pins the two apart.
+  const source = readFileSync("src/app/api/client-runtime/hosted-jobs/route.ts", "utf8");
+  expect(source).toContain("clientCapabilityProviderEnabled(spec.capability, key)");
+  expect(source).not.toContain("clientCapabilityProviderEnabled(spec.capability, provider)");
 });
