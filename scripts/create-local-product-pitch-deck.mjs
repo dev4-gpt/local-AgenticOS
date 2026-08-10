@@ -1,3 +1,16 @@
+/**
+ * Builds the local-product pitch deck: screenshots six local routes, then
+ * writes the HTML and PDF into launch-system/pitch-deck-local-product/.
+ *
+ *   npm run dev:workspace          # serve the local runtime on 3939 first
+ *   npm run build:pitch-deck
+ *
+ * Env: VELOCE_LOCAL_URL (default http://127.0.0.1:3939)
+ *      VELOCE_COOKIE_FILE (default /private/tmp/veloce-runtime-cookie.txt)
+ *
+ * Output is gitignored on purpose — it is reproducible, ~10 MB, and its
+ * screenshots are of the private local runtime.
+ */
 import { chromium } from "playwright";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";

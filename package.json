@@ -12,6 +12,7 @@
     "dev:experience": "npm --prefix product-experience run dev",
     "build": "next build",
     "build:v0": "env VELOCE_DIST_DIR=.next-v0 next build",
+    "build:pitch-deck": "node scripts/create-local-product-pitch-deck.mjs",
     "start": "next start -H 127.0.0.1",
     "start:v0": "env VELOCE_DIST_DIR=.next-v0 PORT=3737 next start -H 127.0.0.1",
     "start:workspace": "next start -H 127.0.0.1 -p 3939",
