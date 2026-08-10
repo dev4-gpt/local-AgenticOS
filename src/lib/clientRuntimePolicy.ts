@@ -75,7 +75,18 @@ export function clientProviderCallsEnabled() {
   return process.env.CLIENT_PROVIDER_CALLS_ENABLED === "1";
 }
 
-export function clientCapabilityProviderEnabled(capability: string, providerKey: string) {
+/**
+ * Takes both identifiers because the two checks compare different things, and
+ * conflating them has broken this twice in opposite directions.
+ *
+ * The per-capability JSON is written from the manifest's
+ * `capabilityProviderAllowlist`, which lists provider *names* ("elevenlabs").
+ * The fallback defers to the global allowlist, which lists provider *keys*
+ * ("ELEVENLABS_API_KEY"). Passing one where the other is expected silently
+ * denies every provider, which reads as a configuration problem rather than
+ * the code bug it is.
+ */
+export function clientCapabilityProviderEnabled(capability: string, provider: string, providerKey: string) {
   const configured = process.env.CLIENT_CAPABILITY_PROVIDER_ALLOWLIST_JSON?.trim();
   if (!configured) return clientProviderEnabled(providerKey);
   try {
@@ -83,8 +94,11 @@ export function clientCapabilityProviderEnabled(capability: string, providerKey:
     const providers = parsed && typeof parsed === "object" && !Array.isArray(parsed)
       ? (parsed as Record<string, unknown>)[capability]
       : undefined;
+    // A capability absent from the JSON is not narrowed by it.
     if (!Array.isArray(providers)) return clientProviderEnabled(providerKey);
-    return providers.map((value) => String(value).trim()).includes(providerKey);
+    // Narrowing must still respect the global allowlist: naming a provider for
+    // a capability cannot grant a key the tenant was never approved for.
+    return providers.map((value) => String(value).trim()).includes(provider) && clientProviderEnabled(providerKey);
   } catch {
     return false;
   }

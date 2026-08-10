@@ -113,12 +113,28 @@ test("a result with neither content nor summary fails with a stated reason", () 
   expect(record.citations).toHaveLength(0);
 });
 
-test("the hosted-jobs provider check compares keys, not provider names", () => {
-  // Found by the first live call: the route passed the provider name
-  // ("firecrawl") into a check that compares against the allowlist of provider
-  // KEYS ("FIRECRAWL_API_KEY"), so no provider capability could ever be
-  // enabled through hosted-jobs. This pins the two apart.
-  const source = readFileSync("src/app/api/client-runtime/hosted-jobs/route.ts", "utf8");
-  expect(source).toContain("clientCapabilityProviderEnabled(spec.capability, key)");
-  expect(source).not.toContain("clientCapabilityProviderEnabled(spec.capability, provider)");
+test("the provider check receives both the name and the key", () => {
+  // This broke twice in opposite directions. The per-capability JSON lists
+  // provider names ("elevenlabs"); the global allowlist lists provider keys
+  // ("ELEVENLABS_API_KEY"). Passing only one silently denies every provider,
+  // which then reads as a configuration problem rather than a code bug.
+  const route = readFileSync("src/app/api/client-runtime/hosted-jobs/route.ts", "utf8");
+  expect(route).toContain("clientCapabilityProviderEnabled(spec.capability, provider, key)");
+
+  const policy = readFileSync("src/lib/clientRuntimePolicy.ts", "utf8");
+  const fn = policy.slice(policy.indexOf("export function clientCapabilityProviderEnabled"));
+  const body = fn.slice(0, fn.indexOf("\nexport "));
+  // The JSON path matches on the name; the fallback and the final guard use
+  // the key. Both must appear, or one of the two lanes is comparing wrongly.
+  expect(body).toContain("includes(provider)");
+  expect(body).toContain("clientProviderEnabled(providerKey)");
+});
+
+test("naming a provider for a capability cannot grant an unapproved key", () => {
+  // Narrowing must intersect with the global allowlist, never replace it:
+  // otherwise capabilityProviderAllowlist becomes a way to widen access.
+  const policy = readFileSync("src/lib/clientRuntimePolicy.ts", "utf8");
+  const fn = policy.slice(policy.indexOf("export function clientCapabilityProviderEnabled"));
+  const body = fn.slice(0, fn.indexOf("\nexport "));
+  expect(body).toContain("includes(provider) && clientProviderEnabled(providerKey)");
 });
