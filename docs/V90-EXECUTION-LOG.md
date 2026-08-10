@@ -8,7 +8,7 @@ This one answers a narrower question: *what changed, what is live, and what is
 next.* Update this file rather than opening a second log.
 
 **Last updated:** 2026-08-10
-**Live:** `veloce-cloud-test-00128-rrw` · image `v95-spend-meter`
+**Live:** `veloce-cloud-test-00131-9rt` · image `v97-media-capability-fix`
 **Branch:** `codex/reviewed-additions-2026-08-10` = `origin/main`
 **Tests:** 214 passing · build clean · three security gates passing
 
@@ -20,13 +20,16 @@ Facts, not intentions. Read from the manifest and the live revision.
 
 | Setting | Value |
 |---|---|
-| `enabledCapabilities` | `tenant-data`, `artifacts`, `orchestration`, `delivery`, `quality`, `text-agents`, `seo-research` |
-| `providerAllowlist` | Supabase, Anthropic, OpenRouter, Gemini, **Firecrawl** |
+| `enabledCapabilities` | `tenant-data`, `artifacts`, `orchestration`, `delivery`, `quality`, `text-agents`, `seo-research`, **`media`** |
+| `providerAllowlist` | Supabase, Anthropic, OpenRouter, Gemini, **Firecrawl**, **ElevenLabs**, **ElevenLabs Music** |
+| `capabilityProviderAllowlist` | `{ "media": ["elevenlabs", "elevenlabs-music"] }` |
 | `seoAllowedHosts` | `markexis.com` |
-| `budget.monthlyCap` | **$1** shared across every lane |
+| `budget.monthlyCap` | **$1** shared across every lane — **16% used** |
 
-`media` is **not** enabled. The adapters exist and the UI is wired; only the
-keys and the capability flag are missing.
+`media` is enabled for **speech and music only**. `capabilityProviderAllowlist`
+scopes it to the two providers there are keys for; without that, enabling the
+capability demands a Secret Manager slot for HeyGen and Suno as well. Adding
+images or video later is a manifest line plus a secret, not a code change.
 
 ---
 
@@ -53,6 +56,22 @@ keys and the capability flag are missing.
 - Verified live: **$0.0578 of $1.00 (6%)** — anthropic $0.0439, openrouter
   $0.0080, firecrawl $0.0050, antigravity $0.0009.
 
+### Media lanes — speech and music live
+Proven on `00131-9rt` with keys the owner already held:
+
+| Lane | Artifact | Bytes | Cost |
+|---|---|---|---|
+| Speech (`elevenlabs`) | `29025b7b` | 85,725 | $0.0002 |
+| Music (`elevenlabs-music`, 30s) | `e1e95906` | 479,862 | $0.1000 |
+
+Both verified as real mp3 by magic bytes rather than content-type, and the
+ledger recorded them as separate providers — which is the point of keeping the
+two on separate keys and meters. Budget moved 6% → 16%, delta $0.1002 against a
+$0.1002 estimate.
+
+**Music is the expensive lane.** Eight more thirty-second tracks exhaust the $1
+cap, and the guard then fails other surfaces. Raise the cap before real use.
+
 ### Runtime
 - **`copy` artifact intent** — `preview` renders, `brief` plans, `copy` returns
   the finished piece. Added because the runner's format instruction is appended
@@ -68,8 +87,18 @@ Each passed every unit test and was invisible until a real call was made.
    `created_by`, which the worker's RPC never sets. Gallery went 2 → 17.
 2. **A Ruflo swarm with no coordinator report read as a clean run.** Fixed in
    the worker, the label, and the settle RPC.
-3. **`hosted-jobs` compared a provider *name* against a list of provider
-   *keys*.** No provider capability had ever been reachable through that route.
+3. **`hosted-jobs` conflated provider name and provider key — twice, in
+   opposite directions.** The first fix corrected the fallback path, which
+   compares against the global allowlist of *keys*. Setting
+   `capabilityProviderAllowlist` then activated the per-capability JSON path,
+   which lists provider *names*, and the same single parameter was now wrong
+   the other way. Codex settled it in `74af0c1` by taking both identifiers
+   separately. Until then no provider capability had ever been reachable
+   through that route.
+4. **A correct fix in the repo is not a correct deployment.** The v96 image was
+   built at 13:14 UTC and `74af0c1` landed at 13:33 UTC, so the smoke failed
+   against code that was already fixed on disk. With two sessions committing,
+   check the commit timestamp against the build timestamp before diagnosing.
 
 ### Owed evidence, closed
 - Controlled cloud failures for Ruflo and Room.
@@ -92,16 +121,18 @@ Kimi). Those authenticate a terminal session, not server-side API calls, and are
 not usable as cloud keys.
 
 **The music lane was repointed from Suno to ElevenLabs** because the owner
-already holds that key. `POST /v1/music` returns audio directly, so the lane is
+already holds that key, and both lanes are now proven live. `POST /v1/music` returns audio directly, so the lane is
 synchronous like speech with no task polling. Suno stays implemented and
 allowlistable; it is simply not what the surface calls.
 
-**Net effect: two of four media lanes can be tested with keys already owned.**
+**Net effect: two of four media lanes are live on keys already owned.** Images
+need an `OPENAI_API_KEY`; video needs `HEYGEN_API_KEY`. Neither is bought yet.
 
 ## 3. Next setup — media providers
 
-The decision to enable all four, HeyGen included, is taken: **everything is
-being tested.** The cap stays at $1 for now, which is the binding constraint.
+Speech and music are **done**. What remains is images (OpenAI) and video
+(HeyGen), both of which need keys that do not exist yet. The $1 cap is the
+binding constraint and is now 16% consumed by a single music test.
 
 ### Cost per run
 
@@ -149,9 +180,10 @@ Validate before deploying.
 deploy refuses if a secret has no enabled version, so a missing key fails loudly
 rather than silently.
 
-**Expected first failure:** the media path shares the `hosted-jobs` route whose
-key/name bug was only just fixed, and no media provider has ever completed a
-live call. Budget the first run for discovery, not confirmation.
+**The first media run did fail**, as expected, though not for the predicted
+reason: the deployed image predated the fix rather than lacking it. The lane
+itself was sound. Budget the first run of images and video for discovery all
+the same — neither has ever completed a live call.
 
 ---
 
