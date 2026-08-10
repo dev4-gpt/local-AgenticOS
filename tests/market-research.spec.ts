@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { resolveDiscoveredUrl, safePublicUrl } from "../src/lib/clientSeoAdapter";
+import { evaluateRobotsForAgents, marketSearchToV90Records, resolveDiscoveredUrl, safePublicUrl } from "../src/lib/clientSeoAdapter";
+import { normalizeV90ResearchRecord } from "../src/lib/v90Contracts";
 
 // A direct scrape points the runtime at a host the tenant named, so it keeps
 // the allowlist. These are the cases that would otherwise reach something the
@@ -45,4 +46,68 @@ test("a discovered URL is still rejected when it is internal or plaintext", asyn
   expect(await resolveDiscoveredUrl("https://127.0.0.1/x", ["https://127.0.0.1/x"])).toBeNull();
   expect(await resolveDiscoveredUrl("https://169.254.169.254/x", ["https://169.254.169.254/x"])).toBeNull();
   expect(await resolveDiscoveredUrl("https://user:pass@competitor.com/x", ["https://user:pass@competitor.com/x"])).toBeNull();
+});
+
+test("a site with no rule for a crawler is reported as allowing it", () => {
+  // Absence of a rule means allowed - that is how robots.txt works, and
+  // reporting "unknown" would be softer but wrong.
+  const verdicts = evaluateRobotsForAgents("User-agent: *\nDisallow:");
+  expect(verdicts.every((verdict) => verdict.allowed)).toBe(true);
+});
+
+test("a blanket disallow blocks every crawler, a targeted one blocks only that crawler", () => {
+  const all = evaluateRobotsForAgents("User-agent: *\nDisallow: /");
+  expect(all.every((verdict) => !verdict.allowed)).toBe(true);
+
+  const targeted = evaluateRobotsForAgents("User-agent: GPTBot\nDisallow: /\n\nUser-agent: *\nDisallow:");
+  expect(targeted.find((verdict) => verdict.agent === "GPTBot")?.allowed).toBe(false);
+  expect(targeted.find((verdict) => verdict.agent === "ClaudeBot")?.allowed).toBe(true);
+});
+
+test("a specific rule wins over the wildcard rather than stacking with it", () => {
+  // The site blocks everyone by default but lets ClaudeBot through.
+  const robots = "User-agent: *\nDisallow: /\n\nUser-agent: ClaudeBot\nDisallow:";
+  const verdicts = evaluateRobotsForAgents(robots);
+  expect(verdicts.find((verdict) => verdict.agent === "ClaudeBot")?.allowed).toBe(true);
+  expect(verdicts.find((verdict) => verdict.agent === "GPTBot")?.allowed).toBe(false);
+});
+
+test("comments and grouped agents are handled", () => {
+  const robots = "# block the ai crawlers\nUser-agent: GPTBot\nUser-agent: PerplexityBot\nDisallow: / # everything";
+  const verdicts = evaluateRobotsForAgents(robots);
+  expect(verdicts.find((verdict) => verdict.agent === "GPTBot")?.allowed).toBe(false);
+  expect(verdicts.find((verdict) => verdict.agent === "PerplexityBot")?.allowed).toBe(false);
+});
+
+test("an unscraped result is a partial record, never a complete one", () => {
+  const [record] = marketSearchToV90Records({
+    tenantSlug: "t", query: "q", scraped: false,
+    results: [{ url: "https://competitor.com/a", title: "T", description: "A snippet.", markdown: "" }],
+  });
+  // Saying "complete" for a page we only saw a snippet of would make every
+  // downstream claim look better sourced than it is.
+  expect(record.status).toBe("partial");
+  expect(record.confidence).toBe(0.5);
+  expect(record.citations[0].evidence).toBe("A snippet.");
+});
+
+test("a scraped result is complete, and every record passes the contract", () => {
+  const records = marketSearchToV90Records({
+    tenantSlug: "t", query: "q", scraped: true,
+    results: [{ url: "https://competitor.com/a", title: "T", description: "D", markdown: "Full page." }],
+  });
+  expect(records[0].status).toBe("complete");
+  expect(records[0].confidence).toBe(1);
+  // The contract is the thing downstream trusts, so the mapping must satisfy it.
+  expect(normalizeV90ResearchRecord(records[0])).not.toBeNull();
+});
+
+test("a result with neither content nor summary fails with a stated reason", () => {
+  const [record] = marketSearchToV90Records({
+    tenantSlug: "t", query: "q", scraped: false,
+    results: [{ url: "https://competitor.com/a", title: "", description: "", markdown: "" }],
+  });
+  expect(record.status).toBe("failed");
+  expect(record.failureReason).toBeTruthy();
+  expect(record.citations).toHaveLength(0);
 });

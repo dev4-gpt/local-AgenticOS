@@ -15,6 +15,8 @@ import {
   SEO_TABS,
   seoArticleGoal,
   seoArticleTitle,
+  seoComparisonGoal,
+  seoResearchTitle,
   type SeoTab,
 } from "@/lib/clientSeoWorkspace";
 
@@ -53,6 +55,8 @@ export default function ClientSeoWorkspace() {
   const [source, setSource] = useState("");
   // AEO state
   const [aeoSite, setAeoSite] = useState("");
+  const [aeoReport, setAeoReport] = useState<Record<string, unknown> | null>(null);
+  const [sources, setSources] = useState<Array<{ url: string; title: string; description: string; markdown?: string }>>([]);
 
   const load = useCallback(async () => {
     const [execRes, recRes, capRes] = await Promise.all([
@@ -82,9 +86,9 @@ export default function ClientSeoWorkspace() {
   const deliveryEnabled = capabilities?.includes("delivery") ?? false;
   const shipped = useMemo(() => executions.filter((item) => item.artifactId), [executions]);
 
+  /** Queues an execution. The caller owns the busy flag, because research
+   *  queues one mid-flight and a self-guard would depend on closure timing. */
   async function queue(title: string, goal: string, intent: "copy" | "brief") {
-    if (busy) return;
-    setBusy(true); setError("");
     const response = await fetch("/api/client-runtime/executions", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ surface: "seo", title, goal, artifactIntent: intent }),
@@ -92,6 +96,58 @@ export default function ClientSeoWorkspace() {
     const data = await response?.json().catch(() => null);
     if (!response?.ok) setError(typeof data?.error === "string" ? data.error : "workspace_execution_queue_failed");
     else { await load(); setTab("history"); }
+  }
+
+  /** Runs a hosted-jobs operation to completion and returns its output. */
+  async function runHostedSeo(input: Record<string, unknown>) {
+    const response = await fetch("/api/client-runtime/hosted-jobs", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ capability: "seo", provider: "firecrawl", input }),
+    }).catch(() => null);
+    const queued = await response?.json().catch(() => null);
+    if (!response?.ok || typeof queued?.jobId !== "string") {
+      setError(typeof queued?.error === "string" ? queued.error : "research_queue_failed");
+      return null;
+    }
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 2000));
+      const poll = await fetch(`/api/client-runtime/jobs/${queued.jobId}`, { cache: "no-store" }).catch(() => null);
+      const job = (await poll?.json().catch(() => null))?.job;
+      if (job?.status === "succeeded") return (job.output_metadata ?? {}) as Record<string, unknown>;
+      if (job?.status === "failed" || job?.status === "cancelled") { setError(job.error_code || "research_failed"); return null; }
+    }
+    setError("research_timed_out");
+    return null;
+  }
+
+  async function runResearch() {
+    if (busy || !question.trim() || !ourStrategy.trim()) return;
+    setBusy(true); setError(""); setSources([]);
+    const output = await runHostedSeo({ operation: "research", query: question, limit: SEO_RESEARCH_RESULT_LIMIT, scrapeResults: false });
+    if (output) {
+      const records = Array.isArray(output.records) ? output.records as Array<Record<string, unknown>> : [];
+      const found = records.map((record) => {
+        const fields = (record.fields ?? {}) as Record<string, unknown>;
+        return {
+          url: typeof record.sourceUrl === "string" ? record.sourceUrl : "",
+          title: typeof fields.title === "string" ? fields.title : "",
+          description: typeof fields.summary === "string" ? fields.summary : "",
+        };
+      }).filter((item) => item.url);
+      setSources(found);
+      // The comparison is a second step on purpose: the sources are shown
+      // first, so a client can see what it is being compared against.
+      if (found.length) await queue(seoResearchTitle(question), seoComparisonGoal({ question, ourStrategy, sources: found }), "brief");
+      else setError("research_no_sources");
+    }
+    setBusy(false);
+  }
+
+  async function runAeo() {
+    if (busy || !aeoSite.trim()) return;
+    setBusy(true); setError(""); setAeoReport(null);
+    const output = await runHostedSeo({ operation: "aeo", site: aeoSite.trim() });
+    if (output && output.report && typeof output.report === "object") setAeoReport(output.report as Record<string, unknown>);
     setBusy(false);
   }
 
@@ -140,12 +196,21 @@ export default function ClientSeoWorkspace() {
         <Field label="Our current strategy" value={ourStrategy} onChange={setOurStrategy} multiline
           placeholder="What we do today, so the comparison has something to compare against." />
         <button type="button" disabled={!researchEnabled || busy || !question.trim() || !ourStrategy.trim()}
+          onClick={() => void runResearch()}
           className="mt-4 inline-flex items-center gap-2 rounded-md px-4 py-2.5 text-[11px] font-semibold disabled:opacity-40"
           style={{ background: ACCENT, color: "#07111d" }}>
           {busy ? <LoaderCircle size={13} className="animate-spin" /> : <Search size={13} />}
           Search and compare
         </button>
         {!researchEnabled && <p className="mt-2 text-[10px]" style={{ color: "var(--cream-mute)" }}>Enabled by approving the research adapter for this client.</p>}
+        {sources.length > 0 && <div className="mt-4 space-y-2">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--cream-mute)" }}>Sources compared · {sources.length}</p>
+          {sources.map((item) => <a key={item.url} href={item.url} target="_blank" rel="noopener noreferrer"
+            className="block rounded-md border p-3" style={{ borderColor: "var(--line-soft)" }}>
+            <p className="truncate text-[11px]" style={{ color: "var(--cream)" }}>{item.title || item.url}</p>
+            <p className="truncate text-[10px]" style={{ color: "var(--cream-mute)" }}>{item.url}</p>
+          </a>)}
+        </div>}
       </section>
     </>}
 
@@ -163,9 +228,15 @@ export default function ClientSeoWorkspace() {
             <span className="font-mono text-[10px]" style={{ color: "var(--cream-mute)" }}>{crawler.agent}</span>
           </div>)}
         </div>
-        <button type="button" disabled={!researchEnabled || !aeoSite.trim()}
+        <button type="button" disabled={!researchEnabled || busy || !aeoSite.trim()} onClick={() => void runAeo()}
           className="mt-4 inline-flex items-center gap-2 rounded-md px-4 py-2.5 text-[11px] font-semibold disabled:opacity-40"
-          style={{ background: ACCENT, color: "#07111d" }}><Bot size={13} />Run the AEO check</button>
+          style={{ background: ACCENT, color: "#07111d" }}>
+          {busy ? <LoaderCircle size={13} className="animate-spin" /> : <Bot size={13} />}Run the AEO check</button>
+        {aeoReport && <div className="mt-4 rounded-md border p-3 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}>
+          <p>robots.txt {aeoReport.robotsChecked ? "found" : "not found — every crawler is allowed"}</p>
+          <p className="mt-1">llms.txt {(aeoReport.llmsTxt as { present?: boolean })?.present ? "published" : "not published"}</p>
+          <p className="mt-1">structured data {(aeoReport.structuredData as { present?: boolean })?.present ? "present" : "not detected"}</p>
+        </div>}
       </section>
     </>}
 
@@ -194,7 +265,7 @@ export default function ClientSeoWorkspace() {
       <Field label="Source material · optional" value={source} onChange={setSource} multiline
         placeholder="Paste a transcript or research the article should be grounded in. Picking a transcript fills this in." />
       <button type="button" disabled={busy || !query.trim() || !direction.trim()}
-        onClick={() => void queue(seoArticleTitle(query), seoArticleGoal({ query, direction, source }), "copy")}
+        onClick={async () => { setBusy(true); setError(""); await queue(seoArticleTitle(query), seoArticleGoal({ query, direction, source }), "copy"); setBusy(false); }}
         className="mt-4 inline-flex items-center gap-2 rounded-md px-4 py-2.5 text-[11px] font-semibold disabled:opacity-40"
         style={{ background: ACCENT, color: "#07111d" }}>
         {busy ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />}{busy ? "Queueing" : "Write the article"}

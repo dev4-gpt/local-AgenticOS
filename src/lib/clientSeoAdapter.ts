@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { V90_CONTRACT_VERSION, type V90StructuredResearchRecord } from "@/lib/v90Contracts";
 import { providerEnvKey } from "@/lib/providerKeys";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { isPrivateAddress, readBoundedResponseBytes, resolvesToPublicAddresses } from "@/lib/clientNetworkSafety";
@@ -177,4 +179,142 @@ export async function resolveDiscoveredUrl(value: string, discovered: readonly s
   const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (isPrivateAddress(hostname)) return null;
   return await resolvesToPublicAddresses(hostname) ? parsed.toString() : null;
+}
+
+// --- AEO ------------------------------------------------------------------
+//
+// Answer Engine Optimisation asks whether AI crawlers may read a site, whether
+// it publishes an llms.txt, and whether its pages carry structured data. It
+// reads only robots.txt and llms.txt on a host the client named, so it goes
+// through the same allowlist and DNS checks as any other named-target fetch.
+
+export type AeoCrawlerVerdict = { name: string; agent: string; allowed: boolean };
+
+export type AeoReport = {
+  site: string;
+  robotsChecked: boolean;
+  crawlers: AeoCrawlerVerdict[];
+  llmsTxt: { present: boolean; url: string };
+  structuredData: { present: boolean };
+  fetchedAt: string;
+};
+
+const AEO_AGENTS: ReadonlyArray<{ name: string; agent: string }> = [
+  { name: "ChatGPT", agent: "GPTBot" },
+  { name: "ChatGPT-User", agent: "ChatGPT-User" },
+  { name: "Claude", agent: "ClaudeBot" },
+  { name: "Perplexity", agent: "PerplexityBot" },
+  { name: "Google-Extended", agent: "Google-Extended" },
+  { name: "Applebot-Extended", agent: "Applebot-Extended" },
+];
+
+/**
+ * Absence of a rule means allowed, which is how robots.txt actually works: a
+ * crawler not named anywhere is not blocked. Reporting "unknown" would be
+ * softer but wrong, and the whole point of the check is to tell a client
+ * whether these crawlers can read them today.
+ */
+export function evaluateRobotsForAgents(robots: string): AeoCrawlerVerdict[] {
+  const lines = robots.split("\n").map((line) => line.replace(/#.*$/, "").trim()).filter(Boolean);
+  const groups: Array<{ agents: string[]; disallows: string[] }> = [];
+  let current: { agents: string[]; disallows: string[] } | null = null;
+  let previousWasAgent = false;
+  for (const line of lines) {
+    const [rawField, ...rest] = line.split(":");
+    const field = rawField.trim().toLowerCase();
+    const value = rest.join(":").trim();
+    if (field === "user-agent") {
+      if (!current || !previousWasAgent) { current = { agents: [], disallows: [] }; groups.push(current); }
+      current.agents.push(value.toLowerCase());
+      previousWasAgent = true;
+    } else if (current && field === "disallow") {
+      current.disallows.push(value);
+      previousWasAgent = false;
+    } else {
+      previousWasAgent = false;
+    }
+  }
+  const blocks = (agent: string) => {
+    const lower = agent.toLowerCase();
+    const matching = groups.filter((group) => group.agents.includes(lower));
+    const applicable = matching.length ? matching : groups.filter((group) => group.agents.includes("*"));
+    // A bare "Disallow:" clears a block; "Disallow: /" blocks the whole site.
+    return applicable.some((group) => group.disallows.some((rule) => rule === "/"));
+  };
+  return AEO_AGENTS.map((entry) => ({ ...entry, allowed: !blocks(entry.agent) }));
+}
+
+export async function runClientAeoCheck(input: { site: string }) {
+  if (!clientProviderEnabled("FIRECRAWL_API_KEY")) return { ok: false as const, status: 403, error: "provider_not_allowlisted" };
+  const host = input.site.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+  const origin = await resolveSafePublicUrl(`https://${host}/`);
+  if (!origin) return { ok: false as const, status: 400, error: "seo_url_not_allowed" };
+  const base = new URL(origin).origin;
+
+  async function readText(path: string) {
+    const target = await resolveSafePublicUrl(`${base}${path}`);
+    if (!target) return null;
+    const response = await fetch(target, { cache: "no-store", redirect: "follow", signal: AbortSignal.timeout(20_000) }).catch(() => null);
+    if (!response?.ok) return null;
+    const bytes = await readBoundedResponseBytes(response, 500_000);
+    return bytes ? bytes.toString("utf8") : null;
+  }
+
+  const robots = await readText("/robots.txt");
+  const llms = await readText("/llms.txt");
+  const home = await readText("/");
+
+  return {
+    ok: true as const,
+    provider: "firecrawl",
+    model: "aeo-check",
+    report: {
+      site: host,
+      robotsChecked: robots !== null,
+      // With no robots.txt every crawler is allowed, which is the honest read.
+      crawlers: robots === null ? AEO_AGENTS.map((entry) => ({ ...entry, allowed: true })) : evaluateRobotsForAgents(robots),
+      llmsTxt: { present: llms !== null && llms.trim().length > 0, url: `${base}/llms.txt` },
+      structuredData: { present: typeof home === "string" && /application\/ld\+json/i.test(home) },
+      fetchedAt: new Date().toISOString(),
+    } satisfies AeoReport,
+    estimatedCostMicros: 0,
+  };
+}
+
+// --- v90 normalisation -----------------------------------------------------
+
+/**
+ * Every search result becomes a citation-bearing v90 record. A result whose
+ * page was not scraped still carries its snippet as evidence, marked partial:
+ * that is genuinely less than a read page, and saying so is the difference
+ * between a source and a claim.
+ */
+export function marketSearchToV90Records(input: {
+  tenantSlug: string;
+  query: string;
+  results: readonly MarketSearchResult[];
+  scraped: boolean;
+}): V90StructuredResearchRecord[] {
+  const retrievedAt = new Date().toISOString();
+  return input.results.map((result) => {
+    const evidence = (result.markdown || result.description || "").trim().slice(0, 600);
+    const complete = input.scraped && Boolean(result.markdown.trim());
+    return {
+      contractVersion: V90_CONTRACT_VERSION,
+      id: randomUUID(),
+      tenantSlug: input.tenantSlug,
+      provider: "firecrawl" as const,
+      sourceUrl: result.url,
+      retrievedAt,
+      fields: {
+        query: input.query,
+        title: result.title || null,
+        summary: result.description || null,
+      },
+      citations: evidence ? [{ url: result.url, title: result.title || undefined, retrievedAt, evidence }] : [],
+      confidence: complete ? 1 : evidence ? 0.5 : 0,
+      status: evidence ? (complete ? "complete" : "partial") : "failed",
+      ...(evidence ? {} : { failureReason: "the result carried neither page content nor a summary" }),
+    } satisfies V90StructuredResearchRecord;
+  });
 }

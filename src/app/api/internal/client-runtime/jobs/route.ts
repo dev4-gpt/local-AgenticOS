@@ -4,7 +4,7 @@ import { clientProviderDefaultModel, clientTextMaxOutputTokens, clientTextUsageC
 import { clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { estimateClientImageCostMicros, estimateClientMediaCostMicros, runClientHeyGenAdapter, runClientImageAdapter, runClientMusicAdapter, runClientSpeechAdapter, safeProviderOutputUrl } from "@/lib/clientMediaAdapter";
 import { readBoundedResponseBytes } from "@/lib/clientNetworkSafety";
-import { runClientSeoAdapter } from "@/lib/clientSeoAdapter";
+import { marketSearchToV90Records, runClientAeoCheck, runClientMarketSearch, runClientSeoAdapter } from "@/lib/clientSeoAdapter";
 import { clientGcpAccessToken, clientStorageConfig, uploadClientStorageObject } from "@/lib/clientStorage";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { validClientTaskIdentity } from "@/lib/clientTaskAuth";
@@ -897,6 +897,9 @@ async function processSeoJob(jobId: string, tenantSlug: string, workerToken: str
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const input = job.input_metadata ?? {};
+  const operation = typeof input.operation === "string" ? input.operation : "scrape";
+  if (operation === "aeo") return processAeoJob(jobId, tenantSlug, workerToken, input);
+  if (operation === "research") return processMarketResearchJob(jobId, tenantSlug, workerToken, input);
   const estimate = Math.max(0, Math.round(Number(process.env.CLIENT_FIRECRAWL_COST_MICROS ?? 1000)));
   if (!(await reserveClientRuntimeBudgetWorker({ provider: "firecrawl", model: "scrape-markdown", amountMicros: estimate, jobId, workerToken }))) {
     logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider: "firecrawl", status: 429 });
@@ -923,6 +926,66 @@ async function processSeoJob(jobId: string, tenantSlug: string, workerToken: str
     metadata: safeClientProviderMetadata(result.metadata),
   };
   if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: result.estimatedCostMicros, usageMetadata: { estimatedCostMicros: result.estimatedCostMicros } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
+  return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+/**
+ * AEO reads only robots.txt and llms.txt on a host the client named, so it
+ * costs nothing at the provider and reserves no budget.
+ */
+async function processAeoJob(jobId: string, tenantSlug: string, workerToken: string, input: Record<string, unknown>) {
+  const result = await runClientAeoCheck({ site: typeof input.site === "string" ? input.site : "" });
+  if (!result.ok) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const outputMetadata = { adapter: "firecrawl-aeo", provider: result.provider, model: result.model, report: safeClientProviderMetadata(result.report) };
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
+  return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+/**
+ * Market research: search, then optionally read what it found. Scraping is off
+ * unless asked for, and only URLs the search itself returned are followed - the
+ * caller cannot widen that by passing its own list. Results are normalised
+ * through the v90 contract so every claim is attributable.
+ */
+async function processMarketResearchJob(jobId: string, tenantSlug: string, workerToken: string, input: Record<string, unknown>) {
+  const query = typeof input.query === "string" ? input.query : "";
+  const scrapeResults = input.scrapeResults === true;
+  const limit = Math.max(1, Math.min(3, Math.round(Number(input.limit ?? 3))));
+  const perUnit = Math.max(0, Math.round(Number(process.env.CLIENT_FIRECRAWL_COST_MICROS ?? 1000)));
+  // Reserve for the worst case up front so a scrape cannot push the tenant past
+  // its cap after the search has already spent.
+  const estimate = perUnit * (scrapeResults ? limit + 1 : 1);
+  if (!(await reserveClientRuntimeBudgetWorker({ provider: "firecrawl", model: scrapeResults ? "search-scrape" : "search", amountMicros: estimate, jobId, workerToken }))) {
+    logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider: "firecrawl", status: 429 });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+
+  const search = await runClientMarketSearch({ query, limit, scrapeResults });
+  if (!search.ok) {
+    if (search.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, search.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
+    await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, search.error);
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+
+  const records = marketSearchToV90Records({ tenantSlug, query: search.query, results: search.results, scraped: scrapeResults });
+  const outputMetadata = {
+    adapter: scrapeResults ? "firecrawl-search-scrape" : "firecrawl-search",
+    provider: search.provider,
+    model: search.model,
+    query: search.query,
+    resultCount: search.results.length,
+    // The discovered set is recorded so a follow-up read can be checked against
+    // what the search actually returned rather than against a caller's list.
+    discovered: search.results.map((result) => result.url),
+    records: safeClientProviderMetadata(records),
+  };
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: search.estimatedCostMicros, usageMetadata: { estimatedCostMicros: search.estimatedCostMicros } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
