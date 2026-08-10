@@ -1,9 +1,9 @@
-# V90 infrastructure additions — STAR plan
+# V96 infrastructure additions — STAR plan
 
 Date: 2026-08-10
 Branch: `codex/reviewed-additions-2026-08-10`
 
-This is the handoff plan for the parallel v90 implementation session. It is
+This is the handoff plan for the parallel v96 implementation session. It is
 structured as Situation → Task → Action → Result so every candidate has a
 clear reason to exist, a bounded implementation, and a measurable exit gate.
 
@@ -12,11 +12,11 @@ replaces the former standalone reviewed-additions note.
 
 ## Implementation checkpoint (2026-08-10)
 
-The first contract slice is now present on this branch: `src/lib/v90Contracts.ts`
+The first contract slice is now present on this branch: `src/lib/v96Contracts.ts`
 defines the research-record, visual-QA, future-video-provider, and resumable
-worktree envelopes; `src/lib/v90SkillPack.ts` contains seven curated Agency
+worktree envelopes; `src/lib/v96SkillPack.ts` contains seven curated Agency
 Agents role manifests pinned to upstream revision `ebe9c99`; and
-`tests/v90-contracts.spec.ts` locks the URL, tenant, citation, budget, and
+`tests/v96-contracts.spec.ts` locks the URL, tenant, citation, budget, and
 tool-boundary invariants. The role pack is visible as a read-only catalog in
 Integrations. No ScrapeGraphAI, Supervision, SkyReels, Prime Agent, or other
 heavy runtime has been installed or exposed to the client cloud.
@@ -33,13 +33,13 @@ strengthen: agent routing and skills, Agent Room, Agent Kanban, Flow Lab, Radar,
 SEO, Leads, Video, OpenMontage, Memory, and governed tenant-cloud adapters.
 
 The risk is infrastructure sprawl. Several candidates are complete runtimes or
-GPU-heavy research projects. The v90 objective is therefore not to embed every
+GPU-heavy research projects. The v96 objective is therefore not to embed every
 repository. It is to turn the useful parts into versioned, reviewable contracts
 that can later be implemented by local workers or approved cloud adapters.
 
 ### Zero-setup interpretation
 
-For v90, “zero setup” means zero client installation, external-key wiring, or
+For v96, “zero setup” means zero client installation, external-key wiring, or
 manual integration work. It does not mean that upstream providers have no
 credentials, cost, model licenses, or safety requirements. Veloce owns those
 operator concerns behind the policy plane and exposes only tenant-scoped
@@ -130,7 +130,7 @@ Next.js process:
 
 ## Existing reviewed candidates — implementation actions
 
-These candidates were reviewed before the v90 additions and remain part of the
+These candidates were reviewed before the v96 additions and remain part of the
 same plan. They are intentionally represented as bounded adapters rather than
 new top-level consoles.
 
@@ -184,7 +184,7 @@ consented test route can be replayed idempotently and audited end to end.
 
 ## Task
 
-Create a v90 infrastructure layer that:
+Create a v96 infrastructure layer that:
 
 1. makes specialist roles reusable across existing agents;
 2. adds machine-checkable visual QA to generated media;
@@ -409,10 +409,10 @@ draft, or delivery action.
 
 ## Result
 
-The v90 outcome should be composable infrastructure contracts, not twenty new
+The v96 outcome should be composable infrastructure contracts, not twenty new
 consoles:
 
-| Contract | Product surface | v90 status |
+| Contract | Product surface | v96 status |
 | --- | --- | --- |
 | Curated role/skill manifest | Capabilities, Agent Room, provider routing | Add catalog + first curated pack |
 | Visual QA report | Video, OpenMontage, artifact review | Add worker contract + fixture test |

@@ -4,7 +4,7 @@ import { clientProviderDefaultModel, clientTextMaxOutputTokens, clientTextUsageC
 import { clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { estimateElevenLabsMusicCostMicros, runClientElevenLabsMusicAdapter, estimateClientImageCostMicros, estimateClientMediaCostMicros, runClientHeyGenAdapter, runClientImageAdapter, runClientMusicAdapter, runClientSpeechAdapter, safeProviderOutputUrl } from "@/lib/clientMediaAdapter";
 import { readBoundedResponseBytes } from "@/lib/clientNetworkSafety";
-import { marketSearchToV90Records, runClientAeoCheck, runClientMarketSearch, runClientSeoAdapter } from "@/lib/clientSeoAdapter";
+import { marketSearchToV96Records, runClientAeoCheck, runClientMarketSearch, runClientSeoAdapter } from "@/lib/clientSeoAdapter";
 import { clientGcpAccessToken, clientStorageConfig, uploadClientStorageObject } from "@/lib/clientStorage";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { validClientTaskIdentity } from "@/lib/clientTaskAuth";
@@ -951,7 +951,7 @@ async function processAeoJob(jobId: string, tenantSlug: string, workerToken: str
  * Market research: search, then optionally read what it found. Scraping is off
  * unless asked for, and only URLs the search itself returned are followed - the
  * caller cannot widen that by passing its own list. Results are normalised
- * through the v90 contract so every claim is attributable.
+ * through the v96 contract so every claim is attributable.
  */
 async function processMarketResearchJob(jobId: string, tenantSlug: string, workerToken: string, input: Record<string, unknown>) {
   const query = typeof input.query === "string" ? input.query : "";
@@ -975,7 +975,7 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
     return NextResponse.json({ ok: true, status: "failed" });
   }
 
-  const records = marketSearchToV90Records({ tenantSlug, query: search.query, results: search.results, scraped: scrapeResults });
+  const records = marketSearchToV96Records({ tenantSlug, query: search.query, results: search.results, scraped: scrapeResults });
   const outputMetadata = {
     adapter: scrapeResults ? "firecrawl-search-scrape" : "firecrawl-search",
     provider: search.provider,

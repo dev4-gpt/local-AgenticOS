@@ -263,7 +263,7 @@ export const REVIEWED_ADDITIONS: ReviewedAddition[] = [
     status: "recommended",
     summary: "A staged Hermes workflow for turning a content brief into researched, drafted, reviewed, and approved deliverables.",
     fit: "Directly extends the existing Hermes SEO planner/writer and connects Research, Notebook, Media, QA, and approval into one reusable content lane.",
-    decision: "Adopt the workflow shape as a Veloce-owned v90 contract and test it through the existing Hermes/Kanban path; do not embed an external page or allow automatic publishing.",
+    decision: "Adopt the workflow shape as a Veloce-owned v96 contract and test it through the existing Hermes/Kanban path; do not embed an external page or allow automatic publishing.",
     boundary: "Research, generation, media, and delivery remain separate bounded steps. Publishing requires an explicit approval record, tenant budget, destination scope, and audit event.",
     sourceUrl: "https://rajaashok.github.io/hermes-content-factory-workflow",
   },

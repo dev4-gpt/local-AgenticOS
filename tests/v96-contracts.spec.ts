@@ -1,18 +1,18 @@
 import { expect, test } from "@playwright/test";
 import {
-  V90_CONTRACT_VERSION,
-  isAllowedV90ResearchUrl,
-  normalizeV90ResearchRecord,
-  validateV90ResearchRequest,
-} from "../src/lib/v90Contracts";
-import { V90_AGENCY_AGENTS_REVISION, V90_CURATED_SKILL_PACK } from "../src/lib/v90SkillPack";
-import { acceptV90ResearchRecord, createV90ResearchRequest } from "../src/lib/v90ResearchAdapter";
+  V96_CONTRACT_VERSION,
+  isAllowedV96ResearchUrl,
+  normalizeV96ResearchRecord,
+  validateV96ResearchRequest,
+} from "../src/lib/v96Contracts";
+import { V96_AGENCY_AGENTS_REVISION, V96_CURATED_SKILL_PACK } from "../src/lib/v96SkillPack";
+import { acceptV96ResearchRecord, createV96ResearchRequest } from "../src/lib/v96ResearchAdapter";
 
 test("the curated Agency pack is a role catalog, not a tool escalation", () => {
-  expect(V90_AGENCY_AGENTS_REVISION).toMatch(/^[0-9a-f]{7,40}$/);
-  expect(V90_CURATED_SKILL_PACK).toHaveLength(7);
-  for (const role of V90_CURATED_SKILL_PACK) {
-    expect(role.sourceCommit).toBe(V90_AGENCY_AGENTS_REVISION);
+  expect(V96_AGENCY_AGENTS_REVISION).toMatch(/^[0-9a-f]{7,40}$/);
+  expect(V96_CURATED_SKILL_PACK).toHaveLength(7);
+  for (const role of V96_CURATED_SKILL_PACK) {
+    expect(role.sourceCommit).toBe(V96_AGENCY_AGENTS_REVISION);
     expect(role.license).toBe("MIT");
     expect(role.supportedSurfaces.length).toBeGreaterThan(0);
     expect(role.deliverable.requiredFields.length).toBeGreaterThan(0);
@@ -23,17 +23,17 @@ test("the curated Agency pack is a role catalog, not a tool escalation", () => {
 });
 
 test("research URLs reject credentials, private hosts, ports, and non-HTTPS schemes", () => {
-  expect(isAllowedV90ResearchUrl("https://example.com/research")).toBe(true);
-  expect(isAllowedV90ResearchUrl("http://example.com/research")).toBe(false);
-  expect(isAllowedV90ResearchUrl("https://user:pass@example.com/research")).toBe(false);
-  expect(isAllowedV90ResearchUrl("https://example.com:8443/research")).toBe(false);
-  expect(isAllowedV90ResearchUrl("https://127.0.0.1/research")).toBe(false);
-  expect(isAllowedV90ResearchUrl("https://metadata.google.internal/")).toBe(false);
+  expect(isAllowedV96ResearchUrl("https://example.com/research")).toBe(true);
+  expect(isAllowedV96ResearchUrl("http://example.com/research")).toBe(false);
+  expect(isAllowedV96ResearchUrl("https://user:pass@example.com/research")).toBe(false);
+  expect(isAllowedV96ResearchUrl("https://example.com:8443/research")).toBe(false);
+  expect(isAllowedV96ResearchUrl("https://127.0.0.1/research")).toBe(false);
+  expect(isAllowedV96ResearchUrl("https://metadata.google.internal/")).toBe(false);
 });
 
 test("research requests are bounded before a provider adapter runs", () => {
-  expect(validateV90ResearchRequest({
-    contractVersion: V90_CONTRACT_VERSION,
+  expect(validateV96ResearchRequest({
+    contractVersion: V96_CONTRACT_VERSION,
     tenantSlug: "veloce-cloud-test",
     provider: "scrapegraphai",
     sourceUrls: ["https://example.com"],
@@ -42,8 +42,8 @@ test("research requests are bounded before a provider adapter runs", () => {
     maxDepth: 1,
   })).toEqual([]);
 
-  const errors = validateV90ResearchRequest({
-    contractVersion: V90_CONTRACT_VERSION,
+  const errors = validateV96ResearchRequest({
+    contractVersion: V96_CONTRACT_VERSION,
     tenantSlug: "bad slug",
     provider: "scrapegraphai",
     sourceUrls: ["https://127.0.0.1"],
@@ -60,7 +60,7 @@ test("research requests are bounded before a provider adapter runs", () => {
 
 test("structured research records require tenant scope and citation evidence", () => {
   const base = {
-    contractVersion: V90_CONTRACT_VERSION as const,
+    contractVersion: V96_CONTRACT_VERSION as const,
     id: "record-1",
     tenantSlug: "veloce-cloud-test",
     provider: "scrapegraphai" as const,
@@ -71,14 +71,14 @@ test("structured research records require tenant scope and citation evidence", (
     confidence: 1.4,
     status: "complete" as const,
   };
-  expect(normalizeV90ResearchRecord(base)?.confidence).toBe(1);
-  expect(normalizeV90ResearchRecord({ ...base, citations: [] })).toBeNull();
-  expect(normalizeV90ResearchRecord({ ...base, sourceUrl: "https://localhost/private" })).toBeNull();
-  expect(normalizeV90ResearchRecord({ ...base, status: "failed", citations: [], failureReason: "provider_timeout" })).not.toBeNull();
+  expect(normalizeV96ResearchRecord(base)?.confidence).toBe(1);
+  expect(normalizeV96ResearchRecord({ ...base, citations: [] })).toBeNull();
+  expect(normalizeV96ResearchRecord({ ...base, sourceUrl: "https://localhost/private" })).toBeNull();
+  expect(normalizeV96ResearchRecord({ ...base, status: "failed", citations: [], failureReason: "provider_timeout" })).not.toBeNull();
 });
 
 test("the research adapter keeps provider output inside the requested origin and tenant", () => {
-  const request = createV90ResearchRequest({
+  const request = createV96ResearchRequest({
     tenantSlug: "veloce-cloud-test",
     provider: "scrapegraphai",
     sourceUrls: ["https://example.com/research"],
@@ -87,7 +87,7 @@ test("the research adapter keeps provider output inside the requested origin and
     maxDepth: 0,
   });
   const record = {
-    contractVersion: V90_CONTRACT_VERSION as const,
+    contractVersion: V96_CONTRACT_VERSION as const,
     id: "record-2",
     tenantSlug: request.tenantSlug,
     provider: request.provider,
@@ -98,7 +98,7 @@ test("the research adapter keeps provider output inside the requested origin and
     confidence: 0.8,
     status: "complete" as const,
   };
-  expect(acceptV90ResearchRecord(request, record).tenantSlug).toBe(request.tenantSlug);
-  expect(() => acceptV90ResearchRecord(request, { ...record, tenantSlug: "another-tenant" })).toThrow(/tenant scope/);
-  expect(() => acceptV90ResearchRecord(request, { ...record, citations: [{ ...record.citations[0], url: "https://other.example/evidence" }] })).toThrow(/allowlist/);
+  expect(acceptV96ResearchRecord(request, record).tenantSlug).toBe(request.tenantSlug);
+  expect(() => acceptV96ResearchRecord(request, { ...record, tenantSlug: "another-tenant" })).toThrow(/tenant scope/);
+  expect(() => acceptV96ResearchRecord(request, { ...record, citations: [{ ...record.citations[0], url: "https://other.example/evidence" }] })).toThrow(/allowlist/);
 });

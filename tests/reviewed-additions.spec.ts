@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { REVIEWED_ADDITIONS } from "../src/lib/reviewedAdditions";
 
-test("the v90 reviewed portfolio contains the eight zero-setup candidates", () => {
+test("the v96 reviewed portfolio contains the eight zero-setup candidates", () => {
   const ids = new Set(REVIEWED_ADDITIONS.map((addition) => addition.id));
   for (const id of [
     "omniroute",
@@ -17,7 +17,7 @@ test("the v90 reviewed portfolio contains the eight zero-setup candidates", () =
   }
 });
 
-test("new v90 runtimes are cataloged without client-cloud detection", () => {
+test("new v96 runtimes are cataloged without client-cloud detection", () => {
   const ids = new Set([
     "omniroute",
     "open-notebook",

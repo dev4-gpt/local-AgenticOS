@@ -7,7 +7,7 @@ import {
   hermesContentFactoryPrompt,
 } from "../src/lib/hermesContentFactory";
 
-test("Hermes content factory has a complete, approval-gated v90 sequence", () => {
+test("Hermes content factory has a complete, approval-gated v96 sequence", () => {
   expect(HERMES_CONTENT_FACTORY_SOURCE).toBe("https://rajaashok.github.io/hermes-content-factory-workflow");
   expect(HERMES_CONTENT_FACTORY_STEPS.map((step) => step.id)).toEqual([
     "brief", "research", "plan", "draft", "assets", "quality", "approval", "publish",
@@ -24,7 +24,7 @@ test("Hermes content factory creates a tenant-scoped plan and cannot publish imp
     contentType: "article",
     brief: "Create a researched article comparing safe agent-cloud architectures.",
   });
-  expect(plan.contractVersion).toBe("v90");
+  expect(plan.contractVersion).toBe("v96");
   expect(plan.tenantSlug).toBe("veloce-cloud-test");
   expect(plan.autoPublish).toBe(false);
   expect(canPublishHermesContentFactoryPlan(plan, false)).toBe(false);

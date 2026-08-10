@@ -1,16 +1,23 @@
-# V90 execution log and next setup
+# V96 execution log and next setup
 
 **This file is the single place Claude records what it added.** The design
-rationale lives in [V90-INFRASTRUCTURE-STAR-PLAN.md](V90-INFRASTRUCTURE-STAR-PLAN.md)
+rationale lives in [V96-INFRASTRUCTURE-STAR-PLAN.md](V96-INFRASTRUCTURE-STAR-PLAN.md)
 (Codex-owned) and the evidence trail lives in
 [cloud-memory-and-inference.md](future-integrations/cloud-memory-and-inference.md).
 This one answers a narrower question: *what changed, what is live, and what is
 next.* Update this file rather than opening a second log.
 
-**Last updated:** 2026-08-10
+**Last updated:** 2026-08-11
 **Live:** `veloce-cloud-test-00137-j6j` · image `v99-integrations-hub`
 **Branch:** `codex/reviewed-additions-2026-08-10` = `origin/main`
-**Tests:** 221 passing · build clean · three security gates passing
+**Tests:** 221 passing · **19 failing (pre-existing, unrelated)** · build clean ·
+three security gates passing
+
+The 19 failures are in `product-experience`, `public-edition`, `sidebar-smoke`
+and `visual-shell` — the public-site and local mission-control specs. They fail
+identically at a clean `HEAD` with every working change stashed, so they are not
+caused by anything in this branch. Earlier entries in this log recorded "221
+passing" as if that were the whole suite; it was the pass count only.
 
 ---
 
@@ -77,7 +84,7 @@ cap, and the guard then fails other surfaces. Raise the cap before real use.
 - **`copy` artifact intent** — `preview` renders, `brief` plans, `copy` returns
   the finished piece. Added because the runner's format instruction is appended
   *after* the goal and therefore wins: Radar asked for a thread and got a brief.
-- **Market research lane** — Firecrawl search, bounded, with v90-contract
+- **Market research lane** — Firecrawl search, bounded, with v96-contract
   normalisation. Live and proven.
 - **AEO check** — robots.txt, llms.txt and structured-data detection.
 
@@ -302,11 +309,63 @@ publishing it would have been a control that cannot run. The pack keeps the
 role and the route filters it, rather than editing curated data to suit one
 consumer. Verified live: six roles published, `local` absent.
 
+## 2g. The v90 label was stale — renumbered to v96 (2026-08-11)
+
+The program reached v96 while the docs, contracts and adapters still carried a
+`v90` prefix. Renamed across **19 text files**: six file renames
+(`V90-EXECUTION-LOG.md`, `V90-INFRASTRUCTURE-STAR-PLAN.md`, `v90Contracts.ts`,
+`v90ResearchAdapter.ts`, `v90SkillPack.ts`, `v90-contracts.spec.ts`), every
+`V90*` symbol, and the contract value itself.
+
+### Two things checked before the rename, because both could have been silent breaks
+
+**`V90_CONTRACT_VERSION` was not just a name — its value was the string `"v90"`,
+enforced by a validator** (`contractVersion must be v90`) and used as the
+discriminator on six record types. If that value were persisted, bumping it
+would reject every stored record. It is not: `contractVersion` appears in no SQL
+schema, and `v96ResearchAdapter.ts:13-14` constructs the request and validates it
+in the same call, so producer and validator move together. Safe, no migration.
+
+**Historical image tags are facts and must not be renumbered.**
+`cloud-memory-and-inference.md:705` records a real past deployment,
+`veloce-cloud-test-00123-cg6` (`v90-radar-video`). A global replace rewrote it to
+`v96-radar-video` — falsifying the evidence trail — and it was restored. The
+neighbouring `v91-create-parity`, `v93-hosted-jobs-fix` and `v99-integrations-hub`
+were never at risk, since only `v90` was targeted.
+
+**The two counters are independent and should not be reconciled.** The image tag
+is a build counter that increments every deploy (now `v99`); `v96` is the program
+milestone. A milestone below the image number is correct, not a mistake.
+
+**Worth knowing:** naming durable modules after a counter guarantees this recurs
+— `v96Contracts.ts` goes stale at v97. Renaming to something version-free would
+end the cycle. Not done here, because the ask was to correct the number.
+
+### Also cleaned
+
+Six untracked iCloud `" 2"` files removed — five byte-identical to their
+originals, and `ClientWorkflowWorkspace 2.tsx` a **Jul 27** snapshot superseded by
+the **Aug 7** original that adds tabs, lanes and `ClientRuntimeNotice`. iCloud
+resurrected an old version, not newer work. Moved to a scratchpad rather than
+deleted, per the rule against `rm` on unrecoverable untracked files.
+
+Still untracked and left alone: `launch-system/pitch-deck-local-product/` and
+`scripts/create-local-product-pitch-deck.mjs` (Aug 8, ~10 MB, referenced by no
+tracked file). A standalone deliverable, not runtime — someone should decide
+whether it is committed or ignored.
+
 ## 3. Next setup — media providers
 
 Speech, music and video are **done**. Images are wired and correct but blocked
 on an empty OpenAI balance. Nothing is constrained by the Veloce cap, which sits
 at 3% of $10 — only by provider credit.
+
+**Re-confirmed 2026-08-11** against live `00137-j6j`: job
+`8a88dc56-e67e-406b-bd8d-d9f436dd321a` returned `error_code:
+provider_credit_balance_exhausted`, failing 1.6 s after start with
+`attempt_count: 1`. Still the provider's balance, still not the code. Note the
+job record nests state under `job.status`, not top level — a poller reading the
+top level sees an empty string and records a false hang.
 
 ### Cost per run
 
@@ -361,25 +420,38 @@ the same — neither has ever completed a live call.
 
 ---
 
-## 4. Remaining V90 items
+## 4. Remaining V96 items
 
-### 4.1 Curated skill pack in the client UI — small, ready
-`V90_CURATED_SKILL_PACK` (seven roles: architecture, code-review,
-accessibility, research, technical-writing, video, minimal-change) already
-reaches client edition through `integrationHub.ts`. But client `/integrations`
-renders the Batch A studio screen, not `IntegrationsHub`, so **the data arrives
-and no client UI shows it.**
+### 4.1 Curated skill pack in the client UI — **DONE (2026-08-11)**
+Superseded by §2f. Client `/integrations` is a hub with Capabilities, Specialist
+roles and Plan tabs, and six roles are published live at revision `ebe9c99`. This
+entry described the pre-2f state and was left stale; it is closed.
 
-Give `/integrations` its own surface listing each role, what it produces, which
-surfaces it supports, and the approval it requires. No new dependency, no
-migration. This is the highest value-per-effort item left.
+### 4.2 Roboflow Supervision visual QA — blocked on infrastructure, costed
+Needs a Python worker. **There is no Python in `Dockerfile.client`** (verified:
+anchored `grep -icE "^(FROM|RUN).*(python|pip)"` returns `0`; the base is
+`node:24.14.1-slim`). `V96VisualQaReport` exists in `v96Contracts.ts` and is
+imported by nothing — the contract is ready, the runtime is not.
 
-### 4.2 Roboflow Supervision visual QA — blocked on infrastructure
-Needs a Python worker. **There is no Python in `Dockerfile.client`** (verified —
-an earlier grep matched `/pipeline`, not `pip`). Standing up a Python service is
-the same commitment declined for ScrapeGraphAI. Recommend deferring until a
-client actually asks for machine-checkable visual QA; `V90VisualQaReport`
-already exists as the contract for when it does.
+**Money is not the obstacle.** A second Cloud Run service scales to zero, so idle
+cost is Artifact Registry storage — a Python + OpenCV image runs roughly 1–1.5 GB
+at about $0.10/GB/month, so cents. Compute is per-invocation on a lane that would
+be used rarely.
+
+**Surface area is the obstacle, and it is measurable:**
+
+| What it touches | Why |
+|---|---|
+| `provision-gcp-client.mjs` (510 lines) | Deploys exactly **one** service — `run deploy <serviceName>` from the manifest. Adding a second means restructuring it from *a service* to *services*, and this is the script that ships. |
+| `clientRuntimePolicy.ts` + `run-client-runtime-local.mjs` | A new route goes in three places; `tests/route-allowlist.spec.ts` pins them. |
+| `client-lifecycle.mjs` (388 lines) + isolation drill | A VQA-report table must register in the same commit or export and offboarding silently drop it. |
+| New Dockerfile + service-to-service IAM | No precedent to copy — the project has exactly **one** Cloud Run service today. |
+
+**Recommendation: still defer.** This is the same commitment declined for
+ScrapeGraphAI (§4.4), which Firecrawl then covered through the existing HTTP
+boundary. The cost is not the hosting bill; it is turning a single-service
+provisioner into a multi-service one, with no client asking for it yet. Revisit
+when one does — the contract is already waiting.
 
 ### 4.3 Agency Agents skill packs — extends 4.1
 Once 4.1 exists, importing curated role manifests has somewhere to land. Keep

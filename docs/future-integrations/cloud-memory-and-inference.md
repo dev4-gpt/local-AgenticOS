@@ -837,7 +837,7 @@ provisioner does not do. Every unit test passed while the path was unreachable.
 Market search returned three real sources for "AI agent operating system
 platform for agencies": `agiresearch/AIOS`, PwC's Agent OS, and an architecture
 walkthrough. With scraping on, all three normalised to `complete` at confidence
-1 through the v90 contract. The comparison produced artifact `c5e62205` (3013
+1 through the v96 contract. The comparison produced artifact `c5e62205` (3013
 chars) attributing each claim to a numbered source and URL, and separating
 Veloce's governance-and-isolation position from AIOS's kernel-scheduling
 position and PwC's enterprise orchestration.

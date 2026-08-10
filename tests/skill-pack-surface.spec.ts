@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { V90_CURATED_SKILL_PACK } from "../src/lib/v90SkillPack";
+import { V96_CURATED_SKILL_PACK } from "../src/lib/v96SkillPack";
 import { isStudioSurface } from "../src/lib/clientStudioSurfaces";
 import type { ClientWorkspaceSurface } from "../src/lib/clientWorkspaceExecution";
 
@@ -37,8 +37,8 @@ test("the skills route is allowlisted in all three places", () => {
 
 test("every published role carries its provenance and its boundary", () => {
   // A role a client cannot audit is a role they have to take on trust.
-  expect(V90_CURATED_SKILL_PACK.length).toBeGreaterThanOrEqual(5);
-  for (const role of V90_CURATED_SKILL_PACK) {
+  expect(V96_CURATED_SKILL_PACK.length).toBeGreaterThanOrEqual(5);
+  for (const role of V96_CURATED_SKILL_PACK) {
     expect(role.sourceRepository, role.id).toMatch(/^https:\/\//);
     expect(role.sourceCommit.length, role.id).toBeGreaterThan(4);
     expect(role.license.length, role.id).toBeGreaterThan(0);
@@ -53,7 +53,7 @@ test("operator-only roles are not published to clients", () => {
   // The pack legitimately contains a local-lane role (minimal-change). A tenant
   // has no local model, so offering it to a client would be a control that
   // cannot run. The route filters rather than the pack dropping it.
-  const local = V90_CURATED_SKILL_PACK.filter((role) => role.modelLane === "local");
+  const local = V96_CURATED_SKILL_PACK.filter((role) => role.modelLane === "local");
   expect(local.length, "the pack still carries operator-only roles").toBeGreaterThan(0);
 
   const route = readFileSync("src/app/api/client-runtime/skills/route.ts", "utf8");

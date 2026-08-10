@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit } from "@/lib/clientDataPlane";
-import { V90_AGENCY_AGENTS_REVISION, V90_CURATED_SKILL_PACK } from "@/lib/v90SkillPack";
+import { V96_AGENCY_AGENTS_REVISION, V96_CURATED_SKILL_PACK } from "@/lib/v96SkillPack";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,11 +26,11 @@ export async function GET() {
     ok: true,
     // Pinned upstream revision, so a role's provenance is checkable rather than
     // asserted.
-    sourceRevision: V90_AGENCY_AGENTS_REVISION,
+    sourceRevision: V96_AGENCY_AGENTS_REVISION,
     // Roles on the local model lane are operator-only: a tenant has no local
     // model, so publishing one would offer a client something that cannot run.
     // The pack keeps them; this route does not hand them out.
-    roles: V90_CURATED_SKILL_PACK.filter((role) => role.modelLane === "approved-provider").map((role) => ({
+    roles: V96_CURATED_SKILL_PACK.filter((role) => role.modelLane === "approved-provider").map((role) => ({
       id: role.id,
       label: role.label,
       sourceRepository: role.sourceRepository,

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { V90_CONTRACT_VERSION, type V90StructuredResearchRecord } from "@/lib/v90Contracts";
+import { V96_CONTRACT_VERSION, type V96StructuredResearchRecord } from "@/lib/v96Contracts";
 import { providerEnvKey } from "@/lib/providerKeys";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { isPrivateAddress, readBoundedResponseBytes, resolvesToPublicAddresses } from "@/lib/clientNetworkSafety";
@@ -281,26 +281,26 @@ export async function runClientAeoCheck(input: { site: string }) {
   };
 }
 
-// --- v90 normalisation -----------------------------------------------------
+// --- v96 normalisation -----------------------------------------------------
 
 /**
- * Every search result becomes a citation-bearing v90 record. A result whose
+ * Every search result becomes a citation-bearing v96 record. A result whose
  * page was not scraped still carries its snippet as evidence, marked partial:
  * that is genuinely less than a read page, and saying so is the difference
  * between a source and a claim.
  */
-export function marketSearchToV90Records(input: {
+export function marketSearchToV96Records(input: {
   tenantSlug: string;
   query: string;
   results: readonly MarketSearchResult[];
   scraped: boolean;
-}): V90StructuredResearchRecord[] {
+}): V96StructuredResearchRecord[] {
   const retrievedAt = new Date().toISOString();
   return input.results.map((result) => {
     const evidence = (result.markdown || result.description || "").trim().slice(0, 600);
     const complete = input.scraped && Boolean(result.markdown.trim());
     return {
-      contractVersion: V90_CONTRACT_VERSION,
+      contractVersion: V96_CONTRACT_VERSION,
       id: randomUUID(),
       tenantSlug: input.tenantSlug,
       provider: "firecrawl" as const,
@@ -315,6 +315,6 @@ export function marketSearchToV90Records(input: {
       confidence: complete ? 1 : evidence ? 0.5 : 0,
       status: evidence ? (complete ? "complete" : "partial") : "failed",
       ...(evidence ? {} : { failureReason: "the result carried neither page content nor a summary" }),
-    } satisfies V90StructuredResearchRecord;
+    } satisfies V96StructuredResearchRecord;
   });
 }

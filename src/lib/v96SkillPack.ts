@@ -1,17 +1,17 @@
-import type { V90SkillManifest } from "@/lib/v90Contracts";
+import type { V96SkillManifest } from "@/lib/v96Contracts";
 
 /**
  * Curated from Agency Agents at a pinned upstream revision. These are role
  * manifests, not copied prompt files and not a new execution runtime.
  */
-export const V90_AGENCY_AGENTS_REVISION = "ebe9c99";
+export const V96_AGENCY_AGENTS_REVISION = "ebe9c99";
 
-export const V90_CURATED_SKILL_PACK: readonly V90SkillManifest[] = [
+export const V96_CURATED_SKILL_PACK: readonly V96SkillManifest[] = [
   {
     id: "architecture",
     label: "Architecture reviewer",
     sourceRepository: "https://github.com/msitarzewski/agency-agents",
-    sourceCommit: V90_AGENCY_AGENTS_REVISION,
+    sourceCommit: V96_AGENCY_AGENTS_REVISION,
     license: "MIT",
     supportedSurfaces: ["agent-room", "agent-kanban", "flow-lab"],
     allowedContext: ["task brief", "approved repository files", "existing architecture notes"],
@@ -25,7 +25,7 @@ export const V90_CURATED_SKILL_PACK: readonly V90SkillManifest[] = [
     id: "code-review",
     label: "Minimal-change code reviewer",
     sourceRepository: "https://github.com/msitarzewski/agency-agents",
-    sourceCommit: V90_AGENCY_AGENTS_REVISION,
+    sourceCommit: V96_AGENCY_AGENTS_REVISION,
     license: "MIT",
     supportedSurfaces: ["agent-kanban", "quality-review", "loop"],
     allowedContext: ["diff", "tests", "repository policy"],
@@ -39,7 +39,7 @@ export const V90_CURATED_SKILL_PACK: readonly V90SkillManifest[] = [
     id: "accessibility",
     label: "Accessibility reviewer",
     sourceRepository: "https://github.com/msitarzewski/agency-agents",
-    sourceCommit: V90_AGENCY_AGENTS_REVISION,
+    sourceCommit: V96_AGENCY_AGENTS_REVISION,
     license: "MIT",
     supportedSurfaces: ["quality-review", "web-studio", "product-experience"],
     allowedContext: ["approved preview", "DOM snapshot", "accessibility policy"],
@@ -53,7 +53,7 @@ export const V90_CURATED_SKILL_PACK: readonly V90SkillManifest[] = [
     id: "research",
     label: "Citation-first researcher",
     sourceRepository: "https://github.com/msitarzewski/agency-agents",
-    sourceCommit: V90_AGENCY_AGENTS_REVISION,
+    sourceCommit: V96_AGENCY_AGENTS_REVISION,
     license: "MIT",
     supportedSurfaces: ["flow-lab", "seo", "radar", "memory"],
     allowedContext: ["allowlisted public sources", "tenant research brief", "source policy"],
@@ -67,7 +67,7 @@ export const V90_CURATED_SKILL_PACK: readonly V90SkillManifest[] = [
     id: "technical-writing",
     label: "Technical writer",
     sourceRepository: "https://github.com/msitarzewski/agency-agents",
-    sourceCommit: V90_AGENCY_AGENTS_REVISION,
+    sourceCommit: V96_AGENCY_AGENTS_REVISION,
     license: "MIT",
     supportedSurfaces: ["memory", "flow-lab", "agent-room"],
     allowedContext: ["approved notes", "source citations", "audience brief"],
@@ -81,7 +81,7 @@ export const V90_CURATED_SKILL_PACK: readonly V90SkillManifest[] = [
     id: "video",
     label: "Video brief specialist",
     sourceRepository: "https://github.com/msitarzewski/agency-agents",
-    sourceCommit: V90_AGENCY_AGENTS_REVISION,
+    sourceCommit: V96_AGENCY_AGENTS_REVISION,
     license: "MIT",
     supportedSurfaces: ["video", "openmontage", "flow-lab"],
     allowedContext: ["approved brief", "tenant-owned assets", "video provider policy"],
@@ -95,7 +95,7 @@ export const V90_CURATED_SKILL_PACK: readonly V90SkillManifest[] = [
     id: "minimal-change",
     label: "Minimal-change implementer",
     sourceRepository: "https://github.com/msitarzewski/agency-agents",
-    sourceCommit: V90_AGENCY_AGENTS_REVISION,
+    sourceCommit: V96_AGENCY_AGENTS_REVISION,
     license: "MIT",
     supportedSurfaces: ["agent-kanban", "loop", "agent-room"],
     allowedContext: ["approved task", "selected worktree", "repository tests"],

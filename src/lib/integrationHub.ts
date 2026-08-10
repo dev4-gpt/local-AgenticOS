@@ -5,7 +5,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { REVIEWED_ADDITIONS } from "@/lib/reviewedAdditions";
-import { V90_CURATED_SKILL_PACK } from "@/lib/v90SkillPack";
+import { V96_CURATED_SKILL_PACK } from "@/lib/v96SkillPack";
 
 const execFileAsync = promisify(execFile);
 const HOME = os.homedir();
@@ -177,7 +177,7 @@ export async function integrationOverview() {
       local: [],
       external: [],
       reviewed: REVIEWED_ADDITIONS.map((item) => ({ ...item, detected: false })),
-      skillPack: V90_CURATED_SKILL_PACK,
+      skillPack: V96_CURATED_SKILL_PACK,
       configPath: "client-safe reviewed catalog",
     };
   }
@@ -214,7 +214,7 @@ export async function integrationOverview() {
     local,
     external,
     reviewed: REVIEWED_ADDITIONS.map((item) => ({ ...item, detected: item.detectedId ? detected.has(item.detectedId) && local.find((candidate) => candidate.id === item.detectedId)?.state === "working" : false })),
-    skillPack: V90_CURATED_SKILL_PACK,
+    skillPack: V96_CURATED_SKILL_PACK,
     configPath: CONFIG_FILE,
   };
 }

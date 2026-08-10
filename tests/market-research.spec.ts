@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { evaluateRobotsForAgents, marketSearchToV90Records, resolveDiscoveredUrl, safePublicUrl } from "../src/lib/clientSeoAdapter";
-import { normalizeV90ResearchRecord } from "../src/lib/v90Contracts";
+import { evaluateRobotsForAgents, marketSearchToV96Records, resolveDiscoveredUrl, safePublicUrl } from "../src/lib/clientSeoAdapter";
+import { normalizeV96ResearchRecord } from "../src/lib/v96Contracts";
 
 // A direct scrape points the runtime at a host the tenant named, so it keeps
 // the allowlist. These are the cases that would otherwise reach something the
@@ -81,7 +81,7 @@ test("comments and grouped agents are handled", () => {
 });
 
 test("an unscraped result is a partial record, never a complete one", () => {
-  const [record] = marketSearchToV90Records({
+  const [record] = marketSearchToV96Records({
     tenantSlug: "t", query: "q", scraped: false,
     results: [{ url: "https://competitor.com/a", title: "T", description: "A snippet.", markdown: "" }],
   });
@@ -93,18 +93,18 @@ test("an unscraped result is a partial record, never a complete one", () => {
 });
 
 test("a scraped result is complete, and every record passes the contract", () => {
-  const records = marketSearchToV90Records({
+  const records = marketSearchToV96Records({
     tenantSlug: "t", query: "q", scraped: true,
     results: [{ url: "https://competitor.com/a", title: "T", description: "D", markdown: "Full page." }],
   });
   expect(records[0].status).toBe("complete");
   expect(records[0].confidence).toBe(1);
   // The contract is the thing downstream trusts, so the mapping must satisfy it.
-  expect(normalizeV90ResearchRecord(records[0])).not.toBeNull();
+  expect(normalizeV96ResearchRecord(records[0])).not.toBeNull();
 });
 
 test("a result with neither content nor summary fails with a stated reason", () => {
-  const [record] = marketSearchToV90Records({
+  const [record] = marketSearchToV96Records({
     tenantSlug: "t", query: "q", scraped: false,
     results: [{ url: "https://competitor.com/a", title: "", description: "", markdown: "" }],
   });

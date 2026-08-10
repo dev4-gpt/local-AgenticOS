@@ -1,4 +1,4 @@
-import { V90_CONTRACT_VERSION } from "./v90Contracts";
+import { V96_CONTRACT_VERSION } from "./v96Contracts";
 
 export const HERMES_CONTENT_FACTORY_SOURCE = "https://rajaashok.github.io/hermes-content-factory-workflow";
 
@@ -32,7 +32,7 @@ export const HERMES_CONTENT_FACTORY_STEPS: readonly HermesContentFactoryStep[] =
 ];
 
 export interface HermesContentFactoryPlan {
-  contractVersion: typeof V90_CONTRACT_VERSION;
+  contractVersion: typeof V96_CONTRACT_VERSION;
   workflowId: string;
   tenantSlug: string;
   brief: string;
@@ -60,7 +60,7 @@ export function createHermesContentFactoryPlan(input: {
   if (!workflowId || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{1,99}$/.test(workflowId)) throw new Error("workflowId is invalid");
 
   return {
-    contractVersion: V90_CONTRACT_VERSION,
+    contractVersion: V96_CONTRACT_VERSION,
     workflowId,
     tenantSlug,
     brief,
