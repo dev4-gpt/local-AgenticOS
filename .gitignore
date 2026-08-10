@@ -77,3 +77,10 @@ public-site/src/assets/*.png
 # Private client material. Keep proposals, approvals, vault exports, usage reports,
 # and delivery workspaces outside the public AgentOS repository.
 .private-client-kits/
+
+# Generated pitch-deck output (~10 MB). Every file under it is produced by
+# scripts/create-local-product-pitch-deck.mjs — the HTML, the PDF, and the
+# assets/, which are authenticated Playwright screenshots of the *private* local
+# runtime on 3939. Rebuild it rather than committing it. The rest of
+# launch-system/ is tracked source and stays tracked.
+launch-system/pitch-deck-local-product/
