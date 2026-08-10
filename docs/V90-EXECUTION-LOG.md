@@ -8,9 +8,9 @@ This one answers a narrower question: *what changed, what is live, and what is
 next.* Update this file rather than opening a second log.
 
 **Last updated:** 2026-08-10
-**Live:** `veloce-cloud-test-00136-p5j` · image `v98-provider-diagnostics`
+**Live:** `veloce-cloud-test-00137-j6j` · image `v99-integrations-hub`
 **Branch:** `codex/reviewed-additions-2026-08-10` = `origin/main`
-**Tests:** 215 passing · build clean · three security gates passing
+**Tests:** 221 passing · build clean · three security gates passing
 
 ---
 
@@ -272,6 +272,35 @@ with the reservation refunded, visible as `openai $0.0000` in the ledger.
 
 HeyGen also runs on prepaid credit. If that balance is empty it will fail the
 same way — but it will now say so on the job rather than in the logs.
+
+## 2f. Integrations is a hub again (2026-08-11)
+
+Local `/integrations` is a hub: what the machine can do, which adapters are
+connected, which specialist roles exist. The hosted version was a single "plan
+an integration" brief screen, which kept the planning lane and lost the hub —
+including seven curated role contracts that already reached client edition in
+the data layer and were rendered nowhere.
+
+Three tabs now: **Capabilities** (what is switched on for this client),
+**Specialist roles**, and **Plan** (the existing lane, unchanged).
+
+**Six roles published**, at pinned revision `ebe9c99`, each showing its source
+commit, license, readable context, permitted tools, required output fields and
+approval requirement — so a client can audit a role rather than take it on
+trust.
+
+### Two boundaries that are enforced, not assumed
+
+**The client never touches `/api/integrations`.** That operator route also
+writes credentials into the operator's own config file. The client reads a new
+read-only `/api/client-runtime/skills`, and the operator route returns **403**
+to a client session. A test asserts it stays out of the allowlist.
+
+**Operator-only roles are filtered at the route.** A test caught that
+`minimal-change` runs on the `local` model lane, which a tenant does not have —
+publishing it would have been a control that cannot run. The pack keeps the
+role and the route filters it, rather than editing curated data to suit one
+consumer. Verified live: six roles published, `local` absent.
 
 ## 3. Next setup — media providers
 
