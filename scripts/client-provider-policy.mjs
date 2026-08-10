@@ -19,7 +19,7 @@ export const PROVIDER_SECRET_KEYS = Object.freeze({
 });
 
 const CAPABILITY_SECRET_KEYS = Object.freeze({
-  media: ["ELEVENLABS_API_KEY", "HEYGEN_API_KEY", "SUNO_API_KEY", "OPENAI_API_KEY"],
+  media: ["ELEVENLABS_API_KEY", "ELEVENLABS_MUSIC_API_KEY", "HEYGEN_API_KEY", "SUNO_API_KEY", "OPENAI_API_KEY"],
   "seo-research": ["FIRECRAWL_API_KEY"],
   seo: ["FIRECRAWL_API_KEY"],
 });
@@ -27,6 +27,9 @@ const CAPABILITY_SECRET_KEYS = Object.freeze({
 const CAPABILITY_PROVIDERS = Object.freeze({
   media: Object.freeze({
     elevenlabs: "ELEVENLABS_API_KEY",
+    // Music is a separate ElevenLabs product with its own key and meter, so it
+    // is a separate provider here too and cannot be enabled by approving speech.
+    "elevenlabs-music": "ELEVENLABS_MUSIC_API_KEY",
     heygen: "HEYGEN_API_KEY",
     suno: "SUNO_API_KEY",
     openai: "OPENAI_API_KEY",
