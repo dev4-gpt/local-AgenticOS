@@ -138,21 +138,6 @@ export const STUDIO_SURFACES: Partial<Record<ClientWorkspaceSurface, StudioSurfa
       { key: "goal", label: "What it must cover", placeholder: "The capability, its prerequisites, and who reads this.", multiline: true },
     ],
   },
-  integrations: {
-    eyebrow: "V. Govern · Connections", title: "Integrations", accent: "#60a5fa",
-    description: "Plan a connection before anything touches an external account. Credentials, scopes, and activation stay separately approved.",
-    action: "Plan the integration", artifactIntent: "brief", outputNoun: "integration plans",
-    pendingCapability: "No external account is contacted from this surface. Connecting one is a separate, credentialed approval.",
-    presets: [
-      { label: "Integration plan", title: "Integration plan", goal: "Plan an integration: the data that moves, in which direction, on what trigger, and what happens when it fails." },
-      { label: "OAuth scope review", title: "OAuth scope review", goal: "Review the OAuth scopes an integration asks for and argue the least-privilege set." },
-      { label: "Connector brief", title: "Connector brief", goal: "Write a connector brief: endpoints, rate limits, retries, and the audit trail it must leave." },
-    ],
-    fields: [
-      { key: "title", label: "Name this integration", placeholder: "The system to connect" },
-      { key: "goal", label: "What it must do", placeholder: "The systems, the data, the direction, and the trigger.", multiline: true },
-    ],
-  },
   deliver: {
     eyebrow: "VI. Deliver", title: "Delivery", accent: "#5ab896",
     description: "Prepare a delivery package with a durable trail. A destination only receives data through a separately approved action.",
