@@ -1,99 +1,87 @@
-// The hosted SEO surface.
+// The hosted SEO surface, matching the local one tab for tab.
 //
-// Local SEO is eight tabs sitting on machine-local capability: research shells
-// out to a Python script holding the operator's own Google Search Console
-// OAuth token, generate streams the blog-post skill through the local Claude
-// CLI and writes files into site directories, deploy spawns the netlify CLI,
-// and history and transcripts are files under the operator's home directory.
-// None of that can be lifted into a tenant, so this is not a port of the local
-// implementation — it is the same user outcomes rebuilt on lanes a tenant has.
+// Local SEO has eight tabs and an earlier hosted version collapsed them into
+// four, which lost the information architecture even where the capability was
+// portable. The tabs, their order, and their labels are the local ones. What
+// differs is only what stands behind each, and where that differs it is stated
+// rather than hidden.
 //
-// What survives: plan a target query, write the article, keep the trail. What
-// cannot survive is stated as a blocked prerequisite rather than mimicked,
-// because a control that pretends to reach Search Console or publish to a live
-// site would be lying about what this runtime can do.
+// Per tab:
+//   Research    - local runs Google Search Console through the operator's own
+//                 cached OAuth token. A tenant has no such token, so the hosted
+//                 equivalent researches the market instead: search what already
+//                 exists, cite it, and compare it against the client's strategy.
+//   AEO         - fully portable. It reads a named site's robots.txt, llms.txt
+//                 and structured data. Read-only, on a host the client names.
+//   OpenSEO     - a third-party subscription the operator pays for, embedded
+//                 locally in an iframe. A client needs their own account; we do
+//                 not proxy ours, and we do not embed a dashboard we cannot
+//                 vouch for inside a client product.
+//   Generate    - portable. The article itself, through the copy intent.
+//   Deploy      - local shells out to the netlify CLI. Hosted publishing runs
+//                 through the approved delivery adapter and its host allowlist.
+//   History     - portable. The tenant's own artifacts.
+//   Transcripts - local reads files from the operator's disk. Hosted uses the
+//                 tenant's own records as source material, and keeps the local
+//                 behaviour where picking one carries it into Generate.
+//   Skill       - portable. The playbook the generator follows.
 
-export type SeoTab = "plan" | "article" | "history" | "publish";
+export type SeoTab = "research" | "aeo" | "openseo" | "generate" | "deploy" | "history" | "transcripts" | "skill";
 
 export const SEO_TABS: Array<{ key: SeoTab; label: string }> = [
-  { key: "plan", label: "Plan" },
-  { key: "article", label: "Write" },
-  { key: "history", label: "Library" },
-  { key: "publish", label: "Publish" },
+  { key: "research", label: "Research" },
+  { key: "aeo", label: "AEO" },
+  { key: "openseo", label: "OpenSEO" },
+  { key: "generate", label: "Generate" },
+  { key: "deploy", label: "Deploy" },
+  { key: "history", label: "History" },
+  { key: "transcripts", label: "Transcripts" },
+  { key: "skill", label: "Skill" },
 ];
 
-export type SeoPreset = { label: string; query: string; direction: string };
+/** The pilot bound. Deliberately small: each result costs, and three is enough
+ *  to see whether a strategy has a gap without turning a check into a crawl. */
+export const SEO_RESEARCH_RESULT_LIMIT = 3;
 
-export const SEO_PLAN_PRESETS: SeoPreset[] = [
-  {
-    label: "Content opportunity",
-    query: "",
-    direction: "Assess this opportunity: the queries worth targeting, the intent behind each, what currently ranks, and what would have to be true for this site to win.",
-  },
-  {
-    label: "Content brief",
-    query: "",
-    direction: "Write a content brief: target query, search intent, the sections the page must contain, the internal links it needs, and how success is measured.",
-  },
-  {
-    label: "Technical plan",
-    query: "",
-    direction: "Produce a technical SEO plan covering crawlability, indexation, performance and structured data, ordered by leverage rather than by checklist.",
-  },
-];
-
-export const SEO_ARTICLE_PRESETS: SeoPreset[] = [
-  {
-    label: "How-to guide",
-    query: "",
-    direction: "Write a practical how-to guide that answers the query completely, with concrete steps a reader can follow and no filler introduction.",
-  },
-  {
-    label: "Comparison",
-    query: "",
-    direction: "Write an honest comparison that helps the reader choose, states the trade-offs plainly, and does not pretend one option wins every case.",
-  },
-  {
-    label: "Explainer",
-    query: "",
-    direction: "Write an explainer that takes a reader from no knowledge to a working understanding, defining terms the first time they appear.",
-  },
+export const SEO_RESEARCH_PRESETS = [
+  { label: "Competitor comparison", question: "How do competitors position this, and what do they claim that we do not?" },
+  { label: "Content gap", question: "What questions does existing content answer that ours does not?" },
+  { label: "Positioning check", question: "Is our angle already crowded, and where is it genuinely different?" },
 ];
 
 /**
- * Live rank and impression data needs the client's own Search Console
- * connection, which is a separate credentialed approval. The local surface
- * reads the operator's cached token; a tenant has no such thing and must not
- * be shown a control implying otherwise.
+ * The comparison prompt. It runs after the search, over sources the search
+ * returned, and its whole value is that every claim is attributable - so it is
+ * told to name the source per point and to say plainly where the sources do
+ * not settle a question rather than filling the gap.
  */
-export const SEO_RESEARCH_NOTICE =
-  "Live Search Console data needs this client's own Google connection, approved separately with its own credentials. Nothing on this surface reaches Search Console, so plan from queries you already know or from data you paste in.";
+export function seoComparisonGoal(input: {
+  question: string;
+  ourStrategy: string;
+  sources: Array<{ url: string; title: string; description: string; markdown?: string }>;
+}) {
+  const sources = input.sources.map((source, index) => [
+    `### Source ${index + 1}: ${source.title || source.url}`,
+    `URL: ${source.url}`,
+    source.description ? `Summary: ${source.description}` : "",
+    source.markdown ? `Page content:\n${source.markdown.slice(0, 4_000)}` : "Page content was not retrieved; use the summary only.",
+  ].filter(Boolean).join("\n")).join("\n\n");
 
-export const SEO_PUBLISH_NOTICE =
-  "Publishing to a live site runs through an approved delivery adapter with its own destination allowlist and audit record. This surface produces the article and keeps the trail; it does not deploy, and no destination is contacted from here.";
-
-const MAX_SOURCE_CHARS = 6_000;
-
-/**
- * Builds the plan goal. Any pasted data is labelled as supplied by the client
- * so the model treats it as given rather than as something it retrieved.
- */
-export function seoPlanGoal(input: { query: string; direction: string; data?: string }) {
-  const data = input.data?.trim().slice(0, MAX_SOURCE_CHARS);
   return [
-    input.direction.trim(),
-    `Target query: ${input.query.trim()}`,
-    data ? `Client-supplied data for context (you did not retrieve this, do not claim you did):\n${data}` : "",
-    "Do not claim to have checked live rankings, crawled a site, or run a search. Where a judgement needs data you were not given, say which data is needed.",
-  ].filter(Boolean).join("\n\n").slice(0, 10_000);
+    "Compare the client's strategy against what these sources already do, and produce a recommendation they can act on.",
+    `## The question\n\n${input.question.trim()}`,
+    `## Our current strategy\n\n${input.ourStrategy.trim()}`,
+    `## Sources found\n\n${sources || "No sources were returned."}`,
+    [
+      "Attribute every claim about a source to that source by number and URL. Do not describe page content that was not retrieved.",
+      "Structure the answer as: what the sources already cover, where our strategy differs, the gaps worth closing, and what you would do first.",
+      "Where the sources do not settle a question, say so rather than filling the gap. Do not invent competitors, figures, or quotes.",
+    ].join(" "),
+  ].join("\n\n").slice(0, 10_000);
 }
 
-/**
- * Builds the article goal. The local pipeline grounds an article in an
- * optional transcript; the same option is kept here, bounded and labelled.
- */
 export function seoArticleGoal(input: { query: string; direction: string; source?: string }) {
-  const source = input.source?.trim().slice(0, MAX_SOURCE_CHARS);
+  const source = input.source?.trim().slice(0, 6_000);
   return [
     input.direction.trim(),
     `Target query: ${input.query.trim()}`,
@@ -102,6 +90,33 @@ export function seoArticleGoal(input: { query: string; direction: string; source
   ].filter(Boolean).join("\n\n").slice(0, 10_000);
 }
 
-export function seoSlug(query: string) {
-  return query.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
+export const SEO_ARTICLE_PRESETS = [
+  { label: "How-to guide", direction: "Write a practical how-to guide that answers the query completely, with concrete steps a reader can follow and no filler introduction." },
+  { label: "Comparison", direction: "Write an honest comparison that helps the reader choose, states the trade-offs plainly, and does not pretend one option wins every case." },
+  { label: "Explainer", direction: "Write an explainer that takes a reader from no knowledge to a working understanding, defining terms the first time they appear." },
+];
+
+/** The AI crawlers the AEO check reports on, matching the local panel. */
+export const AEO_CRAWLERS = [
+  { name: "ChatGPT", agent: "GPTBot" },
+  { name: "ChatGPT-User", agent: "ChatGPT-User" },
+  { name: "Claude", agent: "ClaudeBot" },
+  { name: "Perplexity", agent: "PerplexityBot" },
+  { name: "Google-Extended", agent: "Google-Extended" },
+  { name: "Applebot-Extended", agent: "Applebot-Extended" },
+] as const;
+
+export const SEO_NOTICES = {
+  research: "Local Research reads Google Search Console through the operator's own Google account, which a tenant does not have. This researches the market instead: it searches what already exists, cites it, and compares it against your strategy. Scraping full pages is off by default because each page costs.",
+  openseo: "OpenSEO is a separate paid subscription. The local edition embeds the operator's own dashboard, which is not something to proxy or embed on a client's behalf - it would mean showing you an account you do not control. Connect your own OpenSEO account and open it directly.",
+  deploy: "Publishing runs through the approved delivery adapter, which only accepts destinations on this client's approved host list and records every send. Local publishing shells out to the netlify CLI on the operator's machine; nothing here contacts a destination.",
+  transcripts: "Local Transcripts reads files from the operator's disk. These are this tenant's own records, and picking one carries it into Generate the same way.",
+} as const;
+
+export function seoResearchTitle(question: string) {
+  return `Research · ${question.trim().slice(0, 110)}`;
+}
+
+export function seoArticleTitle(query: string) {
+  return `Article · ${query.trim().slice(0, 110)}`;
 }

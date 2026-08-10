@@ -1,70 +1,113 @@
 import { expect, test } from "@playwright/test";
 import {
+  AEO_CRAWLERS,
   SEO_ARTICLE_PRESETS,
-  SEO_PLAN_PRESETS,
-  SEO_PUBLISH_NOTICE,
-  SEO_RESEARCH_NOTICE,
+  SEO_NOTICES,
+  SEO_RESEARCH_PRESETS,
+  SEO_RESEARCH_RESULT_LIMIT,
   SEO_TABS,
   seoArticleGoal,
-  seoPlanGoal,
-  seoSlug,
+  seoArticleTitle,
+  seoComparisonGoal,
+  seoResearchTitle,
 } from "../src/lib/clientSeoWorkspace";
 import { isClientWorkspaceSurface } from "../src/lib/clientWorkspaceExecution";
+import { isStudioSurface } from "../src/lib/clientStudioSurfaces";
+import { deepSurface } from "../src/lib/clientDeepSurfaces";
+import type { ClientWorkspaceSurface } from "../src/lib/clientWorkspaceExecution";
 
-test("the surface queues a lane the runner accepts", () => {
+test("seo has exactly one hosted implementation", () => {
   expect(isClientWorkspaceSurface("seo")).toBe(true);
+  expect(isStudioSurface("seo" as ClientWorkspaceSurface)).toBe(false);
+  expect(deepSurface("seo")).toBeNull();
 });
 
-test("every tab is distinct and none is the local machine-bound one", () => {
-  const keys = SEO_TABS.map((tab) => tab.key);
-  expect(new Set(keys).size).toBe(keys.length);
-  // Local research shells out to the operator's own Search Console token and
-  // deploy spawns the netlify CLI. Neither may appear as a working control.
-  expect(keys).not.toContain("research");
-  expect(keys).not.toContain("deploy");
+test("the local information architecture is preserved exactly", () => {
+  // Eight tabs, in the local order, with the local labels. An earlier hosted
+  // version collapsed these into four and lost the structure even where the
+  // capability was portable.
+  expect(SEO_TABS.map((tab) => tab.key)).toEqual([
+    "research", "aeo", "openseo", "generate", "deploy", "history", "transcripts", "skill",
+  ]);
+  expect(SEO_TABS.map((tab) => tab.label)).toEqual([
+    "Research", "AEO", "OpenSEO", "Generate", "Deploy", "History", "Transcripts", "Skill",
+  ]);
 });
 
-test("both goals forbid claiming retrieval the runtime never performs", () => {
-  const plan = seoPlanGoal({ query: "latam market entry", direction: "Plan it." });
-  expect(plan).toContain("Do not claim to have checked live rankings");
-  const article = seoArticleGoal({ query: "latam market entry", direction: "Write it." });
-  expect(article).toContain("Do not invent statistics");
+test("the comparison carries the strategy, the question and every source", () => {
+  const goal = seoComparisonGoal({
+    question: "How do competitors position this?",
+    ourStrategy: "We lead with LatAm expertise.",
+    sources: [
+      { url: "https://competitor.com/a", title: "Their approach", description: "They lead on price.", markdown: "Full page text." },
+      { url: "https://other.com/b", title: "Another", description: "They lead on speed." },
+    ],
+  });
+  expect(goal).toContain("How do competitors position this?");
+  expect(goal).toContain("We lead with LatAm expertise.");
+  expect(goal).toContain("https://competitor.com/a");
+  expect(goal).toContain("https://other.com/b");
+  expect(goal).toContain("Full page text.");
 });
 
-test("supplied material is labelled as supplied, never as retrieved", () => {
-  const plan = seoPlanGoal({ query: "q", direction: "d", data: "position 4 for the head term" });
-  expect(plan).toContain("you did not retrieve this");
-  expect(plan).toContain("position 4 for the head term");
-
-  const article = seoArticleGoal({ query: "q", direction: "d", source: "interview transcript here" });
-  expect(article).toContain("you did not retrieve this");
-  expect(article).toContain("interview transcript here");
+test("a source whose page was not retrieved is marked, never described", () => {
+  // The whole value of the comparison is attributability. Implying we read a
+  // page we only saw a snippet of would undermine every claim in the output.
+  const goal = seoComparisonGoal({
+    question: "q", ourStrategy: "s",
+    sources: [{ url: "https://competitor.com/a", title: "T", description: "Snippet only." }],
+  });
+  expect(goal).toContain("Page content was not retrieved");
+  expect(goal).toContain("Do not describe page content that was not retrieved");
 });
 
-test("goals stay inside the executions route's limit even with large pasted material", () => {
-  const huge = "x".repeat(40_000);
-  expect(seoPlanGoal({ query: "q", direction: "d", data: huge }).length).toBeLessThanOrEqual(10_000);
-  expect(seoArticleGoal({ query: "q", direction: "d", source: huge }).length).toBeLessThanOrEqual(10_000);
+test("the comparison must attribute claims and admit what the sources do not settle", () => {
+  const goal = seoComparisonGoal({ question: "q", ourStrategy: "s", sources: [] });
+  expect(goal).toContain("Attribute every claim about a source to that source by number and URL");
+  expect(goal).toContain("say so rather than filling the gap");
+  expect(goal).toContain("Do not invent competitors, figures, or quotes");
+  expect(goal).toContain("No sources were returned.");
 });
 
-test("the blocked capabilities are named rather than implied", () => {
-  // Each notice must say what is missing and that nothing here reaches it.
-  expect(SEO_RESEARCH_NOTICE).toContain("Search Console");
-  expect(SEO_RESEARCH_NOTICE).toContain("Nothing on this surface reaches Search Console");
-  expect(SEO_PUBLISH_NOTICE).toContain("does not deploy");
-  expect(SEO_PUBLISH_NOTICE).toContain("no destination is contacted");
+test("goals stay inside the executions route's limit", () => {
+  const sources = Array.from({ length: 10 }, (_, index) => ({
+    url: `https://competitor${index}.com/a`, title: "T", description: "D", markdown: "x".repeat(9_000),
+  }));
+  expect(seoComparisonGoal({ question: "q", ourStrategy: "s", sources }).length).toBeLessThanOrEqual(10_000);
+  expect(seoArticleGoal({ query: "q", direction: "d", source: "y".repeat(40_000) }).length).toBeLessThanOrEqual(10_000);
 });
 
-test("presets carry real direction rather than a bare label", () => {
-  for (const preset of [...SEO_PLAN_PRESETS, ...SEO_ARTICLE_PRESETS]) {
-    expect(preset.label.length).toBeGreaterThan(0);
-    expect(preset.direction.length).toBeGreaterThan(40);
+test("the article lane still refuses to invent sources", () => {
+  const goal = seoArticleGoal({ query: "latam market entry", direction: "Write a guide." });
+  expect(goal).toContain("Do not invent statistics");
+  expect(goal).toContain("Write for a reader, not for a keyword");
+});
+
+test("the research pilot stays bounded", () => {
+  // Each result costs, and three is enough to see whether a strategy has a gap
+  // without turning a check into a crawl.
+  expect(SEO_RESEARCH_RESULT_LIMIT).toBe(3);
+});
+
+test("the gated tabs say what is missing and that nothing is reached", () => {
+  expect(SEO_NOTICES.research).toContain("Search Console");
+  expect(SEO_NOTICES.research).toContain("off by default");
+  expect(SEO_NOTICES.openseo).toContain("your own OpenSEO account");
+  expect(SEO_NOTICES.deploy).toContain("nothing here contacts a destination");
+  expect(SEO_NOTICES.transcripts).toContain("this tenant's own records");
+});
+
+test("the AEO check reports the crawlers that actually matter", () => {
+  const agents = AEO_CRAWLERS.map((crawler) => crawler.agent);
+  for (const agent of ["GPTBot", "ClaudeBot", "PerplexityBot", "Google-Extended"]) {
+    expect(agents, `${agent} should be reported`).toContain(agent);
   }
-  const directions = [...SEO_PLAN_PRESETS, ...SEO_ARTICLE_PRESETS].map((preset) => preset.direction);
-  expect(new Set(directions).size).toBe(directions.length);
+  expect(new Set(agents).size).toBe(agents.length);
 });
 
-test("slugs stay filename-safe and bounded", () => {
-  expect(seoSlug("  LatAm Market Entry: a B2B SaaS guide!  ")).toBe("latam-market-entry-a-b2b-saas-guide");
-  expect(seoSlug("x".repeat(200)).length).toBeLessThanOrEqual(80);
+test("presets carry real content and titles stay bounded", () => {
+  for (const preset of SEO_RESEARCH_PRESETS) expect(preset.question.length).toBeGreaterThan(20);
+  for (const preset of SEO_ARTICLE_PRESETS) expect(preset.direction.length).toBeGreaterThan(40);
+  expect(seoResearchTitle("x".repeat(400)).length).toBeLessThan(130);
+  expect(seoArticleTitle("latam market entry")).toBe("Article · latam market entry");
 });
