@@ -777,6 +777,33 @@ Batch A's shared config now holds only surfaces that genuinely are one input and
 one output: Create Brief, OpenDesign, Web Studio, Flow Lab, Game Studio, the two
 Guides, Integrations and Delivery.
 
+## Every hosted surface now has live evidence (2026-08-10)
+
+Ten Create, Govern and Deliver surfaces were deployed, typechecked and unit
+tested but had never produced an artifact in the cloud. Since all three real
+defects found this cycle passed every unit test and appeared only by running the
+deployed product, that was the wrong assurance to rely on before building on
+these lanes.
+
+All ten now hold: `cad7a39e` create, `01b487fe` opendesign, `6873d101` flow-lab,
+`7680f5ef` games, `36ace881` studio, `0e172018` openmontage, `d9b435f3`
+seo-guide, `1bbc9512` guide, `41719bcd` integrations, `eeba26e5` deliver.
+Ten of ten produced an artifact with no error.
+
+The intent split held under the sweep: opendesign returned 5942 preview
+characters and games 3204, while every brief surface returned none.
+
+### What "the same as local" does and does not mean
+
+Every route renders a real hosted surface with no decorative controls, and the
+structure matches local wherever the capability is portable. It is not the same
+product in one permanent respect: every local feature standing on the operator's
+own machine, credentials or subscriptions is gated rather than working - the X
+sweep, the Obsidian vault, Search Console, netlify, HeyGen, Suno, ElevenLabs,
+ffmpeg, NotebookLM, Hunter and Apollo. The planning and writing half runs in a
+tenant; the generating and publishing half needs that client's own approved
+provider. That is the boundary, not a backlog.
+
 ## Service-role export (owed item, done)
 
 `client-lifecycle.mjs --mode export --slug veloce-cloud-test` ran against the
