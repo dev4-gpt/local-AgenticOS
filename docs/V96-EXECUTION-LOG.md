@@ -422,6 +422,23 @@ the same — neither has ever completed a live call.
 
 ## 4. Remaining V96 items
 
+**All six are decided as of 2026-08-11. None is waiting on engineering.** The
+open question was never "how do we build these" — it was whether they should be
+built at all, and that is now answered. Do not re-cost them; if you disagree,
+say so and change the decision deliberately rather than reopening the analysis.
+
+| Item | State | Waiting on |
+|---|---|---|
+| 4.1 Curated skill pack in client UI | **Done** | — |
+| 4.2 Supervision visual QA | **Deferred** (decided) | A client who needs it |
+| 4.3 Agency Agents skill packs | Open, extends 4.1 | Nothing — buildable now |
+| 4.4 ScrapeGraphAI | **Closed** — superseded by Firecrawl | — |
+| 4.5 SkyReels V2 | **Closed** — contract only | GPU host + license review |
+| 4.6 Prime Agent | **Closed** — operator-side by design | — |
+
+Images are not on this list because they are not a V96 item: the lane is built,
+deployed and correct, and waits only on an OpenAI balance top-up (§3).
+
 ### 4.1 Curated skill pack in the client UI — **DONE (2026-08-11)**
 Superseded by §2f. Client `/integrations` is a hub with Capabilities, Specialist
 roles and Plan tabs, and six roles are published live at revision `ebe9c99`. This
@@ -447,11 +464,16 @@ be used rarely.
 | `client-lifecycle.mjs` (388 lines) + isolation drill | A VQA-report table must register in the same commit or export and offboarding silently drop it. |
 | New Dockerfile + service-to-service IAM | No precedent to copy — the project has exactly **one** Cloud Run service today. |
 
-**Recommendation: still defer.** This is the same commitment declined for
-ScrapeGraphAI (§4.4), which Firecrawl then covered through the existing HTTP
-boundary. The cost is not the hosting bill; it is turning a single-service
-provisioner into a multi-service one, with no client asking for it yet. Revisit
-when one does — the contract is already waiting.
+**Decided 2026-08-11: defer.** Not a recommendation any more — a decision, taken
+by the owner with the table above in front of them. This is the same commitment
+declined for ScrapeGraphAI (§4.4), which Firecrawl then covered through the
+existing HTTP boundary. The cost is not the hosting bill; it is turning a
+single-service provisioner into a multi-service one, with no client asking for
+it yet.
+
+**Reopen it when a client asks for machine-checkable visual QA, and not before.**
+`V96VisualQaReport` is already the contract for that day, so reopening costs
+design time, not discovery time.
 
 ### 4.3 Agency Agents skill packs — extends 4.1
 Once 4.1 exists, importing curated role manifests has somewhere to land. Keep
@@ -462,13 +484,24 @@ contracts, never third-party prompt files.
 Firecrawl covers structured research through the same contract. Revisit only if
 a client needs self-hosted extraction for data-residency reasons.
 
-### 4.5 SkyReels V2 — contract only
+### 4.5 SkyReels V2 — **CLOSED, contract only (2026-08-11)**
 Correct as-is. Needs a GPU host and a license review; HeyGen covers the hosted
-video need meanwhile.
+video need and is live, so there is no gap to fill.
 
-### 4.6 Prime Agent — operator-side
-A disposable-worktree pilot on the operator machine, not a client feature.
-Nothing to build in the hosted runtime.
+Closed rather than left open, because "contract only" was being re-read each
+session as unfinished work. It is not unfinished — it is a provider contract
+held deliberately against a need that HeyGen already meets. Reopen only if a
+client needs self-hosted video generation.
+
+### 4.6 Prime Agent — **CLOSED, operator-side by design (2026-08-11)**
+A disposable-worktree pilot on the operator machine, not a client feature. The
+STAR plan says "pilot in a disposable worktree"; that is a local operator
+experiment. `V96ResumableWorktreeRun` is the contract if it ever becomes a
+hosted feature.
+
+**There is nothing to build in the hosted runtime, and there never was.** This
+entry existed to record a decision, not a task. Closed so it stops reading as
+one.
 
 ---
 
