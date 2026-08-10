@@ -1,5 +1,5 @@
 export type ReviewedAdditionStatus = "recommended" | "review" | "deferred";
-export type ReviewedAdditionKind = "quality" | "orchestration" | "voice" | "growth" | "communications" | "agent-library" | "vision" | "video" | "research" | "routing" | "knowledge" | "security" | "seo" | "media" | "output";
+export type ReviewedAdditionKind = "quality" | "orchestration" | "voice" | "growth" | "content" | "communications" | "agent-library" | "vision" | "video" | "research" | "routing" | "knowledge" | "security" | "seo" | "media" | "output";
 
 export interface ReviewedAddition {
   id: string;
@@ -255,5 +255,16 @@ export const REVIEWED_ADDITIONS: ReviewedAddition[] = [
     decision: "Combine its detectable patterns with Veloce's output policy and fixture tests; run it as a transparent, customizable postprocessor rather than a hidden rewrite.",
     boundary: "Preserve facts, quoted text, code, and intentional voice. Show or record changes where useful, and allow tenants to disable or tune the pass.",
     sourceUrl: "https://github.com/petergyang/no-ai-slop",
+  },
+  {
+    id: "hermes-content-factory-workflow",
+    name: "Hermes Content Factory Workflow",
+    kind: "content",
+    status: "recommended",
+    summary: "A staged Hermes workflow for turning a content brief into researched, drafted, reviewed, and approved deliverables.",
+    fit: "Directly extends the existing Hermes SEO planner/writer and connects Research, Notebook, Media, QA, and approval into one reusable content lane.",
+    decision: "Adopt the workflow shape as a Veloce-owned v90 contract and test it through the existing Hermes/Kanban path; do not embed an external page or allow automatic publishing.",
+    boundary: "Research, generation, media, and delivery remain separate bounded steps. Publishing requires an explicit approval record, tenant budget, destination scope, and audit event.",
+    sourceUrl: "https://rajaashok.github.io/hermes-content-factory-workflow",
   },
 ];

@@ -21,6 +21,11 @@ tool-boundary invariants. The role pack is visible as a read-only catalog in
 Integrations. No ScrapeGraphAI, Supervision, SkyReels, Prime Agent, or other
 heavy runtime has been installed or exposed to the client cloud.
 
+The supplied Hermes Content Factory reference is cataloged as a workflow
+contract. Its public page returned HTTP 404 during this review, so the exact
+upstream implementation is not treated as verified until the source is
+available again.
+
 ## Situation
 
 Veloce AgenticOS already has the product surfaces that these repositories could
@@ -121,6 +126,7 @@ Next.js process:
 | Open-Generative-AI | Image/video studio and provider registry patterns | Review as a governed media adapter; no unrestricted generation path. |
 | i-have-adhd | Direct, action-first, scannable agent communication | Recommended built-in output policy, preference-aware and dependency-free. |
 | no-ai-slop | Transparent post-generation cleanup of inflated or repetitive language | Recommended output quality pass with voice/fact preservation and opt-out. |
+| Hermes Content Factory Workflow | Brief-to-research-to-draft-to-review content production through Hermes | Recommended Veloce-owned workflow contract; approval required before publishing. |
 
 ## Existing reviewed candidates — implementation actions
 
@@ -376,6 +382,31 @@ silently rewrite technical content. Exit gate: fixtures show shorter, clearer
 answers and cleaner marketing copy without changing factual assertions or
 citations; an opt-out is honored.
 
+### 13. Hermes Content Factory Workflow — reusable content lane
+
+Adopt the supplied workflow as a Veloce-owned Hermes/Kanban template rather
+than embedding the external page. The contract is deliberately explicit:
+
+1. collect a tenant-owned content brief;
+2. research the topic into citation-bearing records;
+3. ask Hermes to produce a structured outline;
+4. draft the article, social post, email, video brief, or campaign asset;
+5. optionally create governed media artifacts;
+6. run output-quality and factual/citation checks;
+7. hold the result at an approval record; and
+8. publish only through an approved destination adapter.
+
+This composes the existing Hermes SEO planner/writer, Research/Notebook,
+Media, visual QA, and approval surfaces. The workflow itself owns sequencing,
+tenant scope, idempotency, budgets, retries, and evidence; Hermes remains the
+execution/model lane. No external page, local Hermes profile, browser session,
+or personal credential is copied into client cloud.
+
+Exit gate: a harmless internal brief produces a plan with all eight stages,
+stores a citation record and quality report, pauses at approval, and refuses
+publication without the approval record. A retry must not duplicate the brief,
+draft, or delivery action.
+
 ## Result
 
 The v90 outcome should be composable infrastructure contracts, not twenty new
@@ -401,6 +432,7 @@ consoles:
 | SEO intelligence record | SEO, Radar, Leads, Memory | Add provider-neutral metrics adapter beside Firecrawl |
 | Media provider registry | Video, OpenMontage, Thumbnail | Governed adapter; no unrestricted model path |
 | Output quality policy | All agent responses and marketing deliverables | Add transparent formatter and fixture suite |
+| Hermes content factory plan | SEO, Content, Video, Outreach, approval queue | Add reusable workflow template and deterministic runner |
 
 The cloud edition may expose the reviewed capability contracts and result
 schemas. It must not run local CLIs, access operator worktrees, receive private
@@ -414,14 +446,16 @@ secret policy, budget, queue, audit record, and emergency disable path.
    source/citation records, and output quality before adding heavy dependencies.
 3. Implement the curated Agency skill pack, book-to-skill compiler boundary,
    and output policy first; these need no client-side runtime installs.
-4. Complete the Notebook and SEO provider-neutral contracts, then connect
+4. Add the Hermes Content Factory plan and run it through the existing Hermes
+   SEO/Kanban path with publication disabled until approval.
+5. Complete the Notebook and SEO provider-neutral contracts, then connect
    OpenSEO beside the existing Firecrawl research lane.
-5. Add Supervision visual QA and the governed media registry behind feature flags.
-6. Pilot OmniRoute and Prime Agent as operator-only lanes with explicit budgets.
-7. Pilot Strix only against controlled staging targets with human approval.
-8. Leave SkyReels and Open-Generative-AI heavy runtimes behind provider
+6. Add Supervision visual QA and the governed media registry behind feature flags.
+7. Pilot OmniRoute and Prime Agent as operator-only lanes with explicit budgets.
+8. Pilot Strix only against controlled staging targets with human approval.
+9. Leave SkyReels and Open-Generative-AI heavy runtimes behind provider
    contracts until GPU, model-license, safety, and cost reviews are approved.
-9. Run the normal build, security, client-isolation, and surface-map gates.
+10. Run the normal build, security, client-isolation, and surface-map gates.
 
 ## Sources
 
@@ -447,3 +481,4 @@ secret policy, budget, queue, audit record, and emergency disable path.
 - [Open-Generative-AI](https://github.com/anil-matcha/open-generative-ai)
 - [i-have-adhd](https://github.com/ayghri/i-have-adhd)
 - [no-ai-slop](https://github.com/petergyang/no-ai-slop)
+- [Hermes Content Factory Workflow](https://rajaashok.github.io/hermes-content-factory-workflow)
