@@ -8,9 +8,9 @@ This one answers a narrower question: *what changed, what is live, and what is
 next.* Update this file rather than opening a second log.
 
 **Last updated:** 2026-08-10
-**Live:** `veloce-cloud-test-00127-zdw` · image `v94-media-lanes`
-**Branch:** `codex/reviewed-additions-2026-08-10` = `origin/main` @ `99c882e`
-**Tests:** 206 passing · build clean · three security gates passing
+**Live:** `veloce-cloud-test-00128-rrw` · image `v95-spend-meter`
+**Branch:** `codex/reviewed-additions-2026-08-10` = `origin/main`
+**Tests:** 214 passing · build clean · three security gates passing
 
 ---
 
@@ -44,6 +44,15 @@ keys and the capability flag are missing.
 - **Media surfaces** — Agent Studio, Music, OpenMontage, Thumbnails given real
   modes, libraries and provider-naming gates.
 
+### Spend visibility
+- **`/api/client-runtime/budget`** and **`ClientSpendMeter`** — every surface
+  that can charge a provider key now shows the money spent and the percentage
+  of the cap together, broken down per provider. The keys are the client's own,
+  so this is their bill, not an abstract quota. Small charges render `<$0.01`
+  rather than `$0.00`.
+- Verified live: **$0.0578 of $1.00 (6%)** — anthropic $0.0439, openrouter
+  $0.0080, firecrawl $0.0050, antigravity $0.0009.
+
 ### Runtime
 - **`copy` artifact intent** — `preview` renders, `brief` plans, `copy` returns
   the finished piece. Added because the runner's format instruction is appended
@@ -69,6 +78,26 @@ Each passed every unit test and was invisible until a real call was made.
 
 ---
 
+## 2b. Local key audit (presence only, values never read)
+
+| Cloud lane | Key it needs | Owner already has it |
+|---|---|---|
+| Speech | `ELEVENLABS_API_KEY` | **yes** |
+| Music | `ELEVENLABS_MUSIC_API_KEY` | **yes** |
+| Images | `OPENAI_API_KEY` | no |
+| Video | `HEYGEN_API_KEY` | no |
+
+`~/.hermes/auth.json` holds CLI subscription auth (Codex, Copilot, Gemini CLI,
+Kimi). Those authenticate a terminal session, not server-side API calls, and are
+not usable as cloud keys.
+
+**The music lane was repointed from Suno to ElevenLabs** because the owner
+already holds that key. `POST /v1/music` returns audio directly, so the lane is
+synchronous like speech with no task polling. Suno stays implemented and
+allowlistable; it is simply not what the surface calls.
+
+**Net effect: two of four media lanes can be tested with keys already owned.**
+
 ## 3. Next setup — media providers
 
 The decision to enable all four, HeyGen included, is taken: **everything is
@@ -79,7 +108,8 @@ being tested.** The cap stays at $1 for now, which is the binding constraint.
 | Provider | Micros | Per run | Runs per $1 |
 |---|---|---|---|
 | HeyGen | 100,000 | $0.10 | 10 |
-| Suno | 100,000 | $0.10 | 10 |
+| ElevenLabs Music (30s) | 100,000 | $0.10 | 10 |
+| Suno *(no longer used)* | 100,000 | $0.10 | 10 |
 | OpenAI image (standard) | 40,000 | $0.04 | 25 |
 | OpenAI image (high, non-square) | 120,000 | $0.12 | 8 |
 | ElevenLabs | 3,000 / 1k chars | ~$0.003 | ~330k chars |
@@ -95,9 +125,12 @@ cap to $10–20 for the testing period, or test one provider at a time.
 name is not read. `printf` avoids a trailing newline; `--data-file=-` keeps the
 key out of shell history.
 
+Only the keys for lanes being tested are needed. Speech and music can reuse
+keys the owner already holds.
+
 ```bash
 P=veloce-agenticos-2026
-for s in elevenlabs-api-key openai-api-key suno-api-key heygen-api-key; do
+for s in elevenlabs-api-key elevenlabs-music-api-key openai-api-key heygen-api-key; do
   gcloud secrets create veloce-veloce-cloud-test-$s --project=$P --replication-policy=automatic
   gcloud secrets add-iam-policy-binding veloce-veloce-cloud-test-$s --project=$P \
     --member="serviceAccount:veloce-cloud-test-run@$P.iam.gserviceaccount.com" \
@@ -108,8 +141,9 @@ printf %s "KEY" | gcloud secrets versions add veloce-veloce-cloud-test-elevenlab
 ```
 
 **2. Claude updates the manifest** — add `media` to `enabledCapabilities`, the
-four keys to `providerAllowlist` and `secretEnv`, and set an explicit
-`CLIENT_OPENAI_IMAGE_COST_MICROS`. Validate before deploying.
+keys being used to `providerAllowlist` and `secretEnv`, and set explicit
+`CLIENT_OPENAI_IMAGE_COST_MICROS` and `CLIENT_ELEVENLABS_MUSIC_COST_MICROS`.
+Validate before deploying.
 
 **3. Deploy and smoke each lane**, capturing an artifact id per provider. The
 deploy refuses if a secret has no enabled version, so a missing key fails loudly
@@ -174,3 +208,8 @@ Nothing to build in the hosted runtime.
   in the same commit**, or export and offboarding silently drop it.
 - **Unit tests do not prove a lane works.** All three defects above passed
   theirs. Budget a live smoke per lane.
+- **Cost estimates err high, never low.** An under-counting ledger lets real
+  spend pass the cap before the guard notices; over-counting only stops early.
+- **The cap is Veloce's ledger, not a provider limit.** Set hard limits in each
+  provider dashboard too; that is the only ceiling the party billing you
+  enforces.
