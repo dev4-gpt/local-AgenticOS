@@ -12,7 +12,7 @@ import { isClientWorkspaceSurface, workspaceTerminalEvents, type ClientWorkspace
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ARTIFACT_INTENTS = new Set(["preview", "brief"]);
+const ARTIFACT_INTENTS = new Set(["preview", "brief", "copy"]);
 
 export async function GET(request: Request) {
   const user = await member();

@@ -10,7 +10,7 @@ import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { validClientTaskIdentity } from "@/lib/clientTaskAuth";
 import { logClientRuntimeEvent } from "@/lib/clientRuntimeObservability";
 import { runClientWorkflowRunner } from "@/lib/clientWorkflowRunner";
-import { artifactFromWorkspaceOutput, isClientWorkspaceSurface, workspacePrompt, workspaceTerminalEvents } from "@/lib/clientWorkspaceExecution";
+import { artifactFromWorkspaceOutput, isClientWorkspaceSurface, isWorkspaceArtifactIntent, workspacePrompt, workspaceTerminalEvents } from "@/lib/clientWorkspaceExecution";
 import { paperclipRunSummary } from "@/lib/clientPaperclipAdapter";
 import { parseRoomDirectives, roomActionSummary, roomPersona, roomPrompt } from "@/lib/clientRoomAdapter";
 import { parsePipelineShape, pipelineStageAfterShaping } from "@/lib/clientPipelineAdapter";
@@ -96,7 +96,8 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   const surface = typeof input.surface === "string" ? input.surface.trim().toLowerCase() : "";
   const title = typeof input.title === "string" ? input.title.trim().slice(0, 240) : "";
   const goal = typeof input.goal === "string" ? input.goal.trim().slice(0, 10_000) : "";
-  const artifactIntent = input.artifactIntent === "brief" ? "brief" : "preview";
+  // Anything unrecognised falls back to preview, as before.
+  const artifactIntent = typeof input.artifactIntent === "string" && isWorkspaceArtifactIntent(input.artifactIntent) ? input.artifactIntent : "preview";
   // A Paperclip agent run is still a workspace execution, but it carries its own
   // agent-persona prompt and reconciles the tenant issue and run rows.
   const paperclipRun = typeof input.paperclipRunId === "string" && /^[0-9a-f-]{36}$/i.test(input.paperclipRunId);

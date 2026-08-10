@@ -73,7 +73,8 @@ export default function ClientVideoWorkspace() {
       : videoStoryboardGoal({ subject, direction, source });
     const response = await fetch("/api/client-runtime/executions", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ surface: "video", title: videoTitle({ tab, subject }), goal, artifactIntent: "brief" }),
+      // A script is performed, so it is copy. A storyboard is a plan, so it is not.
+      body: JSON.stringify({ surface: "video", title: videoTitle({ tab, subject }), goal, artifactIntent: writing ? "copy" : "brief" }),
     }).catch(() => null);
     const data = await response?.json().catch(() => null);
     if (!response?.ok) setError(typeof data?.error === "string" ? data.error : "workspace_execution_queue_failed");

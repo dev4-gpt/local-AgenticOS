@@ -12,6 +12,14 @@ export type ClientTerminalEvent = {
   message: string;
 };
 
+export type WorkspaceArtifactIntent = "preview" | "brief" | "copy";
+
+export const WORKSPACE_ARTIFACT_INTENTS: WorkspaceArtifactIntent[] = ["preview", "brief", "copy"];
+
+export function isWorkspaceArtifactIntent(value: string): value is WorkspaceArtifactIntent {
+  return (WORKSPACE_ARTIFACT_INTENTS as string[]).includes(value);
+}
+
 export type WorkspaceArtifact = {
   fileName: string;
   contentType: "text/html" | "text/markdown";
@@ -49,9 +57,19 @@ export function workspaceTerminalEvents(surface: ClientWorkspaceSurface, phase: 
   return [{ at: now, stream: "stderr", message: message || "Execution stopped before an artifact was created." }];
 }
 
-export function workspacePrompt(input: { surface: ClientWorkspaceSurface; title: string; goal: string; artifactIntent: "preview" | "brief" }) {
+/**
+ * Three intents, because two were not enough. `preview` renders something, and
+ * `brief` plans something - but a surface like Radar exists to produce the
+ * finished piece, and asking for a brief gave it a document *about* the post
+ * instead of the post. This instruction is appended after the goal, so it wins
+ * any disagreement; that is precisely why the surface's intent has to be
+ * expressible here rather than argued for in the goal text.
+ */
+export function workspacePrompt(input: { surface: ClientWorkspaceSurface; title: string; goal: string; artifactIntent: WorkspaceArtifactIntent }) {
   const requested = input.artifactIntent === "preview"
     ? "Return one complete, self-contained HTML document in a single ```html code fence. Use inline CSS only. Do not include scripts, remote assets, API keys, or placeholders for work you did not perform."
+    : input.artifactIntent === "copy"
+    ? "Return the finished piece itself in a single ```markdown code fence - the words as they would be published, not a plan or a brief describing them. No preamble, no notes to the reader, no headings that only label the deliverable. Do not include API keys, secrets, or claims that an external action was performed."
     : "Return a concise Markdown implementation brief in a single ```markdown code fence. Do not include API keys, secrets, or claims that an external action was performed.";
   return [
     "You are the approved Veloce hosted workspace adapter.",
@@ -65,7 +83,7 @@ export function workspacePrompt(input: { surface: ClientWorkspaceSurface; title:
   ].join("\n").slice(0, 20_000);
 }
 
-export function artifactFromWorkspaceOutput(input: { surface: ClientWorkspaceSurface; title: string; artifactIntent: "preview" | "brief"; output: string }): WorkspaceArtifact | null {
+export function artifactFromWorkspaceOutput(input: { surface: ClientWorkspaceSurface; title: string; artifactIntent: WorkspaceArtifactIntent; output: string }): WorkspaceArtifact | null {
   const extracted = extractFence(input.output, input.artifactIntent === "preview" ? "html" : "markdown");
   if (!extracted) return null;
   const safeBase = input.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || input.surface;

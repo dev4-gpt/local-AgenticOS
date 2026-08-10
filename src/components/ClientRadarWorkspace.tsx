@@ -77,7 +77,8 @@ export default function ClientRadarWorkspace() {
         surface: "radar",
         title: radarSignalTitle({ headline, format }),
         goal: radarDraftGoal({ headline, whyNow, angle, format }),
-        artifactIntent: "brief",
+        // The Radar produces the piece, not a plan for the piece.
+        artifactIntent: "copy",
       }),
     }).catch(() => null);
     const data = await response?.json().catch(() => null);
