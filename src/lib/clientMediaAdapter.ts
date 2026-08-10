@@ -105,6 +105,33 @@ export async function runClientSpeechAdapter(input: {
   };
 }
 
+/**
+ * The upstream error code, not just "the request failed".
+ *
+ * A 429 from OpenAI means two very different things: a real rate limit, which
+ * resolves by waiting, or `insufficient_quota`, which means the account has no
+ * credit and waiting will never help. Collapsing both into one code sent a
+ * debugging session to the Cloud Run logs to learn something the response
+ * already said.
+ *
+ * Only the provider's short machine code is surfaced. The message body can
+ * echo request content, so it is deliberately not propagated.
+ */
+async function imageFailureCode(response: Response | null) {
+  if (!response) return "provider_unreachable";
+  const body = await response.text().catch(() => "");
+  let code = "";
+  try {
+    const parsed = JSON.parse(body) as { error?: { code?: unknown; type?: unknown } };
+    const raw = parsed?.error?.code ?? parsed?.error?.type;
+    if (typeof raw === "string") code = raw.trim().slice(0, 40).replace(/[^a-z0-9_]/gi, "_").toLowerCase();
+  } catch { /* fall through to the status-derived code */ }
+  if (code) return `provider_${code}`;
+  if (response.status === 429) return "provider_rate_limited_or_no_quota";
+  if (response.status === 401 || response.status === 403) return "provider_key_rejected";
+  return "provider_request_failed";
+}
+
 export async function runClientImageAdapter(input: {
   prompt: string;
   size?: string;
@@ -126,7 +153,7 @@ export async function runClientImageAdapter(input: {
     cache: "no-store",
     signal: AbortSignal.timeout(120_000),
   }).catch(() => null);
-  if (!response?.ok) return { ok: false, status: response?.status ?? 503, error: "provider_request_failed" };
+  if (!response?.ok) return { ok: false, status: response?.status ?? 503, error: await imageFailureCode(response) };
   const data = await boundedJson(response);
   const encoded = data?.data?.[0]?.b64_json;
   if (typeof encoded !== "string" || encoded.length < 1) return { ok: false, status: 502, error: "provider_output_invalid" };
