@@ -83,7 +83,7 @@ test("media gates name the provider rather than saying generation is unavailable
   // "Unavailable" tells a client nothing; the provider name tells them what to
   // approve. These are the providers the local surfaces actually call.
   const named: Record<string, string[]> = {
-    music: ["ElevenLabs", "Suno"],
+    music: ["ElevenLabs Music"],
     thumbnails: ["OpenAI", "sharp"],
     openmontage: ["ffmpeg"],
   };
@@ -113,7 +113,7 @@ test("only surfaces with a real hosted provider offer generation", () => {
 
 test("each generation lane names a provider the media worker actually accepts", () => {
   // The worker rejects anything outside this set with provider_not_allowed.
-  const accepted = new Set(["elevenlabs", "openai", "suno", "heygen"]);
+  const accepted = new Set(["elevenlabs", "elevenlabs-music", "openai", "suno", "heygen"]);
   for (const key of Object.keys(DEEP_SURFACES)) {
     const generation = DEEP_SURFACES[key].generation;
     if (!generation) continue;

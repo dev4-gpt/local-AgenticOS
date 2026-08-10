@@ -6,6 +6,7 @@ import { isPrivateAddress, readBoundedResponseBytes } from "@/lib/clientNetworkS
 
 const ELEVENLABS_ENDPOINT = "https://api.elevenlabs.io/v1/text-to-speech";
 const OPENAI_IMAGE_ENDPOINT = "https://api.openai.com/v1/images/generations";
+const ELEVENLABS_MUSIC_ENDPOINT = "https://api.elevenlabs.io/v1/music";
 const MAX_TEXT = 10_000;
 const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
@@ -13,7 +14,10 @@ const MAX_IMAGE_RESPONSE_BYTES = 32 * 1024 * 1024;
 
 export interface ClientMediaResult {
   ok: true;
-  provider: "elevenlabs";
+  // Speech and music are separate ElevenLabs products with separate keys and
+  // separate meters, so they stay distinguishable in the ledger rather than
+  // both settling as "elevenlabs".
+  provider: "elevenlabs" | "elevenlabs-music";
   model: string;
   fileName: string;
   contentType: "audio/mpeg";
@@ -183,6 +187,67 @@ export async function runClientHeyGenAdapter(input: {
   const providerJobId = data?.data?.video_id;
   if (!providerJobId) return { ok: false, status: 502, error: "provider_output_invalid" };
   return { ok: true, provider: "heygen", model: "heygen-video", state: "processing", providerJobId, estimatedCostMicros: estimateHeyGenCostMicros() };
+}
+
+/**
+ * ElevenLabs music. Unlike Suno this is synchronous - the endpoint returns the
+ * audio itself rather than a task id to poll - so the lane behaves like speech
+ * and needs no callback URL, no status endpoint, and no stored provider job id.
+ *
+ * It reads ELEVENLABS_MUSIC_API_KEY rather than falling back to the speech key.
+ * Music and speech are separately metered products, and silently charging a
+ * speech key for music generation is the kind of surprise a spend meter exists
+ * to prevent.
+ */
+export async function runClientElevenLabsMusicAdapter(input: {
+  text: string;
+  lengthMs?: number;
+}): Promise<ClientMediaResult | ClientMediaFailure> {
+  const prompt = input.text.trim();
+  if (prompt.length < 1 || prompt.length > 3_000) return { ok: false, status: 400, error: "music_input_invalid" };
+  if (!clientProviderEnabled("ELEVENLABS_MUSIC_API_KEY")) return { ok: false, status: 403, error: "provider_not_allowlisted" };
+  const key = providerEnvKey("ELEVENLABS_MUSIC_API_KEY");
+  if (!key) return { ok: false, status: 503, error: "provider_not_configured" };
+
+  // The API accepts 3s to 10 minutes. Default to 30s: long enough to judge a
+  // brand theme, short enough that a test run is not an expensive one.
+  const requested = Number.isFinite(input.lengthMs) ? Math.round(Number(input.lengthMs)) : 30_000;
+  const musicLengthMs = Math.max(3_000, Math.min(600_000, requested));
+  const model = process.env.CLIENT_ELEVENLABS_MUSIC_MODEL?.trim() || "music_v1";
+
+  const response = await fetch(ELEVENLABS_MUSIC_ENDPOINT, {
+    method: "POST",
+    headers: { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" },
+    body: JSON.stringify({ prompt, music_length_ms: musicLengthMs, model_id: model }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(180_000),
+  }).catch(() => null);
+  if (!response?.ok) return { ok: false, status: response?.status ?? 503, error: "provider_request_failed" };
+
+  const bytes = await readBoundedResponseBytes(response, MAX_AUDIO_BYTES);
+  if (!bytes || bytes.length < 1) return { ok: false, status: 502, error: "provider_output_invalid" };
+  const slug = prompt.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "track";
+  return {
+    ok: true,
+    provider: "elevenlabs-music",
+    model,
+    fileName: `${slug}.mp3`,
+    contentType: "audio/mpeg",
+    bytes,
+    estimatedCostMicros: estimateElevenLabsMusicCostMicros(musicLengthMs),
+  };
+}
+
+/**
+ * Deliberately conservative. An under-counting ledger lets real spend pass the
+ * cap before the guard notices, which is the dangerous direction; over-counting
+ * only stops you early. Tune down with CLIENT_ELEVENLABS_MUSIC_COST_MICROS once
+ * a real invoice is available.
+ */
+export function estimateElevenLabsMusicCostMicros(lengthMs: number) {
+  const perThirtySeconds = Number(process.env.CLIENT_ELEVENLABS_MUSIC_COST_MICROS ?? 100_000);
+  const base = Number.isFinite(perThirtySeconds) && perThirtySeconds >= 0 ? perThirtySeconds : 100_000;
+  return Math.max(0, Math.ceil(base * (Math.max(3_000, lengthMs) / 30_000)));
 }
 
 export async function runClientMusicAdapter(input: {

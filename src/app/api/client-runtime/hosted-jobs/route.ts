@@ -12,11 +12,14 @@ export const dynamic = "force-dynamic";
 
 const SPECS: Record<string, { capability: string; providers: string[]; maxInput: number }> = {
   orchestration: { capability: "orchestration", providers: [], maxInput: 16_000 },
-  media: { capability: "media", providers: ["elevenlabs", "heygen", "suno", "openai"], maxInput: 10_000 },
+  media: { capability: "media", providers: ["elevenlabs", "elevenlabs-music", "heygen", "suno", "openai"], maxInput: 10_000 },
   seo: { capability: "seo-research", providers: ["firecrawl"], maxInput: 2_500 },
 };
 const PROVIDER_KEYS: Record<string, string> = {
   elevenlabs: "ELEVENLABS_API_KEY",
+  // Music is a separately metered ElevenLabs product with its own key, so it
+  // is never charged against the speech key by accident.
+  "elevenlabs-music": "ELEVENLABS_MUSIC_API_KEY",
   heygen: "HEYGEN_API_KEY",
   suno: "SUNO_API_KEY",
   openai: "OPENAI_API_KEY",

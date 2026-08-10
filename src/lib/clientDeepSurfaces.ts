@@ -62,7 +62,7 @@ export type DeepSurface = {
    * single render is a visible fraction of a small monthly cap.
    */
   generation?: {
-    provider: "elevenlabs" | "openai" | "suno" | "heygen";
+    provider: "elevenlabs" | "elevenlabs-music" | "openai" | "suno" | "heygen";
     capability: "media";
     action: string;
     inputKind: "text" | "image";
@@ -147,9 +147,9 @@ export const DEEP_SURFACES: Record<string, DeepSurface> = {
         sourceLabel: "Existing audio notes · optional", sourcePlaceholder: "Paste anything already decided about the sound.",
       },
     ],
-    generation: { provider: "suno", capability: "media", action: "Generate the track", inputKind: "text", costHint: "Each track is about $0.10, so ten runs consume a $1 monthly cap." },
+    generation: { provider: "elevenlabs-music", capability: "media", action: "Generate the track", inputKind: "text", costHint: "Billed by length. A thirty second track is estimated at $0.10 until a real invoice tunes it." },
     gates: [
-      { title: "Music and voice generation", detail: "Locally this runs through ElevenLabs and Suno. Each needs its own approved credentials and per-generation budget for this client. No provider is contacted from this surface and no audio file is produced here." },
+      { title: "Music and voice generation", detail: "This runs through ElevenLabs Music, which needs its own approved credential and per-generation budget for this client. Until that is approved no provider is contacted from this surface and no audio file is produced here." },
     ],
   },
 
