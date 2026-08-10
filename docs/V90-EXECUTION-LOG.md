@@ -8,7 +8,7 @@ This one answers a narrower question: *what changed, what is live, and what is
 next.* Update this file rather than opening a second log.
 
 **Last updated:** 2026-08-10
-**Live:** `veloce-cloud-test-00131-9rt` · image `v97-media-capability-fix`
+**Live:** `veloce-cloud-test-00132-xw5` · image `v97-media-capability-fix`
 **Branch:** `codex/reviewed-additions-2026-08-10` = `origin/main`
 **Tests:** 214 passing · build clean · three security gates passing
 
@@ -24,7 +24,8 @@ Facts, not intentions. Read from the manifest and the live revision.
 | `providerAllowlist` | Supabase, Anthropic, OpenRouter, Gemini, **Firecrawl**, **ElevenLabs**, **ElevenLabs Music** |
 | `capabilityProviderAllowlist` | `{ "media": ["elevenlabs", "elevenlabs-music"] }` |
 | `seoAllowedHosts` | `markexis.com` |
-| `budget.monthlyCap` | **$1** shared across every lane — **16% used** |
+| `budget.monthlyCap` | **$10** shared across every lane — **2% used** ($0.158) |
+| `budget.warningThreshold` | `0.8` — warns at **$8.00** |
 
 `media` is enabled for **speech and music only**. `capabilityProviderAllowlist`
 scopes it to the two providers there are keys for; without that, enabling the
@@ -128,11 +129,63 @@ allowlistable; it is simply not what the surface calls.
 **Net effect: two of four media lanes are live on keys already owned.** Images
 need an `OPENAI_API_KEY`; video needs `HEYGEN_API_KEY`. Neither is bought yet.
 
+## 2c. Full-surface test campaign inside $10
+
+The cap was raised from $1 to $10 (config-only; same image, revision
+`00132-xw5`) so every surface can be exercised without a media test starving
+the rest.
+
+**The whole of this session's work cost $0.158.** That covered Ruflo swarms,
+Room rounds on six models, Loop iterations, the Batch A sweep, SEO research
+with live Firecrawl calls, and one voiceover and one music track. Text is
+effectively free; media is the entire cost.
+
+### What a complete sweep costs
+
+Grounded in the ledger's observed figures, not vendor list prices.
+
+| Group | Runs | Estimated |
+|---|---|---|
+| Orchestrate — Paperclip, Room, Pipeline, both Kanbans, Loop, Ruflo | ~10 | $0.06 |
+| Create text — Brief, OpenDesign, Web Studio, Flow Lab, Games, Agent Studio, OpenMontage | ~15 | $0.02 |
+| Govern — SEO all eight tabs, both Guides, Integrations | ~12 | $0.03 |
+| Deliver — Delivery, Leads, Radar | ~8 | $0.01 |
+| Context — Memory, Notebook, Journal, Goals | ~8 | $0.01 |
+| Speech | 10 | $0.03 |
+| **Music** | 5 | **$0.50** |
+| **Images** *(needs an OpenAI key)* | 20 | **$0.80** |
+| **Video** *(needs a HeyGen key)* | 5 | **$0.50** |
+| | **Total** | **≈ $1.96** |
+
+A complete sweep of every surface fits in roughly **20% of the cap**, leaving
+room to repeat it several times.
+
+### Where the money actually goes
+
+- **Anthropic is the expensive text model.** A single Room round across six
+  personas cost $0.0439 — more than every other text call this session
+  combined. Prefer the OpenRouter lane for bulk testing.
+- **Media dominates everything.** One 30-second track costs more than the
+  entire Orchestrate group.
+- **Firecrawl is negligible** at $0.001 per page; scraping three results is
+  $0.004.
+
+### Still to buy
+
+Images need `OPENAI_API_KEY`, video needs `HEYGEN_API_KEY`. Both slot into the
+existing `capabilityProviderAllowlist` as a manifest line plus a secret — no
+code change. Without them the sweep costs about **$0.66**.
+
+**The cap is Veloce's own ledger, computed from estimates, and that risk scales
+with the ceiling.** At $10 an under-counting estimate can overspend by ten
+times what it could at $1. Set hard limits in the ElevenLabs and OpenAI
+dashboards too; that is the only ceiling the party billing you enforces.
+
 ## 3. Next setup — media providers
 
 Speech and music are **done**. What remains is images (OpenAI) and video
-(HeyGen), both of which need keys that do not exist yet. The $1 cap is the
-binding constraint and is now 16% consumed by a single music test.
+(HeyGen), both of which need keys that do not exist yet. The cap is now $10, so
+neither is constrained by budget — only by the keys.
 
 ### Cost per run
 
@@ -145,10 +198,10 @@ binding constraint and is now 16% consumed by a single music test.
 | OpenAI image (high, non-square) | 120,000 | $0.12 | 8 |
 | ElevenLabs | 3,000 / 1k chars | ~$0.003 | ~330k chars |
 
-The budget is shared with the model lane and Firecrawl. At $1, roughly **five
-HeyGen renders plus normal usage** exhausts the month, and the guard then starts
-failing *other* surfaces with `budget_exceeded`. Two workable options: raise the
-cap to $10–20 for the testing period, or test one provider at a time.
+The budget is shared with the model lane and Firecrawl. The cap was raised to
+**$10** for the testing period, which removes the earlier problem where a
+handful of renders would exhaust the month and start failing unrelated
+surfaces. See §2c for what a full sweep costs.
 
 ### Steps
 
