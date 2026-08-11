@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { CAPABILITIES } from "@/lib/capabilities";
 import { currentClientMember } from "@/lib/clientAuth";
-import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
+import { clientCapabilityEnabled, clientCapabilityExposure } from "@/lib/clientRuntimePolicy";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,8 @@ export async function GET() {
   }
   const capabilities = CAPABILITIES
     .filter((capability) => !clientEdition || capability.audience === "built-in")
-    .filter((capability) => !clientEdition || clientCapabilityEnabled(capability.id))
-    .map((capability) => clientEdition ? { ...capability, destination: undefined } : capability);
+    .map((capability) => ({ capability, exposure: clientEdition ? clientCapabilityExposure(capability.id) : "enabled" as const }))
+    .filter(({ exposure }) => !clientEdition || exposure !== "hidden")
+    .map(({ capability, exposure }) => clientEdition ? { ...capability, destination: undefined, exposure } : capability);
   return NextResponse.json({ ok: true, capabilities });
 }

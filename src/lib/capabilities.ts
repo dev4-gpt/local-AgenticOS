@@ -137,4 +137,39 @@ export const CAPABILITIES: Capability[] = [
     description: "Routes work between local, value-cloud, and premium-cloud models with spend and approval rules.",
     dataScope: "Per-provider configuration and per-client budget records.", actionBoundary: "No shared personal keys; overages require approval.",
   },
+  {
+    id: "context-compiler", name: "Tenant Context Compiler", kind: "skill", audience: "built-in", status: "planned",
+    description: "Compiles tenant-owned source artifacts into cited retrieval chunks and a review-required skill manifest.",
+    dataScope: "Explicitly selected tenant artifacts and their provenance metadata.", actionBoundary: "Generated skills are data until reviewed; compilation grants no new tools and never activates automatically.",
+  },
+  {
+    id: "output-quality", name: "Output Quality Policy", kind: "policy", audience: "built-in", status: "reviewed",
+    description: "Transparent action-first formatting and filler detection that preserves citations, code, facts, and voice.",
+    dataScope: "The current response or approved deliverable only.", actionBoundary: "No silent factual rewrite; user and tenant opt-out remains available.",
+  },
+  {
+    id: "visual-qa", name: "Visual QA Worker", kind: "skill", audience: "built-in", status: "planned",
+    description: "Bounded machine-checkable visual reports stored beside tenant-owned media artifacts.",
+    dataScope: "Tenant-owned artifacts submitted through the artifact boundary.", actionBoundary: "Isolated worker only; no arbitrary URLs, cameras, private hosts, or automatic publication.",
+  },
+  {
+    id: "operator-worktree", name: "Resumable Operator Worktree", kind: "skill", audience: "operator", status: "reviewed",
+    description: "Disposable, budgeted, resumable worktree execution with retained outputs and review-before-apply.",
+    dataScope: "An explicitly selected operator worktree and its retained outputs.", actionBoundary: "Never client-facing; discard and approval gates protect the workspace.",
+  },
+  {
+    id: "security-assessment", name: "Isolated Security Assessment", kind: "skill", audience: "operator", status: "reviewed",
+    description: "Human-approved assessment runs against explicitly authorized staging targets with retained evidence.",
+    dataScope: "Veloce-owned or explicitly authorized staging targets only.", actionBoundary: "No arbitrary client target, autonomous fixes, or unapproved deployment.",
+  },
+  {
+    id: "voice-private", name: "Private Voice Adapter", kind: "skill", audience: "built-in", status: "planned",
+    description: "Consent-backed local or approved-provider voice outputs stored as private tenant artifacts.",
+    dataScope: "Tenant-approved text, voice consent records, and private audio artifacts.", actionBoundary: "Consent is required; outputs never publish automatically.",
+  },
+  {
+    id: "communications-draft", name: "Approved Communications Drafting", kind: "skill", audience: "built-in", status: "planned",
+    description: "Consent-aware outreach drafts with recipient, spend, region, and approval records.",
+    dataScope: "Tenant-provided recipient records and approved draft content.", actionBoundary: "Draft-only by default; no automatic send or unattended external messaging.",
+  },
 ];
