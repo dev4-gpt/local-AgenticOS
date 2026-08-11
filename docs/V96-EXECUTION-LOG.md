@@ -16,6 +16,12 @@ is the one to track.
 **Tests:** 227 passing · **19 failing (pre-existing, unrelated)** · build clean ·
 three security gates passing
 
+**Verification:** see [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) for
+what is proven live and against which revision — including a **high-severity
+defect**: four of eight client-reachable provider lanes cannot complete a
+workspace execution, because forced tool-calling and fence-based artifact
+extraction are mutually exclusive.
+
 The 19 failures are in `product-experience`, `public-edition`, `sidebar-smoke`
 and `visual-shell` — the public-site and local mission-control specs. They fail
 identically at a clean `HEAD` with every working change stashed, so they are not
