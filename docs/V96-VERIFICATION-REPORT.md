@@ -19,6 +19,7 @@ reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
 
 ## Current Codex checkpoint — step 4 source complete, cloud deployment pending
 
+- Implementation commit: `75cf39d`.
 - The complete Playwright suite passes **255/255**; the focused Hermes/parser/
   allowlist suite passes **40/40**.
 - `npx tsc --noEmit`, production `npm run build`, provider-policy,

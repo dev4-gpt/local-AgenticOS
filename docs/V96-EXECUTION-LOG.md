@@ -14,6 +14,7 @@ next.* Update this file rather than opening a second log.
 `codex/reviewed-additions-2026-08-10` remote branch was merged and deleted on
 2026-08-11. A local branch of that name may still exist with no upstream; `main`
 is the one to track.
+**Codex implementation commit:** `75cf39d` (local; push pending)
 **Tests:** **255 passing · 0 failing** (40 focused step-4/parser/allowlist tests)
 · production build clean · three security gates passing
 · npm audit: no high/critical findings, 3 moderate PostCSS advisories

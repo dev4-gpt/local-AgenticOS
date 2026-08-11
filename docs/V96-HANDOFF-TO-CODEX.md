@@ -15,6 +15,8 @@ lives in [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) and
 | | |
 |---|---|
 | **Live** | `veloce-cloud-test-00139-w6s` · `v101-plan-artifacts` |
+| **Local implementation commit** | `75cf39d` · not pushed yet |
+| **Next image** | `v102-hermes-content-factory` · manifest prepared locally, not deployed |
 | **Tests** | **255 passing, 0 failing** (40 focused Hermes/parser/allowlist tests also pass) |
 | **Build** | clean · three security gates passing |
 | **`npm audit --audit-level=high`** | 3 moderate PostCSS advisories; no high/critical findings |
