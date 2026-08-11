@@ -78,6 +78,13 @@ public-site/src/assets/*.png
 # and delivery workspaces outside the public AgentOS repository.
 .private-client-kits/
 
+# iCloud duplicate files. This repo lives in iCloud Drive, which resurrects
+# deleted files as "name 2.ext" -- including stale copies of real source, e.g. a
+# July snapshot of src/app/page.tsx. They were previously suppressed in
+# .git/info/exclude, which is local to one clone, so every other checkout (and
+# the parallel Codex session) still saw them as untracked noise.
+*[[:space:]]2.*
+
 # Generated pitch-deck output (~10 MB). Every file under it is produced by
 # scripts/create-local-product-pitch-deck.mjs — the HTML, the PDF, and the
 # assets/, which are authenticated Playwright screenshots of the *private* local

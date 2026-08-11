@@ -8,14 +8,14 @@ This one answers a narrower question: *what changed, what is live, and what is
 next.* Update this file rather than opening a second log.
 
 **Last updated:** 2026-08-11
-**Live:** `veloce-cloud-test-00138-68l` · image `v100-skill-gate`
-(digest `sha256:795f6fee…`, release `skill-gate-20260811`, deployed 2026-08-11)
+**Live:** `veloce-cloud-test-00139-w6s` · image `v101-plan-artifacts`
+(release `plan-artifacts-20260811`, deployed 2026-08-11)
 **Branch:** work lands on `origin/main` directly — the
 `codex/reviewed-additions-2026-08-10` remote branch was merged and deleted on
 2026-08-11. A local branch of that name may still exist with no upstream; `main`
 is the one to track.
-**Tests:** 227 passing · **19 failing (pre-existing, unrelated)** · build clean ·
-three security gates passing
+**Tests:** 242 passing · **8 failing** · build clean · three security gates passing
+· `npm audit --audit-level=high` clean
 
 **Verification:** see [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) for
 what is proven live and against which revision — including a **high-severity

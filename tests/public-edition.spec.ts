@@ -45,6 +45,12 @@ test("public Veloce edition exposes honest privacy and security boundaries", asy
   await expect(page.getByRole("heading", { name: "Privacy" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Terms" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Security" })).toBeVisible();
-  await expect(page.getByText(/stores no form submissions/i)).toBeVisible();
+  // This assertion used to require "stores no form submissions". The site's
+  // privacy claim has since reversed: it now states plainly that submitted
+  // details ARE stored in order to reply, and warns against sending
+  // confidential material. That is the more honest boundary, so the test
+  // follows the copy rather than the copy being reverted to satisfy the test.
+  await expect(page.getByText(/stores the details you provide/i)).toBeVisible();
+  await expect(page.getByText(/do not submit confidential, regulated, or client-identifying/i)).toBeVisible();
   await expect(page.getByText(/no local dashboard, agent execution/i)).toBeVisible();
 });

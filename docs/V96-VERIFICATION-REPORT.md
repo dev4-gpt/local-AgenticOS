@@ -9,9 +9,12 @@ decayed into a claim that was not.
 So this file records verification differently. Every row says **which revision
 it was proven against**. A result without a revision is not a result.
 
-**Revision under test:** `veloce-cloud-test-00138-68l`
-**Image:** `v100-skill-gate`, digest `sha256:795f6fee…`
-**Release:** `skill-gate-20260811`
+**Revision under test:** `veloce-cloud-test-00139-w6s`
+**Image:** `v101-plan-artifacts`
+**Release:** `plan-artifacts-20260811`
+**Superseded:** `00138-68l` / `v100-skill-gate` — surface coverage in §3 was
+proven there and has not been re-run since; the change between them is the
+reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
 **Date:** 2026-08-11
 
 ---
@@ -59,12 +62,32 @@ already rule 2 in the execution log's rules section.
 
 ---
 
-## 2. DEFECT: half the provider lanes cannot complete a workspace execution
+## 2. DEFECT: half the provider lanes cannot complete a workspace execution — **FIXED 2026-08-11**
 
-**Severity: high. Reproducible. Structural, not probabilistic.**
+**Severity was high. Reproducible. Structural, not probabilistic.**
 
-Four of the eight client-reachable provider lanes can **never** produce an
-artifact from a workspace execution. Not sometimes — never, by construction.
+> **Fixed and verified live on `veloce-cloud-test-00139-w6s`** (`v101-plan-artifacts`).
+> `artifactFromWorkspaceOutput` now recognises a serialized reviewed plan and
+> renders it as markdown. The isolation test below was re-run against the new
+> revision with surface, intent and goal held identical: **all 8 lanes
+> succeeded**, where the four `reviewed-plan` lanes previously failed every
+> time. The `openclaw` artifact was downloaded and confirmed to be a real
+> markdown plan carrying the "Human approval required" marker.
+>
+> `preview` intent downgrades to markdown and records `downgradedFrom` rather
+> than synthesising HTML the model never produced.
+>
+> **Still broken, deliberately out of scope:** the same providers feed
+> `parseLoopVerdict` and the pipeline shape parser, which receive the same
+> envelope and fail with `loop_verdict_unparsable` /
+> `pipeline_shape_unparsable`.
+
+The original diagnosis is kept below, because the reasoning is what makes the
+fix reviewable.
+
+*(Original diagnosis, written before the fix:)* Four of the eight
+client-reachable provider lanes can **never** produce an artifact from a
+workspace execution. Not sometimes — never, by construction.
 
 ### The chain
 
@@ -119,7 +142,7 @@ The lanes are configured correctly, the contracts are internally consistent, and
 every unit test passes — the incompatibility only exists at runtime, where the
 two subsystems meet.
 
-### Options (not yet decided)
+### Options considered
 
 1. **Teach `artifactFromWorkspaceOutput` to accept a reviewed plan** — map the
    plan JSON into a markdown artifact. Keeps the review boundary, makes the lane
@@ -131,8 +154,10 @@ two subsystems meet.
    `reviewed-plan` provider with a named error instead of a generic artifact
    failure. Honest, but leaves half the lanes unusable.
 
-Option 1 preserves both guarantees and is the recommendation. **Not implemented
-— this is a finding, not a fix.**
+**Option 1 was chosen and implemented** — it preserves the forced-tool review
+boundary and makes the lanes usable, without weakening a guarantee or writing
+off half the providers. See the banner at the top of this section for the live
+evidence.
 
 ---
 
