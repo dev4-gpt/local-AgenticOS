@@ -34,6 +34,12 @@ const probes = [
   ["board events", "client_board_events"],
   ["loop runs", "client_loop_runs"],
   ["loop rounds", "client_loop_rounds"],
+  ["Hermes content factory", "client_hermes_content_factory_runs"],
+  ["Hermes stage outputs", "client_hermes_content_factory_stage_outputs"],
+  ["Hermes citations", "client_hermes_content_factory_citations"],
+  ["Hermes quality reports", "client_hermes_content_factory_quality_reports"],
+  ["Hermes approvals", "client_hermes_content_factory_approvals"],
+  ["Hermes deliveries", "client_hermes_content_factory_deliveries"],
   ["ruflo swarms", "client_ruflo_swarms"],
   ["ruflo agents", "client_ruflo_agents"],
 ];

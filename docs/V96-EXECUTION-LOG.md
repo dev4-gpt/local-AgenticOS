@@ -14,8 +14,30 @@ next.* Update this file rather than opening a second log.
 `codex/reviewed-additions-2026-08-10` remote branch was merged and deleted on
 2026-08-11. A local branch of that name may still exist with no upstream; `main`
 is the one to track.
-**Tests:** **250 passing · 0 failing** · build clean · three security gates passing
-· `npm audit --audit-level=high` clean
+**Tests:** **255 passing · 0 failing** (40 focused step-4/parser/allowlist tests)
+· production build clean · three security gates passing
+· npm audit: no high/critical findings, 3 moderate PostCSS advisories
+
+**Codex step 4 implementation (2026-08-11):** the Hermes Content Factory is now
+implemented locally and in the client-runtime source path. It has a structured
+approval record, deterministic retry identity, tenant-scoped workflow evidence,
+normalized stage/citation/quality/approval/delivery records, a queued worker
+capability, local Hermes/Kanban execution, and explicit publication blocking
+before approval. Delivery retries replay the original record. The Loop and
+Pipeline workers now request their semantic response formats without the
+reviewed-plan tool, preserving the reviewed-plan boundary for workspace
+artifacts. The migration is
+`product-experience/supabase-client-hermes-content-factory.sql`; it is not yet
+applied to the live tenant because no Supabase migration credentials are
+available in the operator shell. The v102 image manifest is prepared, but the
+recorded live revision above remains the pre-step-4 `v101-plan-artifacts` image.
+
+**Local/cloud surface checkpoint (2026-08-11):** operator `3939` returned
+healthy `/healthz` and rendered `/hermes`; client `3940` returned the expected
+auth redirect and 401 Hermes API boundary; the local queued request replayed the
+original workflow and publication before approval returned 409. The cloud
+hostname resolved and returned its login boundary, but its old image does not
+contain the new Hermes route.
 
 **Handoff:** [V96-HANDOFF-TO-CODEX.md](V96-HANDOFF-TO-CODEX.md) — start there if you
 are picking up the STAR portfolio.

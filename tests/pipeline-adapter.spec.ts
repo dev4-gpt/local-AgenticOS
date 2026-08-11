@@ -29,6 +29,10 @@ test("a job may shape from capture but never approve", () => {
   expect(pipelineCanShape(item({ id: "5", stage: "inbox", executionState: "running" }))).toBe(false);
 });
 
+test("pipeline shaping remains fail-closed for a reviewed-plan envelope", () => {
+  expect(parsePipelineShape(JSON.stringify({ type: "reviewed_plan", tool: "propose_reviewed_plan", plan: { summary: "proposal", steps: [{ title: "Review" }] } }))).toBeNull();
+});
+
 test("build is only available after approval moved the item to Execute", () => {
   expect(pipelineCanBuild(item({ id: "1", stage: "review" }))).toBe(false);
   expect(pipelineCanBuild(item({ id: "2", stage: "building" }))).toBe(true);

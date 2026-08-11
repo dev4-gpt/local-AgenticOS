@@ -1,4 +1,4 @@
-# V96 handoff — the base is clean, the STAR work can start
+# V96 handoff — Hermes Content Factory step 4 complete
 
 **Written for the session that picks up the STAR portfolio.** V96 close-out is
 finished. This file says what is true right now, what was fixed getting here,
@@ -15,9 +15,9 @@ lives in [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) and
 | | |
 |---|---|
 | **Live** | `veloce-cloud-test-00139-w6s` · `v101-plan-artifacts` |
-| **Tests** | **250 passing, 0 failing** |
+| **Tests** | **255 passing, 0 failing** (40 focused Hermes/parser/allowlist tests also pass) |
 | **Build** | clean · three security gates passing |
-| **`npm audit --audit-level=high`** | exits 0 (3 moderates remain) |
+| **`npm audit --audit-level=high`** | 3 moderate PostCSS advisories; no high/critical findings |
 | **Next.js** | 16.2.12 |
 | **Surfaces** | 26/26 verified live (on `00138-68l`; unchanged since) |
 | **Media lanes** | 4/4 verified by magic bytes |
@@ -54,30 +54,39 @@ earlier held port 3737 and served no stylesheet; one genuine test drift.
 
 ## Still open — read before starting
 
-### 1. `parseLoopVerdict` and the pipeline shape parser (bug, scoped out)
+### 1. `parseLoopVerdict` and the pipeline shape parser — fixed in step 4
 
 The reviewed-plan fix covers the **artifact** path only. The same four providers
 also feed `parseLoopVerdict` (`src/app/api/internal/client-runtime/jobs/route.ts`
 around line 452) and the pipeline shape parser, which receive the same envelope
 and fail with `loop_verdict_unparsable` / `pipeline_shape_unparsable`.
 
-Two call sites at `jobs/route.ts:359` (Ruflo) and `:470` (Loop) tolerate a null
-artifact with `if (artifact)`, so they **silently drop a report** rather than
-failing. That is worth changing regardless of the parsers.
+Loop and Pipeline semantic calls now disable the reviewed-plan tool and request
+their required response mode. Both parsers also fail closed on an unexpected
+reviewed-plan envelope, with focused regression coverage.
 
-### 2. Supervision visual QA — deferred by decision, not oversight
+### 2. Cloud migration and deployment — pending external owner access
+
+The v102 manifest is prepared with image
+`v102-hermes-content-factory`, and the migration now creates normalized
+tenant-scoped stage, citation, quality-report, approval, and delivery tables.
+The current shell has no Supabase migration credentials, so the migration has
+not been applied and the old live revision remains `00139-w6s`/`v101-plan-artifacts`.
+Do not exercise the cloud Hermes workflow until the migration is applied.
+
+### 3. Supervision visual QA — deferred by decision, not oversight
 
 `V96VisualQaReport` is a ready contract imported by nothing. Building it means
 turning `provision-gcp-client.mjs` from a one-service deployer into a
 multi-service one, plus a lifecycle table and route registration in three
 places. **Decided: defer until a client asks.** Do not re-cost it.
 
-### 3. Three moderate advisories
+### 4. Three moderate advisories
 
 `@tailwindcss/postcss`, `next`, `postcss` — below the CI threshold. The `next`
 one needs 16.3.0, a minor bump.
 
-### 4. Housekeeping
+### 5. Housekeeping
 
 The repo lives in iCloud Drive, which resurrects deleted files as `name 2.ext`,
 including stale copies of real source. Now covered by a `.gitignore` pattern
@@ -121,9 +130,20 @@ merge order. Its steps 2 and 3 are done: typed contracts exist in
 closed tool vocabulary — a role cannot widen platform permissions, and that is
 asserted by a test that was verified by planting `execute-shell`.
 
-The next unstarted item in that order is **step 4, the Hermes Content Factory
-plan**, run through the existing Hermes SEO/Kanban path with publication
-disabled until approval.
+**Step 4, the Hermes Content Factory plan, is now implemented in the active
+worktree.** The shared contract has structured approval records and deterministic
+idempotency; local Hermes execution is file-backed under the existing Hermes
+home; the client runtime has a tenant-scoped queued route, worker reconciliation,
+citations, quality reports, and delivery records; and publication is rejected
+until approval matches the exact tenant and workflow. Loop and Pipeline semantic
+jobs explicitly disable the reviewed-plan tool so their required parsers receive
+their own output shapes.
+
+The migration is `product-experience/supabase-client-hermes-content-factory.sql`
+and must be applied before the cloud route is exercised. The next merge-order
+item after this slice is **step 5, the Notebook and SEO provider-neutral
+contracts**. Cloud deployment of this slice is still pending the next verified
+image/revision; do not treat `00139-w6s` as containing these changes.
 
 **Deploy loop:** build with `CLIENT_IMAGE=…:vNN-name`, bump `gcp.image` and
 `VELOCE_RELEASE` in `.private-client-kits/veloce-cloud-test.gcp.json`, run

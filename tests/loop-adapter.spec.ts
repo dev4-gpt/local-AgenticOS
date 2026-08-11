@@ -43,6 +43,10 @@ test("still reads the older JSON verdict shape", () => {
   expect(verdict?.score).toBe(88);
 });
 
+test("reviewed-plan provider mode is not mistaken for a passing judge verdict", () => {
+  expect(parseLoopVerdict(JSON.stringify({ type: "reviewed_plan", tool: "propose_reviewed_plan", plan: { summary: "needs review", steps: [{ title: "Review" }] } }))).toBeNull();
+});
+
 test("an unreadable verdict is null so it is never counted as a pass", () => {
   expect(parseLoopVerdict("I think this looks pretty good overall!")).toBeNull();
   expect(parseLoopVerdict("")).toBeNull();

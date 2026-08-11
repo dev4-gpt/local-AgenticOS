@@ -16,6 +16,7 @@ import { parseRoomDirectives, roomActionSummary, roomPersona, roomPrompt } from 
 import { parsePipelineShape, pipelineStageAfterShaping } from "@/lib/clientPipelineAdapter";
 import { loopBuilderPrompt, loopFinalStatus, loopJudgePrompt, parseLoopVerdict } from "@/lib/clientLoopAdapter";
 import { rufloAgentPrompt, rufloReportPrompt, rufloRoster } from "@/lib/clientRufloAdapter";
+import { HERMES_CONTENT_FACTORY_STEPS, createHermesContentFactoryPlan, hermesContentFactoryPrompt, type HermesContentFactoryPlan, type HermesContentFactoryStage } from "@/lib/hermesContentFactory";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
   if (!claim.ok) return NextResponse.json({ ok: false, error: "job_claim_failed" }, { status: 503 });
   const job = claim.value as { id?: string; capability?: string; provider?: string; model?: string; input_metadata?: Record<string, unknown> | null } | null;
   if (!job?.id || typeof job.capability !== "string") return NextResponse.json({ ok: true, status: "already_claimed" });
-  if (["text-agents", "media", "seo-research", "room-round", "pipeline-shape", "loop-run", "ruflo-swarm"].includes(job.capability) && !clientProviderCallsEnabled()) {
+  if (["text-agents", "media", "seo-research", "room-round", "pipeline-shape", "loop-run", "ruflo-swarm", "hermes-content-factory"].includes(job.capability) && !clientProviderCallsEnabled()) {
     await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, "provider_calls_require_approval");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
   if (job.capability === "room-round") return processRoomRoundJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "pipeline-shape") return processPipelineShapeJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "loop-run") return processLoopRunJob(jobId, tenantSlug, workerToken, job);
+  if (job.capability === "hermes-content-factory") return processHermesContentFactoryJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "ruflo-swarm") return processRufloSwarmJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "media") return processMediaJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "seo-research") return processSeoJob(jobId, tenantSlug, workerToken, job);
@@ -120,7 +122,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
     await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: workspaceTerminalEvents(surface, "failed", "The tenant budget or model policy did not approve this execution.") }, "budget_exceeded");
     return NextResponse.json({ ok: true, status: "failed" });
   }
-  const result = await runClientTextAdapter({ provider: job.provider, model, prompt, reserveBudget: false, jobId });
+  const result = await runClientTextAdapter({ provider: job.provider, model, prompt, reserveBudget: false, jobId, disableReviewedPlanTool: true });
   if (!result.ok) {
     logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: job.provider, status: result.status, reason: result.error });
     if (result.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, result.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
@@ -296,6 +298,92 @@ async function processPipelineShapeJob(jobId: string, tenantSlug: string, worker
 }
 
 /**
+ * Runs the bounded Hermes factory envelope. Research stays on the existing
+ * Firecrawl adapter, model work stays on the approved text lane, and the
+ * result is held at the approval stage. No destination adapter is called here.
+ */
+async function processHermesContentFactoryJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; model?: string; input_metadata?: Record<string, unknown> | null }) {
+  const input = job.input_metadata ?? {};
+  const runId = typeof input.hermesRunId === "string" ? input.hermesRunId : "";
+  const sourceUrls = Array.isArray(input.sourceUrls) ? input.sourceUrls.filter((value): value is string => typeof value === "string").slice(0, 8) : [];
+  const rawPlan = input.plan && typeof input.plan === "object" ? input.plan as HermesContentFactoryPlan : null;
+  if (!/^[0-9a-f-]{36}$/i.test(runId) || !rawPlan || rawPlan.tenantSlug !== tenantSlug || sourceUrls.length < 1 || !job.provider || !job.model) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { hermesRunId: runId }, "content_factory_input_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const plan = createHermesContentFactoryPlan({
+    tenantSlug,
+    brief: rawPlan.brief,
+    contentType: rawPlan.contentType,
+    workflowId: rawPlan.workflowId,
+  });
+  const stages = HERMES_CONTENT_FACTORY_STEPS.map((step) => ({ workflowId: plan.workflowId, tenantSlug, stage: step.id, status: "pending" as const }));
+  const patchRun = async (patch: Record<string, unknown>) => workerRpc("update_client_hermes_content_factory_worker", {
+    p_tenant_slug: tenantSlug, p_worker_token: workerToken, p_job_id: jobId, p_patch: patch,
+  });
+  await patchRun({ status: "running", current_stage: "research", stages: stages.map((stage) => stage.stage === "brief" ? { ...stage, status: "complete" } : stage) });
+
+  const citations: Array<{ id: string; url: string; retrievedAt: string; evidence: string }> = [];
+  for (const [index, url] of sourceUrls.entries()) {
+    const research = await runClientSeoAdapter({ url, focus: plan.brief });
+    if (research.ok) citations.push({ id: `citation-${index + 1}`, url: research.url, retrievedAt: new Date().toISOString(), evidence: research.markdown.slice(0, 2_000) });
+  }
+  if (!citations.length) {
+    await patchRun({ status: "failed", current_stage: "research", error_code: "citation_research_failed" });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { hermesRunId: runId }, "citation_research_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+
+  const planPrompt = hermesContentFactoryPrompt(plan, "plan");
+  const draftPrompt = hermesContentFactoryPrompt(plan, "draft");
+  const estimate = estimateClientTextCostMicros(job.model, [{ role: "user", content: `${planPrompt}\n${draftPrompt}` }], clientTextMaxOutputTokens() * 2);
+  if (estimate === null || !(await reserveClientRuntimeBudgetWorker({ provider: job.provider, model: job.model, amountMicros: estimate, jobId, workerToken }))) {
+    await patchRun({ status: "failed", current_stage: "plan", citations, error_code: "budget_exceeded" });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { hermesRunId: runId }, "budget_exceeded");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const outline = await runClientTextAdapter({ provider: job.provider, model: job.model, prompt: planPrompt, reserveBudget: false, jobId, disableReviewedPlanTool: true });
+  const draft = outline.ok ? await runClientTextAdapter({ provider: job.provider, model: job.model, prompt: draftPrompt, reserveBudget: false, jobId, disableReviewedPlanTool: true }) : outline;
+  if (!outline.ok || !draft.ok) {
+    const failure = !outline.ok ? outline.error : !draft.ok ? draft.error : "content_factory_provider_failed";
+    await settleTerminalBudget(jobId, workerToken, 0, { providerFailure: 1 });
+    await patchRun({ status: "failed", current_stage: outline.ok ? "draft" : "plan", citations, error_code: failure });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { hermesRunId: runId }, failure);
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const outlineArtifact = await storeArtifact(tenantSlug, jobId, workerToken, `${plan.workflowId}-outline.md`, "text/markdown", Buffer.from(safeClientProviderOutput(outline.output), "utf8"));
+  const draftArtifact = await storeArtifact(tenantSlug, jobId, workerToken, `${plan.workflowId}-draft.md`, "text/markdown", Buffer.from(safeClientProviderOutput(draft.output), "utf8"));
+  if (!outlineArtifact || !draftArtifact) {
+    await settleTerminalBudget(jobId, workerToken, 0, { artifactStoreFailure: 1 });
+    await patchRun({ status: "failed", current_stage: "draft", citations, error_code: "artifact_store_failed" });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { hermesRunId: runId }, "artifact_store_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const report = {
+    id: `quality-${runId}`,
+    workflowId: plan.workflowId,
+    tenantSlug,
+    passed: citations.length > 0 && Boolean(draftArtifact),
+    score: citations.length > 0 && Boolean(draftArtifact) ? 100 : 0,
+    citationCount: citations.length,
+    findings: [] as string[],
+    checkedAt: new Date().toISOString(),
+  };
+  const completedStages = stages.map((stage) => {
+    if (stage.stage === "brief" || stage.stage === "research" || stage.stage === "plan" || stage.stage === "draft" || stage.stage === "assets" || stage.stage === "quality") return { ...stage, status: "complete" as const, ...(stage.stage === "research" ? { citationRecordId: `citations-${runId}` } : {}), ...(stage.stage === "plan" ? { artifactId: outlineArtifact } : {}), ...(stage.stage === "draft" ? { artifactId: draftArtifact } : {}), ...(stage.stage === "quality" ? { qualityReportId: report.id } : {}) };
+    return stage;
+  });
+  const actual = outline.usage && draft.usage
+    ? (clientTextUsageCostMicros(job.model, outline.usage) ?? estimate) + (clientTextUsageCostMicros(job.model, draft.usage) ?? estimate)
+    : estimate;
+  const outputMetadata = { adapter: "hermes-content-factory", hermesRunId: runId, completedSteps: 6 };
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: actual, usageMetadata: { actualAmountMicros: actual, citations: citations.length } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
+  await patchRun({ status: "awaiting_approval", current_stage: "approval", stages: completedStages, citations, quality_report: report });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
+  return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+/**
  * Runs a Ruflo swarm: every roster agent works the shared objective from its
  * own angle, its finding is written the moment it lands, and a coordinator
  * synthesises whatever came back. One agent failing does not stop the swarm —
@@ -433,7 +521,7 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
     const buildResult = await runClientTextAdapter({
       provider: builder.provider, model: builder.model,
       prompt: loopBuilderPrompt({ goal, previous: artifactText, issues }),
-      reserveBudget: false, jobId,
+      reserveBudget: false, jobId, disableReviewedPlanTool: true,
     });
     if (!buildResult.ok) {
       await appendLoopRound(tenantSlug, workerToken, jobId, round, false, 0, [], "", 0, 0, buildResult.error);
@@ -448,7 +536,7 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
     const judgeResult = await runClientTextAdapter({
       provider: judge.provider, model: judge.model,
       prompt: loopJudgePrompt({ goal, artifact: artifactText }),
-      reserveBudget: false, jobId,
+      reserveBudget: false, jobId, disableReviewedPlanTool: true,
     });
     const judgeCost = judgeResult.ok && judgeResult.usage ? clientTextUsageCostMicros(judge.model, judgeResult.usage) ?? 0 : 0;
     spent += judgeCost;

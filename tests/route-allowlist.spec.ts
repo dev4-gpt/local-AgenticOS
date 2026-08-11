@@ -37,6 +37,12 @@ test("the notebooks route is allowlisted everywhere it has to be", () => {
   }
 });
 
+test("the Hermes content-factory route is allowlisted everywhere it has to be", () => {
+  for (const [name, set] of [["policy", policy], ["deploy script", deployed], ["local runner", local]] as const) {
+    expect(set.has("/api/client-runtime/hermes-content-factory"), `${name} is missing the Hermes content-factory route`).toBe(true);
+  }
+});
+
 test("the spend meter is present on every surface that spends a provider key", () => {
   // The keys are the client's own, so a surface that can charge them must show
   // what it has charged. A missing meter is the surface that surprises someone.

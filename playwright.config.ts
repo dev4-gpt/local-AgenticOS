@@ -39,7 +39,9 @@ export default defineConfig({
       // test run. Eight tests failed against a page with no stylesheet at all
       // and were misread as UI regressions and stale theme assertions. Failing
       // loudly on a busy port is far cheaper than testing a dead server.
-      reuseExistingServer: false,
+      // Opt-in only after the operator has intentionally started the matching
+      // worktree server; the safe default remains false.
+      reuseExistingServer: process.env.PW_USE_EXISTING_SERVERS === "1",
       timeout: 180_000,
       stdout: "ignore",
       stderr: "pipe",
@@ -55,7 +57,7 @@ export default defineConfig({
       // test run. Eight tests failed against a page with no stylesheet at all
       // and were misread as UI regressions and stale theme assertions. Failing
       // loudly on a busy port is far cheaper than testing a dead server.
-      reuseExistingServer: false,
+      reuseExistingServer: process.env.PW_USE_EXISTING_SERVERS === "1",
       timeout: 180_000,
       stdout: "ignore",
       stderr: "pipe",
@@ -75,7 +77,7 @@ export default defineConfig({
       // test run. Eight tests failed against a page with no stylesheet at all
       // and were misread as UI regressions and stale theme assertions. Failing
       // loudly on a busy port is far cheaper than testing a dead server.
-      reuseExistingServer: false,
+      reuseExistingServer: process.env.PW_USE_EXISTING_SERVERS === "1",
       timeout: 180_000,
       stdout: "ignore",
       stderr: "pipe",

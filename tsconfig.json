@@ -37,7 +37,9 @@
     ".next-v0/types/**/*.ts",
     ".next-v0/dev/types/**/*.ts",
     ".next-client-test/types/**/*.ts",
-    ".next-client-test/dev/types/**/*.ts"
+    ".next-client-test/dev/types/**/*.ts",
+    ".next-client/types/**/*.ts",
+    ".next-client/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

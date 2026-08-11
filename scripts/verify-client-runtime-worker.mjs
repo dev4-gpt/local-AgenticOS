@@ -26,6 +26,9 @@ const recordsRoute = await readFile(join(root, "src/app/api/client-runtime/recor
 const memoryImportRoute = await readFile(join(root, "src/app/api/client-runtime/memory-import/route.ts"), "utf8");
 const memoryGraphRoute = await readFile(join(root, "src/app/api/client-runtime/memory-graph/route.ts"), "utf8");
 const workflowsRoute = await readFile(join(root, "src/app/api/client-runtime/workflows/route.ts"), "utf8");
+const hermesFactoryRoute = await readFile(join(root, "src/app/api/client-runtime/hermes-content-factory/route.ts"), "utf8");
+const hermesFactoryWorker = await readFile(join(root, "src/app/api/internal/client-runtime/jobs/route.ts"), "utf8");
+const hermesFactorySql = await readFile(join(root, "product-experience/supabase-client-hermes-content-factory.sql"), "utf8");
 const workflowWorkspace = await readFile(join(root, "src/components/ClientWorkflowWorkspace.tsx"), "utf8");
 const credentialsRoute = await readFile(join(root, "src/app/api/client-runtime/credentials/route.ts"), "utf8");
 const credentialSubmissionRoute = await readFile(join(root, "src/app/api/client-runtime/credential-submissions/route.ts"), "utf8");
@@ -178,6 +181,10 @@ for (const [relativePath, source] of runtimeRateLimitedRouteSources) {
 expect(workflowsRoute.includes("SECRET_LIKE"), "hosted workflow route must reject secret-like content");
 expect(workflowsRoute.includes("approval_required") && workflowsRoute.includes("updateExecution"), "denied workflow dispatch must retain an auditable execution state");
 expect(workflowsRoute.includes("CLIENT_WORKFLOW_PROVIDER") && workflowsRoute.includes("enqueueClientRuntimeJob"), "workflow dispatch must use a manifest-selected queued provider job");
+expect(hermesFactoryRoute.includes("Idempotency-Key") && hermesFactoryRoute.includes("approval_required"), "Hermes content factory must expose retry-safe creation and approval-gated publication");
+expect(hermesFactoryRoute.includes("HERMES_FACTORY_TABLE") && hermesFactoryRoute.includes("tenantSlug"), "Hermes content factory route must use tenant-scoped durable records");
+expect(hermesFactoryWorker.includes('job.capability === "hermes-content-factory"') && hermesFactoryWorker.includes("update_client_hermes_content_factory_worker"), "Hermes content factory must run through the authenticated worker path");
+expect(hermesFactorySql.includes("unique (tenant_slug, idempotency_key)") && hermesFactorySql.includes("client_hermes_content_factory_stage_outputs") && hermesFactorySql.includes("client_hermes_content_factory_citations") && hermesFactorySql.includes("client_hermes_content_factory_quality_reports") && hermesFactorySql.includes("client_hermes_content_factory_approvals") && hermesFactorySql.includes("client_hermes_content_factory_deliveries") && hermesFactorySql.includes("client_member(tenant_slug)") && hermesFactorySql.includes("update_client_hermes_content_factory_worker") && hermesFactorySql.includes("record_client_hermes_content_factory_approval") && hermesFactorySql.includes("record_client_hermes_content_factory_delivery"), "Hermes content factory migration must enforce idempotency, tenant RLS, child records, and worker reconciliation");
 expect(workflowsRoute.includes('capability: "orchestration"') && workflowsRoute.includes("workflow-${workflowId}"), "non-provider workflow operations must use a durable orchestration job");
 expect(workflowsRoute.includes('action !== "retry_execution"') && workflowsRoute.includes("workflow_retry_not_allowed") && workflowsRoute.includes("workflow-${id}-retry-${randomUUID()}"), "failed provider-free workflows must support a fresh tenant-scoped retry job");
 expect(workflowReconciliationSql.includes("jsonb_typeof(p_execution->'steps') = 'array'") && workflowReconciliationSql.includes("'{steps}'"), "worker reconciliation must mirror bounded step state onto the workflow card");

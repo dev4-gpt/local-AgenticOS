@@ -199,6 +199,7 @@ Supabase project:
 5. `product-experience/supabase-client-runtime-lifecycle.sql`
 6. `product-experience/supabase-client-runtime-hosted-capabilities.sql`
 7. `product-experience/supabase-client-runtime-workflow-reconciliation.sql`
+8. `product-experience/supabase-client-hermes-content-factory.sql`
 
 Create the approved tenant and membership from the Supabase SQL editor or an
 operator-only migration job. Never accept membership creation from the

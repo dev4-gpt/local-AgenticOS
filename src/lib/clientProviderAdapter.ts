@@ -65,6 +65,8 @@ export async function runClientTextAdapter(input: {
   history?: Message[];
   reserveBudget?: boolean;
   jobId?: string;
+  /** Semantic jobs (pipeline/loop) need their requested response shape. */
+  disableReviewedPlanTool?: boolean;
 }) {
   const provider = input.provider.trim().toLowerCase();
   const spec = PROVIDERS[provider];
@@ -90,11 +92,12 @@ export async function runClientTextAdapter(input: {
     return { ok: false as const, status: 429, error: "budget_exceeded" };
   }
 
+  const toolPayload = input.disableReviewedPlanTool ? {} : clientProviderToolPayload(provider);
   const response = spec.protocol === "anthropic"
-    ? await callAnthropic(spec, key, model, messages, maxOutputTokens, clientProviderToolPayload(provider))
+    ? await callAnthropic(spec, key, model, messages, maxOutputTokens, toolPayload)
     : spec.protocol === "gemini"
-      ? await callGemini(spec, key, model, messages, maxOutputTokens, clientProviderToolPayload(provider))
-      : await callOpenAiCompatible(spec, key, model, messages, maxOutputTokens, clientProviderAttributionHeaders(provider), clientProviderToolPayload(provider));
+      ? await callGemini(spec, key, model, messages, maxOutputTokens, toolPayload)
+      : await callOpenAiCompatible(spec, key, model, messages, maxOutputTokens, clientProviderAttributionHeaders(provider), toolPayload);
   if (!response.ok) return { ok: false as const, status: response.status, error: providerFailureCode(response.status) };
   return { ok: true as const, provider, model, output: response.output, usage: response.usage };
 }

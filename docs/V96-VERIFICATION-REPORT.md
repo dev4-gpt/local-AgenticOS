@@ -9,13 +9,31 @@ decayed into a claim that was not.
 So this file records verification differently. Every row says **which revision
 it was proven against**. A result without a revision is not a result.
 
-**Revision under test:** `veloce-cloud-test-00139-w6s`
+**Revision under historical test:** `veloce-cloud-test-00139-w6s`
 **Image:** `v101-plan-artifacts`
 **Release:** `plan-artifacts-20260811`
 **Superseded:** `00138-68l` / `v100-skill-gate` — surface coverage in §3 was
 proven there and has not been re-run since; the change between them is the
 reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
 **Date:** 2026-08-11
+
+## Current Codex checkpoint — step 4 source complete, cloud deployment pending
+
+- The complete Playwright suite passes **255/255**; the focused Hermes/parser/
+  allowlist suite passes **40/40**.
+- `npx tsc --noEmit`, production `npm run build`, provider-policy,
+  security-release, and lifecycle checks pass.
+- `npm audit --audit-level=high` reports no high/critical findings and three
+  moderate PostCSS advisories; no forced dependency upgrade was applied.
+- Local operator `3939` and client `3940` both start; the client is isolated in
+  `.next-client` when both runtimes are opened from one checkout. The local
+  Hermes smoke proved deterministic replay and 409 publication refusal before
+  approval without invoking a provider.
+- Cloud DNS/runtime reachability is restored, but live remains
+  `00139-w6s`/`v101-plan-artifacts`. The v102 manifest is prepared; deployment
+  and live workflow verification await applying the new Supabase migration.
+- The current shell has no `SUPABASE_SERVICE_ROLE_KEY` or Supabase access token,
+  so no secret value was requested, read, or printed.
 
 ---
 
