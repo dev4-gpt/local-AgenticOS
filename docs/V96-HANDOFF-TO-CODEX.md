@@ -15,7 +15,7 @@ lives in [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) and
 | | |
 |---|---|
 | **Live** | `veloce-cloud-test-00144-tn6` · `v105-v96-research-lineage-isolation` |
-| **Implementation commit** | `176cf78` pushed to `origin/main` |
+| **Implementation commit** | `412ab6d` pushed to `origin/main` |
 | **Image digest** | `sha256:61b0892b23ffe0140770bcb82df8e7fa53e8f338d4ca298d8b903fce1d997669` |
 | **Tests** | Focused V96/route/Notebook/SEO suites pass; full current run is **278 passing, 3 known baseline failures** |
 | **Build** | clean · three security gates passing |
@@ -153,6 +153,12 @@ policy, and governed capability previews.
 The authenticated cloud smoke is now complete: citations, quality report,
 approval pause, pre-approval refusal, approved delivery, and idempotent retry
 were all verified on `00140-5qb`.
+
+The authenticated Notebook research smoke is also complete on `00144-tn6`:
+job `succeeded`, research `complete`, **2 records**, and **2 citations**. The
+final persistence defect was SQLSTATE `42702`, caused by ambiguous PL/pgSQL
+variable names in the record and citation upserts; it was fixed in `412ab6d`
+and resolved by reapplying the migration.
 
 **Deploy loop:** build with `CLIENT_IMAGE=…:vNN-name`, bump `gcp.image` and
 `VELOCE_RELEASE` in `.private-client-kits/veloce-cloud-test.gcp.json`, run

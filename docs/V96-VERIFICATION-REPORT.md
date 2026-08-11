@@ -32,9 +32,27 @@ reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
 - Cloud Run now serves revision 00144-tn6, image v105-v96-research-lineage-isolation, digest
   sha256:61b0892b23ffe0140770bcb82df8e7fa53e8f338d4ca298d8b903fce1d997669,
   at 100% traffic. Root redirects to login; capabilities and the new Notebook
-  source route return 401 without a session. The source wave is deployed, but
-  the new structured-research, visual-QA, and Notebook migrations remain a
-  prerequisite for authenticated use of those new persistence paths.
+  source route return 401 without a session. The structured-research migration
+  is applied and its authenticated research workflow is verified below; visual
+  QA and Notebook lineage remain separately gated migrations.
+
+### Authenticated cloud Notebook research smoke — verified 2026-08-12
+
+Against `veloce-cloud-test-00144-tn6` / `v105-v96-research-lineage-isolation`,
+the fresh browser smoke created a tenant notebook and source, queued a new
+idempotent research request, and completed with:
+
+- job status: `succeeded`
+- research status: `complete`
+- durable records: `2`
+- citations: `2`
+- error: `null`
+
+The first final-write failure was diagnosed through the tenant-scoped research
+failure ledger as SQLSTATE `42702` with `record_count = 2`. The cause was an
+ambiguous PL/pgSQL variable collision with the `research_run_id` and
+`research_record_id` columns in the two upserts. The variables were renamed in
+commit `412ab6d`, the migration was re-applied, and the smoke then passed.
 
 ## Historical Hermes checkpoint — superseded by the current portfolio wave
 
@@ -369,15 +387,16 @@ document came to be needed.
 - **Supervision visual QA** remains deliberately unbuilt (§4.2 of the execution
   log). Decided, not overlooked.
 
-### 8.1 Structured-research smoke correction — 2026-08-11
+### 8.1 Structured-research smoke correction — historical, resolved 2026-08-12
 
 The authenticated browser smoke initially showed Notebook/source success but
 `researchStatus: undefined` and zero citations. Cloud Run request logs proved
 the internal worker callback ran and returned HTTP 200; this was a persistence
-observability defect, not a Cloud Tasks delivery outage. The worker now creates
-and reconciles a durable research run across all terminal branches. The updated
-`product-experience/supabase-client-structured-research.sql` must be applied
-before rerunning the smoke.
+observability defect, not a Cloud Tasks delivery outage. The follow-up closed
+that gap. The worker now creates and reconciles a durable
+research run across all terminal branches. The migration was applied, the
+SQLSTATE `42702` upsert defect was fixed in `412ab6d`, and the authenticated
+smoke completed with two durable records and two citations on `00144-tn6`.
 
 ---
 

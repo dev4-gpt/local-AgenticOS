@@ -7,13 +7,14 @@ rationale lives in [V96-INFRASTRUCTURE-STAR-PLAN.md](V96-INFRASTRUCTURE-STAR-PLA
 This one answers a narrower question: *what changed, what is live, and what is
 next.* Update this file rather than opening a second log.
 
-**Last updated:** 2026-08-11
+**Last updated:** 2026-08-12
 **Current Codex portfolio wave:** local commits 30694ab, d930ffe, c3e7908,
 05bc860, 450e173, dc44e9b, 4da20b9, fc7ee5e, 16a5489, 41f59d6,
 and 97d6959 add the governed v96 contracts, structured research persistence,
 SEO intelligence normalization, quality policy, media/VQA boundaries, operator
 contracts, capability preview states, Notebook source lineage, and OpenSEO
-normalization. These commits are pushed to origin/main at 176cf78.
+normalization. The final research persistence fix and diagnostic migration are
+pushed to origin/main at `412ab6d`.
 **Current local evidence:** production build passes; the focused V96/route/SEO
 suites pass; the worker verifier and client-runtime security verifier pass on
 local 3940. The complete suite is **278 passing, 3 pre-existing baseline
@@ -26,7 +27,7 @@ release `v96-governed-wave-20260811`, deployed 2026-08-11)
 `codex/reviewed-additions-2026-08-10` remote branch was merged and deleted on
 2026-08-11. A local branch of that name may still exist with no upstream; `main`
 is the one to track.
-**Codex implementation commit:** `176cf78`; pushed to `origin/main`
+**Codex implementation commit:** `412ab6d`; pushed to `origin/main`
 **Tests:** **278 passing · 3 known baseline failures** (full 281-test run; all
 focused V96/route/Notebook/SEO suites pass)
 · production build clean · three security gates passing
@@ -41,11 +42,11 @@ before approval. Delivery retries replay the original record. The Loop and
 Pipeline workers now request their semantic response formats without the
 reviewed-plan tool, preserving the reviewed-plan boundary for workspace
 artifacts. The migration is
-`product-experience/supabase-client-hermes-content-factory.sql`; it is not yet
-applied to the live tenant because no Supabase migration credentials are
-available in the operator shell. That Hermes migration was applied and the
-authenticated workflow smoke was closed on 00140-5qb; the newer structured
-research, visual-QA, and Notebook migrations remain pending.
+`product-experience/supabase-client-hermes-content-factory.sql`; it was applied
+to the live tenant and the authenticated workflow smoke was closed on
+00140-5qb. Structured research and
+Notebook lineage were subsequently applied and verified for the cloud tenant;
+visual-QA remains separately gated.
 
 **Local/cloud surface checkpoint (2026-08-11):** operator `3939` returned
 healthy `/healthz` and rendered `/hermes`; client `3940` returned the expected
@@ -61,22 +62,32 @@ publication before approval returned **409**; approval succeeded; approved
 publication returned `published`; the identical publish retry returned
 `replayed: true` with `sameDelivery: true`. This closes the step-4 exit gate.
 
+**Authenticated cloud Notebook research smoke (2026-08-12):** completed in
+Chrome against `veloce-cloud-test-00144-tn6` / `v105-v96-research-lineage-isolation`
+after the structured-research migration was applied. A fresh tenant notebook,
+source, and idempotent research request completed successfully: job
+`succeeded`, research `complete`, **2 records**, and **2 citations**, with no
+error. The preceding failure was SQLSTATE `42702` on the final two-record
+upsert; the PL/pgSQL variables collided with the `research_run_id` and
+`research_record_id` column names. They were renamed and the migration was
+re-applied.
+
 **Handoff:** [V96-HANDOFF-TO-CODEX.md](V96-HANDOFF-TO-CODEX.md) — start there if you
 are picking up the STAR portfolio.
 
-**Next cloud prerequisite:** re-apply the updated product-experience/supabase-client-structured-research.sql,
-product-experience/supabase-client-visual-qa.sql, and the new
-product-experience/supabase-client-notebook-lineage.sql to any tenant before
-enabling those capabilities. The new routes remain feature-gated and do not
-fetch arbitrary URLs or expose provider credentials.
+**Next cloud prerequisite:** apply the remaining visual-QA migration only when
+that capability is enabled. Structured research is now applied and its
+authenticated cloud smoke is complete. Notebook source registration still
+requires `product-experience/supabase-client-notebook-lineage.sql` in any new
+tenant. The new routes remain feature-gated and do not fetch arbitrary URLs or
+expose provider credentials.
 
 **V96 governed-wave deployment (2026-08-11):** Cloud Build `571954fe` produced
 the image above. Cloud Run deployed revision `00143-7vg` and the isolated
 workspace job successfully. Root returned the login redirect, the capabilities
 and Notebook source APIs returned 401 without a session, and traffic is 100%
-on the new revision. The updated structured-research SQL must be applied before
-the live authenticated research workflow
-are enabled.
+on the new revision. The structured-research migration was subsequently
+applied and verified by the authenticated smoke recorded above.
 
 **Verification:** see [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) for
 what is proven live and against which revision. The high-severity provider
