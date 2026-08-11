@@ -118,7 +118,12 @@ begin
   values
     (p_tenant_slug, p_notebook_id, p_job_id, left(p_provider, 120), left(p_query, 4000), 'running', left(p_idempotency_key, 180), jsonb_array_length(p_records), now())
   on conflict (tenant_slug, idempotency_key) do update
-    set updated_at = now()
+    set notebook_id = excluded.notebook_id,
+        job_id = excluded.job_id,
+        provider = excluded.provider,
+        query = excluded.query,
+        result_count = excluded.result_count,
+        updated_at = now()
   returning id into research_run_id;
 
   for item in select value from jsonb_array_elements(p_records)
@@ -160,7 +165,7 @@ begin
   end loop;
 
   update public.client_research_runs
-     set status = case when jsonb_array_length(p_records) > 0 then 'complete' else 'partial' end,
+     set status = case when jsonb_array_length(p_records) > 0 then 'complete' else 'running' end,
          updated_at = now()
    where id = research_run_id and tenant_slug = p_tenant_slug;
   return research_run_id;
@@ -171,3 +176,52 @@ $$;
 
 revoke all on function public.record_client_research_result_worker(text, uuid, text, text, text, text, uuid, jsonb) from public, authenticated;
 grant execute on function public.record_client_research_result_worker(text, uuid, text, text, text, text, uuid, jsonb) to anon;
+
+-- The worker creates the durable run before contacting Firecrawl, then moves
+-- it to a terminal state on every provider/persistence branch. This prevents
+-- an accepted job from disappearing from the member's research history when
+-- the provider fails or returns an invalid payload.
+create or replace function public.update_client_research_run_worker(
+  p_tenant_slug text,
+  p_job_id uuid,
+  p_worker_token text,
+  p_idempotency_key text,
+  p_status text,
+  p_error_code text,
+  p_result_count integer
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  if p_worker_token is null or length(p_worker_token) < 24
+     or not exists (
+       select 1 from public.client_tenants
+       where slug = p_tenant_slug
+         and status = 'active'
+         and worker_token_hash = encode(digest(p_worker_token, 'sha256'), 'hex')
+     )
+     or p_job_id is null
+     or length(coalesce(p_idempotency_key, '')) < 8
+     or p_status not in ('queued', 'running', 'complete', 'partial', 'failed')
+     or (p_result_count is not null and (p_result_count < 0 or p_result_count > 20)) then
+    return false;
+  end if;
+
+  update public.client_research_runs
+     set status = p_status,
+         result_count = coalesce(p_result_count, result_count),
+         updated_at = now()
+   where tenant_slug = p_tenant_slug
+     and job_id = p_job_id
+     and idempotency_key = left(p_idempotency_key, 180);
+  return found;
+exception when others then
+  return false;
+end;
+$$;
+
+revoke all on function public.update_client_research_run_worker(text, uuid, text, text, text, text, integer) from public, authenticated;
+grant execute on function public.update_client_research_run_worker(text, uuid, text, text, text, text, integer) to anon;

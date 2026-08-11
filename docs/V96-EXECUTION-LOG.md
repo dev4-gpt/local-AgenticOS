@@ -19,8 +19,8 @@ suites pass; the worker verifier and client-runtime security verifier pass on
 local 3940. The complete suite is **278 passing, 3 pre-existing baseline
 failures** in visual-shell/sidebar theme expectations; no new V96 failure was
 introduced.
-**Live:** `veloce-cloud-test-00141-zxt` · image `v103-v96-governed-wave`
-(digest `sha256:0d81876ccb14803fd3de55166e79483aee86be4ca9c22c94321b8f2442c0d12`,
+**Live:** `veloce-cloud-test-00143-7vg` · image `v104-v96-research-run-reconciliation`
+(digest `sha256:468da1a90ec1ed99fd4667cd0fb25dae2670f97a2748ed6cf97fe13fb992a5be`,
 release `v96-governed-wave-20260811`, deployed 2026-08-11)
 **Branch:** work lands on `origin/main` directly — the
 `codex/reviewed-additions-2026-08-10` remote branch was merged and deleted on
@@ -64,18 +64,18 @@ publication returned `published`; the identical publish retry returned
 **Handoff:** [V96-HANDOFF-TO-CODEX.md](V96-HANDOFF-TO-CODEX.md) — start there if you
 are picking up the STAR portfolio.
 
-**Next cloud prerequisites:** apply product-experience/supabase-client-structured-research.sql,
+**Next cloud prerequisite:** re-apply the updated product-experience/supabase-client-structured-research.sql,
 product-experience/supabase-client-visual-qa.sql, and the new
 product-experience/supabase-client-notebook-lineage.sql to any tenant before
 enabling those capabilities. The new routes remain feature-gated and do not
 fetch arbitrary URLs or expose provider credentials.
 
 **V96 governed-wave deployment (2026-08-11):** Cloud Build `571954fe` produced
-the image above. Cloud Run deployed revision `00141-zxt` and the isolated
+the image above. Cloud Run deployed revision `00143-7vg` and the isolated
 workspace job successfully. Root returned the login redirect, the capabilities
 and Notebook source APIs returned 401 without a session, and traffic is 100%
-on the new revision. The new structured-research, visual-QA, and Notebook SQL
-migrations still need to be applied before their live authenticated workflows
+on the new revision. The updated structured-research SQL must be applied before
+the live authenticated research workflow
 are enabled.
 
 **Verification:** see [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) for
@@ -695,3 +695,17 @@ one.
 - **The cap is Veloce's ledger, not a provider limit.** Set hard limits in each
   provider dashboard too; that is the only ceiling the party billing you
   enforces.
+
+### 5.1 Structured-research smoke follow-up — 2026-08-11
+
+The authenticated Notebook smoke proved notebook creation, source registration,
+source listing, queue acceptance, and cleanup. It also exposed a real gap:
+the Cloud Tasks callback returned HTTP 200, but the research poll remained
+`runs: []`. The worker had no durable run row to show when Firecrawl or the
+research persistence branch failed.
+
+The follow-up closes that gap. The worker now creates the tenant-scoped run
+before contacting Firecrawl, updates it to `failed` for budget/provider/
+persistence errors, and keeps successful retries idempotent. The structured
+research migration adds `update_client_research_run_worker` and makes the
+empty initial record call remain `running` until a terminal update.

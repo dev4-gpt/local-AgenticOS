@@ -1,0 +1,22 @@
+# Cloud Build receives the source tree, not the local build cache. Keep the
+# upload limited to files that Dockerfile.client can actually compile.
+.git/
+.next/
+.next-*/
+**/.next/
+node_modules/
+**/node_modules/
+public-site/
+product-experience/.next/
+product-experience/public/
+**/dist/
+test-results/
+tmp/
+.private-client-kits/
+.claude-flow/
+.swarm/
+.netlify/
+docs/
+tests/
+*.log
+.DS_Store

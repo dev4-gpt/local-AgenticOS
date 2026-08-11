@@ -1048,12 +1048,40 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
   const query = typeof input.query === "string" ? input.query : "";
   const scrapeResults = input.scrapeResults === true;
   const limit = Math.max(1, Math.min(3, Math.round(Number(input.limit ?? 3))));
+  const idempotencyKey = job.idempotency_key ?? `seo-research-${jobId}`;
+  const notebookId = typeof input.notebookId === "string" && /^[0-9a-f-]{36}$/i.test(input.notebookId) ? input.notebookId : null;
+  const updateResearchRun = async (status: "queued" | "running" | "complete" | "partial" | "failed", resultCount: number | null, errorCode: string | null) => workerRpc("update_client_research_run_worker", {
+    p_tenant_slug: tenantSlug,
+    p_job_id: jobId,
+    p_worker_token: workerToken,
+    p_idempotency_key: idempotencyKey,
+    p_status: status,
+    p_error_code: errorCode,
+    p_result_count: resultCount,
+  });
+  const started = await workerRpc("record_client_research_result_worker", {
+    p_tenant_slug: tenantSlug,
+    p_job_id: jobId,
+    p_worker_token: workerToken,
+    p_idempotency_key: idempotencyKey,
+    p_provider: "firecrawl",
+    p_query: query,
+    p_notebook_id: notebookId,
+    p_records: [],
+  });
+  if (!started.ok || typeof started.value !== "string") {
+    logClientRuntimeEvent("runtime.research_persistence_failed", { tenant: tenantSlug, provider: "firecrawl", jobId, reason: "run_start_failed" });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "research_persistence_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  await updateResearchRun("running", null, null);
   const perUnit = Math.max(0, Math.round(Number(process.env.CLIENT_FIRECRAWL_COST_MICROS ?? 1000)));
   // Reserve for the worst case up front so a scrape cannot push the tenant past
   // its cap after the search has already spent.
   const estimate = perUnit * (scrapeResults ? limit + 1 : 1);
   if (!(await reserveClientRuntimeBudgetWorker({ provider: "firecrawl", model: scrapeResults ? "search-scrape" : "search", amountMicros: estimate, jobId, workerToken }))) {
     logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider: "firecrawl", status: 429 });
+    await updateResearchRun("failed", 0, "budget_exceeded");
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -1062,6 +1090,7 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
   if (!search.ok) {
     if (search.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, search.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
     await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
+    await updateResearchRun("failed", 0, search.error);
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, search.error);
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -1096,14 +1125,15 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
     p_tenant_slug: tenantSlug,
     p_job_id: jobId,
     p_worker_token: workerToken,
-    p_idempotency_key: job.idempotency_key ?? `seo-research-${jobId}`,
+    p_idempotency_key: idempotencyKey,
     p_provider: search.provider,
     p_query: search.query,
-    p_notebook_id: typeof input.notebookId === "string" && /^[0-9a-f-]{36}$/i.test(input.notebookId) ? input.notebookId : null,
+    p_notebook_id: notebookId,
     p_records: records,
   });
   if (!researchRun.ok || typeof researchRun.value !== "string") {
     await settleTerminalBudget(jobId, workerToken, 0, { researchPersistenceFailure: 1 });
+    await updateResearchRun("failed", records.length, "research_persistence_failed");
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "research_persistence_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }

@@ -14,9 +14,9 @@ lives in [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) and
 
 | | |
 |---|---|
-| **Live** | `veloce-cloud-test-00141-zxt` · `v103-v96-governed-wave` |
+| **Live** | `veloce-cloud-test-00143-7vg` · `v104-v96-research-run-reconciliation` |
 | **Implementation commit** | `176cf78` pushed to `origin/main` |
-| **Image digest** | `sha256:0d81876ccb14803fd3de55166e79483aee86be4ca9c22c94321b8f2442c0d12` |
+| **Image digest** | `sha256:468da1a90ec1ed99fd4667cd0fb25dae2670f97a2748ed6cf97fe13fb992a5be` |
 | **Tests** | Focused V96/route/Notebook/SEO suites pass; full current run is **278 passing, 3 known baseline failures** |
 | **Build** | clean · three security gates passing |
 | **`npm audit --audit-level=high`** | 3 moderate PostCSS advisories; no high/critical findings |
@@ -76,10 +76,9 @@ reviewed-plan envelope, with focused regression coverage.
 
 The Hermes migration created the normalized tenant-scoped stage, citation,
 quality-report, approval, and delivery tables, and its authenticated smoke is
-complete. The current portfolio image is `v103-v96-governed-wave` on revision
-`00141-zxt`. The newer structured-research, visual-QA, and Notebook lineage
-migrations still require application before those new persistence paths are
-enabled.
+complete. The current portfolio image is `v104-v96-research-run-reconciliation`
+on revision `00143-7vg`. The updated structured-research migration must be
+re-applied before the live authenticated research workflow is rerun.
 
 ### 3. Supervision visual QA — deferred by decision, not oversight
 
@@ -147,7 +146,7 @@ jobs explicitly disable the reviewed-plan tool so their required parsers receive
 their own output shapes.
 
 The migration is `product-experience/supabase-client-hermes-content-factory.sql`.
-Step 4 is complete. The next portfolio wave is deployed on `00141-zxt` and
+Step 4 is complete. The next portfolio wave is deployed on `00143-7vg` and
 adds Notebook lineage, structured research, SEO/OpenSEO normalization, quality
 policy, and governed capability previews.
 
@@ -165,3 +164,18 @@ config-only change needs no rebuild.
 then hand over a `printf … | gcloud secrets versions add … --data-file=-`
 one-liner. Secret names are prefixed `veloce-veloce-cloud-test-<name>`; the bare
 name is not read.
+
+## Research smoke correction — 2026-08-11
+
+The first authenticated Notebook smoke showed that notebook/source lineage was
+working, but the queued research request never appeared in `runs`. The Cloud
+Run callback itself returned HTTP 200. The issue was that the research worker
+only created its durable run after a successful provider response, so provider
+or persistence failures disappeared from the member-visible history.
+
+The worker and structured-research migration now create the run first and
+reconcile `running` → `complete` or `failed`, while preserving the existing
+tenant and idempotency constraints. Apply the updated structured-research SQL,
+redeploy the image, then rerun the browser smoke with a fresh query/idempotency
+key. Do not expect a provider failure to produce an empty list anymore; it
+should produce a visible failed run with its error code.

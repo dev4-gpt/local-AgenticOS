@@ -29,8 +29,8 @@ reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
   failures**: two visual-shell expectations and one sidebar theme expectation.
   These are unrelated to the V96 files and are retained as explicit follow-up,
   not hidden by changing the suite.
-- Cloud Run now serves revision 00141-zxt, image v103-v96-governed-wave, digest
-  sha256:0d81876ccb14803fd3de55166e79483aee86be4ca9c22c94321b8f2442c0d12,
+- Cloud Run now serves revision 00143-7vg, image v104-v96-research-run-reconciliation, digest
+  sha256:468da1a90ec1ed99fd4667cd0fb25dae2670f97a2748ed6cf97fe13fb992a5be,
   at 100% traffic. Root redirects to login; capabilities and the new Notebook
   source route return 401 without a session. The source wave is deployed, but
   the new structured-research, visual-QA, and Notebook migrations remain a
@@ -49,7 +49,7 @@ reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
   `.next-client` when both runtimes are opened from one checkout. The local
   Hermes smoke proved deterministic replay and 409 publication refusal before
   approval without invoking a provider.
-- This historical checkpoint was superseded by 00141-zxt / v103-v96-governed-wave;
+- This historical checkpoint was superseded by 00143-7vg / v104-v96-research-run-reconciliation;
   see the current section above for the active revision and the remaining SQL
   migration prerequisites.
 - The current shell has no `SUPABASE_SERVICE_ROLE_KEY` or Supabase access token,
@@ -368,6 +368,16 @@ document came to be needed.
   harness testing "models" through `provider-chat` is testing nothing.
 - **Supervision visual QA** remains deliberately unbuilt (§4.2 of the execution
   log). Decided, not overlooked.
+
+### 8.1 Structured-research smoke correction — 2026-08-11
+
+The authenticated browser smoke initially showed Notebook/source success but
+`researchStatus: undefined` and zero citations. Cloud Run request logs proved
+the internal worker callback ran and returned HTTP 200; this was a persistence
+observability defect, not a Cloud Tasks delivery outage. The worker now creates
+and reconciles a durable research run across all terminal branches. The updated
+`product-experience/supabase-client-structured-research.sql` must be applied
+before rerunning the smoke.
 
 ---
 
