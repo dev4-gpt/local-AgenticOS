@@ -9,7 +9,10 @@ next.* Update this file rather than opening a second log.
 
 **Last updated:** 2026-08-11
 **Live:** `veloce-cloud-test-00137-j6j` · image `v99-integrations-hub`
-**Branch:** `codex/reviewed-additions-2026-08-10` = `origin/main`
+**Branch:** work lands on `origin/main` directly — the
+`codex/reviewed-additions-2026-08-10` remote branch was merged and deleted on
+2026-08-11. A local branch of that name may still exist with no upstream; `main`
+is the one to track.
 **Tests:** 227 passing · **19 failing (pre-existing, unrelated)** · build clean ·
 three security gates passing
 
