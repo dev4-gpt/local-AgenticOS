@@ -21,6 +21,7 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/client-runtime/telemetry",
   "/api/client-runtime/observability",
   "/api/client-runtime/records",
+  "/api/client-runtime/research",
   "/api/client-runtime/notebooks",
   "/api/client-runtime/budget",
   "/api/client-runtime/skills",

@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
   const claim = await workerRpc("claim_client_runtime_job", { p_tenant_slug: tenantSlug, p_job_id: jobId, p_worker_token: workerToken });
   if (!claim.ok) return NextResponse.json({ ok: false, error: "job_claim_failed" }, { status: 503 });
-  const job = claim.value as { id?: string; capability?: string; provider?: string; model?: string; input_metadata?: Record<string, unknown> | null } | null;
+  const job = claim.value as { id?: string; capability?: string; provider?: string; model?: string; idempotency_key?: string; input_metadata?: Record<string, unknown> | null } | null;
   if (!job?.id || typeof job.capability !== "string") return NextResponse.json({ ok: true, status: "already_claimed" });
   if (["text-agents", "media", "seo-research", "room-round", "pipeline-shape", "loop-run", "ruflo-swarm", "hermes-content-factory"].includes(job.capability) && !clientProviderCallsEnabled()) {
     await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, "provider_calls_require_approval");
@@ -981,7 +981,7 @@ async function storeArtifact(tenantSlug: string, jobId: string, workerToken: str
   return confirmed.ok && confirmed.value === true ? artifactId : null;
 }
 
-async function processSeoJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; input_metadata?: Record<string, unknown> | null }) {
+async function processSeoJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; idempotency_key?: string; input_metadata?: Record<string, unknown> | null }) {
   if (job.provider !== "firecrawl") {
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_not_allowed");
     return NextResponse.json({ ok: true, status: "failed" });
@@ -989,7 +989,7 @@ async function processSeoJob(jobId: string, tenantSlug: string, workerToken: str
   const input = job.input_metadata ?? {};
   const operation = typeof input.operation === "string" ? input.operation : "scrape";
   if (operation === "aeo") return processAeoJob(jobId, tenantSlug, workerToken, input);
-  if (operation === "research") return processMarketResearchJob(jobId, tenantSlug, workerToken, input);
+  if (operation === "research") return processMarketResearchJob(jobId, tenantSlug, workerToken, job, input);
   const estimate = Math.max(0, Math.round(Number(process.env.CLIENT_FIRECRAWL_COST_MICROS ?? 1000)));
   if (!(await reserveClientRuntimeBudgetWorker({ provider: "firecrawl", model: "scrape-markdown", amountMicros: estimate, jobId, workerToken }))) {
     logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider: "firecrawl", status: 429 });
@@ -1041,7 +1041,7 @@ async function processAeoJob(jobId: string, tenantSlug: string, workerToken: str
  * caller cannot widen that by passing its own list. Results are normalised
  * through the v96 contract so every claim is attributable.
  */
-async function processMarketResearchJob(jobId: string, tenantSlug: string, workerToken: string, input: Record<string, unknown>) {
+async function processMarketResearchJob(jobId: string, tenantSlug: string, workerToken: string, job: { idempotency_key?: string }, input: Record<string, unknown>) {
   const query = typeof input.query === "string" ? input.query : "";
   const scrapeResults = input.scrapeResults === true;
   const limit = Math.max(1, Math.min(3, Math.round(Number(input.limit ?? 3))));
@@ -1074,7 +1074,24 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
     // what the search actually returned rather than against a caller's list.
     discovered: search.results.map((result) => result.url),
     records: safeClientProviderMetadata(records),
+    researchRunId: null as string | null,
   };
+  const researchRun = await workerRpc("record_client_research_result_worker", {
+    p_tenant_slug: tenantSlug,
+    p_job_id: jobId,
+    p_worker_token: workerToken,
+    p_idempotency_key: job.idempotency_key ?? `seo-research-${jobId}`,
+    p_provider: search.provider,
+    p_query: search.query,
+    p_notebook_id: typeof input.notebookId === "string" && /^[0-9a-f-]{36}$/i.test(input.notebookId) ? input.notebookId : null,
+    p_records: records,
+  });
+  if (!researchRun.ok || typeof researchRun.value !== "string") {
+    await settleTerminalBudget(jobId, workerToken, 0, { researchPersistenceFailure: 1 });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "research_persistence_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  outputMetadata.researchRunId = researchRun.value;
   if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: search.estimatedCostMicros, usageMetadata: { estimatedCostMicros: search.estimatedCostMicros } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
