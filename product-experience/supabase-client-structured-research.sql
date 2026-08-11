@@ -107,8 +107,8 @@ security definer
 set search_path = public, extensions
 as $$
 declare
-  research_run_id uuid;
-  research_record_id uuid;
+  v_research_run_id uuid;
+  v_research_record_id uuid;
   item jsonb;
   citation jsonb;
   safe_status text;
@@ -147,7 +147,7 @@ begin
         query = excluded.query,
         result_count = excluded.result_count,
         updated_at = now()
-  returning id into research_run_id;
+  returning id into v_research_run_id;
 
   for item in select value from jsonb_array_elements(p_records)
   loop
@@ -162,13 +162,13 @@ begin
     insert into public.client_research_records
       (tenant_slug, research_run_id, notebook_id, source_url, retrieved_at, fields, confidence, status, failure_reason)
     values
-      (p_tenant_slug, research_run_id, p_notebook_id, left(item->>'sourceUrl', 2000), (item->>'retrievedAt')::timestamptz, coalesce(item->'fields', '{}'::jsonb), greatest(0, least(1, coalesce((item->>'confidence')::numeric, 0))), safe_status, nullif(left(item->>'failureReason', 500), ''))
+      (p_tenant_slug, v_research_run_id, p_notebook_id, left(item->>'sourceUrl', 2000), (item->>'retrievedAt')::timestamptz, coalesce(item->'fields', '{}'::jsonb), greatest(0, least(1, coalesce((item->>'confidence')::numeric, 0))), safe_status, nullif(left(item->>'failureReason', 500), ''))
     on conflict (tenant_slug, research_run_id, source_url) do update
       set fields = excluded.fields,
           confidence = excluded.confidence,
           status = excluded.status,
           failure_reason = excluded.failure_reason
-    returning id into research_record_id;
+    returning id into v_research_record_id;
 
     for citation in select value from jsonb_array_elements(coalesce(item->'citations', '[]'::jsonb))
     loop
@@ -181,17 +181,17 @@ begin
       insert into public.client_research_citations
         (tenant_slug, research_run_id, research_record_id, url, title, retrieved_at, evidence)
       values
-        (p_tenant_slug, research_run_id, research_record_id, left(citation->>'url', 2000), nullif(left(citation->>'title', 240), ''), (citation->>'retrievedAt')::timestamptz, left(citation->>'evidence', 4000))
+        (p_tenant_slug, v_research_run_id, v_research_record_id, left(citation->>'url', 2000), nullif(left(citation->>'title', 240), ''), (citation->>'retrievedAt')::timestamptz, left(citation->>'evidence', 4000))
       on conflict (tenant_slug, research_record_id, url) do update
         set title = excluded.title, retrieved_at = excluded.retrieved_at, evidence = excluded.evidence;
     end loop;
   end loop;
 
   update public.client_research_runs
-     set status = case when jsonb_array_length(p_records) > 0 then 'complete' else 'running' end,
+   set status = case when jsonb_array_length(p_records) > 0 then 'complete' else 'running' end,
          updated_at = now()
-   where id = research_run_id and tenant_slug = p_tenant_slug;
-  return research_run_id;
+   where id = v_research_run_id and tenant_slug = p_tenant_slug;
+  return v_research_run_id;
 exception when others then
   begin
     insert into public.client_research_worker_failures
