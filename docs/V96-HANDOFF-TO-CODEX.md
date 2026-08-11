@@ -14,10 +14,10 @@ lives in [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) and
 
 | | |
 |---|---|
-| **Live** | `veloce-cloud-test-00140-5qb` · `v102-hermes-content-factory` |
-| **Implementation commit** | `75cf39d` · pushed via handoff commit `24ec568` |
+| **Live** | `veloce-cloud-test-00140-5qb` · `v102-hermes-content-factory` (Hermes checkpoint; new Codex wave pending deployment) |
+| **Implementation commit** | Hermes checkpoint `75cf39d`; current local Codex wave continues through `97d6959` |
 | **Image digest** | `sha256:21b310438520f3870eb0af743c11acb87d35666ca362a5165c6233c548879ffe` |
-| **Tests** | **255 passing, 0 failing** (40 focused Hermes/parser/allowlist tests also pass) |
+| **Tests** | Focused V96/route/Notebook/SEO suites pass; full current run is **274 passing, 3 known baseline failures** |
 | **Build** | clean · three security gates passing |
 | **`npm audit --audit-level=high`** | 3 moderate PostCSS advisories; no high/critical findings |
 | **Next.js** | 16.2.12 |
@@ -28,6 +28,10 @@ lives in [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) and
 
 Everything above is verified against a named revision. A claim without one has
 expired — that rule exists because three claims in the log had quietly rotted.
+
+The new Notebook lineage migration is `product-experience/supabase-client-notebook-lineage.sql`.
+Apply it after `supabase-client-notebooks.sql` before enabling source
+registration; the current cloud revision does not contain this wave yet.
 
 ---
 

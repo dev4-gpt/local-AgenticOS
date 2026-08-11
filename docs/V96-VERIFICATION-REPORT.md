@@ -17,6 +17,22 @@ proven there and has not been re-run since; the change between them is the
 reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
 **Date:** 2026-08-11
 
+## Current Codex portfolio wave — source verified, cloud deployment pending
+
+- Local HEAD includes the governed capability, structured research, SEO,
+  quality, media/VQA, operator, exposure, Notebook lineage, and OpenSEO waves.
+- npx tsc --noEmit and npm run build pass after the latest changes.
+- Focused V96, route-allowlist, Notebook, and SEO suites pass; the worker
+  verifier passes its static boundary checks and its live unauthenticated
+  probes pass against local 3940.
+- The complete repository run recorded **274 passed and 3 known baseline
+  failures**: two visual-shell expectations and one sidebar theme expectation.
+  These are unrelated to the V96 files and are retained as explicit follow-up,
+  not hidden by changing the suite.
+- The current cloud revision remains 00140-5qb / v102-hermes-content-factory.
+  The new source wave is not claimed live until its push, migration application,
+  image, and revision are independently verified.
+
 ## Current Codex checkpoint — step 4 source complete, cloud deployment pending
 
 - Implementation commit: `75cf39d`.

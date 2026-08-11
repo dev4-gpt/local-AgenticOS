@@ -8,6 +8,17 @@ This one answers a narrower question: *what changed, what is live, and what is
 next.* Update this file rather than opening a second log.
 
 **Last updated:** 2026-08-11
+**Current Codex portfolio wave:** local commits 30694ab, d930ffe, c3e7908,
+05bc860, 450e173, dc44e9b, 4da20b9, fc7ee5e, 16a5489, 41f59d6,
+and 97d6959 add the governed v96 contracts, structured research persistence,
+SEO intelligence normalization, quality policy, media/VQA boundaries, operator
+contracts, capability preview states, Notebook source lineage, and OpenSEO
+normalization. These commits are local until the verified push below.
+**Current local evidence:** production build passes; the focused V96/route/SEO
+suites pass; the worker verifier and client-runtime security verifier pass on
+local 3940. The complete suite is **274 passing, 3 pre-existing baseline
+failures** in visual-shell/sidebar theme expectations; no new V96 failure was
+introduced.
 **Live:** `veloce-cloud-test-00140-5qb` · image `v102-hermes-content-factory`
 (digest `sha256:21b310438520f3870eb0af743c11acb87d35666ca362a5165c6233c548879ffe`,
 release `hermes-content-factory-20260811`, deployed 2026-08-11)
@@ -52,6 +63,12 @@ publication returned `published`; the identical publish retry returned
 
 **Handoff:** [V96-HANDOFF-TO-CODEX.md](V96-HANDOFF-TO-CODEX.md) — start there if you
 are picking up the STAR portfolio.
+
+**Next cloud prerequisites:** apply product-experience/supabase-client-structured-research.sql,
+product-experience/supabase-client-visual-qa.sql, and the new
+product-experience/supabase-client-notebook-lineage.sql to any tenant before
+enabling those capabilities. The new routes remain feature-gated and do not
+fetch arbitrary URLs or expose provider credentials.
 
 **Verification:** see [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) for
 what is proven live and against which revision. The high-severity provider
