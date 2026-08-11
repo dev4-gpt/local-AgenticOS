@@ -17,6 +17,11 @@ if (!anonKey) fail("--anon-key or SUPABASE_ANON_KEY is required");
 const probes = [
   ["records", "client_runtime_records"],
   ["notebooks", "client_notebooks"],
+  ["research runs", "client_research_runs"],
+  ["research records", "client_research_records"],
+  ["research citations", "client_research_citations"],
+  ["visual QA reports", "client_visual_qa_reports"],
+  ["visual QA findings", "client_visual_qa_findings"],
   ["jobs", "client_runtime_jobs"],
   ["artifacts", "client_runtime_artifacts"],
   ["paperclip companies", "client_paperclip_companies"],

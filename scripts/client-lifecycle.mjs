@@ -56,6 +56,11 @@ const tables = [
   "client_runtime_artifacts",
   "client_runtime_records",
   "client_notebooks",
+  "client_research_runs",
+  "client_research_records",
+  "client_research_citations",
+  "client_visual_qa_reports",
+  "client_visual_qa_findings",
   "client_runtime_memory_graph_nodes",
   "client_runtime_memory_graph_edges",
   "client_runtime_budget_ledger",
@@ -98,6 +103,11 @@ const exportColumns = Object.freeze({
   client_runtime_artifacts: "id,tenant_slug,job_id,created_by,object_key,original_name,content_type,byte_size,status,retention_expires_at,created_at",
   client_runtime_records: "id,tenant_slug,created_by,kind,title,content,status,metadata,notebook_id,created_at,updated_at",
   client_notebooks: "id,tenant_slug,created_by,title,summary,status,created_at,updated_at",
+  client_research_runs: "id,tenant_slug,notebook_id,job_id,created_by,provider,query,status,idempotency_key,result_count,created_at,updated_at",
+  client_research_records: "id,tenant_slug,research_run_id,notebook_id,source_url,retrieved_at,fields,confidence,status,failure_reason",
+  client_research_citations: "id,tenant_slug,research_run_id,research_record_id,url,title,retrieved_at,evidence",
+  client_visual_qa_reports: "id,tenant_slug,artifact_id,job_id,worker,frames_sampled,runtime_ms,status,warnings,created_at",
+  client_visual_qa_findings: "id,tenant_slug,report_id,code,severity,frame,confidence,message",
   client_runtime_memory_graph_nodes: "id,tenant_slug,record_id,graph_key,label,kind,metadata,created_at,updated_at",
   client_runtime_memory_graph_edges: "id,tenant_slug,source_node_id,target_node_id,relation,weight,metadata,created_at",
   client_runtime_budget_ledger: "id,tenant_slug,job_id,provider,model,amount_micros,usage_metadata,created_at",
@@ -202,7 +212,7 @@ async function exportSnapshot() {
 }
 
 async function restoreSnapshot(snapshot) {
-  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_notebooks", "client_runtime_records", "client_runtime_memory_graph_nodes", "client_runtime_memory_graph_edges", "client_runtime_budget_ledger", "client_runtime_delivery_actions", "client_paperclip_companies", "client_paperclip_projects", "client_paperclip_agents", "client_paperclip_issues", "client_paperclip_comments", "client_paperclip_runs", "client_room_conversations", "client_room_messages", "client_room_rounds", "client_pipeline_items", "client_board_tasks", "client_board_comments", "client_board_events", "client_loop_runs", "client_loop_rounds", "client_ruflo_swarms", "client_ruflo_agents"];
+  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_notebooks", "client_runtime_records", "client_research_runs", "client_research_records", "client_research_citations", "client_visual_qa_reports", "client_visual_qa_findings", "client_runtime_memory_graph_nodes", "client_runtime_memory_graph_edges", "client_runtime_budget_ledger", "client_runtime_delivery_actions", "client_paperclip_companies", "client_paperclip_projects", "client_paperclip_agents", "client_paperclip_issues", "client_paperclip_comments", "client_paperclip_runs", "client_room_conversations", "client_room_messages", "client_room_rounds", "client_pipeline_items", "client_board_tasks", "client_board_comments", "client_board_events", "client_loop_runs", "client_loop_rounds", "client_ruflo_swarms", "client_ruflo_agents"];
   for (const table of ordered) {
     const rows = Array.isArray(snapshot.tables[table]) ? snapshot.tables[table] : [];
     if (!rows.length) continue;
