@@ -39,6 +39,15 @@ reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
 - The current shell has no `SUPABASE_SERVICE_ROLE_KEY` or Supabase access token,
   so no secret value was requested, read, or printed.
 
+### Authenticated cloud workflow result
+
+The owner completed the final browser smoke against revision
+`veloce-cloud-test-00140-5qb` after applying the Supabase migration. Workflow
+`a4ffc6fe-8a04-433c-9236-85087c351736` produced one citation and a passing
+quality report, refused publication with HTTP 409 before approval, then
+published after approval. Repeating the publish request returned the original
+delivery (`replayed: true`, `sameDelivery: true`).
+
 ---
 
 ## 0. The rule this document exists to enforce

@@ -43,6 +43,13 @@ original workflow and publication before approval returned 409. The cloud
 hostname resolved and returned its login boundary; the deployed Hermes API
 returned 401 without a session, confirming the new route is present.
 
+**Authenticated cloud Hermes smoke (2026-08-11):** completed in Chrome against
+`veloce-cloud-test-00140-5qb`. Workflow `a4ffc6fe-8a04-433c-9236-85087c351736`
+reached `awaiting_approval` with **1 citation** and `qualityPassed: true`;
+publication before approval returned **409**; approval succeeded; approved
+publication returned `published`; the identical publish retry returned
+`replayed: true` with `sameDelivery: true`. This closes the step-4 exit gate.
+
 **Handoff:** [V96-HANDOFF-TO-CODEX.md](V96-HANDOFF-TO-CODEX.md) — start there if you
 are picking up the STAR portfolio.
 

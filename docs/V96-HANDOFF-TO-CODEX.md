@@ -146,6 +146,10 @@ and must be applied before the authenticated cloud route is exercised. Step 4
 is deployed on `00140-5qb`; the next merge-order item after this slice is
 **step 5, the Notebook and SEO provider-neutral contracts**.
 
+The authenticated cloud smoke is now complete: citations, quality report,
+approval pause, pre-approval refusal, approved delivery, and idempotent retry
+were all verified on `00140-5qb`.
+
 **Deploy loop:** build with `CLIENT_IMAGE=…:vNN-name`, bump `gcp.image` and
 `VELOCE_RELEASE` in `.private-client-kits/veloce-cloud-test.gcp.json`, run
 `node scripts/validate-client-manifest.mjs`, then
