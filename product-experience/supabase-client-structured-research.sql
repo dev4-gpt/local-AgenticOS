@@ -51,9 +51,27 @@ create index if not exists client_research_records_tenant_run_idx
 create index if not exists client_research_citations_tenant_run_idx
   on public.client_research_citations (tenant_slug, research_run_id);
 
+-- Keep persistence failures diagnosable without returning database details from
+-- the worker RPC. This records only the SQLSTATE class and whether the failure
+-- happened while starting an empty run or persisting provider records.
+create table if not exists public.client_research_worker_failures (
+  id uuid primary key default gen_random_uuid(),
+  tenant_slug text not null references public.client_tenants(slug) on delete cascade,
+  job_id uuid references public.client_runtime_jobs(id) on delete set null,
+  idempotency_key text not null,
+  phase text not null check (phase in ('initial', 'final')),
+  sqlstate text not null check (length(sqlstate) between 5 and 5),
+  record_count integer not null default 0 check (record_count between 0 and 20),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists client_research_worker_failures_tenant_created_idx
+  on public.client_research_worker_failures (tenant_slug, created_at desc);
+
 alter table public.client_research_runs enable row level security;
 alter table public.client_research_records enable row level security;
 alter table public.client_research_citations enable row level security;
+alter table public.client_research_worker_failures enable row level security;
 
 drop policy if exists client_research_runs_member_select on public.client_research_runs;
 create policy client_research_runs_member_select on public.client_research_runs
@@ -64,9 +82,14 @@ create policy client_research_records_member_select on public.client_research_re
 drop policy if exists client_research_citations_member_select on public.client_research_citations;
 create policy client_research_citations_member_select on public.client_research_citations
   for select to authenticated using (public.client_member(tenant_slug));
+drop policy if exists client_research_worker_failures_member_select on public.client_research_worker_failures;
+create policy client_research_worker_failures_member_select on public.client_research_worker_failures
+  for select to authenticated using (public.client_member(tenant_slug));
 
 revoke all on public.client_research_runs, public.client_research_records, public.client_research_citations from anon;
 grant select on public.client_research_runs, public.client_research_records, public.client_research_citations to authenticated;
+revoke all on public.client_research_worker_failures from anon;
+grant select on public.client_research_worker_failures to authenticated;
 
 create or replace function public.record_client_research_result_worker(
   p_tenant_slug text,
@@ -170,6 +193,16 @@ begin
    where id = research_run_id and tenant_slug = p_tenant_slug;
   return research_run_id;
 exception when others then
+  begin
+    insert into public.client_research_worker_failures
+      (tenant_slug, job_id, idempotency_key, phase, sqlstate, record_count)
+    values
+      (p_tenant_slug, p_job_id, left(coalesce(p_idempotency_key, ''), 180),
+       case when jsonb_array_length(coalesce(p_records, '[]'::jsonb)) = 0 then 'initial' else 'final' end,
+       sqlstate, least(20, greatest(0, jsonb_array_length(coalesce(p_records, '[]'::jsonb)))));
+  exception when others then
+    null;
+  end;
   return null;
 end;
 $$;

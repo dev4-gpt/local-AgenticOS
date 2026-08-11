@@ -25,6 +25,8 @@ test("structured research persistence is worker-only and tenant-scoped", () => {
   expect(sql).toContain("record_client_research_result_worker");
   expect(sql).toContain("update_client_research_run_worker");
   expect(sql).toContain("notebook_id = coalesce(p_notebook_id, notebook_id)");
+  expect(sql).toContain("client_research_worker_failures");
+  expect(sql).toContain("sqlstate");
   expect(sql).toContain("status = case when jsonb_array_length(p_records) > 0 then 'complete' else 'running' end");
   expect(sql).toContain("grant execute on function public.record_client_research_result_worker");
   expect(worker).toContain('workerRpc("record_client_research_result_worker"');
