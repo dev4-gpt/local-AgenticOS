@@ -159,19 +159,13 @@ Every one produced a real artifact through the hosted worker.
 | create | preview | openrouter | kanban | brief | anthropic |
 | web-studio | preview | freeclaude | ruflo | brief | openrouter |
 | orchestrate | brief | gemini | flow-lab | brief | freeclaude |
-| video | brief | gemini | | | |
+| video | brief | gemini | leads | brief | anthropic |
+| radar | brief | openrouter | notebook | brief | freeclaude |
 
-**23 of 26 surfaces verified working against this revision**, spread across all
-four usable provider lanes. Every `preview` surface produced HTML; every `brief`
-surface produced markdown.
-
-### Not yet verified on this revision
-
-`leads`, `radar`, `notebook` — **3 surfaces**, held back only by the 12-per-900s
-write limit, not by any observed problem.
-
-These are *unverified*, not *broken*. The distinction matters and this document
-will not blur it.
+**All 26 of 26 surfaces verified working against this revision**, spread across
+all four usable provider lanes. Every `preview` surface produced HTML; every
+`brief` surface produced markdown. No surface failed for a surface-specific
+reason.
 
 ### What the successful runs prove about the defect
 
@@ -245,9 +239,23 @@ not a verified gate.**
 
 | Item | Cost |
 |---|---|
-| Before this session | $0.2610 |
-| Image smoke (`gpt-image-1`, medium, 1024×1024) | $0.0600 |
-| Workspace executions (~30 across sweeps and isolation) | small, text-lane |
+| Session start | $0.2610 |
+| Session end | $0.3854 |
+| **Session delta** | **$0.1244** (3.85% of the $10 cap) |
+
+Of that, the image smoke was $0.0600 and roughly fifty workspace executions
+across three sweeps and the isolation test came to about $0.0644 — text is
+effectively free, media is the entire cost.
+
+Per provider at session end: anthropic $0.1069, heygen $0.1000,
+elevenlabs-music $0.1000, openai $0.0600, openrouter $0.0103, firecrawl
+$0.0060, antigravity $0.0009, gemini $0.0006, elevenlabs $0.0004, freeclaude
+$0.0002.
+
+**`openclaw`, `hermes` and `fusion` each show $0.0000** despite being called
+repeatedly. Their spend rounds below a hundredth of a cent, but the calls were
+real and were billed upstream — a lane can look free in the ledger and still
+consume provider tokens.
 
 Image cost was **$0.06, not the $0.04** in the log's table, and both are correct:
 `estimateClientImageCostMicros` multiplies the 40,000-micro base by 1.5 for
@@ -265,7 +273,6 @@ output. A defect that fails late is a defect that spends.
 Stated plainly, because an unproven thing recorded as proven is how this
 document came to be needed.
 
-- **15 of 26 surfaces** not exercised on `00138-68l`.
 - **The `reviewed-plan` defect has no fix**, only a diagnosis and three options.
 - **`/api/client-runtime/provider-chat` is operator-only** — it returns
   `client_route_not_enabled` to a client session for all 16 providers. That is
