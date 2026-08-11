@@ -17,7 +17,7 @@ proven there and has not been re-run since; the change between them is the
 reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
 **Date:** 2026-08-11
 
-## Current Codex portfolio wave — source verified, cloud deployment pending
+## Current Codex portfolio wave — source and deployment verified
 
 - Local HEAD includes the governed capability, structured research, SEO,
   quality, media/VQA, operator, exposure, Notebook lineage, and OpenSEO waves.
@@ -25,15 +25,18 @@ reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
 - Focused V96, route-allowlist, Notebook, and SEO suites pass; the worker
   verifier passes its static boundary checks and its live unauthenticated
   probes pass against local 3940.
-- The complete repository run recorded **274 passed and 3 known baseline
+- The complete repository run recorded **278 passed and 3 known baseline
   failures**: two visual-shell expectations and one sidebar theme expectation.
   These are unrelated to the V96 files and are retained as explicit follow-up,
   not hidden by changing the suite.
-- The current cloud revision remains 00140-5qb / v102-hermes-content-factory.
-  The new source wave is not claimed live until its push, migration application,
-  image, and revision are independently verified.
+- Cloud Run now serves revision 00141-zxt, image v103-v96-governed-wave, digest
+  sha256:0d81876ccb14803fd3de55166e79483aee86be4ca9c22c94321b8f2442c0d12,
+  at 100% traffic. Root redirects to login; capabilities and the new Notebook
+  source route return 401 without a session. The source wave is deployed, but
+  the new structured-research, visual-QA, and Notebook migrations remain a
+  prerequisite for authenticated use of those new persistence paths.
 
-## Current Codex checkpoint — step 4 source complete, cloud deployment pending
+## Historical Hermes checkpoint — superseded by the current portfolio wave
 
 - Implementation commit: `75cf39d`.
 - The complete Playwright suite passes **255/255**; the focused Hermes/parser/
@@ -46,12 +49,9 @@ reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
   `.next-client` when both runtimes are opened from one checkout. The local
   Hermes smoke proved deterministic replay and 409 publication refusal before
   approval without invoking a provider.
-- Cloud DNS/runtime reachability is restored. Live is now
-  `00140-5qb`/`v102-hermes-content-factory`, digest
-  `sha256:21b310438520f3870eb0af743c11acb87d35666ca362a5165c6233c548879ffe`;
-  root and `/hermes` return the login boundary and the new API returns 401
-  without a session. Authenticated workflow verification awaits applying the
-  new Supabase migration.
+- This historical checkpoint was superseded by 00141-zxt / v103-v96-governed-wave;
+  see the current section above for the active revision and the remaining SQL
+  migration prerequisites.
 - The current shell has no `SUPABASE_SERVICE_ROLE_KEY` or Supabase access token,
   so no secret value was requested, read, or printed.
 

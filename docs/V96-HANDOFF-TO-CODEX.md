@@ -14,10 +14,10 @@ lives in [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) and
 
 | | |
 |---|---|
-| **Live** | `veloce-cloud-test-00140-5qb` · `v102-hermes-content-factory` (Hermes checkpoint; new Codex wave pending deployment) |
-| **Implementation commit** | Hermes checkpoint `75cf39d`; current local Codex wave continues through `97d6959` |
-| **Image digest** | `sha256:21b310438520f3870eb0af743c11acb87d35666ca362a5165c6233c548879ffe` |
-| **Tests** | Focused V96/route/Notebook/SEO suites pass; full current run is **274 passing, 3 known baseline failures** |
+| **Live** | `veloce-cloud-test-00141-zxt` · `v103-v96-governed-wave` |
+| **Implementation commit** | `176cf78` pushed to `origin/main` |
+| **Image digest** | `sha256:0d81876ccb14803fd3de55166e79483aee86be4ca9c22c94321b8f2442c0d12` |
+| **Tests** | Focused V96/route/Notebook/SEO suites pass; full current run is **278 passing, 3 known baseline failures** |
 | **Build** | clean · three security gates passing |
 | **`npm audit --audit-level=high`** | 3 moderate PostCSS advisories; no high/critical findings |
 | **Next.js** | 16.2.12 |
@@ -31,7 +31,8 @@ expired — that rule exists because three claims in the log had quietly rotted.
 
 The new Notebook lineage migration is `product-experience/supabase-client-notebook-lineage.sql`.
 Apply it after `supabase-client-notebooks.sql` before enabling source
-registration; the current cloud revision does not contain this wave yet.
+registration; the deployed code is present, but the migration is not yet
+applied.
 
 ---
 
@@ -71,14 +72,14 @@ Loop and Pipeline semantic calls now disable the reviewed-plan tool and request
 their required response mode. Both parsers also fail closed on an unexpected
 reviewed-plan envelope, with focused regression coverage.
 
-### 2. Cloud migration and deployment — pending external owner access
+### 2. Cloud migration and deployment — Hermes complete; portfolio wave deployed
 
-The v102 manifest is prepared with image
-`v102-hermes-content-factory`, and the migration now creates normalized
-tenant-scoped stage, citation, quality-report, approval, and delivery tables.
-The current shell has no Supabase migration credentials, so the migration has
-not been applied and the old live revision remains `00139-w6s`/`v101-plan-artifacts`.
-Do not exercise the cloud Hermes workflow until the migration is applied.
+The Hermes migration created the normalized tenant-scoped stage, citation,
+quality-report, approval, and delivery tables, and its authenticated smoke is
+complete. The current portfolio image is `v103-v96-governed-wave` on revision
+`00141-zxt`. The newer structured-research, visual-QA, and Notebook lineage
+migrations still require application before those new persistence paths are
+enabled.
 
 ### 3. Supervision visual QA — deferred by decision, not oversight
 
@@ -145,10 +146,10 @@ until approval matches the exact tenant and workflow. Loop and Pipeline semantic
 jobs explicitly disable the reviewed-plan tool so their required parsers receive
 their own output shapes.
 
-The migration is `product-experience/supabase-client-hermes-content-factory.sql`
-and must be applied before the authenticated cloud route is exercised. Step 4
-is deployed on `00140-5qb`; the next merge-order item after this slice is
-**step 5, the Notebook and SEO provider-neutral contracts**.
+The migration is `product-experience/supabase-client-hermes-content-factory.sql`.
+Step 4 is complete. The next portfolio wave is deployed on `00141-zxt` and
+adds Notebook lineage, structured research, SEO/OpenSEO normalization, quality
+policy, and governed capability previews.
 
 The authenticated cloud smoke is now complete: citations, quality report,
 approval pause, pre-approval refusal, approved delivery, and idempotent retry

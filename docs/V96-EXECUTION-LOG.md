@@ -13,22 +13,22 @@ next.* Update this file rather than opening a second log.
 and 97d6959 add the governed v96 contracts, structured research persistence,
 SEO intelligence normalization, quality policy, media/VQA boundaries, operator
 contracts, capability preview states, Notebook source lineage, and OpenSEO
-normalization. These commits are local until the verified push below.
+normalization. These commits are pushed to origin/main at 176cf78.
 **Current local evidence:** production build passes; the focused V96/route/SEO
 suites pass; the worker verifier and client-runtime security verifier pass on
-local 3940. The complete suite is **274 passing, 3 pre-existing baseline
+local 3940. The complete suite is **278 passing, 3 pre-existing baseline
 failures** in visual-shell/sidebar theme expectations; no new V96 failure was
 introduced.
-**Live:** `veloce-cloud-test-00140-5qb` · image `v102-hermes-content-factory`
-(digest `sha256:21b310438520f3870eb0af743c11acb87d35666ca362a5165c6233c548879ffe`,
-release `hermes-content-factory-20260811`, deployed 2026-08-11)
+**Live:** `veloce-cloud-test-00141-zxt` · image `v103-v96-governed-wave`
+(digest `sha256:0d81876ccb14803fd3de55166e79483aee86be4ca9c22c94321b8f2442c0d12`,
+release `v96-governed-wave-20260811`, deployed 2026-08-11)
 **Branch:** work lands on `origin/main` directly — the
 `codex/reviewed-additions-2026-08-10` remote branch was merged and deleted on
 2026-08-11. A local branch of that name may still exist with no upstream; `main`
 is the one to track.
-**Codex implementation commit:** `75cf39d`; handoff metadata commit `24ec568`;
-both pushed to `origin/main`
-**Tests:** **255 passing · 0 failing** (40 focused step-4/parser/allowlist tests)
+**Codex implementation commit:** `176cf78`; pushed to `origin/main`
+**Tests:** **278 passing · 3 known baseline failures** (full 281-test run; all
+focused V96/route/Notebook/SEO suites pass)
 · production build clean · three security gates passing
 · npm audit: no high/critical findings, 3 moderate PostCSS advisories
 
@@ -43,9 +43,9 @@ reviewed-plan tool, preserving the reviewed-plan boundary for workspace
 artifacts. The migration is
 `product-experience/supabase-client-hermes-content-factory.sql`; it is not yet
 applied to the live tenant because no Supabase migration credentials are
-available in the operator shell. The v102 image is deployed, but authenticated
-Hermes workflow execution remains intentionally unverified until that migration
-is applied.
+available in the operator shell. That Hermes migration was applied and the
+authenticated workflow smoke was closed on 00140-5qb; the newer structured
+research, visual-QA, and Notebook migrations remain pending.
 
 **Local/cloud surface checkpoint (2026-08-11):** operator `3939` returned
 healthy `/healthz` and rendered `/hermes`; client `3940` returned the expected
@@ -69,6 +69,14 @@ product-experience/supabase-client-visual-qa.sql, and the new
 product-experience/supabase-client-notebook-lineage.sql to any tenant before
 enabling those capabilities. The new routes remain feature-gated and do not
 fetch arbitrary URLs or expose provider credentials.
+
+**V96 governed-wave deployment (2026-08-11):** Cloud Build `571954fe` produced
+the image above. Cloud Run deployed revision `00141-zxt` and the isolated
+workspace job successfully. Root returned the login redirect, the capabilities
+and Notebook source APIs returned 401 without a session, and traffic is 100%
+on the new revision. The new structured-research, visual-QA, and Notebook SQL
+migrations still need to be applied before their live authenticated workflows
+are enabled.
 
 **Verification:** see [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) for
 what is proven live and against which revision. The high-severity provider
