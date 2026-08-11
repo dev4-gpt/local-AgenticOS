@@ -473,6 +473,7 @@ secret policy, budget, queue, audit record, and emergency disable path.
 - [SkyReels V2](https://github.com/skyworkai/skyreels-v2)
 - [ScrapeGraphAI](https://github.com/ScrapeGraphAI/Scrapegraph-ai)
 - [Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent)
+- [Prime Agent Blog](https://www.primeintellect.ai/blog/prime-agent)
 - [OmniRoute](https://github.com/diegosouzapw/OmniRoute)
 - [Open Notebook](https://github.com/lfnovo/open-notebook)
 - [book-to-skill](https://github.com/virgiliojr94/book-to-skill)
