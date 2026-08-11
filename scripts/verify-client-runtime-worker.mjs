@@ -59,6 +59,14 @@ const observability = await readFile(join(root, "src/lib/clientRuntimeObservabil
 const telemetryRoute = await readFile(join(root, "src/app/api/client-runtime/telemetry/route.ts"), "utf8");
 const clientProviderWorkspace = await readFile(join(root, "src/components/ClientProviderWorkspace.tsx"), "utf8");
 const shell = await readFile(join(root, "src/components/Shell.tsx"), "utf8");
+const orchestrationComponents = await Promise.all([
+  "ClientPaperclipWorkspace.tsx",
+  "ClientRoomWorkspace.tsx",
+  "ClientPipelineWorkspace.tsx",
+  "ClientBoardWorkspace.tsx",
+  "ClientLoopWorkspace.tsx",
+  "ClientRufloWorkspace.tsx",
+].map(async (file) => readFile(join(root, "src/components", file), "utf8")));
 const briefWorkspace = await readFile(join(root, "src/components/ClientBriefWorkspace.tsx"), "utf8");
 const workflowRunner = await readFile(join(root, "src/lib/clientWorkflowRunner.ts"), "utf8");
 const authenticatedVerifier = await readFile(join(root, "scripts/verify-client-runtime-authenticated.mjs"), "utf8");
@@ -238,7 +246,7 @@ expect(alerts.includes('mimeType: "text/markdown"') && alerts.includes("undefine
 expect(middleware.includes("x-request-id") && middleware.includes("crypto.randomUUID") && middleware.includes("response.headers.set(\"x-request-id\""), "client responses must carry generated request correlation IDs");
 expect(observability.includes("SAFE_ID") && observability.includes("SAFE_CODE") && observability.includes("classifyClientRuntimeFailure") && observability.includes("provider_rate_limited"), "runtime observability must strictly redact values and classify provider failures");
 expect(alerts.includes('"monitoring", "policies", "update"') && alerts.includes("add-notification-channels"), "rerunning alert provisioning with a channel must attach it to existing policies");
-expect(workerRoute.includes('provider: "elevenlabs"'), "speech failures must identify the speech provider in redacted logs");
+expect(workerRoute.includes("runClientSpeechAdapter") && workerRoute.includes("provider: job.provider"), "speech failures must identify the selected speech provider in redacted logs");
 expect(providerAdapter.includes("AbortSignal.timeout") && providerAdapter.includes("2_000_000"), "provider adapters must bound request time and response size");
 expect(mediaAdapter.includes("runClientSpeechAdapter") && mediaAdapter.includes("runClientHeyGenAdapter") && mediaAdapter.includes("runClientMusicAdapter"), "media adapters must cover speech, video, and music contracts");
 expect(mediaAdapter.includes("MAX_IMAGE_BYTES") && mediaAdapter.includes("containsClientSecretLike"), "image adapter must bound output bytes and reject secret-like prompts");
@@ -255,8 +263,9 @@ for (const surface of ["opendesign", "web-studio", "flow-lab", "openmontage", "g
 expect(shell.includes('"/local": { provider: "openrouter"') && shell.includes('"/engine": { provider: "openrouter"'), "local and engine must use the hosted API replacement");
 expect(shell.includes("ClientOrchestrationWorkspace") && shell.includes("CLIENT_ORCHESTRATION_ROUTES"), "orchestration routes must use dedicated hosted workflow surfaces instead of the generic execution workspace");
 for (const surface of ["paperclip", "room", "pipeline", "agent-kanban", "kanban", "loop", "ruflo"]) {
-  expect(shell.includes(`"/${surface}"`) && shell.includes(`"${surface}"`), `client shell must route ${surface} through the hosted orchestration workspace`);
+  expect(shell.includes(`pathname === "/${surface}"`), `client shell must route ${surface} through the hosted orchestration workspace`);
 }
+expect(orchestrationComponents.every((source) => source.includes("/api/client-runtime/")), "dedicated orchestration workspaces must use tenant client-runtime routes");
 for (const marker of ["client_runtime_records", "client_runtime_records_member_select", "client_runtime_records_member_insert", "client_runtime_records_owner_update", "client_runtime_records_owner_delete"]) {
   expect(hostedSql.includes(marker), `hosted capability migration must contain ${marker}`);
   expect(recordsSql.includes(marker), `standalone records migration must contain ${marker}`);

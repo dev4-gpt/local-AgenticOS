@@ -34,6 +34,7 @@ test("the local runner allows the same client API routes as the deployed one", (
 test("the notebooks route is allowlisted everywhere it has to be", () => {
   for (const [name, set] of [["policy", policy], ["deploy script", deployed], ["local runner", local]] as const) {
     expect(set.has("/api/client-runtime/notebooks"), `${name} is missing the notebooks route`).toBe(true);
+    expect(set.has("/api/client-runtime/notebook-sources"), `${name} is missing the notebook sources route`).toBe(true);
   }
 });
 
