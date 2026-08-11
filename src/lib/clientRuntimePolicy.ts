@@ -42,6 +42,11 @@ const CAPABILITY_ALIASES: Record<string, string> = {
   "delivery-actions": "delivery",
 };
 
+const GOVERNED_CAPABILITY_ALIASES: Record<string, string> = {
+  "content-research": "research",
+  "seo-intelligence": "seo",
+};
+
 function configuredList(name: string, fallback: string[]) {
   const raw = process.env[name]?.trim();
   if (!raw) return fallback;
@@ -64,6 +69,18 @@ export function clientCapabilityEnabled(id: string) {
   return clientEdition()
     ? configured.includes(id) || configured.includes(canonicalId)
     : configured.length === 0 || configured.includes(id) || configured.includes(canonicalId);
+}
+
+/**
+ * New portfolio capabilities are reviewable before they are executable. The
+ * manifest can expose a capability as `preview` while evidence is collected;
+ * only the existing enabled-capability allowlist grants execution.
+ */
+export function clientCapabilityExposure(id: string): "hidden" | "preview" | "enabled" {
+  const canonicalId = GOVERNED_CAPABILITY_ALIASES[id] ?? id;
+  const preview = clientConfiguredList("CLIENT_PREVIEW_CAPABILITIES").map((value) => GOVERNED_CAPABILITY_ALIASES[value] ?? value);
+  if (clientCapabilityEnabled(canonicalId)) return "enabled";
+  return preview.includes(canonicalId) ? "preview" : "hidden";
 }
 
 export function clientProviderEnabled(key: string) {
