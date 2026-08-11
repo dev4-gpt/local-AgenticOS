@@ -18,6 +18,7 @@ import { loopBuilderPrompt, loopFinalStatus, loopJudgePrompt, parseLoopVerdict }
 import { rufloAgentPrompt, rufloReportPrompt, rufloRoster } from "@/lib/clientRufloAdapter";
 import { HERMES_CONTENT_FACTORY_STEPS, createHermesContentFactoryPlan, hermesContentFactoryPrompt, type HermesContentFactoryPlan, type HermesContentFactoryStage } from "@/lib/hermesContentFactory";
 import { createSeoIntelligenceRequest, firecrawlSearchToSeoIntelligenceRecord } from "@/lib/seoIntelligence";
+import { applyOutputQualityPolicy } from "@/lib/outputQualityPolicy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -352,8 +353,9 @@ async function processHermesContentFactoryJob(jobId: string, tenantSlug: string,
     await completeJob(tenantSlug, jobId, workerToken, "failed", { hermesRunId: runId }, failure);
     return NextResponse.json({ ok: true, status: "failed" });
   }
+  const quality = applyOutputQualityPolicy(safeClientProviderOutput(draft.output));
   const outlineArtifact = await storeArtifact(tenantSlug, jobId, workerToken, `${plan.workflowId}-outline.md`, "text/markdown", Buffer.from(safeClientProviderOutput(outline.output), "utf8"));
-  const draftArtifact = await storeArtifact(tenantSlug, jobId, workerToken, `${plan.workflowId}-draft.md`, "text/markdown", Buffer.from(safeClientProviderOutput(draft.output), "utf8"));
+  const draftArtifact = await storeArtifact(tenantSlug, jobId, workerToken, `${plan.workflowId}-draft.md`, "text/markdown", Buffer.from(quality.output, "utf8"));
   if (!outlineArtifact || !draftArtifact) {
     await settleTerminalBudget(jobId, workerToken, 0, { artifactStoreFailure: 1 });
     await patchRun({ status: "failed", current_stage: "draft", citations, error_code: "artifact_store_failed" });
@@ -364,10 +366,10 @@ async function processHermesContentFactoryJob(jobId: string, tenantSlug: string,
     id: `quality-${runId}`,
     workflowId: plan.workflowId,
     tenantSlug,
-    passed: citations.length > 0 && Boolean(draftArtifact),
-    score: citations.length > 0 && Boolean(draftArtifact) ? 100 : 0,
+    passed: citations.length > 0 && Boolean(draftArtifact) && quality.report.passed,
+    score: citations.length > 0 && Boolean(draftArtifact) ? quality.report.score : 0,
     citationCount: citations.length,
-    findings: [] as string[],
+    findings: quality.report.findings.map((finding) => `${finding.code}: ${finding.message}`),
     checkedAt: new Date().toISOString(),
   };
   const completedStages = stages.map((stage) => {
@@ -377,7 +379,7 @@ async function processHermesContentFactoryJob(jobId: string, tenantSlug: string,
   const actual = outline.usage && draft.usage
     ? (clientTextUsageCostMicros(job.model, outline.usage) ?? estimate) + (clientTextUsageCostMicros(job.model, draft.usage) ?? estimate)
     : estimate;
-  const outputMetadata = { adapter: "hermes-content-factory", hermesRunId: runId, completedSteps: 6 };
+  const outputMetadata = { adapter: "hermes-content-factory", hermesRunId: runId, completedSteps: 6, qualityPolicy: quality.report };
   if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: actual, usageMetadata: { actualAmountMicros: actual, citations: citations.length } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
   await patchRun({ status: "awaiting_approval", current_stage: "approval", stages: completedStages, citations, quality_report: report });
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
