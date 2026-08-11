@@ -17,6 +17,7 @@ import { parsePipelineShape, pipelineStageAfterShaping } from "@/lib/clientPipel
 import { loopBuilderPrompt, loopFinalStatus, loopJudgePrompt, parseLoopVerdict } from "@/lib/clientLoopAdapter";
 import { rufloAgentPrompt, rufloReportPrompt, rufloRoster } from "@/lib/clientRufloAdapter";
 import { HERMES_CONTENT_FACTORY_STEPS, createHermesContentFactoryPlan, hermesContentFactoryPrompt, type HermesContentFactoryPlan, type HermesContentFactoryStage } from "@/lib/hermesContentFactory";
+import { createSeoIntelligenceRequest, firecrawlSearchToSeoIntelligenceRecord } from "@/lib/seoIntelligence";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -1064,6 +1065,18 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
   }
 
   const records = marketSearchToV96Records({ tenantSlug, query: search.query, results: search.results, scraped: scrapeResults });
+  const seoRecord = firecrawlSearchToSeoIntelligenceRecord({
+    request: createSeoIntelligenceRequest({
+      requestId: jobId,
+      tenantSlug,
+      provider: "firecrawl",
+      domain: "https://search.firecrawl.dev",
+      metrics: ["competitors"],
+      maxRows: limit,
+    }),
+    results: search.results,
+    providerCostMicros: search.estimatedCostMicros,
+  });
   const outputMetadata = {
     adapter: scrapeResults ? "firecrawl-search-scrape" : "firecrawl-search",
     provider: search.provider,
@@ -1074,6 +1087,7 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
     // what the search actually returned rather than against a caller's list.
     discovered: search.results.map((result) => result.url),
     records: safeClientProviderMetadata(records),
+    seoIntelligence: safeClientProviderMetadata(seoRecord),
     researchRunId: null as string | null,
   };
   const researchRun = await workerRpc("record_client_research_result_worker", {
