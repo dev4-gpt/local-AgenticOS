@@ -32,7 +32,14 @@ export default defineConfig({
       // workspace port.
       command: "npm run dev:v0",
       url: "http://127.0.0.1:3737",
-      reuseExistingServer: !process.env.CI,
+      // Deliberately false, including locally. The usual `!process.env.CI`
+      // silently adopts whatever already holds the port -- which is how a
+      // next-server started 17 days earlier, serving a .next-v0 directory that
+      // no longer had a BUILD_ID or a single CSS chunk, was reused by every
+      // test run. Eight tests failed against a page with no stylesheet at all
+      // and were misread as UI regressions and stale theme assertions. Failing
+      // loudly on a busy port is far cheaper than testing a dead server.
+      reuseExistingServer: false,
       timeout: 180_000,
       stdout: "ignore",
       stderr: "pipe",
@@ -41,7 +48,14 @@ export default defineConfig({
       // tests/product-experience.spec.ts, PRODUCT_EXPERIENCE_URL || :3565
       command: "npm --prefix product-experience run dev",
       url: "http://127.0.0.1:3565",
-      reuseExistingServer: !process.env.CI,
+      // Deliberately false, including locally. The usual `!process.env.CI`
+      // silently adopts whatever already holds the port -- which is how a
+      // next-server started 17 days earlier, serving a .next-v0 directory that
+      // no longer had a BUILD_ID or a single CSS chunk, was reused by every
+      // test run. Eight tests failed against a page with no stylesheet at all
+      // and were misread as UI regressions and stale theme assertions. Failing
+      // loudly on a busy port is far cheaper than testing a dead server.
+      reuseExistingServer: false,
       timeout: 180_000,
       stdout: "ignore",
       stderr: "pipe",
@@ -54,7 +68,14 @@ export default defineConfig({
       // here, with --strictPort so a silent fallback fails loudly instead.
       command: "npm --prefix public-site run dev -- --port 4175 --strictPort",
       url: "http://127.0.0.1:4175",
-      reuseExistingServer: !process.env.CI,
+      // Deliberately false, including locally. The usual `!process.env.CI`
+      // silently adopts whatever already holds the port -- which is how a
+      // next-server started 17 days earlier, serving a .next-v0 directory that
+      // no longer had a BUILD_ID or a single CSS chunk, was reused by every
+      // test run. Eight tests failed against a page with no stylesheet at all
+      // and were misread as UI regressions and stale theme assertions. Failing
+      // loudly on a busy port is far cheaper than testing a dead server.
+      reuseExistingServer: false,
       timeout: 180_000,
       stdout: "ignore",
       stderr: "pipe",

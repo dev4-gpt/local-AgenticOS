@@ -243,22 +243,39 @@ surfaces.
 
 ---
 
-## 6. Test suite
+## 6. Test suite — **250 passing, 0 failing**
 
-**227 passing · 19 failing · build clean · three security gates passing.**
+Green for the first time. Every one of the nineteen failures was environmental,
+and none was a product defect.
 
-The 19 failures are in `product-experience`, `public-edition`, `sidebar-smoke`
-and `visual-shell` — public-site and local mission-control specs. They fail
-identically at a clean `HEAD` with every working change stashed, so they predate
-this branch. **They are pre-existing and unrelated, not passing.**
+| Cause | Tests | Fix |
+|---|---|---|
+| No `playwright.config.ts` existed, so no `webServer` — specs pointed at ports nobody started | 10 | Added the config with three servers |
+| A `next-server` **started 17 days earlier** held port 3737, serving a `.next-v0` directory with no `BUILD_ID` and no CSS chunks. Its stylesheet 404'd, so the page had **no styles at all** | 8 | Killed the orphan; `reuseExistingServer: false` so it fails loudly instead |
+| The site's privacy claim genuinely reversed | 1 | Test updated to assert the current, more honest copy |
 
-Six of the 227 are new this session, enforcing the skill pack's exit gate. That
-gate was verified by planting `execute-shell` in a real role and confirming the
-suite failed with `tool is outside the permitted vocabulary: execute-shell`,
-then passed again on revert. **A gate that has never been observed failing is
-not a verified gate.**
+### The 8 were misdiagnosed, and it is worth knowing how
 
----
+They were first read as four separate product problems: a genuine horizontal
+overflow at 390px, an assertion pinned to a retired parchment theme, headless
+canvas visibility, and unstubbed local Obsidian vault state. **All four
+diagnoses were wrong.** With no stylesheet, `.home-immersive__stage` computed to
+`height: 0`, so the canvas and its fallback were correctly reported hidden;
+`color-scheme` computed to `normal` because no rule set it; and the body could
+not overflow a layout that never had one.
+
+The tell was `getComputedStyle` reporting `position: static` where
+`globals.css:660` declares `position: sticky` — a rule that is present in the
+file cannot fail to apply unless the file never arrived. Fetching the
+referenced chunk returned `Not Found`, 9 bytes.
+
+**Rule: before attributing a visual test failure to the UI, confirm the page
+under test actually loaded its stylesheet.** A dead server produces failures
+that look exactly like design regressions.
+
+Six of the 250 are the reviewed-plan artifact tests added in §2, verified by
+reverting the fix: exactly the three behavioural ones failed, then all passed on
+restore. A gate never observed failing is not a verified gate.
 
 ## 7. Spend
 
@@ -298,13 +315,10 @@ output. A defect that fails late is a defect that spends.
 Stated plainly, because an unproven thing recorded as proven is how this
 document came to be needed.
 
-- **The `reviewed-plan` defect has no fix**, only a diagnosis and three options.
 - **`/api/client-runtime/provider-chat` is operator-only** — it returns
   `client_route_not_enabled` to a client session for all 16 providers. That is
   correct behaviour, but it means the client model path is `executions`, and any
   harness testing "models" through `provider-chat` is testing nothing.
-- **19 pre-existing test failures** are unexplained. They are not this branch's
-  doing, but nobody has diagnosed them.
 - **Supervision visual QA** remains deliberately unbuilt (§4.2 of the execution
   log). Decided, not overlooked.
 
