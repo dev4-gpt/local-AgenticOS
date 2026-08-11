@@ -111,22 +111,39 @@ export function clientProviderToolPayload(provider: string) {
   };
 }
 
-export function normalizeClientReviewedPlan(value: unknown) {
+export type ClientReviewedPlanStep = { title: string; rationale?: string; owner?: string };
+
+export type ClientReviewedPlan = {
+  summary: string;
+  steps: ClientReviewedPlanStep[];
+  approvalRequired: true;
+};
+
+export type ClientReviewedPlanEnvelope = {
+  type: "reviewed_plan";
+  tool: typeof CLIENT_REVIEWED_PLAN_TOOL;
+  plan: ClientReviewedPlan;
+};
+
+export function normalizeClientReviewedPlan(value: unknown): ClientReviewedPlan | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
   if (typeof input.summary !== "string" || input.summary.trim().length < 1) return null;
   if (!Array.isArray(input.steps) || input.steps.length < 1 || input.steps.length > 8) return null;
-  const steps = input.steps.map((step) => {
+  // Built with a loop rather than `.map` + `.some(step => step === null)` so the
+  // element type narrows. The previous form left `null` in the inferred type,
+  // which every consumer then had to defend against for a case that cannot occur.
+  const steps: ClientReviewedPlanStep[] = [];
+  for (const step of input.steps) {
     if (!step || typeof step !== "object" || Array.isArray(step)) return null;
     const item = step as Record<string, unknown>;
     if (typeof item.title !== "string" || item.title.trim().length < 1) return null;
-    return {
+    steps.push({
       title: item.title.trim().slice(0, 240),
       ...(typeof item.rationale === "string" && item.rationale.trim() ? { rationale: item.rationale.trim().slice(0, 600) } : {}),
       ...(typeof item.owner === "string" && item.owner.trim() ? { owner: item.owner.trim().slice(0, 120) } : {}),
-    };
-  });
-  if (steps.some((step) => step === null)) return null;
+    });
+  }
   return {
     summary: input.summary.trim().slice(0, 2_000),
     steps,
@@ -137,4 +154,55 @@ export function normalizeClientReviewedPlan(value: unknown) {
 export function serializeClientReviewedPlan(value: unknown) {
   const plan = normalizeClientReviewedPlan(value);
   return plan ? JSON.stringify({ type: "reviewed_plan", tool: CLIENT_REVIEWED_PLAN_TOOL, plan }) : null;
+}
+
+/**
+ * The inverse of `serializeClientReviewedPlan`. Lives here, beside the
+ * serializer, so the envelope shape is asserted in exactly one place — the chat
+ * UI and the workspace artifact path both call this rather than each hand-rolling
+ * a `JSON.parse` guard.
+ *
+ * Fails closed on anything that is not a well-formed envelope. That matters
+ * because `safeClientProviderOutput` may already have replaced the provider
+ * output with a withheld-content notice, which is not JSON at all.
+ */
+export function parseClientReviewedPlan(content: string): ClientReviewedPlanEnvelope | null {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(trimmed) as { type?: unknown; tool?: unknown; plan?: unknown };
+    if (parsed?.type !== "reviewed_plan" || parsed?.tool !== CLIENT_REVIEWED_PLAN_TOOL) return null;
+    // Re-normalise rather than trusting the parsed shape: this string may have
+    // round-tripped through storage since it was produced.
+    const plan = normalizeClientReviewedPlan(parsed.plan);
+    return plan ? { type: "reviewed_plan", tool: CLIENT_REVIEWED_PLAN_TOOL, plan } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Renders a reviewed plan as markdown, mirroring what `ReviewedPlanCard` shows
+ * in the chat UI so the stored artifact and the on-screen card read as the same
+ * object.
+ *
+ * The approval line is not decoration. Once the JSON envelope is discarded, it
+ * is the only remaining trace that this is a proposal awaiting review rather
+ * than finished work.
+ */
+export function reviewedPlanMarkdown(plan: ClientReviewedPlan) {
+  const steps = plan.steps.map((step, index) => {
+    const lines = [`${index + 1}. **${step.title}**`];
+    if (step.owner) lines.push(`   - Owner: ${step.owner}`);
+    if (step.rationale) lines.push(`   - ${step.rationale}`);
+    return lines.join("\n");
+  });
+  return [
+    "# Reviewed plan",
+    "**Human approval required.** This was produced through the reviewed-plan tool boundary. It is a proposal, not completed work, and no external action has been taken.",
+    "## Summary",
+    plan.summary,
+    "## Steps",
+    steps.join("\n\n"),
+  ].join("\n\n");
 }

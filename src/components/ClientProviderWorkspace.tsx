@@ -6,20 +6,15 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Check, CheckCircle2, Clock3, Clipboard, KeyRound, LockKeyhole, Send, ShieldCheck, Trash2, XCircle } from "lucide-react";
 import ClientRuntimeNotice from "@/components/ClientRuntimeNotice";
+import { parseClientReviewedPlan, type ClientReviewedPlanEnvelope } from "@/lib/clientProviderContracts";
 
 type Message = { id: string; role: "user" | "assistant"; content: string; jobId?: string; createdAt: number };
 type VisibleMessage = Message & { repeatCount: number };
 type RuntimeStatus = { providerCallsEnabled?: boolean; clientEdition?: boolean };
 type Credential = { key: string; label: string; connected: boolean };
-type ReviewedPlan = {
-  type?: string;
-  tool?: string;
-  plan?: {
-    summary?: string;
-    approvalRequired?: boolean;
-    steps?: Array<{ title?: string; rationale?: string; owner?: string }>;
-  };
-};
+// Was a hand-written loose duplicate of the normaliser's return type. Using the
+// real type means the card cannot drift from what the contract guarantees.
+type ReviewedPlan = ClientReviewedPlanEnvelope;
 
 const PROVIDER_REQUIREMENTS: Record<string, string> = {
   anthropic: "ANTHROPIC_API_KEY",
@@ -306,16 +301,10 @@ function ReviewedPlanCard({ value }: { value: ReviewedPlan }) {
   );
 }
 
-function parseReviewedPlan(content: string): ReviewedPlan | null {
-  const trimmed = content.trim();
-  if (!trimmed.startsWith("{")) return null;
-  try {
-    const parsed = JSON.parse(trimmed) as ReviewedPlan;
-    return parsed?.type === "reviewed_plan" && parsed?.tool === "propose_reviewed_plan" ? parsed : null;
-  } catch {
-    return null;
-  }
-}
+// The envelope guard lives in clientProviderContracts beside the serializer, so
+// this card and the workspace artifact path agree on the shape by construction
+// rather than by two hand-rolled parsers staying in sync.
+const parseReviewedPlan = parseClientReviewedPlan;
 
 function collapseRepeatedMessages(messages: Message[]): VisibleMessage[] {
   const output: VisibleMessage[] = [];

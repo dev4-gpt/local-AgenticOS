@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { parseClientReviewedPlan, reviewedPlanMarkdown } from "@/lib/clientProviderContracts";
 
 export type ClientWorkspaceSurface =
   | "orchestrate" | "paperclip" | "room" | "pipeline" | "agent-kanban" | "kanban" | "loop" | "ruflo"
@@ -25,6 +26,12 @@ export type WorkspaceArtifact = {
   contentType: "text/html" | "text/markdown";
   bytes: Buffer;
   previewHtml?: string;
+  /**
+   * Set when a `preview` request produced markdown instead of HTML because the
+   * provider returned a reviewed plan. Recorded rather than hidden: the preview
+   * pane will be empty, and that should be explainable from the job record.
+   */
+  downgradedFrom?: WorkspaceArtifactIntent;
 };
 
 const SURFACES = new Set<ClientWorkspaceSurface>([
@@ -84,9 +91,32 @@ export function workspacePrompt(input: { surface: ClientWorkspaceSurface; title:
 }
 
 export function artifactFromWorkspaceOutput(input: { surface: ClientWorkspaceSurface; title: string; artifactIntent: WorkspaceArtifactIntent; output: string }): WorkspaceArtifact | null {
+  const safeBase = input.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || input.surface;
+
+  // Providers whose contract sets toolMode "reviewed-plan" are given a FORCED
+  // tool choice, so the model cannot return prose at all — its output is the
+  // serialized plan envelope, which contains no fenced block. Before this
+  // branch existed, extractFence found nothing and every workspace execution on
+  // those four lanes (openclaw, hermes, fusion, antigravity) failed
+  // workspace_artifact_invalid, after the provider had already been billed.
+  //
+  // A plan is structured data with no HTML, so it cannot satisfy the preview
+  // contract below. It downgrades to markdown and says so, rather than
+  // synthesising HTML the model never produced.
+  const reviewedPlan = parseClientReviewedPlan(input.output);
+  if (reviewedPlan) {
+    const markdown = reviewedPlanMarkdown(reviewedPlan.plan);
+    if (!markdown || markdown.length > 36_000) return null;
+    return {
+      fileName: `${safeBase}.md`,
+      contentType: "text/markdown",
+      bytes: Buffer.from(markdown, "utf8"),
+      ...(input.artifactIntent === "preview" ? { downgradedFrom: "preview" as const } : {}),
+    };
+  }
+
   const extracted = extractFence(input.output, input.artifactIntent === "preview" ? "html" : "markdown");
   if (!extracted) return null;
-  const safeBase = input.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || input.surface;
   if (input.artifactIntent === "preview") {
     const html = extracted.trim();
     if (!/<html[\s>]|<!doctype html/i.test(html) || html.length > 36_000) return null;
