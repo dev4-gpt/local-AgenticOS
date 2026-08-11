@@ -117,3 +117,62 @@ export function firecrawlSearchToSeoIntelligenceRecord(input: {
     ...(citations.length ? {} : { failureReason: "no attributable evidence returned" }),
   };
 }
+
+/**
+ * Normalize an operator-supplied OpenSEO/DataForSEO response without allowing
+ * the upstream payload shape to leak into the client contract. The adapter is
+ * intentionally pure: network access, credential lookup, DNS policy, and
+ * budget settlement stay in the worker that calls it.
+ */
+export function openSeoPayloadToIntelligenceRecord(input: {
+  request: SeoIntelligenceRequest;
+  payload: unknown;
+  providerCostMicros: number;
+  retrievedAt?: string;
+}): SeoIntelligenceRecord {
+  const retrievedAt = input.retrievedAt ?? new Date().toISOString();
+  const payload = input.payload && typeof input.payload === "object" ? input.payload as Record<string, unknown> : {};
+  const rowsFor = (metric: SeoMetric) => {
+    const raw = payload[metric] ?? payload[metric === "ai-visibility" ? "ai_visibility" : metric];
+    if (!Array.isArray(raw)) return [];
+    return raw.slice(0, input.request.maxRows).flatMap((value) => {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+      const row = value as Record<string, unknown>;
+      const normalized: Record<string, string | number | boolean | null> = {};
+      for (const [key, entry] of Object.entries(row).slice(0, 32)) {
+        if (!/^[a-zA-Z0-9_.-]{1,80}$/.test(key)) continue;
+        if (entry === null || typeof entry === "string" || typeof entry === "number" || typeof entry === "boolean") normalized[key] = typeof entry === "string" ? entry.slice(0, 500) : entry;
+      }
+      return Object.keys(normalized).length ? [normalized] : [];
+    });
+  };
+  const metrics = {
+    keywords: rowsFor("keywords"),
+    rankings: rowsFor("rankings"),
+    competitors: rowsFor("competitors"),
+    backlinks: rowsFor("backlinks"),
+    audits: rowsFor("audits"),
+    "ai-visibility": rowsFor("ai-visibility"),
+  } satisfies SeoIntelligenceRecord["metrics"];
+  const citations = Object.values(metrics).flatMap((rows) => rows.flatMap((row, index) => {
+    const url = typeof row.url === "string" ? row.url : typeof row.source_url === "string" ? row.source_url : "";
+    const evidence = typeof row.evidence === "string" ? row.evidence : typeof row.title === "string" ? row.title : "";
+    return isAllowedV96ResearchUrl(url) && evidence.trim()
+      ? [{ id: `openseo-citation-${index + 1}`, url, retrievedAt, evidence: evidence.trim().slice(0, 4000) }]
+      : [];
+  }));
+  const hasRows = Object.values(metrics).some((rows) => rows.length > 0);
+  return {
+    contractVersion: CAPABILITY_CONTRACT_VERSION,
+    requestId: input.request.requestId,
+    tenantSlug: input.request.tenantSlug,
+    provider: "openseo",
+    domain: input.request.domain,
+    retrievedAt,
+    status: hasRows ? (citations.length ? "complete" : "partial") : "failed",
+    metrics,
+    citations,
+    providerCostMicros: Math.max(0, Math.round(input.providerCostMicros)),
+    ...(hasRows ? {} : { failureReason: "no bounded SEO metrics returned" }),
+  };
+}
