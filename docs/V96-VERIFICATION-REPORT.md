@@ -144,29 +144,41 @@ a goal that explicitly demands the matching fenced format.
 
 ### Proven working
 
-| Surface | Intent | Provider | Result |
-|---|---|---|---|
-| guide | brief | openrouter | ✅ |
-| paperclip | preview | anthropic | ✅ |
-| agent-kanban | preview | openrouter | ✅ |
-| opendesign | preview | freeclaude | ✅ |
-| games | preview | gemini | ✅ |
-| room | brief | anthropic | ✅ |
-| pipeline | brief | openrouter | ✅ |
-| loop | preview | anthropic | ✅ |
-| create | preview | openrouter | ✅ |
-| web-studio | preview | freeclaude | ✅ |
-| orchestrate | brief | gemini | ✅ |
+Every one produced a real artifact through the hosted worker.
 
-**11 of 26 surfaces verified working against this revision.**
+| Surface | Intent | Provider | Surface | Intent | Provider |
+|---|---|---|---|---|---|
+| guide | brief | openrouter | studio | brief | anthropic |
+| paperclip | preview | anthropic | openmontage | brief | openrouter |
+| agent-kanban | preview | openrouter | music | brief | freeclaude |
+| opendesign | preview | freeclaude | thumbnails | brief | gemini |
+| games | preview | gemini | integrations | brief | anthropic |
+| room | brief | anthropic | seo | brief | openrouter |
+| pipeline | brief | openrouter | seo-guide | brief | freeclaude |
+| loop | preview | anthropic | deliver | brief | gemini |
+| create | preview | openrouter | kanban | brief | anthropic |
+| web-studio | preview | freeclaude | ruflo | brief | openrouter |
+| orchestrate | brief | gemini | flow-lab | brief | freeclaude |
+| video | brief | gemini | | | |
+
+**23 of 26 surfaces verified working against this revision**, spread across all
+four usable provider lanes. Every `preview` surface produced HTML; every `brief`
+surface produced markdown.
 
 ### Not yet verified on this revision
 
-kanban, ruflo, flow-lab, video, studio, openmontage, music, thumbnails,
-integrations, seo, seo-guide, deliver, leads, radar, notebook — **15 surfaces.**
+`leads`, `radar`, `notebook` — **3 surfaces**, held back only by the 12-per-900s
+write limit, not by any observed problem.
 
 These are *unverified*, not *broken*. The distinction matters and this document
 will not blur it.
+
+### What the successful runs prove about the defect
+
+The four lanes that failed in §2 were re-run here against the **same surfaces**
+using a `toolMode: "none"` provider, and every one succeeded — `loop`, `create`,
+`web-studio`, `orchestrate` and `kanban` among them. That rules out any
+surface-specific cause and leaves the provider contract as the sole variable.
 
 **Why coverage takes multiple sessions of wall time:** `workspace-execution-write`
 allows **12 writes per 900s**. Twenty-six surfaces cannot be swept inside one
