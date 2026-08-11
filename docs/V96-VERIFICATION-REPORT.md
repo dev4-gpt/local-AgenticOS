@@ -30,9 +30,12 @@ reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
   `.next-client` when both runtimes are opened from one checkout. The local
   Hermes smoke proved deterministic replay and 409 publication refusal before
   approval without invoking a provider.
-- Cloud DNS/runtime reachability is restored, but live remains
-  `00139-w6s`/`v101-plan-artifacts`. The v102 manifest is prepared; deployment
-  and live workflow verification await applying the new Supabase migration.
+- Cloud DNS/runtime reachability is restored. Live is now
+  `00140-5qb`/`v102-hermes-content-factory`, digest
+  `sha256:21b310438520f3870eb0af743c11acb87d35666ca362a5165c6233c548879ffe`;
+  root and `/hermes` return the login boundary and the new API returns 401
+  without a session. Authenticated workflow verification awaits applying the
+  new Supabase migration.
 - The current shell has no `SUPABASE_SERVICE_ROLE_KEY` or Supabase access token,
   so no secret value was requested, read, or printed.
 

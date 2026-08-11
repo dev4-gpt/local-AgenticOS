@@ -14,9 +14,9 @@ lives in [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) and
 
 | | |
 |---|---|
-| **Live** | `veloce-cloud-test-00139-w6s` · `v101-plan-artifacts` |
-| **Local implementation commit** | `75cf39d` · not pushed yet |
-| **Next image** | `v102-hermes-content-factory` · manifest prepared locally, not deployed |
+| **Live** | `veloce-cloud-test-00140-5qb` · `v102-hermes-content-factory` |
+| **Implementation commit** | `75cf39d` · pushed via handoff commit `24ec568` |
+| **Image digest** | `sha256:21b310438520f3870eb0af743c11acb87d35666ca362a5165c6233c548879ffe` |
 | **Tests** | **255 passing, 0 failing** (40 focused Hermes/parser/allowlist tests also pass) |
 | **Build** | clean · three security gates passing |
 | **`npm audit --audit-level=high`** | 3 moderate PostCSS advisories; no high/critical findings |
@@ -142,10 +142,9 @@ jobs explicitly disable the reviewed-plan tool so their required parsers receive
 their own output shapes.
 
 The migration is `product-experience/supabase-client-hermes-content-factory.sql`
-and must be applied before the cloud route is exercised. The next merge-order
-item after this slice is **step 5, the Notebook and SEO provider-neutral
-contracts**. Cloud deployment of this slice is still pending the next verified
-image/revision; do not treat `00139-w6s` as containing these changes.
+and must be applied before the authenticated cloud route is exercised. Step 4
+is deployed on `00140-5qb`; the next merge-order item after this slice is
+**step 5, the Notebook and SEO provider-neutral contracts**.
 
 **Deploy loop:** build with `CLIENT_IMAGE=…:vNN-name`, bump `gcp.image` and
 `VELOCE_RELEASE` in `.private-client-kits/veloce-cloud-test.gcp.json`, run

@@ -8,13 +8,15 @@ This one answers a narrower question: *what changed, what is live, and what is
 next.* Update this file rather than opening a second log.
 
 **Last updated:** 2026-08-11
-**Live:** `veloce-cloud-test-00139-w6s` · image `v101-plan-artifacts`
-(release `plan-artifacts-20260811`, deployed 2026-08-11)
+**Live:** `veloce-cloud-test-00140-5qb` · image `v102-hermes-content-factory`
+(digest `sha256:21b310438520f3870eb0af743c11acb87d35666ca362a5165c6233c548879ffe`,
+release `hermes-content-factory-20260811`, deployed 2026-08-11)
 **Branch:** work lands on `origin/main` directly — the
 `codex/reviewed-additions-2026-08-10` remote branch was merged and deleted on
 2026-08-11. A local branch of that name may still exist with no upstream; `main`
 is the one to track.
-**Codex implementation commit:** `75cf39d` (local; push pending)
+**Codex implementation commit:** `75cf39d`; handoff metadata commit `24ec568`;
+both pushed to `origin/main`
 **Tests:** **255 passing · 0 failing** (40 focused step-4/parser/allowlist tests)
 · production build clean · three security gates passing
 · npm audit: no high/critical findings, 3 moderate PostCSS advisories
@@ -30,15 +32,16 @@ reviewed-plan tool, preserving the reviewed-plan boundary for workspace
 artifacts. The migration is
 `product-experience/supabase-client-hermes-content-factory.sql`; it is not yet
 applied to the live tenant because no Supabase migration credentials are
-available in the operator shell. The v102 image manifest is prepared, but the
-recorded live revision above remains the pre-step-4 `v101-plan-artifacts` image.
+available in the operator shell. The v102 image is deployed, but authenticated
+Hermes workflow execution remains intentionally unverified until that migration
+is applied.
 
 **Local/cloud surface checkpoint (2026-08-11):** operator `3939` returned
 healthy `/healthz` and rendered `/hermes`; client `3940` returned the expected
 auth redirect and 401 Hermes API boundary; the local queued request replayed the
 original workflow and publication before approval returned 409. The cloud
-hostname resolved and returned its login boundary, but its old image does not
-contain the new Hermes route.
+hostname resolved and returned its login boundary; the deployed Hermes API
+returned 401 without a session, confirming the new route is present.
 
 **Handoff:** [V96-HANDOFF-TO-CODEX.md](V96-HANDOFF-TO-CODEX.md) — start there if you
 are picking up the STAR portfolio.
