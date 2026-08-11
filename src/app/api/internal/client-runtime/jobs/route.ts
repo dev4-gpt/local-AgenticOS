@@ -1050,7 +1050,7 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
   const limit = Math.max(1, Math.min(3, Math.round(Number(input.limit ?? 3))));
   const idempotencyKey = job.idempotency_key ?? `seo-research-${jobId}`;
   const notebookId = typeof input.notebookId === "string" && /^[0-9a-f-]{36}$/i.test(input.notebookId) ? input.notebookId : null;
-  const updateResearchRun = async (status: "queued" | "running" | "complete" | "partial" | "failed", resultCount: number | null, errorCode: string | null) => workerRpc("update_client_research_run_worker", {
+  const updateResearchRun = async (status: "queued" | "running" | "complete" | "partial" | "failed", resultCount: number | null, errorCode: string | null, linkNotebookId = notebookId) => workerRpc("update_client_research_run_worker", {
     p_tenant_slug: tenantSlug,
     p_job_id: jobId,
     p_worker_token: workerToken,
@@ -1058,6 +1058,7 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
     p_status: status,
     p_error_code: errorCode,
     p_result_count: resultCount,
+    p_notebook_id: linkNotebookId,
   });
   const started = await workerRpc("record_client_research_result_worker", {
     p_tenant_slug: tenantSlug,
@@ -1066,11 +1067,12 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
     p_idempotency_key: idempotencyKey,
     p_provider: "firecrawl",
     p_query: query,
-    p_notebook_id: notebookId,
+    // Create the durable run before optional notebook lineage is reconciled.
+    p_notebook_id: null,
     p_records: [],
   });
   if (!started.ok || typeof started.value !== "string") {
-    logClientRuntimeEvent("runtime.research_persistence_failed", { tenant: tenantSlug, provider: "firecrawl", jobId, reason: "run_start_failed" });
+    logClientRuntimeEvent("runtime.research_persistence_failed", { tenant: tenantSlug, provider: "firecrawl", jobId, status: started.status, reason: "run_start_failed" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "research_persistence_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -1128,7 +1130,7 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
     p_idempotency_key: idempotencyKey,
     p_provider: search.provider,
     p_query: search.query,
-    p_notebook_id: notebookId,
+    p_notebook_id: null,
     p_records: records,
   });
   if (!researchRun.ok || typeof researchRun.value !== "string") {
@@ -1138,6 +1140,7 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
     return NextResponse.json({ ok: true, status: "failed" });
   }
   outputMetadata.researchRunId = researchRun.value;
+  await updateResearchRun("complete", records.length, null);
   if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: search.estimatedCostMicros, usageMetadata: { estimatedCostMicros: search.estimatedCostMicros } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });

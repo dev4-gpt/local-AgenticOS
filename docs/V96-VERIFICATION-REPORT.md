@@ -29,8 +29,8 @@ reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
   failures**: two visual-shell expectations and one sidebar theme expectation.
   These are unrelated to the V96 files and are retained as explicit follow-up,
   not hidden by changing the suite.
-- Cloud Run now serves revision 00143-7vg, image v104-v96-research-run-reconciliation, digest
-  sha256:468da1a90ec1ed99fd4667cd0fb25dae2670f97a2748ed6cf97fe13fb992a5be,
+- Cloud Run now serves revision 00144-tn6, image v105-v96-research-lineage-isolation, digest
+  sha256:61b0892b23ffe0140770bcb82df8e7fa53e8f338d4ca298d8b903fce1d997669,
   at 100% traffic. Root redirects to login; capabilities and the new Notebook
   source route return 401 without a session. The source wave is deployed, but
   the new structured-research, visual-QA, and Notebook migrations remain a

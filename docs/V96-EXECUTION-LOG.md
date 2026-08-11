@@ -19,8 +19,8 @@ suites pass; the worker verifier and client-runtime security verifier pass on
 local 3940. The complete suite is **278 passing, 3 pre-existing baseline
 failures** in visual-shell/sidebar theme expectations; no new V96 failure was
 introduced.
-**Live:** `veloce-cloud-test-00143-7vg` · image `v104-v96-research-run-reconciliation`
-(digest `sha256:468da1a90ec1ed99fd4667cd0fb25dae2670f97a2748ed6cf97fe13fb992a5be`,
+**Live:** `veloce-cloud-test-00144-tn6` · image `v105-v96-research-lineage-isolation`
+(digest `sha256:61b0892b23ffe0140770bcb82df8e7fa53e8f338d4ca298d8b903fce1d997669`,
 release `v96-governed-wave-20260811`, deployed 2026-08-11)
 **Branch:** work lands on `origin/main` directly — the
 `codex/reviewed-additions-2026-08-10` remote branch was merged and deleted on

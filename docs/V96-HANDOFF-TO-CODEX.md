@@ -14,9 +14,9 @@ lives in [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) and
 
 | | |
 |---|---|
-| **Live** | `veloce-cloud-test-00143-7vg` · `v104-v96-research-run-reconciliation` |
+| **Live** | `veloce-cloud-test-00144-tn6` · `v105-v96-research-lineage-isolation` |
 | **Implementation commit** | `176cf78` pushed to `origin/main` |
-| **Image digest** | `sha256:468da1a90ec1ed99fd4667cd0fb25dae2670f97a2748ed6cf97fe13fb992a5be` |
+| **Image digest** | `sha256:61b0892b23ffe0140770bcb82df8e7fa53e8f338d4ca298d8b903fce1d997669` |
 | **Tests** | Focused V96/route/Notebook/SEO suites pass; full current run is **278 passing, 3 known baseline failures** |
 | **Build** | clean · three security gates passing |
 | **`npm audit --audit-level=high`** | 3 moderate PostCSS advisories; no high/critical findings |
@@ -76,8 +76,8 @@ reviewed-plan envelope, with focused regression coverage.
 
 The Hermes migration created the normalized tenant-scoped stage, citation,
 quality-report, approval, and delivery tables, and its authenticated smoke is
-complete. The current portfolio image is `v104-v96-research-run-reconciliation`
-on revision `00143-7vg`. The updated structured-research migration must be
+complete. The current portfolio image is `v105-v96-research-lineage-isolation`
+on revision `00144-tn6`. The updated structured-research migration must be
 re-applied before the live authenticated research workflow is rerun.
 
 ### 3. Supervision visual QA — deferred by decision, not oversight

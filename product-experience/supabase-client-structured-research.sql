@@ -188,7 +188,8 @@ create or replace function public.update_client_research_run_worker(
   p_idempotency_key text,
   p_status text,
   p_error_code text,
-  p_result_count integer
+  p_result_count integer,
+  p_notebook_id uuid
 )
 returns boolean
 language plpgsql
@@ -206,12 +207,17 @@ begin
      or p_job_id is null
      or length(coalesce(p_idempotency_key, '')) < 8
      or p_status not in ('queued', 'running', 'complete', 'partial', 'failed')
-     or (p_result_count is not null and (p_result_count < 0 or p_result_count > 20)) then
+     or (p_result_count is not null and (p_result_count < 0 or p_result_count > 20))
+     or (p_notebook_id is not null and not exists (
+       select 1 from public.client_notebooks
+       where id = p_notebook_id and tenant_slug = p_tenant_slug
+     )) then
     return false;
   end if;
 
   update public.client_research_runs
      set status = p_status,
+         notebook_id = coalesce(p_notebook_id, notebook_id),
          result_count = coalesce(p_result_count, result_count),
          updated_at = now()
    where tenant_slug = p_tenant_slug
@@ -223,5 +229,5 @@ exception when others then
 end;
 $$;
 
-revoke all on function public.update_client_research_run_worker(text, uuid, text, text, text, text, integer) from public, authenticated;
-grant execute on function public.update_client_research_run_worker(text, uuid, text, text, text, text, integer) to anon;
+revoke all on function public.update_client_research_run_worker(text, uuid, text, text, text, text, integer, uuid) from public, authenticated;
+grant execute on function public.update_client_research_run_worker(text, uuid, text, text, text, text, integer, uuid) to anon;
