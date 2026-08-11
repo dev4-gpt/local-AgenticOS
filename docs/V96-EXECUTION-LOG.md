@@ -18,16 +18,21 @@ is the one to track.
 · `npm audit --audit-level=high` clean
 
 **Verification:** see [V96-VERIFICATION-REPORT.md](V96-VERIFICATION-REPORT.md) for
-what is proven live and against which revision — including a **high-severity
-defect**: four of eight client-reachable provider lanes cannot complete a
-workspace execution, because forced tool-calling and fence-based artifact
-extraction are mutually exclusive.
+what is proven live and against which revision. The high-severity provider
+defect it recorded — four of eight lanes unable to complete a workspace
+execution — is **fixed and verified live on `00139-w6s`**: all eight lanes now
+succeed.
 
-The 19 failures are in `product-experience`, `public-edition`, `sidebar-smoke`
-and `visual-shell` — the public-site and local mission-control specs. They fail
-identically at a clean `HEAD` with every working change stashed, so they are not
-caused by anything in this branch. Earlier entries in this log recorded "221
-passing" as if that were the whole suite; it was the pass count only.
+The remaining 8 failures are all in `sidebar-smoke` and `visual-shell`, running
+against a live server. They need individual work: unstubbed local Obsidian
+vault state, an assertion pinned to a retired parchment theme, headless canvas
+visibility, and a genuine horizontal overflow at 390px. The other eleven were
+closed by giving Playwright a config — there was none, so ten specs pointed at
+servers nobody started. Earlier entries recorded "221 passing" as if that were
+the whole suite; it was the pass count only.
+
+**`sidebar-smoke:201` is flaky, not fixed.** It passes or fails on a 30s timeout
+against handlers that touch the local filesystem. Do not read it as signal.
 
 ---
 
