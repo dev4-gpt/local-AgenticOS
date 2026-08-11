@@ -34,13 +34,15 @@ Facts, not intentions. Read from the manifest and the live revision.
 | `providerAllowlist` | Supabase, Anthropic, OpenRouter, Gemini, **Firecrawl**, **ElevenLabs**, **ElevenLabs Music** |
 | `capabilityProviderAllowlist` | `{ "media": ["elevenlabs", "elevenlabs-music", "openai", "heygen"] }` |
 | `seoAllowedHosts` | `markexis.com` |
-| `budget.monthlyCap` | **$10** shared across every lane — **3% used** ($0.261) |
+| `budget.monthlyCap` | **$10** shared across every lane — **3.21% used** ($0.321) |
 | `budget.warningThreshold` | `0.8` — warns at **$8.00** |
 
-`media` is enabled for **speech and music only**. `capabilityProviderAllowlist`
-scopes it to the two providers there are keys for; without that, enabling the
-capability demands a Secret Manager slot for HeyGen and Suno as well. Adding
-images or video later is a manifest line plus a secret, not a code change.
+`media` now covers **all four lanes — speech, music, video and images**, each
+proven live against a real provider call. `capabilityProviderAllowlist` scopes
+the capability to the four providers there are keys for, which is what stops
+enabling `media` from demanding a Secret Manager slot for every provider the
+code can reach. Suno stays implemented and allowlistable but is not what the
+music surface calls.
 
 ---
 
@@ -124,8 +126,8 @@ Each passed every unit test and was invisible until a real call was made.
 |---|---|---|
 | Speech | `ELEVENLABS_API_KEY` | **yes** |
 | Music | `ELEVENLABS_MUSIC_API_KEY` | **yes** |
-| Images | `OPENAI_API_KEY` | no |
-| Video | `HEYGEN_API_KEY` | no |
+| Images | `OPENAI_API_KEY` | **yes — credit added 2026-08-11, lane live** |
+| Video | `HEYGEN_API_KEY` | **yes — provisioned, lane live (§2e)** |
 
 `~/.hermes/auth.json` holds CLI subscription auth (Codex, Copilot, Gemini CLI,
 Kimi). Those authenticate a terminal session, not server-side API calls, and are
@@ -136,8 +138,11 @@ already holds that key, and both lanes are now proven live. `POST /v1/music` ret
 synchronous like speech with no task polling. Suno stays implemented and
 allowlistable; it is simply not what the surface calls.
 
-**Net effect: two of four media lanes are live on keys already owned.** Images
-need an `OPENAI_API_KEY`; video needs `HEYGEN_API_KEY`. Neither is bought yet.
+**Net effect as of 2026-08-11: all four media lanes are live.** This table began
+as a snapshot when only speech and music had keys; video followed once HeyGen
+was provisioned, and images once OpenAI credit was added. Every key listed is
+now present in Secret Manager and every lane has produced a real artifact
+verified by magic bytes.
 
 ## 2c. Full-surface test campaign inside $10
 
@@ -359,16 +364,46 @@ whether it is committed or ignored.
 
 ## 3. Next setup — media providers
 
-Speech, music and video are **done**. Images are wired and correct but blocked
-on an empty OpenAI balance. Nothing is constrained by the Veloce cap, which sits
-at 3% of $10 — only by provider credit.
+**All four media lanes are live.** Speech, music, video and — as of 2026-08-11 —
+images. Nothing here is outstanding.
 
-**Re-confirmed 2026-08-11** against live `00137-j6j`: job
-`8a88dc56-e67e-406b-bd8d-d9f436dd321a` returned `error_code:
-provider_credit_balance_exhausted`, failing 1.6 s after start with
-`attempt_count: 1`. Still the provider's balance, still not the code. Note the
-job record nests state under `job.status`, not top level — a poller reading the
-top level sees an empty string and records a false hang.
+### Images went live once credit was added (2026-08-11)
+
+The owner added OpenAI prepaid balance and the lane worked on the first call,
+against the same `00137-j6j` revision that had been failing. No code changed
+between the failure and the success, which is the clearest possible evidence
+that the block was always the provider's balance:
+
+| | Before credit | After credit |
+|---|---|---|
+| Job | `8a88dc56-e67e-406b-bd8d-d9f436dd321a` | `8622cfd4-5f50-434f-89cf-863982cc2af1` |
+| Status | `failed` after 1.6 s | `succeeded` after 20.6 s |
+| Error | `provider_credit_balance_exhausted` | `null` |
+
+Artifact `86ac3e37-b266-4561-bb78-75d534e17c97`, 1,515,152 bytes, `gpt-image-1`
+via the `openai-image` adapter.
+
+**Verified by magic bytes, not by content-type.** The artifact was downloaded
+and the leading bytes are `89504e470d0a1a0a`; `file` independently reports *PNG
+image data, 1024 x 1024, 8-bit/color RGB, non-interlaced*, and the byte count
+matches the job's `byteSize` exactly. `output_metadata.contentType` is written
+by the adapter and would have agreed either way.
+
+**The download is a 302 to a signed `storage.googleapis.com` URL.** Follow it
+without resending the tenant cookie — a plain `curl -L` forwards custom headers
+to the redirect target, which would hand the session cookie to a storage host
+that does not need it.
+
+**Cost: $0.06, not the $0.04 in the table below.** Both are right.
+`estimateClientImageCostMicros` multiplies the 40,000-micro base by 1.5 for
+`quality: "medium"` and again by 1.5 for a non-square size. The table's 40,000
+is the base rate at low/auto quality and 1024×1024. Budget moved $0.2610 →
+$0.3210, delta exactly 60,000 micros against a 60,000-micro estimate, and
+`byProvider.openai` went 0 → 60,000. **3.21% of the $10 cap.**
+
+**Reading the job record:** state is nested under `job.status`, not top level. A
+poller reading the top level sees an empty string and records a false hang —
+that happened here before credit was added.
 
 ### A Gemini image provider was evaluated and declined (2026-08-11)
 
