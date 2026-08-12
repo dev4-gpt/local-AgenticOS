@@ -17,6 +17,63 @@ proven there and has not been re-run since; the change between them is the
 reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
 **Date:** 2026-08-11
 
+## Wave 1 intent-router checkpoint — verified 2026-08-13
+
+Commit `6ff8bfe` on `origin/main`. Cloud revision `veloce-cloud-test-00151-hzm`,
+release `v111-intent-wave1-20260813`.
+
+**Deployment timing checked, not assumed:** the commit landed
+`2026-08-12T19:36:13Z` and the image built `2026-08-12T19:40:07Z` — 3m54s later,
+so the running revision contains the change. This project has twice shipped a
+"verified" result against an image that predated the fix.
+
+| Check | Result |
+|---|---|
+| `test:focused` | 37 passed |
+| `verify:references` | 16 passed |
+| typecheck / lint / build | clean |
+| `verify-client-runtime-worker.mjs` | passed |
+| Full suite | **305 passed, 0 failed** |
+| Cloud authenticated smoke (`--workflow-only --intent-smoke`) | **passed** |
+
+### Both new gates were verified by breaking them
+
+Reverting the worker's `missingRequiredTraits` check fails the enforcement test;
+removing `loop` from `CLIENT_INTENT_SURFACES` fails the reachability test. A gate
+never observed failing is not a verified gate.
+
+### Local parity — partially proven, and the gap is environmental
+
+The `loop` surface is proven live on the local runtime by a control comparison
+against the intent route:
+
+| surface | result |
+|---|---|
+| `loop` | `model_not_allowlisted` |
+| `chat` (known-good) | `model_not_allowlisted` |
+| `notarealsurface` | `intent_input_invalid` |
+
+`loop` fails at the *same, later* gate as a known-good surface rather than at
+input validation, which is what proves it is accepted.
+
+**The local runtime cannot complete a provider call**, and this is configuration,
+not a code parity defect. `scripts/run-client-runtime-local.mjs` supplies no
+model allowlist and no queue, so intent stops at `model_not_allowlisted` and
+workflow creation returns `503`. Cloud supplies both through its manifest.
+
+Two further local prerequisites were found, both fail-closed by design and
+simply unset by the launcher:
+
+- `CLIENT_ALLOWED_USER_EMAILS` — `clientAuth.ts:19-22` returns `false` for every
+  user when the allowlist is empty and `VELOCE_CLIENT_EDITION=1`. Unset, local
+  denies everyone with `401`.
+- `CLIENT_SLUG` — required to scope the tenant.
+
+A full local↔cloud parity smoke therefore needs the local launcher to carry a
+model allowlist and a queue equivalent. That is Wave 2 of the external corpus
+plan, and it is the first concrete instance of the asymmetry that wave exists to
+close.
+
 ## Native capability-traits source checkpoint — 2026-08-12
 
 The V96 trait kernel, repository catalog, enqueue integration, worker fail-closed
