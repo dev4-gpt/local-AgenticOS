@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, enqueueClientRuntimeJob, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientProviderRequestAllowed } from "@/lib/clientProviderAdapter";
-import { clientReadyPlaybooks, type ClientIntentSurface } from "@/lib/clientPlaybooks";
+import { CLIENT_INTENT_SURFACES, clientReadyPlaybooks, type ClientIntentSurface } from "@/lib/clientPlaybooks";
 import { resolveClientIntent } from "@/lib/clientIntentRouter";
 import { clientCapabilityEnabled, clientConfiguredList, clientIntentRoutingEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
@@ -13,7 +13,9 @@ import { selectClientRecords, cancelClientRuntimeJob, refundClientRuntimeRateLim
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SURFACES = new Set<ClientIntentSurface>(["chat", "notebook", "orchestrate", "create", "guide", "integrations"]);
+// Derived from the single exported list rather than hand-written, so adding a
+// surface to the type cannot silently leave the runtime guard rejecting it.
+const SURFACES = new Set<ClientIntentSurface>(CLIENT_INTENT_SURFACES);
 
 export async function POST(request: Request) {
   const user = await currentClientUser();

@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { buildIntentClassifierPrompt, intentEvidence, parseClientIntentClassification, resolveClientIntent } from "../src/lib/clientIntentRouter";
-import { clientReadyPlaybooks, NATIVE_CLIENT_PLAYBOOKS } from "../src/lib/clientPlaybooks";
+import { CLIENT_INTENT_SURFACES, clientReadyPlaybooks, NATIVE_CLIENT_PLAYBOOKS } from "../src/lib/clientPlaybooks";
+import { missingRequiredTraits, resolveCapabilityTraits } from "../src/lib/capabilityTraits";
+import { readFileSync } from "node:fs";
 
 const ready = clientReadyPlaybooks(["text-agents", "research", "knowledge", "orchestration", "quality"]);
 
@@ -34,4 +36,46 @@ test("intent evidence is redacted to a hash and bounded metadata", () => {
 
 test("ready playbooks exclude gated capabilities by construction", () => {
   expect(ready.every((playbook) => !playbook.eligibleCapabilities.includes("security-assessment"))).toBe(true);
+});
+
+test("a playbook may not claim a guarantee the capability does not resolve", () => {
+  // requiredTraits used to be recorded in the plan and compared against nothing,
+  // so a playbook could declare citations or deletion-lineage and be dispatched
+  // into a capability whose bundle never provided them.
+  const providerBundle = resolveCapabilityTraits({ capability: "text-agents", provider: "anthropic", surface: "chat" });
+  const research = NATIVE_CLIENT_PLAYBOOKS.find((item) => item.id === "research-citation")!;
+
+  // research-citation demands source-policy/citations/confidence, which a plain
+  // text-agents bundle does not carry.
+  const unmet = missingRequiredTraits(providerBundle, research.requiredTraits);
+  expect(unmet.length).toBeGreaterThan(0);
+  expect(unmet).toContain("citations");
+
+  // Its own capability resolves them, so it is runnable there.
+  const researchBundle = resolveCapabilityTraits({ capability: "research", provider: "anthropic", surface: "chat" });
+  expect(missingRequiredTraits(researchBundle, research.requiredTraits)).toEqual([]);
+});
+
+test("the worker fails closed on unmet traits rather than dispatching", () => {
+  const worker = readFileSync("src/app/api/internal/client-runtime/jobs/route.ts", "utf8");
+  expect(worker).toContain("missingRequiredTraits(selectedTraits, selected.requiredTraits)");
+  // Must be checked before the risk-class branch, so an unmet playbook is not
+  // offered as "ready" either.
+  expect(worker.indexOf("unmetTraits.length > 0")).toBeLessThan(worker.indexOf('selected.riskClass !== "low"'));
+});
+
+test("loop is a real intake surface with playbooks behind it", () => {
+  // loop is a permitted skill surface and loop-run is a known capability, but
+  // ClientIntentSurface omitted it, so no request could reach the Loop lane.
+  expect(CLIENT_INTENT_SURFACES).toContain("loop");
+  const loopReady = clientReadyPlaybooks(["orchestration", "quality", "text-agents"], "loop");
+  expect(loopReady.length).toBeGreaterThan(0);
+  expect(loopReady.map((item) => item.id)).toContain("workflow-planning");
+});
+
+test("the intent route derives its surface guard from the single exported list", () => {
+  // The guard was a hand-written Set duplicating the union: two places to
+  // update, one to forget.
+  const route = readFileSync("src/app/api/client-runtime/intent/route.ts", "utf8");
+  expect(route).toContain("new Set<ClientIntentSurface>(CLIENT_INTENT_SURFACES)");
 });

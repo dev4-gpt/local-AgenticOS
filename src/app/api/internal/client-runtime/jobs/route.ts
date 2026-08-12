@@ -19,7 +19,7 @@ import { rufloAgentPrompt, rufloReportPrompt, rufloRoster } from "@/lib/clientRu
 import { HERMES_CONTENT_FACTORY_STEPS, createHermesContentFactoryPlan, hermesContentFactoryPrompt, type HermesContentFactoryPlan } from "@/lib/hermesContentFactory";
 import { createSeoIntelligenceRequest, firecrawlSearchToSeoIntelligenceRecord } from "@/lib/seoIntelligence";
 import { applyOutputQualityPolicy } from "@/lib/outputQualityPolicy";
-import { resolveCapabilityTraits, traitBundleMetadata, traitEvidenceForOutcome, validateTraitBundle } from "@/lib/capabilityTraits";
+import { missingRequiredTraits, resolveCapabilityTraits, traitBundleMetadata, traitEvidenceForOutcome, validateTraitBundle } from "@/lib/capabilityTraits";
 import { runClientVisualQaAdapter } from "@/lib/clientVisualQaAdapter";
 import { buildIntentClassifierPrompt, intentEvidence, parseClientIntentClassification, resolveClientIntent } from "@/lib/clientIntentRouter";
 import { clientReadyPlaybooks, type ClientIntentSurface } from "@/lib/clientPlaybooks";
@@ -179,6 +179,24 @@ async function processIntentRoutingJob(jobId: string, tenantSlug: string, worker
     confidence, riskClass: selected.riskClass, approval: selected.approval, reason: classifierReason,
     requiredTraits: selected.requiredTraits, selectedTraitSnapshot: traitBundleMetadata(selectedTraits),
   };
+  // A playbook declares the traits its output depends on. Until this check
+  // existed, requiredTraits was recorded in the plan and compared against
+  // nothing, so a playbook could claim a guarantee -- citations, approval,
+  // deletion lineage -- that the resolved bundle for this capability never
+  // provided. Fail closed on both paths: a playbook whose guarantees cannot be
+  // met must not be dispatched, and must not be offered as "ready" either.
+  const unmetTraits = missingRequiredTraits(selectedTraits, selected.requiredTraits);
+  if (unmetTraits.length > 0) {
+    await completeJob(tenantSlug, jobId, workerToken, "succeeded", {
+      ...plan,
+      status: "blocked",
+      failureDisposition: "blocked",
+      unmetTraits,
+      reason: `The ${selected.label} playbook requires traits this capability does not resolve: ${unmetTraits.join(", ")}.`,
+    });
+    return NextResponse.json({ ok: true, status: "succeeded" });
+  }
+
   if (selected.riskClass !== "low") {
     await completeJob(tenantSlug, jobId, workerToken, "succeeded", plan);
     return NextResponse.json({ ok: true, status: "succeeded" });

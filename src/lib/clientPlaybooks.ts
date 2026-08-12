@@ -2,7 +2,19 @@ import type { CapabilityTraitId } from "@/lib/capabilityTraits";
 import { V96_CURATED_SKILL_PACK } from "@/lib/v96SkillPack";
 import { validateV96SkillManifest } from "@/lib/v96Contracts";
 
-export type ClientIntentSurface = "chat" | "notebook" | "orchestrate" | "create" | "guide" | "integrations";
+/**
+ * The natural-language intake surfaces the router accepts. Exported as one
+ * array so the type and the API route's runtime guard cannot drift — they were
+ * previously a union here and a hand-written `new Set([...])` in the intent
+ * route, which is two places to update and one to forget.
+ *
+ * `loop` was absent, so no request could ever reach the Loop lane through the
+ * router even though `loop` is a permitted skill surface and `loop-run` is a
+ * known capability.
+ */
+export const CLIENT_INTENT_SURFACES = ["chat", "notebook", "orchestrate", "create", "guide", "integrations", "loop"] as const;
+
+export type ClientIntentSurface = typeof CLIENT_INTENT_SURFACES[number];
 export type ClientPlaybookRisk = "low" | "review" | "external";
 
 export interface ClientPlaybook {
@@ -63,7 +75,7 @@ export const NATIVE_CLIENT_PLAYBOOKS: readonly ClientPlaybook[] = [
     eligibleCapabilities: ["orchestration"], skillIds: ["architecture"],
     requiredTraits: [...BASE_TRAITS],
     riskClass: "low", approval: "none", outputType: "workflow-plan",
-    supportedSurfaces: ["chat", "orchestrate", "guide", "integrations"],
+    supportedSurfaces: ["chat", "orchestrate", "guide", "integrations", "loop"],
   },
   {
     id: "quality-review",
@@ -73,7 +85,7 @@ export const NATIVE_CLIENT_PLAYBOOKS: readonly ClientPlaybook[] = [
     eligibleCapabilities: ["quality", "output-quality"], skillIds: ["code-review", "accessibility"],
     requiredTraits: [...BASE_TRAITS, "accessibility"],
     riskClass: "review", approval: "review-before-apply", outputType: "quality-report",
-    supportedSurfaces: ["chat", "create", "guide", "integrations"],
+    supportedSurfaces: ["chat", "create", "guide", "integrations", "loop"],
   },
   {
     id: "context-efficient-provider",
@@ -83,7 +95,7 @@ export const NATIVE_CLIENT_PLAYBOOKS: readonly ClientPlaybook[] = [
     eligibleCapabilities: ["text-agents"], skillIds: [],
     requiredTraits: [...PROVIDER_TRAITS],
     riskClass: "low", approval: "none", outputType: "provider-answer",
-    supportedSurfaces: ["chat", "notebook", "orchestrate", "create", "guide", "integrations"],
+    supportedSurfaces: ["chat", "notebook", "orchestrate", "create", "guide", "integrations", "loop"],
   },
 ];
 

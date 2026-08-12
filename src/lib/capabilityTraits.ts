@@ -213,6 +213,26 @@ export function traitEvidenceForOutcome(
   }));
 }
 
+/**
+ * The traits a playbook declares as required that the resolved bundle does not
+ * actually provide. Empty means the playbook is runnable under this tenant's
+ * policy.
+ *
+ * Until this existed, `requiredTraits` was recorded in the plan and compared
+ * against nothing: a playbook could declare `citations` or `approval` and be
+ * dispatched into a capability whose bundle never resolved them, so the plan
+ * asserted a guarantee the run did not have. The check is deliberately
+ * deterministic and set-based — no model is consulted to decide whether a
+ * guarantee holds.
+ */
+export function missingRequiredTraits(
+  bundle: Pick<ResolvedTraitBundle, "traits">,
+  required: readonly CapabilityTraitId[],
+): CapabilityTraitId[] {
+  const resolved = new Set(bundle.traits.map((trait) => trait.id));
+  return required.filter((id) => !resolved.has(id));
+}
+
 export function validateTraitBundle(bundle: Partial<ResolvedTraitBundle>) {
   const errors: string[] = [];
   if (bundle.version !== CAPABILITY_TRAIT_VERSION) errors.push("trait bundle version is invalid");
