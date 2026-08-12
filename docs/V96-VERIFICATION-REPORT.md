@@ -33,6 +33,82 @@ trait-evidence entries, and deterministic replay of the same job ID. The
 smoke intentionally disabled scraping, so `failureDisposition: partial` is
 the expected honest outcome for snippet-only evidence; it is not a job failure.
 
+### Native context-compression pilot — source checkpoint 2026-08-12
+
+The shared provider adapter now has a Veloce-owned, dependency-free
+`context-compression` trait. It is enabled locally by the client runtime
+launcher and is configured for cloud through the reviewed `CLIENT_ENABLED_TRAITS`
+manifest value. The trait is attached to provider-bound jobs, compresses only
+non-authoritative repeated context, preserves current requests, system policy,
+code, URLs, citations, and approval instructions, and records hash/count-only
+evidence before cost estimation. The upstream Headroom runtime is not
+installed.
+
+Local evidence: `npm run test:focused` passed 27/27; `npm run typecheck`,
+`npm run lint`, and `npm run verify:references` passed. `npm run build` reached
+the known sandbox Turbopack process/port permission failure; `next build
+--webpack` was attempted and stopped after exceeding the sandbox build window.
+No cloud compression claim is made yet: the discoverable service is
+`veloce-cloud-test` revision `veloce-cloud-test-00147-lbh`, which predates this
+pilot. A new image and authenticated smoke must record the revision, digest,
+manifest trait, compression evidence, budget trace, replay result, and rollback
+check before promotion.
+
+## Shared microphone transcription checkpoint — 2026-08-12
+
+The shared `VoiceButton` path now records browser audio and posts it to the
+server-only `/api/speech/transcribe` route. The route uses Groq's
+`whisper-large-v3-turbo`, caps uploads at 25 MB, keeps the provider key out of
+the browser, and is included in local/client route allowlists. The existing
+OpenClaw recording route tries the same adapter first, so MiniMax voice loops
+use the same provider when `GROQ_API_KEY` is configured.
+
+Groq is a provider service reference, not a bundled runtime. Cloud activation
+requires `GROQ_API_KEY` in Secret Manager, `providerCallsEnabled: true`, the
+key in the client provider allowlist, and an authenticated smoke. Continuous
+wake-word and realtime WebRTC loops are intentionally not converted to
+request-per-utterance transcription; they require a separate streaming
+contract.
+
+### Cloud Groq activation checkpoint — 2026-08-12
+
+Cloud Run service `veloce-cloud-test` now serves revision
+`veloce-cloud-test-00146-h7l` at 100% traffic from image digest
+`sha256:c0cdf8e055d356e580c2195b0c184671059f03637b50e9e1617e5ae28e046439`.
+The runtime maps `GROQ_API_KEY` from Secret Manager version `latest`, enables
+the `voice` capability, allowlists the speech route and provider, and keeps
+provider calls enabled under the existing client policy. The old Secret
+Manager version 1 was destroyed after rotation; version 2 is enabled.
+
+Evidence recorded:
+
+- Groq credential check: HTTP 200 against the authenticated models endpoint.
+- Real Whisper request: HTTP 200 using `whisper-large-v3-turbo`; generated
+  speech fixture returned `Veloce Speech Smoke Test.`.
+- Cloud unauthenticated route check: HTTP 401, fail-closed as required.
+
+An authenticated browser microphone click remains the final user-session
+check: hard-refresh the cloud `/goals` or `/notebook` page and speak into a
+microphone button. The provider and deployed route are proven; this last step
+verifies the browser session, microphone permission, and UI insertion path.
+
+### Microphone Permissions-Policy fix — 2026-08-12
+
+The cloud revision initially returned `microphone=()` from the global security
+header, which caused Chrome to report microphone blocking despite OS and site
+permissions being enabled. `source/next.config.ts` now permits the top-level
+origin with `microphone=(self)` while continuing to deny camera and geolocation.
+Revision `veloce-cloud-test-00147-lbh` serves the fix at 100% traffic; the live
+header was verified as `camera=(), microphone=(self), geolocation=()`.
+
+### Reference register integrity checkpoint — 2026-08-12
+
+The catalog validator now requires clean non-tokenized resource URLs, pinned
+repository revisions or dated service/guide records, known licenses, runtime
+classes, statuses, non-empty execution permissions, placements, and evidence
+gates. The focused suite contains a negative tokenized/under-specified source
+case. `npm run verify:references` passes with 5/5 tests.
+
 ## Current Codex portfolio wave — source and deployment verified
 
 - Local HEAD includes the governed capability, structured research, SEO,
@@ -418,6 +494,22 @@ smoke completed with two durable records and two citations on `00144-tn6`.
 
 ## 9. How to re-verify
 
+### Visual QA owner-cloud checkpoint — pending target manifest
+
+The Visual QA route now queues a tenant-bound `visual-qa` job, resolves the
+native trait bundle, rejects external frame inputs, persists reports/findings
+through the worker RPC, and returns review status without publishing artifacts.
+When `CLIENT_VISUAL_QA_RUN_JOB` is present, Cloud Tasks calls a separate
+authenticated dispatcher and Cloud Run Job (`visual-qa-runner`); otherwise local
+and test environments use the bounded queue-worker fallback.
+The authenticated harness now covers artifact upload, replay identity, durable
+report/trait evidence, and source-artifact cleanup. The cloud checkpoint has not
+been claimed: the discoverable service is `veloce-cloud-test` with
+`CLIENT_SLUG=veloce-cloud-test`, while the approved activation target is the
+separate `dofgfood` manifest. Retargeting that service would risk cross-tenant
+data, so deployment waits for the approved `dofgfood` service/manifest and its
+secret references.
+
 ```bash
 # 1. Does the deployed image contain the code you are testing?
 gcloud run services describe veloce-cloud-test --region asia-south1 \
@@ -430,12 +522,19 @@ gcloud run revisions describe <revision> --region asia-south1 \
 npx playwright test tests/ --reporter=line     # expect 227 pass / 19 pre-existing fail
 npm run verify:security                        # three gates
 
-# 3. Live surface execution (12 writes per 900s)
+# 3. Live Visual QA surface execution (12 writes per 900s) after the
+#    `dofgfood` manifest is deployed and the cookie belongs to that tenant.
+node scripts/verify-client-runtime-authenticated.mjs \
+  --url https://<dofgfood-service>.run.app \
+  --cookie-file ~/.veloce-cookie \
+  --workflow-only --visual-qa-smoke
+
+# 4. Existing generic live surface execution (12 writes per 900s)
 curl -s -H "Cookie: $(cat ~/.veloce-cookie)" -H 'content-type: application/json' \
   -X POST -d '{"surface":"guide","title":"probe","goal":"Return a short markdown brief inside a single ```markdown fenced code block. No text outside the fence.","artifactIntent":"brief","provider":"anthropic"}' \
   https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/api/client-runtime/executions
 
-# 4. Poll — state is nested under job.status, NOT top level.
+# 5. Poll — state is nested under job.status, NOT top level.
 #    A poller reading the top level sees "" and records a false hang.
 curl -s -H "Cookie: $(cat ~/.veloce-cookie)" \
   https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/api/client-runtime/jobs/<id>
@@ -464,3 +563,54 @@ Recorded so the next session does not pay for them again.
   first sweep — first "surface-specific", then "provider-specific but probably
   nondeterministic" — before an isolation test holding everything but the
   provider constant produced the real, structural answer. Vary one thing.
+
+## 11. Native Headroom compression cloud checkpoint — 2026-08-12
+
+This is an additive checkpoint; earlier historical evidence above is preserved.
+
+- **Image:** `asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v109-native-headroom-compression-20260812`
+- **Digest:** `sha256:b777a525336d237837acd642657733534feba86dd92ccd9822dc41366fdd8444`
+- **Cloud Run revision:** `veloce-cloud-test-00148-xwg`, 100% traffic
+- **Manifest:** `CLIENT_ENABLED_TRAITS=context-compression`
+- **Local gates:** 27 focused tests passed; typecheck, lint, reference validation, and the approved-environment production build passed.
+- **Authenticated cloud smoke:** workflow + artifact round-trip passed; provider request passed; fresh idempotency replay returned the original job identity.
+- **Compression evidence:** provider output metadata included policy `v96-context-compression-1`, original/compressed character counts, a reduced compressed count for repeated context, and a SHA-256 input hash. Evidence did not contain the repeated context.
+- **Boundary:** Headroom remains a provenance reference. No external Headroom runtime was installed or bundled.
+
+The Visual QA `dofgfood` owner-cloud checkpoint remains pending as documented
+above. GPU media, Supervision enhancement, security execution,
+communications, worktrees, and continuous streaming speech remain intentionally
+gated and were not promoted by this checkpoint.
+
+## 12. Native intent router and built-in playbook plane — 2026-08-13
+
+This is an additive checkpoint; the historical Visual QA and Headroom evidence
+above remains unchanged.
+
+- **Image:** `asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v110-native-intent-router-20260813c`
+- **Digest:** `sha256:8ad5c776862fbf5177e51a560f5a3ea65cd58678939f608b9b53280155f8e43c`
+- **Cloud Run revision:** `veloce-cloud-test-00150-m7z`, 100% traffic
+- **Manifest:** `CLIENT_INTENT_ROUTING_ENABLED=1`; the intent route is in the
+  authenticated client API allowlist.
+- **Native-enabled behavior:** the Veloce-owned intent resolver and playbook
+  registry are active. Upstream repositories remain catalog provenance; no
+  external skill or repository runtime was installed in the image.
+- **Local gates:** 33 focused tests passed; typecheck, lint, production build,
+  worker-boundary verification, and reference validation passed. The build
+  emitted the existing broad filesystem-trace warnings and middleware
+  deprecation warning, but completed successfully.
+- **Authenticated cloud smoke:** passed for low-risk automatic dispatch,
+  one-question ambiguity handling, gated-request refusal, idempotency replay,
+  tenant-scoped plan reads, and redacted plan evidence.
+- **Evidence:** plan snapshots expose selected playbook/capability IDs,
+  confidence, risk and approval state, trait evidence, counts, hashes, and
+  classifier metadata without raw request or classifier prompt content.
+- **Rollback:** disable `CLIENT_INTENT_ROUTING_ENABLED`; direct specialized
+  capability routes remain available and catalog data is retained.
+
+The first smoke run identified and corrected a read-contract omission: the
+ambiguous plan was being created with a clarification question, but the GET
+plan response did not return it. The final deployment and smoke above include
+that field. Visual QA cloud promotion for `dofgfood`, GPU media, Supervision
+enhancement, security execution, communications, worktrees, and continuous
+streaming speech remain intentionally gated.

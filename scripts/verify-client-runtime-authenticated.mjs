@@ -7,10 +7,14 @@ const baseUrl = required("--url").replace(/\/$/, "");
 const cookieFile = required("--cookie-file");
 const runArtifacts = !args.includes("--workflow-only");
 const runWorkspaceSmoke = args.includes("--workspace-smoke");
+const runVisualQaSmoke = args.includes("--visual-qa-smoke");
+const runProviderSmoke = args.includes("--provider-smoke");
+const runIntentSmoke = args.includes("--intent-smoke");
 let cookie = await readCookie(cookieFile);
 const failures = [];
 let workflowId = null;
 let artifactId = null;
+let visualQaArtifactId = null;
 
 try {
   const capabilities = await api("/api/capabilities");
@@ -44,11 +48,18 @@ try {
   }
 
   if (runArtifacts) await verifyArtifactRoundTrip();
+  if (runProviderSmoke) await verifyProviderCompression();
+  if (runIntentSmoke) await verifyIntentRouting();
   if (runWorkspaceSmoke) await verifyWorkspaceExecution();
+  if (runVisualQaSmoke) await verifyVisualQa();
 } finally {
   if (artifactId) {
     const deletedArtifact = await api(`/api/client-runtime/artifacts/${artifactId}`, { method: "DELETE" });
     expect(deletedArtifact.status === 200, `artifact cleanup failed (${deletedArtifact.status})`);
+  }
+  if (visualQaArtifactId) {
+    const deletedArtifact = await api(`/api/client-runtime/artifacts/${visualQaArtifactId}`, { method: "DELETE" });
+    expect(deletedArtifact.status === 200, `visual QA artifact cleanup failed (${deletedArtifact.status})`);
   }
   if (workflowId) {
     const deletedWorkflow = await api(`/api/client-runtime/workflows?id=${encodeURIComponent(workflowId)}`, { method: "DELETE" });
@@ -62,7 +73,142 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Authenticated client runtime verification passed for ${baseUrl}${runArtifacts ? " (workflow + artifact)" : " (workflow only)"}${runWorkspaceSmoke ? " + workspace execution" : ""}.`);
+console.log(`Authenticated client runtime verification passed for ${baseUrl}${runArtifacts ? " (workflow + artifact)" : " (workflow only)"}${runProviderSmoke ? " + provider compression" : ""}${runIntentSmoke ? " + intent routing" : ""}${runWorkspaceSmoke ? " + workspace execution" : ""}${runVisualQaSmoke ? " + visual QA" : ""}.`);
+
+async function verifyIntentRouting() {
+  const idempotencyKey = `intent-acceptance-${Date.now()}`;
+  const request = "Create a short workflow plan for reviewing our next product launch.";
+  const payload = { request, surface: "chat", idempotencyKey };
+  const first = await api("/api/client-runtime/intent", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const firstBody = await safeJson(first);
+  expect(first.status === 202 && isUuid(firstBody?.planId), `intent plan enqueue failed (${first.status})`);
+  const replay = await api("/api/client-runtime/intent", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const replayBody = await safeJson(replay);
+  expect(replay.status === 202 && replayBody?.planId === firstBody?.planId, "intent replay did not preserve the original plan identity");
+  if (!isUuid(firstBody?.planId)) return;
+  const plan = await waitForIntentPlan(firstBody.planId);
+  expect(plan?.status === "dispatched", `low-risk intent did not dispatch (${String(plan?.status ?? "unknown")})`);
+  expect(plan?.playbookId === "workflow-planning", `unexpected low-risk playbook ${String(plan?.playbookId ?? "missing")}`);
+  expect(plan?.evidence && typeof plan.evidence.requestHash === "string", "intent plan omitted redacted request evidence");
+  expect(!JSON.stringify(plan?.evidence ?? {}).includes(request), "intent evidence contained the raw request");
+
+  const ambiguous = await api("/api/client-runtime/intent", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ request: "Help me with this", surface: "chat", idempotencyKey: `intent-ambiguous-${Date.now()}` }) });
+  const ambiguousBody = await safeJson(ambiguous);
+  expect(ambiguous.status === 202 && isUuid(ambiguousBody?.planId), `ambiguous intent enqueue failed (${ambiguous.status})`);
+  if (isUuid(ambiguousBody?.planId)) {
+    const ambiguousPlan = await waitForIntentPlan(ambiguousBody.planId);
+    expect(ambiguousPlan?.status === "needs_clarification", `ambiguous intent did not ask for clarification (${String(ambiguousPlan?.status ?? "unknown")})`);
+    expect(typeof ambiguousPlan?.clarificationQuestion === "string", "ambiguous intent omitted its focused question");
+    expect(!ambiguousPlan?.dispatchedJobId, "ambiguous intent dispatched work");
+  }
+
+  const gated = await api("/api/client-runtime/intent", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ request: "Run a security assessment against a staging target", surface: "chat", idempotencyKey: `intent-gated-${Date.now()}` }) });
+  const gatedBody = await safeJson(gated);
+  expect(gated.status === 202 && isUuid(gatedBody?.planId), `gated intent enqueue failed (${gated.status})`);
+  if (isUuid(gatedBody?.planId)) {
+    const gatedPlan = await waitForIntentPlan(gatedBody.planId);
+    expect(gatedPlan?.status === "needs_clarification" || gatedPlan?.status === "blocked", `gated intent was not held (${String(gatedPlan?.status ?? "unknown")})`);
+    expect(!gatedPlan?.dispatchedJobId, "gated intent dispatched work");
+  }
+}
+
+async function waitForIntentPlan(id) {
+  const deadline = Date.now() + 120_000;
+  while (Date.now() < deadline) {
+    const response = await api(`/api/client-runtime/intent?planId=${encodeURIComponent(id)}`);
+    const body = await safeJson(response);
+    const plan = body?.plan;
+    if (plan?.status === "dispatched" || plan?.status === "ready" || plan?.status === "needs_clarification" || plan?.status === "blocked") return plan;
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+  }
+  return null;
+}
+
+async function verifyProviderCompression() {
+  const repeatedContext = "Reusable tenant-safe context for compression evidence. ".repeat(18);
+  const payload = {
+    provider: "openrouter",
+    prompt: "Return exactly the word compression-ok.",
+    history: [
+      { role: "system", content: "Follow the approved provider policy and preserve the current request." },
+      { role: "assistant", content: repeatedContext },
+      { role: "assistant", content: repeatedContext },
+      { role: "user", content: "Keep citations https://example.com/reference and identifier job-compression-acceptance-1." },
+    ],
+    idempotencyKey: `compression-acceptance-${Date.now()}`,
+  };
+  const first = await api("/api/client-runtime/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const firstBody = await safeJson(first);
+  expect(first.status === 202 && isUuid(firstBody?.jobId), `provider compression enqueue failed (${first.status})`);
+  const replay = await api("/api/client-runtime/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const replayBody = await safeJson(replay);
+  expect(replay.status === 202 && replayBody?.jobId === firstBody?.jobId, "provider compression replay did not preserve the original job identity");
+  if (!isUuid(firstBody?.jobId)) return;
+
+  const job = await waitForJob(firstBody.jobId);
+  expect(job?.status === "succeeded", `provider compression job ended as ${String(job?.status ?? "unknown")}: ${String(job?.error_code ?? "")}`);
+  const output = job?.output_metadata && typeof job.output_metadata === "object" ? job.output_metadata : {};
+  const compression = output.compression && typeof output.compression === "object" ? output.compression : null;
+  expect(Boolean(compression), "provider job did not persist compression evidence");
+  expect(compression?.policyVersion === "v96-context-compression-1", "provider job persisted an unexpected compression policy version");
+  expect(Number(compression?.originalChars) > 0 && Number(compression?.compressedChars) > 0, "provider compression evidence omitted character counts");
+  expect(Number(compression?.compressedChars) < Number(compression?.originalChars), "provider compression did not reduce repeated context");
+  expect(typeof compression?.inputHash === "string" && /^[a-f0-9]{64}$/.test(compression.inputHash), "provider compression evidence omitted a redacted input hash");
+  expect(!JSON.stringify(compression).includes(repeatedContext), "provider compression evidence contained raw context");
+}
+
+async function verifyVisualQa() {
+  const png = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAF0lEQVR42mNkYPj/n4GBgYGJAAAEAQEAH0ECAwAAAABJRU5ErkJggg==", "base64"));
+  const created = await api("/api/client-runtime/artifacts", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ fileName: "visual-qa-acceptance.png", contentType: "image/png", byteSize: png.byteLength }),
+  });
+  const createdBody = await safeJson(created);
+  visualQaArtifactId = isUuid(createdBody?.artifactId) ? createdBody.artifactId : null;
+  const uploadUrl = typeof createdBody?.uploadUrl === "string" ? createdBody.uploadUrl : null;
+  expect(created.status === 201 && visualQaArtifactId && uploadUrl, `visual QA artifact allocation failed (${created.status})`);
+  if (!visualQaArtifactId || !uploadUrl) return;
+  const upload = await fetch(uploadUrl, { method: "PUT", headers: createdBody.uploadHeaders ?? {}, body: png, cache: "no-store" }).catch(() => null);
+  expect(upload?.ok === true, `visual QA artifact upload failed (${upload?.status ?? 503})`);
+  if (upload?.ok !== true) return;
+  const completed = await api(`/api/client-runtime/artifacts/${visualQaArtifactId}/complete`, { method: "POST" });
+  expect(completed.status === 200, `visual QA artifact completion failed (${completed.status})`);
+  if (completed.status !== 200) return;
+
+  const idempotencyKey = `visual-qa-acceptance-${Date.now()}`;
+  const payload = { artifactId: visualQaArtifactId, frames: [Buffer.from(png).toString("base64")], maxFrames: 1, idempotencyKey };
+  const first = await api("/api/client-runtime/visual-qa", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const firstBody = await safeJson(first);
+  expect(first.status === 202 && isUuid(firstBody?.jobId), `visual QA enqueue failed (${first.status})`);
+  const replay = await api("/api/client-runtime/visual-qa", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const replayBody = await safeJson(replay);
+  expect(replay.status === 202 && replayBody?.jobId === firstBody?.jobId, "visual QA replay did not preserve the original job identity");
+  if (!isUuid(firstBody?.jobId)) return;
+
+  const job = await waitForJob(firstBody.jobId);
+  expect(job?.status === "succeeded", `visual QA job ended as ${String(job?.status ?? "unknown")}: ${String(job?.error_code ?? "")}`);
+  const output = job?.output_metadata && typeof job.output_metadata === "object" ? job.output_metadata : {};
+  expect(output.status === "review" || output.status === "passed", `visual QA output status was ${String(output.status ?? "missing")}`);
+  expect(isUuid(output.reportId), "visual QA did not persist a report id");
+  expect(Array.isArray(output.traitEvidence) && output.traitEvidence.length >= 10, "visual QA did not persist trait evidence");
+  expect(output.failureDisposition === "review" || output.failureDisposition === "succeeded", "visual QA failure disposition was not review-safe");
+  const listed = await api(`/api/client-runtime/visual-qa?artifactId=${encodeURIComponent(visualQaArtifactId)}`);
+  const listedBody = await safeJson(listed);
+  expect(listed.status === 200 && Array.isArray(listedBody?.reports) && listedBody.reports.some((report) => report?.id === output.reportId), "visual QA report was not durable or tenant-readable");
+}
+
+async function waitForJob(id) {
+  const deadline = Date.now() + 120_000;
+  while (Date.now() < deadline) {
+    const response = await api(`/api/client-runtime/jobs/${id}`);
+    const body = await safeJson(response);
+    const job = body?.job;
+    if (job?.status === "succeeded" || job?.status === "failed" || job?.status === "cancelled") return job;
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+  }
+  return null;
+}
 
 async function verifyWorkspaceExecution() {
   const title = `Web Studio execution acceptance ${Date.now()}`;

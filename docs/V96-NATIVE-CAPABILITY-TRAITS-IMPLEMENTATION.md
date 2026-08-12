@@ -6,13 +6,14 @@ later waves explicitly gated.
 | Plan area | Source boundary | State |
 |---|---|---|
 | Baseline + capability resolver | `src/lib/capabilityTraits.ts` | implemented |
-| STAR repository references | `src/lib/v96RepositoryCatalog.ts` | cataloged; adapters not implied |
+| STAR repository references | `src/lib/v96RepositoryCatalog.ts` | explicit activation classes; native-enabled entries require implementation, evidence, and rollback metadata |
 | Automatic job attachment | `src/lib/clientDataPlane.ts` | implemented at enqueue |
-| Worker enforcement | `src/app/api/internal/client-runtime/jobs/route.ts` | fail-closed validation |
+| Worker enforcement | `src/app/api/internal/client-runtime/jobs/route.ts` + `src/app/api/internal/client-runtime/visual-qa-dispatch/route.ts` | fail-closed validation; optional dedicated Visual QA Cloud Run Job |
 | Operator inspection | `src/app/api/internal/client-runtime/trait-inspection/route.ts` | local/operator only |
+| Native routing compression | `src/lib/contextCompression.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free deterministic pilot; local and owner-cloud evidence passing on `veloce-cloud-test-00148-xwg` |
 | Research evidence | structured research worker output metadata | implemented and cloud-smoked on `00145-jcn` |
 | Knowledge evidence | `src/lib/contextCompiler.ts` snapshot + reviewed activation | implemented |
-| Visual-QA persistence | `product-experience/supabase-client-visual-qa.sql` | identifier defect fixed; wave gated |
+| Visual-QA persistence | `product-experience/supabase-client-visual-qa.sql` | identifier defect fixed; authenticated queue route, bounded adapter, replay-safe smoke harness, and report/findings persistence implemented; owner-cloud activation remains pending |
 | Client UX | existing workflow and manifest | unchanged; no skill/tool selector |
 
 ## Promotion order
@@ -20,8 +21,9 @@ later waves explicitly gated.
 1. Run `npm run verify:capability-traits`, `npx tsc --noEmit`, the focused
    Research/Notebook/SEO suites, security and client-isolation checks, and the
    production build.
-2. Deploy the same image to local and owner-cloud test lanes. **Completed for
-   owner-cloud revision `veloce-cloud-test-00145-jcn`.**
+2. Deploy the same image to local and owner-cloud test lanes. **Local build is
+   complete; the existing owner-cloud revision `veloce-cloud-test-00145-jcn`
+   predates this Visual QA change and is not evidence for it.**
 3. Run authenticated Research + Knowledge smoke with a fresh query and
    idempotency key. Verify citations, trait evidence, tenant isolation,
    deletion lineage, retry identity, budget settlement, and operator inspection.
@@ -31,6 +33,59 @@ later waves explicitly gated.
    promoting the manifest.
 5. Only then advance a catalog entry into a pilot or enabled state.
 
-Visual QA, GPU media, security execution, communications, and resumable
-worktrees remain gated. Their repository references are useful contracts, not
-permission to run imported runtimes in the Next.js process.
+Visual QA is implemented as a governed capability targeting the `dofgfood`
+owner-cloud manifest, but its authenticated cloud activation/smoke is still
+pending because the currently discoverable service is `veloce-cloud-test` with
+`CLIENT_SLUG=veloce-cloud-test`; it is not a `dofgfood` deployment. GPU media,
+security execution, communications, and resumable worktrees remain gated. Their
+repository references are useful contracts, not permission to run imported
+runtimes in the Next.js process.
+
+The reference register integrity layer is now machine-checked: references
+must have clean URLs, pinned revisions or dated records, known licenses,
+runtime classes, statuses, non-empty execution permissions, placements, and
+evidence gates. Tokenized URLs and under-specified entries fail the focused
+suite. The preserved planning brief is
+[`docs/future-integrations/V96-NATIVE-CAPABILITY-PLANE-BRIEF.md`](./future-integrations/V96-NATIVE-CAPABILITY-PLANE-BRIEF.md).
+
+## Headroom compression pilot — 2026-08-12
+
+The shared provider adapter now resolves `context-compression` for
+provider-bound capabilities and applies the server-side
+`CLIENT_ENABLED_TRAITS=context-compression` switch. The Veloce-owned contract
+deduplicates repeated non-authoritative context and normalizes safe whitespace;
+the current request, system policy, code fences, URLs, citations, identifiers,
+and approval instructions are preserved. It never silently truncates. If the
+compressed payload cannot fit, the original is used only when it fits;
+otherwise the job fails closed.
+
+Cost estimation runs against the prepared provider messages. Evidence contains
+the policy version, mode, character counts, ratio, content hash, and redacted
+segment labels only. The Headroom repository is not installed or bundled.
+
+Local evidence: 27 focused tests, typecheck, lint, reference validation, and
+the approved-environment production build pass. The default Turbopack build
+also passes in the approved build environment; its earlier sandbox failure is
+historical infrastructure noise, not an application failure.
+
+Owner-cloud evidence: revision `veloce-cloud-test-00148-xwg`, release
+`v109-native-headroom-compression-20260812`, image digest
+`sha256:b777a525336d237837acd642657733534feba86dd92ccd9822dc41366fdd8444`,
+and manifest `CLIENT_ENABLED_TRAITS=context-compression`. The authenticated
+workflow + artifact smoke passed, and the provider smoke passed with a fresh
+idempotency key and replay identity. The provider job succeeded with a
+compression evidence bundle containing the policy version, reduced character
+counts, and a redacted input hash; raw repeated context was not persisted.
+
+## Native intent router and playbook plane — 2026-08-13
+
+Natural-language provider chat now enters the governed `intent-routing`
+preflight job. Veloce-owned playbook contracts are filtered by the client
+manifest; upstream runtimes are never installed. Deterministic matching runs
+first, and ambiguous requests use the approved provider only as a bounded,
+tool-free classifier with strict registry validation, a 0.78 confidence
+threshold, one clarification question, compression, and redacted hash/count
+evidence. The local launcher and cloud provisioning expose the same
+`CLIENT_INTENT_ROUTING_ENABLED` manifest switch. A quiet plan card is rendered
+in provider chat and a read-only Ready playbooks library is rendered in
+Integrations; gated entries remain ineligible.

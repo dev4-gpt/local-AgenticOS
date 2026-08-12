@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 
 const METADATA_ROOT = "http://metadata.google.internal/computeMetadata/v1";
 
-export async function enqueueClientRuntimeTask(input: { jobId?: string; actionId?: string; tenantSlug: string; delaySeconds?: number; path?: "jobs" | "delivery" | "dispatch"; baseUrl?: string }) {
+export async function enqueueClientRuntimeTask(input: { jobId?: string; actionId?: string; tenantSlug: string; delaySeconds?: number; path?: "jobs" | "delivery" | "dispatch" | "visual-qa-dispatch"; baseUrl?: string }) {
   const project = process.env.GOOGLE_CLOUD_PROJECT?.trim() || process.env.GCLOUD_PROJECT?.trim();
   const region = process.env.CLIENT_RUNTIME_TASK_REGION?.trim();
   const queue = process.env.CLIENT_RUNTIME_TASK_QUEUE?.trim();
@@ -21,7 +21,7 @@ export async function enqueueClientRuntimeTask(input: { jobId?: string; actionId
   if (!token) return { ok: false, status: 503, error: "gcp_identity_unavailable" };
   const identifier = input.jobId || input.actionId;
   if (!identifier) return { ok: false, status: 400, error: "task_identifier_missing" };
-  const taskPath = input.path === "delivery" ? "delivery" : input.path === "dispatch" ? "dispatch" : "jobs";
+  const taskPath = input.path === "delivery" ? "delivery" : input.path === "dispatch" ? "dispatch" : input.path === "visual-qa-dispatch" ? "visual-qa-dispatch" : "jobs";
   const taskUrl = `${baseUrl}/api/internal/client-runtime/${taskPath}`;
   // The database job/action id remains the idempotency key. Cloud Tasks needs
   // a fresh task name for retries because the previous task may still exist

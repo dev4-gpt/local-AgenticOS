@@ -148,8 +148,8 @@ export const CAPABILITIES: Capability[] = [
     dataScope: "The current response or approved deliverable only.", actionBoundary: "No silent factual rewrite; user and tenant opt-out remains available.",
   },
   {
-    id: "visual-qa", name: "Visual QA Worker", kind: "skill", audience: "built-in", status: "planned",
-    description: "Bounded machine-checkable visual reports stored beside tenant-owned media artifacts.",
+    id: "visual-qa", name: "Visual QA Worker", kind: "skill", audience: "built-in", status: "reviewed", destination: "/guide",
+    description: "Bounded machine-checkable visual reports stored beside tenant-owned media artifacts; owner-cloud test activation only.",
     dataScope: "Tenant-owned artifacts submitted through the artifact boundary.", actionBoundary: "Isolated worker only; no arbitrary URLs, cameras, private hosts, or automatic publication.",
   },
   {

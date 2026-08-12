@@ -3,8 +3,9 @@ import { run } from "@/lib/runner";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import os from "node:os";
-import { mkdir, writeFile, unlink, stat } from "node:fs/promises";
+import { mkdir, writeFile, unlink, stat, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { transcribeWithGroq } from "@/lib/groqSpeech";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,9 +13,10 @@ export const dynamic = "force-dynamic";
 // POST /api/openclaw/studio/stt
 // Body: multipart/form-data with field `audio` (recording from MediaRecorder).
 //
-// Browser MediaRecorder defaults to webm/opus — but xai/grok-stt only accepts
-// mp3 (silently fails on webm). So we convert via ffmpeg first, then try
-// Grok, then fall back to OpenRouter Whisper if Grok struggles.
+// Browser MediaRecorder defaults to webm/opus. Convert once to a small,
+// provider-neutral MP3, then use the shared Groq Whisper lane when configured.
+// The legacy OpenClaw fallback remains for local installs that have not added
+// GROQ_API_KEY yet.
 
 const FFMPEG = existsSync("/opt/homebrew/bin/ffmpeg") ? "/opt/homebrew/bin/ffmpeg"
               : existsSync("/usr/local/bin/ffmpeg") ? "/usr/local/bin/ffmpeg"
@@ -104,7 +106,26 @@ export async function POST(req: Request) {
       }, { status: 200 });
     }
 
-    // ─── Step 2: Try Grok first (since user signed in via xAI OAuth) ─────
+    // ─── Step 2: Shared Groq Whisper lane ────────────────────────────────
+    try {
+      const groqAttempt = await transcribeWithGroq({
+        audio: await readFile(audioForSTT),
+        filename: "recording.mp3",
+        contentType: "audio/mpeg",
+      });
+      if (groqAttempt.text) {
+        return NextResponse.json({ ok: true, provider: "groq", model: groqAttempt.model, text: groqAttempt.text });
+      }
+    } catch (error) {
+      // A missing Groq key is expected during local migration; provider
+      // failures fall through to the existing local/OpenRouter compatibility
+      // path rather than exposing provider details to the browser.
+      if (error instanceof Error && error.message !== "groq_not_configured") {
+        console.warn("speech provider fallback", { reason: error.message.split(":")[0] });
+      }
+    }
+
+    // ─── Step 3: Legacy OpenClaw/Grok path ───────────────────────────────
     const grokAttempt = await transcribeWith("xai/grok-stt", audioForSTT, 60_000);
     if (grokAttempt.text) {
       return NextResponse.json({
@@ -116,7 +137,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // ─── Step 3: Fall back to OpenRouter Whisper ─────────────────────────
+    // ─── Step 4: Fall back to OpenRouter Whisper ─────────────────────────
     // grok-stt sometimes returns no transcript for short/noisy audio.
     // Whisper handles edge cases better and we already have an OpenRouter key.
     const whisperAttempt = await transcribeWith(

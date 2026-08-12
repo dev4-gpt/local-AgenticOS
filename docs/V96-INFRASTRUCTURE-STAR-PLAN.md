@@ -459,6 +459,9 @@ secret policy, budget, queue, audit record, and emergency disable path.
 
 ## Sources
 
+The expanded repository, guide, and service portfolio is maintained in the
+[V96 capability reference register](future-integrations/v96-capability-reference-register.md).
+
 - [SonarQube CLI](https://github.com/SonarSource/sonarqube-cli)
 - [SonarQube CLI quickstart](https://docs.sonarsource.com/sonarqube-cli/quickstart-guide)
 - [Agent Orchestrator](https://aoagents.dev/)

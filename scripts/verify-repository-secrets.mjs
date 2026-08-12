@@ -12,7 +12,7 @@ const directPatterns = [
   ["Google API key", /\bAIza[A-Za-z0-9_-]{30,}\b/],
   ["GitHub token", /\bgh[pousr]_[A-Za-z0-9]{32,}\b/],
 ];
-const assignment = /^\s*(?:export\s+)?(OPENAI_API_KEY|OPENROUTER_API_KEY|ELEVENLABS_API_KEY|ELEVENLABS_MUSIC_API_KEY|HEYGEN_API_KEY|SUNO_API_KEY|FIRECRAWL_API_KEY|HUNTER_API_KEY|APOLLO_API_KEY|PAPERCLIP_AUTOMATION_TOKEN)\s*=\s*["']?([^\s"'`#]{16,})/gm;
+const assignment = /^\s*(?:export\s+)?(OPENAI_API_KEY|OPENROUTER_API_KEY|GROQ_API_KEY|ELEVENLABS_API_KEY|ELEVENLABS_MUSIC_API_KEY|HEYGEN_API_KEY|SUNO_API_KEY|FIRECRAWL_API_KEY|HUNTER_API_KEY|APOLLO_API_KEY|PAPERCLIP_AUTOMATION_TOKEN)\s*=\s*["']?([^\s"'`#]{16,})/gm;
 const placeholders = /^(?:your|replace|change|example|sample|test|placeholder|process\.env|\$|\{|<)/i;
 const failures = [];
 

@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import { Check, CheckCircle2, Clock3, Clipboard, KeyRound, LockKeyhole, Send, ShieldCheck, Trash2, XCircle } from "lucide-react";
 import ClientRuntimeNotice from "@/components/ClientRuntimeNotice";
 import { parseClientReviewedPlan, type ClientReviewedPlanEnvelope } from "@/lib/clientProviderContracts";
+import ClientIntentPlanCard, { type ClientIntentPlan } from "@/components/ClientIntentPlanCard";
 
 type Message = { id: string; role: "user" | "assistant"; content: string; jobId?: string; createdAt: number };
 type VisibleMessage = Message & { repeatCount: number };
@@ -63,6 +64,7 @@ export default function ClientProviderWorkspace({ provider, title, initialPrompt
   const [runtime, setRuntime] = useState<RuntimeStatus>({});
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [error, setError] = useState("");
+  const [intentPlan, setIntentPlan] = useState<ClientIntentPlan | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [hydratedStorageKey, setHydratedStorageKey] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -130,13 +132,13 @@ export default function ClientProviderWorkspace({ provider, title, initialPrompt
     setMessages((current) => [...current, { id: requestId, role: "user", content: value, createdAt: Date.now() }]);
     setPrompt("");
     setStatus("queued");
-    const response = await fetch("/api/client-runtime/jobs", {
+    const response = await fetch("/api/client-runtime/intent", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ provider, prompt: value, history: messages.slice(-12).map(({ role, content }) => ({ role, content })), idempotencyKey: requestId }),
+      body: JSON.stringify({ request: value, surface: "chat", idempotencyKey: requestId }),
     }).catch(() => null);
     const data = await response?.json().catch(() => null);
-    if (!response?.ok || !data?.jobId) {
+    if (!response?.ok || !data?.planId) {
       setStatus("error");
       setError(data?.error || "task_enqueue_failed");
       track("client_runtime_provider_request_failed", { result: data?.error || "task_enqueue_failed" });
@@ -144,8 +146,31 @@ export default function ClientProviderWorkspace({ provider, title, initialPrompt
       return;
     }
     track("client_runtime_provider_prompt_submitted", { messageCount: messages.length + 1 });
-    setMessages((current) => current.map((message) => message.id === requestId ? { ...message, jobId: data.jobId } : message));
-    poll(data.jobId, requestId);
+    setMessages((current) => current.map((message) => message.id === requestId ? { ...message, jobId: data.planId } : message));
+    setIntentPlan({ planId: data.planId, status: "queued" });
+    pollIntent(data.planId, requestId);
+  }
+
+  function pollIntent(planId: string, requestId: string) {
+    let attempts = 0;
+    const tick = async () => {
+      if (activeRequestRef.current !== requestId) return;
+      attempts += 1;
+      const response = await fetch(`/api/client-runtime/intent?planId=${encodeURIComponent(planId)}`, { cache: "no-store" }).catch(() => null);
+      const data = await response?.json().catch(() => null);
+      const plan = data?.plan as ClientIntentPlan | undefined;
+      if (plan) setIntentPlan(plan);
+      if (plan?.status === "dispatched" || plan?.status === "ready" || plan?.status === "needs_clarification" || plan?.status === "blocked") {
+        if (plan.output) setMessages((current) => current.some((message) => message.role === "assistant" && message.jobId === planId) ? current : [...current, { id: crypto.randomUUID(), role: "assistant", content: plan.output!, jobId: planId, createdAt: Date.now() }]);
+        setStatus(plan.status === "blocked" ? "error" : "ready");
+        if (plan.errorCode) setError(plan.errorCode);
+        activeRequestRef.current = null;
+        if (pollRef.current) clearTimeout(pollRef.current);
+      } else if (attempts < 90) pollRef.current = setTimeout(tick, 900);
+      else { setStatus("error"); setError("intent_plan_incomplete"); activeRequestRef.current = null; }
+    };
+    if (pollRef.current) clearTimeout(pollRef.current);
+    pollRef.current = setTimeout(tick, 700);
   }
 
   function poll(jobId: string, requestId: string) {
@@ -221,6 +246,7 @@ export default function ClientProviderWorkspace({ provider, title, initialPrompt
           {visibleMessages.length === 0 && <div className="grid min-h-[220px] place-items-center text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>Ask an approved question when this provider is enabled.</div>}
           {visibleMessages.map((message) => <ProviderMessage key={message.id} message={message} />)}
         </div>
+        {intentPlan && <ClientIntentPlanCard plan={intentPlan} />}
         <div className="mt-4 flex items-end gap-2 border-t pt-4" style={{ borderColor: "var(--line-soft)" }}><textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={blocked || status === "queued"} onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); submit(); } }} className="min-h-[48px] flex-1 resize-y rounded-md border px-3 py-2 text-[12px] outline-none" style={{ background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)", color: "var(--cream)" }} placeholder={blocked ? "Provider access is awaiting approval" : "Ask the approved provider..."} /><button type="button" onClick={submit} disabled={blocked || !prompt.trim() || status === "queued"} className="inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-[11px] font-semibold" style={{ background: blocked ? "rgba(255,255,255,0.08)" : "#60a5fa", color: blocked ? "var(--cream-mute)" : "#07111d" }}><Send size={13} />{status === "queued" ? "Working" : "Send"}</button></div>
         {error && <ClientRuntimeNotice code={error} />}
       </section>

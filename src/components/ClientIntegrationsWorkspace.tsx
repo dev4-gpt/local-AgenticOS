@@ -26,6 +26,7 @@ type Role = {
   deliverable: { kind: string; requiredFields: string[] };
   approval: string;
 };
+type Playbook = { id: string; label: string; description: string; skillIds: string[]; requiredTraits: string[]; riskClass: string; approval: string; outputType: string; supportedSurfaces: string[] };
 type Execution = { id: string; status: string; title: string | null; artifactId: string | null; errorCode: string | null };
 
 const ACCENT = "#60a5fa";
@@ -47,6 +48,7 @@ export default function ClientIntegrationsWorkspace() {
   const [tab, setTab] = useState<Tab>("capabilities");
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
   const [revision, setRevision] = useState("");
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [subject, setSubject] = useState("");
@@ -63,7 +65,7 @@ export default function ClientIntegrationsWorkspace() {
     const capData = await capRes?.json().catch(() => null);
     if (capRes?.ok && Array.isArray(capData?.capabilities)) setCapabilities(capData.capabilities as Capability[]);
     const skillData = await skillRes?.json().catch(() => null);
-    if (skillRes?.ok && Array.isArray(skillData?.roles)) { setRoles(skillData.roles as Role[]); setRevision(String(skillData.sourceRevision ?? "")); }
+    if (skillRes?.ok && Array.isArray(skillData?.roles)) { setRoles(skillData.roles as Role[]); setPlaybooks(Array.isArray(skillData?.playbooks) ? skillData.playbooks as Playbook[] : []); setRevision(String(skillData.sourceRevision ?? "")); }
     const execData = await execRes?.json().catch(() => null);
     if (execRes?.ok && Array.isArray(execData?.executions)) setExecutions(execData.executions as Execution[]);
   }, []);
@@ -137,6 +139,17 @@ export default function ClientIntegrationsWorkspace() {
     </section>}
 
     {tab === "roles" && <section className="space-y-2">
+      <section className="panel p-4">
+        <div className="flex items-center gap-2"><Sparkles size={14} style={{ color: ACCENT }} /><p className="text-[12px] font-semibold" style={{ color: "var(--cream)" }}>Ready playbooks</p></div>
+        <p className="mt-1 text-[10.5px] leading-relaxed" style={{ color: "var(--cream-mute)" }}>Veloce selects these automatically from natural-language requests. This is a read-only library; upstream repositories are provenance references, not installers.</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {playbooks.map((playbook) => <article key={playbook.id} className="rounded-md border p-3" style={{ borderColor: "var(--line-soft)" }}>
+            <p className="text-[11.5px] font-semibold" style={{ color: "var(--cream)" }}>{playbook.label}</p>
+            <p className="mt-1 text-[10.5px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>{playbook.description}</p>
+            <p className="mt-2 text-[9.5px]" style={{ color: "var(--cream-mute)" }}>{playbook.outputType} · {playbook.riskClass} · {playbook.approval === "none" ? "no approval" : "review boundary"}</p>
+          </article>)}
+        </div>
+      </section>
       <section className="panel flex items-start gap-2.5 p-3.5">
         <Info size={14} className="mt-0.5 shrink-0" style={{ color: "#fbbf24" }} />
         <p className="text-[11px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>

@@ -1,6 +1,7 @@
 # Runtime Capability Matrix
 
-Updated 2026-08-01 after the tenant memory graph deployment and the
+Updated 2026-08-12 after the tenant memory graph deployment, Groq activation,
+and native context-compression pilot.
 owner-cloud OpenRouter/Gemini activation checkpoint.
 
 For the complete 13-layer business readiness assessment, shareability decision,
@@ -50,6 +51,14 @@ These can be exposed only through server-side provider APIs, a per-client allowl
 | Web Studio | `OPENAI_API_KEY` or another approved model adapter |
 | Flow Lab | `FIRECRAWL_API_KEY`, only for an authorized source workflow |
 | Video, Music, Thumbnails | The specific media provider API, with output storage and budget controls. ElevenLabs speech, Suno music polling, and HeyGen video polling now have server-side queue adapters; image and broader production workflows remain gated. |
+| Recorded microphone input | Groq `whisper-large-v3-turbo` through `/api/speech/transcribe`; the key remains server-side and audio is bounded before dispatch. Continuous wake-word/realtime loops remain browser/WebRTC-specific until a streaming provider contract is added. |
+
+The shared provider adapter also applies the server-manifest-controlled native
+`context-compression` trait to provider-bound jobs. It is dependency-free,
+deterministic, preserves authoritative content, and records only redacted
+hash/count evidence. Local activation is configured by the client launcher;
+owner-cloud evidence is revision `veloce-cloud-test-00148-xwg` with image digest
+`sha256:b777a525336d237837acd642657733534feba86dd92ccd9822dc41366fdd8444`.
 
 Adding one of these keys does not automatically enable the route. The implementation must stop using local CLI/filesystem calls, use the client provider API, write to tenant-scoped storage, and be added to that client manifest.
 
@@ -69,6 +78,15 @@ Adding one of these keys does not automatically enable the route. The implementa
   account-connected actions remain separate approved adapters.
 
 ## Operator-only until adapted
+
+### Native capability reference placement
+
+The current reference portfolio is cataloged as architectural input and does
+not change the client runtime by itself. Visual QA is the first owner-cloud
+test adapter; GPU, security execution, communications, and worktree references
+remain gated behind their own worker, approval, budget, and rollback evidence.
+See the [V96 capability reference register](future-integrations/v96-capability-reference-register.md)
+for source pins, placement, permissions, and evidence gates.
 
 These currently rely on local infrastructure or personal operator state and therefore show a private dependency boundary in the client edition:
 
@@ -105,6 +123,15 @@ The next safe expansion is still one adapter at a time: add its API contract,
 tenant-scoped persistence, approval behavior, provider secret reference,
 acceptance tests, and only then add the capability and route to a client
 manifest.
+
+## Native intent plane — 2026-08-13
+
+| Surface | Local | Owner-cloud | Placement | Gate |
+|---|---|---|---|---|
+| Natural-language provider chat | Native-enabled | Manifest-enabled with same image | `intent-routing` preflight + provider worker | 0.78 classifier confidence; approval for review/external work |
+| Ready playbooks library | Native-enabled | Client-ready read-only response | Integrations / skills route | Registry and manifest filtering |
+| Specialized forms | Existing contracts | Existing contracts | Surface-specific routes | Unchanged |
+| Visual QA, GPU, security execution, communications, worktrees, streaming speech | Gated | Gated | Isolated future workers | Separate evidence bundle |
 
 ## Content and copyright boundary
 

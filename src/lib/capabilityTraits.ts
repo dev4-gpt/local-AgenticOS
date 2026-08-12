@@ -8,7 +8,8 @@ export type CapabilityTraitId =
   | "ssrf-protection" | "citations" | "confidence" | "partial-results"
   | "retention" | "deletion-lineage" | "chunk-provenance" | "reviewed-activation"
   | "artifact-ownership" | "visual-qa" | "provider-license" | "model-allowlist"
-  | "target-scope" | "egress-control" | "workspace-isolation" | "consent" | "accessibility";
+  | "target-scope" | "egress-control" | "workspace-isolation" | "consent" | "accessibility"
+  | "context-compression";
 
 export type TraitDisposition = "blocked" | "review" | "partial" | "succeeded";
 
@@ -81,12 +82,21 @@ const CAPABILITY_TRAITS: Record<string, readonly CapabilityTraitDefinition[]> = 
     { id: "provider-license", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "blocked", evidenceKind: "provider-policy" },
     { id: "visual-qa", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "review", evidenceKind: "visual-qa-report" },
   ],
+  "visual-qa": [
+    { id: "artifact-ownership", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "blocked", evidenceKind: "tenant-artifact" },
+    { id: "visual-qa", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "review", evidenceKind: "visual-qa-report" },
+  ],
   "video-generation": [
     { id: "artifact-ownership", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "blocked", evidenceKind: "tenant-artifact" },
     { id: "provider-license", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "blocked", evidenceKind: "provider-policy" },
   ],
   "provider-routing": [
     { id: "model-allowlist", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "blocked", evidenceKind: "route-policy" },
+    { id: "context-compression", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "blocked", evidenceKind: "compression-trace" },
+  ],
+  "intent-routing": [
+    { id: "model-allowlist", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "blocked", evidenceKind: "classifier-policy" },
+    { id: "context-compression", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "blocked", evidenceKind: "compression-trace" },
   ],
   "security-assessment": [
     { id: "target-scope", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "blocked", evidenceKind: "target-authorization" },
@@ -118,6 +128,7 @@ const REPOSITORY_TRAITS: Record<string, readonly string[]> = {
   "context-compiler": ["book-to-skill"],
   seo: ["open-seo", "scrapegraph-ai"],
   media: ["roboflow-supervision", "open-generative-ai"],
+  "visual-qa": ["roboflow-supervision"],
   "video-generation": ["skyreels-v2", "open-generative-ai"],
   "provider-routing": ["omniroute"],
   "resumable-worktree": ["prime-agent", "shepherd"],
@@ -126,6 +137,15 @@ const REPOSITORY_TRAITS: Record<string, readonly string[]> = {
   voice: ["huggingface-speech-to-speech"],
   communications: ["explee", "infobip"],
 };
+
+const PROVIDER_BOUND_CAPABILITIES = new Set([
+  "text-agents", "provider-routing", "research", "seo", "orchestration", "workspace-execution",
+  "room-round", "pipeline-shape", "loop-run", "ruflo-swarm", "hermes-content-factory", "intent-routing",
+]);
+
+const PROVIDER_BOUND_TRAITS: readonly CapabilityTraitDefinition[] = [
+  { id: "context-compression", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "blocked", evidenceKind: "compression-trace" },
+];
 
 function canonicalCapability(capability: string) {
   return ALIASES[capability] ?? capability;
@@ -138,9 +158,9 @@ export function resolveCapabilityTraits(input: {
   tenantPolicy?: Record<string, unknown>;
 }): ResolvedTraitBundle {
   const capability = canonicalCapability(input.capability.trim().toLowerCase());
-  const additional = CAPABILITY_TRAITS[capability] ?? [];
+  const additional = [...(CAPABILITY_TRAITS[capability] ?? []), ...(PROVIDER_BOUND_CAPABILITIES.has(capability) ? PROVIDER_BOUND_TRAITS : [])];
   const traits = [...BASELINE, ...additional].filter((trait, index, all) => all.findIndex((candidate) => candidate.id === trait.id) === index);
-  const sourceIds = new Set([...(REPOSITORY_TRAITS[capability] ?? []), "agency-agents", "i-have-adhd", "no-ai-slop"]);
+  const sourceIds = new Set([...(REPOSITORY_TRAITS[capability] ?? []), "agency-agents", "i-have-adhd", "no-ai-slop", ...(PROVIDER_BOUND_CAPABILITIES.has(capability) ? ["headroom"] : [])]);
   const sourceReferences = V96_REPOSITORY_CATALOG.filter((reference) => sourceIds.has(reference.id)).map(({ id, sourceUrl, sourceCommit, license }) => ({ id, sourceUrl, sourceCommit, license }));
   return {
     version: CAPABILITY_TRAIT_VERSION,

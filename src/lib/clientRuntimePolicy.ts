@@ -8,10 +8,12 @@ const DEFAULT_CLIENT_ROUTES = [
 ];
 const DEFAULT_CLIENT_API_ROUTES = [
   "/api/capabilities",
+  "/api/speech/transcribe",
   "/api/client-runtime/credentials",
   "/api/client-runtime/credential-submissions",
   "/api/client-runtime/requests",
   "/api/client-runtime/artifacts",
+  "/api/client-runtime/visual-qa",
   "/api/client-runtime/hosted-jobs",
   "/api/client-runtime/executions",
   "/api/client-runtime/delivery",
@@ -32,6 +34,7 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/client-runtime/pipeline",
   "/api/client-runtime/boards",
   "/api/client-runtime/loop",
+  "/api/client-runtime/intent",
   "/api/client-runtime/ruflo",
   "/api/client-runtime/hermes-content-factory",
   "/api/client-runtime/jobs",
@@ -94,6 +97,15 @@ export function clientProviderEnabled(key: string) {
 
 export function clientProviderCallsEnabled() {
   return process.env.CLIENT_PROVIDER_CALLS_ENABLED === "1";
+}
+
+export function clientContextCompressionEnabled() {
+  const configured = clientConfiguredList("CLIENT_ENABLED_TRAITS");
+  return configured.includes("context-compression");
+}
+
+export function clientIntentRoutingEnabled() {
+  return process.env.CLIENT_INTENT_ROUTING_ENABLED === "1";
 }
 
 /**

@@ -27,6 +27,7 @@ const projectNumber = projectNumberResult.status === 0 && projectNumberResult.st
 const region = required(gcp.region, "gcp.region");
 const serviceName = sanitizeServiceName(gcp.serviceName || `veloce-${slug}`);
 const workspaceJobName = sanitizeServiceName(gcp.workspaceJobName || `${serviceName}-workspace`);
+const visualQaJobName = sanitizeServiceName(gcp.visualQaJobName || `${serviceName}-visual-qa`);
 const serviceAccount = sanitizeServiceAccount(gcp.runtimeServiceAccount || `veloce-${shorten(slug, 14)}-run`);
 const serviceAccountEmail = `${serviceAccount}@${projectId}.iam.gserviceaccount.com`;
 const bucket = sanitizeBucket(gcp.storageBucket || `${projectId}-veloce-${slug}`);
@@ -48,6 +49,7 @@ const inboxSecretNames = [...new Set([
   requestInboxSecret,
 ])];
 const enabledCapabilities = normalizeList(manifest.enabledCapabilities);
+const enabledTraits = normalizeList(manifest.enabledTraits);
 const providerAllowlist = normalizeList(manifest.providerAllowlist, Object.keys(secretEnv));
 const modelAllowlist = normalizeList(manifest.modelAllowlist);
 const providerModelAllowlist = normalizeProviderModelAllowlist(manifest.providerModelAllowlist);
@@ -106,8 +108,10 @@ const protectedRuntimeEnv = {
   CLIENT_REQUEST_INBOX_SECRET: requestInboxSecret,
   CLIENT_ALLOWED_USER_EMAILS: allowedUserEmails.join(","),
   CLIENT_ALLOWED_ROUTES: "/,/context,/orchestrate,/create,/credentials,/capabilities,/deliver,/paperclip,/room,/pipeline,/claude,/openclaw,/hermes,/antigravity,/codex,/kimi,/glm,/glm-code,/grok,/freeclaude,/fusion,/sakana,/local,/engine,/agent-kanban,/loop,/ruflo,/goals,/journal,/seo,/seo-guide,/opendesign,/web-studio,/flow-lab,/integrations,/video,/studio,/openmontage,/music,/games,/thumbnails,/notebook,/kanban,/memory,/leads,/radar,/guide",
-  CLIENT_ALLOWED_API_ROUTES: "/api/capabilities,/api/client-runtime/credentials,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-runtime/artifacts,/api/client-runtime/hosted-jobs,/api/client-runtime/executions,/api/client-runtime/delivery,/api/client-runtime/memory-import,/api/client-runtime/memory-graph,/api/client-runtime/provider-history,/api/client-runtime/telemetry,/api/client-runtime/observability,/api/client-runtime/records,/api/client-runtime/research,/api/client-runtime/notebooks,/api/client-runtime/notebook-sources,/api/client-runtime/budget,/api/client-runtime/skills,/api/client-runtime/workflows,/api/client-runtime/paperclip,/api/client-runtime/room,/api/client-runtime/pipeline,/api/client-runtime/boards,/api/client-runtime/loop,/api/client-runtime/ruflo,/api/client-runtime/hermes-content-factory,/api/client-runtime/jobs,/api/internal/client-runtime/jobs,/api/internal/client-runtime/dispatch,/api/internal/client-runtime/delivery,/api/client-auth/session",
+  CLIENT_ALLOWED_API_ROUTES: "/api/capabilities,/api/speech/transcribe,/api/client-runtime/credentials,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-runtime/artifacts,/api/client-runtime/visual-qa,/api/client-runtime/hosted-jobs,/api/client-runtime/executions,/api/client-runtime/intent,/api/client-runtime/delivery,/api/client-runtime/memory-import,/api/client-runtime/memory-graph,/api/client-runtime/provider-history,/api/client-runtime/telemetry,/api/client-runtime/observability,/api/client-runtime/records,/api/client-runtime/research,/api/client-runtime/notebooks,/api/client-runtime/notebook-sources,/api/client-runtime/budget,/api/client-runtime/skills,/api/client-runtime/workflows,/api/client-runtime/paperclip,/api/client-runtime/room,/api/client-runtime/pipeline,/api/client-runtime/boards,/api/client-runtime/loop,/api/client-runtime/ruflo,/api/client-runtime/hermes-content-factory,/api/client-runtime/jobs,/api/internal/client-runtime/jobs,/api/internal/client-runtime/dispatch,/api/internal/client-runtime/visual-qa-dispatch,/api/internal/client-runtime/delivery,/api/client-auth/session",
   CLIENT_ENABLED_CAPABILITIES: enabledCapabilities.join(","),
+  CLIENT_ENABLED_TRAITS: enabledTraits.join(","),
+  CLIENT_INTENT_ROUTING_ENABLED: manifest.intentRoutingEnabled === false ? "0" : "1",
   CLIENT_PROVIDER_ALLOWLIST: providerAllowlist.join(","),
   ...(modelAllowlist.length > 0 ? { CLIENT_MODEL_ALLOWLIST: modelAllowlist.join(",") } : {}),
   ...(Object.keys(providerModelAllowlist).length > 0 ? { CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON: JSON.stringify(providerModelAllowlist) } : {}),
@@ -125,6 +129,7 @@ const protectedRuntimeEnv = {
   CLIENT_TASK_INVOKER_SERVICE_ACCOUNT: serviceAccountEmail,
   CLIENT_EXECUTION_BACKEND: "cloud-run-job",
   CLIENT_WORKSPACE_RUN_JOB: workspaceJobName,
+  CLIENT_VISUAL_QA_RUN_JOB: visualQaJobName,
   CLIENT_PROVIDER_CALLS_ENABLED: providerCallsEnabled ? "1" : "0",
   ...(providerCallsEnabled ? { CLIENT_MODEL_PRICING_JSON: JSON.stringify(modelPricing) } : {}),
   ...(seoAllowedHosts.length > 0 ? { CLIENT_SEO_ALLOWED_HOSTS: seoAllowedHosts.join(",") } : {}),
@@ -145,6 +150,8 @@ const immutableRuntimeKeys = [
   "CLIENT_REQUEST_INBOX_SECRET",
   "CLIENT_ALLOWED_USER_EMAILS",
   "CLIENT_ENABLED_CAPABILITIES",
+  "CLIENT_ENABLED_TRAITS",
+  "CLIENT_INTENT_ROUTING_ENABLED",
   "CLIENT_PROVIDER_ALLOWLIST",
   "CLIENT_MODEL_ALLOWLIST",
   "CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON",
@@ -159,6 +166,7 @@ const immutableRuntimeKeys = [
   "CLIENT_TASK_INVOKER_SERVICE_ACCOUNT",
   "CLIENT_EXECUTION_BACKEND",
   "CLIENT_WORKSPACE_RUN_JOB",
+  "CLIENT_VISUAL_QA_RUN_JOB",
   "CLIENT_PROVIDER_CALLS_ENABLED",
   "CLIENT_MODEL_PRICING_JSON",
   "CLIENT_ALLOWED_ROUTES",
@@ -241,6 +249,7 @@ console.log(`  region: ${region}`);
 console.log(`  repository: ${repository}`);
 console.log(`  service: ${serviceName}`);
 console.log(`  workspace job: ${workspaceJobName}`);
+if (enabledCapabilities.includes("visual-qa")) console.log(`  visual QA job: ${visualQaJobName}`);
 console.log(`  service account: ${serviceAccountEmail}`);
 console.log(`  bucket: gs://${bucket}`);
 console.log(`  storage CORS origins: ${storageCorsOrigins.join(",")}`);
@@ -259,9 +268,11 @@ if (phase === "deploy" || phase === "all") {
   if (apply) {
     const serviceUrl = configureRuntimeBaseUrl();
     deployWorkspaceJob(serviceUrl);
+    if (enabledCapabilities.includes("visual-qa")) deployVisualQaJob(serviceUrl);
     routeTrafficToLatestRevision();
   } else {
     printWorkspaceJobCommand("DEPLOYED_SERVICE_URL");
+    if (enabledCapabilities.includes("visual-qa")) printVisualQaJobCommand("DEPLOYED_SERVICE_URL");
   }
 }
 
@@ -344,9 +355,33 @@ function workspaceJobArgs(serviceUrl) {
   ];
 }
 
+function visualQaJobArgs(serviceUrl) {
+  return [
+    "run", "jobs", "deploy", visualQaJobName,
+    "--project", projectId,
+    "--region", region,
+    "--service-account", serviceAccountEmail,
+    "--tasks", "1",
+    "--max-retries", "2",
+    "--task-timeout", String(gcp.timeout ?? "900s"),
+    "--container", "visual-qa-runner",
+    "--image", deployImage,
+    "--cpu", "1",
+    "--memory", "1Gi",
+    "--command", "node",
+    "--args", "scripts/run-client-visual-qa-job.mjs",
+    "--set-env-vars", `CLIENT_RUNTIME_BASE_URL=${serviceUrl}`,
+  ];
+}
+
 function printWorkspaceJobCommand(serviceUrl) {
   printCommand("gcloud", workspaceJobArgs(serviceUrl));
   printCommand("gcloud", ["run", "jobs", "add-iam-policy-binding", workspaceJobName, "--project", projectId, "--region", region, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/run.jobsExecutorWithOverrides"]);
+}
+
+function printVisualQaJobCommand(serviceUrl) {
+  printCommand("gcloud", visualQaJobArgs(serviceUrl));
+  printCommand("gcloud", ["run", "jobs", "add-iam-policy-binding", visualQaJobName, "--project", projectId, "--region", region, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/run.jobsExecutorWithOverrides"]);
 }
 
 function deployWorkspaceJob(serviceUrl) {
@@ -354,6 +389,14 @@ function deployWorkspaceJob(serviceUrl) {
   const deploy = spawnSync("gcloud", workspaceJobArgs(serviceUrl), { stdio: "inherit" });
   if (deploy.status !== 0) process.exit(deploy.status ?? 1);
   const binding = spawnSync("gcloud", ["run", "jobs", "add-iam-policy-binding", workspaceJobName, "--project", projectId, "--region", region, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/run.jobsExecutorWithOverrides"], { stdio: "inherit" });
+  if (binding.status !== 0) process.exit(binding.status ?? 1);
+}
+
+function deployVisualQaJob(serviceUrl) {
+  console.log(`Deploying isolated Visual QA job: ${visualQaJobName}`);
+  const deploy = spawnSync("gcloud", visualQaJobArgs(serviceUrl), { stdio: "inherit" });
+  if (deploy.status !== 0) process.exit(deploy.status ?? 1);
+  const binding = spawnSync("gcloud", ["run", "jobs", "add-iam-policy-binding", visualQaJobName, "--project", projectId, "--region", region, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/run.jobsExecutorWithOverrides"], { stdio: "inherit" });
   if (binding.status !== 0) process.exit(binding.status ?? 1);
 }
 

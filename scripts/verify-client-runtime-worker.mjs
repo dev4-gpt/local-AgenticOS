@@ -16,9 +16,12 @@ const clientDeliveryRoute = await readFile(join(root, "src/app/api/client-runtim
 const jobRoute = await readFile(join(root, "src/app/api/client-runtime/jobs/route.ts"), "utf8");
 const executionRoute = await readFile(join(root, "src/app/api/client-runtime/executions/route.ts"), "utf8");
 const dispatchRoute = await readFile(join(root, "src/app/api/internal/client-runtime/dispatch/route.ts"), "utf8");
+const visualQaDispatchRoute = await readFile(join(root, "src/app/api/internal/client-runtime/visual-qa-dispatch/route.ts"), "utf8");
 const providerChat = await readFile(join(root, "src/app/api/client-runtime/provider-chat/route.ts"), "utf8");
 const hostedJobsRoute = await readFile(join(root, "src/app/api/client-runtime/hosted-jobs/route.ts"), "utf8");
 const artifactsRoute = await readFile(join(root, "src/app/api/client-runtime/artifacts/route.ts"), "utf8");
+const visualQaRoute = await readFile(join(root, "src/app/api/client-runtime/visual-qa/route.ts"), "utf8");
+const visualQaAdapter = await readFile(join(root, "src/lib/clientVisualQaAdapter.ts"), "utf8");
 const promotion = await readFile(join(root, "scripts/promote-client-credential.mjs"), "utf8");
 const workerProvisioner = await readFile(join(root, "scripts/provision-client-worker-token.mjs"), "utf8");
 const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
@@ -58,6 +61,9 @@ const middleware = await readFile(join(root, "src/middleware.ts"), "utf8");
 const observability = await readFile(join(root, "src/lib/clientRuntimeObservability.ts"), "utf8");
 const telemetryRoute = await readFile(join(root, "src/app/api/client-runtime/telemetry/route.ts"), "utf8");
 const clientProviderWorkspace = await readFile(join(root, "src/components/ClientProviderWorkspace.tsx"), "utf8");
+const intentRoute = await readFile(join(root, "src/app/api/client-runtime/intent/route.ts"), "utf8");
+const intentRouter = await readFile(join(root, "src/lib/clientIntentRouter.ts"), "utf8");
+const playbooks = await readFile(join(root, "src/lib/clientPlaybooks.ts"), "utf8");
 const shell = await readFile(join(root, "src/components/Shell.tsx"), "utf8");
 const orchestrationComponents = await Promise.all([
   "ClientPaperclipWorkspace.tsx",
@@ -80,6 +86,7 @@ const runtimeRateLimitedRoutes = [
   "src/app/api/client-runtime/executions/route.ts",
   "src/app/api/client-runtime/hosted-jobs/route.ts",
   "src/app/api/client-runtime/artifacts/route.ts",
+  "src/app/api/client-runtime/visual-qa/route.ts",
   "src/app/api/client-runtime/artifacts/[id]/route.ts",
   "src/app/api/client-runtime/artifacts/[id]/complete/route.ts",
   "src/app/api/client-runtime/artifacts/[id]/download/route.ts",
@@ -92,13 +99,18 @@ const runtimeRateLimitedRoutes = [
 const runtimeRateLimitedRouteSources = await Promise.all(runtimeRateLimitedRoutes);
 
 expect(workerRoute.includes("validClientTaskIdentity"), "worker route must verify Cloud Tasks identity");
+expect(workerRoute.includes('job.capability === "visual-qa"') && workerRoute.includes("record_client_visual_qa_report_worker") && workerRoute.includes("runClientVisualQaAdapter"), "worker must process Visual QA through the bounded adapter and worker-only report RPC");
+expect(visualQaRoute.includes("currentClientUser") && visualQaRoute.includes('clientCapabilityEnabled("visual-qa")') && visualQaRoute.includes("artifact_not_found"), "Visual QA route must authenticate, capability-gate, and verify tenant artifact ownership");
+expect(visualQaAdapter.includes("visual_qa_external_input_rejected") && visualQaRoute.includes("enqueueClientRuntimeJob"), "Visual QA route must reject external frame inputs and enqueue a governed job");
 expect(executionRoute.includes('capability: "workspace-execution"') && executionRoute.includes("clientProviderRequestAllowed") && executionRoute.includes("containsClientSecretLike"), "workspace execution must create tenant-bound, policy-checked durable jobs");
 expect(executionRoute.includes("clientWorkspaceJobConfigured") && executionRoute.includes('path: clientWorkspaceJobConfigured() ? "dispatch" : "jobs"'), "workspace execution must prefer the configured Cloud Run Job dispatcher with a queue-worker fallback");
 expect(workerRoute.includes("processWorkspaceExecutionJob") && workerRoute.includes("artifactFromWorkspaceOutput") && workerRoute.includes("cloud-run-ephemeral-workspace"), "worker must turn valid provider output into a stored hosted workspace artifact");
 expect(workspaceExecution.includes("workspacePrompt") && workspaceExecution.includes("artifactFromWorkspaceOutput") && workspaceExecution.includes("36_000"), "workspace execution contract must bound prompts and artifact output");
 expect(executionWorkspace.includes("sandbox=\"\"") && executionWorkspace.includes("srcDoc") && executionWorkspace.includes("/api/client-runtime/executions"), "workspace UI must render sandboxed previews from durable execution records");
 expect(dispatchRoute.includes("validClientTaskIdentity") && dispatchRoute.includes("executeClientWorkspaceJob"), "Cloud Tasks dispatcher must authenticate before starting a Cloud Run Job");
+expect(visualQaDispatchRoute.includes("validClientTaskIdentity") && visualQaDispatchRoute.includes("executeClientVisualQaJob"), "Visual QA dispatcher must authenticate before starting its isolated Cloud Run Job");
 expect(cloudRunJobs.includes("run.googleapis.com/v2") && cloudRunJobs.includes("CLIENT_WORKSPACE_RUN_JOB") && cloudRunJobs.includes("containerOverrides"), "Cloud Run Job launcher must use a configured job and per-run isolated overrides");
+expect(cloudRunJobs.includes("CLIENT_VISUAL_QA_RUN_JOB") && cloudRunJobs.includes("visual-qa-runner"), "Visual QA must have a distinct Cloud Run Job configuration and container boundary");
 expect(providerAdapter.includes("CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON") && providerAdapter.includes("provider_model_not_allowlisted"), "provider adapter must enforce provider-specific model allowlists");
 expect(providerAdapter.includes("clientProviderContract") && providerAdapter.includes("clientProviderAttributionHeaders"), "provider adapter must enforce the reviewed provider contract layer");
 expect(providerContracts.includes('toolMode: "none"') && providerContracts.includes('toolMode: "reviewed-plan"') && providerContracts.includes("maxPromptChars") && providerContracts.includes("maxHistoryMessages"), "provider contracts must define bounded workspace and tool modes");
@@ -138,6 +150,10 @@ expect(telemetryRoute.includes("captureClientProductEvent") && telemetryRoute.in
 expect(telemetryRoute.includes("recordClientAudit"), "telemetry route must retain redacted events in the tenant audit stream");
 expect(observability.includes("POSTHOG_API_KEY") && observability.includes("SENTRY_DSN") && observability.includes("application/x-sentry-envelope"), "observability must support optional PostHog capture and redacted Sentry envelopes");
 expect(clientProviderWorkspace.includes('message.role === "assistant" && message.jobId === jobId'), "provider workspace must append assistant output even when the user prompt already has the job id");
+expect(intentRoute.includes("clientIntentRoutingEnabled") && intentRoute.includes("intent-routing") && intentRoute.includes("idempotencyKey"), "intent route must be authenticated, manifest-gated, and idempotent");
+expect(intentRouter.includes("CLIENT_INTENT_CONFIDENCE_THRESHOLD") && intentRouter.includes("JSON.parse") && intentRouter.includes("requestHash"), "intent router must enforce bounded strict classification and redacted evidence");
+expect(playbooks.includes("NATIVE_CLIENT_PLAYBOOKS") && playbooks.includes("clientReadyPlaybooks") && playbooks.includes("riskClass"), "playbook plane must expose only Veloce-owned ready contracts");
+expect(authenticatedVerifier.includes("--intent-smoke") && authenticatedVerifier.includes("verifyIntentRouting") && authenticatedVerifier.includes("waitForIntentPlan"), "authenticated verifier must cover intent routing, replay, clarification, and gated non-dispatch");
 for (const marker of ["SUPABASE_SERVICE_ROLE_KEY", "ANTHROPIC_API_KEY=", "OPENAI_API_KEY="]) {
   expect(!workerRoute.includes(marker) && !jobRoute.includes(marker), `worker boundary must not contain ${marker}`);
 }

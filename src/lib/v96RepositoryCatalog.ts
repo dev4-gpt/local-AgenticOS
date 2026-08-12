@@ -5,8 +5,10 @@
  * a contract while remaining gated or operator-only.
  */
 
-export type V96RepositoryStatus = "cataloged" | "contract-only" | "pilot" | "gated" | "enabled";
+export type V96RepositoryStatus = "cataloged" | "contract-only" | "pilot" | "gated" | "operator-only" | "enabled";
 export type V96RepositoryRuntime = "dependency-free" | "adapter" | "operator-worker" | "gpu-worker";
+export type V96ReferenceKind = "repository" | "guide" | "service";
+export type V96ActivationClass = "native-enabled" | "contract-active" | "reference-only" | "externally-gated";
 
 export interface V96RepositoryReference {
   id: string;
@@ -20,6 +22,14 @@ export interface V96RepositoryReference {
   runtime: V96RepositoryRuntime;
   executionPermissions: readonly string[];
   status: V96RepositoryStatus;
+  sourceKind?: V96ReferenceKind;
+  placement?: string;
+  evidenceGate?: string;
+  resourceUrls?: readonly string[];
+  activation?: V96ActivationClass;
+  implementationMapping?: string;
+  activationEvidence?: string;
+  rollbackRule?: string;
 }
 
 const REPOSITORY_ROWS = [
@@ -42,26 +52,94 @@ const REPOSITORY_ROWS = [
   ["huggingface-speech-to-speech", "Hugging Face Speech-to-Speech", "https://github.com/huggingface/speech-to-speech", "759d67e48fa9ba4d8c5e87b9084342b9b6833944", "Apache-2.0", ["voice"], ["consent", "artifact-ownership", "budget"], "operator-worker", ["read-artifacts", "write-review"], "gated"],
   ["explee", "Explee / AutoGTM", "https://explee.com/", "catalog-2026-08-12", "provider-terms", ["communications"], ["consent", "budget", "approval"], "adapter", ["write-review"], "gated"],
   ["infobip", "Infobip", "https://www.infobip.com/", "catalog-2026-08-12", "provider-terms", ["communications"], ["consent", "budget", "approval"], "adapter", ["write-review"], "gated"],
+  ["agent-skills", "Agent Skills", "https://github.com/addyosmani/agent-skills", "be42637c5af93fdc8526b68ec2f2651b930f316c", "MIT", ["quality", "provider-routing", "resumable-worktree"], ["output-quality", "approval", "audit"], "dependency-free", ["read-reference", "write-review"], "cataloged"],
+  ["founderos-demo", "FounderOS-DEMO", "https://github.com/Bennettxai/FounderOS-DEMO", "f10c94861fc7bcfe5b73a2611c66f371421496b8", "MIT", ["control-room", "communications", "knowledge"], ["approval", "audit", "provenance"], "adapter", ["read-reference", "write-review"], "contract-only"],
+  ["semantica", "Semantica", "https://github.com/semantica-agi/semantica", "9ec7959899127d3159b7672e1f3dee9415edd8bd", "Apache-2.0", ["knowledge", "research"], ["provenance", "tenant-isolation", "audit"], "adapter", ["read-reference", "write-review"], "contract-only"],
+  ["wan2gp", "Wan2GP", "https://github.com/deepbeepmeep/Wan2GP", "1a4ba715a8d4941d1e6db23d48cae1cb1034008c", "Apache-2.0", ["video-generation", "media"], ["provider-license", "artifact-ownership", "budget"], "gpu-worker", ["read-artifacts", "write-review"], "gated"],
+  ["ai-builder-club-skills", "AI Builder Club skills", "https://github.com/AI-Builder-Club/skills", "d4cd90f5915b10412595733a0fbdca96f65115b1", "MIT", ["quality", "resumable-worktree"], ["output-quality", "resumability", "approval"], "dependency-free", ["read-reference", "write-review"], "cataloged"],
+  ["rag-anything", "RAG-Anything", "https://github.com/HKUDS/RAG-Anything", "65b7ffdeb801309d4c87b6accf81bfe5cd9b175d", "Apache-2.0", ["knowledge", "notebook"], ["provenance", "chunk-provenance", "deletion-lineage"], "adapter", ["read-artifacts", "write-citations"], "contract-only"],
+  ["awesome-gpu-engineering", "Awesome GPU Engineering", "https://github.com/goabiaryan/awesome-gpu-engineering", "bb8cf16e32a780dd84e2fb1184e2b4695ed0e3b6", "CC0-1.0", ["video-generation", "media"], ["provider-license", "budget", "audit"], "dependency-free", ["read-reference", "write-review"], "cataloged"],
+  ["headroom", "Headroom", "https://github.com/headroomlabs-ai/headroom", "941c25d31e6c6e0b436c307cbe212771ff76b45f", "Apache-2.0", ["provider-routing", "quality"], ["model-allowlist", "budget", "audit"], "adapter", ["write-review"], "pilot"],
+  ["ragflow", "RAGFlow", "https://github.com/infiniflow/ragflow", "91fd114783a2153e2d08fc98ff81338546692c5b", "Apache-2.0", ["knowledge", "research"], ["tenant-isolation", "provenance", "retention"], "adapter", ["read-artifacts", "write-citations"], "contract-only"],
+  ["google-agents-cli", "Google agents-cli", "https://github.com/google/agents-cli", "5a306f8956cb1eeae69f9709de0e4d61b44e11e7", "Apache-2.0", ["resumable-worktree", "quality"], ["workspace-isolation", "approval", "output-quality"], "operator-worker", ["read-reference", "write-review", "run-tests"], "operator-only"],
+  ["cognee", "Cognee", "https://github.com/topoteretes/cognee", "4b9dd362625dfd3621c344e571a86f5bc7a55ee8", "Apache-2.0", ["knowledge", "notebook"], ["provenance", "chunk-provenance", "retention"], "adapter", ["read-artifacts", "write-citations"], "contract-only"],
+  ["ai-engineering-from-scratch", "AI Engineering from Scratch", "https://github.com/rohitg00/ai-engineering-from-scratch", "7c3323508a5186739feecd76838ba1ae962c736f", "MIT", ["quality", "provider-routing"], ["output-quality", "audit"], "dependency-free", ["read-reference", "write-review"], "cataloged"],
+  ["company-research-agent", "Company Research Agent", "https://github.com/guy-hartstein/company-research-agent", "52c904c8169f0a36ee8c1de46d5745aee731a0b4", "MIT", ["research", "knowledge"], ["source-policy", "citations", "confidence"], "adapter", ["read-public-source", "write-citations"], "contract-only"],
+  ["gstack", "gstack", "https://github.com/garrytan/gstack", "94993f74012782fd94416dd44b8314f6363a13a4", "MIT", ["resumable-worktree", "quality"], ["workspace-isolation", "approval", "output-quality"], "operator-worker", ["read-files", "write-review", "run-tests"], "operator-only"],
+  ["agents-md", "AGENTS.md", "https://github.com/agentsmd/agents.md", "d1ac7f063d20e70015ed6732664049ae4ba9d74e", "MIT", ["resumable-worktree", "quality"], ["workspace-isolation", "provenance", "approval"], "dependency-free", ["read-reference", "write-review"], "cataloged"],
+  ["500-ai-agents-projects", "500 AI Agents Projects", "https://github.com/ashishpatel26/500-AI-Agents-Projects", "9beeb721c2af551bacaab827a76bddaecaa0ca5e", "MIT", ["control-room", "orchestration"], ["provenance", "output-quality"], "dependency-free", ["read-reference", "write-review"], "cataloged"],
+  ["appsmith", "Appsmith", "https://github.com/appsmithorg/appsmith", "b4bd6358558119e980433367781cb40a74b35d88", "Apache-2.0", ["control-room", "operator-console"], ["tenant-isolation", "approval", "audit"], "adapter", ["write-review"], "contract-only"],
+  ["founderos-agent-stack", "FounderOS Agent Stack", "https://founderos-agent-stack.vercel.app/", "catalog-2026-08-12", "provider-terms", ["control-room", "orchestration"], ["approval", "audit", "budget"], "adapter", ["read-reference", "write-review"], "contract-only"],
+  ["ai-loops-guide", "AI Loops Worth Stealing", "https://learnaiwithmariah.com/guides/ai-loops-worth-stealing/", "catalog-2026-08-12", "author-terms", ["orchestration", "quality"], ["resumability", "approval", "output-quality"], "dependency-free", ["read-reference", "write-review"], "cataloged"],
+  ["groq-whisper", "Groq Speech-to-Text", "https://console.groq.com/docs/speech-to-text", "catalog-2026-08-12", "provider-terms", ["voice", "speech-to-text"], ["tenant-isolation", "budget", "provenance", "audit"], "adapter", ["read-audio", "write-transcript"], "pilot"],
 ] as const;
 
-const REPOSITORIES: readonly V96RepositoryReference[] = REPOSITORY_ROWS.map(([id, name, sourceUrl, sourceCommit, license, targetCapabilities, traits, runtime, executionPermissions, status]) => ({
-  id, name, sourceUrl, sourceCommit, license,
-  provenance: "V96 STAR-plan catalog; pinned upstream reference or dated provider record",
-  targetCapabilities, traits, runtime, executionPermissions, status,
-}));
+const REFERENCE_METADATA: Record<string, { sourceKind: V96ReferenceKind; placement: string; evidenceGate: string; resourceUrls: readonly string[]; activation?: V96ActivationClass; implementationMapping?: string; activationEvidence?: string; rollbackRule?: string }> = {
+  "agent-skills": { sourceKind: "repository", placement: "Build, Quality, Review", evidenceGate: "Contract review and local checker evidence", resourceUrls: ["https://github.com/addyosmani/agent-skills"], activation: "native-enabled", implementationMapping: "Veloce output-quality and reviewed-plan policies", activationEvidence: "Focused capability and quality suites", rollbackRule: "Remove the trait mapping from the server manifest" },
+  "founderos-demo": { sourceKind: "repository", placement: "Control Room", evidenceGate: "Tenant-safe adapter and approval evidence", resourceUrls: ["https://github.com/Bennettxai/FounderOS-DEMO"] },
+  semantica: { sourceKind: "repository", placement: "Knowledge, Research", evidenceGate: "Tenant graph isolation and deletion lineage", resourceUrls: ["https://github.com/semantica-agi/semantica"] },
+  wan2gp: { sourceKind: "repository", placement: "Media, GPU worker", evidenceGate: "GPU cost, license, VRAM, rollback, and quality bundle", resourceUrls: ["https://github.com/deepbeepmeep/Wan2GP"] },
+  "ai-builder-club-skills": { sourceKind: "repository", placement: "Build, Quality", evidenceGate: "Local verification loop evidence", resourceUrls: ["https://github.com/AI-Builder-Club/skills"], activation: "native-enabled", implementationMapping: "Veloce focused-checker and evidence-loop policy", activationEvidence: "Focused tests, typecheck, lint, and build", rollbackRule: "Remove the trait mapping from the server manifest" },
+  "rag-anything": { sourceKind: "repository", placement: "Knowledge, Notebook", evidenceGate: "Multimodal provenance and retention evidence", resourceUrls: ["https://github.com/HKUDS/RAG-Anything"] },
+  "awesome-gpu-engineering": { sourceKind: "repository", placement: "GPU infrastructure", evidenceGate: "Reference review only", resourceUrls: ["https://github.com/goabiaryan/awesome-gpu-engineering"] },
+  headroom: { sourceKind: "repository", placement: "Quality, Routing", evidenceGate: "Quality parity, token savings, and cost trace", resourceUrls: ["https://github.com/headroomlabs-ai/headroom"], activation: "native-enabled", implementationMapping: "Veloce dependency-free context-compression routing trait", activationEvidence: "Compression contract suite plus authenticated local/cloud provider smoke", rollbackRule: "Remove context-compression from CLIENT_ENABLED_TRAITS" },
+  ragflow: { sourceKind: "repository", placement: "Knowledge, Research", evidenceGate: "External-service tenant isolation and export/delete evidence", resourceUrls: ["https://github.com/infiniflow/ragflow"] },
+  "google-agents-cli": { sourceKind: "repository", placement: "Operator Build", evidenceGate: "Disposable worktree and review-before-apply evidence", resourceUrls: ["https://github.com/google/agents-cli"] },
+  cognee: { sourceKind: "repository", placement: "Knowledge", evidenceGate: "Graph ownership, retention, and deletion evidence", resourceUrls: ["https://github.com/topoteretes/cognee"] },
+  "ai-engineering-from-scratch": { sourceKind: "repository", placement: "Engineering reference", evidenceGate: "Reference review only", resourceUrls: ["https://github.com/rohitg00/ai-engineering-from-scratch"] },
+  "company-research-agent": { sourceKind: "repository", placement: "Research", evidenceGate: "Citation, confidence, and source-policy parity", resourceUrls: ["https://github.com/guy-hartstein/company-research-agent"] },
+  gstack: { sourceKind: "repository", placement: "Operator Workspaces", evidenceGate: "Disposable worktree and bounded command evidence", resourceUrls: ["https://github.com/garrytan/gstack"] },
+  "agents-md": { sourceKind: "repository", placement: "Workspace provenance", evidenceGate: "Instruction scope and permission review", resourceUrls: ["https://github.com/agentsmd/agents.md"], activation: "native-enabled", implementationMapping: "Veloce workspace provenance and instruction-scope validation", activationEvidence: "Focused contract and workspace policy suites", rollbackRule: "Disable workspace provenance mapping in the server manifest" },
+  "500-ai-agents-projects": { sourceKind: "repository", placement: "Control Room discovery", evidenceGate: "Use-case review only", resourceUrls: ["https://github.com/ashishpatel26/500-AI-Agents-Projects"] },
+  appsmith: { sourceKind: "repository", placement: "Operator Console", evidenceGate: "Separate deployment and tenant auth review", resourceUrls: ["https://github.com/appsmithorg/appsmith"] },
+  "founderos-agent-stack": { sourceKind: "service", placement: "Control Room reference", evidenceGate: "Token-free contract review", resourceUrls: ["https://founderos-agent-stack.vercel.app/"] },
+  "ai-loops-guide": { sourceKind: "guide", placement: "Orchestration reference", evidenceGate: "Reference review only", resourceUrls: ["https://learnaiwithmariah.com/guides/ai-loops-worth-stealing/"], activation: "native-enabled", implementationMapping: "Veloce queue, retry, checkpoint, and approval traits", activationEvidence: "Existing runtime lifecycle and idempotency suites", rollbackRule: "Remove orchestration trait mapping from the server manifest" },
+  "groq-whisper": { sourceKind: "service", placement: "All recorded microphone inputs", evidenceGate: "Server-only key, bounded upload, tenant auth, rate/budget evidence, and local/cloud smoke", resourceUrls: ["https://console.groq.com/docs/speech-to-text", "https://console.groq.com/docs/models"] },
+};
+
+const REPOSITORIES: readonly V96RepositoryReference[] = REPOSITORY_ROWS.map(([id, name, sourceUrl, sourceCommit, license, targetCapabilities, traits, runtime, executionPermissions, status]) => {
+  const metadata = REFERENCE_METADATA[id] ?? { sourceKind: "repository" as const, placement: "Existing Veloce capability surface", evidenceGate: "Existing capability evidence", resourceUrls: [sourceUrl] };
+  const activation = metadata.activation
+    ?? (status === "enabled" ? "native-enabled" : status === "contract-only" ? "contract-active" : status === "gated" || status === "operator-only" ? "externally-gated" : "reference-only");
+  return {
+    id, name, sourceUrl, sourceCommit, license,
+    provenance: "V96 STAR-plan catalog; pinned upstream reference or dated provider record",
+    targetCapabilities, traits, runtime, executionPermissions, status,
+    ...metadata,
+    activation,
+    ...(activation === "native-enabled" ? {
+      implementationMapping: metadata.implementationMapping ?? "Existing Veloce native capability policy",
+      activationEvidence: metadata.activationEvidence ?? "Existing focused capability evidence",
+      rollbackRule: metadata.rollbackRule ?? "Remove the native mapping from the server manifest",
+    } : {}),
+  };
+});
 
 export const V96_REPOSITORY_CATALOG: readonly V96RepositoryReference[] = REPOSITORIES;
 
 export function validateV96RepositoryReference(reference: Partial<V96RepositoryReference>) {
   const errors: string[] = [];
   if (!reference.id || !/^[a-z0-9][a-z0-9-]{1,62}$/.test(reference.id)) errors.push("repository id is invalid");
-  if (!reference.sourceUrl || !/^https:\/\/[^\s]+$/.test(reference.sourceUrl)) errors.push("repository sourceUrl must be https");
+  if (!reference.sourceUrl || !/^https:\/\/[^\s?#]+$/.test(reference.sourceUrl)) errors.push("repository sourceUrl must be a clean https URL");
   if (!reference.sourceCommit || (!/^[a-f0-9]{7,64}$/i.test(reference.sourceCommit) && !/^catalog-\d{4}-\d{2}-\d{2}$/.test(reference.sourceCommit))) errors.push("repository sourceCommit must be pinned");
-  if (!reference.license?.trim()) errors.push("repository license is required");
+  if (!reference.license?.trim() || ["unknown", "review-required", "unverified"].includes(reference.license.trim().toLowerCase())) errors.push("repository license must be known");
   if (!reference.provenance?.trim()) errors.push("repository provenance is required");
   if (!reference.targetCapabilities?.length) errors.push("repository targetCapabilities are required");
   if (!reference.traits?.length) errors.push("repository traits are required");
-  if (!reference.executionPermissions) errors.push("repository executionPermissions are required");
+  if (!reference.executionPermissions?.length) errors.push("repository executionPermissions are required");
+  if (!reference.runtime || !["dependency-free", "adapter", "operator-worker", "gpu-worker"].includes(reference.runtime)) errors.push("repository runtime class is required");
+  if (!reference.status || !["cataloged", "contract-only", "pilot", "gated", "operator-only", "enabled"].includes(reference.status)) errors.push("repository status is required");
+  if (reference.sourceKind && !["repository", "guide", "service"].includes(reference.sourceKind)) errors.push("repository sourceKind is invalid");
+  if (reference.resourceUrls?.some((url) => !/^https:\/\/[^\s?]+$/.test(url))) errors.push("repository resourceUrls must be clean https URLs");
+  if (!reference.resourceUrls?.length) errors.push("repository resourceUrls are required");
+  if (!reference.placement?.trim()) errors.push("repository placement is required");
+  if (!reference.evidenceGate?.trim()) errors.push("repository evidenceGate is required");
+  if (reference.activation && !["native-enabled", "contract-active", "reference-only", "externally-gated"].includes(reference.activation)) errors.push("repository activation class is invalid");
+  if (reference.activation === "native-enabled") {
+    if (!reference.implementationMapping?.trim()) errors.push("native-enabled reference requires implementationMapping");
+    if (!reference.activationEvidence?.trim()) errors.push("native-enabled reference requires activationEvidence");
+    if (!reference.rollbackRule?.trim()) errors.push("native-enabled reference requires rollbackRule");
+  }
   return errors;
 }
 

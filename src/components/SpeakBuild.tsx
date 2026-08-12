@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Hammer, Loader2, RotateCw, ExternalLink, Sparkles, History, Square, X, Play, Zap } from "lucide-react";
+import { Hammer, Loader2, RotateCw, ExternalLink, Sparkles, History, Square, X, Play, Zap } from "lucide-react";
+import VoiceButton from "./VoiceButton";
 
 const FCC = "#10b981";                 // Free Claude Code green
 const N2 = "#7c5cff";                  // N2 violet
@@ -11,20 +12,6 @@ const N2 = "#7c5cff";                  // N2 violet
 const PROJECT_LOCAL = "free-claude-code";
 const PROJECT_N2 = "n2";
 type Engine = "local" | "n2";
-
-// ── Web Speech API (no first-class TS types) ──────────────────────────────────
-type SR = {
-  start: () => void; stop: () => void; abort: () => void;
-  continuous: boolean; interimResults: boolean; lang: string; maxAlternatives: number;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onerror: ((e: { error?: string }) => void) | null;
-  onstart: (() => void) | null; onend: (() => void) | null;
-};
-function getSR(): { new (): SR } | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as { SpeechRecognition?: { new (): SR }; webkitSpeechRecognition?: { new (): SR } };
-  return w.SpeechRecognition || w.webkitSpeechRecognition || null;
-}
 
 interface Build { id: number; prompt: string; file: string | null; ts: number; seed?: boolean; }
 interface WsFile { relPath: string; mtime: number; kind: string; name: string; }
@@ -46,7 +33,6 @@ export default function SpeakBuild() {
   const accent = engine === "n2" ? N2 : FCC;
 
   const [input, setInput] = useState("");
-  const [listening, setListening] = useState(false);
   const [building, setBuilding] = useState(false);
   const [log, setLog] = useState("");
   const [status, setStatus] = useState("Tap the mic and say what to build — or type it.");
@@ -55,7 +41,6 @@ export default function SpeakBuild() {
   const [current, setCurrent] = useState<string | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
 
-  const recRef = useRef<SR | null>(null);
   const ctrlRef = useRef<AbortController | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const idRef = useRef(0);
@@ -142,26 +127,6 @@ export default function SpeakBuild() {
 
   function stop() { ctrlRef.current?.abort(); setBuilding(false); setStatus("Stopped."); }
 
-  // ── voice ──
-  function toggleMic() {
-    if (building) return;
-    if (listening) { try { recRef.current?.stop(); } catch {} setListening(false); return; }
-    const C = getSR();
-    if (!C) { setStatus("Voice needs Chrome or Safari — type your idea instead."); return; }
-    let rec = recRef.current;
-    if (!rec) {
-      rec = new C();
-      rec.continuous = false; rec.interimResults = false; rec.maxAlternatives = 1;
-      rec.lang = (typeof navigator !== "undefined" && navigator.language) || "en-US";
-      rec.onstart = () => { setListening(true); setStatus("Listening… say what to build."); };
-      rec.onerror = (e) => { setListening(false); setStatus(e?.error === "not-allowed" ? "Mic blocked — allow Microphone in the address bar." : "Didn't catch that — try again."); };
-      rec.onend = () => setListening(false);
-      rec.onresult = (e) => { const t = e?.results?.[0]?.[0]?.transcript || ""; if (t.trim()) { setInput(t); setStatus(`Heard: "${t}" — building…`); build(t); } };
-      recRef.current = rec;
-    }
-    try { rec.start(); } catch {}
-  }
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,42%)_1fr] gap-4 h-[calc(100vh-200px)] min-h-[560px]">
 
@@ -193,12 +158,7 @@ export default function SpeakBuild() {
 
         {/* mic + input */}
         <div className="flex flex-col items-center gap-3 mb-3">
-          <motion.button onClick={toggleMic} whileTap={{ scale: 0.94 }} disabled={building}
-            className="relative grid place-items-center w-20 h-20 rounded-full transition disabled:opacity-40"
-            style={{ background: listening ? accent : `${accent}1e`, color: listening ? "#06251f" : accent, border: `1px solid ${accent}55` }}>
-            {listening ? <MicOff size={30} /> : <Mic size={30} />}
-            {listening && <span className="absolute inset-0 rounded-full animate-ping" style={{ border: `2px solid ${accent}` }} />}
-          </motion.button>
+          <VoiceButton size={80} disabled={building} className="rounded-full" onTranscript={(text) => { setInput(text); setStatus(`Heard: "${text}" — building…`); void build(text); }} />
           <div className="text-[12px] text-[var(--fg-dim)] text-center min-h-[18px]">{status}</div>
         </div>
 

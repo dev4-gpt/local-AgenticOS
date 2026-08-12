@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { reserveClientRuntimeBudgetWorker, settleClientRuntimeBudgetWorker, workerRpc } from "@/lib/clientDataPlane";
-import { clientProviderDefaultModel, clientTextMaxOutputTokens, clientTextUsageCostMicros, estimateClientTextCostMicros, runClientTextAdapter, safeClientProviderMetadata, safeClientProviderOutput } from "@/lib/clientProviderAdapter";
+import { clientProviderDefaultModel, clientTextMaxOutputTokens, clientTextUsageCostMicros, estimateClientTextCostMicros, prepareClientProviderMessages, runClientTextAdapter, safeClientProviderMetadata, safeClientProviderOutput } from "@/lib/clientProviderAdapter";
 import { clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { estimateElevenLabsMusicCostMicros, runClientElevenLabsMusicAdapter, estimateClientImageCostMicros, estimateClientMediaCostMicros, runClientHeyGenAdapter, runClientImageAdapter, runClientMusicAdapter, runClientSpeechAdapter, safeProviderOutputUrl } from "@/lib/clientMediaAdapter";
 import { readBoundedResponseBytes } from "@/lib/clientNetworkSafety";
@@ -16,10 +16,13 @@ import { parseRoomDirectives, roomActionSummary, roomPersona, roomPrompt } from 
 import { parsePipelineShape, pipelineStageAfterShaping } from "@/lib/clientPipelineAdapter";
 import { loopBuilderPrompt, loopFinalStatus, loopJudgePrompt, parseLoopVerdict } from "@/lib/clientLoopAdapter";
 import { rufloAgentPrompt, rufloReportPrompt, rufloRoster } from "@/lib/clientRufloAdapter";
-import { HERMES_CONTENT_FACTORY_STEPS, createHermesContentFactoryPlan, hermesContentFactoryPrompt, type HermesContentFactoryPlan, type HermesContentFactoryStage } from "@/lib/hermesContentFactory";
+import { HERMES_CONTENT_FACTORY_STEPS, createHermesContentFactoryPlan, hermesContentFactoryPrompt, type HermesContentFactoryPlan } from "@/lib/hermesContentFactory";
 import { createSeoIntelligenceRequest, firecrawlSearchToSeoIntelligenceRecord } from "@/lib/seoIntelligence";
 import { applyOutputQualityPolicy } from "@/lib/outputQualityPolicy";
 import { resolveCapabilityTraits, traitBundleMetadata, traitEvidenceForOutcome, validateTraitBundle } from "@/lib/capabilityTraits";
+import { runClientVisualQaAdapter } from "@/lib/clientVisualQaAdapter";
+import { buildIntentClassifierPrompt, intentEvidence, parseClientIntentClassification, resolveClientIntent } from "@/lib/clientIntentRouter";
+import { clientReadyPlaybooks, type ClientIntentSurface } from "@/lib/clientPlaybooks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,7 +48,7 @@ export async function POST(request: Request) {
     logClientRuntimeEvent("runtime.trait_bundle_invalid", { tenant: tenantSlug, jobId, capability: job.capability });
     return NextResponse.json({ ok: true, status: "failed" });
   }
-  if (["text-agents", "media", "seo-research", "room-round", "pipeline-shape", "loop-run", "ruflo-swarm", "hermes-content-factory"].includes(job.capability) && !clientProviderCallsEnabled()) {
+  if (["text-agents", "media", "seo-research", "room-round", "pipeline-shape", "loop-run", "ruflo-swarm", "hermes-content-factory", "intent-routing"].includes(job.capability) && !clientProviderCallsEnabled()) {
     await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, "provider_calls_require_approval");
     return NextResponse.json({ ok: true, status: "failed" });
   }
@@ -56,6 +59,8 @@ export async function POST(request: Request) {
   if (job.capability === "loop-run") return processLoopRunJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "hermes-content-factory") return processHermesContentFactoryJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "ruflo-swarm") return processRufloSwarmJob(jobId, tenantSlug, workerToken, job);
+  if (job.capability === "visual-qa") return processVisualQaJob(jobId, tenantSlug, workerToken, job);
+  if (job.capability === "intent-routing") return processIntentRoutingJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "media") return processMediaJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "seo-research") return processSeoJob(jobId, tenantSlug, workerToken, job);
   if (job.capability !== "text-agents" || typeof job.provider !== "string" || typeof job.input_metadata?.prompt !== "string") {
@@ -65,18 +70,23 @@ export async function POST(request: Request) {
   const model = typeof job.model === "string" && job.model ? job.model : clientProviderDefaultModel(job.provider) ?? undefined;
   const history = Array.isArray(job.input_metadata.history) ? job.input_metadata.history.filter((item): item is { role: "system" | "user" | "assistant"; content: string } => Boolean(item && typeof item === "object" && ["system", "user", "assistant"].includes(String((item as Record<string, unknown>).role)) && typeof (item as Record<string, unknown>).content === "string")) : [];
   const messages = [...history, { role: "user" as const, content: job.input_metadata.prompt }].slice(-16);
+  const preparedMessages = prepareClientProviderMessages({ provider: job.provider, messages, capability: job.capability });
+  if (!preparedMessages.ok) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { compression: preparedMessages.compression }, preparedMessages.error);
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
   const pricingModel = model ?? "";
-  const estimate = estimateClientTextCostMicros(pricingModel, messages, clientTextMaxOutputTokens());
+  const estimate = estimateClientTextCostMicros(pricingModel, preparedMessages.messages, clientTextMaxOutputTokens());
   if (estimate === null || !model || !(await reserveClientRuntimeBudgetWorker({ provider: job.provider, model, amountMicros: estimate, jobId, workerToken }))) {
     logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider: job.provider, status: 429 });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, "budget_exceeded");
     return NextResponse.json({ ok: true, status: "failed" });
   }
 
-  const result = await runClientTextAdapter({ provider: job.provider, model, prompt: job.input_metadata.prompt, history, reserveBudget: false, jobId });
+  const result = await runClientTextAdapter({ capability: job.capability, provider: job.provider, model, prompt: job.input_metadata.prompt, history, reserveBudget: false, jobId });
   if (result.ok) {
     const actualAmountMicros = result.usage ? clientTextUsageCostMicros(model, result.usage) : null;
-    const outputMetadata = { workflowId: workflowIdFrom(job.input_metadata), provider: result.provider, model: result.model, output: safeClientProviderOutput(result.output), steps: workflowStepsFrom(job.input_metadata) };
+    const outputMetadata = { workflowId: workflowIdFrom(job.input_metadata), provider: result.provider, model: result.model, output: safeClientProviderOutput(result.output), steps: workflowStepsFrom(job.input_metadata), ...(result.compression ? { compression: result.compression } : {}) };
     if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, {
       actualAmountMicros: actualAmountMicros ?? estimate,
       usageMetadata: result.usage ?? { estimatedCostMicros: estimate, usageFallback: 1 },
@@ -99,6 +109,97 @@ async function processOrchestrationJob(jobId: string, tenantSlug: string, worker
     return NextResponse.json({ ok: true, status: "failed" });
   }
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", execution);
+  return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+async function processIntentRoutingJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; model?: string; input_metadata?: Record<string, unknown> | null }) {
+  const input = job.input_metadata ?? {};
+  const request = typeof input.request === "string" ? input.request.trim().slice(0, 10_000) : "";
+  const surface = typeof input.surface === "string" ? input.surface as ClientIntentSurface : "chat";
+  const enabledCapabilities = (process.env.CLIENT_ENABLED_CAPABILITIES ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+  const available = clientReadyPlaybooks(enabledCapabilities, surface);
+  const resolved = resolveClientIntent({ request, surface, enabledCapabilities, availablePlaybooks: available });
+  const traitBundle = resolveCapabilityTraits({ capability: "intent-routing", provider: job.provider, surface });
+  const baseEvidence = (overrides: Record<string, unknown> = {}) => ({
+    traitSnapshot: traitBundleMetadata(traitBundle),
+    traitEvidence: traitEvidenceForOutcome(traitBundle, "succeeded"),
+    failureDisposition: "succeeded",
+    evidence: intentEvidence({ request, surface, candidateCount: resolved.candidates.length, classifierUsed: Boolean(input.requiresClassifier), ...(overrides.compression && typeof overrides.compression === "object" ? { compression: overrides.compression as Record<string, unknown> } : {}) }),
+  });
+  if (!request) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", baseEvidence(), "intent_input_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  if (resolved.candidates.length === 0) {
+    await completeJob(tenantSlug, jobId, workerToken, "succeeded", { ...baseEvidence(), status: "needs_clarification", failureDisposition: "review", intent: null, capabilityId: null, playbookId: null, skillIds: [], reason: resolved.reason, requiredTraits: [], clarificationQuestion: resolved.clarificationQuestion });
+    return NextResponse.json({ ok: true, status: "succeeded" });
+  }
+
+  let selected = resolved.deterministic ? resolved.candidates[0]?.playbook ?? null : null;
+  let confidence = resolved.deterministic ? 1 : undefined;
+  let classifierCompression: Record<string, unknown> | null = null;
+  let classifierReason = resolved.reason;
+  if (!selected) {
+    const classifierPrompt = buildIntentClassifierPrompt(request, surface, resolved.candidates);
+    const messages = [{ role: "system" as const, content: "You are Veloce's bounded intent classifier. Return strict JSON only." }, { role: "user" as const, content: classifierPrompt }];
+    const prepared = prepareClientProviderMessages({ provider: job.provider ?? "", messages, capability: "intent-routing" });
+    classifierCompression = prepared.compression as Record<string, unknown> | null;
+    const model = job.model ?? (job.provider ? clientProviderDefaultModel(job.provider) : null);
+    const estimate = model && prepared.ok ? estimateClientTextCostMicros(model, prepared.messages, 512) : null;
+    if (!job.provider || !model || !prepared.ok || estimate === null || !(await reserveClientRuntimeBudgetWorker({ provider: job.provider, model, amountMicros: estimate, jobId, workerToken }))) {
+      await completeJob(tenantSlug, jobId, workerToken, "succeeded", { ...baseEvidence({ compression: classifierCompression }), status: "needs_clarification", failureDisposition: "review", intent: null, capabilityId: null, playbookId: null, skillIds: [], reason: "The approved classifier could not be budgeted safely.", requiredTraits: [], clarificationQuestion: resolved.clarificationQuestion });
+      return NextResponse.json({ ok: true, status: "succeeded" });
+    }
+    const classified = prepared.ok ? await runClientTextAdapter({ capability: "intent-routing", provider: job.provider, model, prompt: classifierPrompt, reserveBudget: false, jobId, disableReviewedPlanTool: true }) : { ok: false as const, status: 400, error: "classifier_context_invalid" };
+    await settleTerminalBudget(jobId, workerToken, classified.ok && classified.usage ? clientTextUsageCostMicros(model, classified.usage) ?? estimate : 0, classified.ok && classified.usage ? classified.usage : { estimatedCostMicros: estimate });
+    if (!classified.ok) {
+      await completeJob(tenantSlug, jobId, workerToken, "succeeded", { ...baseEvidence({ compression: classifierCompression }), status: "needs_clarification", failureDisposition: "review", intent: null, capabilityId: null, playbookId: null, skillIds: [], reason: "The approved classifier did not return a usable result.", requiredTraits: [], clarificationQuestion: resolved.clarificationQuestion });
+      return NextResponse.json({ ok: true, status: "succeeded" });
+    }
+    const parsed = parseClientIntentClassification(classified.output, available);
+    if (!parsed.ok) {
+      await completeJob(tenantSlug, jobId, workerToken, "succeeded", { ...baseEvidence({ compression: classified.compression ?? classifierCompression }), status: "needs_clarification", failureDisposition: "review", intent: null, capabilityId: null, playbookId: null, skillIds: [], reason: "The classifier result was outside the approved playbook registry.", requiredTraits: [], clarificationQuestion: resolved.clarificationQuestion });
+      return NextResponse.json({ ok: true, status: "succeeded" });
+    }
+    selected = parsed.playbook;
+    confidence = parsed.value.confidence;
+    classifierReason = parsed.value.reason;
+    classifierCompression = classified.compression ?? classifierCompression;
+  }
+  if (!selected) {
+    await completeJob(tenantSlug, jobId, workerToken, "succeeded", { ...baseEvidence({ compression: classifierCompression }), status: "needs_clarification", failureDisposition: "review", reason: "No approved playbook was selected.", requiredTraits: [], clarificationQuestion: resolved.clarificationQuestion });
+    return NextResponse.json({ ok: true, status: "succeeded" });
+  }
+
+  const capabilityId = selected.eligibleCapabilities[0] ?? "text-agents";
+  const selectedTraits = resolveCapabilityTraits({ capability: capabilityId, provider: job.provider, surface });
+  const plan = {
+    ...baseEvidence({ compression: classifierCompression }), status: selected.riskClass === "low" ? "dispatched" : "ready",
+    intent: selected.label, capabilityId, playbookId: selected.id, skillIds: selected.skillIds,
+    confidence, riskClass: selected.riskClass, approval: selected.approval, reason: classifierReason,
+    requiredTraits: selected.requiredTraits, selectedTraitSnapshot: traitBundleMetadata(selectedTraits),
+  };
+  if (selected.riskClass !== "low") {
+    await completeJob(tenantSlug, jobId, workerToken, "succeeded", plan);
+    return NextResponse.json({ ok: true, status: "succeeded" });
+  }
+
+  const model = job.model ?? (job.provider ? clientProviderDefaultModel(job.provider) : null);
+  const executionPrompt = `Use the approved ${selected.label} playbook. Produce only the requested ${selected.outputType}. Do not take external actions or claim to have used tools.\n\nClient request:\n${request}`;
+  const prepared = job.provider && model ? prepareClientProviderMessages({ provider: job.provider, messages: [{ role: "user", content: executionPrompt }], capability: capabilityId }) : { ok: false as const, error: "provider_not_configured", compression: null };
+  const estimate = prepared.ok && model ? estimateClientTextCostMicros(model, prepared.messages, clientTextMaxOutputTokens()) : null;
+  if (!job.provider || !model || !prepared.ok || estimate === null || !(await reserveClientRuntimeBudgetWorker({ provider: job.provider, model, amountMicros: estimate, jobId, workerToken }))) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { ...plan, status: "blocked", failureDisposition: "blocked" }, "budget_exceeded");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const result = await runClientTextAdapter({ capability: capabilityId, provider: job.provider, model, prompt: executionPrompt, reserveBudget: false, jobId, disableReviewedPlanTool: true });
+  if (!result.ok) {
+    await settleTerminalBudget(jobId, workerToken, 0, { providerFailure: 1 });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { ...plan, status: "blocked", failureDisposition: "blocked" }, result.error);
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: result.usage ? clientTextUsageCostMicros(model, result.usage) ?? estimate : estimate, usageMetadata: result.usage ?? { estimatedCostMicros: estimate } }, { ...plan, output: safeClientProviderOutput(result.output) }))) return NextResponse.json({ ok: true, status: "failed" });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { ...plan, output: safeClientProviderOutput(result.output), dispatchedJobId: jobId, ...(result.compression ? { compression: result.compression } : {}) });
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
 
@@ -205,6 +306,75 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   }
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+async function processVisualQaJob(jobId: string, tenantSlug: string, workerToken: string, job: { input_metadata?: Record<string, unknown> | null }) {
+  const input = job.input_metadata ?? {};
+  const artifactId = typeof input.artifactId === "string" && /^[0-9a-f-]{36}$/i.test(input.artifactId) ? input.artifactId : "";
+  const traitBundle = resolveCapabilityTraits({ capability: "visual-qa", provider: "contract-only", surface: "quality" });
+  const sourceIds = traitBundle.sourceReferences.map((source) => source.id);
+  const baseMetadata = {
+    adapter: "bounded-visual-qa-worker",
+    artifactId,
+    traitSnapshot: traitBundleMetadata(traitBundle),
+  };
+  if (!artifactId) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {
+      ...baseMetadata,
+      traitEvidence: traitEvidenceForOutcome(traitBundle, "blocked", { message: "Visual QA requires a tenant artifact." }),
+      failureDisposition: "blocked",
+    }, "visual_qa_artifact_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  if (!(await reserveClientRuntimeBudgetWorker({ provider: "visual-qa", model: "contract-only", amountMicros: 0, jobId, workerToken }))) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {
+      ...baseMetadata,
+      traitEvidence: traitEvidenceForOutcome(traitBundle, "blocked", { message: "Visual QA budget reservation failed." }),
+      failureDisposition: "blocked",
+    }, "budget_exceeded");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const result = runClientVisualQaAdapter({ ...input, tenantSlug, artifactId });
+  const review = result.status === "review" || result.status === "failed";
+  const evidence = traitEvidenceForOutcome(traitBundle, result.status === "failed" ? "blocked" : "succeeded", {
+    sourceIds,
+    overrides: review ? { "visual-qa": result.status === "failed" ? "blocked" : "review", "output-quality": "review" } : undefined,
+    message: result.errorCode,
+  });
+  const report = await workerRpc("record_client_visual_qa_report_worker", {
+    p_tenant_slug: tenantSlug,
+    p_artifact_id: artifactId,
+    p_job_id: jobId,
+    p_worker_token: workerToken,
+    p_worker: result.worker,
+    p_frames_sampled: result.framesSampled,
+    p_runtime_ms: result.runtimeMs,
+    p_status: result.status,
+    p_warnings: result.warnings,
+    p_findings: result.findings,
+  });
+  if (!report.ok || typeof report.value !== "string") {
+    await settleTerminalBudget(jobId, workerToken, 0, { visualQaPersistenceFailure: 1 });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {
+      ...baseMetadata,
+      traitEvidence: traitEvidenceForOutcome(traitBundle, "blocked", { sourceIds, message: "Visual QA report persistence failed." }),
+      failureDisposition: "blocked",
+    }, "visual_qa_persistence_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const outputMetadata = {
+    ...baseMetadata,
+    reportId: report.value,
+    status: result.status,
+    framesSampled: result.framesSampled,
+    findings: result.findings,
+    warnings: result.warnings,
+    traitEvidence: evidence,
+    failureDisposition: result.status === "failed" ? "blocked" : result.status === "review" ? "review" : "succeeded",
+  };
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: 0, usageMetadata: { estimatedCostMicros: 0 } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
+  await completeJob(tenantSlug, jobId, workerToken, result.status === "failed" ? "failed" : "succeeded", outputMetadata, result.status === "failed" ? result.errorCode : undefined);
+  return NextResponse.json({ ok: true, status: result.status === "failed" ? "failed" : "succeeded" });
 }
 
 /**

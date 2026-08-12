@@ -2,6 +2,13 @@
 
 Updated 2026-08-01.
 
+The current reference portfolio and the next native capability sequence are
+preserved in [`V96-NATIVE-CAPABILITY-PLANE-BRIEF.md`](./future-integrations/V96-NATIVE-CAPABILITY-PLANE-BRIEF.md).
+The reference-register integrity layer is implemented. Headroom-inspired
+compression is the current measured routing pilot and runs as a native,
+dependency-free trait in the shared provider adapter; the upstream runtime is
+not installed.
+
 This is the implementation order for turning the private `3939` operator
 edition into a safe client edition. A provider key alone does not make a tab
 cloud-safe. Each capability needs a server contract, tenant-scoped data,
@@ -27,8 +34,11 @@ private.
 | Orchestration | Paperclip, Pipeline, Agent Kanban, Loop, Ruflo | Tenant workflow board now persists scoped work items and step state in Supabase; provider-backed agent execution remains a separate opt-in adapter | Create, update, archive, delete, ownership/audit, tenant A/B test, then queue-backed provider execution where enabled |
 | Memory and context | Memory, Notebook, Journal, Goals, Context intake | Tenant-scoped Supabase records adapter is implemented for text records; Cloud Storage attachments and retention policy remain | Apply hosted-capabilities migration, then prove RLS, signed download, export, delete, retention, and private-cache behavior |
 | Creative workspaces | Open Design, Web Studio, Flow Lab, Video, Music, Agent Studio, OpenMontage, Game Studio, Thumbnails | Tenant brief/request workspaces are available for design surfaces; ElevenLabs speech, Suno music polling, HeyGen polling, and the tenant artifact pipeline are implemented; image/video/workspace parity remains | Provider allowlist, output object ownership, signed access, budget, approval |
+| Speech input | Shared microphone buttons across chat, Notebook, Goals, Local, Video, and agent surfaces | Recorded audio posts to the server-only Groq `whisper-large-v3-turbo` adapter; browser Web Speech remains only for continuous wake-word/realtime loops | `GROQ_API_KEY`, 25 MB bound, authenticated client route, rate/budget policy, no browser key exposure |
 | Research and SEO | SEO, integrations, build guide | Firecrawl read-only scrape adapter with tenant allowlist; publishing and source/licensing work remain | Secret reference, outbound-domain allowlist, attribution/legal review, rate limit |
 | Delivery | Delivery actions and external publishing | Approval-only, idempotent tenant delivery action record plus tenant-token worker and allowlisted HTTPS webhook adapter | Preview, approve, execute once, audit, rollback/undo where possible; live worker evidence is still required |
+| Visual QA | Quality, Media, artifact review | Authenticated artifact-bound queue route, bounded frame adapter, worker-only report/findings RPC, and a distinct `visual-qa` Cloud Run Job dispatcher; enabled only for the `dofgfood` owner-cloud test | Auth, artifact ownership, frame bounds, idempotency, report persistence, tenant isolation, deletion lineage, budget/audit evidence |
+| Routing compression | Text agents, Research, Notebook, Workflow, Room | Native `context-compression` trait at the shared provider adapter; compressed payload counts are used before budget estimation and evidence is hash/count-only; enabled locally and on owner-cloud test revision `00148-xwg` | Deterministic preservation of requests, code, URLs, citations, policy text, quality parity, budget trace, fallback, local/cloud smoke — passed 2026-08-12 |
 
 ## Adapter contract
 
@@ -63,6 +73,16 @@ Do not deploy Redis, an always-on worker, media providers, or a second database
 just to make the architecture look complete. Add each cost center when a
 client capability needs it.
 
+Visual QA follows the same rule: the current dependency-free worker is the
+lowest-cost proof. Roboflow Supervision, GPU media, security execution,
+communications sending, and worktree execution require separate isolated
+workers and evidence bundles before promotion.
+
+Headroom follows the same rule in reverse: only the behavior needed by Veloce
+is implemented natively. The Headroom repository remains a pinned provenance
+reference, while external proxy/MCP/model runtimes remain outside the Next.js
+image.
+
 ## Evidence bundle
 
 For each enabled capability, keep:
@@ -77,3 +97,15 @@ For each enabled capability, keep:
 
 The canonical status matrix is
 [`docs/client-runtime-13-layer-readiness.md`](./client-runtime-13-layer-readiness.md).
+
+## Intent routing boundary
+
+Natural-language intake uses the existing queue and worker boundary with
+`capability=intent-routing`; it does not create a second control-plane table.
+The route validates tenant membership, surface, manifest, provider/model
+allowlist, and secret safety before enqueueing. The worker resolves the
+Veloce-owned playbook registry, optionally classifies through the approved
+provider with no tools, and stores only a redacted plan snapshot. The same
+image and `CLIENT_INTENT_ROUTING_ENABLED` manifest switch are used locally and
+on owner-cloud. Disabling the switch removes automatic routing without
+deleting catalog data or changing specialized capability routes.

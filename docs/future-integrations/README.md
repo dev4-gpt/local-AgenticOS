@@ -23,6 +23,13 @@ gap and can fit the existing boundaries:
 
 ## Candidate inventory
 
+The V96 reference register contains the current pinned repository, guide, and
+service portfolio, including placement, runtime class, permissions, and
+evidence gates: [V96 capability reference register](./v96-capability-reference-register.md).
+The full planning prompt, sanitized resource list, built-versus-cataloged
+audit, and next implementation item are preserved in the
+[V96 Native Capability Plane brief](./V96-NATIVE-CAPABILITY-PLANE-BRIEF.md).
+
 | Candidate | Area | Current decision | Primary note |
 | --- | --- | --- | --- |
 | Cloud memory and inference | Obsidian-compatible client memory, Graphify-style graphs, and lower-cost hosted inference | Product direction: stage cloud memory first; use bounded provider APIs first; evaluate a dedicated inference plane only when measured demand justifies it | [Cloud memory and inference](./cloud-memory-and-inference.md) |
@@ -103,6 +110,20 @@ source rather than from a screenshot or an unverified copy.
   approval and audit gates.
 
 ## Next Review Triggers
+
+## Native playbook plane
+
+The governed reference register now feeds a read-only, Veloce-owned playbook
+plane. Native-enabled behavior is selected automatically from natural-language
+requests through `/api/client-runtime/intent`; it is not an installer or a
+client skill marketplace. See
+[`V96-NATIVE-INTENT-ROUTER-PLAN.md`](./V96-NATIVE-INTENT-ROUTER-PLAN.md) and
+[`v96-capability-reference-register.md`](./v96-capability-reference-register.md).
+
+The same resolver and manifest switch are used locally and in owner-cloud.
+Contract-only, reference-only, operator-only, GPU, security-execution,
+communications, worktree, and continuous-streaming-speech entries remain
+ineligible until their evidence gates pass.
 
 Revisit this register when one of these conditions occurs:
 

@@ -3,6 +3,8 @@ import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit } from "@/lib/clientDataPlane";
 import { V96_AGENCY_AGENTS_REVISION, V96_CURATED_SKILL_PACK } from "@/lib/v96SkillPack";
 import { validateV96SkillManifest } from "@/lib/v96Contracts";
+import { clientConfiguredList } from "@/lib/clientRuntimePolicy";
+import { clientReadyPlaybooks } from "@/lib/clientPlaybooks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,6 +54,12 @@ export async function GET() {
       budgetClass: role.budgetClass,
       deliverable: role.deliverable,
       approval: role.approval,
+    })),
+    playbooks: clientReadyPlaybooks(clientConfiguredList("CLIENT_ENABLED_CAPABILITIES")).map((playbook) => ({
+      id: playbook.id, label: playbook.label, description: playbook.description,
+      skillIds: playbook.skillIds, requiredTraits: playbook.requiredTraits,
+      riskClass: playbook.riskClass, approval: playbook.approval, outputType: playbook.outputType,
+      supportedSurfaces: playbook.supportedSurfaces,
     })),
   }, { headers: { "cache-control": "private, no-store" } });
 }
