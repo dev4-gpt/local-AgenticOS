@@ -10,7 +10,7 @@ later waves explicitly gated.
 | Automatic job attachment | `src/lib/clientDataPlane.ts` | implemented at enqueue |
 | Worker enforcement | `src/app/api/internal/client-runtime/jobs/route.ts` | fail-closed validation |
 | Operator inspection | `src/app/api/internal/client-runtime/trait-inspection/route.ts` | local/operator only |
-| Research evidence | structured research worker output metadata | implemented |
+| Research evidence | structured research worker output metadata | implemented and cloud-smoked on `00145-jcn` |
 | Knowledge evidence | `src/lib/contextCompiler.ts` snapshot + reviewed activation | implemented |
 | Visual-QA persistence | `product-experience/supabase-client-visual-qa.sql` | identifier defect fixed; wave gated |
 | Client UX | existing workflow and manifest | unchanged; no skill/tool selector |
@@ -20,10 +20,13 @@ later waves explicitly gated.
 1. Run `npm run verify:capability-traits`, `npx tsc --noEmit`, the focused
    Research/Notebook/SEO suites, security and client-isolation checks, and the
    production build.
-2. Deploy the same image to local and owner-cloud test lanes.
+2. Deploy the same image to local and owner-cloud test lanes. **Completed for
+   owner-cloud revision `veloce-cloud-test-00145-jcn`.**
 3. Run authenticated Research + Knowledge smoke with a fresh query and
    idempotency key. Verify citations, trait evidence, tenant isolation,
    deletion lineage, retry identity, budget settlement, and operator inspection.
+   **Completed: 2 records, 2 citations, trait version `v96-traits-1`, 13
+   evidence entries, and deterministic replay.**
 4. Record the image digest/revision in `docs/V96-VERIFICATION-REPORT.md` before
    promoting the manifest.
 5. Only then advance a catalog entry into a pilot or enabled state.

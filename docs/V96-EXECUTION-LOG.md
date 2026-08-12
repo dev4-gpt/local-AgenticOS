@@ -45,9 +45,15 @@ permissions. Operator inspection is available locally at the internal trait
 inspection route; no client skill/tool controls were added. The visual-QA SQL
 worker defect now uses the persisted `v_report_id` for finding deletion.
 
-The source-level focused suite is green. Cloud evidence for this trait layer is
-not claimed until the next client image is deployed and the authenticated
-Research + Knowledge smoke is rerun against that named revision.
+The source-level focused suite is green. Cloud evidence is now closed on
+`veloce-cloud-test-00145-jcn` / image digest
+`sha256:c2d5bfc98d4c7fda6cee5ef1f3d48c63bb319be0fcd89fc38f7a3993f0fc6be0`.
+The authenticated fresh smoke produced `jobStatus: succeeded`,
+`researchStatus: complete`, **2 records**, **2 citations**, trait version
+`v96-traits-1`, **13 trait-evidence entries**, and `replaySameJob: true`.
+Because the smoke used `scrapeResults: false`, its honest
+`failureDisposition: partial` reflects snippet-only extraction, not a failed
+job; the partial-results and confidence traits are recorded accordingly.
 
 **Codex step 4 implementation (2026-08-11):** the Hermes Content Factory is now
 implemented locally and in the client-runtime source path. It has a structured

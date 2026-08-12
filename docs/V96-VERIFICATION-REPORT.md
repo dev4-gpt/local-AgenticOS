@@ -21,11 +21,17 @@ reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
 
 The V96 trait kernel, repository catalog, enqueue integration, worker fail-closed
 validation, Research + Knowledge evidence metadata, operator inspection route,
-and visual-QA SQL identifier fix are implemented in source. The focused
-contract/configuration suite and TypeScript check pass. This is a source
-checkpoint only: it is not evidence for the currently deployed Cloud Run
-revision. Deployment and the authenticated local/cloud parity smoke remain the
-promotion gate for this layer.
+and visual-QA SQL identifier fix are implemented and deployed. Revision
+`veloce-cloud-test-00145-jcn` serves image digest
+`sha256:c2d5bfc98d4c7fda6cee5ef1f3d48c63bb319be0fcd89fc38f7a3993f0fc6be0` at
+100% traffic. The focused contract/configuration suite, TypeScript check,
+security gates, and production build pass.
+
+The authenticated fresh browser smoke completed with job `succeeded`, research
+`complete`, 2 durable records, 2 citations, trait version `v96-traits-1`, 13
+trait-evidence entries, and deterministic replay of the same job ID. The
+smoke intentionally disabled scraping, so `failureDisposition: partial` is
+the expected honest outcome for snippet-only evidence; it is not a job failure.
 
 ## Current Codex portfolio wave — source and deployment verified
 
