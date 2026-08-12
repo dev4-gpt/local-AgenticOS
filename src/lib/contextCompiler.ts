@@ -1,4 +1,5 @@
 import { CAPABILITY_CONTRACT_VERSION, isValidCapabilityTenantSlug } from "@/lib/capabilityContracts";
+import { resolveCapabilityTraits, traitBundleMetadata } from "@/lib/capabilityTraits";
 
 export interface ContextCompileRequest {
   contractVersion: typeof CAPABILITY_CONTRACT_VERSION;
@@ -41,6 +42,7 @@ export interface CompiledContextResult {
   glossary: readonly { term: string; definition: string }[];
   chunks: readonly CompiledContextChunk[];
   skillManifest: CompiledContextSkillManifest;
+  traitSnapshot: ReturnType<typeof traitBundleMetadata>;
 }
 
 export function validateContextCompileRequest(input: Partial<ContextCompileRequest>) {
@@ -68,6 +70,7 @@ export function compileContextArtifact(input: ContextCompileRequest): CompiledCo
     .slice(0, 32)
     .map((section) => ({ term: section.heading.slice(0, 120), definition: firstParagraph(section.content).slice(0, 500) }));
   const skillId = `compiled-${input.tenantSlug}-${stableHash(`${input.sourceArtifactId}|${input.sourceHash}|${input.compilerVersion}`)}`.slice(0, 63);
+  const traitSnapshot = traitBundleMetadata(resolveCapabilityTraits({ capability: "context-compiler", provider: "local", surface: "notebook" }));
   return {
     contractVersion: CAPABILITY_CONTRACT_VERSION,
     sourceArtifactId: input.sourceArtifactId,
@@ -76,6 +79,7 @@ export function compileContextArtifact(input: ContextCompileRequest): CompiledCo
     sections: sections.map((section) => ({ heading: section.heading, firstParagraph: firstParagraph(section.content) })),
     glossary,
     chunks,
+    traitSnapshot,
     skillManifest: {
       id: skillId,
       tenantSlug: input.tenantSlug,

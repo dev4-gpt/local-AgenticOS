@@ -24,5 +24,8 @@ test("visual QA worker rejects oversized or malformed frames", () => {
   expect(result.status).toBe("failed");
   expect(result.warnings).toContain("visual_qa_frame_encoding_invalid");
   expect(readFileSync("workers/visual-qa/Dockerfile", "utf8")).toContain("USER 10001");
-  expect(readFileSync("product-experience/supabase-client-visual-qa.sql", "utf8")).toContain("record_client_visual_qa_report_worker");
+  const sql = readFileSync("product-experience/supabase-client-visual-qa.sql", "utf8");
+  expect(sql).toContain("record_client_visual_qa_report_worker");
+  expect(sql).toContain("v_report_id");
+  expect(sql).not.toContain("report_id = record_id");
 });

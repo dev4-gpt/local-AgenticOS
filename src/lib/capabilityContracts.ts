@@ -57,6 +57,41 @@ export interface CapabilityCitationReference {
   evidence: string;
 }
 
+export type CapabilityFailureDisposition = "blocked" | "review" | "partial" | "succeeded";
+
+export interface CapabilityTraitSnapshot {
+  version: string;
+  capability: string;
+  provider: string | null;
+  surface: string | null;
+  traits: readonly {
+    id: string;
+    version: string;
+    required: boolean;
+    onFailure: Exclude<CapabilityFailureDisposition, "succeeded">;
+    evidenceKind: string;
+  }[];
+  sourceReferences: readonly {
+    id: string;
+    sourceUrl: string;
+    sourceCommit: string;
+    license: string;
+  }[];
+  policy: {
+    failClosedTraits: readonly string[];
+    reviewTraits: readonly string[];
+    partialTraits: readonly string[];
+  };
+}
+
+export interface CapabilityEvidenceReference {
+  id: string;
+  traitId: string;
+  status: CapabilityFailureDisposition;
+  message?: string;
+  recordedAt: string;
+}
+
 export interface CapabilityEnvelope {
   contractVersion: typeof CAPABILITY_CONTRACT_VERSION;
   capability: GovernedCapability;
@@ -68,6 +103,9 @@ export interface CapabilityEnvelope {
   approval: CapabilityApproval;
   artifactIds: readonly string[];
   citationIds: readonly string[];
+  traitSnapshot: CapabilityTraitSnapshot;
+  evidence: readonly CapabilityEvidenceReference[];
+  failureDisposition: CapabilityFailureDisposition;
   createdAt: string;
   updatedAt: string;
 }
@@ -140,6 +178,9 @@ export function validateCapabilityEnvelope(input: Partial<CapabilityEnvelope>) {
   errors.push(...validateCapabilityApproval(input.approval));
   if (!Array.isArray(input.artifactIds) || input.artifactIds.some((id) => typeof id !== "string" || !id.trim())) errors.push("artifactIds must contain non-empty strings");
   if (!Array.isArray(input.citationIds) || input.citationIds.some((id) => typeof id !== "string" || !id.trim())) errors.push("citationIds must contain non-empty strings");
+  if (!input.traitSnapshot || typeof input.traitSnapshot !== "object") errors.push("traitSnapshot is required");
+  if (!Array.isArray(input.evidence)) errors.push("evidence must be an array");
+  if (!input.failureDisposition || !( ["blocked", "review", "partial", "succeeded"] as readonly string[]).includes(input.failureDisposition)) errors.push("failureDisposition is invalid");
   if (!input.createdAt || !Number.isFinite(Date.parse(input.createdAt))) errors.push("createdAt must be a valid timestamp");
   if (!input.updatedAt || !Number.isFinite(Date.parse(input.updatedAt))) errors.push("updatedAt must be a valid timestamp");
   return errors;

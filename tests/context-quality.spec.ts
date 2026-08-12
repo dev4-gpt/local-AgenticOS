@@ -18,6 +18,7 @@ test("context compiler preserves provenance and requires review activation", () 
   expect(result.skillManifest.activation).toBe("review_required");
   expect(result.skillManifest.allowedTools).not.toContain("execute-shell");
   expect(result.chunks[0].sourceArtifactId).toBe("artifact-1");
+  expect(result.traitSnapshot.traits.map((trait) => trait.id)).toContain("reviewed-activation");
 });
 
 test("context compiler rejects missing provenance and oversized chunks", () => {

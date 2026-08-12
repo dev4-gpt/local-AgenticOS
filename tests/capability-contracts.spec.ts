@@ -20,6 +20,17 @@ test("capability envelope accepts a tenant-scoped reviewed request", () => {
     approval: { required: "none", status: "not_required" },
     artifactIds: [],
     citationIds: [],
+    traitSnapshot: {
+      version: "v96-traits-1",
+      capability: "research",
+      provider: "firecrawl",
+      surface: "notebook",
+      traits: [],
+      sourceReferences: [],
+      policy: { failClosedTraits: [], reviewTraits: [], partialTraits: [] },
+    },
+    evidence: [],
+    failureDisposition: "succeeded",
     createdAt: now,
     updatedAt: now,
   })).toEqual([]);

@@ -17,6 +17,16 @@ proven there and has not been re-run since; the change between them is the
 reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
 **Date:** 2026-08-11
 
+## Native capability-traits source checkpoint — 2026-08-12
+
+The V96 trait kernel, repository catalog, enqueue integration, worker fail-closed
+validation, Research + Knowledge evidence metadata, operator inspection route,
+and visual-QA SQL identifier fix are implemented in source. The focused
+contract/configuration suite and TypeScript check pass. This is a source
+checkpoint only: it is not evidence for the currently deployed Cloud Run
+revision. Deployment and the authenticated local/cloud parity smoke remain the
+promotion gate for this layer.
+
 ## Current Codex portfolio wave — source and deployment verified
 
 - Local HEAD includes the governed capability, structured research, SEO,

@@ -62,7 +62,7 @@ security definer
 set search_path = public, extensions
 as $$
 declare
-  report_id uuid;
+  v_report_id uuid;
   finding jsonb;
 begin
   if p_worker_token is null or length(p_worker_token) < 24
@@ -87,9 +87,9 @@ begin
     set worker = excluded.worker, frames_sampled = excluded.frames_sampled,
         runtime_ms = excluded.runtime_ms, status = excluded.status,
         warnings = excluded.warnings
-  returning id into report_id;
+  returning id into v_report_id;
 
-  delete from public.client_visual_qa_findings where client_visual_qa_findings.report_id = record_id and client_visual_qa_findings.tenant_slug = p_tenant_slug;
+  delete from public.client_visual_qa_findings where client_visual_qa_findings.report_id = v_report_id and client_visual_qa_findings.tenant_slug = p_tenant_slug;
   for finding in select value from jsonb_array_elements(p_findings)
   loop
     if jsonb_typeof(finding) <> 'object'
@@ -106,9 +106,9 @@ begin
     insert into public.client_visual_qa_findings
       (tenant_slug, report_id, code, severity, frame, confidence, message)
     values
-      (p_tenant_slug, report_id, left(finding->>'code', 80), finding->>'severity', (finding->>'frame')::integer, (finding->>'confidence')::numeric, left(finding->>'message', 1000));
+      (p_tenant_slug, v_report_id, left(finding->>'code', 80), finding->>'severity', (finding->>'frame')::integer, (finding->>'confidence')::numeric, left(finding->>'message', 1000));
   end loop;
-  return report_id;
+  return v_report_id;
 exception when others then
   return null;
 end;

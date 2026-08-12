@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { currentClientAccessToken, currentClientUser, supabaseAuthConfig } from "@/lib/clientAuth";
 import { logClientRuntimeEvent } from "@/lib/clientRuntimeObservability";
+import { resolveCapabilityTraits, traitBundleMetadata } from "@/lib/capabilityTraits";
 
 // PostgREST accepts an array for a bulk insert, which lets a caller write a
 // whole roster in one request instead of a row at a time.
@@ -160,6 +161,13 @@ export async function enqueueClientRuntimeJob(input: {
   const user = await currentClientUser();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!config || !token || !user || !tenantSlug) return null;
+  const inputRecord = input.inputMetadata ?? {};
+  const surface = typeof inputRecord.surface === "string" ? inputRecord.surface : null;
+  const traitBundle = resolveCapabilityTraits({ capability: input.capability, provider: input.provider, surface });
+  const enrichedMetadata = {
+    ...inputRecord,
+    __veloceTraits: traitBundleMetadata(traitBundle),
+  };
   const response = await fetch(`${config.url}/rest/v1/rpc/enqueue_client_runtime_job`, {
     method: "POST",
     headers: { apikey: config.key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -169,7 +177,7 @@ export async function enqueueClientRuntimeJob(input: {
       p_provider: input.provider ?? null,
       p_model: input.model ?? null,
       p_idempotency_key: input.idempotencyKey,
-      p_input_metadata: input.inputMetadata ?? {},
+      p_input_metadata: enrichedMetadata,
     }),
     cache: "no-store",
   }).catch(() => null);

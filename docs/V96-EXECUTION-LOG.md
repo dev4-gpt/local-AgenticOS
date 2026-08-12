@@ -33,6 +33,22 @@ focused V96/route/Notebook/SEO suites pass)
 · production build clean · three security gates passing
 · npm audit: no high/critical findings, 3 moderate PostCSS advisories
 
+**Native capability-traits implementation (2026-08-12, source pending deploy):**
+the shared enqueue boundary now resolves and freezes the mandatory baseline
+traits plus automatic capability traits into `input_metadata`. The worker fails
+closed on a missing or invalid snapshot. Research output records trait evidence,
+partial/review disposition, citation lineage, and the output-quality report;
+context compilation records the Knowledge trait snapshot. The versioned catalog
+in `src/lib/v96RepositoryCatalog.ts` contains the STAR-plan references with
+pinned revisions, licenses, provenance, runtime classes, and bounded execution
+permissions. Operator inspection is available locally at the internal trait
+inspection route; no client skill/tool controls were added. The visual-QA SQL
+worker defect now uses the persisted `v_report_id` for finding deletion.
+
+The source-level focused suite is green. Cloud evidence for this trait layer is
+not claimed until the next client image is deployed and the authenticated
+Research + Knowledge smoke is rerun against that named revision.
+
 **Codex step 4 implementation (2026-08-11):** the Hermes Content Factory is now
 implemented locally and in the client-runtime source path. It has a structured
 approval record, deterministic retry identity, tenant-scoped workflow evidence,
