@@ -85,6 +85,9 @@ public-site/src/assets/*.png
 # .git/info/exclude, which is local to one clone, so every other checkout (and
 # the parallel Codex session) still saw them as untracked noise.
 *[[:space:]]2.*
+# ...and the extensionless form. The pattern above requires a dot after the 2,
+# so it silently missed ".gcloudignore 2", which has no extension.
+*[[:space:]]2
 
 # Generated pitch-deck output (~10 MB). Every file under it is produced by
 # scripts/create-local-product-pitch-deck.mjs — the HTML, the PDF, and the
