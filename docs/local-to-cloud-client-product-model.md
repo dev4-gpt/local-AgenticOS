@@ -254,6 +254,7 @@ be one living product while respecting each client's data, cost, and authority.
 - [Cloud-test release ledger](./client-runtime-release-ledger.md)
 - [GCP client runtime runbook](./gcp-client-runtime-runbook.md)
 - [Hosted capability adapter roadmap](./hosted-capability-adapter-roadmap.md)
+- [V96 external corpus integration](./V96-EXTERNAL-CORPUS-INTEGRATION.md)
 - [Client onboarding playbook](../skills/veloce-client-capability-onboarding/SKILL.md)
 - [Client capability matrix template](../skills/veloce-client-capability-onboarding/references/client-capability-matrix-template.md)
 - [Future integration register](./future-integrations/README.md)
