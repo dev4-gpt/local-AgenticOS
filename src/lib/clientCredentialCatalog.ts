@@ -21,6 +21,7 @@ export const CLIENT_CREDENTIAL_OPTIONS: readonly ClientCredentialOption[] = [
   { key: "HEYGEN_API_KEY", label: "HeyGen", category: "Video", secret: true, submitAllowed: true },
   { key: "SUNO_API_KEY", label: "Suno", category: "Audio", secret: true, submitAllowed: true },
   { key: "FIRECRAWL_API_KEY", label: "Firecrawl", category: "Research", secret: true, submitAllowed: true },
+  { key: "BRAVE_API_KEY", label: "Brave Search", category: "Research", secret: true, submitAllowed: true },
   { key: "HUNTER_API_KEY", label: "Hunter", category: "Growth", secret: true, submitAllowed: true },
   { key: "SUPABASE_URL", label: "Supabase URL", category: "Data", secret: false, submitAllowed: false },
   { key: "SUPABASE_ANON_KEY", label: "Supabase publishable key", category: "Data", secret: true, submitAllowed: false },

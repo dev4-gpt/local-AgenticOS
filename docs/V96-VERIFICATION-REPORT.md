@@ -722,3 +722,29 @@ plan response did not return it. The final deployment and smoke above include
 that field. Visual QA cloud promotion for `dofgfood`, GPU media, Supervision
 enhancement, security execution, communications, worktrees, and continuous
 streaming speech remain intentionally gated.
+
+## 13. Wave 2 parity closure and additive research providers — 2026-08-13
+
+| Checkpoint | Result |
+|---|---|
+| Focused trait/contract/research/worker suite | **50 passed** |
+| TypeScript | **passed** |
+| ESLint | **passed** |
+| Production build | **Webpack fallback passed**; default Turbopack is sandbox-blocked while spawning/binding its CSS worker |
+| Reference catalog validation | **22 passed**; three new crawler references are pinned, Apache-2.0, and reference-only |
+| Client worker verification | **passed** |
+| Firecrawl policy | **Default and unchanged**; Firecrawl-only tenants do not need Brave |
+| Brave policy | **Implemented and local-tested; not cloud-enabled** until `BRAVE_API_KEY` Secret Manager evidence and authenticated smoke |
+| Local parity | **Pending runtime**; no authenticated local service was listening on `127.0.0.1:3939` during this run |
+| Full local parity | **Manual tunnel pending**; requires a user-installed `cloudflared` and `VELOCE_LOCAL_PUBLIC_URL` |
+| Cloud parity | **passed** against final revision `veloce-cloud-test-00153-wn6` (100% traffic), image digest `sha256:1e5395fcf9e5b41967c5bfd1738cdef33be7dc348993edd9eebb435c401f2123` |
+
+The worker now records the selected research provider in budget and evidence
+metadata, clamps Brave to three HTTPS search results, and ignores caller
+scraping flags for Brave jobs. The tunnel verifier accepts only a public HTTPS
+origin and never starts or persists a tunnel. Crawl4AI, Crawlee, and Jina Reader
+remain catalog references, not installed runtimes or client-selectable tools.
+
+The previously gated capabilities remain unchanged: `dofgfood` Visual QA
+promotion, GPU media, Supervision enhancement, security execution,
+communications, worktrees, and continuous streaming speech.

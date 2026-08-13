@@ -54,6 +54,8 @@ const providerAllowlist = normalizeList(manifest.providerAllowlist, Object.keys(
 const modelAllowlist = normalizeList(manifest.modelAllowlist);
 const providerModelAllowlist = normalizeProviderModelAllowlist(manifest.providerModelAllowlist);
 const capabilityProviderAllowlist = normalizeCapabilityProviderAllowlist(manifest.capabilityProviderAllowlist);
+const researchProvider = String(manifest.researchProvider || manifestRuntimeEnv.CLIENT_RESEARCH_PROVIDER || "firecrawl").trim().toLowerCase();
+if (!["firecrawl", "brave"].includes(researchProvider)) fail("researchProvider must be firecrawl or brave");
 const providerCallsEnabled = manifest.providerCallsEnabled === true;
 const modelPricing = normalizeModelPricing(manifest.modelPricing);
 const seoAllowedHosts = normalizeHostAllowlist(manifest.seoAllowedHosts);
@@ -67,6 +69,7 @@ validateProviderActivation({
   modelPricing,
   enabledCapabilities,
   capabilityProviderAllowlist,
+  researchProvider,
   seoAllowedHosts,
   deliveryAllowedHosts,
   fail,
@@ -112,6 +115,7 @@ const protectedRuntimeEnv = {
   CLIENT_ENABLED_CAPABILITIES: enabledCapabilities.join(","),
   CLIENT_ENABLED_TRAITS: enabledTraits.join(","),
   CLIENT_INTENT_ROUTING_ENABLED: manifest.intentRoutingEnabled === false ? "0" : "1",
+  CLIENT_RESEARCH_PROVIDER: researchProvider,
   CLIENT_PROVIDER_ALLOWLIST: providerAllowlist.join(","),
   ...(modelAllowlist.length > 0 ? { CLIENT_MODEL_ALLOWLIST: modelAllowlist.join(",") } : {}),
   ...(Object.keys(providerModelAllowlist).length > 0 ? { CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON: JSON.stringify(providerModelAllowlist) } : {}),
@@ -152,6 +156,7 @@ const immutableRuntimeKeys = [
   "CLIENT_ENABLED_CAPABILITIES",
   "CLIENT_ENABLED_TRAITS",
   "CLIENT_INTENT_ROUTING_ENABLED",
+  "CLIENT_RESEARCH_PROVIDER",
   "CLIENT_PROVIDER_ALLOWLIST",
   "CLIENT_MODEL_ALLOWLIST",
   "CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON",

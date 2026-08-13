@@ -48,6 +48,67 @@ validateProviderActivation({
 });
 expect(selectedMedia.message === null, "one selected media provider must not require unrelated media secrets");
 
+const firecrawlResearch = { message: null };
+validateProviderActivation({
+  enabled: true,
+  providerAllowlist: ["ANTHROPIC_API_KEY", "FIRECRAWL_API_KEY"],
+  secretNames: ["ANTHROPIC_API_KEY", "FIRECRAWL_API_KEY"],
+  modelAllowlist: ["claude-test"],
+  providerModelAllowlist: { anthropic: ["claude-test"] },
+  modelPricing: normalizeModelPricing({ "claude-test": { inputMicrosPer1k: 1, outputMicrosPer1k: 2 } }),
+  enabledCapabilities: ["text-agents", "seo-research"],
+  seoAllowedHosts: ["example.com"],
+  researchProvider: "firecrawl",
+  fail: (message) => { firecrawlResearch.message = message; },
+});
+expect(firecrawlResearch.message === null, "Firecrawl-only research activation must not require a Brave key");
+
+const braveResearch = { message: null };
+validateProviderActivation({
+  enabled: true,
+  providerAllowlist: ["ANTHROPIC_API_KEY", "BRAVE_API_KEY"],
+  secretNames: ["ANTHROPIC_API_KEY", "BRAVE_API_KEY"],
+  modelAllowlist: ["claude-test"],
+  providerModelAllowlist: { anthropic: ["claude-test"] },
+  modelPricing: normalizeModelPricing({ "claude-test": { inputMicrosPer1k: 1, outputMicrosPer1k: 2 } }),
+  enabledCapabilities: ["text-agents", "seo-research"],
+  seoAllowedHosts: ["example.com"],
+  researchProvider: "brave",
+  fail: (message) => { braveResearch.message = message; },
+});
+expect(braveResearch.message === null, "Brave-only research activation must require only the selected Brave key");
+
+const firecrawlWithoutKey = { message: null };
+validateProviderActivation({
+  enabled: true,
+  providerAllowlist: ["ANTHROPIC_API_KEY", "BRAVE_API_KEY"],
+  secretNames: ["ANTHROPIC_API_KEY", "BRAVE_API_KEY"],
+  modelAllowlist: ["claude-test"],
+  providerModelAllowlist: { anthropic: ["claude-test"] },
+  modelPricing: normalizeModelPricing({ "claude-test": { inputMicrosPer1k: 1, outputMicrosPer1k: 2 } }),
+  enabledCapabilities: ["text-agents", "seo-research"],
+  seoAllowedHosts: ["example.com"],
+  researchProvider: "firecrawl",
+  capabilityProviderAllowlist: { "seo-research": ["firecrawl"] },
+  fail: (message) => { firecrawlWithoutKey.message = message; },
+});
+expect(typeof firecrawlWithoutKey.message === "string" && firecrawlWithoutKey.message.includes("FIRECRAWL_API_KEY"), "selected Firecrawl research must reject a missing Firecrawl key");
+
+const unknownResearch = { messages: [] };
+validateProviderActivation({
+  enabled: true,
+  providerAllowlist: ["ANTHROPIC_API_KEY", "FIRECRAWL_API_KEY", "BRAVE_API_KEY"],
+  secretNames: ["ANTHROPIC_API_KEY", "FIRECRAWL_API_KEY", "BRAVE_API_KEY"],
+  modelAllowlist: ["claude-test"],
+  providerModelAllowlist: { anthropic: ["claude-test"] },
+  modelPricing: normalizeModelPricing({ "claude-test": { inputMicrosPer1k: 1, outputMicrosPer1k: 2 } }),
+  enabledCapabilities: ["text-agents", "seo-research"],
+  seoAllowedHosts: ["example.com"],
+  capabilityProviderAllowlist: { "seo-research": ["unknown-provider"] },
+  fail: (message) => { unknownResearch.messages.push(message); },
+});
+expect(unknownResearch.messages.some((message) => message.includes("does not recognize provider")), "unknown research providers must fail closed");
+
 for (const [label, config, expected] of [
   ["missing secret slot", { providerAllowlist: [], secretNames: [] }, "Secret Manager slot"],
   ["missing pricing", { modelPricing: {} }, "pricing"],

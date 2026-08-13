@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { reserveClientRuntimeBudgetWorker, settleClientRuntimeBudgetWorker, workerRpc } from "@/lib/clientDataPlane";
 import { clientProviderDefaultModel, clientTextMaxOutputTokens, clientTextUsageCostMicros, estimateClientTextCostMicros, prepareClientProviderMessages, runClientTextAdapter, safeClientProviderMetadata, safeClientProviderOutput } from "@/lib/clientProviderAdapter";
-import { clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
+import { clientProviderCallsEnabled, type ClientResearchProvider } from "@/lib/clientRuntimePolicy";
 import { estimateElevenLabsMusicCostMicros, runClientElevenLabsMusicAdapter, estimateClientImageCostMicros, estimateClientMediaCostMicros, runClientHeyGenAdapter, runClientImageAdapter, runClientMusicAdapter, runClientSpeechAdapter, safeProviderOutputUrl } from "@/lib/clientMediaAdapter";
 import { readBoundedResponseBytes } from "@/lib/clientNetworkSafety";
 import { marketSearchToV96Records, runClientAeoCheck, runClientMarketSearch, runClientSeoAdapter } from "@/lib/clientSeoAdapter";
@@ -1180,14 +1180,22 @@ async function storeArtifact(tenantSlug: string, jobId: string, workerToken: str
 }
 
 async function processSeoJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; idempotency_key?: string; input_metadata?: Record<string, unknown> | null }) {
-  if (job.provider !== "firecrawl") {
+  if (job.provider !== "firecrawl" && job.provider !== "brave") {
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_not_allowed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const input = job.input_metadata ?? {};
   const operation = typeof input.operation === "string" ? input.operation : "scrape";
+  if (job.provider === "brave" && operation !== "research") {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_operation_not_allowed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
   if (operation === "aeo") return processAeoJob(jobId, tenantSlug, workerToken, input);
   if (operation === "research") return processMarketResearchJob(jobId, tenantSlug, workerToken, job, input);
+  if (job.provider !== "firecrawl") {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "provider_not_allowed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
   const estimate = Math.max(0, Math.round(Number(process.env.CLIENT_FIRECRAWL_COST_MICROS ?? 1000)));
   if (!(await reserveClientRuntimeBudgetWorker({ provider: "firecrawl", model: "scrape-markdown", amountMicros: estimate, jobId, workerToken }))) {
     logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider: "firecrawl", status: 429 });
@@ -1239,13 +1247,16 @@ async function processAeoJob(jobId: string, tenantSlug: string, workerToken: str
  * caller cannot widen that by passing its own list. Results are normalised
  * through the v96 contract so every claim is attributable.
  */
-async function processMarketResearchJob(jobId: string, tenantSlug: string, workerToken: string, job: { idempotency_key?: string }, input: Record<string, unknown>) {
+async function processMarketResearchJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; idempotency_key?: string }, input: Record<string, unknown>) {
+  const provider: ClientResearchProvider = job.provider === "brave" ? "brave" : "firecrawl";
   const query = typeof input.query === "string" ? input.query : "";
-  const scrapeResults = input.scrapeResults === true;
+  // Brave is search-only. Enforce this at the worker boundary as well as at
+  // the client route so a manually crafted job cannot turn it into a scraper.
+  const scrapeResults = provider === "brave" ? false : input.scrapeResults === true;
   const limit = Math.max(1, Math.min(3, Math.round(Number(input.limit ?? 3))));
   const idempotencyKey = job.idempotency_key ?? `seo-research-${jobId}`;
   const notebookId = typeof input.notebookId === "string" && /^[0-9a-f-]{36}$/i.test(input.notebookId) ? input.notebookId : null;
-  const traitBundle = resolveCapabilityTraits({ capability: "research", provider: "firecrawl", surface: typeof input.surface === "string" ? input.surface : "notebook" });
+  const traitBundle = resolveCapabilityTraits({ capability: "research", provider, surface: typeof input.surface === "string" ? input.surface : "notebook" });
   const sourceIds = traitBundle.sourceReferences.map((source) => source.id);
   const failureMetadata = (disposition: "blocked" | "partial", message: string, overrides: NonNullable<Parameters<typeof traitEvidenceForOutcome>[2]>["overrides"] = {}) => ({
     traitSnapshot: traitBundleMetadata(traitBundle),
@@ -1269,30 +1280,32 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
     p_job_id: jobId,
     p_worker_token: workerToken,
     p_idempotency_key: idempotencyKey,
-    p_provider: "firecrawl",
+    p_provider: provider,
     p_query: query,
     // Create the durable run before optional notebook lineage is reconciled.
     p_notebook_id: null,
     p_records: [],
   });
   if (!started.ok || typeof started.value !== "string") {
-    logClientRuntimeEvent("runtime.research_persistence_failed", { tenant: tenantSlug, provider: "firecrawl", jobId, status: started.status, reason: "run_start_failed" });
+    logClientRuntimeEvent("runtime.research_persistence_failed", { tenant: tenantSlug, provider, jobId, status: started.status, reason: "run_start_failed" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", failureMetadata("blocked", "The durable research run could not be created.", { provenance: "blocked", "deletion-lineage": "blocked" }), "research_persistence_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   await updateResearchRun("running", null, null);
-  const perUnit = Math.max(0, Math.round(Number(process.env.CLIENT_FIRECRAWL_COST_MICROS ?? 1000)));
+  const perUnit = provider === "brave"
+    ? Math.max(0, Math.round(Number(process.env.CLIENT_BRAVE_COST_MICROS ?? 0)))
+    : Math.max(0, Math.round(Number(process.env.CLIENT_FIRECRAWL_COST_MICROS ?? 1000)));
   // Reserve for the worst case up front so a scrape cannot push the tenant past
   // its cap after the search has already spent.
   const estimate = perUnit * (scrapeResults ? limit + 1 : 1);
-  if (!(await reserveClientRuntimeBudgetWorker({ provider: "firecrawl", model: scrapeResults ? "search-scrape" : "search", amountMicros: estimate, jobId, workerToken }))) {
-    logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider: "firecrawl", status: 429 });
+  if (!(await reserveClientRuntimeBudgetWorker({ provider, model: scrapeResults ? "search-scrape" : "search", amountMicros: estimate, jobId, workerToken }))) {
+    logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider, status: 429 });
     await updateResearchRun("failed", 0, "budget_exceeded");
     await completeJob(tenantSlug, jobId, workerToken, "failed", failureMetadata("blocked", "The reserved tenant budget was exhausted.", { budget: "blocked" }), "budget_exceeded");
     return NextResponse.json({ ok: true, status: "failed" });
   }
 
-  const search = await runClientMarketSearch({ query, limit, scrapeResults });
+  const search = await runClientMarketSearch({ query, limit, scrapeResults, provider });
   if (!search.ok) {
     if (search.status >= 500 && await retryJob(tenantSlug, jobId, workerToken, search.error)) return NextResponse.json({ ok: false, error: "provider_retryable" }, { status: 500 });
     await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
@@ -1301,8 +1314,8 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
     return NextResponse.json({ ok: true, status: "failed" });
   }
 
-  const records = marketSearchToV96Records({ tenantSlug, query: search.query, results: search.results, scraped: scrapeResults });
-  const seoRecord = firecrawlSearchToSeoIntelligenceRecord({
+  const records = marketSearchToV96Records({ tenantSlug, query: search.query, results: search.results, scraped: scrapeResults, provider });
+  const seoRecord = provider === "firecrawl" ? firecrawlSearchToSeoIntelligenceRecord({
     request: createSeoIntelligenceRequest({
       requestId: jobId,
       tenantSlug,
@@ -1313,14 +1326,14 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
     }),
     results: search.results,
     providerCostMicros: search.estimatedCostMicros,
-  });
+  }) : null;
   const sourceRecordIds = records.map((record) => record.id);
   const partialResults = records.some((record) => record.status !== "complete");
   const confidenceNeedsReview = records.some((record) => record.confidence < 0.8);
   const qualityInput = records.map((record) => `${record.fields.title ?? "Untitled source"}\n${record.fields.summary ?? ""}`).join("\n\n");
   const quality = applyOutputQualityPolicy(qualityInput);
   const outputMetadata = {
-    adapter: scrapeResults ? "firecrawl-search-scrape" : "firecrawl-search",
+    adapter: scrapeResults ? `${provider}-search-scrape` : `${provider}-search`,
     provider: search.provider,
     model: search.model,
     query: search.query,

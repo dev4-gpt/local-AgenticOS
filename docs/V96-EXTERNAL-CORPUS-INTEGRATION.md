@@ -1,7 +1,8 @@
 # V96 external corpus integration — one OS, two deployments
 
-**Status:** planned, not started. Blocked on the in-flight intent-router work
-landing (see [Sequencing](#sequencing)).
+**Status:** active governed registry; additive Wave 2 provider work is in
+progress. Native Veloce behavior is enabled only where evidence says so;
+upstream runtimes remain outside the product image.
 **Date:** 2026-08-13
 
 Nine external resources are to be absorbed into the OS. This file records what
@@ -14,6 +15,36 @@ this document is the corpus disposition and defers to that one on the graduation
 contract, release process, and guardrails.
 
 ---
+
+## Wave 2 parity and research-provider checkpoint — 2026-08-13
+
+The shared research boundary now supports a server-selected Brave adapter
+beside Firecrawl. Firecrawl remains the default and requires only
+`FIRECRAWL_API_KEY`; Brave requires only `BRAVE_API_KEY` when the manifest
+selects `CLIENT_RESEARCH_PROVIDER=brave`. Both use the existing tenant RPCs,
+budget ledger, retry identity, citation persistence, deletion lineage, and
+audit metadata. Brave is search-only: three results maximum, HTTPS URLs only,
+bounded queries, and no caller-controlled scraping even for manually crafted
+jobs. Brave is locally implemented and tested, but is not cloud-enabled until
+its Secret Manager version and authenticated smoke evidence are recorded.
+
+Crawl4AI, Crawlee, and Jina Reader are pinned Apache-2.0 architectural
+references. They are not installed, automatically selected, or allowed to
+replace Firecrawl/Brave. A future provider resolver may choose among them only
+after each isolated worker/hosted-boundary evidence gate passes.
+
+For full local Cloud Tasks parity, start the tunnel manually and pass its
+HTTPS origin to the launcher:
+
+```bash
+cloudflared tunnel --url http://127.0.0.1:3939
+npm run dev:client-runtime -- --env-file ~/.veloce-supabase.env --port 3939 --public-base-url https://<temporary-tunnel>.trycloudflare.com
+VELOCE_LOCAL_PUBLIC_URL=https://<temporary-tunnel>.trycloudflare.com npm run verify:parity:local:tunnel
+```
+
+Without a tunnel, localhost remains fail-closed with `task_base_url_not_public`.
+The tunnel is never started or persisted by Veloce, and the community Cloud
+Tasks emulator is test-only rather than authoritative.
 
 ## The framing
 

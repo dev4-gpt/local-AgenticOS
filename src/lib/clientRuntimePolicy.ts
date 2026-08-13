@@ -108,6 +108,13 @@ export function clientIntentRoutingEnabled() {
   return process.env.CLIENT_INTENT_ROUTING_ENABLED === "1";
 }
 
+export type ClientResearchProvider = "firecrawl" | "brave";
+
+/** Provider choice is server-side manifest policy, never a client selector. */
+export function clientResearchProvider(): ClientResearchProvider {
+  return process.env.CLIENT_RESEARCH_PROVIDER?.trim().toLowerCase() === "brave" ? "brave" : "firecrawl";
+}
+
 /**
  * Takes both identifiers because the two checks compare different things, and
  * conflating them has broken this twice in opposite directions.

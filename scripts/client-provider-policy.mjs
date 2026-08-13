@@ -20,6 +20,8 @@ export const PROVIDER_SECRET_KEYS = Object.freeze({
 
 const CAPABILITY_SECRET_KEYS = Object.freeze({
   media: ["ELEVENLABS_API_KEY", "ELEVENLABS_MUSIC_API_KEY", "HEYGEN_API_KEY", "SUNO_API_KEY", "OPENAI_API_KEY"],
+  // Firecrawl remains the default. A Brave key is required only when Brave
+  // is selected explicitly by the server-side research-provider manifest.
   "seo-research": ["FIRECRAWL_API_KEY"],
   seo: ["FIRECRAWL_API_KEY"],
 });
@@ -34,8 +36,8 @@ const CAPABILITY_PROVIDERS = Object.freeze({
     suno: "SUNO_API_KEY",
     openai: "OPENAI_API_KEY",
   }),
-  "seo-research": Object.freeze({ firecrawl: "FIRECRAWL_API_KEY" }),
-  seo: Object.freeze({ firecrawl: "FIRECRAWL_API_KEY" }),
+  "seo-research": Object.freeze({ firecrawl: "FIRECRAWL_API_KEY", brave: "BRAVE_API_KEY" }),
+  seo: Object.freeze({ firecrawl: "FIRECRAWL_API_KEY", brave: "BRAVE_API_KEY" }),
 });
 
 export function normalizeCapabilityProviderAllowlist(value) {
@@ -81,6 +83,7 @@ export function validateProviderActivation({
   modelPricing,
   enabledCapabilities,
   capabilityProviderAllowlist = {},
+  researchProvider = "firecrawl",
   seoAllowedHosts = [],
   deliveryAllowedHosts = [],
   fail,
@@ -112,14 +115,15 @@ export function validateProviderActivation({
   const selectedCapabilities = normalizeCapabilityProviderAllowlist(capabilityProviderAllowlist);
   for (const capability of enabledCapabilities) {
     const configuredProviders = selectedCapabilities[capability];
-    const providerKeys = configuredProviders
-      ? configuredProviders.map((provider) => {
+    const selectedProviders = configuredProviders ?? ((capability === "seo" || capability === "seo-research") && researchProvider === "brave" ? ["brave"] : undefined);
+    const providerKeys = selectedProviders
+      ? selectedProviders.map((provider) => {
         const providerKey = CAPABILITY_PROVIDERS[capability]?.[provider];
         if (!providerKey) fail(`Capability ${capability} does not recognize provider: ${provider}`);
         return providerKey;
       })
       : CAPABILITY_SECRET_KEYS[capability] ?? [];
-    if (configuredProviders && configuredProviders.length === 0) fail(`Capability ${capability} requires at least one selected provider`);
+    if (selectedProviders && selectedProviders.length === 0) fail(`Capability ${capability} requires at least one selected provider`);
     for (const providerKey of providerKeys) {
       if (!allowedSecrets.has(providerKey) || !availableSecrets.has(providerKey)) {
         fail(`Capability ${capability} requires an allowlisted Secret Manager slot for ${providerKey}`);

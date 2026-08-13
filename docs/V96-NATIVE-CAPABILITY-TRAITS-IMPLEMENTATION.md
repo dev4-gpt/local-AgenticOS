@@ -48,6 +48,34 @@ evidence gates. Tokenized URLs and under-specified entries fail the focused
 suite. The preserved planning brief is
 [`docs/future-integrations/V96-NATIVE-CAPABILITY-PLANE-BRIEF.md`](./future-integrations/V96-NATIVE-CAPABILITY-PLANE-BRIEF.md).
 
+## Wave 2 parity closure and additive research providers — 2026-08-13
+
+The research worker now distinguishes the selected provider at every boundary:
+job metadata, trait provenance, budget reservation/settlement, research runs,
+citations, and operator evidence. Firecrawl-only manifests do not require a
+Brave secret. Brave-only manifests require `BRAVE_API_KEY` and enforce
+search-only behavior at the worker even if a job is manually crafted.
+
+The local parity command remains intentionally non-GCP-dependent. The separate
+`verify:parity:local:tunnel` command accepts only a manually supplied public
+HTTPS tunnel URL and runs the Cloud Tasks-dependent surfaces. `cloudflared` is
+not installed or launched automatically. Crawl4AI, Crawlee, and Jina Reader
+are cataloged with pinned Apache-2.0 references and remain `reference-only`.
+
+Current evidence: focused tests, typecheck, lint, reference validation, worker
+verification, and the webpack production build pass. The default Turbopack
+build is blocked in this sandbox by its internal process/port permission
+restriction. Local parity cannot run while no authenticated local runtime is
+listening on port 3939; cloud parity and Brave promotion remain separate
+acceptance gates. Firecrawl remains the deployed default. Visual QA promotion
+for `dofgfood`, GPU, Supervision enhancement, security execution,
+communications, worktrees, and continuous streaming speech remain gated.
+The final owner-cloud Firecrawl-default deployment is revision
+`veloce-cloud-test-00153-wn6`, image digest
+`sha256:1e5395fcf9e5b41967c5bfd1738cdef33be7dc348993edd9eebb435c401f2123`,
+with `context-compression` and intent routing enabled. Authenticated intent
+smoke and full cloud parity passed.
+
 ## Headroom compression pilot — 2026-08-12
 
 The shared provider adapter now resolves `context-compression` for

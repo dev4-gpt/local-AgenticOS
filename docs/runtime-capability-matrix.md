@@ -53,6 +53,14 @@ These can be exposed only through server-side provider APIs, a per-client allowl
 | Video, Music, Thumbnails | The specific media provider API, with output storage and budget controls. ElevenLabs speech, Suno music polling, and HeyGen video polling now have server-side queue adapters; image and broader production workflows remain gated. |
 | Recorded microphone input | Groq `whisper-large-v3-turbo` through `/api/speech/transcribe`; the key remains server-side and audio is bounded before dispatch. Continuous wake-word/realtime loops remain browser/WebRTC-specific until a streaming provider contract is added. |
 
+| Research provider | Placement | Current state |
+|---|---|---|
+| Firecrawl | Existing governed research worker | Default provider; existing cloud behavior unchanged |
+| Brave Search API | Existing governed research worker | Native adapter implemented and focused-tested; inactive until cloud Secret Manager key and smoke evidence |
+| Crawl4AI | Separate external Python/browser worker | Pinned reference-only; never selected automatically or bundled |
+| Crawlee | Separate external Node crawler worker | Pinned reference-only; never selected automatically or bundled |
+| Jina Reader | Separate hosted/open-source reader boundary | Pinned reference-only; never selected automatically or bundled |
+
 The shared provider adapter also applies the server-manifest-controlled native
 `context-compression` trait to provider-bound jobs. It is dependency-free,
 deterministic, preserves authoritative content, and records only redacted

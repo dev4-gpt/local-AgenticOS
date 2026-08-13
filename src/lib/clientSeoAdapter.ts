@@ -3,6 +3,7 @@ import { V96_CONTRACT_VERSION, type V96StructuredResearchRecord } from "@/lib/v9
 import { providerEnvKey } from "@/lib/providerKeys";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { isPrivateAddress, readBoundedResponseBytes, resolvesToPublicAddresses } from "@/lib/clientNetworkSafety";
+import { searchBraveWeb, type BraveSearchResult } from "@/lib/braveSearchAdapter";
 
 const FIRECRAWL_ENDPOINT = "https://api.firecrawl.dev/v1/scrape";
 const MAX_URL_LENGTH = 2000;
@@ -107,13 +108,22 @@ export type MarketSearchResult = {
   markdown: string;
 };
 
-export async function runClientMarketSearch(input: { query: string; limit?: number; scrapeResults?: boolean }) {
-  if (!clientProviderEnabled("FIRECRAWL_API_KEY")) return { ok: false as const, status: 403, error: "provider_not_allowlisted" };
-  const key = providerEnvKey("FIRECRAWL_API_KEY");
+export type MarketSearchProvider = "firecrawl" | "brave";
+
+export async function runClientMarketSearch(input: { query: string; limit?: number; scrapeResults?: boolean; provider?: MarketSearchProvider }) {
+  const provider = input.provider === "brave" ? "brave" : "firecrawl";
+  const providerKey = provider === "brave" ? "BRAVE_API_KEY" : "FIRECRAWL_API_KEY";
+  if (!clientProviderEnabled(providerKey)) return { ok: false as const, status: 403, error: "provider_not_allowlisted" };
+  const key = providerEnvKey(providerKey);
   if (!key) return { ok: false as const, status: 503, error: "provider_not_configured" };
   const query = input.query.trim().slice(0, 400);
   if (!query) return { ok: false as const, status: 400, error: "research_query_required" };
   const limit = Math.max(1, Math.min(MAX_SEARCH_RESULTS, Math.round(input.limit ?? 5)));
+
+  if (provider === "brave") {
+    const result = await searchBraveWeb({ query, limit, apiKey: key });
+    return result.ok ? { ...result, results: result.results satisfies BraveSearchResult[] } : result;
+  }
 
   const response = await fetch(FIRECRAWL_SEARCH_ENDPOINT, {
     method: "POST",
@@ -294,6 +304,7 @@ export function marketSearchToV96Records(input: {
   query: string;
   results: readonly MarketSearchResult[];
   scraped: boolean;
+  provider?: MarketSearchProvider;
 }): V96StructuredResearchRecord[] {
   const retrievedAt = new Date().toISOString();
   return input.results.map((result) => {
@@ -303,7 +314,7 @@ export function marketSearchToV96Records(input: {
       contractVersion: V96_CONTRACT_VERSION,
       id: randomUUID(),
       tenantSlug: input.tenantSlug,
-      provider: "firecrawl" as const,
+      provider: input.provider ?? "firecrawl",
       sourceUrl: result.url,
       retrievedAt,
       fields: {

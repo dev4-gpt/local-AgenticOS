@@ -32,7 +32,7 @@ export interface V96SkillManifest {
 export interface V96StructuredResearchRequest {
   contractVersion: typeof V96_CONTRACT_VERSION;
   tenantSlug: string;
-  provider: "scrapegraphai" | "firecrawl" | "agentreach" | "other";
+  provider: "scrapegraphai" | "firecrawl" | "brave" | "agentreach" | "other";
   sourceUrls: readonly string[];
   fields: readonly string[];
   maxPages: number;

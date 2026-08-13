@@ -5,6 +5,7 @@
   "approvalOwner": "Aryaman",
   "acknowledgeClientSafeRuntime": false,
   "providerCallsEnabled": false,
+  "researchProvider": "firecrawl",
   "intentRoutingEnabled": false,
   "modelPricing": {},
   "seoAllowedHosts": [],

@@ -1,6 +1,6 @@
 # V96 Capability Reference Register
 
-Updated 2026-08-12. These references are architectural inputs, not runtime
+Updated 2026-08-13. These references are architectural inputs, not runtime
 dependencies, plugins, marketplace entries, or permission grants. Every GitHub
 source is pinned in `src/lib/v96RepositoryCatalog.ts`; external guides and
 services use a dated reference and remain contract-only until their terms and
@@ -31,6 +31,10 @@ behavior are reviewed. Activation is explicit: native Veloce behavior is
 | [AI Loops guide](https://learnaiwithmariah.com/guides/ai-loops-worth-stealing/) | Orchestration reference | dependency-free | cataloged | native-enabled | Reference review |
 | [Roboflow Supervision](https://github.com/roboflow/supervision) | Visual QA worker | operator-worker | gated | externally-gated | Fixed-fixture reproducibility |
 | [Groq Speech-to-Text](https://console.groq.com/docs/speech-to-text) | All recorded microphone inputs | adapter | pilot | native-enabled | Server-only key, 25 MB bound, tenant auth, rate/budget evidence, local/cloud smoke |
+| [Brave Search API](https://brave.com/search/api/) | Research, Knowledge | adapter | pilot | reference-only until cloud smoke | Server-only `BRAVE_API_KEY`, max 3 HTTPS results, budget/citation/idempotency evidence; Firecrawl remains default |
+| [Crawl4AI](https://github.com/unclecode/crawl4AI) | Research, Knowledge external worker | operator-worker | cataloged | reference-only | Pinned Apache-2.0 source; isolated Python/browser worker, SSRF/egress, cost, citation, rollback evidence |
+| [Crawlee](https://github.com/apify/crawlee) | Research, Knowledge external worker | operator-worker | cataloged | reference-only | Pinned Apache-2.0 source; isolated Node crawler, SSRF/egress, rate/budget, citation, rollback evidence |
+| [Jina Reader](https://github.com/jina-ai/reader) | Research, Knowledge reader adapter | adapter | cataloged | reference-only | Pinned Apache-2.0 source; hosted boundary, tenant isolation, provider terms, citation, rate/budget, rollback evidence |
 
 ## Placement rules
 
@@ -45,3 +49,10 @@ behavior are reviewed. Activation is explicit: native Veloce behavior is
   means only the corresponding Veloce-owned trait/adapter is enabled.
 - Query-string tokens, private credentials, cookies, local paths, and copied
   vendor documentation are not stored in this register.
+- `cloudflared tunnel --url http://127.0.0.1:3939` is temporary local parity
+  infrastructure only. The Cloud Tasks emulator is optional offline test
+  infrastructure and is not the parity authority. Veloce never starts,
+  installs, or persists a tunnel automatically.
+- The three crawler entries are intentionally non-executable references. They
+  cannot replace Firecrawl or Brave, appear in no client provider selector,
+  and are not included in the Next.js image.

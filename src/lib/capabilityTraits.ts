@@ -160,7 +160,7 @@ export function resolveCapabilityTraits(input: {
   const capability = canonicalCapability(input.capability.trim().toLowerCase());
   const additional = [...(CAPABILITY_TRAITS[capability] ?? []), ...(PROVIDER_BOUND_CAPABILITIES.has(capability) ? PROVIDER_BOUND_TRAITS : [])];
   const traits = [...BASELINE, ...additional].filter((trait, index, all) => all.findIndex((candidate) => candidate.id === trait.id) === index);
-  const sourceIds = new Set([...(REPOSITORY_TRAITS[capability] ?? []), "agency-agents", "i-have-adhd", "no-ai-slop", ...(PROVIDER_BOUND_CAPABILITIES.has(capability) ? ["headroom"] : [])]);
+  const sourceIds = new Set([...(REPOSITORY_TRAITS[capability] ?? []), "agency-agents", "i-have-adhd", "no-ai-slop", ...(PROVIDER_BOUND_CAPABILITIES.has(capability) ? ["headroom"] : []), ...(input.provider === "brave" ? ["brave-search-api"] : [])]);
   const sourceReferences = V96_REPOSITORY_CATALOG.filter((reference) => sourceIds.has(reference.id)).map(({ id, sourceUrl, sourceCommit, license }) => ({ id, sourceUrl, sourceCommit, license }));
   return {
     version: CAPABILITY_TRAIT_VERSION,
