@@ -43,8 +43,28 @@ env.CLIENT_PROVIDER_CALLS_ENABLED = env.CLIENT_PROVIDER_CALLS_ENABLED || "1";
 env.CLIENT_ENABLED_TRAITS = env.CLIENT_ENABLED_TRAITS || "context-compression";
 env.CLIENT_INTENT_ROUTING_ENABLED = env.CLIENT_INTENT_ROUTING_ENABLED || "1";
 
+// Authenticated local parity needs three things the launcher cannot invent: a
+// Supabase project to validate the session against, the tenant slug, and the
+// email allowlist. Without them the runtime starts happily and then answers 401
+// to everything, because clientAuth returns false for every user when the
+// allowlist is empty under client edition. That silence is expensive to debug,
+// so say it once, up front. These are checks, not defaults -- the launcher must
+// not guess a tenant or an operator identity.
+const parityBlockers = [];
+if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) parityBlockers.push("SUPABASE_URL and SUPABASE_ANON_KEY (pass --env-file; values are never printed)");
+if (!env.CLIENT_SLUG?.trim()) parityBlockers.push("CLIENT_SLUG (non-secret, e.g. the tenant slug you are dogfooding)");
+if (!env.CLIENT_ALLOWED_USER_EMAILS?.trim()) parityBlockers.push("CLIENT_ALLOWED_USER_EMAILS (non-secret, comma separated)");
+if (!env.CLIENT_MODEL_ALLOWLIST?.trim()) parityBlockers.push("CLIENT_MODEL_ALLOWLIST (non-secret; without it provider work stops at model_not_allowlisted)");
+
 console.log(`Starting Veloce client-runtime local test on http://127.0.0.1:${port}`);
 console.log("Loaded credential names only; secret values are not printed.");
+if (parityBlockers.length) {
+  console.log("");
+  console.log("Unauthenticated browsing will work. Authenticated local parity will NOT, because:");
+  for (const blocker of parityBlockers) console.log(`  - missing ${blocker}`);
+  console.log("See docs/V96-EXTERNAL-CORPUS-INTEGRATION.md (Wave 2) for the exact command.");
+  console.log("");
+}
 
 const child = spawn(process.execPath, ["scripts/run-next-dev.mjs"], {
   cwd: process.cwd(),

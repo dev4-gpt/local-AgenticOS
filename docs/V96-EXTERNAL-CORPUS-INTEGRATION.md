@@ -145,6 +145,38 @@ Makes "local = cloud" checkable rather than asserted.
 - **Promote the surface-map script to a parity gate** with an npm script, so it
   is one command rather than tribal knowledge.
 
+#### Running authenticated local parity
+
+The local launcher cannot invent a tenant or an operator identity, so it now
+refuses to pretend: it starts, tells you which of the four prerequisites are
+missing, and serves unauthenticated browsing only. Previously it started
+silently and answered `401` to everything, because `clientAuth.ts` returns
+`false` for every user when the email allowlist is empty under client edition.
+
+Secrets stay in a file and are passed **by path**; only non-secret values go on
+the command line:
+
+```bash
+# ~/.veloce-supabase.env must be chmod 600 and hold SUPABASE_URL + SUPABASE_ANON_KEY.
+CLIENT_SLUG=<tenant-slug> \
+CLIENT_ALLOWED_USER_EMAILS=<your-login-email> \
+CLIENT_MODEL_ALLOWLIST=<comma-separated approved models> \
+npm run dev:client-runtime -- --env-file ~/.veloce-supabase.env --port 3939
+```
+
+Then, with a browser session cookie file (never pasted into a terminal or chat):
+
+```bash
+npm run verify:parity:local
+npm run verify:parity:cloud
+npm run verify:parity          # both, in order
+```
+
+`CLIENT_MODEL_ALLOWLIST` is the one that is easy to miss. Without it the runtime
+authenticates correctly and then stops at `model_not_allowlisted`, which looks
+like an application failure and is not — cloud supplies the allowlist through
+its manifest, and local has no manifest.
+
 ### Wave 3 — Named loop registry
 
 Loop is a free-text goal box with no templates. Add named loops in the
