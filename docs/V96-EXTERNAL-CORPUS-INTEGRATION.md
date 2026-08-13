@@ -5,9 +5,10 @@ progress. Native Veloce behavior is enabled only where evidence says so;
 upstream runtimes remain outside the product image.
 **Date:** 2026-08-13
 
-Nine external resources are to be absorbed into the OS. This file records what
-each one is, its licence, and exactly where it lands — so the decision is
-reviewable before any of it is built, and so nobody re-derives it later.
+Ten external resources are to be absorbed into the OS, plus a **30-repository
+harness corpus** catalogued in its own section below. This file records what each
+one is, its licence, and exactly where it lands — so the decision is reviewable
+before any of it is built, and so nobody re-derives it later.
 
 The product model itself is not restated here. It lives in
 [local-to-cloud-client-product-model.md](./local-to-cloud-client-product-model.md);
@@ -89,6 +90,8 @@ lane reads the operator filesystem.
 | [social-media-skills](https://github.com/charlie947/social-media-skills) | MIT | 22 skills → content/social playbooks and roles |
 | [The 53 Best Claude Skills](https://drive.google.com/file/d/1SoswRHsGY0oOeWQuKwurXOg2u-OoifL0/view) | index, not code | Curation source; **reconcile with existing catalog rows** |
 | Harness essay (Charlie Hills) — `launch-system/Wait, your Claude doesn't have a harness_!.pdf` | essay | **Audit frame** — five components, checked in both environments |
+| Instruction-budget essay (Charlie Hills) — `launch-system/Delete your CLAUDE.md - by Charlie Hills - MarTech AI.pdf` | essay | **Instruction-budget discipline** — a measured ceiling on standing instructions, Wave 5 |
+| Harness corpus — 30 repositories, same author, grouped by the five components | mixed, see [table](#the-harness-corpus--30-repositories) | Split across Waves 3–5; **10 of 30 slugs as supplied were wrong** |
 | [15 AI loops worth stealing](https://learnaiwithmariah.com/guides/ai-loops-worth-stealing/) | article | **Named loop registry** — makes Loop reachable from the router |
 | [system-design-primer](https://github.com/donnemartin/system-design-primer) | **MIT**, 363k★ | System-design playbook + reference role, attribution recorded |
 | [DevOps-System-Design](https://github.com/aman556/DevOps-System-Design) | **none** | Reference-only catalog row, `license: "unknown"` — **cite nothing** |
@@ -118,6 +121,126 @@ packages themselves do not.
   [system-design-primer](https://github.com/donnemartin/system-design-primer)
   covers the same ground under MIT with attribution. It is catalogued as
   considered, not adopted.
+
+---
+
+## The harness corpus — 30 repositories
+
+The harness essay ships a reading list of 30 repositories grouped under five
+headings: **HARNESS** (what it does before it types), **SKILLS** (the jobs it
+repeats), **MEMORY** (what survives the session), **TOOLS** (what it reaches past
+the terminal), **COST** (what it actually burns).
+
+These are the same author's second taxonomy, and it is *not* identical to the
+five-component audit frame already in Wave 5 — it overlaps it. HARNESS covers
+Context and Personalisation together, SKILLS lines up with Delegation, MEMORY and
+TOOLS map cleanly onto Memory and Action. The residue is the interesting part:
+**COST has no row in the Wave 5 component table at all**, which is the corpus's
+most useful single finding. See
+[Wave 5](#wave-5--design-reference--harness-audit).
+
+### Slugs were resolved before use, and most were wrong
+
+The list as circulated is truncated at the source — several entries are Google
+*search* URLs rather than repository URLs, and two owners contradict themselves
+between renderings. Every slug below was resolved against the GitHub API. **Ten
+of thirty were wrong as supplied; two do not resolve at all.**
+
+| As supplied | Actually | Note |
+|---|---|---|
+| `thedotkevin/claude-mem` | `thedotmack/claude-mem` | wrong owner |
+| `Othmanic/planning-with-files` | `OthmanAdi/planning-with-files` | wrong owner |
+| `colbyfayock/codegraph` | `colbymchenry/codegraph` | wrong owner (list gives both) |
+| `yamada-ui/repomix` | `yamadashy/repomix` | wrong owner |
+| `github/mcp` | `github/github-mcp-server` | wrong name |
+| `CompositeAI/awesome-claude-skills` | `ComposioHQ/awesome-claude-skills` | wrong owner |
+| `mendableai/firecrawl` | `firecrawl/firecrawl` | org renamed; old slug redirects |
+| `leonxlnx/taste-skill` | `Leonxlnx/taste-skill` | case |
+| `jarro…/claude-hud` | `jarrodwatts/claude-hud` | truncated |
+| `Juliu…/caveman` | `JuliusBrussee/caveman` | truncated |
+| `anthropics/claude-plugins` | **unresolved — 404** | excluded until identified |
+| `GraphifyAI/graphify` | **unresolved — no canonical repo** | excluded until identified |
+
+Star counts are deliberately not recorded here: the counts this environment's
+`gh` returned were implausible on repositories whose real scale is known, so they
+are not evidence. Licences were spot-checked against independently known values
+and did agree.
+
+### Disposition, by component
+
+`W3`/`W4`/`W5` is the wave; **operator-only** means it configures the authoring
+environment and never enters the product image — the same rule already applied to
+the 53-skills packages.
+
+| # | Repository | Licence | Wave | Lands as |
+|---|---|---|---|---|
+| **HARNESS** ||||| 
+| 1 | [learn-claude-code](https://github.com/shareAI-lab/learn-claude-code) | MIT | W5 | Minimal-harness baseline — the "0 to 1" agent harness the audit measures against |
+| 2 | [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) | **none** | W5 | Reference-only, `license: "unknown"` — **cite nothing** |
+| 3 | [superpowers](https://github.com/obra/superpowers) | MIT | **W3** | Named loops — its methodology *is* a loop registry (brainstorm → plan → TDD → review) |
+| 4 | [ponytail](https://github.com/DietrichGebert/ponytail) | MIT | **W3** | Restraint loop — "the best code is the code you never wrote"; pairs with `drift-guard` and Anti-Spin |
+| 5 | [gstack](https://github.com/garrytan/gstack) | MIT | W5 | **Already catalogued** as `operator-only` — extend the row, do not duplicate |
+| 6 | [ECC](https://github.com/affaan-m/ECC) | MIT | W5 | Closest external analogue to the audit frame: skills, instincts, memory, security, research-first |
+| **SKILLS** ||||| 
+| 7 | [taste-skill](https://github.com/Leonxlnx/taste-skill) | MIT | W4 | Content/creative playbook input |
+| 8 | [anthropics/skills](https://github.com/anthropics/skills) | *not reported* | W4 | Skill-role source — **confirm licence before any reuse** |
+| 9 | [wshobson/agents](https://github.com/wshobson/agents) | MIT | W4 | Specialist roles — the direct fix for Wave 4's *weak specialist intents* |
+| 10 | [ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT | W4 | Design playbook on the Studio surface |
+| 11 | [awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) | **none** | W4 | Curation source only — **cite nothing**, same rule as the 53-skills index |
+| **MEMORY** ||||| 
+| 12 | [planning-with-files](https://github.com/OthmanAdi/planning-with-files) | MIT | W5 | Memory component; crash-proof plans tie into the **jj** plan-replay ADR |
+| 13 | [claude-mem](https://github.com/thedotmack/claude-mem) | Apache-2.0 | W5 | Memory component — cross-session persistence |
+| 14 | [codegraph](https://github.com/colbymchenry/codegraph) | MIT | W5 | Memory/knowledge surface — pre-indexed graph, auto-synced |
+| 15 | [repomix](https://github.com/yamadashy/repomix) | MIT | W5 | Context component — repository packing |
+| **TOOLS** ||||| 
+| 16 | [multica](https://github.com/multica-ai/multica) | `NOASSERTION` | W5 | Delegation evidence, operator-only — **custom licence, review before reuse** |
+| 17 | [firecrawl](https://github.com/firecrawl/firecrawl) | **AGPL-3.0** | — | **Already live** as the default research provider, consumed *as a hosted service*. No new row. AGPL binds on vendoring, which Veloce does not do |
+| 18 | [cc-switch](https://github.com/farion1231/cc-switch) | MIT | W5 | Operator-only |
+| 19 | [vibe-kanban](https://github.com/BloopAI/vibe-kanban) | Apache-2.0 | W5 | Operator-only |
+| 20 | [github-mcp-server](https://github.com/github/github-mcp-server) | MIT | W5 | Action component reference |
+| 21 | [playwright-mcp](https://github.com/microsoft/playwright-mcp) | Apache-2.0 | W5 | Action component reference; Veloce already runs Playwright in verification |
+| 22 | [claude-code-router](https://github.com/musistudio/claude-code-router) | MIT | W5 | **Strongest Action-component analogue** — a control plane routing across models, which is what the provider allowlist and model routing already are |
+| 23 | [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) | MIT | W5 | Curation source |
+| **COST** ||||| 
+| 24 | [system-prompts-and-models-of-ai-tools](https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools) | **GPL-3.0** | W5 | Reference-only. **GPL — never vendored into the image** |
+| 25 | [claude-code-best-practice](https://github.com/shanraisshan/claude-code-best-practice) | MIT | W5 | Audit checklist input |
+| 26 | [codex-plugin-cc](https://github.com/openai/codex-plugin-cc) | Apache-2.0 | W5 | Delegation component reference |
+| 27 | [claude-hud](https://github.com/jarrodwatts/claude-hud) | MIT | W5 | **Cost/observability** — context usage, active tools, running agents |
+| 28 | [caveman](https://github.com/JuliusBrussee/caveman) | `other` | W5 | **Cost** — the instruction-budget thesis made executable; **review licence** |
+| 29 | `anthropics/claude-plugins` | — | — | **Unresolved (404)** — excluded |
+| 30 | `graphify` | — | — | **Unresolved** — excluded |
+
+### Operator-confirmed reference set
+
+Four entries were independently checked by the operator on 2026-08-13 and are
+adopted as **governed references**. Their licences make that the only lawful
+disposition available, which happens to match the intent exactly:
+
+| Repository | Licence | Disposition |
+|---|---|---|
+| [system-prompts-and-models-of-ai-tools](https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools) | **GPL-3.0** | Read for structure. **Never vendored, never quoted into the image** |
+| [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) | **none** | Read only. `license: "unknown"` — **cite nothing** |
+| [travisvn/awesome-claude-skills](https://github.com/travisvn/awesome-claude-skills) | **none** | Curation index — tells you what exists; nothing quotable |
+| [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) | **none** | Curation index — as above |
+
+Two notes worth having in writing. **`travisvn` and `ComposioHQ` are two
+independent lists of the same name, and both are unlicensed** — adding the second
+widens coverage but does not relieve the constraint. And **all four are
+read-only-by-licence**, so they can shape a design decision but can never supply
+a line of shipped text. That is the same rule already applied to
+DevOps-System-Design, applied consistently rather than as a special case.
+
+### What this corpus does not become
+
+Twenty-eight resolved repositories do **not** become twenty-eight catalog rows.
+`V96RepositoryReference` requires a **pinned `sourceCommit` SHA** per row — no SHA
+is invented here, so pinning is work inside the wave that adopts each entry, not a
+prerequisite this document can satisfy on paper.
+
+Three licences are hard constraints rather than metadata: **GPL-3.0** (#24) and
+the two **no-licence** entries (#2, #11) can be read and learned from but never
+quoted or vendored — the rule already established for DevOps-System-Design. Two
+more (#16 `NOASSERTION`, #28 `other`) need a human licence read before any use.
 
 ---
 
@@ -238,6 +361,69 @@ rebuild:
 | Anti-spin (stalls, retries, contradictions) | **New** — pairs with `drift-guard` |
 | Quality streak (N consecutive clean passes) | **New** |
 
+**Corpus slice — two repositories inform this wave, neither is installed.**
+
+- [superpowers](https://github.com/obra/superpowers) (MIT) is the closest external
+  precedent for what Wave 3 builds: a methodology expressed as *named, invocable
+  process loops* rather than prose advice. Read it for loop **granularity and
+  naming** — where one loop ends and the next begins — not for content to copy.
+- [ponytail](https://github.com/DietrichGebert/ponytail) (MIT) encodes a restraint
+  loop: prefer the change not made. That is the missing half of **Anti-Spin**,
+  which as specified only detects stalls and contradictions. Restraint is a
+  distinct verdict from "spinning" and the `LoopVerdict` union should say so
+  before the two get conflated.
+
+Both are Veloce-authored re-expressions. The Wave 3 constraint is unchanged and
+binds them: a loop playbook goes through `clientLoopAdapter`, never `loopEngine`,
+or the Wave 2 filesystem guard fails it.
+
+#### Wave 3A — native named-loop contracts
+
+A Veloce-owned registry, `src/lib/clientLoopRegistry.ts`, in the terse-row style
+the catalog already uses. Each contract declares its stop conditions, round cap,
+required traits and risk class as **data**, so the worker enforces them rather
+than a prompt requesting them. `superpowers` informs loop granularity and naming;
+`ponytail` informs the restraint verdict. Neither runtime is installed.
+
+Every contract preserves the traits already baseline-required — approval, budget,
+idempotency, resumability (checkpoints) and audit. A named loop is a bounded
+shape over the existing adapter, never a way around its guarantees.
+
+#### Wave 3B — cost accounting and loop budget enforcement
+
+`budget` already exists as a baseline trait, and it answers one question: *is
+spend authorised.* It does not answer *what did this actually cost, and is it
+still worth continuing.* The new `cost-accounting` trait covers six measures:
+
+| Measure | Substrate |
+|---|---|
+| Estimated vs actual provider cost | new — variance is the signal |
+| Compression savings | pairs with the existing `context-compression` trait |
+| Retry and fallback cost | the cost of the Wave 2 provider chain, currently invisible |
+| Per-round loop cost | `LoopRound.costMicros` — **already recorded, never enforced** |
+| Tenant / job / playbook budget usage | rolls up the above |
+| **Hard stop on budget exhaustion** | `onFailure: "blocked"` |
+
+The important discovery is the fourth row: `LoopRun.costMicros` and
+`LoopRound.costMicros` exist today and `loopShouldContinue` ignores both. A loop
+stops on a pass or the round cap and **on nothing else** — so the round cap is
+currently the only thing standing between a tenant and an unbounded spend. That
+is the gap 3B closes.
+
+`budget` stays as-is and keeps its meaning; `cost-accounting` is additive.
+
+#### Wave 3C — tests and smoke
+
+Focused tests plus local and cloud smoke. Per the house rule, **each gate is
+verified by breaking it**: a loop that exceeds its budget must stop, and the test
+must observe it stopping rather than assume it.
+
+#### Wave 3D — pin and catalogue
+
+Only once adopted: pin each reference to a commit SHA and add its catalog row.
+Cataloguing last is deliberate — rows then describe what was actually used, not
+what was intended.
+
 ### Wave 4 — Industry sweep + content pack
 
 60–80 playbooks across the 19 industries. **Do not hand-write 80 verbose
@@ -265,6 +451,22 @@ which already matches the approval boundary.
 `scrapegraphai` are **already** in `V96_REPOSITORY_CATALOG` — extend those rows,
 do not duplicate them.
 
+**Corpus slice — the SKILLS five (#7–#11).**
+[wshobson/agents](https://github.com/wshobson/agents) (MIT) is the one that earns
+its place: it is a *role* library, and weak specialist intents are weak precisely
+because they derive from a role's label and deliverable kind alone. Mine it for
+how roles are **described and disambiguated**, then author Veloce equivalents that
+resolve through `validateV96SkillManifest`.
+
+[taste-skill](https://github.com/Leonxlnx/taste-skill) and
+[ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)
+(both MIT) are Studio-surface design inputs, adjacent to the social pack above.
+[anthropics/skills](https://github.com/anthropics/skills) reported **no licence**
+through the API — confirm it directly before reusing a single line.
+[awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) has
+no licence and is a curation source only: it tells you what exists, and nothing
+from it is quotable.
+
 ### Wave 5 — Design reference + harness audit
 
 - **system-design-primer** → a `system-design` playbook and reference role, MIT
@@ -276,13 +478,53 @@ do not duplicate them.
 - **Harness audit** — map both environments against the essay's five components
   and record, per component, whether local and cloud are at parity:
 
-| Component | Veloce equivalent |
-|---|---|
-| Personalisation | Tenant brand voice, trait kernel |
-| Context | Manifest, surface configuration |
-| Action | Provider allowlist, capability gates, delivery adapters |
-| Memory | Memory surface, notebooks, lineage |
-| Delegation | Curated skill-pack specialist roles |
+| Component | Veloce equivalent | Corpus reference |
+|---|---|---|
+| Personalisation | Tenant brand voice, trait kernel | #6 ECC |
+| Context | Manifest, surface configuration | #1 learn-claude-code, #15 repomix |
+| Action | Provider allowlist, capability gates, delivery adapters | #22 claude-code-router, #20, #21 |
+| Memory | Memory surface, notebooks, lineage | #12 planning-with-files, #13 claude-mem, #14 codegraph |
+| Delegation | Curated skill-pack specialist roles | #9 wshobson/agents, #16 multica, #26 codex-plugin-cc |
+| **Cost** — *new sixth row* | Budget ledger, model allowlist, retry identity | #27 claude-hud, #28 caveman, #25 best-practice |
+
+**The sixth component is the finding.** The audit frame as written has no cost
+row, so an audit run against it would return five green components while saying
+nothing about what the system burns. Veloce does have the machinery — the budget
+ledger and model allowlist named in the Wave 2 checkpoint — so this is a gap in
+the *frame*, not in the product. Add the row before running the audit, or the
+audit certifies a blind spot.
+
+**Cost is promoted out of the audit frame into a first-class trait** — decided
+2026-08-13. An audit row is observed once; a trait is enforced on every job. The
+specification is in [Wave 3B](#wave-3b--cost-accounting-and-loop-budget-enforcement).
+
+#### Instruction-budget discipline — the second essay
+
+The second Charlie Hills essay (`Delete your CLAUDE.md`) is a cost argument
+dressed as a tidying exercise, and it converts into two measurable rules rather
+than a philosophy:
+
+1. **A ceiling on standing instructions.** The essay cites Anthropic's published
+   guidance — *"target under 200 lines per CLAUDE.md file"* — on the grounds that
+   longer files consume context and reduce adherence. Veloce's analogue is the
+   manifest and trait kernel: everything loaded on **every** request regardless of
+   relevance. That total is measurable today and is not currently measured.
+2. **Position, not just volume.** Its second claim is the *Lost in the Middle*
+   effect: long contexts are read carefully at the edges and skimmed in the
+   middle. This is the sharper of the two for Veloce, because surface
+   configuration is assembled programmatically — so **ordering is a build-time
+   decision nobody is currently making on purpose.**
+
+The essay's own remedy — audit prompts for instructions, skills and hooks — is an
+authoring-environment workflow and does not ship. What ships is the measurement:
+record the per-request standing-instruction budget per surface alongside the
+existing parity numbers, so the trend is visible before it is a problem.
+
+One caution on adopting the thesis wholesale: *delete 80% and see what happens*
+is advice for a personal setup with a human watching every output. Veloce's
+standing instructions encode tenant isolation, approval boundaries and deletion
+lineage. **Any instruction-budget pass treats guardrails as non-negotiable** —
+the same rule the essay itself states as "never touch a truth rule."
 
 ---
 
@@ -318,17 +560,37 @@ file must be added to it or it is silently unlinted.
 
 ## Sequencing
 
-**This wave has not started, and must not start yet.** At the time of writing the
-intent router is uncommitted work in progress on
-`codex/reviewed-additions-2026-08-10`:
+**Wave 2 is accepted; Wave 3 is ready to begin.** — *updated 2026-08-13*
 
-- `clientPlaybooks.ts`, `clientIntentRouter.ts` and the intent route are
-  **untracked** — not yet committed.
-- `capabilityTraits.ts` and `v96RepositoryCatalog.ts` are modified.
-- 52 files dirty overall.
+The blocker recorded here previously — the intent router sitting uncommitted on
+`codex/reviewed-additions-2026-08-10`, 52 files dirty — **is resolved.** That work
+merged. `clientPlaybooks.ts`, `clientIntentRouter.ts`, `capabilityTraits.ts` and
+`v96RepositoryCatalog.ts` are committed, and Wave 2 was accepted at `7cc7d3f`
+against cloud revision `veloce-cloud-test-00153-wn6` with a clean tree.
 
-Every Wave 1 and Wave 4 change touches those exact files. Start only once that
-work merges.
+| Wave | State |
+|---|---|
+| Wave 1 — plane gaps | Landed; `loop` is a real intake surface with a test asserting it |
+| Wave 2 — parity spine | **Accepted** `7cc7d3f` |
+| **Wave 3 — named loops** | **Ready to start**, in the 3A–3D order below |
+| Wave 4 — industry sweep | Blocked on Wave 3 only |
+| Wave 5 — design + harness audit | Blocked on Wave 3 only |
+
+Wave 3 executes in four steps, and the order is load-bearing — cost enforcement
+lands *before* the tests that prove it, and cataloguing lands last so rows are
+pinned against what was actually adopted:
+
+| Step | Action |
+|---|---|
+| **3A** | Native named-loop contracts in the Veloce-owned registry |
+| **3B** | Cost accounting and loop budget enforcement |
+| **3C** | Focused tests plus local and cloud smoke |
+| **3D** | Pin and catalogue the adopted references |
+
+**The standing risk is that Wave 3 degenerates into a repository-import
+exercise.** It is a Veloce-native capability implementation *informed by* the
+corpus. No upstream runtime is installed; the repositories stay governed
+references throughout.
 
 Per the guardrail in the product model — *"treat future-integration research as
 backlog until its hosted adapter, data boundary, and evidence bundle exist"* —
