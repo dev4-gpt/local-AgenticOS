@@ -164,7 +164,20 @@ environments, so they are not cloud-specific.
    surfaces) and `V96_PERMITTED_SKILL_SURFACES` (12 product surfaces) — are
    unreconciled.
 
-### Wave 2 — Parity spine
+### Wave 2 — Parity spine — **ACCEPTED 2026-08-13**
+
+Accepted at `7cc7d3f`, cloud revision `veloce-cloud-test-00153-wn6`. Both parity
+commands pass, the lane map and filesystem guard are enforced, and the launcher
+names its own prerequisites instead of failing silently.
+
+**What acceptance does and does not mean.** Local parity passes *the surface
+local can run* — 45 routes, capabilities, credentials, provider-history and four
+record kinds. It is not equivalence: 15 client routes need Cloud Tasks or a GCP
+metadata identity, and Cloud Tasks is a push queue, so `cloudTasks.ts`
+fail-closes on a localhost base URL. A `cloudflared` tunnel lane exists for full
+local parity but requires a manually installed binary and is never started by
+Veloce.
+
 
 Makes "local = cloud" checkable rather than asserted.
 
