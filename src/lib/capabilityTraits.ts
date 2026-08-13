@@ -9,7 +9,7 @@ export type CapabilityTraitId =
   | "retention" | "deletion-lineage" | "chunk-provenance" | "reviewed-activation"
   | "artifact-ownership" | "visual-qa" | "provider-license" | "model-allowlist"
   | "target-scope" | "egress-control" | "workspace-isolation" | "consent" | "accessibility"
-  | "context-compression";
+  | "context-compression" | "cost-accounting";
 
 export type TraitDisposition = "blocked" | "review" | "partial" | "succeeded";
 
@@ -143,8 +143,25 @@ const PROVIDER_BOUND_CAPABILITIES = new Set([
   "room-round", "pipeline-shape", "loop-run", "ruflo-swarm", "hermes-content-factory", "intent-routing",
 ]);
 
+/**
+ * `budget` (baseline) authorises spend. `cost-accounting` measures it: estimated
+ * against actual, what compression saved, what retries and fallback added, and
+ * whether the next step is still affordable. It fails closed, because the point
+ * of the trait is the hard stop — a ceiling that only reports is not a ceiling.
+ *
+ * Every provider-bound capability carries it. They are exactly the capabilities
+ * that spend money, and Loop is the one that can spend repeatedly with no human
+ * between rounds.
+ */
 const PROVIDER_BOUND_TRAITS: readonly CapabilityTraitDefinition[] = [
   { id: "context-compression", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "blocked", evidenceKind: "compression-trace" },
+  { id: "cost-accounting", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "blocked", evidenceKind: "cost-ledger" },
+  // Declared here because it is already enforced here. Every provider-bound
+  // capability routes to a model and the runtime rejects an off-allowlist one
+  // with `model_not_allowlisted`, but only `provider-routing` and
+  // `intent-routing` declared the trait -- so a plan on any other provider-bound
+  // capability was silently claiming no model guarantee it in fact had.
+  { id: "model-allowlist", version: CAPABILITY_TRAIT_VERSION, required: true, onFailure: "blocked", evidenceKind: "route-policy" },
 ];
 
 function canonicalCapability(capability: string) {

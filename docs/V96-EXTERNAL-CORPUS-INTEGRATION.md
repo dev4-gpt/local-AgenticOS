@@ -94,7 +94,7 @@ lane reads the operator filesystem.
 | Harness corpus — 30 repositories, same author, grouped by the five components | mixed, see [table](#the-harness-corpus--30-repositories) | Split across Waves 3–5; **10 of 30 slugs as supplied were wrong** |
 | [15 AI loops worth stealing](https://learnaiwithmariah.com/guides/ai-loops-worth-stealing/) | article | **Named loop registry** — makes Loop reachable from the router |
 | [system-design-primer](https://github.com/donnemartin/system-design-primer) | **MIT**, 363k★ | System-design playbook + reference role, attribution recorded |
-| [DevOps-System-Design](https://github.com/aman556/DevOps-System-Design) | **none** | Reference-only catalog row, `license: "unknown"` — **cite nothing** |
+| [DevOps-System-Design](https://github.com/aman556/DevOps-System-Design) | **none** | **Cannot be a catalog row** — the validator rejects `license: "unknown"`. Documented here, cite nothing |
 | [jj (Jujutsu)](https://github.com/jj-vcs/jj) | Apache-2.0 | Concepts only → operation-log/undo for plan replay (ADR) |
 
 ### Runtime reality, not a policy choice
@@ -423,6 +423,43 @@ must observe it stopping rather than assume it.
 Only once adopted: pin each reference to a commit SHA and add its catalog row.
 Cataloguing last is deliberate — rows then describe what was actually used, not
 what was intended.
+
+**Unlicensed references cannot be catalogued at all.**
+`validateV96RepositoryReference` rejects a `license` of `unknown`,
+`review-required` or `unverified`, so the plan recorded earlier for
+DevOps-System-Design — a reference-only row carrying `license: "unknown"` — is not
+expressible. Unlicensed entries live in this document and nowhere else. The
+catalog is for things with a licence you could act on.
+
+### Wave 3 — landed 2026-08-13
+
+3A, 3B and 3D are implemented; 3C's focused tests pass and the cloud smoke
+remains outstanding.
+
+| Added | What |
+|---|---|
+| `src/lib/clientLoopRegistry.ts` | 7 named contracts, stop conditions as data, projected into router playbooks |
+| `src/lib/loopCostLedger.ts` | Cost ledger, pre-emptive budget stop, anti-spin detection |
+| `capabilityTraits.ts` | `cost-accounting`, fail-closed, on every provider-bound capability |
+| `v96RepositoryCatalog.ts` | `superpowers` and `ponytail` pinned at real SHAs, `native-enabled` with rollback rules |
+| `tests/loop-registry.spec.ts` | 13 tests; each gate observed failing before being trusted |
+
+Evidence: `npm run test:focused` 63/63, `typecheck`, `lint`, `build`, and
+`scripts/verify-client-runtime-worker.mjs` all pass.
+
+**A second defect surfaced while wiring the traits.** `model-allowlist` was
+declared only by `provider-routing` and `intent-routing`, yet the runtime rejects
+an off-allowlist model on *every* provider-bound capability with
+`model_not_allowlisted`. Loop, research, SEO and orchestration were therefore
+running under a guarantee their plans did not claim — the same class of defect as
+Wave 1's unverified `requiredTraits`, found the same way, by making a playbook
+declare what it actually needs. The trait now sits in `PROVIDER_BOUND_TRAITS`.
+
+**Still open:** the loop worker does not yet call `loopStopDecision` — the
+contracts, ledger and enforcement are in place and tested, but the running loop
+still uses `loopShouldContinue`. Wiring the worker is the first task of the next
+session, and until it lands the budget stop is enforced in the library rather
+than in the live loop.
 
 ### Wave 4 — Industry sweep + content pack
 

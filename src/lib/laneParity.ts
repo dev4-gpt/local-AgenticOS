@@ -76,6 +76,8 @@ export const PARITY_PROTECTED_MODULES = [
   "src/lib/v96SkillPack.ts",
   "src/lib/v96Contracts.ts",
   "src/lib/v96RepositoryCatalog.ts",
+  "src/lib/clientLoopRegistry.ts",
+  "src/lib/loopCostLedger.ts",
 ] as const;
 
 export function pairedLanes() {

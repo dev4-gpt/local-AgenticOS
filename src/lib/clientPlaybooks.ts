@@ -1,4 +1,5 @@
 import type { CapabilityTraitId } from "@/lib/capabilityTraits";
+import { LOOP_PLAYBOOKS } from "@/lib/clientLoopRegistry";
 import { V96_CURATED_SKILL_PACK } from "@/lib/v96SkillPack";
 import { validateV96SkillManifest } from "@/lib/v96Contracts";
 
@@ -114,7 +115,7 @@ const specialistPlaybooks: readonly ClientPlaybook[] = V96_CURATED_SKILL_PACK
   }));
 
 export function allClientPlaybooks() {
-  return [...NATIVE_CLIENT_PLAYBOOKS, ...specialistPlaybooks];
+  return [...NATIVE_CLIENT_PLAYBOOKS, ...LOOP_PLAYBOOKS, ...specialistPlaybooks];
 }
 
 export function clientReadyPlaybooks(enabledCapabilities: readonly string[], surface?: string | null) {
