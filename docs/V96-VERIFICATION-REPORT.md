@@ -17,6 +17,57 @@ proven there and has not been re-run since; the change between them is the
 reviewed-plan fix and a Next.js patch, neither of which touches surface routing.
 **Date:** 2026-08-11
 
+## Wave 2 parity checkpoint — both environments green 2026-08-13
+
+`npm run verify:parity:local` and `npm run verify:parity:cloud` both pass.
+
+| Environment | Scope | Result |
+|---|---|---|
+| Local `127.0.0.1:3939` | 45 routes, capabilities, credentials, provider-history, 4 record kinds | **passed** |
+| Cloud `00151-hzm` | full surface map incl. 8 workflow and 11 brief surfaces | **passed** |
+
+Gates: focused 43, references 22, full suite **311 passed**, typecheck, lint,
+build, worker verifier and three security gates all clean.
+
+### The local blocker was not what it looked like
+
+The first diagnosis — a rate-limit data-plane gap — was wrong. Calling
+`consume_client_runtime_rate_limit` directly with the same anon key and session
+returns HTTP 200 `true`; the limiter was never the problem.
+
+Two real causes, found by making the parity script report the server's error
+code instead of a bare status:
+
+1. **`tenant-data` was missing from the local launcher's capability default**
+   while the cloud manifest enabled it, so every tenant record answered `403
+   capability_not_enabled` locally and succeeded in cloud. A genuine parity
+   defect in the launcher; `tenant-data` and `artifacts` are now defaults.
+2. **15 client routes require Cloud Tasks or a GCP metadata identity.** Cloud
+   Tasks is a *push* queue, so Google must call the runtime back over public
+   HTTPS, and `cloudTasks.ts` deliberately refuses a localhost base URL
+   (`task_base_url_not_public`). This is architecture, not configuration: a
+   laptop is not reachable from Google's task dispatcher.
+
+`verify:parity:local` therefore runs with `--no-gcp-dependent` and says so in
+its own output. **Local parity verifies a strictly smaller surface than cloud**
+— routes, capabilities and tenant records — and that limit is stated rather than
+hidden. True full-surface local parity would need a public HTTPS tunnel, which
+is a security decision, not a config change.
+
+### Why the cause stayed hidden for so long
+
+`verify-client-runtime-surface-map.mjs` reported bare HTTP statuses for workflow
+and brief checks while already reporting the error body for provider checks. A
+`503` alone cannot distinguish "the limit service is down" from "this runtime
+cannot enqueue from localhost", and the two need completely different responses.
+All three checks now report the error code.
+
+### Rate-limit interference is real and self-inflicted
+
+Running the sweep twice in succession returns `429` on the second pass:
+`workspace-execution-write` is 12 per 900s and the sweep exceeds it. That is the
+guard working. A parity run needs a clear window, or its failures are noise.
+
 ## Wave 1 intent-router checkpoint — verified 2026-08-13
 
 Commit `6ff8bfe` on `origin/main`. Cloud revision `veloce-cloud-test-00151-hzm`,

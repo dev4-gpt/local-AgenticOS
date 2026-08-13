@@ -7,6 +7,15 @@ const baseUrl = required("--url").replace(/\/$/, "");
 const cookieFile = required("--cookie-file");
 const runProviderSmoke = args.includes("--provider-smoke");
 const providerOnly = args.includes("--provider-only");
+// Workflow creation and brief capture both require the runtime to be inside
+// GCP: 15 client routes either enqueue a Cloud Task -- which is a *push* queue,
+// so Google must be able to call the runtime back over public HTTPS -- or read
+// a GCP metadata identity. Client edition deliberately refuses a localhost base
+// URL (cloudTasks.ts: task_base_url_not_public), so these can never pass from a
+// laptop. That is architecture, not configuration. Routes, capabilities,
+// credentials and tenant records have no such dependency and are the real local
+// parity surface.
+const skipGcpDependent = args.includes("--no-gcp-dependent");
 let cookie = await readCookie(cookieFile);
 const failures = [];
 const cleanup = [];
@@ -37,8 +46,12 @@ try {
     await verifyApi("/api/client-runtime/credentials");
     await verifyApi("/api/client-runtime/provider-history?provider=anthropic");
     for (const kind of recordKinds) await verifyRecord(kind);
-    for (const surface of workflowSurfaces) await verifyWorkflow(surface);
-    for (const surface of briefSurfaces) await verifyBrief(surface);
+    if (skipGcpDependent) {
+      console.log(`Skipping ${workflowSurfaces.length} workflow and ${briefSurfaces.length} brief surfaces: they require Cloud Tasks or a GCP metadata identity.`);
+    } else {
+      for (const surface of workflowSurfaces) await verifyWorkflow(surface);
+      for (const surface of briefSurfaces) await verifyBrief(surface);
+    }
   }
   if (runProviderSmoke) {
     for (const smoke of providerSmokes) await verifyProvider(smoke);
@@ -55,7 +68,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Client runtime surface-map verification passed for ${baseUrl}${runProviderSmoke ? " with provider smoke" : ""}.`);
+console.log(`Client runtime surface-map verification passed for ${baseUrl}${runProviderSmoke ? " with provider smoke" : ""}${skipGcpDependent ? " (routes, capabilities and records only; GCP-dependent surfaces skipped)" : ""}.`);
 
 async function verifyRoute(route) {
   const response = await api(route, { headers: { accept: "text/html" } });
@@ -93,7 +106,10 @@ async function verifyWorkflow(surface) {
     body: JSON.stringify({ surface, operation: "plan", title, goal: `Verify ${surface} workflow creation and deterministic completion.` }),
   });
   const body = await safeJson(created);
-  expect(created.status === 202 && isUuid(body?.workflowId), `${surface} workflow create failed (${created.status})`);
+  // Include the server's error code, not just the status. A 503 alone cannot
+  // distinguish "the limit service is down" from "this runtime cannot enqueue
+  // from a localhost base URL", and the two need completely different fixes.
+  expect(created.status === 202 && isUuid(body?.workflowId), `${surface} workflow create failed (${created.status}: ${String(body?.error ?? "no error")})`);
   const workflowId = isUuid(body?.workflowId) ? body.workflowId : null;
   if (!workflowId) return;
   cleanup.push(() => api(`/api/client-runtime/workflows?id=${encodeURIComponent(workflowId)}`, { method: "DELETE" }));
@@ -113,7 +129,8 @@ async function verifyBrief(surface) {
       fields: { surface, adapter: "tenant-brief", approvalRequired: true, providerExecution: "separate-approved-adapter" },
     }),
   });
-  expect(response.status === 200, `${surface} brief capture failed (${response.status})`);
+  const briefBody = await safeJson(response);
+  expect(response.status === 200, `${surface} brief capture failed (${response.status}: ${String(briefBody?.error ?? "no error")})`);
 }
 
 async function verifyProvider({ provider, prompt, expected, expectedKind }) {
