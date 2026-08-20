@@ -1,5 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
+const clientBrowserPort = process.env.CLIENT_BROWSER_PORT || "3737";
+const clientBrowserBaseUrl = `http://127.0.0.1:${clientBrowserPort}`;
+
 /**
  * There was no Playwright config at all until now, which is why nineteen tests
  * failed. Without a `webServer`, every spec that calls `page.goto` was pointed
@@ -30,8 +33,8 @@ export default defineConfig({
       // tests/sidebar-smoke.spec.ts and tests/visual-shell.spec.ts pin 3737,
       // which is the v0 dist lane (VELOCE_DIST_DIR=.next-v0), not the 3939
       // workspace port.
-      command: "npm run dev:v0",
-      url: "http://127.0.0.1:3737",
+      command: `env VELOCE_DIST_DIR=.next-v0 PORT=${clientBrowserPort} node scripts/run-next-dev.mjs`,
+      url: clientBrowserBaseUrl,
       // Deliberately false, including locally. The usual `!process.env.CI`
       // silently adopts whatever already holds the port -- which is how a
       // next-server started 17 days earlier, serving a .next-v0 directory that

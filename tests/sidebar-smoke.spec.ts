@@ -45,7 +45,7 @@ const routes = [
   "/web-studio",
 ] as const;
 
-test.use({ baseURL: "http://127.0.0.1:3737" });
+test.use({ baseURL: process.env.CLIENT_BROWSER_BASE_URL || "http://127.0.0.1:3737" });
 
 for (const route of routes) {
   test(`${route} renders without a client crash`, async ({ page }) => {

@@ -147,6 +147,7 @@ export default function HomeImmersive({ clientEdition = false }: { clientEdition
   const [active, setActive] = useState(0);
   const [webglFailed, setWebglFailed] = useState(false);
   const [sceneReady, setSceneReady] = useState(false);
+  const [canvasMounted, setCanvasMounted] = useState(false);
   const reducedMotion = useReducedMotion();
 
   const chapter = CHAPTERS[active] ?? CHAPTERS[0];
@@ -207,8 +208,11 @@ export default function HomeImmersive({ clientEdition = false }: { clientEdition
     const mount = mountRef.current;
     if (!mount || reducedMotion) {
       setSceneReady(false);
+      setCanvasMounted(false);
       return;
     }
+
+    setCanvasMounted(false);
 
     const scrollHost = mount.closest("main") as HTMLElement | null;
     scrollHostRef.current = scrollHost;
@@ -237,6 +241,7 @@ export default function HomeImmersive({ clientEdition = false }: { clientEdition
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.15 : 1.7));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
+    setCanvasMounted(true);
 
     const clock = new THREE.Clock();
     const pointer = new THREE.Vector2(0, 0);
@@ -448,14 +453,15 @@ export default function HomeImmersive({ clientEdition = false }: { clientEdition
       nodes.forEach((node) => (node.material as THREE.Material).dispose());
       rings.forEach((ring) => ring.geometry.dispose());
       mount.removeChild(renderer.domElement);
+      setCanvasMounted(false);
     };
   }, [reducedMotion]);
 
   return (
     <div className="home-immersive" style={editionStyle} data-edition={chapter.id}>
       <div className="home-immersive__stage" aria-hidden="true">
-        <div ref={mountRef} className="home-immersive__canvas" data-canvas-ready={!reducedMotion && !webglFailed} />
-        {(reducedMotion || webglFailed || !sceneReady) && <div className="home-immersive__fallback" />}
+        <div ref={mountRef} className="home-immersive__canvas" data-canvas-ready={canvasMounted} />
+        {(reducedMotion || webglFailed || !sceneReady || !canvasMounted) && <div className="home-immersive__fallback" />}
       </div>
 
       <header className="home-edition-head">

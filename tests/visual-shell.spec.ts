@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { PNG } from "pngjs";
 
-test.use({ baseURL: "http://127.0.0.1:3737" });
+test.use({ baseURL: process.env.CLIENT_BROWSER_BASE_URL || "http://127.0.0.1:3737" });
 
 for (const viewport of [
   { name: "desktop", width: 1440, height: 900 },

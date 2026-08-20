@@ -1023,7 +1023,9 @@ partial acceptance: the live revision is older than the current source.
 | Authenticated hosted-loop replay | **Failed on old image**; replay produced duplicate run/job identity because revision `00157-cqk` predates the deterministic run-ID correction |
 | Current source gated-intent guard | **Implemented and locally tested**; explicit security-assessment requests produce no executable candidates and one review clarification |
 | Current local evidence | **90 focused tests, 62 reference tests, typecheck, lint, worker verifier passed** |
-| Production build | **Default Turbopack blocked by sandbox EPERM**; Webpack fallback was started in the approved environment but produced no completion result before termination |
+| Historical stale-server Playwright run | **338/346 passed**; the 8 failures were browser-shell checks against a 7-day-old `next-server` already occupying port `3737`, not the current source build |
+| Current fresh-source Playwright suite | **346/346 passed** using the configurable isolated browser server on port `3741` |
+| Production build | **Passed in the approved environment**; the default sandbox EPERM remains non-authoritative and the build emitted only non-fatal dynamic-filesystem warnings |
 | Corrected-image deployment | **Still blocked by IAM**; active `aryamandev777@gmail.com` lacks Cloud Build/source-bucket access |
 | Gated capabilities | **Unchanged**; GPU, Visual QA promotion/Supervision, security execution, communications, worktrees, and streaming speech remain gated |
 
@@ -1031,3 +1033,23 @@ The live smoke must be rerun only after deploying the corrected image. The
 expected acceptance result is: gated intent `needs_clarification` or `blocked`
 with no dispatched job, and hosted-loop replay returning the original run and
 job identity.
+
+## 28. Fresh local verification after browser harness correction — 2026-08-20 UTC
+
+The Playwright harness now accepts `CLIENT_BROWSER_PORT` and
+`CLIENT_BROWSER_BASE_URL`, so a stale development server cannot silently serve
+an old build. The immersive home fallback also waits for the renderer canvas to
+be mounted before advertising canvas readiness. This is a local test-harness
+and UI correctness change; it does not alter the cloud acceptance state.
+
+| Checkpoint | Result |
+|---|---|
+| Focused trait/contract suite | **90 passed** |
+| Reference validation suite | **62 passed** |
+| Full Playwright suite | **346/346 passed** against current source |
+| TypeScript | **Passed** |
+| Lint | **Passed** |
+| Production build | **Passed** in the approved environment |
+| Worker, security, and manifest gates | **Passed** |
+| Cloud deployment and authenticated recheck | **Pending deployment IAM**; the live image still predates the gated-intent and deterministic hosted-loop fixes |
+| Intentionally gated capabilities | **Unchanged**; GPU, Visual QA promotion/Supervision, security execution, communications, worktrees, and streaming speech remain gated |
