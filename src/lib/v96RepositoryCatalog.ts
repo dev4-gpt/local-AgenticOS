@@ -34,12 +34,12 @@ export interface V96RepositoryReference {
 
 const REPOSITORY_ROWS = [
   ["agency-agents", "Agency Agents", "https://github.com/msitarzewski/agency-agents", "ebe9c99acb5c96f9468de368d8bead775387d1a7", "MIT", ["agent-library", "output-quality"], ["provider-routing", "approval"], "dependency-free", ["read-files", "run-tests", "write-review"], "enabled"],
-  ["open-notebook", "Open Notebook", "https://github.com/lfnovo/open-notebook", "a7de90d38aaf18ee85fd661854d35c11e44613e2", "AGPL-3.0", ["notebook", "knowledge"], ["tenant-isolation", "provenance", "retention", "deletion-lineage"], "adapter", ["read-artifacts", "write-citations"], "enabled"],
+  ["open-notebook", "Open Notebook", "https://github.com/lfnovo/open-notebook", "a7de90d38aaf18ee85fd661854d35c11e44613e2", "MIT", ["notebook", "knowledge"], ["tenant-isolation", "provenance", "retention", "deletion-lineage"], "adapter", ["read-artifacts", "write-citations"], "enabled"],
   ["book-to-skill", "book-to-skill", "https://github.com/virgiliojr94/book-to-skill", "ae6de6521ab65777e161e7b17eb5be6987cc03b6", "MIT", ["context-compiler", "knowledge"], ["provenance", "reviewed-activation", "chunk-provenance"], "adapter", ["read-artifacts", "write-review"], "enabled"],
   ["open-seo", "OpenSEO", "https://github.com/every-app/open-seo", "bd402844fae9101da9591b8eb153871773eb3c27d", "MIT", ["seo", "research"], ["source-policy", "citations", "budget"], "adapter", ["read-public-source", "write-citations"], "gated"],
   ["scrapegraph-ai", "ScrapeGraphAI", "https://github.com/ScrapeGraphAI/Scrapegraph-ai", "27d9d289f964844a28006f6d7d1518e293fd49ff", "MIT", ["research", "seo"], ["source-policy", "citations", "ssrf-protection"], "adapter", ["read-public-source", "write-citations"], "gated"],
   ["roboflow-supervision", "Roboflow Supervision", "https://github.com/roboflow/supervision", "803378d474cd51b1eb0c1cf25c08c7ab75b1208e", "MIT", ["visual-qa", "media"], ["artifact-ownership", "visual-qa", "budget"], "operator-worker", ["read-artifacts", "write-review"], "gated"],
-  ["skyreels-v2", "SkyReels V2", "https://github.com/skyworkai/skyreels-v2", "9351d13152207cc04de780e055346b08ade0b851", "Apache-2.0", ["video-generation", "media"], ["artifact-ownership", "provider-license", "approval"], "gpu-worker", ["read-artifacts", "write-review"], "gated"],
+  ["skyreels-v2", "SkyReels V2", "https://github.com/skyworkai/skyreels-v2", "9351d13152207cc04de780e055346b08ade0b851", "other (repository metadata)", ["video-generation", "media"], ["artifact-ownership", "provider-license", "approval"], "gpu-worker", ["read-artifacts", "write-review"], "gated"],
   ["omniroute", "OmniRoute", "https://github.com/diegosouzapw/OmniRoute", "297d404327cd5ac16d1bed388cbba08a15cb1fbc", "MIT", ["provider-routing"], ["model-allowlist", "budget", "audit"], "adapter", ["write-review"], "gated"],
   ["prime-agent", "Prime Agent", "https://github.com/PrimeIntellect-ai/prime-agent", "a3b3e753490d0a6ed180e905200c1a6690d78608", "MIT", ["resumable-worktree"], ["resumability", "approval", "workspace-isolation"], "operator-worker", ["read-files", "write-worktree", "run-tests"], "pilot"],
   ["strix", "Strix", "https://github.com/usestrix/strix", "7cc9fa9faa0179fc7e35111102fe3d20a9028393", "Apache-2.0", ["security-assessment"], ["target-scope", "egress-control", "approval"], "operator-worker", ["write-review"], "gated"],
@@ -55,10 +55,8 @@ const REPOSITORY_ROWS = [
   ["agent-skills", "Agent Skills", "https://github.com/addyosmani/agent-skills", "be42637c5af93fdc8526b68ec2f2651b930f316c", "MIT", ["quality", "provider-routing", "resumable-worktree"], ["output-quality", "approval", "audit"], "dependency-free", ["read-reference", "write-review"], "cataloged"],
   ["founderos-demo", "FounderOS-DEMO", "https://github.com/Bennettxai/FounderOS-DEMO", "f10c94861fc7bcfe5b73a2611c66f371421496b8", "MIT", ["control-room", "communications", "knowledge"], ["approval", "audit", "provenance"], "adapter", ["read-reference", "write-review"], "contract-only"],
   ["semantica", "Semantica", "https://github.com/semantica-agi/semantica", "9ec7959899127d3159b7672e1f3dee9415edd8bd", "Apache-2.0", ["knowledge", "research"], ["provenance", "tenant-isolation", "audit"], "adapter", ["read-reference", "write-review"], "contract-only"],
-  ["wan2gp", "Wan2GP", "https://github.com/deepbeepmeep/Wan2GP", "1a4ba715a8d4941d1e6db23d48cae1cb1034008c", "Apache-2.0", ["video-generation", "media"], ["provider-license", "artifact-ownership", "budget"], "gpu-worker", ["read-artifacts", "write-review"], "gated"],
-  ["ai-builder-club-skills", "AI Builder Club skills", "https://github.com/AI-Builder-Club/skills", "d4cd90f5915b10412595733a0fbdca96f65115b1", "MIT", ["quality", "resumable-worktree"], ["output-quality", "resumability", "approval"], "dependency-free", ["read-reference", "write-review"], "cataloged"],
-  ["rag-anything", "RAG-Anything", "https://github.com/HKUDS/RAG-Anything", "65b7ffdeb801309d4c87b6accf81bfe5cd9b175d", "Apache-2.0", ["knowledge", "notebook"], ["provenance", "chunk-provenance", "deletion-lineage"], "adapter", ["read-artifacts", "write-citations"], "contract-only"],
-  ["awesome-gpu-engineering", "Awesome GPU Engineering", "https://github.com/goabiaryan/awesome-gpu-engineering", "bb8cf16e32a780dd84e2fb1184e2b4695ed0e3b6", "CC0-1.0", ["video-generation", "media"], ["provider-license", "budget", "audit"], "dependency-free", ["read-reference", "write-review"], "cataloged"],
+  ["wan2gp", "Wan2GP", "https://github.com/deepbeepmeep/Wan2GP", "1a4ba715a8d4941d1e6db23d48cae1cb1034008c", "WanGP Community License 2.0", ["video-generation", "media"], ["provider-license", "artifact-ownership", "budget"], "gpu-worker", ["read-artifacts", "write-review"], "gated"],
+  ["rag-anything", "RAG-Anything", "https://github.com/HKUDS/RAG-Anything", "65b7ffdeb801309d4c87b6accf81bfe5cd9b175d", "MIT", ["knowledge", "notebook"], ["provenance", "chunk-provenance", "deletion-lineage"], "adapter", ["read-artifacts", "write-citations"], "contract-only"],
   ["headroom", "Headroom", "https://github.com/headroomlabs-ai/headroom", "941c25d31e6c6e0b436c307cbe212771ff76b45f", "Apache-2.0", ["provider-routing", "quality"], ["model-allowlist", "budget", "audit"], "adapter", ["write-review"], "pilot"],
   ["ragflow", "RAGFlow", "https://github.com/infiniflow/ragflow", "91fd114783a2153e2d08fc98ff81338546692c5b", "Apache-2.0", ["knowledge", "research"], ["tenant-isolation", "provenance", "retention"], "adapter", ["read-artifacts", "write-citations"], "contract-only"],
   ["google-agents-cli", "Google agents-cli", "https://github.com/google/agents-cli", "5a306f8956cb1eeae69f9709de0e4d61b44e11e7", "Apache-2.0", ["resumable-worktree", "quality"], ["workspace-isolation", "approval", "output-quality"], "operator-worker", ["read-reference", "write-review", "run-tests"], "operator-only"],
@@ -84,10 +82,8 @@ const REFERENCE_METADATA: Record<string, { sourceKind: V96ReferenceKind; placeme
   "agent-skills": { sourceKind: "repository", placement: "Build, Quality, Review", evidenceGate: "Contract review and local checker evidence", resourceUrls: ["https://github.com/addyosmani/agent-skills"], activation: "native-enabled", implementationMapping: "Veloce output-quality and reviewed-plan policies", activationEvidence: "Focused capability and quality suites", rollbackRule: "Remove the trait mapping from the server manifest" },
   "founderos-demo": { sourceKind: "repository", placement: "Control Room", evidenceGate: "Tenant-safe adapter and approval evidence", resourceUrls: ["https://github.com/Bennettxai/FounderOS-DEMO"] },
   semantica: { sourceKind: "repository", placement: "Knowledge, Research", evidenceGate: "Tenant graph isolation and deletion lineage", resourceUrls: ["https://github.com/semantica-agi/semantica"] },
-  wan2gp: { sourceKind: "repository", placement: "Media, GPU worker", evidenceGate: "GPU cost, license, VRAM, rollback, and quality bundle", resourceUrls: ["https://github.com/deepbeepmeep/Wan2GP"] },
-  "ai-builder-club-skills": { sourceKind: "repository", placement: "Build, Quality", evidenceGate: "Local verification loop evidence", resourceUrls: ["https://github.com/AI-Builder-Club/skills"], activation: "native-enabled", implementationMapping: "Veloce focused-checker and evidence-loop policy", activationEvidence: "Focused tests, typecheck, lint, and build", rollbackRule: "Remove the trait mapping from the server manifest" },
+  wan2gp: { sourceKind: "repository", placement: "Media, GPU worker", evidenceGate: "GPU cost, custom-license review, VRAM, rollback, and quality bundle", resourceUrls: ["https://github.com/deepbeepmeep/Wan2GP"] },
   "rag-anything": { sourceKind: "repository", placement: "Knowledge, Notebook", evidenceGate: "Multimodal provenance and retention evidence", resourceUrls: ["https://github.com/HKUDS/RAG-Anything"] },
-  "awesome-gpu-engineering": { sourceKind: "repository", placement: "GPU infrastructure", evidenceGate: "Reference review only", resourceUrls: ["https://github.com/goabiaryan/awesome-gpu-engineering"] },
   headroom: { sourceKind: "repository", placement: "Quality, Routing", evidenceGate: "Quality parity, token savings, and cost trace", resourceUrls: ["https://github.com/headroomlabs-ai/headroom"], activation: "native-enabled", implementationMapping: "Veloce dependency-free context-compression routing trait", activationEvidence: "Compression contract suite plus authenticated local/cloud provider smoke", rollbackRule: "Remove context-compression from CLIENT_ENABLED_TRAITS" },
   ragflow: { sourceKind: "repository", placement: "Knowledge, Research", evidenceGate: "External-service tenant isolation and export/delete evidence", resourceUrls: ["https://github.com/infiniflow/ragflow"] },
   "google-agents-cli": { sourceKind: "repository", placement: "Operator Build", evidenceGate: "Disposable worktree and review-before-apply evidence", resourceUrls: ["https://github.com/google/agents-cli"] },
@@ -128,6 +124,29 @@ const REPOSITORIES: readonly V96RepositoryReference[] = REPOSITORY_ROWS.map(([id
 });
 
 export const V96_REPOSITORY_CATALOG: readonly V96RepositoryReference[] = REPOSITORIES;
+
+/**
+ * Portfolio references that are deliberately kept outside the executable
+ * catalog because the pinned source has no declared license. Keeping them
+ * explicit prevents an unlicensed source from silently becoming a native
+ * capability while preserving its research provenance.
+ */
+export const V96_UNCATALOGED_LICENSE_REFERENCES = [
+  {
+    id: "ai-builder-club-skills",
+    sourceUrl: "https://github.com/AI-Builder-Club/skills",
+    sourceCommit: "d4cd90f5915b10412595733a0fbdca96f65115b1",
+    licenseStatus: "no-license-file",
+    disposition: "reference-only",
+  },
+  {
+    id: "awesome-gpu-engineering",
+    sourceUrl: "https://github.com/goabiaryan/awesome-gpu-engineering",
+    sourceCommit: "bb8cf16e32a780dd84e2fb1184e2b4695ed0e3b6",
+    licenseStatus: "no-license-file",
+    disposition: "reference-only",
+  },
+] as const;
 
 export function validateV96RepositoryReference(reference: Partial<V96RepositoryReference>) {
   const errors: string[] = [];

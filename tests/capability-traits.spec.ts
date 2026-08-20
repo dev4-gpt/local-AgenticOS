@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { resolveCapabilityTraits, traitBundleMetadata, traitEvidenceForOutcome, validateTraitBundle } from "../src/lib/capabilityTraits";
-import { validateV96RepositoryCatalog, validateV96RepositoryReference, V96_REPOSITORY_CATALOG } from "../src/lib/v96RepositoryCatalog";
+import { validateV96RepositoryCatalog, validateV96RepositoryReference, V96_REPOSITORY_CATALOG, V96_UNCATALOGED_LICENSE_REFERENCES } from "../src/lib/v96RepositoryCatalog";
 
 test("the native trait resolver adds a mandatory baseline and research traits", () => {
   const bundle = resolveCapabilityTraits({ capability: "seo-research", provider: "firecrawl", surface: "notebook" });
@@ -54,6 +54,23 @@ test("native-enabled references declare implementation, evidence, and rollback",
   }
   expect(V96_REPOSITORY_CATALOG.find((item) => item.id === "roboflow-supervision")?.activation).toBe("externally-gated");
   expect(V96_REPOSITORY_CATALOG.find((item) => item.id === "wan2gp")?.activation).toBe("externally-gated");
+});
+
+test("unlicensed portfolio references remain explicit and non-executable", () => {
+  expect(V96_UNCATALOGED_LICENSE_REFERENCES).toEqual(expect.arrayContaining([
+    expect.objectContaining({ id: "ai-builder-club-skills", licenseStatus: "no-license-file", disposition: "reference-only" }),
+    expect.objectContaining({ id: "awesome-gpu-engineering", licenseStatus: "no-license-file", disposition: "reference-only" }),
+  ]));
+  for (const reference of V96_UNCATALOGED_LICENSE_REFERENCES) {
+    expect(V96_REPOSITORY_CATALOG.some((item) => item.id === reference.id)).toBe(false);
+  }
+});
+
+test("catalog license labels match the pinned source dispositions", () => {
+  expect(V96_REPOSITORY_CATALOG.find((item) => item.id === "open-notebook")?.license).toBe("MIT");
+  expect(V96_REPOSITORY_CATALOG.find((item) => item.id === "rag-anything")?.license).toBe("MIT");
+  expect(V96_REPOSITORY_CATALOG.find((item) => item.id === "wan2gp")?.license).toBe("WanGP Community License 2.0");
+  expect(V96_REPOSITORY_CATALOG.find((item) => item.id === "skyreels-v2")?.license).toBe("other (repository metadata)");
 });
 
 test("reference validation rejects tokenized or under-specified sources", () => {

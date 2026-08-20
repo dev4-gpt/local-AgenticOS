@@ -1,10 +1,12 @@
 # V96 Capability Reference Register
 
 Updated 2026-08-13. These references are architectural inputs, not runtime
-dependencies, plugins, marketplace entries, or permission grants. Every GitHub
-source is pinned in `src/lib/v96RepositoryCatalog.ts`; external guides and
-services use a dated reference and remain contract-only until their terms and
-behavior are reviewed. Activation is explicit: native Veloce behavior is
+dependencies, plugins, marketplace entries, or permission grants. Every
+licensed executable GitHub source is pinned in `src/lib/v96RepositoryCatalog.ts`;
+unlicensed portfolio references are preserved in the starred-portfolio plan and
+explicitly excluded from the executable catalog. External guides and services
+use a dated reference and remain contract-only until their terms and behavior
+are reviewed. Activation is explicit: native Veloce behavior is
 `native-enabled`; an unexecuted boundary is `contract-active`; guidance is
 `reference-only`; separate worker evidence is `externally-gated`.
 
@@ -13,10 +15,10 @@ behavior are reviewed. Activation is explicit: native Veloce behavior is
 | [Agent Skills](https://github.com/addyosmani/agent-skills) | Build, Quality, Review | dependency-free | cataloged | native-enabled | Local checker evidence |
 | [FounderOS-DEMO](https://github.com/Bennettxai/FounderOS-DEMO) | Control Room | adapter | contract-only | contract-active | Tenant-safe approval adapter |
 | [Semantica](https://github.com/semantica-agi/semantica) | Knowledge, Research | adapter | contract-only | contract-active | Graph isolation and deletion |
-| [Wan2GP](https://github.com/deepbeepmeep/Wan2GP) | Media, GPU worker | gpu-worker | gated | externally-gated | License, VRAM, cost, rollback, quality |
-| [AI Builder Club skills](https://github.com/AI-Builder-Club/skills) | Build, Quality | dependency-free | cataloged | native-enabled | Verification-loop review |
-| [RAG-Anything](https://github.com/HKUDS/RAG-Anything) | Knowledge, Notebook | adapter | contract-only | contract-active | Multimodal provenance and retention |
-| [Awesome GPU Engineering](https://github.com/goabiaryan/awesome-gpu-engineering) | GPU infrastructure | dependency-free | cataloged | reference-only | Reference review |
+| [Wan2GP](https://github.com/deepbeepmeep/Wan2GP) | Media, GPU worker | gpu-worker | gated | externally-gated | Custom WanGP Community License 2.0, VRAM, cost, rollback, quality |
+| [AI Builder Club skills](https://github.com/AI-Builder-Club/skills) | Build, Quality | dependency-free | portfolio-only | reference-only | No LICENSE at pinned source; excluded from executable catalog |
+| [RAG-Anything](https://github.com/HKUDS/RAG-Anything) | Knowledge, Notebook | adapter | contract-only | contract-active | MIT at pinned source; multimodal provenance and retention |
+| [Awesome GPU Engineering](https://github.com/goabiaryan/awesome-gpu-engineering) | GPU infrastructure | dependency-free | portfolio-only | reference-only | No LICENSE at pinned source; excluded from executable catalog |
 | [Headroom](https://github.com/headroomlabs-ai/headroom) | Routing, Quality | adapter | pilot | native-enabled | Token, quality, and cost trace |
 | [RAGFlow](https://github.com/infiniflow/ragflow) | Knowledge, Research | adapter | contract-only | contract-active | External-service tenant isolation |
 | [Google agents-cli](https://github.com/google/agents-cli) | Operator Build | operator-worker | operator-only | Disposable worktree review |

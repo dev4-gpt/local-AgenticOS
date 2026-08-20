@@ -57,9 +57,9 @@ credentials were intentionally removed.
 | [FounderOS-DEMO](https://github.com/Bennettxai/FounderOS-DEMO) | Control Room | Contract-only |
 | [Semantica](https://github.com/semantica-agi/semantica) | Knowledge, provenance | Contract-only |
 | [Wan2GP](https://github.com/deepbeepmeep/Wan2GP) | Isolated GPU media worker | Gated |
-| [AI Builder Club skills](https://github.com/AI-Builder-Club/skills) | Build and verification loop | Cataloged |
+| [AI Builder Club skills](https://github.com/AI-Builder-Club/skills) | Build and verification loop | Reference-only; no LICENSE at pinned source |
 | [RAG-Anything](https://github.com/HKUDS/RAG-Anything) | Multimodal Knowledge/Notebook | Contract-only |
-| [Awesome GPU Engineering](https://github.com/goabiaryan/awesome-gpu-engineering) | GPU infrastructure guidance | Cataloged |
+| [Awesome GPU Engineering](https://github.com/goabiaryan/awesome-gpu-engineering) | GPU infrastructure guidance | Reference-only; no LICENSE at pinned source |
 | [Headroom](https://github.com/headroomlabs-ai/headroom) | Routing, compression, budget efficiency | Pilot |
 | [RAGFlow](https://github.com/infiniflow/ragflow) | External Knowledge retrieval | Contract-only |
 | [Google agents-cli](https://github.com/google/agents-cli) | Operator build/evaluation | Operator-only |

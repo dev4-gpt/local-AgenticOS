@@ -895,6 +895,24 @@ to the smoke harness.
 | Authenticated workflow/intent smoke | **Pending**; requires a fresh authenticated session cookie file |
 | Gated capability status | **Unchanged**; GPU, Visual QA promotion, Supervision, security execution, communications, worktrees, and streaming speech remain gated |
 
+## 23. Starred-portfolio license reconciliation — 2026-08-20 UTC
+
+The public starred-repository snapshot contains 100 sources. A license audit
+against the pinned revisions found two sources with no license file:
+`AI-Builder-Club/skills` and `goabiaryan/awesome-gpu-engineering`. They remain
+explicit portfolio references but are excluded from the executable catalog and
+cannot contribute native activation. The audit also corrected four catalog
+labels: Open Notebook is MIT, RAG-Anything is MIT, Wan2GP uses its custom
+`WanGP Community License 2.0`, and SkyReels is recorded as repository
+metadata/other pending its gated legal review.
+
+| Checkpoint | Result |
+|---|---|
+| Executable pinned catalog | **43 entries; validator passes** |
+| Explicit unlicensed portfolio references | **2; reference-only and non-executable** |
+| Native-enabled status expansion | **None**; license reconciliation did not promote any capability |
+| Gated statuses | **Unchanged**; GPU, Visual QA promotion, security execution, communications, worktrees, and streaming speech remain gated |
+
 ## 17. Wave 5A harness audit checkpoint — 2026-08-19
 
 The harness audit is now a deterministic Veloce-owned evidence reducer. It

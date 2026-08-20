@@ -1,9 +1,10 @@
 # V96 external corpus integration — one OS, two deployments
 
 **Status:** active governed registry; Waves 1 and 2 are accepted, Waves 3–5
-are implemented locally with hosted-cloud evidence and the full environment
-audit pending. Native Veloce behavior is enabled only where evidence says so;
-upstream runtimes remain outside the product image.
+are implemented locally and deployed in the owner-cloud image, with
+authenticated cloud evidence and the full environment audit pending. Native
+Veloce behavior is enabled only where evidence says so; upstream runtimes
+remain outside the product image.
 **Date:** 2026-08-13
 
 Ten external resources are to be absorbed into the OS, plus a **30-repository
@@ -73,7 +74,7 @@ Every registry lives in `src/lib` and ships in the same image:
 | Playbooks | `clientPlaybooks.ts` + native playbook registries | 62 native registry entries (6 core, 14 Wave 4A/4B, 28 Wave 4C family outcomes, 7 loops, 7 curated roles) |
 | Intent router | `clientIntentRouter.ts` | confidence threshold `0.78` |
 | Traits | `capabilityTraits.ts` | 27 trait ids |
-| Repository provenance | `v96RepositoryCatalog.ts` | 39 entries |
+| Repository provenance | `v96RepositoryCatalog.ts` | 43 licensed/pinned entries; 2 unlicensed portfolio references remain explicit but outside the executable catalog |
 | Curated skill roles | `v96SkillPack.ts` | 7 roles |
 
 **Adding a corpus entry to a shared registry is parity-correct by construction** —
