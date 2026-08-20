@@ -10,11 +10,11 @@ later waves explicitly gated.
 | Automatic job attachment | `src/lib/clientDataPlane.ts` | implemented at enqueue |
 | Worker enforcement | `src/app/api/internal/client-runtime/jobs/route.ts` + `src/app/api/internal/client-runtime/visual-qa-dispatch/route.ts` | fail-closed validation; optional dedicated Visual QA Cloud Run Job |
 | Operator inspection | `src/app/api/internal/client-runtime/trait-inspection/route.ts` | local/operator only |
-| Native routing compression | `src/lib/contextCompression.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free deterministic trait; owner-cloud evidence passed on `veloce-cloud-test-00158-24s`; later research-routing rollout is `00161-gc6` |
+| Native routing compression | `src/lib/contextCompression.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free deterministic trait; owner-cloud evidence passed on `veloce-cloud-test-00158-24s`; current research-routing rollout is `00162-7tn` |
 | Standing-instruction budget | `src/lib/instructionBudget.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free redacted measurement at the provider boundary; shared authenticated current-image smoke passed |
 | Native industry playbooks | `src/lib/nativeIndustryPlaybooks.ts` + `src/lib/clientPlaybooks.ts` | data-driven 14-family/28-outcome registry; shared authenticated intent and gating smoke passed; specialized evidence remains bounded |
 | Research evidence | structured research worker output metadata | implemented and cloud-smoked on `00145-jcn` |
-| Research provider routing | `src/lib/researchProviderRouter.ts` + `/api/client-runtime/research` + `src/lib/researchWorkerAdapters.ts` | dependency-free, deterministic, flag-gated; bounded search prefers approved Brave, extraction uses Firecrawl or an explicitly configured isolated worker, and unavailable providers fail closed or fall back safely; Brave owner-cloud evidence passed on `00161-gc6`; crawler workers are contract-active but not enabled |
+| Research provider routing | `src/lib/researchProviderRouter.ts` + `/api/client-runtime/research` + `src/lib/researchWorkerAdapters.ts` | dependency-free, deterministic, flag-gated; bounded search prefers approved Brave, extraction uses Firecrawl or an explicitly configured isolated worker, and unavailable providers fail closed or fall back safely; Brave owner-cloud evidence passed on `00162-7tn`; crawler workers are contract-active but not enabled |
 | Knowledge evidence | `src/lib/contextCompiler.ts` snapshot + reviewed activation | implemented |
 | Visual-QA persistence | `product-experience/supabase-client-visual-qa.sql` | identifier defect fixed; authenticated queue route, bounded adapter, replay-safe smoke harness, and report/findings persistence implemented; owner-cloud activation remains pending |
 | Client UX | existing workflow and manifest | unchanged; no skill/tool selector |
@@ -26,7 +26,7 @@ later waves explicitly gated.
    production build.
 2. Deploy the same image to local and owner-cloud test lanes. **Local build is
    complete; the current owner-cloud research-routing revision is
-   `veloce-cloud-test-00161-gc6` (the earlier `00158-24s` compression/intent
+   `veloce-cloud-test-00162-7tn` (the earlier `00158-24s` compression/intent
    evidence remains preserved below).
    This shared smoke is not evidence for the separately gated Visual QA
    `dofgfood` activation.**
@@ -94,7 +94,7 @@ Brave is unavailable, the router uses approved Firecrawl, and if neither lane
 is eligible it fails closed. The selection reason, eligible providers, policy
 version, and bounded cost estimate are stored in job metadata without keys or
 raw evidence. Direct Brave smoke passed on `00160-x4m`; automatic-routing smoke
-passed on `00161-gc6`; Firecrawl remains the manifest default while Brave is
+passed on `00162-7tn`; Firecrawl remains the manifest default while Brave is
 the automatically selected bounded-search lane when eligible.
 
 ## Isolated research-worker plane — 2026-08-20
@@ -176,5 +176,5 @@ security-execution language such as “security assessment against a staging
 target” or “penetration test.” These requests produce a review clarification,
 never an automatic dispatch. This guard is implemented locally and must be
 revalidated in the owner-cloud image after deployment; the later research
-router rollout is recorded on `00161-gc6`. Dedicated Visual QA activation
+router rollout is recorded on `00162-7tn`. Dedicated Visual QA activation
 remains separate and gated.

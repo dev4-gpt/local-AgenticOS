@@ -57,7 +57,7 @@ These can be exposed only through server-side provider APIs, a per-client allowl
 |---|---|---|
 | Firecrawl | Existing governed research worker | Default provider; existing cloud behavior unchanged |
 | Brave Search API | Existing governed research worker | Native-enabled; Secret Manager binding, direct Brave smoke, durable citations, HTTPS/result bounds, and idempotency passed on owner-cloud |
-| Native research router | Shared client research route + worker job metadata | Flag-gated deterministic selection: Brave for bounded search when approved/available, Firecrawl for content extraction, safe fallback otherwise; enabled on owner-cloud revision `00161-gc6` |
+| Native research router | Shared client research route + worker job metadata | Flag-gated deterministic selection: Brave for bounded search when approved/available, Firecrawl for content extraction, safe fallback otherwise; enabled on owner-cloud revision `00162-7tn` |
 | Crawl4AI | Separate external Python/browser worker behind `v96-research-worker-v1` | Contract-active adapter and deterministic candidate; disabled until endpoint, secret, authenticated smoke, citation/budget parity, and rollback evidence exist; never bundled |
 | Crawlee | Separate external Node crawler worker behind `v96-research-worker-v1` | Contract-active adapter and deterministic candidate; disabled until endpoint, secret, authenticated smoke, citation/budget parity, and rollback evidence exist; never bundled |
 | Jina Reader | Separate hosted/open-source reader boundary behind `v96-research-worker-v1` | Contract-active adapter and deterministic candidate; disabled until endpoint, secret, authenticated smoke, citation/budget parity, and rollback evidence exist; never bundled |
@@ -67,7 +67,7 @@ The shared provider adapter also applies the server-manifest-controlled native
 deterministic, preserves authoritative content, and records only redacted
 hash/count evidence. Compression/intent evidence is preserved on revision
 `veloce-cloud-test-00158-24s`; the current research-routing evidence is on
-`veloce-cloud-test-00161-gc6`, with Brave Secret Manager binding and an
+`veloce-cloud-test-00162-7tn`, with Brave Secret Manager binding and an
 authenticated provider smoke passed. Older revisions remain historical evidence
 in the verification report; no current-image claim is inferred from them.
 

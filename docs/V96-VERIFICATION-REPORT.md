@@ -1303,3 +1303,28 @@ authorized Cloud Shell account before cloud evidence is refreshed.
 | Crawl4AI/Crawlee/Jina activation | **Pending** | Separately deployed worker endpoints/tokens and authenticated citation, budget, tenant, deletion, and rollback smokes |
 | `dofgfood` Visual QA acceptance | **Gated** | Approved target manifest and bounded authenticated artifact acceptance bundle |
 | GPU, security, communications, worktrees, streaming speech | **Gated** | Separate approved evidence bundles; statuses unchanged |
+
+## 35. Next-round deployment and authenticated smoke — 2026-08-20 UTC
+
+The pushed `b408ff5` source is now deployed to owner-cloud. The deployment used
+the authorized isolated gcloud configuration and preserved Firecrawl as the
+manifest default while keeping automatic research routing and the Brave Secret
+Manager binding enabled.
+
+| Checkpoint | Result |
+|---|---|
+| Source commit | **Passed**; `b408ff5` |
+| Cloud Build | **Passed**; `ac25c8f2-72b0-44f4-bce3-122d7cecc05d`, 4m04s |
+| Image | **Passed**; `client-runtime:v121-next-round-20260820` |
+| Image digest | **Passed**; `sha256:93ff16a926dc240cd51c00014159a6aad5581cac9ee9a565ead1ba6766b94472` |
+| Cloud Run revision | **Passed**; `veloce-cloud-test-00162-7tn`, 100% traffic, Ready |
+| Manifest | **Passed**; Firecrawl default, routing enabled, Brave secret bound, compression and intent traits enabled |
+| Authenticated Brave/provider smoke | **Passed**; provider identity, bounded HTTPS results, citations, budget/idempotency evidence |
+| Authenticated compression/intent/loop smoke | **Passed**; provider compression, intent routing, gated handling, and hosted-loop replay |
+| Full local tunnel parity | **Pending**; still requires a trusted public HTTPS callback and real local Cloud Tasks delivery |
+| External crawler workers | **Pending**; no endpoints or tokens enabled |
+| Visual QA and other gated capabilities | **Unchanged**; `dofgfood`, GPU, security, communications, worktrees, and streaming speech remain gated |
+
+This closes the deployment-alignment gate for the current native research and
+routing plane. It does not promote external crawler runtimes or Visual QA;
+those require their separate evidence bundles.
