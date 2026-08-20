@@ -1006,3 +1006,4 @@ status, durable run, and durable round evidence against the cloud worker.
 | Reference suite | **61 passed** |
 | TypeScript / lint / build / worker / security | **Passed** |
 | Authenticated hosted-loop smoke | **Pending**; requires the session cookie file and a deployment containing this correction |
+| Corrected-image deployment | **Blocked by deployment IAM**; Cloud Build source upload is denied for `aryamandev777@gmail.com` on `veloce-agenticos-2026_cloudbuild`; live revision `00157-cqk` therefore does not contain this fix |
