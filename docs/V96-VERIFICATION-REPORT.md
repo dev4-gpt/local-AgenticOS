@@ -872,8 +872,28 @@ bootstrap service and no local application server was listening on port 3737.
 | Production build | **Passed** in approved environment; existing broad filesystem-trace warnings remain |
 | Worker boundary verifier | **Passed** |
 | Security/provider/lifecycle gates | **Passed** |
-| Cloud access recheck | **Blocked by active identity permissions**; `aryamandev777@gmail.com` currently lacks `projects.describe` and `run.services.get` on `veloce-agenticos-2026` |
-| Cloud deployment and authenticated smoke | **Pending**; no new revision is claimed from this source-only run |
+| Cloud access recheck | **Historical blocker cleared for deployment** using the configured application-default credential; the interactive gcloud user remains under-scoped |
+| Cloud deployment and authenticated smoke | **Deployment complete; authenticated smoke pending**; the deployed revision is recorded in §22 |
+
+## 22. Wave 4C/Wave 5 cloud deployment checkpoint — 2026-08-20 UTC
+
+The current source commit `5a4aeb4` was built and deployed through the existing
+client manifest. This proves image delivery and manifest wiring, but it does
+not yet certify authenticated behavior because no session cookie was available
+to the smoke harness.
+
+| Checkpoint | Result |
+|---|---|
+| Cloud Build | **Passed**; build `94c32c66-ff63-4efb-8a72-dc0028cd971b` |
+| Image | `client-runtime:v112-wave4c-wave5-20260819` |
+| Image digest | `sha256:8b15d02a92d89e3cd8ca13bfd4903d7487f2b5d853b8297c7b7a847fb09536f2` |
+| Cloud Run revision | **`veloce-cloud-test-00155-mhd`**, 100% traffic |
+| Isolated workspace job | **Deployed** as `veloce-cloud-test-workspace` |
+| Manifest wiring | **Passed**; intent routing enabled, `context-compression` enabled, Firecrawl remains selected, 62 native playbooks are in the image |
+| Public login route | **Passed**; `/login` returned `200` |
+| Unauthenticated intent boundary | **Passed**; `POST /api/client-runtime/intent` returned `401` |
+| Authenticated workflow/intent smoke | **Pending**; requires a fresh authenticated session cookie file |
+| Gated capability status | **Unchanged**; GPU, Visual QA promotion, Supervision, security execution, communications, worktrees, and streaming speech remain gated |
 
 ## 17. Wave 5A harness audit checkpoint — 2026-08-19
 
