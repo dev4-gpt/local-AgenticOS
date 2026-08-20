@@ -158,7 +158,10 @@ of truth for activation status.
 6. Run local and owner-cloud smoke where the capability is enabled.
 7. Promote the row only after the evidence bundle is durable and reviewable.
 
-The next concrete gate is Wave 3 cloud smoke. Wave 4 should begin with the
-specialist-role and quality subset (`wshobson/agents`, `agent-skills`,
-`agents.md`, `social-media-skills`, and the quality references), while Wave 5
-adds the cost/observability row to the harness audit before broader adoption.
+Wave 4A has begun locally with eight native specialist playbooks. The next
+concrete gate is still the Wave 3/Wave 4 shared cloud image smoke. After that,
+expand the specialist-role and quality subset (`wshobson/agents`,
+`agent-skills`, `agents.md`, `social-media-skills`, and the quality references)
+in measured slices rather than activating all 60–80 industry candidates at
+once. Wave 5 adds the cost/observability row to the harness audit before broad
+adoption.

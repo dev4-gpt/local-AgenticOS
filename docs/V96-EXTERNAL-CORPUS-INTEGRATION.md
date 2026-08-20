@@ -70,7 +70,7 @@ Every registry lives in `src/lib` and ships in the same image:
 
 | Registry | File | Entries today |
 |---|---|---|
-| Playbooks | `clientPlaybooks.ts` | 12 |
+| Playbooks | `clientPlaybooks.ts` + `nativeSpecialistPlaybooks.ts` | 28 projected entries (6 core, 8 Wave 4A, 7 loops, 7 curated roles) |
 | Intent router | `clientIntentRouter.ts` | confidence threshold `0.78` |
 | Traits | `capabilityTraits.ts` | 27 trait ids |
 | Repository provenance | `v96RepositoryCatalog.ts` | 39 entries |
@@ -467,6 +467,21 @@ validated contract ID. Upstream runtimes remain uninstalled.
 
 ### Wave 4 — Industry sweep + content pack
 
+#### Wave 4A — native specialist slice — implemented locally 2026-08-19
+
+The first eight Veloce-authored specialist playbooks now run through the same
+intent router and trait checks as the original core playbooks:
+
+`competitor-intelligence`, `seo-content-plan`, `launch-content`,
+`customer-response`, `product-requirements`, `operations-checklist`,
+`accessibility-review`, and `release-readiness`.
+
+They are deliberately small contracts rather than copied upstream prompts.
+They inherit the approved provider, research, quality, budget, provenance,
+approval, compression, and idempotency boundaries of their eligible
+capabilities. This slice is local-tested only; cloud activation waits for the
+same image deployment gate as Wave 3.
+
 60–80 playbooks across the 19 industries. **Do not hand-write 80 verbose
 objects** — mirror the catalog's own terse `REPOSITORY_ROWS` tuple table plus the
 existing `BASE_TRAITS` / `PROVIDER_TRAITS` presets, expanded by one builder.
@@ -615,7 +630,7 @@ against cloud revision `veloce-cloud-test-00153-wn6` with a clean tree.
 | Wave 1 — plane gaps | Landed; `loop` is a real intake surface with a test asserting it |
 | Wave 2 — parity spine | **Accepted** `7cc7d3f` |
 | **Wave 3 — named loops** | **Implemented locally; worker wiring landed 2026-08-19; cloud smoke pending** |
-| Wave 4 — industry sweep | **Design-only; blocked on Wave 3 cloud evidence and playbook scope review** |
+| Wave 4 — industry sweep | **Wave 4A implemented locally (8 playbooks); broader 60–80 expansion and cloud evidence pending** |
 | Wave 5 — design + harness audit | **Design-only; cost row is now represented as a native trait** |
 
 Wave 3 executes in four steps, and the order is load-bearing — cost enforcement

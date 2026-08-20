@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { buildIntentClassifierPrompt, intentEvidence, parseClientIntentClassification, resolveClientIntent } from "../src/lib/clientIntentRouter";
 import { CLIENT_INTENT_SURFACES, clientReadyPlaybooks, NATIVE_CLIENT_PLAYBOOKS } from "../src/lib/clientPlaybooks";
+import { NATIVE_SPECIALIST_PLAYBOOKS } from "../src/lib/nativeSpecialistPlaybooks";
 import { missingRequiredTraits, resolveCapabilityTraits } from "../src/lib/capabilityTraits";
 import { readFileSync } from "node:fs";
 
@@ -36,6 +37,27 @@ test("intent evidence is redacted to a hash and bounded metadata", () => {
 
 test("ready playbooks exclude gated capabilities by construction", () => {
   expect(ready.every((playbook) => !playbook.eligibleCapabilities.includes("security-assessment"))).toBe(true);
+});
+
+test("Wave 4 native specialist playbooks are bounded and capability-gated", () => {
+  expect(NATIVE_SPECIALIST_PLAYBOOKS).toHaveLength(8);
+  expect(NATIVE_SPECIALIST_PLAYBOOKS.every((playbook) => playbook.riskClass !== "external")).toBe(true);
+  expect(NATIVE_SPECIALIST_PLAYBOOKS.every((playbook) => playbook.skillIds.length > 0)).toBe(true);
+  const researchReady = clientReadyPlaybooks(["research"], "chat").map((playbook) => playbook.id);
+  expect(researchReady).toContain("specialist-competitor-intelligence");
+  expect(clientReadyPlaybooks(["text-agents"], "chat").map((playbook) => playbook.id)).toContain("specialist-customer-response");
+  expect(clientReadyPlaybooks(["text-agents"], "chat").map((playbook) => playbook.id)).not.toContain("specialist-competitor-intelligence");
+});
+
+test("Wave 4 intent routing selects a native specialist without enabling a gated lane", () => {
+  const result = resolveClientIntent({
+    request: "Build a competitor intelligence brief from approved public sources",
+    surface: "chat",
+    enabledCapabilities: ["research", "text-agents", "quality"],
+    availablePlaybooks: clientReadyPlaybooks(["research", "text-agents", "quality"], "chat"),
+  });
+  expect(result.candidates[0]?.playbook.id).toBe("specialist-competitor-intelligence");
+  expect(result.candidates[0]?.playbook.eligibleCapabilities).not.toContain("security-assessment");
 });
 
 test("a playbook may not claim a guarantee the capability does not resolve", () => {

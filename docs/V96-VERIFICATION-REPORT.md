@@ -794,3 +794,26 @@ Registry permissions for the deploy identity, or a running Docker daemon plus
 Artifact Registry write permission. After the image exists, run a fresh
 authenticated smoke and record the revision, digest, loop contract, stop
 reason, combined builder/judge cost, settlement, and idempotency replay.
+
+## 16. Wave 4A native specialist checkpoint — 2026-08-19
+
+Eight new Veloce-authored playbooks were added to the shared native registry:
+competitor intelligence, SEO content planning, launch content, customer
+response, product requirements, operations checklist, accessibility review, and
+release readiness. They use existing approved roles and capabilities; no
+upstream prompt or runtime was copied into the image.
+
+| Checkpoint | Result |
+|---|---|
+| Native implementation | **Passed locally** in `nativeSpecialistPlaybooks.ts` |
+| Intent routing | **Passed**; specialist selection is deterministic for a uniquely matched request |
+| Capability gating | **Passed**; research specialists disappear without `research`, and gated capabilities are never eligible |
+| Approval boundary | **Passed**; no new playbook is `external`; review-required outputs remain review-required |
+| Focused suite | **77 passed** |
+| Reference suite | **49 passed** |
+| TypeScript / lint | **Passed** |
+| Cloud deployment | **Pending** with the IAM/build prerequisite recorded in §15 |
+
+The broader Wave 4 target remains a staged expansion toward the documented
+60–80 industry playbooks. The 100-repository portfolio plan remains a governed
+reference inventory, not a runtime installation list.
