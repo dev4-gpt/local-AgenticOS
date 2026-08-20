@@ -4,6 +4,13 @@ import type { ClientIntentSurface, ClientPlaybook } from "@/lib/clientPlaybooks"
 export const CLIENT_INTENT_ROUTER_VERSION = "v96-intent-1" as const;
 export const CLIENT_INTENT_CONFIDENCE_THRESHOLD = 0.78;
 
+const GATED_INTENT_PATTERNS = [
+  /\bsecurity\s+(?:assessment|scan|test|audit)\b/i,
+  /\bpenetration\s+test(?:ing)?\b/i,
+  /\bpen\s*test\b/i,
+  /\b(?:scan|test)\s+(?:against|on)\s+(?:a\s+)?(?:staging|test)\s+target\b/i,
+];
+
 export interface IntentCandidate {
   playbook: ClientPlaybook;
   score: number;
@@ -40,6 +47,14 @@ export function resolveClientIntent(input: {
   enabledCapabilities: readonly string[];
   availablePlaybooks: readonly ClientPlaybook[];
 }): IntentCandidates {
+  if (GATED_INTENT_PATTERNS.some((pattern) => pattern.test(input.request))) {
+    return {
+      candidates: [],
+      deterministic: true,
+      reason: "This request matches an intentionally gated capability and cannot be auto-dispatched.",
+      clarificationQuestion: "Would you like a reviewable security plan instead? Live security execution requires an explicitly authorized target and approval.",
+    };
+  }
   const requestTokens = new Set(tokens(input.request));
   const enabled = new Set(input.enabledCapabilities);
   const scored = input.availablePlaybooks

@@ -40,6 +40,19 @@ test("ready playbooks exclude gated capabilities by construction", () => {
   expect(ready.every((playbook) => !playbook.eligibleCapabilities.includes("security-assessment"))).toBe(true);
 });
 
+test("explicitly gated security requests cannot enter automatic dispatch", () => {
+  const result = resolveClientIntent({
+    request: "Run a security assessment against a staging target",
+    surface: "chat",
+    enabledCapabilities: ["text-agents", "research", "quality", "orchestration"],
+    availablePlaybooks: ready,
+  });
+  expect(result.candidates).toHaveLength(0);
+  expect(result.deterministic).toBe(true);
+  expect(result.reason).toContain("intentionally gated");
+  expect(result.clarificationQuestion).toContain("authorized target");
+});
+
 test("Wave 4 native specialist playbooks are bounded and capability-gated", () => {
   expect(NATIVE_SPECIALIST_PLAYBOOKS).toHaveLength(14);
   expect(NATIVE_SPECIALIST_PLAYBOOKS.every((playbook) => playbook.riskClass !== "external")).toBe(true);

@@ -130,3 +130,10 @@ evidence. The local launcher and cloud provisioning expose the same
 `CLIENT_INTENT_ROUTING_ENABLED` manifest switch. A quiet plan card is rendered
 in provider chat and a read-only Ready playbooks library is rendered in
 Integrations; gated entries remain ineligible.
+
+The resolver also fails closed before classification for explicit
+security-execution language such as “security assessment against a staging
+target” or “penetration test.” These requests produce a review clarification,
+never an automatic dispatch. This guard is implemented locally and must be
+revalidated in the owner-cloud image after deployment; the current live
+revision predates the correction.

@@ -1007,3 +1007,27 @@ status, durable run, and durable round evidence against the cloud worker.
 | TypeScript / lint / build / worker / security | **Passed** |
 | Authenticated hosted-loop smoke | **Pending**; requires the session cookie file and a deployment containing this correction |
 | Corrected-image deployment | **Blocked by deployment IAM**; Cloud Build source upload is denied for both locally authenticated gcloud accounts on `veloce-agenticos-2026_cloudbuild`; live revision `00157-cqk` therefore does not contain this fix |
+
+## 27. Authenticated cloud recheck after Supabase restoration — 2026-08-20 UTC
+
+The Supabase project was restored and a fresh authenticated runtime cookie file
+was created with mode `600`. The authenticated verifier reached the live Cloud
+Run service successfully, so authentication and the tenant data plane are no
+longer the immediate blocker. The result is intentionally recorded as a
+partial acceptance: the live revision is older than the current source.
+
+| Checkpoint | Result |
+|---|---|
+| Authenticated workflow smoke | **Reached cloud; passed its workflow assertions** |
+| Authenticated intent smoke | **Partial**; low-risk path reached the service, but the gated security request returned `dispatched` on the old live image |
+| Authenticated hosted-loop replay | **Failed on old image**; replay produced duplicate run/job identity because revision `00157-cqk` predates the deterministic run-ID correction |
+| Current source gated-intent guard | **Implemented and locally tested**; explicit security-assessment requests produce no executable candidates and one review clarification |
+| Current local evidence | **90 focused tests, 62 reference tests, typecheck, lint, worker verifier passed** |
+| Production build | **Default Turbopack blocked by sandbox EPERM**; Webpack fallback was started in the approved environment but produced no completion result before termination |
+| Corrected-image deployment | **Still blocked by IAM**; active `aryamandev777@gmail.com` lacks Cloud Build/source-bucket access |
+| Gated capabilities | **Unchanged**; GPU, Visual QA promotion/Supervision, security execution, communications, worktrees, and streaming speech remain gated |
+
+The live smoke must be rerun only after deploying the corrected image. The
+expected acceptance result is: gated intent `needs_clarification` or `blocked`
+with no dispatched job, and hosted-loop replay returning the original run and
+job identity.

@@ -213,9 +213,20 @@ async function safeJson(response) {
 }
 
 async function readCookie(filePath) {
-  const mode = (await stat(filePath)).mode & 0o777;
+  let file;
+  try {
+    file = await stat(filePath);
+  } catch {
+    fail(`--cookie-file could not be read: ${filePath}. Create a mode-600 file containing both runtime session cookies.`);
+  }
+  const mode = file.mode & 0o777;
   if ((mode & 0o077) !== 0) fail("--cookie-file must not be readable by group or other users");
-  const value = (await readFile(filePath, "utf8")).trim();
+  let value;
+  try {
+    value = (await readFile(filePath, "utf8")).trim();
+  } catch {
+    fail(`--cookie-file could not be read: ${filePath}`);
+  }
   if (!value || !/\bveloce_access_token=/.test(value) || !/\bveloce_refresh_token=/.test(value)) fail("--cookie-file must contain both runtime session cookies");
   return value.replace(/^cookie:\s*/i, "").replace(/^['"]|['"]$/g, "").trim();
 }
