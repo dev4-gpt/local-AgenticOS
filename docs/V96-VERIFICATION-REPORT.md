@@ -836,6 +836,24 @@ filtered by enabled capabilities and approval policy.
 | TypeScript / lint / worker boundary / approved build | **Passed** |
 | Cloud evidence | **Pending**; deployment prerequisite remains recorded in §15 |
 
+## 20. Wave 4C industry family checkpoint — 2026-08-19
+
+The specialist registry now compiles fourteen bounded industry families into
+twenty-eight native outcomes: a citation-bearing evidence brief and a bounded
+operating plan per family. This is a Veloce-owned registry compiler; no
+upstream repository prompts or runtimes are installed.
+
+| Checkpoint | Result |
+|---|---|
+| Industry families | **14** |
+| Compiled native outcomes | **28** |
+| Total native playbook registry | **62 entries** |
+| Intent routing, uniqueness, and gating | **Passed locally** |
+| Focused suite after Wave 4C | **85 passed** |
+| Reference suite after Wave 4C | **57 passed** |
+| TypeScript / lint / worker boundary / approved build | **Passed**; typecheck, lint, static worker verification, and the approved-environment production build are green |
+| Cloud evidence | **Pending**; deployment prerequisite remains recorded in §15 |
+
 ## 17. Wave 5A harness audit checkpoint — 2026-08-19
 
 The harness audit is now a deterministic Veloce-owned evidence reducer. It

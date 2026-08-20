@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { buildIntentClassifierPrompt, intentEvidence, parseClientIntentClassification, resolveClientIntent } from "../src/lib/clientIntentRouter";
 import { CLIENT_INTENT_SURFACES, clientReadyPlaybooks, NATIVE_CLIENT_PLAYBOOKS } from "../src/lib/clientPlaybooks";
 import { NATIVE_SPECIALIST_PLAYBOOKS } from "../src/lib/nativeSpecialistPlaybooks";
+import { NATIVE_INDUSTRY_FAMILY_COUNT, NATIVE_INDUSTRY_PLAYBOOKS } from "../src/lib/nativeIndustryPlaybooks";
 import { missingRequiredTraits, resolveCapabilityTraits } from "../src/lib/capabilityTraits";
 import { readFileSync } from "node:fs";
 
@@ -62,6 +63,22 @@ test("Wave 4B routes domain outcomes to native playbooks without external action
   const knowledge = clientReadyPlaybooks(["notebook"], "chat").find((playbook) => playbook.id === "specialist-knowledge-synthesis");
   expect(knowledge?.riskClass).toBe("review");
   expect(knowledge?.eligibleCapabilities).not.toContain("security-assessment");
+});
+
+test("Wave 4C compiles bounded industry families into gated native outcomes", () => {
+  expect(NATIVE_INDUSTRY_FAMILY_COUNT).toBe(14);
+  expect(NATIVE_INDUSTRY_PLAYBOOKS).toHaveLength(28);
+  expect(new Set(NATIVE_INDUSTRY_PLAYBOOKS.map((playbook) => playbook.id)).size).toBe(28);
+  expect(NATIVE_INDUSTRY_PLAYBOOKS.every((playbook) => playbook.riskClass !== "external")).toBe(true);
+
+  const result = resolveClientIntent({
+    request: "Create an e-commerce operating plan",
+    surface: "chat",
+    enabledCapabilities: ["orchestration"],
+    availablePlaybooks: clientReadyPlaybooks(["orchestration"], "chat"),
+  });
+  expect(result.candidates[0]?.playbook.id).toBe("industry-ecommerce-plan");
+  expect(clientReadyPlaybooks(["research"], "chat").map((playbook) => playbook.id)).toContain("industry-financial-services-evidence");
 });
 
 test("Wave 4 intent routing selects a native specialist without enabling a gated lane", () => {

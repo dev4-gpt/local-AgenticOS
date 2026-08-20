@@ -164,6 +164,7 @@ expand the specialist-role and quality subset (`wshobson/agents`,
 `agent-skills`, `agents.md`, `social-media-skills`, and the quality references)
 in measured slices rather than activating all 60–80 industry candidates at
 once. Wave 5 adds the cost/observability row to the harness audit before broad
-adoption. Wave 5A now has a local six-row evidence reducer, and Wave 5B measures
+adoption. Wave 4C now compiles 14 industry families into 28 bounded native
+outcomes. Wave 5A now has a local six-row evidence reducer, and Wave 5B measures
 standing instruction cost at the provider boundary; both deliberately report
 `review` for cloud until a real cloud snapshot exists.

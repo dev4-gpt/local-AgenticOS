@@ -1,8 +1,8 @@
 # V96 external corpus integration — one OS, two deployments
 
-**Status:** active governed registry; Waves 1 and 2 are accepted, Wave 3 is
-implemented locally with hosted-cloud evidence pending, and Waves 4–5 remain
-planned. Native Veloce behavior is enabled only where evidence says so;
+**Status:** active governed registry; Waves 1 and 2 are accepted, Waves 3–5
+are implemented locally with hosted-cloud evidence and the full environment
+audit pending. Native Veloce behavior is enabled only where evidence says so;
 upstream runtimes remain outside the product image.
 **Date:** 2026-08-13
 
@@ -70,7 +70,7 @@ Every registry lives in `src/lib` and ships in the same image:
 
 | Registry | File | Entries today |
 |---|---|---|
-| Playbooks | `clientPlaybooks.ts` + `nativeSpecialistPlaybooks.ts` | 34 projected entries (6 core, 14 Wave 4A/4B, 7 loops, 7 curated roles) |
+| Playbooks | `clientPlaybooks.ts` + native playbook registries | 62 native registry entries (6 core, 14 Wave 4A/4B, 28 Wave 4C family outcomes, 7 loops, 7 curated roles) |
 | Intent router | `clientIntentRouter.ts` | confidence threshold `0.78` |
 | Traits | `capabilityTraits.ts` | 27 trait ids |
 | Repository provenance | `v96RepositoryCatalog.ts` | 39 entries |
@@ -484,6 +484,19 @@ synthesis. They use the same intent, manifest, trait, and approval boundaries;
 none can publish, send communications, execute security work, use a GPU, or
 invoke an upstream runtime.
 
+#### Wave 4C — data-driven industry families — implemented locally 2026-08-19
+
+Fourteen bounded industry families compile into 28 native outcomes: one
+evidence brief through the governed research lane and one operating plan through
+the resumable orchestration lane. The compiler keeps the family vocabulary
+small and auditable while giving the intent router useful coverage across SaaS,
+e-commerce, healthcare operations, financial services, education, real estate,
+manufacturing, nonprofit, agency, hospitality, legal operations,
+cybersecurity readiness, media production, and developer tools.
+
+These are not domain-advice agents and do not take external actions. Research
+outcomes require citations and review; operating plans remain bounded plans.
+
 They are deliberately small contracts rather than copied upstream prompts.
 They inherit the approved provider, research, quality, budget, provenance,
 approval, compression, and idempotency boundaries of their eligible
@@ -657,7 +670,7 @@ against cloud revision `veloce-cloud-test-00153-wn6` with a clean tree.
 | Wave 1 — plane gaps | Landed; `loop` is a real intake surface with a test asserting it |
 | Wave 2 — parity spine | **Accepted** `7cc7d3f` |
 | **Wave 3 — named loops** | **Implemented locally; worker wiring landed 2026-08-19; cloud smoke pending** |
-| Wave 4 — industry sweep | **Wave 4A/4B implemented locally (14 playbooks); broader 60–80 expansion and cloud evidence pending** |
+| Wave 4 — industry sweep | **Wave 4A/4B/4C implemented locally (42 specialist/family playbooks; 62 total registry entries); cloud evidence pending** |
 | Wave 5 — design + harness audit | **Wave 5A/5B implemented locally; full environment audit pending** |
 
 Wave 3 executes in four steps, and the order is load-bearing — cost enforcement
