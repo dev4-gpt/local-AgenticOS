@@ -864,8 +864,8 @@ bootstrap service and no local application server was listening on port 3737.
 
 | Checkpoint | Result |
 |---|---|
-| Focused Wave 3–5 suite | **85 passed** |
-| Reference suite | **57 passed** |
+| Focused Wave 3–5 suite | **86 passed**; includes one acceptance case for every Wave 4C family |
+| Reference suite | **58 passed** |
 | Full repository suite | **277 passed; 64 environment-blocked UI/server tests** — no application failure established |
 | TypeScript | **Passed** |
 | Lint | **Passed** |

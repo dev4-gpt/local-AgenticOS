@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { buildIntentClassifierPrompt, intentEvidence, parseClientIntentClassification, resolveClientIntent } from "../src/lib/clientIntentRouter";
 import { CLIENT_INTENT_SURFACES, clientReadyPlaybooks, NATIVE_CLIENT_PLAYBOOKS } from "../src/lib/clientPlaybooks";
 import { NATIVE_SPECIALIST_PLAYBOOKS } from "../src/lib/nativeSpecialistPlaybooks";
-import { NATIVE_INDUSTRY_FAMILY_COUNT, NATIVE_INDUSTRY_PLAYBOOKS } from "../src/lib/nativeIndustryPlaybooks";
+import { NATIVE_INDUSTRY_FAMILY_COUNT, NATIVE_INDUSTRY_FAMILY_IDS, NATIVE_INDUSTRY_PLAYBOOKS } from "../src/lib/nativeIndustryPlaybooks";
 import { missingRequiredTraits, resolveCapabilityTraits } from "../src/lib/capabilityTraits";
 import { readFileSync } from "node:fs";
 
@@ -79,6 +79,23 @@ test("Wave 4C compiles bounded industry families into gated native outcomes", ()
   });
   expect(result.candidates[0]?.playbook.id).toBe("industry-ecommerce-plan");
   expect(clientReadyPlaybooks(["research"], "chat").map((playbook) => playbook.id)).toContain("industry-financial-services-evidence");
+});
+
+test("every Wave 4C family exposes both research and operating-plan outcomes", () => {
+  const researchReady = new Set(clientReadyPlaybooks(["research"], "chat").map((playbook) => playbook.id));
+  const plansReady = new Set(clientReadyPlaybooks(["orchestration"], "chat").map((playbook) => playbook.id));
+
+  for (const familyId of NATIVE_INDUSTRY_FAMILY_IDS) {
+    const evidence = NATIVE_INDUSTRY_PLAYBOOKS.find((playbook) => playbook.id === `industry-${familyId}-evidence`);
+    const plan = NATIVE_INDUSTRY_PLAYBOOKS.find((playbook) => playbook.id === `industry-${familyId}-plan`);
+    expect(evidence, familyId).toBeDefined();
+    expect(plan, familyId).toBeDefined();
+    expect(researchReady.has(evidence!.id), familyId).toBe(true);
+    expect(plansReady.has(plan!.id), familyId).toBe(true);
+    expect(evidence!.requiredTraits.length).toBeGreaterThan(plan!.requiredTraits.length);
+    expect(evidence!.approval).toBe("review-before-apply");
+    expect(plan!.approval).toBe("none");
+  }
 });
 
 test("Wave 4 intent routing selects a native specialist without enabling a gated lane", () => {

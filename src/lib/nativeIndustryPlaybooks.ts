@@ -74,3 +74,4 @@ function compileIndustryPlaybooks(family: IndustryFamily): readonly ClientPlaybo
 export const NATIVE_INDUSTRY_PLAYBOOKS: readonly ClientPlaybook[] = INDUSTRY_FAMILIES.flatMap(compileIndustryPlaybooks);
 
 export const NATIVE_INDUSTRY_FAMILY_COUNT = INDUSTRY_FAMILIES.length;
+export const NATIVE_INDUSTRY_FAMILY_IDS = INDUSTRY_FAMILIES.map((family) => family.id);
