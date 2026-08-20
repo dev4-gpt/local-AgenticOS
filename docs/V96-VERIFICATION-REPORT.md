@@ -1125,6 +1125,8 @@ allowed by the capability policy.
 | Safe fallback | **Implemented**; unavailable Brave falls back to approved Firecrawl; no eligible provider fails closed |
 | Rollout flag | `CLIENT_RESEARCH_ROUTING_ENABLED=1`; not enabled in the current cloud manifest |
 | Evidence metadata | Selection policy, reason, eligible providers, and bounded cost only; no API keys or raw private evidence |
+| Source contract check | **Passed**; syntax, diff validation, and direct deterministic selection cases for bounded search, extraction, and fallback |
+| Full local checker loop | **Environment-blocked in this session**; focused Playwright, TypeScript, ESLint, and production build commands timed out before reporting checker output while the existing local Next dev process/cache remained active; no application failure was emitted |
 | Cloud activation | **Pending** Brave Secret Manager key and authenticated provider smoke; Firecrawl default remains unchanged |
 
 The implementation boundary is `src/lib/researchProviderRouter.ts`, called by
