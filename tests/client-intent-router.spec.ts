@@ -40,13 +40,28 @@ test("ready playbooks exclude gated capabilities by construction", () => {
 });
 
 test("Wave 4 native specialist playbooks are bounded and capability-gated", () => {
-  expect(NATIVE_SPECIALIST_PLAYBOOKS).toHaveLength(8);
+  expect(NATIVE_SPECIALIST_PLAYBOOKS).toHaveLength(14);
   expect(NATIVE_SPECIALIST_PLAYBOOKS.every((playbook) => playbook.riskClass !== "external")).toBe(true);
   expect(NATIVE_SPECIALIST_PLAYBOOKS.every((playbook) => playbook.skillIds.length > 0)).toBe(true);
   const researchReady = clientReadyPlaybooks(["research"], "chat").map((playbook) => playbook.id);
   expect(researchReady).toContain("specialist-competitor-intelligence");
   expect(clientReadyPlaybooks(["text-agents"], "chat").map((playbook) => playbook.id)).toContain("specialist-customer-response");
   expect(clientReadyPlaybooks(["text-agents"], "chat").map((playbook) => playbook.id)).not.toContain("specialist-competitor-intelligence");
+});
+
+test("Wave 4B routes domain outcomes to native playbooks without external actions", () => {
+  const design = resolveClientIntent({
+    request: "Create a system design brief for scaling our ingestion service",
+    surface: "chat",
+    enabledCapabilities: ["orchestration", "text-agents"],
+    availablePlaybooks: clientReadyPlaybooks(["orchestration", "text-agents"], "chat"),
+  });
+  expect(design.candidates[0]?.playbook.id).toBe("specialist-system-design");
+  expect(design.candidates[0]?.playbook.riskClass).toBe("low");
+
+  const knowledge = clientReadyPlaybooks(["notebook"], "chat").find((playbook) => playbook.id === "specialist-knowledge-synthesis");
+  expect(knowledge?.riskClass).toBe("review");
+  expect(knowledge?.eligibleCapabilities).not.toContain("security-assessment");
 });
 
 test("Wave 4 intent routing selects a native specialist without enabling a gated lane", () => {

@@ -17,7 +17,7 @@ const RESEARCH_TRAITS: readonly CapabilityTraitId[] = [...BASE_TRAITS, "source-p
 const QUALITY_TRAITS: readonly CapabilityTraitId[] = [...BASE_TRAITS, "accessibility"];
 const CHAT_SURFACES: readonly ClientIntentSurface[] = ["chat", "create", "guide", "orchestrate"];
 
-export const NATIVE_SPECIALIST_PLAYBOOKS: readonly ClientPlaybook[] = [
+export const NATIVE_WAVE4A_SPECIALIST_PLAYBOOKS: readonly ClientPlaybook[] = [
   {
     id: "specialist-competitor-intelligence",
     label: "Competitor intelligence brief",
@@ -123,3 +123,94 @@ export const NATIVE_SPECIALIST_PLAYBOOKS: readonly ClientPlaybook[] = [
     supportedSurfaces: ["chat", "create", "guide", "integrations", "orchestrate"],
   },
 ] as const;
+
+/**
+ * Wave 4B: six additional outcome slices selected from the starred role,
+ * design, content, and knowledge references. These remain Veloce-authored
+ * contracts and inherit the same manifest and trait validation as Wave 4A.
+ */
+export const NATIVE_WAVE4B_SPECIALIST_PLAYBOOKS: readonly ClientPlaybook[] = [
+  {
+    id: "specialist-system-design",
+    label: "System design brief",
+    description: "Turn a product or infrastructure outcome into a bounded architecture brief with trade-offs and failure modes.",
+    intents: ["system design", "architecture brief", "design the architecture", "scale this system", "technical architecture"],
+    eligibleCapabilities: ["orchestration"],
+    skillIds: ["architecture"],
+    requiredTraits: BASE_TRAITS,
+    riskClass: "low",
+    approval: "none",
+    outputType: "system-design-brief",
+    supportedSurfaces: ["chat", "orchestrate", "create", "guide"],
+  },
+  {
+    id: "specialist-content-strategy",
+    label: "Content strategy brief",
+    description: "Build an audience-aware content strategy with themes, evidence needs, production steps, and review questions.",
+    intents: ["content strategy", "editorial strategy", "content pillars", "audience content plan", "content roadmap"],
+    eligibleCapabilities: ["text-agents"],
+    skillIds: ["technical-writing"],
+    requiredTraits: PROVIDER_TRAITS,
+    riskClass: "review",
+    approval: "review-before-apply",
+    outputType: "content-strategy-brief",
+    supportedSurfaces: CHAT_SURFACES,
+  },
+  {
+    id: "specialist-social-content-pack",
+    label: "Social content pack",
+    description: "Draft platform-aware social variants from an approved brief without publishing or contacting recipients.",
+    intents: ["social content", "linkedin post", "social media pack", "post variants", "social campaign draft"],
+    eligibleCapabilities: ["text-agents"],
+    skillIds: ["technical-writing"],
+    requiredTraits: PROVIDER_TRAITS,
+    riskClass: "review",
+    approval: "review-before-apply",
+    outputType: "social-content-pack",
+    supportedSurfaces: ["chat", "create", "guide", "integrations"],
+  },
+  {
+    id: "specialist-design-direction",
+    label: "Design direction brief",
+    description: "Translate a product goal into an original, accessible design direction with hierarchy, states, and review criteria.",
+    intents: ["design direction", "ux direction", "ui concept", "design system brief", "product experience direction"],
+    eligibleCapabilities: ["text-agents"],
+    skillIds: ["architecture", "technical-writing"],
+    requiredTraits: PROVIDER_TRAITS,
+    riskClass: "review",
+    approval: "review-before-apply",
+    outputType: "design-direction-brief",
+    supportedSurfaces: ["chat", "create", "guide"],
+  },
+  {
+    id: "specialist-growth-experiment",
+    label: "Growth experiment brief",
+    description: "Frame a measurable growth hypothesis with evidence needs, guardrails, success criteria, and a reviewable next step.",
+    intents: ["growth experiment", "conversion experiment", "ab test plan", "growth hypothesis", "trial conversion"],
+    eligibleCapabilities: ["research"],
+    skillIds: ["research", "architecture"],
+    requiredTraits: RESEARCH_TRAITS,
+    riskClass: "review",
+    approval: "review-before-apply",
+    outputType: "growth-experiment-brief",
+    supportedSurfaces: ["chat", "notebook", "orchestrate", "guide"],
+  },
+  {
+    id: "specialist-knowledge-synthesis",
+    label: "Knowledge synthesis brief",
+    description: "Synthesize approved tenant knowledge into a traceable brief while preserving retention, deletion, and chunk lineage.",
+    intents: ["knowledge synthesis", "synthesize my notes", "executive summary from notes", "summarize our knowledge", "knowledge brief"],
+    eligibleCapabilities: ["notebook"],
+    skillIds: ["research", "technical-writing"],
+    requiredTraits: [...BASE_TRAITS, "retention", "deletion-lineage", "chunk-provenance", "reviewed-activation"],
+    riskClass: "review",
+    approval: "review-before-apply",
+    outputType: "knowledge-synthesis-brief",
+    supportedSurfaces: ["chat", "notebook", "guide"],
+  },
+] as const;
+
+export const NATIVE_SPECIALIST_PLAYBOOKS: readonly ClientPlaybook[] = [
+  ...NATIVE_WAVE4A_SPECIALIST_PLAYBOOKS,
+  ...NATIVE_WAVE4B_SPECIALIST_PLAYBOOKS,
+];

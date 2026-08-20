@@ -70,7 +70,7 @@ Every registry lives in `src/lib` and ships in the same image:
 
 | Registry | File | Entries today |
 |---|---|---|
-| Playbooks | `clientPlaybooks.ts` + `nativeSpecialistPlaybooks.ts` | 28 projected entries (6 core, 8 Wave 4A, 7 loops, 7 curated roles) |
+| Playbooks | `clientPlaybooks.ts` + `nativeSpecialistPlaybooks.ts` | 34 projected entries (6 core, 14 Wave 4A/4B, 7 loops, 7 curated roles) |
 | Intent router | `clientIntentRouter.ts` | confidence threshold `0.78` |
 | Traits | `capabilityTraits.ts` | 27 trait ids |
 | Repository provenance | `v96RepositoryCatalog.ts` | 39 entries |
@@ -476,6 +476,14 @@ intent router and trait checks as the original core playbooks:
 `customer-response`, `product-requirements`, `operations-checklist`,
 `accessibility-review`, and `release-readiness`.
 
+#### Wave 4B — domain outcome slice — implemented locally 2026-08-19
+
+Six additional Veloce-authored playbooks now cover system design, content
+strategy, social content, design direction, growth experiments, and knowledge
+synthesis. They use the same intent, manifest, trait, and approval boundaries;
+none can publish, send communications, execute security work, use a GPU, or
+invoke an upstream runtime.
+
 They are deliberately small contracts rather than copied upstream prompts.
 They inherit the approved provider, research, quality, budget, provenance,
 approval, compression, and idempotency boundaries of their eligible
@@ -649,7 +657,7 @@ against cloud revision `veloce-cloud-test-00153-wn6` with a clean tree.
 | Wave 1 — plane gaps | Landed; `loop` is a real intake surface with a test asserting it |
 | Wave 2 — parity spine | **Accepted** `7cc7d3f` |
 | **Wave 3 — named loops** | **Implemented locally; worker wiring landed 2026-08-19; cloud smoke pending** |
-| Wave 4 — industry sweep | **Wave 4A implemented locally (8 playbooks); broader 60–80 expansion and cloud evidence pending** |
+| Wave 4 — industry sweep | **Wave 4A/4B implemented locally (14 playbooks); broader 60–80 expansion and cloud evidence pending** |
 | Wave 5 — design + harness audit | **Wave 5A/5B implemented locally; full environment audit pending** |
 
 Wave 3 executes in four steps, and the order is load-bearing — cost enforcement

@@ -818,6 +818,24 @@ The broader Wave 4 target remains a staged expansion toward the documented
 60–80 industry playbooks. The 100-repository portfolio plan remains a governed
 reference inventory, not a runtime installation list.
 
+## 19. Wave 4B domain outcome checkpoint — 2026-08-19
+
+Six additional native playbooks were added for system design, content strategy,
+social content, design direction, growth experiments, and knowledge synthesis.
+They are Veloce-authored contracts, not imported upstream skills, and remain
+filtered by enabled capabilities and approval policy.
+
+| Checkpoint | Result |
+|---|---|
+| Native playbook contracts | **14 specialist entries total** |
+| Intent routing and manifest filtering | **Passed locally** |
+| Low-risk versus review classification | **Passed locally** |
+| Gated capability exclusion | **Passed locally** |
+| Focused suite after Wave 4B | **84 passed** |
+| Reference suite after Wave 4B | **56 passed** |
+| TypeScript / lint / worker boundary / approved build | **Passed** |
+| Cloud evidence | **Pending**; deployment prerequisite remains recorded in §15 |
+
 ## 17. Wave 5A harness audit checkpoint — 2026-08-19
 
 The harness audit is now a deterministic Veloce-owned evidence reducer. It
