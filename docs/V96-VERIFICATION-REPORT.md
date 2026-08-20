@@ -1053,3 +1053,37 @@ and UI correctness change; it does not alter the cloud acceptance state.
 | Worker, security, and manifest gates | **Passed** |
 | Cloud deployment and authenticated recheck | **Pending deployment IAM**; the live image still predates the gated-intent and deterministic hosted-loop fixes |
 | Intentionally gated capabilities | **Unchanged**; GPU, Visual QA promotion/Supervision, security execution, communications, worktrees, and streaming speech remain gated |
+
+## 29. Corrected image deployment and authenticated cloud acceptance — 2026-08-20 UTC
+
+The corrected image from commit `64956f7` was built and deployed after the
+Cloud Run deployment account was re-authenticated against the owning Google
+Cloud project. This closes the previous stale-image boundary: the live service
+now contains the gated-intent guard and deterministic hosted-loop identity
+correction.
+
+| Checkpoint | Result |
+|---|---|
+| Cloud Build | **Passed**; build `29fc9718-85fd-4666-adae-22e570d92a94` |
+| Image tag | `client-runtime:v119-wave3-wave4-wave5-64956f7-20260820` |
+| Image digest | `sha256:28d8c72df8ff5b30d404dba3ba7b0750625f189a006df5a1d3086c5a64f45c15` |
+| Cloud Run revision | **`veloce-cloud-test-00158-24s`**, 100% traffic, Ready |
+| Authenticated workflow smoke | **Passed** |
+| Provider compression smoke | **Passed**; compression evidence and replay completed |
+| Intent routing smoke | **Passed**; low-risk dispatch, ambiguity clarification, and gated security hold |
+| Hosted-loop smoke | **Passed**; replay preserved the original run and job identity |
+| Private evidence handling | **Passed**; plan/compression evidence remained redacted |
+| Gated capability status | **Unchanged**; GPU, Visual QA promotion/Supervision, security execution, communications, worktrees, and streaming speech remain gated |
+
+The first verifier invocation in this session returned synthetic `503` results
+because the sandbox could not resolve the public service hostname. A direct
+authenticated capabilities request returned `200`, and the exact verifier was
+rerun with network access and passed. This environment detail is retained so a
+future checker run does not misclassify a sandbox DNS failure as an application
+failure.
+
+Brave Search remains implemented and locally tested but is not promoted to
+cloud-enabled status until its Secret Manager key and separate authenticated
+provider smoke are recorded. Crawl4AI, Crawlee, Jina Reader, GPU, Visual QA
+promotion/Supervision enhancement, security execution, communications,
+worktrees, and continuous streaming speech remain intentionally gated.
