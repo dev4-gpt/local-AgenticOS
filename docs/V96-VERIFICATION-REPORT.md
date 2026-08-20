@@ -773,3 +773,24 @@ GitHub references; the remaining sources are wave candidates, reference-only,
 or gated and must not be treated as installed runtimes. Unlicensed or
 `NOASSERTION` sources remain outside executable catalog rows until a license
 and provenance review is complete.
+
+## 15. Wave 3 cloud deployment attempt — 2026-08-19
+
+The verified source was committed as `ee900ac` and pushed to `origin/main`.
+The production build passed in the approved external build environment, but a
+new owner-cloud image could not be published from this workstation:
+
+| Attempt | Result |
+|---|---|
+| `npm run build:client-image` via Cloud Build | **Blocked before build** — the active account `aryamandev777@gmail.com` cannot access the project Cloud Build source bucket `veloce-agenticos-2026_cloudbuild`; Google reported missing `serviceusage.services.use`/bucket access |
+| Direct Artifact Registry inspection | **Blocked** — the active account lacks `artifactregistry.repositories.get` |
+| Local Docker fallback | **Unavailable** — Docker daemon is not running |
+| Cloud Run deployment | **Not attempted**; no new image or revision exists |
+| Current cloud revision | Remains the previously verified Wave 2 image; no Wave 3 cloud claim is made |
+
+This is an environment/IAM prerequisite, not an application test failure. The
+next controlled deployment requires either Cloud Build bucket and Artifact
+Registry permissions for the deploy identity, or a running Docker daemon plus
+Artifact Registry write permission. After the image exists, run a fresh
+authenticated smoke and record the revision, digest, loop contract, stop
+reason, combined builder/judge cost, settlement, and idempotency replay.
