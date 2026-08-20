@@ -1185,3 +1185,29 @@ The timeout guard is diagnostic only: it does not bypass localhost rejection,
 weaken worker authentication, or promote any gated capability. The remaining
 local failure is therefore an environment/runtime compilation issue, not a
 reported source assertion or a reason to claim Cloud Tasks parity.
+
+### 31.3 Clean container build and runtime smoke — 2026-08-20 UTC
+
+The local macOS build stall was separated from the production image contract
+by starting Docker Desktop and building the client image in the pinned Node
+24.14.1 container. Generated nested caches were excluded from `.dockerignore`
+before the successful retry.
+
+| Checkpoint | Result |
+|---|---|
+| Docker context | **Passed**; reduced from approximately 170 MB to approximately 98 MB after excluding generated subproject outputs |
+| Production image build | **Passed**; `veloce-client-runtime:local-e4948b0` |
+| Next compilation | **Passed** in the container; Turbopack compiled successfully in 22.5 seconds |
+| TypeScript in image build | **Passed**; completed in 28.1 seconds |
+| Static page generation | **Passed**; 58/58 pages generated |
+| Standalone runner assembly | **Passed**; image exported and unpacked successfully |
+| Clean-container lint | **Passed**; `npm run lint` exited 0 in the Node 24 builder image |
+| Clean-container reference suite | **Passed**; 64/64 |
+| Clean-container focused suite | **96/98**; the only two failures were the Python Visual QA worker tests because the Node-only image intentionally has no `python3`; the supported host suite remains 98/98 |
+| Container runtime smoke | **Passed**; `/status` returned 200 and `/login` returned 200 |
+| Build warnings | **Non-fatal**; existing dynamic filesystem trace warning and Docker’s `CLIENT_RUNTIME_ENFORCE_AUTH` name heuristic; no secret value was placed in the image |
+
+This closes the production-build gate in a clean supported environment. It does
+not close authenticated local Cloud Tasks parity, because that still requires
+a trusted public callback origin and a tenant session that may safely traverse
+it.

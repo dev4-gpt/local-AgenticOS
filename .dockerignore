@@ -2,7 +2,11 @@
 .next
 .next-v0
 .next-client-test
+.next-client
 node_modules
+**/node_modules
+product-experience/.next
+public-site/.next
 test-results
 coverage
 tmp
