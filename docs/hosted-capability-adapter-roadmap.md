@@ -7,7 +7,9 @@ preserved in [`V96-NATIVE-CAPABILITY-PLANE-BRIEF.md`](./future-integrations/V96-
 The reference-register integrity layer is implemented. Headroom-inspired
 compression is the current measured routing pilot and runs as a native,
 dependency-free trait in the shared provider adapter; the upstream runtime is
-not installed.
+not installed. The adjacent Wave 5B standing-instruction measurement records
+redacted line/character cost at that same boundary without editing mandatory
+guardrails.
 
 This is the implementation order for turning the private `3939` operator
 edition into a safe client edition. A provider key alone does not make a tab

@@ -11,6 +11,7 @@ later waves explicitly gated.
 | Worker enforcement | `src/app/api/internal/client-runtime/jobs/route.ts` + `src/app/api/internal/client-runtime/visual-qa-dispatch/route.ts` | fail-closed validation; optional dedicated Visual QA Cloud Run Job |
 | Operator inspection | `src/app/api/internal/client-runtime/trait-inspection/route.ts` | local/operator only |
 | Native routing compression | `src/lib/contextCompression.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free deterministic pilot; local and owner-cloud evidence passing on `veloce-cloud-test-00148-xwg` |
+| Standing-instruction budget | `src/lib/instructionBudget.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free redacted measurement at the provider boundary; local evidence passing, cloud evidence pending |
 | Research evidence | structured research worker output metadata | implemented and cloud-smoked on `00145-jcn` |
 | Knowledge evidence | `src/lib/contextCompiler.ts` snapshot + reviewed activation | implemented |
 | Visual-QA persistence | `product-experience/supabase-client-visual-qa.sql` | identifier defect fixed; authenticated queue route, bounded adapter, replay-safe smoke harness, and report/findings persistence implemented; owner-cloud activation remains pending |
@@ -90,6 +91,17 @@ otherwise the job fails closed.
 Cost estimation runs against the prepared provider messages. Evidence contains
 the policy version, mode, character counts, ratio, content hash, and redacted
 segment labels only. The Headroom repository is not installed or bundled.
+
+## Wave 5B standing-instruction budget measurement — 2026-08-19
+
+The provider boundary measures the always-loaded instruction layer with stable
+segment IDs, line/character counts, mandatory versus optional counts, limits,
+and a hash. Raw policy and private instruction content never enters the
+evidence object. This is intentionally measurement-only: safety, tenant,
+provenance, approval, and other mandatory instructions are never silently
+deleted or reordered. The local focused/reference suites, typecheck, lint,
+worker boundary check, and approved-environment build pass; cloud evidence
+must be recorded after the next image deployment.
 
 Local evidence: 27 focused tests, typecheck, lint, reference validation, and
 the approved-environment production build pass. The default Turbopack build

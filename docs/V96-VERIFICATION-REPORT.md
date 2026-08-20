@@ -850,4 +850,7 @@ reordered.
 | Raw instruction redaction | **Passed** |
 | Character and line overflow reporting | **Passed** |
 | Provider-bound evidence exposure | **Passed locally** |
+| Focused suite after Wave 5B | **83 passed** |
+| Reference suite after Wave 5B | **55 passed** |
+| TypeScript / lint / worker boundary / approved build | **Passed** |
 | Cloud evidence | **Pending**; same deployment/IAM prerequisite as §15 |
