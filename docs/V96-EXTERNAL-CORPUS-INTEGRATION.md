@@ -525,6 +525,14 @@ from it is quotable.
 
 ### Wave 5 — Design reference + harness audit
 
+#### Wave 5A — bounded harness audit reducer — implemented locally 2026-08-19
+
+`src/lib/harnessAudit.ts` now reduces operator-inspection evidence into the six
+component frame: personalisation, context, action, memory, delegation, and
+cost. A missing cloud snapshot is `review`, never `pass`; a missing local
+fail-closed signal is `blocked`. This keeps the audit honest without adding a
+database control plane or reading raw tenant content.
+
 - **system-design-primer** → a `system-design` playbook and reference role, MIT
   attribution recorded in the catalog row.
 - **DevOps-System-Design** → reference-only row; nothing cited.
@@ -631,7 +639,7 @@ against cloud revision `veloce-cloud-test-00153-wn6` with a clean tree.
 | Wave 2 — parity spine | **Accepted** `7cc7d3f` |
 | **Wave 3 — named loops** | **Implemented locally; worker wiring landed 2026-08-19; cloud smoke pending** |
 | Wave 4 — industry sweep | **Wave 4A implemented locally (8 playbooks); broader 60–80 expansion and cloud evidence pending** |
-| Wave 5 — design + harness audit | **Design-only; cost row is now represented as a native trait** |
+| Wave 5 — design + harness audit | **Wave 5A reducer implemented locally; full environment audit pending** |
 
 Wave 3 executes in four steps, and the order is load-bearing — cost enforcement
 lands *before* the tests that prove it, and cataloguing lands last so rows are

@@ -817,3 +817,20 @@ upstream prompt or runtime was copied into the image.
 The broader Wave 4 target remains a staged expansion toward the documented
 60–80 industry playbooks. The 100-repository portfolio plan remains a governed
 reference inventory, not a runtime installation list.
+
+## 17. Wave 5A harness audit checkpoint — 2026-08-19
+
+The harness audit is now a deterministic Veloce-owned evidence reducer. It
+covers personalisation, context, action, memory, delegation, and the newly
+first-class cost dimension. It accepts only bounded evidence flags and does not
+read prompts, tenant rows, local files, or upstream runtime code.
+
+| Checkpoint | Result |
+|---|---|
+| Six-component frame | **Passed**; cost is included explicitly |
+| Local-only evidence | **Review**, never falsely promoted to cloud parity |
+| Missing fail-closed evidence | **Blocked** in focused test |
+| Focused suite | **80 passed** |
+| Reference suite | **52 passed** |
+| TypeScript / lint / worker boundary | **Passed** |
+| Cloud evidence | **Pending**; deployment prerequisite remains recorded in §15 |
