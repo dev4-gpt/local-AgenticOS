@@ -9,6 +9,7 @@ const runArtifacts = !args.includes("--workflow-only");
 const runWorkspaceSmoke = args.includes("--workspace-smoke");
 const runVisualQaSmoke = args.includes("--visual-qa-smoke");
 const runProviderSmoke = args.includes("--provider-smoke");
+const runResearchProviderSmoke = args.includes("--research-provider-smoke");
 const runIntentSmoke = args.includes("--intent-smoke");
 const runLoopSmoke = args.includes("--loop-smoke");
 let cookie = await readCookie(cookieFile);
@@ -50,6 +51,7 @@ try {
 
   if (runArtifacts) await verifyArtifactRoundTrip();
   if (runProviderSmoke) await verifyProviderCompression();
+  if (runResearchProviderSmoke) await verifyResearchProvider();
   if (runIntentSmoke) await verifyIntentRouting();
   if (runLoopSmoke) await verifyHostedLoop();
   if (runWorkspaceSmoke) await verifyWorkspaceExecution();
@@ -75,7 +77,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Authenticated client runtime verification passed for ${baseUrl}${runArtifacts ? " (workflow + artifact)" : " (workflow only)"}${runProviderSmoke ? " + provider compression" : ""}${runIntentSmoke ? " + intent routing" : ""}${runLoopSmoke ? " + hosted loop" : ""}${runWorkspaceSmoke ? " + workspace execution" : ""}${runVisualQaSmoke ? " + visual QA" : ""}.`);
+console.log(`Authenticated client runtime verification passed for ${baseUrl}${runArtifacts ? " (workflow + artifact)" : " (workflow only)"}${runProviderSmoke ? " + provider compression" : ""}${runResearchProviderSmoke ? " + research provider" : ""}${runIntentSmoke ? " + intent routing" : ""}${runLoopSmoke ? " + hosted loop" : ""}${runWorkspaceSmoke ? " + workspace execution" : ""}${runVisualQaSmoke ? " + visual QA" : ""}.`);
 
 async function verifyIntentRouting() {
   const idempotencyKey = `intent-acceptance-${Date.now()}`;
@@ -157,6 +159,39 @@ async function verifyProviderCompression() {
   expect(Number(compression?.compressedChars) < Number(compression?.originalChars), "provider compression did not reduce repeated context");
   expect(typeof compression?.inputHash === "string" && /^[a-f0-9]{64}$/.test(compression.inputHash), "provider compression evidence omitted a redacted input hash");
   expect(!JSON.stringify(compression).includes(repeatedContext), "provider compression evidence contained raw context");
+}
+
+async function verifyResearchProvider() {
+  const expectedProvider = process.env.EXPECTED_RESEARCH_PROVIDER?.trim().toLowerCase() || "brave";
+  const idempotencyKey = `research-provider-acceptance-${Date.now()}`;
+  const payload = {
+    query: "Veloce native research provider acceptance",
+    limit: 3,
+    idempotencyKey,
+  };
+  const first = await api("/api/client-runtime/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const firstBody = await safeJson(first);
+  expect(first.status === 202 && isUuid(firstBody?.jobId), `research provider enqueue failed (${first.status})`);
+  const replay = await api("/api/client-runtime/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const replayBody = await safeJson(replay);
+  expect(replay.status === 202 && replayBody?.jobId === firstBody?.jobId, "research provider replay did not preserve the original job identity");
+  if (!isUuid(firstBody?.jobId)) return;
+
+  const job = await waitForJob(firstBody.jobId);
+  expect(job?.status === "succeeded", `research provider job ended as ${String(job?.status ?? "unknown")}: ${String(job?.error_code ?? "")}`);
+  expect(job?.provider === expectedProvider, `research provider job used ${String(job?.provider ?? "unknown")}, expected ${expectedProvider}`);
+  expect(!JSON.stringify(job?.output_metadata ?? {}).match(/brave[_-]?api[_-]?key|x-subscription-token/i), "research provider output metadata exposed a provider secret");
+
+  const listed = await api("/api/client-runtime/research");
+  const listedBody = await safeJson(listed);
+  const runs = Array.isArray(listedBody?.runs) ? listedBody.runs : [];
+  const matches = runs.filter((run) => run?.job_id === firstBody.jobId);
+  const run = matches[0];
+  expect(listed.status === 200 && matches.length === 1, "research provider replay created duplicate durable runs");
+  expect(run?.provider === expectedProvider, `durable research run used ${String(run?.provider ?? "unknown")}, expected ${expectedProvider}`);
+  expect(Array.isArray(run?.records) && run.records.length <= 3, "research provider exceeded the three-result bound");
+  expect(Array.isArray(run?.citations) && run.citations.length > 0, "research provider did not persist citations");
+  expect((run?.citations ?? []).every((citation) => typeof citation?.url === "string" && citation.url.startsWith("https://")), "research provider persisted a non-HTTPS citation URL");
 }
 
 async function verifyHostedLoop() {
