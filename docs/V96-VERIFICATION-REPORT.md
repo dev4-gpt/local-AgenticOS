@@ -1157,3 +1157,31 @@ sandbox. A host-permission retry reached `Ready`, but local Next requests
 stalled before returning bytes; a production-build retry showed the same local
 environment stall. No local Cloud Tasks callback, Visual QA promotion, or
 gated capability was claimed from these attempts.
+
+### 31.2 Checker closure rerun — 2026-08-20 UTC
+
+The local runtime was started with the supported Node 24 runtime, the private
+Supabase env file, and the `veloce-cloud-test` tenant metadata. The launcher
+reached `Ready` on port `3939`. The source-level gates were rerun after adding
+a bounded request timeout to the parity verifier so a stalled local Next
+response becomes a bounded failure instead of an indefinite checker hang.
+
+| Checkpoint | Result |
+|---|---|
+| Focused suite | **Passed**; 98/98 under Node 24 |
+| Reference suite | **Passed**; 64/64 under Node 24 |
+| TypeScript | **Passed** under Node 24 |
+| Worker/provider policy gates | **Passed** |
+| Local launcher | **Passed startup**; authenticated metadata loaded without printing secrets |
+| Local surface parity | **Not passed**; Next stalled while compiling the first client route/API response; the verifier now bounds individual requests at 15 seconds (configurable from 1–120 seconds) |
+| ESLint | **Still environment-blocked**; dependency loading produced no diagnostics before the bounded run was stopped |
+| Production build | **Still environment-blocked**; Turbopack and Webpack both stalled before completion |
+| Owner-cloud Brave smoke | **Passed again**; authenticated research-provider smoke completed against `veloce-cloud-test-mquo4bf7aq-el.a.run.app` |
+| No-tunnel guard | **Passed**; HTTP and localhost HTTPS origins are rejected before any callback attempt |
+| Authenticated tunnel parity | **Not claimed**; requires a named/authenticated tunnel or another trusted public callback origin |
+| Visual QA | **Still gated**; no approved `dofgfood` service/manifest was introduced |
+
+The timeout guard is diagnostic only: it does not bypass localhost rejection,
+weaken worker authentication, or promote any gated capability. The remaining
+local failure is therefore an environment/runtime compilation issue, not a
+reported source assertion or a reason to claim Cloud Tasks parity.

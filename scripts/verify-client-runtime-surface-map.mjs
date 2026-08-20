@@ -7,6 +7,7 @@ const baseUrl = required("--url").replace(/\/$/, "");
 const cookieFile = required("--cookie-file");
 const runProviderSmoke = args.includes("--provider-smoke");
 const providerOnly = args.includes("--provider-only");
+const requestTimeoutMs = boundedTimeout(process.env.VELOCE_PARITY_REQUEST_TIMEOUT_MS);
 // Workflow creation and brief capture both require the runtime to be inside
 // GCP: 15 client routes either enqueue a Cloud Task -- which is a *push* queue,
 // so Google must be able to call the runtime back over public HTTPS -- or read
@@ -203,9 +204,18 @@ async function api(pathname, options = {}) {
     headers: { accept: "application/json", cookie, ...(options.headers || {}) },
     redirect: options.redirect || "manual",
     cache: "no-store",
-  }).catch(() => new Response(null, { status: 503 }));
+    signal: options.signal || AbortSignal.timeout(requestTimeoutMs),
+  }).catch((error) => new Response(JSON.stringify({ error: error?.name === "TimeoutError" ? "parity_request_timeout" : "parity_request_failed" }), {
+    status: error?.name === "TimeoutError" ? 504 : 503,
+    headers: { "content-type": "application/json", "x-veloce-parity-error": error?.name === "TimeoutError" ? "request_timeout" : "request_failed" },
+  }));
   await persistRotatedCookies(response);
   return response;
+}
+
+function boundedTimeout(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 1_000 && parsed <= 120_000 ? parsed : 15_000;
 }
 
 async function safeJson(response) {
