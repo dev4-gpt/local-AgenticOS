@@ -1328,3 +1328,19 @@ Manager binding enabled.
 This closes the deployment-alignment gate for the current native research and
 routing plane. It does not promote external crawler runtimes or Visual QA;
 those require their separate evidence bundles.
+
+## 36. Remaining infrastructure audit — 2026-08-20 UTC
+
+A live read-only audit was run against the authorized owner-cloud project after
+revision `00162-7tn` became Ready.
+
+| Surface | Observed state | Interpretation |
+|---|---|---|
+| Cloud Run services | Only `veloce-cloud-test` is deployed; latest Ready revision is `00162-7tn` | No separate research-worker service exists yet |
+| Cloud Run jobs | `veloce-cloud-test-workspace` exists; no Visual QA job is present | The `dofgfood` Visual QA gate cannot be claimed |
+| Research-worker manifest | No `CLIENT_RESEARCH_WORKER_CONFIG_JSON` endpoint configuration is bound to the service | Crawl4AI, Crawlee, and Jina remain contract-active and non-executable |
+| Secret Manager metadata | Brave, Firecrawl, and existing client worker-token names are present; no research-worker endpoint/token bundle is present | A token alone is not evidence of an isolated worker |
+| Cloudflare tunnel | No local origin certificate or named tunnel configuration exists | Full local Cloud Tasks parity still needs a trusted manually managed HTTPS tunnel |
+
+No manifest flag was changed by this audit. The remaining external gates and
+all intentionally gated capability statuses are unchanged.
