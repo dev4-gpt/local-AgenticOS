@@ -14,6 +14,7 @@ later waves explicitly gated.
 | Standing-instruction budget | `src/lib/instructionBudget.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free redacted measurement at the provider boundary; shared authenticated current-image smoke passed |
 | Native industry playbooks | `src/lib/nativeIndustryPlaybooks.ts` + `src/lib/clientPlaybooks.ts` | data-driven 14-family/28-outcome registry; shared authenticated intent and gating smoke passed; specialized evidence remains bounded |
 | Research evidence | structured research worker output metadata | implemented and cloud-smoked on `00145-jcn` |
+| Research provider routing | `src/lib/researchProviderRouter.ts` + `/api/client-runtime/research` | dependency-free, deterministic, flag-gated; bounded search prefers approved Brave, extraction requires Firecrawl, and unavailable providers fail closed or fall back safely; cloud activation pending |
 | Knowledge evidence | `src/lib/contextCompiler.ts` snapshot + reviewed activation | implemented |
 | Visual-QA persistence | `product-experience/supabase-client-visual-qa.sql` | identifier defect fixed; authenticated queue route, bounded adapter, replay-safe smoke harness, and report/findings persistence implemented; owner-cloud activation remains pending |
 | Client UX | existing workflow and manifest | unchanged; no skill/tool selector |
@@ -78,6 +79,19 @@ The final owner-cloud Firecrawl-default deployment is revision
 `sha256:1e5395fcf9e5b41967c5bfd1738cdef33be7dc348993edd9eebb435c401f2123`,
 with `context-compression` and intent routing enabled. Authenticated intent
 smoke and full cloud parity passed.
+
+## Native research provider routing — 2026-08-20
+
+`src/lib/researchProviderRouter.ts` is a Veloce-owned routing boundary, not an
+upstream runtime. It is disabled unless the server manifest sets
+`CLIENT_RESEARCH_ROUTING_ENABLED=1`. With the flag enabled, bounded search
+prefers Brave only when its server-side key and capability allowlist are both
+present; content extraction selects Firecrawl because Brave is search-only; if
+Brave is unavailable, the router uses approved Firecrawl, and if neither lane
+is eligible it fails closed. The selection reason, eligible providers, policy
+version, and bounded cost estimate are stored in job metadata without keys or
+raw evidence. Existing Firecrawl-default cloud behavior is unchanged until a
+separate Brave Secret Manager and authenticated smoke bundle is recorded.
 
 ## Headroom compression pilot — 2026-08-12
 

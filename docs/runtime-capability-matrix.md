@@ -57,6 +57,7 @@ These can be exposed only through server-side provider APIs, a per-client allowl
 |---|---|---|
 | Firecrawl | Existing governed research worker | Default provider; existing cloud behavior unchanged |
 | Brave Search API | Existing governed research worker | Native adapter implemented and focused-tested; inactive until cloud Secret Manager key and smoke evidence |
+| Native research router | Shared client research route + worker job metadata | Flag-gated deterministic selection: Brave for bounded search when approved/available, Firecrawl for content extraction, safe fallback otherwise; disabled by default until Brave cloud evidence |
 | Crawl4AI | Separate external Python/browser worker | Pinned reference-only; never selected automatically or bundled |
 | Crawlee | Separate external Node crawler worker | Pinned reference-only; never selected automatically or bundled |
 | Jina Reader | Separate hosted/open-source reader boundary | Pinned reference-only; never selected automatically or bundled |

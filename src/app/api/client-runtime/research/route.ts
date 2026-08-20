@@ -4,7 +4,9 @@ import { checkClientRuntimeRateLimit, enqueueClientRuntimeJob, selectClientRecor
 import { deterministicCapabilityIdempotencyKey } from "@/lib/capabilityContracts";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
-import { clientCapabilityEnabled, clientCapabilityProviderEnabled, clientProviderCallsEnabled, clientResearchProvider } from "@/lib/clientRuntimePolicy";
+import { providerEnvKey } from "@/lib/providerKeys";
+import { clientCapabilityEnabled, clientCapabilityProviderEnabled, clientProviderCallsEnabled, clientResearchProvider, clientResearchRoutingEnabled } from "@/lib/clientRuntimePolicy";
+import { selectResearchProvider } from "@/lib/researchProviderRouter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,9 +56,6 @@ export async function POST(request: Request) {
   if (!session) return fail("not_authenticated", 401);
   if (!clientCapabilityEnabled("seo-research")) return fail("capability_not_enabled", 403);
   if (!clientProviderCallsEnabled()) return fail("provider_calls_require_approval", 403);
-  const provider = clientResearchProvider();
-  const providerKey = provider === "brave" ? "BRAVE_API_KEY" : "FIRECRAWL_API_KEY";
-  if (!clientCapabilityProviderEnabled("seo-research", provider, providerKey)) return fail("provider_not_allowlisted", 403);
   const rate = await checkClientRuntimeRateLimit("research-write", 10, 900);
   if (!rate.ok) return fail("runtime_limit_unavailable", 503);
   if (!rate.allowed) return fail("runtime_rate_limited", 429);
@@ -65,19 +64,44 @@ export async function POST(request: Request) {
   const input = body.input && typeof body.input === "object" && !Array.isArray(body.input) ? body.input as Record<string, unknown> : body;
   const query = typeof input.query === "string" ? input.query.trim().slice(0, 400) : "";
   const limit = Math.max(1, Math.min(3, Math.round(Number(input.limit ?? 3))));
-  // Brave is a bounded search provider, not a scraping or arbitrary-fetch
-  // boundary. Firecrawl keeps the existing opt-in scrape behavior.
-  const scrapeResults = provider === "brave" ? false : input.scrapeResults === true;
   const notebookId = typeof input.notebookId === "string" && UUID.test(input.notebookId.trim()) ? input.notebookId.trim() : null;
   if (!query || query.length < 3 || containsClientSecretLike(query) || (typeof input.notebookId === "string" && input.notebookId.trim() && !notebookId)) return fail("research_input_invalid", 400);
 
-  const idempotencyKey = deterministicCapabilityIdempotencyKey("research", [session.tenantSlug, notebookId ?? "unfiled", query, String(limit), String(scrapeResults)]);
+  const configuredProvider = clientResearchProvider();
+  const scrapeRequested = input.scrapeResults === true;
+  const firecrawlKey = providerEnvKey("FIRECRAWL_API_KEY");
+  const braveKey = providerEnvKey("BRAVE_API_KEY");
+  const firecrawlAllowed = clientCapabilityProviderEnabled("seo-research", "firecrawl", "FIRECRAWL_API_KEY");
+  const braveAllowed = clientCapabilityProviderEnabled("seo-research", "brave", "BRAVE_API_KEY");
+  const selection = selectResearchProvider({
+    configuredProvider,
+    routingEnabled: clientResearchRoutingEnabled(),
+    scrapeRequested,
+    firecrawl: {
+      available: Boolean(firecrawlKey),
+      allowed: firecrawlAllowed,
+      costMicros: Math.max(0, Math.round(Number(process.env.CLIENT_FIRECRAWL_COST_MICROS ?? 1000))),
+    },
+    brave: {
+      available: Boolean(braveKey),
+      allowed: braveAllowed,
+      costMicros: Math.max(0, Math.round(Number(process.env.CLIENT_BRAVE_COST_MICROS ?? 0))),
+    },
+  });
+  if ("error" in selection) return fail(selection.error, selection.error === "provider_not_allowlisted" ? 403 : 503);
+  const provider = selection.provider;
+  const providerKey = provider === "brave" ? "BRAVE_API_KEY" : "FIRECRAWL_API_KEY";
+  // Brave is a bounded search provider, not a scraping or arbitrary-fetch
+  // boundary. Firecrawl keeps the existing opt-in scrape behavior.
+  const scrapeResults = provider === "brave" ? false : scrapeRequested;
+
+  const idempotencyKey = deterministicCapabilityIdempotencyKey("research", [session.tenantSlug, notebookId ?? "unfiled", query, provider, String(limit), String(scrapeResults)]);
   const jobId = await enqueueClientRuntimeJob({
     capability: "seo-research",
     provider,
     model: null,
     idempotencyKey,
-    inputMetadata: { operation: "research", query, limit, scrapeResults, notebookId, idempotencyKey },
+    inputMetadata: { operation: "research", query, limit, scrapeResults, notebookId, providerSelection: selection, providerKey, idempotencyKey },
   });
   if (!jobId) return fail("job_store_failed", 503);
   const task = await enqueueClientRuntimeTask({ jobId, tenantSlug: session.tenantSlug });

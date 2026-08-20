@@ -1111,3 +1111,22 @@ disposition index is `docs/V96-STARRED-PORTFOLIO-WAVE-PLAN.md`. This portfolio
 sync does not change the gated status of GPU, Visual QA promotion/Supervision,
 security execution, communications, worktrees, streaming speech, or external
 crawler runtimes.
+
+## 31. Native research provider routing — 2026-08-20 UTC
+
+The Veloce-owned research router is implemented locally but remains manifest
+disabled. It selects only providers that are both configured server-side and
+allowed by the capability policy.
+
+| Checkpoint | Result |
+|---|---|
+| Bounded search selection | **Implemented**; approved Brave is preferred when routing is enabled and available |
+| Content extraction selection | **Implemented**; Firecrawl is required because Brave is search-only |
+| Safe fallback | **Implemented**; unavailable Brave falls back to approved Firecrawl; no eligible provider fails closed |
+| Rollout flag | `CLIENT_RESEARCH_ROUTING_ENABLED=1`; not enabled in the current cloud manifest |
+| Evidence metadata | Selection policy, reason, eligible providers, and bounded cost only; no API keys or raw private evidence |
+| Cloud activation | **Pending** Brave Secret Manager key and authenticated provider smoke; Firecrawl default remains unchanged |
+
+The implementation boundary is `src/lib/researchProviderRouter.ts`, called by
+`/api/client-runtime/research`. Crawl4AI, Crawlee, and Jina Reader remain
+catalog references and are not eligible candidates for this router.

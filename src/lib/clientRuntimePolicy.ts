@@ -108,6 +108,10 @@ export function clientIntentRoutingEnabled() {
   return process.env.CLIENT_INTENT_ROUTING_ENABLED === "1";
 }
 
+export function clientResearchRoutingEnabled() {
+  return process.env.CLIENT_RESEARCH_ROUTING_ENABLED === "1";
+}
+
 export type ClientResearchProvider = "firecrawl" | "brave";
 
 /** Provider choice is server-side manifest policy, never a client selector. */
