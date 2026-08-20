@@ -1,8 +1,8 @@
 # Wave 3 handoff — named loop registry
 
-**Paste this as the first message of the new session.** Everything below is
-verified, not remembered; each claim names the command or revision that proves
-it.
+**Historical handoff.** This document is retained for provenance. Wave 3 has
+since landed on `main`; use the current state below rather than the original
+“not started” instructions.
 
 **Date:** 2026-08-13
 
@@ -12,11 +12,12 @@ it.
 
 | | |
 |---|---|
-| **HEAD / `origin/main`** | `d44955a` (Wave 2 acceptance) on top of `7cc7d3f` |
+| **HEAD** | `f0b0963` — named loop contracts and loop cost enforcement |
+| **`origin/main`** | `9d3d856`; the Wave 3 commits are local and must be pushed after review |
 | **Live cloud** | `veloce-cloud-test-00153-wn6`, 100% traffic |
 | **Repo** | `/Users/aryamandev/Documents/Codex/Projects/AgentOS/source` |
 | **Waves 1 and 2** | complete and **accepted** |
-| **Wave 3** | **not started** — this document |
+| **Wave 3** | **implemented locally; hosted worker wiring is the current unpushed change; cloud smoke pending** |
 
 Verify before trusting any of it:
 
@@ -29,11 +30,13 @@ npm run test:focused && npm run verify:references
 
 ---
 
-## Wave 3: make Loop reachable with named templates
+## Wave 3: make Loop reachable with named templates — landed
 
 Wave 1 added `loop` to `ClientIntentSurface` and put three playbooks behind it,
-so the router *can* select the Loop lane. What does not exist is any **named
-loop template** — `/loop` is still a free-text goal box.
+so the router *can* select the Loop lane. Named contracts now live in
+`src/lib/clientLoopRegistry.ts`, and the hosted worker consumes their budget
+and stop decisions. `/loop` remains a free-text goal box, but the default
+contract is applied server-side; no client skill or tool selector was added.
 
 The source is [15 AI loops worth stealing](https://learnaiwithmariah.com/guides/ai-loops-worth-stealing/).
 
@@ -140,8 +143,11 @@ worker evidence for security, cost, licensing and rollback before activation.
 **Brave Search** is implemented and locally tested but not cloud-enabled until
 `BRAVE_API_KEY` has a Secret Manager version and an authenticated smoke.
 
-Waves 4 and 5 (the 60–80 industry playbooks, social pack, system-design
-reference, harness audit) stay untouched until Wave 3 is green.
+The remaining Wave 3 gate is an authenticated cloud smoke against the image
+containing the worker wiring, recording contract ID, stop reason, combined
+round cost, settlement, and idempotency replay. Waves 4 and 5 (the 60–80
+industry playbooks, social pack, system-design reference, harness audit) remain
+design-only until that evidence exists.
 
 ## Related
 

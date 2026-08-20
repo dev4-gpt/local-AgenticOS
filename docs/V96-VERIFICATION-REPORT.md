@@ -748,3 +748,28 @@ remain catalog references, not installed runtimes or client-selectable tools.
 The previously gated capabilities remain unchanged: `dofgfood` Visual QA
 promotion, GPU media, Supervision enhancement, security execution,
 communications, worktrees, and continuous streaming speech.
+
+## 14. Wave 3 hosted-loop enforcement checkpoint — 2026-08-19
+
+This is a local source checkpoint. It is not a cloud deployment claim.
+
+| Checkpoint | Result |
+|---|---|
+| Named loop contracts | **Implemented** in `clientLoopRegistry`; default direct Loop contract is `plan-generate-verify-fix` |
+| Live worker stop policy | **Implemented locally**; the hosted worker now calls `loopStopDecision` after every recorded round |
+| Cost evidence | Combined builder-plus-judge round cost is persisted; settlement includes estimate, actual, compression-savings, retry, and budget fields |
+| Anti-spin / quality streak | **Wired**; anti-spin stops before another round, and `quality-streak` requires the configured consecutive-pass target |
+| Focused suite | **75 passed** |
+| TypeScript | **passed** |
+| ESLint | **passed**; loop adapter and tests are now included in the root lint allowlist |
+| Reference suite | **47 passed** |
+| Worker boundary verifier | **passed** |
+| Production build | **Passed in the approved external build environment**; default sandbox Turbopack remains blocked by its internal port restriction |
+| Cloud deployment/smoke | **Pending** for the worker-wiring image; no cloud revision is claimed here |
+
+The starred GitHub portfolio was rechecked on 2026-08-19: 100 starred
+repositories were returned. The governed Veloce catalog currently contains 39
+GitHub references; the remaining sources are wave candidates, reference-only,
+or gated and must not be treated as installed runtimes. Unlicensed or
+`NOASSERTION` sources remain outside executable catalog rows until a license
+and provenance review is complete.

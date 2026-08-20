@@ -14,7 +14,9 @@ import { artifactFromWorkspaceOutput, isClientWorkspaceSurface, isWorkspaceArtif
 import { paperclipRunSummary } from "@/lib/clientPaperclipAdapter";
 import { parseRoomDirectives, roomActionSummary, roomPersona, roomPrompt } from "@/lib/clientRoomAdapter";
 import { parsePipelineShape, pipelineStageAfterShaping } from "@/lib/clientPipelineAdapter";
-import { loopBuilderPrompt, loopFinalStatus, loopJudgePrompt, parseLoopVerdict } from "@/lib/clientLoopAdapter";
+import { loopBuilderPrompt, loopFinalStatus, loopJudgePrompt, parseLoopVerdict, type LoopRound } from "@/lib/clientLoopAdapter";
+import { QUALITY_STREAK_TARGET, loopContractById, loopPermitsStop } from "@/lib/clientLoopRegistry";
+import { emptyLoopLedger, loopStopDecision, recordRoundCost, summarizeLoopCost, type LoopStopDecision } from "@/lib/loopCostLedger";
 import { rufloAgentPrompt, rufloReportPrompt, rufloRoster } from "@/lib/clientRufloAdapter";
 import { HERMES_CONTENT_FACTORY_STEPS, createHermesContentFactoryPlan, hermesContentFactoryPrompt, type HermesContentFactoryPlan } from "@/lib/hermesContentFactory";
 import { createSeoIntelligenceRequest, firecrawlSearchToSeoIntelligenceRecord } from "@/lib/seoIntelligence";
@@ -689,7 +691,14 @@ type LoopSide = { provider: string; model: string };
 async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken: string, job: { input_metadata?: Record<string, unknown> | null }) {
   const input = job.input_metadata ?? {};
   const goal = typeof input.goal === "string" ? input.goal.trim().slice(0, 10_000) : "";
-  const maxRounds = Math.min(5, Math.max(1, Math.round(Number(input.maxRounds) || 3)));
+  const requestedContractId = typeof input.loopContractId === "string" ? input.loopContractId.trim() : "";
+  const contract = loopContractById(requestedContractId || "plan-generate-verify-fix");
+  if (requestedContractId && !contract) {
+    await settleLoopRun(tenantSlug, workerToken, jobId, "failed", null, null, null, "loop_contract_invalid");
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "loop_contract_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const maxRounds = Math.min(contract?.maxRounds ?? 3, 5, Math.max(1, Math.round(Number(input.maxRounds) || contract?.maxRounds || 3)));
   const builder = loopSide(input.builder);
   const judge = loopSide(input.judge);
   if (!goal || !builder || !judge) {
@@ -705,6 +714,7 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
     return NextResponse.json({ ok: true, status: "failed" });
   }
+  const reservationMicros = perCall * maxRounds * 2;
   await settleLoopRun(tenantSlug, workerToken, jobId, "running", null, null, null, null);
 
   let artifactText = "";
@@ -713,8 +723,12 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
   let spent = 0;
   let round = 0;
   let lastSummary = "";
+  let consecutivePasses = 0;
+  let stopDecision: LoopStopDecision | null = null;
+  let rounds: LoopRound[] = [];
+  let ledger = emptyLoopLedger(reservationMicros);
 
-  while (round < maxRounds && !passed) {
+  while (round < maxRounds && !stopDecision?.stop) {
     round += 1;
     const buildResult = await runClientTextAdapter({
       provider: builder.provider, model: builder.model,
@@ -728,7 +742,8 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
       await completeJob(tenantSlug, jobId, workerToken, "failed", { loopRounds: round }, buildResult.error);
       return NextResponse.json({ ok: true, status: "failed" });
     }
-    spent += buildResult.usage ? clientTextUsageCostMicros(builder.model, buildResult.usage) ?? 0 : 0;
+    const buildCost = buildResult.usage ? clientTextUsageCostMicros(builder.model, buildResult.usage) ?? 0 : 0;
+    spent += buildCost;
     artifactText = safeClientProviderOutput(buildResult.output);
 
     const judgeResult = await runClientTextAdapter({
@@ -737,31 +752,84 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
       reserveBudget: false, jobId, disableReviewedPlanTool: true,
     });
     const judgeCost = judgeResult.ok && judgeResult.usage ? clientTextUsageCostMicros(judge.model, judgeResult.usage) ?? 0 : 0;
+    const roundCost = buildCost + judgeCost;
     spent += judgeCost;
     const verdict = judgeResult.ok ? parseLoopVerdict(safeClientProviderOutput(judgeResult.output)) : null;
     if (!verdict) {
       // An unreadable verdict is recorded as a failed round rather than being
       // treated as a pass, which would ship unjudged work.
-      await appendLoopRound(tenantSlug, workerToken, jobId, round, false, 0, [], "", artifactText.length, judgeCost, judgeResult.ok ? "loop_verdict_unparsable" : judgeResult.error);
+      await appendLoopRound(tenantSlug, workerToken, jobId, round, false, 0, [], "", artifactText.length, roundCost, judgeResult.ok ? "loop_verdict_unparsable" : judgeResult.error);
       issues = ["The verification gate did not return a readable verdict."];
       lastSummary = "Judge output could not be read.";
+      consecutivePasses = 0;
+      rounds = [...rounds, loopRoundForDecision(round, false, 0, issues, lastSummary, artifactText.length, roundCost)];
+      ledger = recordRoundCost(ledger, { actualMicros: roundCost, estimatedMicros: perCall * 2 });
+      stopDecision = decideLoopStop(contract, { round, maxRounds, passed: false, ledger, rounds, consecutivePasses });
       continue;
     }
     passed = verdict.pass;
     issues = verdict.issues;
     lastSummary = verdict.summary;
-    await appendLoopRound(tenantSlug, workerToken, jobId, round, verdict.pass, verdict.score, verdict.issues, verdict.summary, artifactText.length, judgeCost, null);
+    await appendLoopRound(tenantSlug, workerToken, jobId, round, verdict.pass, verdict.score, verdict.issues, verdict.summary, artifactText.length, roundCost, null);
+    consecutivePasses = verdict.pass ? consecutivePasses + 1 : 0;
+    rounds = [...rounds, loopRoundForDecision(round, verdict.pass, verdict.score, verdict.issues, verdict.summary, artifactText.length, roundCost)];
+    ledger = recordRoundCost(ledger, {
+      actualMicros: roundCost,
+      estimatedMicros: perCall * 2,
+      compressionSavedMicros: compressionSavedMicros(buildResult.compression) + compressionSavedMicros(judgeResult.ok ? judgeResult.compression : undefined),
+    });
+    stopDecision = decideLoopStop(contract, { round, maxRounds, passed, ledger, rounds, consecutivePasses });
   }
 
   const artifact = artifactFromWorkspaceOutput({ surface: "loop", title: `loop-${jobId.slice(0, 8)}`, artifactIntent: "preview", output: artifactText });
   const artifactId = artifact ? await storeArtifact(tenantSlug, jobId, workerToken, artifact.fileName, artifact.contentType, artifact.bytes) : null;
-  const status = loopFinalStatus({ passed, rounds: round, maxRounds });
+  const status = loopFinalStatus({ passed, rounds: round, maxRounds, stopReason: stopDecision?.reason });
+  const costSummary = summarizeLoopCost(ledger);
+  const outputMetadata = {
+    loopContractId: contract?.id ?? "plan-generate-verify-fix",
+    loopStopReason: stopDecision?.reason ?? null,
+    loopStopDetail: stopDecision?.detail ?? null,
+    loopCost: costSummary,
+    costMicros: spent,
+  };
 
-  const settled = await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros: spent, usageMetadata: { loopRounds: round, actualAmountMicros: spent }, workerToken });
+  const settled = await settleClientRuntimeBudgetWorker({
+    jobId,
+    actualAmountMicros: spent,
+    usageMetadata: {
+      loopRounds: round,
+      actualAmountMicros: spent,
+      estimatedMicros: ledger.estimatedMicros,
+      compressionSavedMicros: ledger.compressionSavedMicros,
+      retryMicros: ledger.retryMicros,
+      budgetMicros: ledger.budgetMicros ?? 0,
+    },
+    workerToken,
+  });
   if (!settled) logClientRuntimeEvent("runtime.budget_settlement_failed", { tenant: tenantSlug, jobId, status: 503 });
   await settleLoopRun(tenantSlug, workerToken, jobId, status, lastSummary || null, artifactId, artifact?.previewHtml ?? null, null);
-  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { loopRounds: round, passed, artifactId, costMicros: spent });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { ...outputMetadata, loopRounds: round, passed, artifactId });
   return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+function loopRoundForDecision(round: number, passed: boolean, score: number, issues: string[], summary: string, artifactChars: number, costMicros: number): LoopRound {
+  return { id: `decision-${round}`, runId: "in-memory", round, passed, score, issues, summary, artifactChars, costMicros, errorCode: null, createdAt: new Date().toISOString() };
+}
+
+function compressionSavedMicros(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return 0;
+  const evidence = value as Record<string, unknown>;
+  const saved = Number(evidence.savedMicros ?? evidence.compressionSavedMicros ?? 0);
+  return Number.isFinite(saved) && saved > 0 ? Math.round(saved) : 0;
+}
+
+function decideLoopStop(contract: ReturnType<typeof loopContractById>, input: Parameters<typeof loopStopDecision>[0]) {
+  const decision = loopStopDecision({
+    ...input,
+    streakTarget: contract?.id === "quality-streak" ? QUALITY_STREAK_TARGET : undefined,
+  });
+  if (!decision.stop || !contract || loopPermitsStop(contract, decision.reason!)) return decision;
+  return { stop: true, reason: "approval-denied" as const, detail: `loop contract ${contract.id} did not permit ${decision.reason}` };
 }
 
 function loopSide(value: unknown): LoopSide | null {

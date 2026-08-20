@@ -1,7 +1,8 @@
 # V96 external corpus integration — one OS, two deployments
 
-**Status:** active governed registry; additive Wave 2 provider work is in
-progress. Native Veloce behavior is enabled only where evidence says so;
+**Status:** active governed registry; Waves 1 and 2 are accepted, Wave 3 is
+implemented locally with hosted-cloud evidence pending, and Waves 4–5 remain
+planned. Native Veloce behavior is enabled only where evidence says so;
 upstream runtimes remain outside the product image.
 **Date:** 2026-08-13
 
@@ -431,7 +432,7 @@ DevOps-System-Design — a reference-only row carrying `license: "unknown"` — 
 expressible. Unlicensed entries live in this document and nowhere else. The
 catalog is for things with a licence you could act on.
 
-### Wave 3 — landed 2026-08-13
+### Wave 3 — landed locally 2026-08-19
 
 3A, 3B and 3D are implemented; 3C's focused tests pass and the cloud smoke
 remains outstanding.
@@ -444,8 +445,9 @@ remains outstanding.
 | `v96RepositoryCatalog.ts` | `superpowers` and `ponytail` pinned at real SHAs, `native-enabled` with rollback rules |
 | `tests/loop-registry.spec.ts` | 13 tests; each gate observed failing before being trusted |
 
-Evidence: `npm run test:focused` 63/63, `typecheck`, `lint`, `build`, and
-`scripts/verify-client-runtime-worker.mjs` all pass.
+Evidence: `npm run test:focused` 75/75, `typecheck`, `lint`, `build`, and
+`scripts/verify-client-runtime-worker.mjs` all pass locally. The hosted worker
+image still needs a fresh authenticated cloud smoke before Wave 3 is accepted.
 
 **A second defect surfaced while wiring the traits.** `model-allowlist` was
 declared only by `provider-routing` and `intent-routing`, yet the runtime rejects
@@ -455,11 +457,13 @@ running under a guarantee their plans did not claim — the same class of defect
 Wave 1's unverified `requiredTraits`, found the same way, by making a playbook
 declare what it actually needs. The trait now sits in `PROVIDER_BOUND_TRAITS`.
 
-**Still open:** the loop worker does not yet call `loopStopDecision` — the
-contracts, ledger and enforcement are in place and tested, but the running loop
-still uses `loopShouldContinue`. Wiring the worker is the first task of the next
-session, and until it lands the budget stop is enforced in the library rather
-than in the live loop.
+**Closed 2026-08-19:** the hosted loop worker now calls `loopStopDecision` after
+each recorded round. It carries the selected contract, records the combined
+builder-plus-judge cost, enforces budget/anti-spin/quality-streak stops before
+the next round, and persists the stop reason, cost summary, and numeric budget
+trace in job metadata and settlement evidence. The default direct Loop route
+uses `plan-generate-verify-fix`; a governed internal job may carry another
+validated contract ID. Upstream runtimes remain uninstalled.
 
 ### Wave 4 — Industry sweep + content pack
 
@@ -597,7 +601,8 @@ file must be added to it or it is silently unlinted.
 
 ## Sequencing
 
-**Wave 2 is accepted; Wave 3 is ready to begin.** — *updated 2026-08-13*
+**Waves 1 and 2 are accepted; Wave 3 is implemented locally and awaiting cloud
+evidence.** — *updated 2026-08-19*
 
 The blocker recorded here previously — the intent router sitting uncommitted on
 `codex/reviewed-additions-2026-08-10`, 52 files dirty — **is resolved.** That work
@@ -609,9 +614,9 @@ against cloud revision `veloce-cloud-test-00153-wn6` with a clean tree.
 |---|---|
 | Wave 1 — plane gaps | Landed; `loop` is a real intake surface with a test asserting it |
 | Wave 2 — parity spine | **Accepted** `7cc7d3f` |
-| **Wave 3 — named loops** | **Ready to start**, in the 3A–3D order below |
-| Wave 4 — industry sweep | Blocked on Wave 3 only |
-| Wave 5 — design + harness audit | Blocked on Wave 3 only |
+| **Wave 3 — named loops** | **Implemented locally; worker wiring landed 2026-08-19; cloud smoke pending** |
+| Wave 4 — industry sweep | **Design-only; blocked on Wave 3 cloud evidence and playbook scope review** |
+| Wave 5 — design + harness audit | **Design-only; cost row is now represented as a native trait** |
 
 Wave 3 executes in four steps, and the order is load-bearing — cost enforcement
 lands *before* the tests that prove it, and cataloguing lands last so rows are

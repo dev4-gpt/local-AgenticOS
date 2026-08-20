@@ -64,6 +64,7 @@ test("the loop stops on a pass or at the cap", () => {
   expect(loopFinalStatus({ passed: true, rounds: 2, maxRounds: 3 })).toBe("passed");
   expect(loopFinalStatus({ passed: false, rounds: 3, maxRounds: 3 })).toBe("exhausted");
   expect(loopFinalStatus({ passed: false, rounds: 1, maxRounds: 3 })).toBe("failed");
+  expect(loopFinalStatus({ passed: false, rounds: 1, maxRounds: 3, stopReason: "budget-exhausted" })).toBe("exhausted");
 });
 
 test("the builder is told to fix exactly the judge's issues and nothing else", () => {
