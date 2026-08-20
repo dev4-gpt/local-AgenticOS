@@ -818,6 +818,43 @@ The broader Wave 4 target remains a staged expansion toward the documented
 60–80 industry playbooks. The 100-repository portfolio plan remains a governed
 reference inventory, not a runtime installation list.
 
+## 17. Wave 5A harness audit checkpoint — 2026-08-19
+
+The harness audit is now a deterministic Veloce-owned evidence reducer. It
+covers personalisation, context, action, memory, delegation, and the newly
+first-class cost dimension. It accepts only bounded evidence flags and does not
+read prompts, tenant rows, local files, or upstream runtime code.
+
+| Checkpoint | Result |
+|---|---|
+| Six-component frame | **Passed**; cost is included explicitly |
+| Local-only evidence | **Review**, never falsely promoted to cloud parity |
+| Missing fail-closed evidence | **Blocked** in focused test |
+| Focused suite | **80 passed** |
+| Reference suite | **52 passed** |
+| TypeScript / lint / worker boundary | **Passed** |
+| Cloud evidence | **Pending**; deployment prerequisite remains recorded in §15 |
+
+## 18. Wave 5B standing-instruction budget checkpoint — 2026-08-19
+
+The provider boundary now measures standing instruction cost without storing
+raw policy or private context. The evidence includes the policy version,
+segment count, character/line totals, mandatory versus optional character
+counts, configured limits, stable input hash, and redacted segment IDs. It is
+observability only: mandatory safety and tenant instructions are not edited or
+reordered.
+
+| Checkpoint | Result |
+|---|---|
+| Deterministic measurement | **Passed** |
+| Raw instruction redaction | **Passed** |
+| Character and line overflow reporting | **Passed** |
+| Provider-bound evidence exposure | **Passed locally** |
+| Focused suite after Wave 5B | **83 passed** |
+| Reference suite after Wave 5B | **55 passed** |
+| TypeScript / lint / worker boundary / approved build | **Passed** |
+| Cloud evidence | **Pending**; same deployment/IAM prerequisite as §15 |
+
 ## 19. Wave 4B domain outcome checkpoint — 2026-08-19
 
 Six additional native playbooks were added for system design, content strategy,
@@ -895,27 +932,6 @@ to the smoke harness.
 | Authenticated workflow/intent smoke | **Pending**; requires a fresh authenticated session cookie file |
 | Gated capability status | **Unchanged**; GPU, Visual QA promotion, Supervision, security execution, communications, worktrees, and streaming speech remain gated |
 
-## 25. Full local wave re-verification — 2026-08-19 UTC
-
-The current working tree was rechecked after the license-reconciled deployment
-record was added. This is local contract/build evidence only; it does not
-replace the missing authenticated cloud smoke.
-
-| Checkpoint | Result |
-|---|---|
-| Starred portfolio refresh | **100 public repositories** returned; planning inventory covers all 100 |
-| Reference suite | **60 passed** |
-| Focused Wave 3–5 suite | **88 passed** |
-| TypeScript | **Passed** |
-| Lint | **Passed** with `--max-warnings=0` |
-| Production build | **Passed** in the approved environment; existing filesystem-trace and middleware-convention warnings remain non-fatal |
-| Worker boundary verifier | **Passed** |
-| Security/provider/lifecycle gates | **Passed** |
-| Example client manifest | **Passed** |
-| Public cloud boundary | **Passed**; `/login` 200 and unauthenticated intent 401 on revision `00157-cqk` |
-| Authenticated cloud smoke | **Pending**; `/private/tmp/veloce-runtime-cookie.txt` is not present |
-| Two-tenant isolation smoke | **Pending**; requires two fresh tenant tokens and an anon key |
-
 ## 23. Starred-portfolio license reconciliation — 2026-08-20 UTC
 
 The public starred-repository snapshot contains 100 sources. A license audit
@@ -949,43 +965,27 @@ non-executable treatment of the two portfolio sources without license files.
 | Cloud Run revision | **`veloce-cloud-test-00157-cqk`**, 100% traffic |
 | Isolated workspace job | **Deployed** as `veloce-cloud-test-workspace` |
 | Manifest wiring | **Unchanged**; intent routing and context compression enabled; Firecrawl remains selected |
-| Public/unauthenticated boundary | **Recheck required after this revision**; expected `/login` 200 and unauthenticated intent 401 |
+| Public/unauthenticated boundary | **Passed**; `/login` 200 and unauthenticated intent 401 after this revision |
 | Authenticated Wave 3–5 smoke | **Pending**; requires a fresh authenticated session cookie file |
 | Gated capability status | **Unchanged**; GPU, Visual QA promotion, Supervision, security execution, communications, worktrees, and streaming speech remain gated |
 
-## 17. Wave 5A harness audit checkpoint — 2026-08-19
+## 25. Full local wave re-verification — 2026-08-19 UTC
 
-The harness audit is now a deterministic Veloce-owned evidence reducer. It
-covers personalisation, context, action, memory, delegation, and the newly
-first-class cost dimension. It accepts only bounded evidence flags and does not
-read prompts, tenant rows, local files, or upstream runtime code.
-
-| Checkpoint | Result |
-|---|---|
-| Six-component frame | **Passed**; cost is included explicitly |
-| Local-only evidence | **Review**, never falsely promoted to cloud parity |
-| Missing fail-closed evidence | **Blocked** in focused test |
-| Focused suite | **80 passed** |
-| Reference suite | **52 passed** |
-| TypeScript / lint / worker boundary | **Passed** |
-| Cloud evidence | **Pending**; deployment prerequisite remains recorded in §15 |
-
-## 18. Wave 5B standing-instruction budget checkpoint — 2026-08-19
-
-The provider boundary now measures standing instruction cost without storing
-raw policy or private context. The evidence includes the policy version,
-segment count, character/line totals, mandatory versus optional character
-counts, configured limits, stable input hash, and redacted segment IDs. It is
-observability only: mandatory safety and tenant instructions are not edited or
-reordered.
+The current working tree was rechecked after the license-reconciled deployment
+record was added. This is local contract/build evidence only; it does not
+replace the missing authenticated cloud smoke.
 
 | Checkpoint | Result |
 |---|---|
-| Deterministic measurement | **Passed** |
-| Raw instruction redaction | **Passed** |
-| Character and line overflow reporting | **Passed** |
-| Provider-bound evidence exposure | **Passed locally** |
-| Focused suite after Wave 5B | **83 passed** |
-| Reference suite after Wave 5B | **55 passed** |
-| TypeScript / lint / worker boundary / approved build | **Passed** |
-| Cloud evidence | **Pending**; same deployment/IAM prerequisite as §15 |
+| Starred portfolio refresh | **100 public repositories** returned; planning inventory covers all 100 |
+| Reference suite | **60 passed** |
+| Focused Wave 3–5 suite | **88 passed** |
+| TypeScript | **Passed** |
+| Lint | **Passed** with `--max-warnings=0` |
+| Production build | **Passed** in the approved environment; existing filesystem-trace and middleware-convention warnings remain non-fatal |
+| Worker boundary verifier | **Passed** |
+| Security/provider/lifecycle gates | **Passed** |
+| Example client manifest | **Passed** |
+| Public cloud boundary | **Passed**; `/login` 200 and unauthenticated intent 401 on revision `00157-cqk` |
+| Authenticated cloud smoke | **Pending**; `/private/tmp/veloce-runtime-cookie.txt` is not present |
+| Two-tenant isolation smoke | **Pending**; requires two fresh tenant tokens and an anon key |
