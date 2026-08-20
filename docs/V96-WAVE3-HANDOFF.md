@@ -12,12 +12,12 @@ since landed on `main`; use the current state below rather than the original
 
 | | |
 |---|---|
-| **HEAD** | `f0b0963` — named loop contracts and loop cost enforcement |
-| **`origin/main`** | `9d3d856`; the Wave 3 commits are local and must be pushed after review |
-| **Live cloud** | `veloce-cloud-test-00153-wn6`, 100% traffic |
+| **HEAD** | `70176c2` — verified local wave fixes and fresh browser harness |
+| **`origin/main`** | `70176c2`; local changes are pushed |
+| **Live cloud** | `veloce-cloud-test-00157-cqk`, 100% traffic; predates the latest gated-intent and hosted-loop fixes |
 | **Repo** | `/Users/aryamandev/Documents/Codex/Projects/AgentOS/source` |
 | **Waves 1 and 2** | complete and **accepted** |
-| **Wave 3** | **implemented locally; hosted worker wiring is the current unpushed change; cloud smoke pending** |
+| **Wave 3** | **implemented and verified locally; hosted cloud smoke pending corrected-image deployment** |
 
 Verify before trusting any of it:
 
@@ -145,9 +145,10 @@ worker evidence for security, cost, licensing and rollback before activation.
 
 The remaining Wave 3 gate is an authenticated cloud smoke against the image
 containing the worker wiring, recording contract ID, stop reason, combined
-round cost, settlement, and idempotency replay. Waves 4 and 5 (the 60–80
-industry playbooks, social pack, system-design reference, harness audit) remain
-design-only until that evidence exists.
+round cost, settlement, and idempotency replay. Waves 4A/4B/4C and 5A/5B are
+implemented and locally verified; their owner-cloud evidence remains pending
+the same corrected-image deployment. This is an evidence-status boundary, not
+permission to activate the separately gated runtimes.
 
 ## Related
 
