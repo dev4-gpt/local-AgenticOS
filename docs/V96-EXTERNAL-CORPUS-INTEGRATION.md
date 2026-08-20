@@ -2,8 +2,9 @@
 
 **Status:** active governed registry; Waves 1 and 2 are accepted, Waves 3–5
 are implemented locally and present in the owner-cloud image. The shared
-authenticated smoke passed on `veloce-cloud-test-00158-24s`; specialized Brave,
-Visual QA, full tunnel-parity, and two-tenant evidence remain separate gates.
+authenticated smoke passed on `veloce-cloud-test-00161-gc6`; Brave research
+routing is now cloud-enabled. Visual QA, full tunnel-parity, and two-tenant
+evidence remain separate gates.
 Native Veloce behavior is enabled only where evidence says so; upstream
 runtimes remain outside the product image.
 **Date:** 2026-08-13
@@ -29,8 +30,9 @@ selects `CLIENT_RESEARCH_PROVIDER=brave`. Both use the existing tenant RPCs,
 budget ledger, retry identity, citation persistence, deletion lineage, and
 audit metadata. Brave is search-only: three results maximum, HTTPS URLs only,
 bounded queries, and no caller-controlled scraping even for manually crafted
-jobs. Brave is locally implemented and tested, but is not cloud-enabled until
-its Secret Manager version and authenticated smoke evidence are recorded.
+jobs. Brave is now cloud-enabled: direct Brave smoke passed on `00160-x4m`,
+and automatic-routing smoke passed on `00161-gc6`. Firecrawl remains the
+extraction fallback and configured provider default.
 
 Crawl4AI, Crawlee, and Jina Reader are pinned Apache-2.0 architectural
 references. They are not installed, automatically selected, or allowed to

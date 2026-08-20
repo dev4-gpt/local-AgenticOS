@@ -1103,7 +1103,7 @@ default-branch or tag commit SHAs and GitHub license metadata.
 | License/provenance handling | **Passed**; missing and `NOASSERTION` licenses remain reference-only |
 | Permission validation | **Passed**; no entry grants `execute-shell` or `arbitrary-network` |
 | Activation boundary | **Passed**; only existing Veloce implementation mappings can be native-enabled |
-| Documentation reconciliation | **Passed**; current docs point to revision `00158-24s`; historical evidence remains preserved |
+| Documentation reconciliation | **Passed**; current docs point to revision `00161-gc6`; historical evidence remains preserved |
 | Runtime installation | **None**; portfolio records do not install upstream repositories |
 
 The canonical snapshot is `src/lib/v96StarredPortfolio.ts`; the human-readable
@@ -1114,21 +1114,21 @@ crawler runtimes.
 
 ## 31. Native research provider routing — 2026-08-20 UTC
 
-The Veloce-owned research router is implemented locally but remains manifest
-disabled. It selects only providers that are both configured server-side and
-allowed by the capability policy.
+The Veloce-owned research router is implemented locally and enabled by the
+owner-cloud manifest. It selects only providers that are both configured
+server-side and allowed by the capability policy.
 
 | Checkpoint | Result |
 |---|---|
 | Bounded search selection | **Implemented**; approved Brave is preferred when routing is enabled and available |
 | Content extraction selection | **Implemented**; Firecrawl is required because Brave is search-only |
 | Safe fallback | **Implemented**; unavailable Brave falls back to approved Firecrawl; no eligible provider fails closed |
-| Rollout flag | `CLIENT_RESEARCH_ROUTING_ENABLED=1`; not enabled in the current cloud manifest |
+| Rollout flag | `CLIENT_RESEARCH_ROUTING_ENABLED=1`; enabled on owner-cloud revision `00161-gc6` |
 | Evidence metadata | Selection policy, reason, eligible providers, and bounded cost only; no API keys or raw private evidence |
 | Source contract check | **Passed**; syntax, diff validation, and direct deterministic selection cases for bounded search, extraction, and fallback |
-| Authenticated provider smoke harness | **Added**; `--research-provider-smoke` verifies selected provider identity, replay identity, durable runs/citations, HTTPS URLs, three-result bound, and secret redaction; not yet run against Brave cloud |
+| Authenticated provider smoke harness | **Passed twice**; `--research-provider-smoke` verified Brave identity, replay identity, durable runs/citations, HTTPS URLs, three-result bound, and secret redaction on `00160-x4m` and `00161-gc6` |
 | Full local checker loop | **Environment-blocked in this session**; after stopping the stale local runtime, the Playwright CLI, TypeScript, ESLint, and both production-build modes still timed out before reporting checker output; no application failure was emitted |
-| Cloud activation | **Pending** Brave Secret Manager key and authenticated provider smoke; Firecrawl default remains unchanged |
+| Cloud activation | **Passed**; `BRAVE_API_KEY` Secret Manager binding and direct Brave smoke passed on `00160-x4m`; automatic-routing smoke passed on `00161-gc6`; Firecrawl remains the extraction fallback |
 
 The implementation boundary is `src/lib/researchProviderRouter.ts`, called by
 `/api/client-runtime/research`. Crawl4AI, Crawlee, and Jina Reader remain
