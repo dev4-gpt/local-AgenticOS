@@ -895,6 +895,27 @@ to the smoke harness.
 | Authenticated workflow/intent smoke | **Pending**; requires a fresh authenticated session cookie file |
 | Gated capability status | **Unchanged**; GPU, Visual QA promotion, Supervision, security execution, communications, worktrees, and streaming speech remain gated |
 
+## 25. Full local wave re-verification — 2026-08-19 UTC
+
+The current working tree was rechecked after the license-reconciled deployment
+record was added. This is local contract/build evidence only; it does not
+replace the missing authenticated cloud smoke.
+
+| Checkpoint | Result |
+|---|---|
+| Starred portfolio refresh | **100 public repositories** returned; planning inventory covers all 100 |
+| Reference suite | **60 passed** |
+| Focused Wave 3–5 suite | **88 passed** |
+| TypeScript | **Passed** |
+| Lint | **Passed** with `--max-warnings=0` |
+| Production build | **Passed** in the approved environment; existing filesystem-trace and middleware-convention warnings remain non-fatal |
+| Worker boundary verifier | **Passed** |
+| Security/provider/lifecycle gates | **Passed** |
+| Example client manifest | **Passed** |
+| Public cloud boundary | **Passed**; `/login` 200 and unauthenticated intent 401 on revision `00157-cqk` |
+| Authenticated cloud smoke | **Pending**; `/private/tmp/veloce-runtime-cookie.txt` is not present |
+| Two-tenant isolation smoke | **Pending**; requires two fresh tenant tokens and an anon key |
+
 ## 23. Starred-portfolio license reconciliation — 2026-08-20 UTC
 
 The public starred-repository snapshot contains 100 sources. A license audit
