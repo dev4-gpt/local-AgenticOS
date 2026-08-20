@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import {
@@ -20,6 +20,15 @@ export const dynamic = "force-dynamic";
 const RUNS = "client_loop_runs";
 const ROUNDS = "client_loop_rounds";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const IDEMPOTENCY_RE = /^[A-Za-z0-9._:-]{1,128}$/;
+
+function stableLoopRunId(tenantSlug: string, idempotencyKey: string) {
+  const bytes = Buffer.from(createHash("sha256").update(`client-loop:${tenantSlug}:${idempotencyKey}`).digest("hex"), "hex").subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 async function session() {
   const user = await currentClientUser();
@@ -85,6 +94,8 @@ export async function POST(request: Request) {
     ? body.title.trim().slice(0, 240)
     : goal.split("\n")[0].slice(0, 80);
   const maxRounds = Math.min(LOOP_MAX_ROUNDS, Math.max(1, Math.round(Number(body.maxRounds) || LOOP_DEFAULT_ROUNDS)));
+  const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
+  if (idempotencyKey && !IDEMPOTENCY_RE.test(idempotencyKey)) return fail("loop_input_invalid", 400);
 
   // Builder and judge each clear the allowlist before anything is queued. They
   // may be the same model; the point is that both are approved.
@@ -95,7 +106,17 @@ export async function POST(request: Request) {
   const judge = clientProviderRequestAllowed(judgeProvider, process.env.CLIENT_LOOP_JUDGE_MODEL?.trim() || null);
   if (!judge.ok) return fail(judge.error, judge.status);
 
-  const runId = randomUUID();
+  const runId = idempotencyKey ? stableLoopRunId(user.tenantSlug, idempotencyKey) : randomUUID();
+  if (idempotencyKey) {
+    const existing = await selectClientRecords(RUNS, {
+      tenant_slug: `eq.${user.tenantSlug}`, id: `eq.${runId}`,
+    });
+    if (!existing.ok) return fail(loopSchemaMissing(existing.status) ? "loop_schema_missing" : "loop_read_failed", loopSchemaMissing(existing.status) ? 503 : 502);
+    const prior = existing.records[0];
+    if (prior) {
+      return done({ runId, jobId: typeof prior.job_id === "string" ? prior.job_id : null, status: typeof prior.status === "string" ? prior.status : "queued" }, 202);
+    }
+  }
   const stored = await insertClientRecord(RUNS, {
     id: runId,
     tenant_slug: user.tenantSlug,

@@ -989,3 +989,20 @@ replace the missing authenticated cloud smoke.
 | Public cloud boundary | **Passed**; `/login` 200 and unauthenticated intent 401 on revision `00157-cqk` |
 | Authenticated cloud smoke | **Pending**; `/private/tmp/veloce-runtime-cookie.txt` is not present |
 | Two-tenant isolation smoke | **Pending**; requires two fresh tenant tokens and an anon key |
+
+## 26. Hosted loop retry closure — 2026-08-19 UTC
+
+The local audit found that the hosted loop route generated a fresh run UUID on
+every retry, even though the downstream job had an idempotency key. The route
+now derives a tenant-scoped deterministic run identity from a bounded caller
+idempotency key and returns the existing run/job on replay. The authenticated
+verifier now exposes `--loop-smoke` to exercise enqueue, replay, terminal
+status, durable run, and durable round evidence against the cloud worker.
+
+| Checkpoint | Result |
+|---|---|
+| Route correction | **Implemented**; no schema migration required |
+| Focused suite | **89 passed** |
+| Reference suite | **61 passed** |
+| TypeScript / lint / build / worker / security | **Passed** |
+| Authenticated hosted-loop smoke | **Pending**; requires the session cookie file and a deployment containing this correction |

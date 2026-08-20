@@ -442,13 +442,16 @@ remains outstanding.
 |---|---|
 | `src/lib/clientLoopRegistry.ts` | 7 named contracts, stop conditions as data, projected into router playbooks |
 | `src/lib/loopCostLedger.ts` | Cost ledger, pre-emptive budget stop, anti-spin detection |
+| `src/app/api/client-runtime/loop/route.ts` | Deterministic idempotency identity for replayed hosted loop requests; duplicate runs/jobs are not created |
 | `capabilityTraits.ts` | `cost-accounting`, fail-closed, on every provider-bound capability |
 | `v96RepositoryCatalog.ts` | `superpowers` and `ponytail` pinned at real SHAs, `native-enabled` with rollback rules |
-| `tests/loop-registry.spec.ts` | 13 tests; each gate observed failing before being trusted |
+| `tests/loop-registry.spec.ts` | Contract, budget, anti-spin, and route-idempotency tests; each gate observed failing before being trusted |
 
-Evidence: `npm run test:focused` 75/75, `typecheck`, `lint`, `build`, and
+Evidence: `npm run test:focused` 89/89, `npm run verify:references` 61/61,
+`typecheck`, `lint`, `build`, and
 `scripts/verify-client-runtime-worker.mjs` all pass locally. The hosted worker
-image still needs a fresh authenticated cloud smoke before Wave 3 is accepted.
+image still needs a fresh authenticated cloud smoke with
+`verify-client-runtime-authenticated.mjs --loop-smoke` before Wave 3 is accepted.
 
 **A second defect surfaced while wiring the traits.** `model-allowlist` was
 declared only by `provider-routing` and `intent-routing`, yet the runtime rejects

@@ -10,6 +10,7 @@ const runWorkspaceSmoke = args.includes("--workspace-smoke");
 const runVisualQaSmoke = args.includes("--visual-qa-smoke");
 const runProviderSmoke = args.includes("--provider-smoke");
 const runIntentSmoke = args.includes("--intent-smoke");
+const runLoopSmoke = args.includes("--loop-smoke");
 let cookie = await readCookie(cookieFile);
 const failures = [];
 let workflowId = null;
@@ -50,6 +51,7 @@ try {
   if (runArtifacts) await verifyArtifactRoundTrip();
   if (runProviderSmoke) await verifyProviderCompression();
   if (runIntentSmoke) await verifyIntentRouting();
+  if (runLoopSmoke) await verifyHostedLoop();
   if (runWorkspaceSmoke) await verifyWorkspaceExecution();
   if (runVisualQaSmoke) await verifyVisualQa();
 } finally {
@@ -73,7 +75,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Authenticated client runtime verification passed for ${baseUrl}${runArtifacts ? " (workflow + artifact)" : " (workflow only)"}${runProviderSmoke ? " + provider compression" : ""}${runIntentSmoke ? " + intent routing" : ""}${runWorkspaceSmoke ? " + workspace execution" : ""}${runVisualQaSmoke ? " + visual QA" : ""}.`);
+console.log(`Authenticated client runtime verification passed for ${baseUrl}${runArtifacts ? " (workflow + artifact)" : " (workflow only)"}${runProviderSmoke ? " + provider compression" : ""}${runIntentSmoke ? " + intent routing" : ""}${runLoopSmoke ? " + hosted loop" : ""}${runWorkspaceSmoke ? " + workspace execution" : ""}${runVisualQaSmoke ? " + visual QA" : ""}.`);
 
 async function verifyIntentRouting() {
   const idempotencyKey = `intent-acceptance-${Date.now()}`;
@@ -155,6 +157,34 @@ async function verifyProviderCompression() {
   expect(Number(compression?.compressedChars) < Number(compression?.originalChars), "provider compression did not reduce repeated context");
   expect(typeof compression?.inputHash === "string" && /^[a-f0-9]{64}$/.test(compression.inputHash), "provider compression evidence omitted a redacted input hash");
   expect(!JSON.stringify(compression).includes(repeatedContext), "provider compression evidence contained raw context");
+}
+
+async function verifyHostedLoop() {
+  const idempotencyKey = `loop-acceptance-${Date.now()}`;
+  const payload = {
+    title: "Hosted loop acceptance",
+    goal: "Create a one-heading HTML landing page for a hosted loop acceptance check.",
+    maxRounds: 1,
+    idempotencyKey,
+  };
+  const first = await api("/api/client-runtime/loop", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const firstBody = await safeJson(first);
+  expect(first.status === 202 && isUuid(firstBody?.runId) && isUuid(firstBody?.jobId), `hosted loop enqueue failed (${first.status})`);
+  const replay = await api("/api/client-runtime/loop", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const replayBody = await safeJson(replay);
+  expect(replay.status === 202 && replayBody?.runId === firstBody?.runId && replayBody?.jobId === firstBody?.jobId, "hosted loop replay duplicated the run or job identity");
+  if (!isUuid(firstBody?.runId) || !isUuid(firstBody?.jobId)) return;
+
+  const job = await waitForJob(firstBody.jobId);
+  expect(job?.status === "succeeded", `hosted loop job ended as ${String(job?.status ?? "unknown")}: ${String(job?.error_code ?? "")}`);
+  const runs = await api("/api/client-runtime/loop");
+  const runsBody = await safeJson(runs);
+  const run = Array.isArray(runsBody?.runs) ? runsBody.runs.find((item) => item?.id === firstBody.runId) : null;
+  expect(runs.status === 200 && run, "hosted loop run was not durable or tenant-readable");
+  expect(["passed", "exhausted", "failed"].includes(run?.status), `hosted loop did not reach a terminal state (${String(run?.status ?? "unknown")})`);
+  const rounds = await api(`/api/client-runtime/loop?runId=${encodeURIComponent(firstBody.runId)}`);
+  const roundsBody = await safeJson(rounds);
+  expect(rounds.status === 200 && roundsBody?.configured === true && Array.isArray(roundsBody?.rounds) && roundsBody.rounds.length >= 1, "hosted loop rounds were not durable");
 }
 
 async function verifyVisualQa() {

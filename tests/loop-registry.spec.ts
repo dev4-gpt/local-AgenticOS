@@ -20,6 +20,7 @@ import {
   summarizeLoopCost,
 } from "../src/lib/loopCostLedger";
 import { allClientPlaybooks, clientReadyPlaybooks } from "../src/lib/clientPlaybooks";
+import { readFileSync } from "node:fs";
 
 function round(overrides: Partial<LoopRound> = {}): LoopRound {
   return {
@@ -223,4 +224,12 @@ test("a ledger rebuilt from persisted rounds matches what was recorded", () => {
   expect(rebuilt.actualMicros).toBe(320);
   expect(rebuilt.roundMicros).toEqual([120, 200]);
   expect(loopBudgetVerdict(rebuilt).remainingMicros).toBe(680);
+});
+
+test("the hosted loop route replays an idempotent request instead of creating a second run", () => {
+  const route = readFileSync("src/app/api/client-runtime/loop/route.ts", "utf8");
+  expect(route).toContain("stableLoopRunId");
+  expect(route).toContain("const idempotencyKey");
+  expect(route).toContain("selectClientRecords(RUNS");
+  expect(route).toContain("if (prior)");
 });
