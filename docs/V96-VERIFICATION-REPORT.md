@@ -1133,3 +1133,27 @@ server-side and allowed by the capability policy.
 The implementation boundary is `src/lib/researchProviderRouter.ts`, called by
 `/api/client-runtime/research`. Crawl4AI, Crawlee, and Jina Reader remain
 catalog references and are not eligible candidates for this router.
+
+### 31.1 Local checker and tunnel rerun — 2026-08-20 UTC
+
+The local environment was cleaned and the remaining checks were rerun without
+changing the application contract:
+
+| Checkpoint | Result |
+|---|---|
+| Focused suite | **Passed**; 98/98 |
+| Reference suite | **Passed**; 64/64 |
+| TypeScript | **Passed**; `tsc --noEmit` completed with the supported Node 24 runtime |
+| Worker/provider policy gates | **Passed** |
+| ESLint | **Environment-blocked**; the local ESLint dependency loader stalled before emitting diagnostics, including on a single file |
+| Production build | **Environment-blocked**; local Turbopack stalled at `Creating an optimized production build` before emitting a result |
+| Generated-cache cleanup | **Completed**; stale `.next/dev` (16 GB), `.next-client`, and `.next-client-test` caches were removed after the stale server was stopped |
+| `cloudflared` | **Installed locally**; no service, named tunnel, or persistent configuration was created |
+| Authenticated local tunnel parity | **Not claimed**; an anonymous Quick Tunnel would carry the runtime session cookie through an untrusted public origin, so the authenticated verifier was not run without explicit approval or a named tunnel |
+| Visual QA owner-cloud gate | **Still gated**; the approved `dofgfood` manifest/service is not available in this deployment |
+
+The local runtime also returned `listen EPERM` when started inside the
+sandbox. A host-permission retry reached `Ready`, but local Next requests
+stalled before returning bytes; a production-build retry showed the same local
+environment stall. No local Cloud Tasks callback, Visual QA promotion, or
+gated capability was claimed from these attempts.

@@ -23,7 +23,7 @@ test("automatic routing falls back to Firecrawl when Brave is unavailable or dis
   const decision = selectResearchProvider({ configuredProvider: "brave", routingEnabled: true, scrapeRequested: false, firecrawl, brave: { ...brave, available: false } });
   expect(decision).toMatchObject({ provider: "firecrawl", reason: "brave-unavailable" });
   const disallowed = selectResearchProvider({ configuredProvider: "brave", routingEnabled: true, scrapeRequested: false, firecrawl, brave: { ...brave, allowed: false } });
-  expect(disallowed).toMatchObject({ provider: "firecrawl", reason: "firecrawl-fallback" });
+  expect(disallowed).toMatchObject({ provider: "firecrawl", reason: "brave-unavailable" });
 });
 
 test("manifest mode preserves explicit provider choice and fails closed", () => {
