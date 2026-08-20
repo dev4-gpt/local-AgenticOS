@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { normalizeCapabilityProviderAllowlist, normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
+import { normalizeCapabilityProviderAllowlist, normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation, validateResearchWorkerConfig } from "./client-provider-policy.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
 const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
@@ -12,6 +12,7 @@ const failures = [];
 expect(provisioner.includes("const providerCallsEnabled = manifest.providerCallsEnabled === true"), "provider activation must be explicit in the manifest");
 expect(provisioner.includes('CLIENT_PROVIDER_CALLS_ENABLED: providerCallsEnabled ? "1" : "0"'), "provisioner must derive the provider-call switch");
 expect(provisioner.includes("const runtimeEnv = { ...manifestRuntimeEnv, ...protectedRuntimeEnv }"), "protected runtime values must override free-form manifest environment values");
+expect(provisioner.includes("CLIENT_RESEARCH_WORKER_CONFIG_JSON") && provisioner.includes("validateResearchWorkerConfig"), "research worker config must be manifest-derived and validated before deployment");
 expect(provisioner.includes('CLIENT_RUNTIME_DATA_MODE: "supabase"'), "client deployments must use the tenant-scoped Supabase data plane");
 expect(!provisioner.includes('CLIENT_PROVIDER_CALLS_ENABLED: "0",\n  ...manifestRuntimeEnv'), "manifest environment must not override the provider-call switch");
 expect(contracts.includes("CLIENT_REVIEWED_PLAN_TOOL") && contracts.includes("approvalRequired: true"), "reviewed-plan contracts must produce approval-required bounded plans");
@@ -108,6 +109,33 @@ validateProviderActivation({
   fail: (message) => { unknownResearch.messages.push(message); },
 });
 expect(unknownResearch.messages.some((message) => message.includes("does not recognize provider")), "unknown research providers must fail closed");
+
+const workerMissingSecret = { message: null };
+validateResearchWorkerConfig({
+  value: [{ id: "crawl4ai", endpoint: "https://crawl.example.test/v1/extract", secretEnv: "CRAWL4AI_WORKER_TOKEN", enabled: false }],
+  providerAllowlist: [],
+  secretNames: [],
+  fail: (message) => { workerMissingSecret.message = message; },
+});
+expect(workerMissingSecret.message?.includes("allowlisted secret"), "crawler worker activation must require an allowlisted secret slot");
+
+const workerMissingEvidence = { message: null };
+validateResearchWorkerConfig({
+  value: [{ id: "crawlee", endpoint: "https://crawlee.example.test/v1/extract", secretEnv: "CRAWLEE_WORKER_TOKEN", enabled: true }],
+  providerAllowlist: ["CRAWLEE_WORKER_TOKEN"],
+  secretNames: ["CRAWLEE_WORKER_TOKEN"],
+  fail: (message) => { workerMissingEvidence.message = message; },
+});
+expect(workerMissingEvidence.message?.includes("evidenceRef"), "enabled crawler workers must carry evidence before promotion");
+
+const workerReady = { message: null };
+validateResearchWorkerConfig({
+  value: [{ id: "jina-reader", endpoint: "https://jina.example.test/v1/extract", secretEnv: "JINA_WORKER_TOKEN", enabled: true, evidenceRef: "evidence://jina/owner-cloud-smoke" }],
+  providerAllowlist: ["JINA_WORKER_TOKEN"],
+  secretNames: ["JINA_WORKER_TOKEN"],
+  fail: (message) => { workerReady.message = message; },
+});
+expect(workerReady.message === null, "evidenced crawler worker config must validate");
 
 for (const [label, config, expected] of [
   ["missing secret slot", { providerAllowlist: [], secretNames: [] }, "Secret Manager slot"],

@@ -34,9 +34,9 @@ are reviewed. Activation is explicit: native Veloce behavior is
 | [Roboflow Supervision](https://github.com/roboflow/supervision) | Visual QA worker | operator-worker | gated | externally-gated | Fixed-fixture reproducibility |
 | [Groq Speech-to-Text](https://console.groq.com/docs/speech-to-text) | All recorded microphone inputs | adapter | pilot | native-enabled | Server-only key, 25 MB bound, tenant auth, rate/budget evidence, local/cloud smoke |
 | [Brave Search API](https://brave.com/search/api/) | Research, Knowledge | adapter | pilot | native-enabled | Server-only `BRAVE_API_KEY`; direct smoke passed on `00160-x4m`, automatic-routing smoke passed on `00161-gc6`, with max 3 HTTPS results and budget/citation/idempotency evidence |
-| [Crawl4AI](https://github.com/unclecode/crawl4AI) | Research, Knowledge external worker | operator-worker | cataloged | reference-only | Pinned Apache-2.0 source; isolated Python/browser worker, SSRF/egress, cost, citation, rollback evidence |
-| [Crawlee](https://github.com/apify/crawlee) | Research, Knowledge external worker | operator-worker | cataloged | reference-only | Pinned Apache-2.0 source; isolated Node crawler, SSRF/egress, rate/budget, citation, rollback evidence |
-| [Jina Reader](https://github.com/jina-ai/reader) | Research, Knowledge reader adapter | adapter | cataloged | reference-only | Pinned Apache-2.0 source; hosted boundary, tenant isolation, provider terms, citation, rate/budget, rollback evidence |
+| [Crawl4AI](https://github.com/unclecode/crawl4AI) | Research, Knowledge external worker | operator-worker | contract-only | contract-active | Veloce `v96-research-worker-v1` adapter is locally tested; isolated Python/browser worker, SSRF/egress, cost, citation, authenticated smoke, and rollback evidence still required |
+| [Crawlee](https://github.com/apify/crawlee) | Research, Knowledge external worker | operator-worker | contract-only | contract-active | Veloce `v96-research-worker-v1` adapter is locally tested; isolated Node crawler, SSRF/egress, rate/budget, citation, authenticated smoke, and rollback evidence still required |
+| [Jina Reader](https://github.com/jina-ai/reader) | Research, Knowledge reader adapter | adapter | contract-only | contract-active | Veloce `v96-research-worker-v1` adapter is locally tested; hosted boundary, tenant isolation, provider terms, citation, rate/budget, authenticated smoke, and rollback evidence still required |
 
 ## Placement rules
 
@@ -55,6 +55,7 @@ are reviewed. Activation is explicit: native Veloce behavior is
   infrastructure only. The Cloud Tasks emulator is optional offline test
   infrastructure and is not the parity authority. Veloce never starts,
   installs, or persists a tunnel automatically.
-- The three crawler entries are intentionally non-executable references. They
-  cannot replace Firecrawl or Brave, appear in no client provider selector,
-  and are not included in the Next.js image.
+- The three crawler entries are contract-active but disabled external workers.
+  They cannot replace Firecrawl or Brave unless their server manifest entry is
+  explicitly enabled after evidence, appear in no client-facing provider or
+  worker selector, and are never included in the Next.js image.

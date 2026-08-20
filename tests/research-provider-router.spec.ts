@@ -35,3 +35,15 @@ test("manifest mode preserves explicit provider choice and fails closed", () => 
 test("automatic selection does not substitute search for requested extraction", () => {
   expect(selectResearchProvider({ configuredProvider: "brave", routingEnabled: true, scrapeRequested: true, firecrawl: { ...firecrawl, available: false }, brave })).toEqual({ error: "provider_not_configured" });
 });
+
+test("automatic extraction can use Brave search plus an approved isolated worker", () => {
+  const decision = selectResearchProvider({
+    configuredProvider: "firecrawl",
+    routingEnabled: true,
+    scrapeRequested: true,
+    externalExtractionAvailable: true,
+    firecrawl: { ...firecrawl, available: false },
+    brave,
+  });
+  expect(decision).toMatchObject({ provider: "brave", reason: "external-worker-extraction", mode: "automatic" });
+});

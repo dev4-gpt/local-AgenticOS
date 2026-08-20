@@ -4,7 +4,7 @@ export type ResearchProviderDecision = {
   provider: GovernedResearchProvider;
   mode: "manifest" | "automatic";
   policyVersion: "research-routing-v1";
-  reason: "manifest-provider" | "bounded-search-cost" | "content-extraction" | "brave-unavailable" | "firecrawl-fallback";
+  reason: "manifest-provider" | "bounded-search-cost" | "content-extraction" | "external-worker-extraction" | "brave-unavailable" | "firecrawl-fallback";
   eligibleProviders: GovernedResearchProvider[];
   estimatedCostMicros: number;
 };
@@ -19,6 +19,7 @@ type ProviderSelectionInput = {
   configuredProvider: GovernedResearchProvider;
   routingEnabled: boolean;
   scrapeRequested: boolean;
+  externalExtractionAvailable?: boolean;
   firecrawl: ProviderState;
   brave: ProviderState;
 };
@@ -46,6 +47,13 @@ export function selectResearchProvider(input: ProviderSelectionInput): ResearchP
 
   if (input.scrapeRequested) {
     if (input.firecrawl.available && input.firecrawl.allowed) return choose("firecrawl", "automatic", "content-extraction");
+    // Brave remains the bounded search provider. If Firecrawl extraction is
+    // unavailable, an approved isolated Veloce worker may read only the
+    // HTTPS URLs returned by that search. The worker is selected separately
+    // from the content type and cost policy; it is never a client selector.
+    if (input.externalExtractionAvailable && input.brave.available && input.brave.allowed) {
+      return choose("brave", "automatic", "external-worker-extraction");
+    }
     return { error: input.firecrawl.available ? "provider_not_allowlisted" : "provider_not_configured" };
   }
 

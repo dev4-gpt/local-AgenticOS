@@ -84,5 +84,6 @@ test("crawler references remain non-executable catalog entries", () => {
   for (const id of ["crawl4ai", "crawlee", "jina-reader"]) {
     expect(catalog).toContain(`\"${id}\"`);
   }
-  expect(catalog).toContain('activation: "reference-only"');
+  expect(catalog).toContain('activation: "contract-active"');
+  expect(catalog).toContain("research-worker-v1");
 });

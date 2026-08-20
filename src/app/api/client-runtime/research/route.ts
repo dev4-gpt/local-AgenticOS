@@ -7,6 +7,7 @@ import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { providerEnvKey } from "@/lib/providerKeys";
 import { clientCapabilityEnabled, clientCapabilityProviderEnabled, clientProviderCallsEnabled, clientResearchProvider, clientResearchRoutingEnabled } from "@/lib/clientRuntimePolicy";
 import { selectResearchProvider } from "@/lib/researchProviderRouter";
+import { configuredResearchWorkerStates, selectResearchWorker, type ResearchWorkerContentType } from "@/lib/researchWorkerAdapters";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +70,8 @@ export async function POST(request: Request) {
 
   const configuredProvider = clientResearchProvider();
   const scrapeRequested = input.scrapeResults === true;
+  const contentType = normalizeContentType(input.contentType);
+  const workerSelection = selectResearchWorker({ operation: "extract", contentType, workers: configuredResearchWorkerStates() });
   const firecrawlKey = providerEnvKey("FIRECRAWL_API_KEY");
   const braveKey = providerEnvKey("BRAVE_API_KEY");
   const firecrawlAllowed = clientCapabilityProviderEnabled("seo-research", "firecrawl", "FIRECRAWL_API_KEY");
@@ -77,6 +80,7 @@ export async function POST(request: Request) {
     configuredProvider,
     routingEnabled: clientResearchRoutingEnabled(),
     scrapeRequested,
+    externalExtractionAvailable: !(("error" in workerSelection)),
     firecrawl: {
       available: Boolean(firecrawlKey),
       allowed: firecrawlAllowed,
@@ -94,14 +98,15 @@ export async function POST(request: Request) {
   // Brave is a bounded search provider, not a scraping or arbitrary-fetch
   // boundary. Firecrawl keeps the existing opt-in scrape behavior.
   const scrapeResults = provider === "brave" ? false : scrapeRequested;
+  const selectedWorker = provider === "brave" && scrapeRequested && !(("error" in workerSelection)) ? workerSelection : null;
 
-  const idempotencyKey = deterministicCapabilityIdempotencyKey("research", [session.tenantSlug, notebookId ?? "unfiled", query, provider, String(limit), String(scrapeResults)]);
+  const idempotencyKey = deterministicCapabilityIdempotencyKey("research", [session.tenantSlug, notebookId ?? "unfiled", query, provider, String(limit), String(scrapeRequested), contentType, String(scrapeResults)]);
   const jobId = await enqueueClientRuntimeJob({
     capability: "seo-research",
     provider,
     model: null,
     idempotencyKey,
-    inputMetadata: { operation: "research", query, limit, scrapeResults, notebookId, providerSelection: selection, providerKey, idempotencyKey },
+    inputMetadata: { operation: "research", query, limit, scrapeResults, requestedScrape: scrapeRequested, contentType, workerSelection: selectedWorker, notebookId, providerSelection: selection, providerKey, idempotencyKey },
   });
   if (!jobId) return fail("job_store_failed", 503);
   const task = await enqueueClientRuntimeTask({ jobId, tenantSlug: session.tenantSlug });
@@ -145,4 +150,8 @@ function noStore() {
 
 function fail(error: string, status: number) {
   return NextResponse.json({ ok: false, error }, { status, headers: noStore() });
+}
+
+function normalizeContentType(value: unknown): ResearchWorkerContentType {
+  return value === "html" || value === "javascript" || value === "pdf" || value === "document" ? value : "unknown";
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { normalizeCapabilityProviderAllowlist, normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
+import { normalizeCapabilityProviderAllowlist, normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation, validateResearchWorkerConfig } from "./client-provider-policy.mjs";
 
 const file = process.argv[2];
 if (!file) fail("Usage: node scripts/validate-client-manifest.mjs path/to/client.json");
@@ -52,6 +52,7 @@ if (String(env.CLIENT_PROVIDER_CALLS_ENABLED ?? "0") === "1" && !providerCallsEn
   fail("runtimeEnv.CLIENT_PROVIDER_CALLS_ENABLED cannot enable providers; set providerCallsEnabled: true after review");
 }
 const modelPricing = normalizeModelPricing(manifest.modelPricing);
+validateResearchWorkerConfig({ value: manifest.researchWorkerConfig, secretNames, providerAllowlist: Array.isArray(manifest.providerAllowlist) ? manifest.providerAllowlist : [], fail });
 validateProviderActivation({
   enabled: providerCallsEnabled,
   providerAllowlist: Array.isArray(manifest.providerAllowlist) ? manifest.providerAllowlist.map((item) => String(item).trim().toUpperCase()) : [],

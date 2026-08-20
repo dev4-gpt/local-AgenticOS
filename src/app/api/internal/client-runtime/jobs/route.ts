@@ -25,6 +25,7 @@ import { missingRequiredTraits, resolveCapabilityTraits, traitBundleMetadata, tr
 import { runClientVisualQaAdapter } from "@/lib/clientVisualQaAdapter";
 import { buildIntentClassifierPrompt, intentEvidence, parseClientIntentClassification, resolveClientIntent } from "@/lib/clientIntentRouter";
 import { clientReadyPlaybooks, type ClientIntentSurface } from "@/lib/clientPlaybooks";
+import { configuredResearchWorkerStates, runResearchWorkerAdapter, selectResearchWorker, type ResearchWorkerContentType, type ResearchWorkerDecision } from "@/lib/researchWorkerAdapters";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -1321,11 +1322,18 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
   // Brave is search-only. Enforce this at the worker boundary as well as at
   // the client route so a manually crafted job cannot turn it into a scraper.
   const scrapeResults = provider === "brave" ? false : input.scrapeResults === true;
+  const requestedScrape = input.requestedScrape === true || scrapeResults;
+  const contentType = normalizeResearchWorkerContentType(input.contentType);
   const limit = Math.max(1, Math.min(3, Math.round(Number(input.limit ?? 3))));
   const idempotencyKey = job.idempotency_key ?? `seo-research-${jobId}`;
   const notebookId = typeof input.notebookId === "string" && /^[0-9a-f-]{36}$/i.test(input.notebookId) ? input.notebookId : null;
   const traitBundle = resolveCapabilityTraits({ capability: "research", provider, surface: typeof input.surface === "string" ? input.surface : "notebook" });
   const sourceIds = traitBundle.sourceReferences.map((source) => source.id);
+  const workerStates = configuredResearchWorkerStates();
+  const workerSelection = provider === "brave" && requestedScrape
+    ? selectResearchWorker({ operation: "extract", contentType, workers: workerStates })
+    : null;
+  const workerPlan: ResearchWorkerDecision | null = workerSelection && !(("error" in workerSelection)) ? workerSelection : null;
   const failureMetadata = (disposition: "blocked" | "partial", message: string, overrides: NonNullable<Parameters<typeof traitEvidenceForOutcome>[2]>["overrides"] = {}) => ({
     traitSnapshot: traitBundleMetadata(traitBundle),
     // A partial provider result does not imply that tenant isolation, budget,
@@ -1365,7 +1373,7 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
     : Math.max(0, Math.round(Number(process.env.CLIENT_FIRECRAWL_COST_MICROS ?? 1000)));
   // Reserve for the worst case up front so a scrape cannot push the tenant past
   // its cap after the search has already spent.
-  const estimate = perUnit * (scrapeResults ? limit + 1 : 1);
+  const estimate = perUnit * (scrapeResults ? limit + 1 : 1) + (workerPlan ? workerPlan.estimatedCostMicros * limit : 0);
   if (!(await reserveClientRuntimeBudgetWorker({ provider, model: scrapeResults ? "search-scrape" : "search", amountMicros: estimate, jobId, workerToken }))) {
     logClientRuntimeEvent("runtime.budget_exceeded", { tenant: tenantSlug, provider, status: 429 });
     await updateResearchRun("failed", 0, "budget_exceeded");
@@ -1382,7 +1390,39 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
     return NextResponse.json({ ok: true, status: "failed" });
   }
 
-  const records = marketSearchToV96Records({ tenantSlug, query: search.query, results: search.results, scraped: scrapeResults, provider });
+  let workerAttempts = 0;
+  let workerCompleted = 0;
+  let workerFailed = 0;
+  let results = search.results;
+  if (workerPlan) {
+    const workerConfig = workerStates.find((worker) => worker.id === workerPlan.worker);
+    const extracted = await Promise.all(search.results.slice(0, limit).map(async (result, index) => {
+      workerAttempts += 1;
+      const extraction = await runResearchWorkerAdapter({
+        worker: workerPlan.worker,
+        config: workerConfig,
+        url: result.url,
+        requestId: `${jobId}-${index}`,
+        tenantSlug,
+        contentType,
+      });
+      if (!extraction.ok || extraction.result.status === "failed" || (!extraction.result.markdown && !extraction.result.description)) {
+        workerFailed += 1;
+        return result;
+      }
+      workerCompleted += 1;
+      return {
+        ...result,
+        title: extraction.result.title || result.title,
+        description: extraction.result.description || result.description,
+        markdown: extraction.result.markdown,
+      };
+    }));
+    results = extracted;
+  }
+
+  const scraped = scrapeResults || Boolean(workerPlan);
+  const records = marketSearchToV96Records({ tenantSlug, query: search.query, results, scraped, provider });
   const seoRecord = provider === "firecrawl" ? firecrawlSearchToSeoIntelligenceRecord({
     request: createSeoIntelligenceRequest({
       requestId: jobId,
@@ -1401,14 +1441,15 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
   const qualityInput = records.map((record) => `${record.fields.title ?? "Untitled source"}\n${record.fields.summary ?? ""}`).join("\n\n");
   const quality = applyOutputQualityPolicy(qualityInput);
   const outputMetadata = {
-    adapter: scrapeResults ? `${provider}-search-scrape` : `${provider}-search`,
+    adapter: workerPlan ? `${provider}-${workerPlan.worker}-search-extract` : scrapeResults ? `${provider}-search-scrape` : `${provider}-search`,
     provider: search.provider,
     model: search.model,
     query: search.query,
-    resultCount: search.results.length,
+    resultCount: results.length,
     // The discovered set is recorded so a follow-up read can be checked against
     // what the search actually returned rather than against a caller's list.
-    discovered: search.results.map((result) => result.url),
+    discovered: results.map((result) => result.url),
+    ...(workerPlan ? { workerSelection: workerPlan, workerAttempts, workerCompleted, workerFailed } : {}),
     records: safeClientProviderMetadata(records),
     seoIntelligence: safeClientProviderMetadata(seoRecord),
     researchRunId: null as string | null,
@@ -1444,7 +1485,8 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
   }
   outputMetadata.researchRunId = researchRun.value;
   await updateResearchRun("complete", records.length, null);
-  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros: search.estimatedCostMicros, usageMetadata: { estimatedCostMicros: search.estimatedCostMicros } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
+  const actualAmountMicros = search.estimatedCostMicros + workerAttempts * (workerPlan?.estimatedCostMicros ?? 0);
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros, usageMetadata: { estimatedCostMicros: estimate, workerAttempts, workerCostMicros: workerAttempts * (workerPlan?.estimatedCostMicros ?? 0) } }, outputMetadata))) return NextResponse.json({ ok: true, status: "failed" });
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
@@ -1500,6 +1542,10 @@ function workflowIdFrom(input: Record<string, unknown> | null | undefined) {
 
 function workflowStepsFrom(input: Record<string, unknown> | null | undefined) {
   return Array.isArray(input?.steps) ? input.steps.slice(0, 8) : undefined;
+}
+
+function normalizeResearchWorkerContentType(value: unknown): ResearchWorkerContentType {
+  return value === "html" || value === "javascript" || value === "pdf" || value === "document" ? value : "unknown";
 }
 
 async function retryJob(tenantSlug: string, jobId: string, workerToken: string, errorCode: string) {

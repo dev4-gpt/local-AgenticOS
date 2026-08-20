@@ -6,6 +6,7 @@
   "acknowledgeClientSafeRuntime": false,
   "providerCallsEnabled": false,
   "researchProvider": "firecrawl",
+  "researchWorkerConfig": [],
   "intentRoutingEnabled": false,
   "modelPricing": {},
   "seoAllowedHosts": [],

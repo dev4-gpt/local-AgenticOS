@@ -58,9 +58,9 @@ These can be exposed only through server-side provider APIs, a per-client allowl
 | Firecrawl | Existing governed research worker | Default provider; existing cloud behavior unchanged |
 | Brave Search API | Existing governed research worker | Native-enabled; Secret Manager binding, direct Brave smoke, durable citations, HTTPS/result bounds, and idempotency passed on owner-cloud |
 | Native research router | Shared client research route + worker job metadata | Flag-gated deterministic selection: Brave for bounded search when approved/available, Firecrawl for content extraction, safe fallback otherwise; enabled on owner-cloud revision `00161-gc6` |
-| Crawl4AI | Separate external Python/browser worker | Pinned reference-only; never selected automatically or bundled |
-| Crawlee | Separate external Node crawler worker | Pinned reference-only; never selected automatically or bundled |
-| Jina Reader | Separate hosted/open-source reader boundary | Pinned reference-only; never selected automatically or bundled |
+| Crawl4AI | Separate external Python/browser worker behind `v96-research-worker-v1` | Contract-active adapter and deterministic candidate; disabled until endpoint, secret, authenticated smoke, citation/budget parity, and rollback evidence exist; never bundled |
+| Crawlee | Separate external Node crawler worker behind `v96-research-worker-v1` | Contract-active adapter and deterministic candidate; disabled until endpoint, secret, authenticated smoke, citation/budget parity, and rollback evidence exist; never bundled |
+| Jina Reader | Separate hosted/open-source reader boundary behind `v96-research-worker-v1` | Contract-active adapter and deterministic candidate; disabled until endpoint, secret, authenticated smoke, citation/budget parity, and rollback evidence exist; never bundled |
 
 The shared provider adapter also applies the server-manifest-controlled native
 `context-compression` trait to provider-bound jobs. It is dependency-free,

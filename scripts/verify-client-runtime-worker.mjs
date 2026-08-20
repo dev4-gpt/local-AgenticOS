@@ -47,6 +47,7 @@ const providerAdapter = await readFile(join(root, "src/lib/clientProviderAdapter
 const providerContracts = await readFile(join(root, "src/lib/clientProviderContracts.ts"), "utf8");
 const mediaAdapter = await readFile(join(root, "src/lib/clientMediaAdapter.ts"), "utf8");
 const seoAdapter = await readFile(join(root, "src/lib/clientSeoAdapter.ts"), "utf8");
+const researchWorkerAdapter = await readFile(join(root, "src/lib/researchWorkerAdapters.ts"), "utf8");
 const deliveryAdapter = await readFile(join(root, "src/lib/clientDeliveryAdapter.ts"), "utf8");
 const networkSafety = await readFile(join(root, "src/lib/clientNetworkSafety.ts"), "utf8");
 const runtimePolicy = await readFile(join(root, "src/lib/clientRuntimePolicy.ts"), "utf8");
@@ -270,6 +271,10 @@ expect(networkSafety.includes("isPrivateAddress") && networkSafety.includes("rea
 expect(mediaAdapter.includes("readBoundedResponseBytes") && workerRoute.includes("readBoundedResponseBytes"), "media worker paths must enforce bounded provider response reads");
 expect(mediaAdapter.includes("isPrivateAddress") && mediaAdapter.includes("safeProviderOutputUrl"), "provider output URLs must reject private or internal hosts");
 expect(seoAdapter.includes("safePublicUrl") && seoAdapter.includes("isPrivateAddress"), "SEO adapter must enforce public host and private-address blocking");
+expect(researchWorkerAdapter.includes("v96-research-worker-v1") && researchWorkerAdapter.includes("public-https-only") && researchWorkerAdapter.includes("readBoundedResponseBytes"), "external research workers must use the bounded Veloce HTTPS contract");
+expect(researchWorkerAdapter.includes("selectResearchWorker") && researchWorkerAdapter.includes("costMicros") && researchWorkerAdapter.includes("reliability"), "external research workers must be selected deterministically using cost and reliability policy");
+expect(workerRoute.includes("runResearchWorkerAdapter") && researchWorkerAdapter.includes("worker_not_configured"), "research jobs must call isolated workers only through the governed adapter");
+expect(provisioner.includes("CLIENT_RESEARCH_WORKER_CONFIG_JSON") && provisioner.includes("researchWorkerConfig"), "worker endpoints must be server-manifest-derived");
 expect(deliveryAdapter.includes("approved-webhook") && deliveryAdapter.includes("safeDeliveryUrl") && deliveryAdapter.includes('parsed.protocol === "https:"'), "delivery adapter must require an allowlisted HTTPS approved webhook");
 expect(hostedSql.includes("p_namespace <> p_tenant_slug"), "artifact RPC must enforce the tenant storage namespace");
 for (const surface of ["opendesign", "web-studio", "flow-lab", "openmontage", "games", "thumbnails", "integrations", "leads", "radar", "guide"]) {

@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import { normalizeCapabilityProviderAllowlist, normalizeHostAllowlist, normalizeModelPricing, validateProviderActivation } from "./client-provider-policy.mjs";
+import { normalizeCapabilityProviderAllowlist, normalizeHostAllowlist, normalizeModelPricing, normalizeResearchWorkerConfig, validateProviderActivation, validateResearchWorkerConfig } from "./client-provider-policy.mjs";
 
 const args = process.argv.slice(2);
 const configPath = valueAfter("--config") ?? valueAfter("-c");
@@ -60,6 +60,8 @@ const providerCallsEnabled = manifest.providerCallsEnabled === true;
 const modelPricing = normalizeModelPricing(manifest.modelPricing);
 const seoAllowedHosts = normalizeHostAllowlist(manifest.seoAllowedHosts);
 const deliveryAllowedHosts = normalizeHostAllowlist(manifest.deliveryAllowedHosts);
+const researchWorkerConfig = normalizeResearchWorkerConfig(manifest.researchWorkerConfig);
+validateResearchWorkerConfig({ value: manifest.researchWorkerConfig, secretNames: Object.keys(secretEnv), providerAllowlist, fail });
 validateProviderActivation({
   enabled: providerCallsEnabled,
   providerAllowlist,
@@ -116,6 +118,7 @@ const protectedRuntimeEnv = {
   CLIENT_ENABLED_TRAITS: enabledTraits.join(","),
   CLIENT_INTENT_ROUTING_ENABLED: manifest.intentRoutingEnabled === false ? "0" : "1",
   CLIENT_RESEARCH_PROVIDER: researchProvider,
+  CLIENT_RESEARCH_WORKER_CONFIG_JSON: JSON.stringify(researchWorkerConfig),
   CLIENT_PROVIDER_ALLOWLIST: providerAllowlist.join(","),
   ...(modelAllowlist.length > 0 ? { CLIENT_MODEL_ALLOWLIST: modelAllowlist.join(",") } : {}),
   ...(Object.keys(providerModelAllowlist).length > 0 ? { CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON: JSON.stringify(providerModelAllowlist) } : {}),
@@ -157,6 +160,7 @@ const immutableRuntimeKeys = [
   "CLIENT_ENABLED_TRAITS",
   "CLIENT_INTENT_ROUTING_ENABLED",
   "CLIENT_RESEARCH_PROVIDER",
+  "CLIENT_RESEARCH_WORKER_CONFIG_JSON",
   "CLIENT_PROVIDER_ALLOWLIST",
   "CLIENT_MODEL_ALLOWLIST",
   "CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON",

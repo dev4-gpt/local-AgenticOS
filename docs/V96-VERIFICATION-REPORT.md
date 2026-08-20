@@ -1233,3 +1233,31 @@ application code or policy was weakened.
 This is the current supported local non-GCP parity result. The no-tunnel
 fail-closed behavior and the Visual QA, GPU, security, communications,
 worktree, streaming-speech, and external crawler gates remain unchanged.
+
+## 32. Isolated research-worker contract wave — 2026-08-20 UTC
+
+The next research wave now has a Veloce-owned extraction boundary for Crawl4AI,
+Crawlee, and Jina Reader. This is contract implementation, not upstream runtime
+installation or activation.
+
+| Checkpoint | Result |
+|---|---|
+| Worker contract | **Implemented**; `v96-research-worker-v1` bounded HTTPS extraction request |
+| Automatic selection | **Implemented**; content fit, cost, latency, and reliability are deterministic and server-side |
+| Security boundary | **Passed**; public HTTPS-only source URLs, no credentials/private hosts, bounded bytes/text, hashed tenant scope, server-side worker token, secret-like output redaction |
+| Budget/idempotency integration | **Implemented**; worker cost is reserved and settled through the existing research job; search replay identity remains unchanged |
+| Brave composition | **Implemented**; Brave search may compose with an approved worker only when Firecrawl extraction is unavailable and a read was requested |
+| Focused worker tests | **Passed**; adapter normalization, malformed output, redaction, endpoint validation, selection, and disabled-worker behavior |
+| Full focused suite | **Passed**; 105/105 on the host runtime |
+| Production builder focused suite | **103/105**; the two failures are the intentionally gated Python Visual QA worker tests because the Node-only production image has no `python3` |
+| TypeScript/lint | **Passed** |
+| Worker/policy/manifest gates | **Passed**; worker boundary, provider policy, and example manifest validation |
+| Catalog status | **Contract-active** for all three references; no worker endpoint or token is enabled in the current owner-cloud manifest |
+| External runtime smoke | **Pending**; requires separately deployed worker endpoints and authenticated evidence bundles |
+
+The next activation gate is intentionally explicit: add a worker endpoint and
+Secret Manager reference to a client manifest, run the authenticated worker
+smoke, verify citations, budget settlement, tenant isolation, deletion lineage,
+rate limits, and rollback, then enable only that worker. Crawl4AI, Crawlee, and
+Jina Reader remain outside the Next.js image and unavailable to client-facing
+selectors until that evidence exists.

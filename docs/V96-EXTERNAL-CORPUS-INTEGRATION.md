@@ -35,9 +35,12 @@ and automatic-routing smoke passed on `00161-gc6`. Firecrawl remains the
 extraction fallback and configured provider default.
 
 Crawl4AI, Crawlee, and Jina Reader are pinned Apache-2.0 architectural
-references. They are not installed, automatically selected, or allowed to
-replace Firecrawl/Brave. A future provider resolver may choose among them only
-after each isolated worker/hosted-boundary evidence gate passes.
+references with a Veloce-owned `v96-research-worker-v1` contract adapter. They
+are contract-active in the registry but still disabled: no upstream runtime is
+installed, no worker endpoint is bundled, and no client can choose one. The
+server router may compose Brave search with one only after that worker's
+manifest secret, endpoint, authenticated smoke, citation/budget parity,
+tenant/deletion evidence, and rollback bundle pass.
 
 For full local Cloud Tasks parity, start the tunnel manually and pass its
 HTTPS origin to the launcher:

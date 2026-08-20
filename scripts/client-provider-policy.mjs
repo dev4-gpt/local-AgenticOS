@@ -40,6 +40,8 @@ const CAPABILITY_PROVIDERS = Object.freeze({
   seo: Object.freeze({ firecrawl: "FIRECRAWL_API_KEY", brave: "BRAVE_API_KEY" }),
 });
 
+export const RESEARCH_WORKER_IDS = Object.freeze(["crawl4ai", "crawlee", "jina-reader"]);
+
 export function normalizeCapabilityProviderAllowlist(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const output = {};
@@ -72,6 +74,77 @@ export function normalizeHostAllowlist(value) {
   const values = Array.isArray(value) ? value : typeof value === "string" ? value.split(",") : [];
   const hosts = values.map((item) => String(item).trim().toLowerCase()).filter(Boolean);
   return [...new Set(hosts.filter((host) => /^(?=.{1,253}$)(?!.*\.\.)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(host)))];
+}
+
+export function normalizeResearchWorkerConfig(value) {
+  const entries = Array.isArray(value)
+    ? value
+    : value && typeof value === "object" && !Array.isArray(value)
+      ? Object.entries(value).map(([id, config]) => ({ id, ...(config && typeof config === "object" && !Array.isArray(config) ? config : {}) }))
+      : [];
+  return entries.map((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
+    const id = String(entry.id ?? "").trim().toLowerCase();
+    const endpoint = String(entry.endpoint ?? "").trim();
+    const secretEnv = String(entry.secretEnv ?? "").trim().toUpperCase();
+    if (!RESEARCH_WORKER_IDS.includes(id) || !isPublicWorkerEndpoint(endpoint) || !/^[A-Z][A-Z0-9_]{1,80}$/.test(secretEnv)) return null;
+    return {
+      id,
+      endpoint,
+      secretEnv,
+      enabled: entry.enabled === true,
+      allowed: entry.allowed !== false,
+      capabilities: ["extract"],
+      costMicros: boundedNumber(entry.costMicros, 0, 100_000_000, 0),
+      latencyMs: boundedNumber(entry.latencyMs, 0, 120_000, 30_000),
+      reliability: boundedNumber(entry.reliability, 0, 1, 0.9),
+      ...(typeof entry.evidenceRef === "string" && entry.evidenceRef.trim() ? { evidenceRef: entry.evidenceRef.trim().slice(0, 240) } : {}),
+    };
+  }).filter(Boolean);
+}
+
+export function validateResearchWorkerConfig({ value, secretNames = [], providerAllowlist = [], fail }) {
+  if (value == null) return;
+  const entries = Array.isArray(value)
+    ? value
+    : value && typeof value === "object" && !Array.isArray(value)
+      ? Object.entries(value).map(([id, config]) => ({ id, ...(config && typeof config === "object" && !Array.isArray(config) ? config : {}) }))
+      : null;
+  if (!entries) return fail("researchWorkerConfig must be an array or object");
+  const seen = new Set();
+  const allowedSecrets = new Set(providerAllowlist.map((item) => String(item).trim().toUpperCase()));
+  const availableSecrets = new Set(secretNames.map((item) => String(item).trim().toUpperCase()));
+  for (const entry of entries) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return fail("researchWorkerConfig entries must be objects");
+    const id = String(entry.id ?? "").trim().toLowerCase();
+    const endpoint = String(entry.endpoint ?? "").trim();
+    const secretEnv = String(entry.secretEnv ?? "").trim().toUpperCase();
+    if (!RESEARCH_WORKER_IDS.includes(id)) return fail(`researchWorkerConfig does not recognize worker: ${id}`);
+    if (seen.has(id)) return fail(`researchWorkerConfig contains duplicate worker: ${id}`);
+    seen.add(id);
+    if (!isPublicWorkerEndpoint(endpoint)) return fail(`researchWorkerConfig.${id} requires a public HTTPS endpoint`);
+    if (!/^[A-Z][A-Z0-9_]{1,80}$/.test(secretEnv)) return fail(`researchWorkerConfig.${id} has an invalid secretEnv`);
+    if (!allowedSecrets.has(secretEnv) || !availableSecrets.has(secretEnv)) return fail(`researchWorkerConfig.${id} requires an allowlisted secret: ${secretEnv}`);
+    if (entry.enabled === true && (typeof entry.evidenceRef !== "string" || !entry.evidenceRef.trim())) return fail(`researchWorkerConfig.${id} cannot enable without evidenceRef`);
+  }
+}
+
+function isPublicWorkerEndpoint(value) {
+  if (!value || value.length > 500 || !/^https:\/\/[^\s]+$/i.test(value)) return false;
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    return !url.username && !url.password && !["localhost", "127.0.0.1", "::1"].includes(host)
+      && !host.endsWith(".internal") && !host.endsWith(".local")
+      && !/^10\.|^192\.168\.|^169\.254\.|^172\.(1[6-9]|2\d|3[0-1])\./.test(host);
+  } catch {
+    return false;
+  }
+}
+
+function boundedNumber(value, min, max, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
 }
 
 export function validateProviderActivation({

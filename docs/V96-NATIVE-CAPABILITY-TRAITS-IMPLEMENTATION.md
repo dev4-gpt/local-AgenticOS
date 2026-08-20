@@ -14,7 +14,7 @@ later waves explicitly gated.
 | Standing-instruction budget | `src/lib/instructionBudget.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free redacted measurement at the provider boundary; shared authenticated current-image smoke passed |
 | Native industry playbooks | `src/lib/nativeIndustryPlaybooks.ts` + `src/lib/clientPlaybooks.ts` | data-driven 14-family/28-outcome registry; shared authenticated intent and gating smoke passed; specialized evidence remains bounded |
 | Research evidence | structured research worker output metadata | implemented and cloud-smoked on `00145-jcn` |
-| Research provider routing | `src/lib/researchProviderRouter.ts` + `/api/client-runtime/research` | dependency-free, deterministic, flag-gated; bounded search prefers approved Brave, extraction requires Firecrawl, and unavailable providers fail closed or fall back safely; owner-cloud enabled and smoke-tested on `00161-gc6` |
+| Research provider routing | `src/lib/researchProviderRouter.ts` + `/api/client-runtime/research` + `src/lib/researchWorkerAdapters.ts` | dependency-free, deterministic, flag-gated; bounded search prefers approved Brave, extraction uses Firecrawl or an explicitly configured isolated worker, and unavailable providers fail closed or fall back safely; Brave owner-cloud evidence passed on `00161-gc6`; crawler workers are contract-active but not enabled |
 | Knowledge evidence | `src/lib/contextCompiler.ts` snapshot + reviewed activation | implemented |
 | Visual-QA persistence | `product-experience/supabase-client-visual-qa.sql` | identifier defect fixed; authenticated queue route, bounded adapter, replay-safe smoke harness, and report/findings persistence implemented; owner-cloud activation remains pending |
 | Client UX | existing workflow and manifest | unchanged; no skill/tool selector |
@@ -95,6 +95,28 @@ version, and bounded cost estimate are stored in job metadata without keys or
 raw evidence. Direct Brave smoke passed on `00160-x4m`; automatic-routing smoke
 passed on `00161-gc6`; Firecrawl remains the manifest default while Brave is
 the automatically selected bounded-search lane when eligible.
+
+## Isolated research-worker plane — 2026-08-20
+
+`src/lib/researchWorkerAdapters.ts` defines the Veloce-owned
+`v96-research-worker-v1` HTTPS contract for Crawl4AI, Crawlee, and Jina Reader.
+The adapter sends only a bounded public-HTTPS extraction request, uses a
+server-side worker token, hashes the tenant scope, rejects private or
+credential-bearing URLs, bounds response bytes/text, redacts secret-like
+output, and normalizes citation-ready extraction results. The deterministic
+router considers content fit, configured cost, latency, and reliability.
+
+The client route can automatically compose Brave search with an approved
+extraction worker when Firecrawl is unavailable and a read was requested. A
+caller cannot select a worker or provide an arbitrary crawl list. The worker
+config is derived from `researchWorkerConfig` in the server manifest and is
+disabled unless its secret, allowlist, and evidence reference are present.
+
+The three catalog entries are now `contract-active`, not installed or
+cloud-enabled. Their focused adapter evidence is local contract evidence only;
+each requires a separately deployed worker, authenticated smoke, budget and
+citation parity, tenant/deletion evidence, and rollback proof before its
+manifest entry can be enabled.
 
 ## Headroom compression pilot — 2026-08-12
 
