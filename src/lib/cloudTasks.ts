@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
 
 const METADATA_ROOT = "http://metadata.google.internal/computeMetadata/v1";
 
@@ -17,7 +18,7 @@ export async function enqueueClientRuntimeTask(input: { jobId?: string; actionId
     return { ok: false, status: 503, error: "task_base_url_not_public" };
   }
 
-  const token = await metadataAccessToken();
+  const token = await clientRuntimeAccessToken();
   if (!token) return { ok: false, status: 503, error: "gcp_identity_unavailable" };
   const identifier = input.jobId || input.actionId;
   if (!identifier) return { ok: false, status: 400, error: "task_identifier_missing" };
@@ -58,4 +59,29 @@ async function metadataAccessToken() {
   if (!response?.ok) return null;
   const data = await response.json().catch(() => null) as { access_token?: unknown } | null;
   return typeof data?.access_token === "string" ? data.access_token : null;
+}
+
+/**
+ * Cloud Run supplies an identity through the metadata server. A laptop does
+ * not, so full local tunnel parity needs an explicit, user-operated gcloud
+ * credential path. This is deliberately opt-in and development-only: the
+ * production client image never shells out to a local CLI or reads a local
+ * credential store.
+ */
+async function clientRuntimeAccessToken() {
+  const metadataToken = await metadataAccessToken();
+  if (metadataToken) return metadataToken;
+  if (
+    process.env.VELOCE_CLIENT_EDITION !== "1"
+    || process.env.NODE_ENV === "production"
+    || process.env.CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH !== "1"
+  ) return null;
+  const result = spawnSync("gcloud", ["auth", "print-access-token"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+    timeout: 10_000,
+  });
+  if (result.error || result.status !== 0) return null;
+  const token = result.stdout.trim();
+  return token && /^[A-Za-z0-9._-]{20,}$/.test(token) ? token : null;
 }

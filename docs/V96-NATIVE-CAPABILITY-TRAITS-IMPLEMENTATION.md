@@ -66,14 +66,15 @@ The local parity command remains intentionally non-GCP-dependent. The separate
 `verify:parity:local:tunnel` command accepts only a manually supplied public
 HTTPS tunnel URL and runs the Cloud Tasks-dependent surfaces. `cloudflared` is
 not installed or launched automatically. Crawl4AI, Crawlee, and Jina Reader
-are cataloged with pinned Apache-2.0 references and remain `reference-only`.
+are `contract-active` references with disabled external workers; their upstream
+runtimes remain outside the image until separately evidenced.
 
 Current evidence: focused tests, typecheck, lint, reference validation, worker
-verification, and the webpack production build pass. The default Turbopack
-build is blocked in this sandbox by its internal process/port permission
-restriction. Local parity cannot run while no authenticated local runtime is
-listening on port 3939; cloud parity and Brave promotion remain separate
-acceptance gates. Firecrawl remains the deployed default. Visual QA promotion
+verification, and the production Docker build pass. Full local tunnel parity
+also requires the explicit development-only `--gcp-auth` launcher option (or
+`CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH=1`) so a laptop can obtain a Cloud Tasks API
+token; production never shells out to gcloud. Cloud parity and Brave promotion
+remain separate acceptance gates. Firecrawl remains the deployed default. Visual QA promotion
 for `dofgfood`, GPU, Supervision enhancement, security execution,
 communications, worktrees, and continuous streaming speech remain gated.
 The historical owner-cloud Firecrawl-default deployment was revision

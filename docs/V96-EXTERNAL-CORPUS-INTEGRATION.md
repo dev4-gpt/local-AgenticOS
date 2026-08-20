@@ -47,13 +47,16 @@ HTTPS origin to the launcher:
 
 ```bash
 cloudflared tunnel --url http://127.0.0.1:3939
-npm run dev:client-runtime -- --env-file ~/.veloce-supabase.env --port 3939 --public-base-url https://<temporary-tunnel>.trycloudflare.com
+npm run dev:client-runtime -- --env-file ~/.veloce-supabase.env --port 3939 --public-base-url https://<temporary-tunnel>.trycloudflare.com --gcp-auth
 VELOCE_LOCAL_PUBLIC_URL=https://<temporary-tunnel>.trycloudflare.com npm run verify:parity:local:tunnel
 ```
 
 Without a tunnel, localhost remains fail-closed with `task_base_url_not_public`.
 The tunnel is never started or persisted by Veloce, and the community Cloud
-Tasks emulator is test-only rather than authoritative.
+Tasks emulator is test-only rather than authoritative. `--gcp-auth` is an
+explicit local-development opt-in that calls `gcloud auth print-access-token`
+only when the metadata identity is unavailable; it is disabled in production
+and never logs or persists the token.
 
 ## The framing
 

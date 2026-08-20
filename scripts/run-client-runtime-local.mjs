@@ -8,6 +8,7 @@ const args = process.argv.slice(2);
 const envFile = valueAfter("--env-file");
 const port = valueAfter("--port") || "3939";
 const publicBaseUrl = valueAfter("--public-base-url");
+const gcpAuth = args.includes("--gcp-auth");
 const env = { ...process.env };
 
 if (envFile) {
@@ -46,6 +47,7 @@ if (publicBaseUrl) {
 } else {
   env.CLIENT_RUNTIME_BASE_URL = env.CLIENT_RUNTIME_BASE_URL || `http://127.0.0.1:${port}`;
 }
+if (gcpAuth) env.CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH = "1";
 env.CLIENT_ALLOWED_ROUTES = env.CLIENT_ALLOWED_ROUTES || "/,/context,/orchestrate,/create,/credentials,/capabilities,/deliver,/paperclip,/room,/pipeline,/claude,/openclaw,/hermes,/antigravity,/codex,/kimi,/glm,/glm-code,/grok,/freeclaude,/fusion,/sakana,/local,/engine,/agent-kanban,/loop,/ruflo,/goals,/journal,/seo,/seo-guide,/opendesign,/web-studio,/flow-lab,/integrations,/video,/studio,/openmontage,/music,/games,/thumbnails,/notebook,/kanban,/memory,/leads,/radar,/guide";
 env.CLIENT_ALLOWED_API_ROUTES = env.CLIENT_ALLOWED_API_ROUTES || "/api/capabilities,/api/speech/transcribe,/api/client-runtime/credentials,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-runtime/artifacts,/api/client-runtime/visual-qa,/api/client-runtime/hosted-jobs,/api/client-runtime/executions,/api/client-runtime/intent,/api/client-runtime/delivery,/api/client-runtime/memory-import,/api/client-runtime/memory-graph,/api/client-runtime/provider-history,/api/client-runtime/telemetry,/api/client-runtime/observability,/api/client-runtime/records,/api/client-runtime/research,/api/client-runtime/notebooks,/api/client-runtime/notebook-sources,/api/client-runtime/budget,/api/client-runtime/skills,/api/client-runtime/workflows,/api/client-runtime/paperclip,/api/client-runtime/room,/api/client-runtime/pipeline,/api/client-runtime/boards,/api/client-runtime/loop,/api/client-runtime/ruflo,/api/client-runtime/hermes-content-factory,/api/client-runtime/jobs,/api/internal/client-runtime/jobs,/api/internal/client-runtime/delivery,/api/internal/client-runtime/visual-qa-dispatch,/api/client-auth/session";
 // tenant-data and artifacts are the record and artifact lanes. They exist in
@@ -74,6 +76,8 @@ if (!env.CLIENT_MODEL_ALLOWLIST?.trim()) parityBlockers.push("CLIENT_MODEL_ALLOW
 
 console.log(`Starting Veloce client-runtime local test on http://127.0.0.1:${port}`);
 if (publicBaseUrl) console.log("Public HTTPS callback configured for Cloud Tasks parity; tunnel lifecycle remains manual.");
+if (env.CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH === "1") console.log("Local Cloud Tasks identity enabled through the explicit gcloud auth path; the access token is never printed.");
+if (publicBaseUrl && env.CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH !== "1") console.log("Full tunnel parity also needs --gcp-auth (or CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH=1) so Cloud Tasks can authenticate from this laptop.");
 console.log("Loaded credential names only; secret values are not printed.");
 if (parityBlockers.length) {
   console.log("");

@@ -1261,3 +1261,22 @@ smoke, verify citations, budget settlement, tenant isolation, deletion lineage,
 rate limits, and rollback, then enable only that worker. Crawl4AI, Crawlee, and
 Jina Reader remain outside the Next.js image and unavailable to client-facing
 selectors until that evidence exists.
+
+## 33. Local Cloud Tasks identity closure — 2026-08-20 UTC
+
+The local tunnel runbook now has an explicit identity path. Cloud Run still
+uses the metadata-server token and the localhost guard remains unchanged. A
+developer running the client runtime locally may pass `--gcp-auth`, which sets
+`CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH=1`; only then, and only outside production,
+the Cloud Tasks helper may call `gcloud auth print-access-token`. The token is
+held in memory, never logged or persisted, and the tunnel lifecycle remains
+manual. Without the flag, local runtime behavior remains fail-closed with
+`gcp_identity_unavailable` after the public-base-url check.
+
+| Checkpoint | Result |
+|---|---|
+| Local identity source | **Implemented**; explicit development-only gcloud fallback |
+| Production boundary | **Passed by contract**; fallback is rejected for production/client image execution |
+| No-tunnel behavior | **Unchanged**; localhost still returns `task_base_url_not_public` before identity lookup |
+| Static worker/policy checks | **Passed**; worker boundary, provider policy, reference suite, typecheck, lint, and 106 focused tests |
+| Authenticated tunnel smoke | **Pending**; requires a manually managed trusted HTTPS tunnel and a gcloud identity with Cloud Tasks enqueue permission; anonymous Quick Tunnel was not used because it would expose the session cookie |

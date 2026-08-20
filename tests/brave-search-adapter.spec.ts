@@ -72,6 +72,13 @@ test("the local tunnel verifier requires a public HTTPS origin", () => {
   expect(() => validateClientRuntimePublicBaseUrl("https://localhost:3939")).toThrow(/public tunnel/);
 });
 
+test("local Cloud Tasks identity requires explicit development opt-in", () => {
+  const cloudTasks = readFileSync(join(process.cwd(), "src/lib/cloudTasks.ts"), "utf8");
+  expect(cloudTasks).toContain("CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH");
+  expect(cloudTasks).toContain('"auth", "print-access-token"');
+  expect(cloudTasks).toContain('process.env.NODE_ENV === "production"');
+});
+
 test("the worker enforces Brave search-only behavior and attributes its budget", () => {
   const worker = readFileSync(join(process.cwd(), "src/app/api/internal/client-runtime/jobs/route.ts"), "utf8");
   expect(worker).toContain('const scrapeResults = provider === "brave" ? false : input.scrapeResults === true;');
