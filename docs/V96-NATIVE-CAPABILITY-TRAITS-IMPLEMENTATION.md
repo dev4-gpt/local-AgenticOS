@@ -10,7 +10,7 @@ later waves explicitly gated.
 | Automatic job attachment | `src/lib/clientDataPlane.ts` | implemented at enqueue |
 | Worker enforcement | `src/app/api/internal/client-runtime/jobs/route.ts` + `src/app/api/internal/client-runtime/visual-qa-dispatch/route.ts` | fail-closed validation; optional dedicated Visual QA Cloud Run Job |
 | Operator inspection | `src/app/api/internal/client-runtime/trait-inspection/route.ts` | local/operator only |
-| Native routing compression | `src/lib/contextCompression.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free deterministic trait; local and owner-cloud evidence passing on `veloce-cloud-test-00158-24s` |
+| Native routing compression | `src/lib/contextCompression.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free deterministic trait; owner-cloud evidence passed on `veloce-cloud-test-00158-24s`; later research-routing rollout is `00161-gc6` |
 | Standing-instruction budget | `src/lib/instructionBudget.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free redacted measurement at the provider boundary; shared authenticated current-image smoke passed |
 | Native industry playbooks | `src/lib/nativeIndustryPlaybooks.ts` + `src/lib/clientPlaybooks.ts` | data-driven 14-family/28-outcome registry; shared authenticated intent and gating smoke passed; specialized evidence remains bounded |
 | Research evidence | structured research worker output metadata | implemented and cloud-smoked on `00145-jcn` |
@@ -25,7 +25,9 @@ later waves explicitly gated.
    Research/Notebook/SEO suites, security and client-isolation checks, and the
    production build.
 2. Deploy the same image to local and owner-cloud test lanes. **Local build is
-   complete; the current shared owner-cloud revision is `veloce-cloud-test-00158-24s`.
+   complete; the current owner-cloud research-routing revision is
+   `veloce-cloud-test-00161-gc6` (the earlier `00158-24s` compression/intent
+   evidence remains preserved below).
    This shared smoke is not evidence for the separately gated Visual QA
    `dofgfood` activation.**
 3. Run authenticated Research + Knowledge smoke with a fresh query and
@@ -74,7 +76,7 @@ listening on port 3939; cloud parity and Brave promotion remain separate
 acceptance gates. Firecrawl remains the deployed default. Visual QA promotion
 for `dofgfood`, GPU, Supervision enhancement, security execution,
 communications, worktrees, and continuous streaming speech remain gated.
-The final owner-cloud Firecrawl-default deployment is revision
+The historical owner-cloud Firecrawl-default deployment was revision
 `veloce-cloud-test-00153-wn6`, image digest
 `sha256:1e5395fcf9e5b41967c5bfd1738cdef33be7dc348993edd9eebb435c401f2123`,
 with `context-compression` and intent routing enabled. Authenticated intent
@@ -91,7 +93,8 @@ Brave is unavailable, the router uses approved Firecrawl, and if neither lane
 is eligible it fails closed. The selection reason, eligible providers, policy
 version, and bounded cost estimate are stored in job metadata without keys or
 raw evidence. Direct Brave smoke passed on `00160-x4m`; automatic-routing smoke
-passed on `00161-gc6`.
+passed on `00161-gc6`; Firecrawl remains the manifest default while Brave is
+the automatically selected bounded-search lane when eligible.
 
 ## Headroom compression pilot — 2026-08-12
 
@@ -124,7 +127,7 @@ the approved-environment production build pass. The default Turbopack build
 also passes in the approved build environment; its earlier sandbox failure is
 historical infrastructure noise, not an application failure.
 
-Owner-cloud evidence: current revision `veloce-cloud-test-00158-24s`, image
+Owner-cloud compression evidence: revision `veloce-cloud-test-00158-24s`, image
 digest `sha256:28d8c72df8ff5b30d404dba3ba7b0750625f189a006df5a1d3086c5a64f45c15`,
 and manifest `CLIENT_ENABLED_TRAITS=context-compression`. The authenticated
 workflow, provider, intent, and hosted-loop smoke passed with replay identity
@@ -149,5 +152,6 @@ The resolver also fails closed before classification for explicit
 security-execution language such as “security assessment against a staging
 target” or “penetration test.” These requests produce a review clarification,
 never an automatic dispatch. This guard is implemented locally and must be
-revalidated in the owner-cloud image after deployment; the current live
-revision predates the correction.
+revalidated in the owner-cloud image after deployment; the later research
+router rollout is recorded on `00161-gc6`. Dedicated Visual QA activation
+remains separate and gated.

@@ -1,6 +1,6 @@
 # Runtime Capability Matrix
 
-Updated 2026-08-12 after the tenant memory graph deployment, Groq activation,
+Updated 2026-08-20 after the tenant memory graph deployment, Groq activation,
 and native context-compression pilot.
 owner-cloud OpenRouter/Gemini activation checkpoint.
 
@@ -65,15 +65,11 @@ These can be exposed only through server-side provider APIs, a per-client allowl
 The shared provider adapter also applies the server-manifest-controlled native
 `context-compression` trait to provider-bound jobs. It is dependency-free,
 deterministic, preserves authoritative content, and records only redacted
-hash/count evidence. Local activation is configured by the client launcher;
-owner-cloud evidence is revision `veloce-cloud-test-00148-xwg` with image digest
-`sha256:b777a525336d237837acd642657733534feba86dd92ccd9822dc41366fdd8444`.
-The license-reconciled Wave 4C/Wave 5 image is deployed as revision
-`veloce-cloud-test-00157-cqk` with digest
-`sha256:69bc95b8e4da1aab804e448817659e3388d6333ecb629ef1ed9a4135965a5521`;
-authenticated smoke evidence for the current image is still pending. The
-previous `00155-mhd` deployment remains historical evidence in the verification
-report.
+hash/count evidence. Compression/intent evidence is preserved on revision
+`veloce-cloud-test-00158-24s`; the current research-routing evidence is on
+`veloce-cloud-test-00161-gc6`, with Brave Secret Manager binding and an
+authenticated provider smoke passed. Older revisions remain historical evidence
+in the verification report; no current-image claim is inferred from them.
 
 Adding one of these keys does not automatically enable the route. The implementation must stop using local CLI/filesystem calls, use the client provider API, write to tenant-scoped storage, and be added to that client manifest.
 
