@@ -1280,3 +1280,26 @@ manual. Without the flag, local runtime behavior remains fail-closed with
 | No-tunnel behavior | **Unchanged**; localhost still returns `task_base_url_not_public` before identity lookup |
 | Static worker/policy checks | **Passed**; worker boundary, provider policy, reference suite, typecheck, lint, and 106 focused tests |
 | Authenticated tunnel smoke | **Pending**; requires a manually managed trusted HTTPS tunnel and a gcloud identity with Cloud Tasks enqueue permission; anonymous Quick Tunnel was not used because it would expose the session cookie |
+
+## 34. Next-round status — 2026-08-20 UTC
+
+The local Cloud Tasks identity closure is now committed and pushed as
+`f05166e` (`Add explicit local Cloud Tasks auth path`). The repository is clean
+and `main` is synchronized with `origin/main`. The source checker loop and
+production Docker build passed for this commit.
+
+The owner-cloud service is still on the previously verified research-routing
+revision `veloce-cloud-test-00161-gc6`; the new local-only gcloud identity path
+has not been deployed to Cloud Run. This is intentional: Cloud Run continues
+to use its metadata-server identity, while the new fallback exists only for a
+developer-operated local tunnel run. A local gcloud context currently lacks
+Cloud Run read/deploy permission, so the deployment must be performed from the
+authorized Cloud Shell account before cloud evidence is refreshed.
+
+| Next-round item | Current status | Required evidence |
+|---|---|---|
+| Deploy exact `f05166e` image | **Pending** | Cloud Build success, image digest, new Cloud Run revision, 100% traffic |
+| Authenticated local tunnel parity | **Pending** | Trusted HTTPS tunnel, `--gcp-auth`, real Cloud Tasks callback, worker authentication, idempotency replay |
+| Crawl4AI/Crawlee/Jina activation | **Pending** | Separately deployed worker endpoints/tokens and authenticated citation, budget, tenant, deletion, and rollback smokes |
+| `dofgfood` Visual QA acceptance | **Gated** | Approved target manifest and bounded authenticated artifact acceptance bundle |
+| GPU, security, communications, worktrees, streaming speech | **Gated** | Separate approved evidence bundles; statuses unchanged |
