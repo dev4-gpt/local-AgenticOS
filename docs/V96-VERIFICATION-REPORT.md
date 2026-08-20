@@ -854,6 +854,27 @@ upstream repository prompts or runtimes are installed.
 | TypeScript / lint / worker boundary / approved build | **Passed**; typecheck, lint, static worker verification, and the approved-environment production build are green |
 | Cloud evidence | **Pending**; deployment prerequisite remains recorded in §15 |
 
+## 21. Wave 4C/Wave 5 re-audit — 2026-08-19
+
+The current clean commit `d9a3c93` was rechecked after the Wave 4C registry
+landed. The focused and reference suites are the authoritative contract gates
+for these waves; the broader browser suite was also attempted, but its UI
+portion could not start in this sandbox because Chromium is denied the macOS
+bootstrap service and no local application server was listening on port 3737.
+
+| Checkpoint | Result |
+|---|---|
+| Focused Wave 3–5 suite | **85 passed** |
+| Reference suite | **57 passed** |
+| Full repository suite | **277 passed; 64 environment-blocked UI/server tests** — no application failure established |
+| TypeScript | **Passed** |
+| Lint | **Passed** |
+| Production build | **Passed** in approved environment; existing broad filesystem-trace warnings remain |
+| Worker boundary verifier | **Passed** |
+| Security/provider/lifecycle gates | **Passed** |
+| Cloud access recheck | **Blocked by active identity permissions**; `aryamandev777@gmail.com` currently lacks `projects.describe` and `run.services.get` on `veloce-agenticos-2026` |
+| Cloud deployment and authenticated smoke | **Pending**; no new revision is claimed from this source-only run |
+
 ## 17. Wave 5A harness audit checkpoint — 2026-08-19
 
 The harness audit is now a deterministic Veloce-owned evidence reducer. It
