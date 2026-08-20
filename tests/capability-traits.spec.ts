@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { resolveCapabilityTraits, traitBundleMetadata, traitEvidenceForOutcome, validateTraitBundle } from "../src/lib/capabilityTraits";
 import { validateV96RepositoryCatalog, validateV96RepositoryReference, V96_REPOSITORY_CATALOG, V96_UNCATALOGED_LICENSE_REFERENCES } from "../src/lib/v96RepositoryCatalog";
+import { portfolioSummary, validateV96StarredPortfolio, V96_STARRED_PORTFOLIO, V96_STARRED_PORTFOLIO_SNAPSHOT_DATE } from "../src/lib/v96StarredPortfolio";
 
 test("the native trait resolver adds a mandatory baseline and research traits", () => {
   const bundle = resolveCapabilityTraits({ capability: "seo-research", provider: "firecrawl", surface: "notebook" });
@@ -71,6 +72,24 @@ test("catalog license labels match the pinned source dispositions", () => {
   expect(V96_REPOSITORY_CATALOG.find((item) => item.id === "rag-anything")?.license).toBe("MIT");
   expect(V96_REPOSITORY_CATALOG.find((item) => item.id === "wan2gp")?.license).toBe("WanGP Community License 2.0");
   expect(V96_REPOSITORY_CATALOG.find((item) => item.id === "skyreels-v2")?.license).toBe("other (repository metadata)");
+});
+
+test("the dated starred portfolio reconciles all current sources without activating runtimes", () => {
+  expect(V96_STARRED_PORTFOLIO_SNAPSHOT_DATE).toBe("2026-08-20");
+  expect(V96_STARRED_PORTFOLIO).toHaveLength(101);
+  expect(validateV96StarredPortfolio()).toEqual([]);
+  expect(portfolioSummary().total).toBe(101);
+  expect(portfolioSummary().referenceOnly).toBeGreaterThan(0);
+  expect(V96_STARRED_PORTFOLIO.find((item) => item.fullName === "x1xhlol/system-prompts-and-models-of-ai-tools")?.activation).toBe("reference-only");
+  expect(V96_STARRED_PORTFOLIO.find((item) => item.fullName === "D4Vinci/Scrapling")?.runtime).toBe("operator-worker");
+});
+
+test("starred portfolio blocks unresolved licenses and unsafe permission expansion", () => {
+  const restricted = V96_STARRED_PORTFOLIO.filter((item) => item.licenseStatus !== "confirmed" || /GPL|AGPL/i.test(item.license));
+  const unlicensed = V96_STARRED_PORTFOLIO.filter((item) => item.licenseStatus === "missing" || item.licenseStatus === "unresolved");
+  expect(unlicensed.length).toBeGreaterThan(0);
+  expect(restricted.every((item) => item.activation === "reference-only")).toBe(true);
+  expect(V96_STARRED_PORTFOLIO.every((item) => !item.executionPermissions.includes("execute-shell") && !item.executionPermissions.includes("arbitrary-network"))).toBe(true);
 });
 
 test("reference validation rejects tokenized or under-specified sources", () => {

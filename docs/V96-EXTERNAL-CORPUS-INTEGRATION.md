@@ -1,10 +1,11 @@
 # V96 external corpus integration — one OS, two deployments
 
 **Status:** active governed registry; Waves 1 and 2 are accepted, Waves 3–5
-are implemented locally and deployed in the owner-cloud image, with
-authenticated cloud evidence and the full environment audit pending. Native
-Veloce behavior is enabled only where evidence says so; upstream runtimes
-remain outside the product image.
+are implemented locally and present in the owner-cloud image. The shared
+authenticated smoke passed on `veloce-cloud-test-00158-24s`; specialized Brave,
+Visual QA, full tunnel-parity, and two-tenant evidence remain separate gates.
+Native Veloce behavior is enabled only where evidence says so; upstream
+runtimes remain outside the product image.
 **Date:** 2026-08-13
 
 Ten external resources are to be absorbed into the OS, plus a **30-repository
@@ -673,9 +674,9 @@ against cloud revision `veloce-cloud-test-00153-wn6` with a clean tree.
 |---|---|
 | Wave 1 — plane gaps | Landed; `loop` is a real intake surface with a test asserting it |
 | Wave 2 — parity spine | **Accepted** `7cc7d3f` |
-| **Wave 3 — named loops** | **Implemented locally; worker wiring landed 2026-08-19; cloud smoke pending** |
-| Wave 4 — industry sweep | **Wave 4A/4B/4C implemented locally (42 specialist/family playbooks; 62 total registry entries); cloud evidence pending** |
-| Wave 5 — design + harness audit | **Wave 5A/5B implemented locally; full environment audit pending** |
+| **Wave 3 — named loops** | **Implemented; hosted-loop smoke passed on `veloce-cloud-test-00158-24s`** |
+| Wave 4 — industry sweep | **Wave 4A/4B/4C implemented locally; shared intent smoke passed; specialist adapter evidence remains bounded** |
+| Wave 5 — design + harness audit | **Wave 5A/5B implemented locally; shared cloud smoke passed; full environment audit remains pending** |
 
 Wave 3 executes in four steps, and the order is load-bearing — cost enforcement
 lands *before* the tests that prove it, and cataloguing lands last so rows are

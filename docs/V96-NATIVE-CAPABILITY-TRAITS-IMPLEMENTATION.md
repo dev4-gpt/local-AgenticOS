@@ -6,13 +6,13 @@ later waves explicitly gated.
 | Plan area | Source boundary | State |
 |---|---|---|
 | Baseline + capability resolver | `src/lib/capabilityTraits.ts` | implemented |
-| STAR repository references | `src/lib/v96RepositoryCatalog.ts` | explicit activation classes; native-enabled entries require implementation, evidence, and rollback metadata |
+| STAR repository references | `src/lib/v96RepositoryCatalog.ts` + `src/lib/v96StarredPortfolio.ts` | 101 current starred sources are pinned and classified; executable catalog activation remains evidence-gated |
 | Automatic job attachment | `src/lib/clientDataPlane.ts` | implemented at enqueue |
 | Worker enforcement | `src/app/api/internal/client-runtime/jobs/route.ts` + `src/app/api/internal/client-runtime/visual-qa-dispatch/route.ts` | fail-closed validation; optional dedicated Visual QA Cloud Run Job |
 | Operator inspection | `src/app/api/internal/client-runtime/trait-inspection/route.ts` | local/operator only |
-| Native routing compression | `src/lib/contextCompression.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free deterministic pilot; local and owner-cloud evidence passing on `veloce-cloud-test-00148-xwg` |
-| Standing-instruction budget | `src/lib/instructionBudget.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free redacted measurement at the provider boundary; local evidence passing, cloud evidence pending |
-| Native industry playbooks | `src/lib/nativeIndustryPlaybooks.ts` + `src/lib/clientPlaybooks.ts` | data-driven 14-family/28-outcome registry; local intent and gating evidence passing, cloud evidence pending |
+| Native routing compression | `src/lib/contextCompression.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free deterministic trait; local and owner-cloud evidence passing on `veloce-cloud-test-00158-24s` |
+| Standing-instruction budget | `src/lib/instructionBudget.ts` + `src/lib/clientProviderAdapter.ts` | dependency-free redacted measurement at the provider boundary; shared authenticated current-image smoke passed |
+| Native industry playbooks | `src/lib/nativeIndustryPlaybooks.ts` + `src/lib/clientPlaybooks.ts` | data-driven 14-family/28-outcome registry; shared authenticated intent and gating smoke passed; specialized evidence remains bounded |
 | Research evidence | structured research worker output metadata | implemented and cloud-smoked on `00145-jcn` |
 | Knowledge evidence | `src/lib/contextCompiler.ts` snapshot + reviewed activation | implemented |
 | Visual-QA persistence | `product-experience/supabase-client-visual-qa.sql` | identifier defect fixed; authenticated queue route, bounded adapter, replay-safe smoke harness, and report/findings persistence implemented; owner-cloud activation remains pending |
@@ -24,8 +24,9 @@ later waves explicitly gated.
    Research/Notebook/SEO suites, security and client-isolation checks, and the
    production build.
 2. Deploy the same image to local and owner-cloud test lanes. **Local build is
-   complete; the existing owner-cloud revision `veloce-cloud-test-00145-jcn`
-   predates this Visual QA change and is not evidence for it.**
+   complete; the current shared owner-cloud revision is `veloce-cloud-test-00158-24s`.
+   This shared smoke is not evidence for the separately gated Visual QA
+   `dofgfood` activation.**
 3. Run authenticated Research + Knowledge smoke with a fresh query and
    idempotency key. Verify citations, trait evidence, tenant isolation,
    deletion lineage, retry identity, budget settlement, and operator inspection.
@@ -109,14 +110,13 @@ the approved-environment production build pass. The default Turbopack build
 also passes in the approved build environment; its earlier sandbox failure is
 historical infrastructure noise, not an application failure.
 
-Owner-cloud evidence: revision `veloce-cloud-test-00148-xwg`, release
-`v109-native-headroom-compression-20260812`, image digest
-`sha256:b777a525336d237837acd642657733534feba86dd92ccd9822dc41366fdd8444`,
+Owner-cloud evidence: current revision `veloce-cloud-test-00158-24s`, image
+digest `sha256:28d8c72df8ff5b30d404dba3ba7b0750625f189a006df5a1d3086c5a64f45c15`,
 and manifest `CLIENT_ENABLED_TRAITS=context-compression`. The authenticated
-workflow + artifact smoke passed, and the provider smoke passed with a fresh
-idempotency key and replay identity. The provider job succeeded with a
-compression evidence bundle containing the policy version, reduced character
-counts, and a redacted input hash; raw repeated context was not persisted.
+workflow, provider, intent, and hosted-loop smoke passed with replay identity
+preserved. The provider job persisted reduced character counts and a redacted
+input hash; raw repeated context was not persisted. Dedicated Brave, Visual QA,
+tunnel-parity, and two-tenant evidence remain separate gates.
 
 ## Native intent router and playbook plane — 2026-08-13
 

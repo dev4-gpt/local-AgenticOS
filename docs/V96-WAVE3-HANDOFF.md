@@ -12,12 +12,12 @@ since landed on `main`; use the current state below rather than the original
 
 | | |
 |---|---|
-| **HEAD** | `70176c2` — verified local wave fixes and fresh browser harness |
-| **`origin/main`** | `70176c2`; local changes are pushed |
-| **Live cloud** | `veloce-cloud-test-00157-cqk`, 100% traffic; predates the latest gated-intent and hosted-loop fixes |
+| **HEAD** | Current `main`; corrected image evidence is recorded in the verification report |
+| **`origin/main`** | Current `main`; local changes are pushed |
+| **Live cloud** | `veloce-cloud-test-00158-24s`, 100% traffic; image digest is recorded in the verification report |
 | **Repo** | `/Users/aryamandev/Documents/Codex/Projects/AgentOS/source` |
 | **Waves 1 and 2** | complete and **accepted** |
-| **Wave 3** | **implemented and verified locally; hosted cloud smoke pending corrected-image deployment** |
+| **Wave 3** | **implemented and accepted; hosted-loop cloud smoke passed on revision `00158-24s`** |
 
 Verify before trusting any of it:
 
@@ -143,12 +143,13 @@ worker evidence for security, cost, licensing and rollback before activation.
 **Brave Search** is implemented and locally tested but not cloud-enabled until
 `BRAVE_API_KEY` has a Secret Manager version and an authenticated smoke.
 
-The remaining Wave 3 gate is an authenticated cloud smoke against the image
-containing the worker wiring, recording contract ID, stop reason, combined
-round cost, settlement, and idempotency replay. Waves 4A/4B/4C and 5A/5B are
-implemented and locally verified; their owner-cloud evidence remains pending
-the same corrected-image deployment. This is an evidence-status boundary, not
-permission to activate the separately gated runtimes.
+The current image has passed the shared authenticated workflow, provider
+compression, intent-routing, and hosted-loop smoke. Dedicated Brave, Visual QA,
+full tunnel-parity, and two-tenant isolation evidence remains separate work.
+Waves 4A/4B/4C and 5A/5B are implemented and locally verified; their
+specialized provider and operator-runtime evidence remains bounded by the
+gates below. This is an evidence-status boundary, not permission to activate
+the separately gated runtimes.
 
 ## Related
 

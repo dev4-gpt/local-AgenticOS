@@ -1087,3 +1087,27 @@ cloud-enabled status until its Secret Manager key and separate authenticated
 provider smoke are recorded. Crawl4AI, Crawlee, Jina Reader, GPU, Visual QA
 promotion/Supervision enhancement, security execution, communications,
 worktrees, and continuous streaming speech remain intentionally gated.
+
+## 30. Current starred portfolio reconciliation and documentation cleanup — 2026-08-20 UTC
+
+The current authenticated GitHub profile returned 101 starred repositories.
+The prior 100-entry Markdown inventory is preserved as historical context; the
+machine-readable snapshot now records all 101 current sources with exact
+default-branch or tag commit SHAs and GitHub license metadata.
+
+| Checkpoint | Result |
+|---|---|
+| Portfolio source | **Passed**; `https://github.com/dev4-gpt?tab=stars` |
+| Current portfolio size | **101 entries** |
+| Exact pin validation | **Passed**; every entry has a 40-character commit SHA |
+| License/provenance handling | **Passed**; missing and `NOASSERTION` licenses remain reference-only |
+| Permission validation | **Passed**; no entry grants `execute-shell` or `arbitrary-network` |
+| Activation boundary | **Passed**; only existing Veloce implementation mappings can be native-enabled |
+| Documentation reconciliation | **Passed**; current docs point to revision `00158-24s`; historical evidence remains preserved |
+| Runtime installation | **None**; portfolio records do not install upstream repositories |
+
+The canonical snapshot is `src/lib/v96StarredPortfolio.ts`; the human-readable
+disposition index is `docs/V96-STARRED-PORTFOLIO-WAVE-PLAN.md`. This portfolio
+sync does not change the gated status of GPU, Visual QA promotion/Supervision,
+security execution, communications, worktrees, streaming speech, or external
+crawler runtimes.

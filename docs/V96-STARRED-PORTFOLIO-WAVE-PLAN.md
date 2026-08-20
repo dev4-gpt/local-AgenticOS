@@ -2,7 +2,9 @@
 
 This is the planning inventory for the starred repositories returned from
 [`github.com/dev4-gpt?tab=stars`](https://github.com/dev4-gpt?tab=stars) on
-2026-08-19. The snapshot contained 100 repositories.
+2026-08-20. The historical snapshot contained 100 repositories. The current
+GitHub API reconciliation contains 101 repositories; the additional current
+star is preserved in the machine-readable snapshot below.
 
 This file is not an installer and is not the executable repository catalog.
 Each row is a candidate input to a Veloce-owned trait, playbook, adapter, or
@@ -10,6 +12,13 @@ operator reference. A source becomes executable only after it has a clean URL,
 an exact commit or tag, a confirmed license, declared permissions, an isolated
 runtime boundary where needed, focused tests, and the relevant local/cloud
 evidence. Until then it remains a reference or gated candidate.
+
+The exact machine-readable reconciliation for this snapshot is
+`src/lib/v96StarredPortfolio.ts`. It records the current commit SHA, GitHub
+license metadata, extracted behavior category, permissions, placement,
+activation class, evidence gate, rollback rule, and security notes for all 101
+current sources. This Markdown table remains the human-readable disposition
+index, while the earlier 100-entry table is retained as historical context.
 
 ## Wave policy
 
@@ -130,6 +139,7 @@ of truth for activation status.
 | 98 | [wshobson/agents](https://github.com/wshobson/agents) | W4 specialist-role candidate |
 | 99 | [Zie619/n8n-workflows](https://github.com/Zie619/n8n-workflows) | W3/W5 workflow reference |
 | 100 | [huggingface/agents-course](https://github.com/huggingface/agents-course) | W5 education/reference |
+| 101 | [D4Vinci/Scrapling](https://github.com/D4Vinci/Scrapling) | Research/Knowledge adaptive scraping worker reference |
 
 ## Activation rules
 
