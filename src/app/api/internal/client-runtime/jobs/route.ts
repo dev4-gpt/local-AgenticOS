@@ -88,7 +88,7 @@ export async function POST(request: Request) {
   const result = await runClientTextAdapter({ capability: job.capability, provider: job.provider, model, prompt: job.input_metadata.prompt, history, reserveBudget: false, jobId });
   if (result.ok) {
     const actualAmountMicros = result.usage ? clientTextUsageCostMicros(model, result.usage) : null;
-    const outputMetadata = { workflowId: workflowIdFrom(job.input_metadata), provider: result.provider, model: result.model, output: safeClientProviderOutput(result.output), steps: workflowStepsFrom(job.input_metadata), ...(result.compression ? { compression: result.compression } : {}) };
+    const outputMetadata = { workflowId: workflowIdFrom(job.input_metadata), provider: result.provider, model: result.model, output: safeClientProviderOutput(result.output), steps: workflowStepsFrom(job.input_metadata), instructionBudget: result.instructionBudget, ...(result.compression ? { compression: result.compression } : {}) };
     if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, {
       actualAmountMicros: actualAmountMicros ?? estimate,
       usageMetadata: result.usage ?? { estimatedCostMicros: estimate, usageFallback: 1 },

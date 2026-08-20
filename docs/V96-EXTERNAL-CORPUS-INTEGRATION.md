@@ -562,6 +562,17 @@ audit certifies a blind spot.
 2026-08-13. An audit row is observed once; a trait is enforced on every job. The
 specification is in [Wave 3B](#wave-3b--cost-accounting-and-loop-budget-enforcement).
 
+#### Wave 5B — standing-instruction budget measurement — implemented locally 2026-08-19
+
+`src/lib/instructionBudget.ts` measures the standing instruction layer at the
+provider boundary without retaining raw instruction content. It records only
+segment IDs, counts, limits, and a stable hash. It reports character and line
+overflow but does not reorder, delete, or weaken mandatory tenant, provenance,
+approval, or safety instructions. Provider preparation exposes this evidence so
+operator inspection can compare instruction cost with compression and model
+cost. The 200-line guidance from the essay is treated as a measurement default,
+not as permission to remove guardrails.
+
 #### Instruction-budget discipline — the second essay
 
 The second Charlie Hills essay (`Delete your CLAUDE.md`) is a cost argument
@@ -639,7 +650,7 @@ against cloud revision `veloce-cloud-test-00153-wn6` with a clean tree.
 | Wave 2 — parity spine | **Accepted** `7cc7d3f` |
 | **Wave 3 — named loops** | **Implemented locally; worker wiring landed 2026-08-19; cloud smoke pending** |
 | Wave 4 — industry sweep | **Wave 4A implemented locally (8 playbooks); broader 60–80 expansion and cloud evidence pending** |
-| Wave 5 — design + harness audit | **Wave 5A reducer implemented locally; full environment audit pending** |
+| Wave 5 — design + harness audit | **Wave 5A/5B implemented locally; full environment audit pending** |
 
 Wave 3 executes in four steps, and the order is load-bearing — cost enforcement
 lands *before* the tests that prove it, and cataloguing lands last so rows are

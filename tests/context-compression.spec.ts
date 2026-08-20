@@ -76,6 +76,8 @@ test("the provider adapter compresses before its budget estimate", () => {
     const rawEstimate = estimateClientTextCostMicros("openai/gpt-4o-mini", messages, 256);
     const compressedEstimate = estimateClientTextCostMicros("openai/gpt-4o-mini", prepared.messages, 256);
     expect(prepared.compression?.compressedChars).toBeLessThan(prepared.compression?.originalChars ?? 0);
+    expect(prepared.instructionBudget?.policyVersion).toBe("v96-instruction-budget-1");
+    expect(prepared.instructionBudget?.mandatoryChars).toBe(messages[0].content.length);
     expect(compressedEstimate).toBeLessThan(rawEstimate ?? Number.POSITIVE_INFINITY);
   } finally {
     if (previousTraits === undefined) delete process.env.CLIENT_ENABLED_TRAITS;

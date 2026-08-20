@@ -4,6 +4,7 @@ import { reserveClientRuntimeBudget } from "@/lib/clientDataPlane";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { clientProviderAttributionHeaders, clientProviderContract, clientProviderToolPayload, serializeClientReviewedPlan } from "@/lib/clientProviderContracts";
 import { compressProviderContext } from "@/lib/contextCompression";
+import { measureStandingInstructionBudget, standingInstructionSegmentsFromMessages } from "@/lib/instructionBudget";
 
 export type ClientProviderMessage = { role: "system" | "user" | "assistant"; content: string };
 type Message = ClientProviderMessage;
@@ -66,10 +67,11 @@ export function prepareClientProviderMessages(input: {
   capability?: string | null;
 }) {
   const contract = clientProviderContract(input.provider);
-  if (!contract || !clientContextCompressionEnabled()) return { ok: true as const, messages: [...input.messages], compression: null };
+  const budget = measureStandingInstructionBudget({ segments: standingInstructionSegmentsFromMessages(input.messages) });
+  if (!contract || !clientContextCompressionEnabled()) return { ok: true as const, messages: [...input.messages], compression: null, instructionBudget: budget.evidence };
   const compression = compressProviderContext({ messages: input.messages, maxPromptChars: contract.maxPromptChars, capability: input.capability, provider: input.provider });
-  if (!compression.ok) return { ok: false as const, error: compression.error, compression: compression.evidence };
-  return { ok: true as const, messages: [...compression.messages], compression: compression.evidence };
+  if (!compression.ok) return { ok: false as const, error: compression.error, compression: compression.evidence, instructionBudget: budget.evidence };
+  return { ok: true as const, messages: [...compression.messages], compression: compression.evidence, instructionBudget: budget.evidence };
 }
 
 export async function runClientTextAdapter(input: {
@@ -101,13 +103,13 @@ export async function runClientTextAdapter(input: {
     { role: "user", content: input.prompt },
   ];
   const prepared = prepareClientProviderMessages({ provider, messages: rawMessages, capability: input.capability });
-  if (!prepared.ok) return { ok: false as const, status: 400, error: prepared.error, compression: prepared.compression };
+  if (!prepared.ok) return { ok: false as const, status: 400, error: prepared.error, compression: prepared.compression, instructionBudget: prepared.instructionBudget };
   const messages: Message[] = prepared.messages;
   const maxOutputTokens = Math.min(contract.maxOutputTokens, Math.min(4096, Math.max(256, Number(process.env.CLIENT_MAX_OUTPUT_TOKENS ?? 2048))));
   const estimate = estimateClientTextCostMicros(model, messages, maxOutputTokens);
-  if (estimate === null) return { ok: false as const, status: 503, error: "model_pricing_not_configured" };
+  if (estimate === null) return { ok: false as const, status: 503, error: "model_pricing_not_configured", instructionBudget: prepared.instructionBudget };
   if (input.reserveBudget !== false && !(await reserveClientRuntimeBudget(provider, model, estimate, input.jobId))) {
-    return { ok: false as const, status: 429, error: "budget_exceeded" };
+    return { ok: false as const, status: 429, error: "budget_exceeded", instructionBudget: prepared.instructionBudget };
   }
 
   const toolPayload = input.disableReviewedPlanTool ? {} : clientProviderToolPayload(provider);
@@ -116,8 +118,8 @@ export async function runClientTextAdapter(input: {
     : spec.protocol === "gemini"
       ? await callGemini(spec, key, model, messages, maxOutputTokens, toolPayload)
       : await callOpenAiCompatible(spec, key, model, messages, maxOutputTokens, clientProviderAttributionHeaders(provider), toolPayload);
-  if (!response.ok) return { ok: false as const, status: response.status, error: providerFailureCode(response.status) };
-  return { ok: true as const, provider, model, output: response.output, usage: response.usage, ...(prepared.compression ? { compression: prepared.compression } : {}) };
+  if (!response.ok) return { ok: false as const, status: response.status, error: providerFailureCode(response.status), instructionBudget: prepared.instructionBudget };
+  return { ok: true as const, provider, model, output: response.output, usage: response.usage, instructionBudget: prepared.instructionBudget, ...(prepared.compression ? { compression: prepared.compression } : {}) };
 }
 
 function providerFailureCode(status: number) {

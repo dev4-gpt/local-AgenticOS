@@ -834,3 +834,20 @@ read prompts, tenant rows, local files, or upstream runtime code.
 | Reference suite | **52 passed** |
 | TypeScript / lint / worker boundary | **Passed** |
 | Cloud evidence | **Pending**; deployment prerequisite remains recorded in §15 |
+
+## 18. Wave 5B standing-instruction budget checkpoint — 2026-08-19
+
+The provider boundary now measures standing instruction cost without storing
+raw policy or private context. The evidence includes the policy version,
+segment count, character/line totals, mandatory versus optional character
+counts, configured limits, stable input hash, and redacted segment IDs. It is
+observability only: mandatory safety and tenant instructions are not edited or
+reordered.
+
+| Checkpoint | Result |
+|---|---|
+| Deterministic measurement | **Passed** |
+| Raw instruction redaction | **Passed** |
+| Character and line overflow reporting | **Passed** |
+| Provider-bound evidence exposure | **Passed locally** |
+| Cloud evidence | **Pending**; same deployment/IAM prerequisite as §15 |
