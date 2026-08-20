@@ -1211,3 +1211,25 @@ This closes the production-build gate in a clean supported environment. It does
 not close authenticated local Cloud Tasks parity, because that still requires
 a trusted public callback origin and a tenant session that may safely traverse
 it.
+
+### 31.4 Corrected production-container local parity — 2026-08-20 UTC
+
+The initial container parity attempt exposed a stale API-route allowlist in the
+private local env file: `provider-history` was omitted and correctly returned
+403. The container was restarted with the current client API manifest; no
+application code or policy was weakened.
+
+| Checkpoint | Result |
+|---|---|
+| Container image | **Passed**; `veloce-client-runtime:local-e4948b0` |
+| Authenticated client routes | **Passed**; all bounded route checks returned the client shell |
+| Capabilities and credentials | **Passed** |
+| Provider history | **Passed** after current allowlist was supplied |
+| Tenant records | **Passed**; memory, journal, goal, and notebook create/list/delete checks completed |
+| GCP-dependent surfaces | **Skipped by contract**; 8 workflow and 11 brief surfaces require Cloud Tasks or GCP metadata identity |
+| Full local Cloud Tasks parity | **Still not claimed**; requires a trusted public HTTPS callback origin |
+| Temporary container | **Stopped** after verification; no local service was left running |
+
+This is the current supported local non-GCP parity result. The no-tunnel
+fail-closed behavior and the Visual QA, GPU, security, communications,
+worktree, streaming-speech, and external crawler gates remain unchanged.
