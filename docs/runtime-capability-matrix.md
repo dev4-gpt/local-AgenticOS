@@ -67,10 +67,12 @@ deterministic, preserves authoritative content, and records only redacted
 hash/count evidence. Local activation is configured by the client launcher;
 owner-cloud evidence is revision `veloce-cloud-test-00148-xwg` with image digest
 `sha256:b777a525336d237837acd642657733534feba86dd92ccd9822dc41366fdd8444`.
-The current Wave 4C/Wave 5 image is deployed as revision
-`veloce-cloud-test-00155-mhd` with digest
-`sha256:8b15d02a92d89e3cd8ca13bfd4903d7487f2b5d853b8297c7b7a847fb09536f2`;
-authenticated smoke evidence is still pending.
+The license-reconciled Wave 4C/Wave 5 image is deployed as revision
+`veloce-cloud-test-00157-cqk` with digest
+`sha256:69bc95b8e4da1aab804e448817659e3388d6333ecb629ef1ed9a4135965a5521`;
+authenticated smoke evidence for the current image is still pending. The
+previous `00155-mhd` deployment remains historical evidence in the verification
+report.
 
 Adding one of these keys does not automatically enable the route. The implementation must stop using local CLI/filesystem calls, use the client provider API, write to tenant-scoped storage, and be added to that client manifest.
 

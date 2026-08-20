@@ -913,6 +913,25 @@ metadata/other pending its gated legal review.
 | Native-enabled status expansion | **None**; license reconciliation did not promote any capability |
 | Gated statuses | **Unchanged**; GPU, Visual QA promotion, security execution, communications, worktrees, and streaming speech remain gated |
 
+## 24. License-reconciled catalog image deployment — 2026-08-20 UTC
+
+The corrected catalog was built from source commit `24f14eb`. This deployment
+supersedes §22 for current-image tracking while preserving §22 as historical
+evidence. It contains the corrected pinned license metadata and the explicit
+non-executable treatment of the two portfolio sources without license files.
+
+| Checkpoint | Result |
+|---|---|
+| Cloud Build | **Passed**; build `51106b2b-6d5e-48e2-97f4-21a6308b716e` |
+| Image | `client-runtime:v113-wave5-license-20260820` |
+| Image digest | `sha256:69bc95b8e4da1aab804e448817659e3388d6333ecb629ef1ed9a4135965a5521` |
+| Cloud Run revision | **`veloce-cloud-test-00157-cqk`**, 100% traffic |
+| Isolated workspace job | **Deployed** as `veloce-cloud-test-workspace` |
+| Manifest wiring | **Unchanged**; intent routing and context compression enabled; Firecrawl remains selected |
+| Public/unauthenticated boundary | **Recheck required after this revision**; expected `/login` 200 and unauthenticated intent 401 |
+| Authenticated Wave 3–5 smoke | **Pending**; requires a fresh authenticated session cookie file |
+| Gated capability status | **Unchanged**; GPU, Visual QA promotion, Supervision, security execution, communications, worktrees, and streaming speech remain gated |
+
 ## 17. Wave 5A harness audit checkpoint — 2026-08-19
 
 The harness audit is now a deterministic Veloce-owned evidence reducer. It
