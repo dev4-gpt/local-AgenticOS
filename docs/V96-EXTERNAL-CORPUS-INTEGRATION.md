@@ -672,10 +672,11 @@ file must be added to it or it is silently unlinted.
 ## Sequencing
 
 **Waves 1 and 2 are accepted; Waves 3–5 are implemented and present in the
-owner-cloud image.** Native research routing is cloud-enabled on revision
-`veloce-cloud-test-00162-7tn`; full local tunnel parity, isolated external
-research workers, and the explicitly gated Visual QA/GPU/security/communications
-lanes remain separate evidence gates. — *updated 2026-08-20*
+owner-cloud image.** Native research routing and the isolated Jina Reader
+worker are cloud-enabled on revision `veloce-cloud-test-00168-h5t`; the Jina
+budget, tenant, deletion-lineage, and rollback evidence bundle is closed. Full
+local tunnel parity and the explicitly gated Visual QA/GPU/security/
+communications lanes remain separate evidence gates. — *updated 2026-08-21*
 
 The blocker recorded here previously — the intent router sitting uncommitted on
 `codex/reviewed-additions-2026-08-10`, 52 files dirty — **is resolved.** That work
