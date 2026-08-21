@@ -2,10 +2,10 @@
 
 **Status:** active governed registry; Waves 1 and 2 are accepted, Waves 3–5
 are implemented locally and present in the owner-cloud image. The shared
-authenticated smoke passed on `veloce-cloud-test-00164-8vh`; Brave research
-routing and the isolated Jina Reader extraction worker are now cloud-enabled.
-Visual QA, full tunnel-parity, and explicit two-tenant/deletion/rollback
-evidence remain separate gates.
+authenticated smoke passed on `veloce-cloud-test-00168-h5t`; Brave research
+routing and the isolated Jina Reader extraction worker are cloud-enabled. The
+Jina budget, two-tenant, deletion-lineage, and rollback evidence bundle is
+closed. Visual QA and full tunnel-parity remain separate gates.
 Native Veloce behavior is enabled only where evidence says so; upstream
 runtimes remain outside the product image.
 **Date:** 2026-08-13
