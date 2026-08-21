@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "client_user_not_approved" }, { status: 403 });
   }
 
-  const result = NextResponse.json({ ok: true, user: { id: session.user.id, email: session.user.email ?? email } });
+  const result = NextResponse.json({ ok: true, user: { id: session.user.id, email: session.user.email ?? email } }, { headers: { "cache-control": "no-store" } });
   const names = authCookieNames();
   const secure = process.env.NODE_ENV === "production";
   result.cookies.set(names.access, session.access_token, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: Math.max(300, session.expires_in ?? 3600) });

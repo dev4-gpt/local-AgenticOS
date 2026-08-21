@@ -1459,3 +1459,25 @@ It still requires the approved owner-cloud target manifest and artifact
 fixture; no Visual QA promotion, GPU activation, security execution,
 communications, worktree, or streaming-speech promotion is implied by this
 parity result.
+
+## 42. Visual QA target and browser-auth follow-up — 2026-08-21 UTC
+
+The authenticated Visual QA smoke was attempted against the existing
+`veloce-cloud-test` service using a valid Tenant A session. The runtime
+returned `403` because `visual-qa` is exposed as `preview` there, not enabled;
+this is the intended fail-closed behavior and is not evidence for the
+`dofgfood` gate.
+
+A read-only Supabase check confirmed that no `dofgfood` tenant or membership
+currently exists. The isolated target artifacts are now prepared locally:
+
+- `client-blueprints/dofgfood-visual-qa.gcp.json` — separate service account,
+  bucket, queue, Cloud Run service, and Visual QA Cloud Run Job.
+- `product-experience/supabase-seed-dofgfood-visual-qa.sql` — owner membership
+  seed for the existing Tenant A Auth user; it contains no password or secret.
+
+The login flow was hardened to use a dynamic/no-store login page, verify the
+session cookie after password exchange, and perform a hard same-origin
+redirect. The live session endpoint already accepts the saved Tenant A cookie;
+the browser still needs the next image deployment before this UI fix can be
+validated in Chrome.

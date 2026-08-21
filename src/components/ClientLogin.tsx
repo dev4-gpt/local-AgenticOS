@@ -2,10 +2,13 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { LockKeyhole, LogIn, Loader2 } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+
+function safeNextPath(value: string | null) {
+  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
+}
 
 export default function ClientLogin() {
-  const router = useRouter();
   const params = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,19 +17,20 @@ export default function ClientLogin() {
 
   useEffect(() => {
     fetch("/api/client-auth/session", { cache: "no-store" }).then((response) => response.json()).then((data) => {
-      if (data.authenticated) router.replace(params.get("next") || "/");
+      if (data.authenticated) window.location.replace(safeNextPath(params.get("next")));
     }).catch(() => undefined);
-  }, [params, router]);
+  }, [params]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true); setError("");
     try {
-      const response = await fetch("/api/client-auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
+      const response = await fetch("/api/client-auth/login", { method: "POST", credentials: "same-origin", cache: "no-store", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error === "auth_not_configured" ? "Client authentication is not configured yet." : "The email or password was not accepted.");
-      router.replace(params.get("next") || "/");
-      router.refresh();
+      const session = await fetch("/api/client-auth/session", { credentials: "same-origin", cache: "no-store" }).then((result) => result.json()).catch(() => null);
+      if (!session?.authenticated) throw new Error("Sign-in succeeded but the session cookie was not accepted. Please try again.");
+      window.location.replace(safeNextPath(params.get("next")));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to sign in.");
     } finally { setBusy(false); }
