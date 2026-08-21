@@ -1413,7 +1413,7 @@ parallel with those checks.
 | Production build | **Passed** with existing Turbopack filesystem-tracing warnings | Treat warnings as a separate hardening task, not a Jina blocker |
 | Jina budget evidence | **Partial**; the authenticated budget meter is healthy and under cap after the worker smoke (`392,835` of `10,000,000` micros), but the endpoint is aggregate-only | Capture reservation and settlement rows tied to one bounded worker job |
 | Jina two-tenant isolation | **Pending** | Run the existing two-token isolation verifier with valid tenant-A and tenant-B sessions |
-| Jina deletion lineage | **Pending** | Create a disposable research run, delete it through the approved lifecycle path, and verify records/citations are gone |
+| Jina deletion lineage | **Implementation ready locally** in `c4a52b6`; cloud migration/deployment and evidence run are pending | Apply `delete_client_research_run`, deploy the tested route, create a disposable research run, delete it, and verify records/citations are gone |
 | Jina rollback | **Pending** | Disable the manifest entry, run a negative worker smoke, then restore the known-good manifest |
 | `dofgfood` Visual QA | **Next after Jina closure** | Run only the approved artifact-bound acceptance bundle |
 | Crawl4AI / Crawlee and other gated groups | **Unchanged** | Remain cataloged or gated; do not route automatically |
