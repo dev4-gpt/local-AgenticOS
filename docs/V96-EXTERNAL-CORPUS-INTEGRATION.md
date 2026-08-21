@@ -5,10 +5,11 @@ are implemented locally and present in the owner-cloud image. The shared
 authenticated smoke passed on `veloce-cloud-test-00168-h5t`; Brave research
 routing and the isolated Jina Reader extraction worker are cloud-enabled. The
 Jina budget, two-tenant, deletion-lineage, and rollback evidence bundle is
-closed. Visual QA and full tunnel-parity remain separate gates.
+closed. Crawl4AI and Crawlee remain disabled references. Visual QA and trusted
+local tunnel parity remain separate gates.
 Native Veloce behavior is enabled only where evidence says so; upstream
 runtimes remain outside the product image.
-**Date:** 2026-08-13
+**Date:** 2026-08-21
 
 Ten external resources are to be absorbed into the OS, plus a **30-repository
 harness corpus** catalogued in its own section below. This file records what each
@@ -37,28 +38,32 @@ extraction fallback and configured provider default.
 
 Crawl4AI and Crawlee remain pinned Apache-2.0 architectural references with a
 Veloce-owned `v96-research-worker-v1` contract adapter and are still disabled.
-Jina Reader now has a separately deployed isolated worker and is enabled only
-for the owner-cloud research route: the main manifest composes Brave search
-with Jina extraction under the capability allowlist. The worker remains
-outside the Next.js image and no client can choose it directly. Explicit
-cross-tenant, deletion-lineage, and manifest-rollback evidence remain before
-the complete external-worker gate is closed.
+Jina Reader has a separately deployed isolated worker and is enabled only for
+the owner-cloud research route: the main manifest composes Brave search with
+Jina extraction under the capability allowlist. Its budget, two-tenant,
+deletion-lineage, idempotency, and manifest-rollback evidence bundle is closed.
+The worker remains outside the Next.js image and no client can choose it
+directly.
 
-For full local Cloud Tasks parity, start the tunnel manually and pass its
-HTTPS origin to the launcher:
+For full local Cloud Tasks parity, use a trusted named tunnel and pass its
+HTTPS origin to the launcher. The authenticated verifier must not use an
+anonymous Quick Tunnel because the runtime session cookie would cross an
+untrusted public origin:
 
 ```bash
-cloudflared tunnel --url http://127.0.0.1:3939
-npm run dev:client-runtime -- --env-file ~/.veloce-supabase.env --port 3939 --public-base-url https://<temporary-tunnel>.trycloudflare.com --gcp-auth
-VELOCE_LOCAL_PUBLIC_URL=https://<temporary-tunnel>.trycloudflare.com npm run verify:parity:local:tunnel
+cloudflared tunnel login
+cloudflared tunnel create veloce-local-parity
+cloudflared tunnel route dns veloce-local-parity parity.veloceos.cloud
+npm run dev:client-runtime -- --env-file ~/.veloce-supabase.env --port 3939 --public-base-url https://parity.veloceos.cloud --gcp-auth
+VELOCE_LOCAL_PUBLIC_URL=https://parity.veloceos.cloud npm run verify:parity:local:tunnel
 ```
 
-Without a tunnel, localhost remains fail-closed with `task_base_url_not_public`.
-The tunnel is never started or persisted by Veloce, and the community Cloud
-Tasks emulator is test-only rather than authoritative. `--gcp-auth` is an
-explicit local-development opt-in that calls `gcloud auth print-access-token`
-only when the metadata identity is unavailable; it is disabled in production
-and never logs or persists the token.
+Without a trusted tunnel, localhost remains fail-closed with
+`task_base_url_not_public`. The tunnel is never started or persisted by Veloce,
+and the community Cloud Tasks emulator is test-only rather than authoritative.
+`--gcp-auth` is an explicit local-development opt-in that calls
+`gcloud auth print-access-token` only when the metadata identity is unavailable;
+it is disabled in production and never logs or persists the token.
 
 ## The framing
 
