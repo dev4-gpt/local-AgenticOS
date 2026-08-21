@@ -140,15 +140,14 @@ Visual QA cloud promotion, GPU, Supervision enhancement, security execution,
 communications, worktrees, streaming speech. **Crawl4AI and Crawlee** remain
 pinned Apache-2.0 catalog references only. Jina Reader now has an isolated
 owner-cloud worker and a passing authenticated Brave→Jina smoke on
-`veloce-cloud-test-00164-8vh`; its explicit budget, two-tenant, deletion, and
-rollback evidence is still pending before the full external-worker bundle is
-closed. **Brave Search** is cloud-enabled with its Secret Manager binding and
-authenticated smoke.
+`veloce-cloud-test-00168-h5t`; two-tenant isolation, deletion lineage, and
+manifest rollback have now passed. The only remaining Jina evidence item is a
+dedicated per-job budget reservation/settlement assertion. **Brave Search** is
+cloud-enabled with its Secret Manager binding and authenticated smoke.
 
 The current image has passed the shared authenticated workflow, provider
 compression, intent-routing, hosted-loop, Brave, and Jina worker smoke.
-Visual QA, full tunnel-parity, and the remaining Jina two-tenant/deletion/
-rollback evidence remain separate work.
+Visual QA and full tunnel-parity remain separate work.
 Waves 4A/4B/4C and 5A/5B are implemented and locally verified; their
 specialized provider and operator-runtime evidence remains bounded by the
 gates below. This is an evidence-status boundary, not permission to activate

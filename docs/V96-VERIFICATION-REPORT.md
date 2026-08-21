@@ -1411,9 +1411,9 @@ parallel with those checks.
 | Reference suite | **Passed**; 70/70 | Keep as the catalog/regression gate |
 | Typecheck / lint / worker policy | **Passed** | No local code blocker |
 | Production build | **Passed** with existing Turbopack filesystem-tracing warnings | Treat warnings as a separate hardening task, not a Jina blocker |
-| Jina budget evidence | **Partial**; the authenticated budget meter is healthy and under cap after the worker smoke (`392,835` of `10,000,000` micros), but the endpoint is aggregate-only | Capture reservation and settlement rows tied to one bounded worker job |
-| Jina two-tenant isolation | **Pending** | Run the existing two-token isolation verifier with valid tenant-A and tenant-B sessions |
-| Jina deletion lineage | **Implementation ready locally** in `c4a52b6`; cloud migration/deployment and evidence run are pending | Apply `delete_client_research_run`, deploy the tested route, create a disposable research run, delete it, and verify records/citations are gone |
-| Jina rollback | **Pending** | Disable the manifest entry, run a negative worker smoke, then restore the known-good manifest |
+| Jina budget evidence | **Partial**; the authenticated budget meter is healthy and under cap (`392,835` of `10,000,000` micros), but a dedicated per-job ledger assertion remains | Capture reservation and settlement metadata for one bounded worker job |
+| Jina two-tenant isolation | **Passed**; the existing verifier passed with valid tenant-A and tenant-B sessions | Retain the redacted verifier output as owner-cloud evidence |
+| Jina deletion lineage | **Passed**; deployed `delete_client_research_run`, deleted a disposable run, and verified it was absent from the tenant listing | Retain the deletion response and follow-up absence check |
+| Jina rollback | **Passed**; disabled-worker smoke returned `403`, then the known-good manifest was restored and the positive smoke passed | Retain the negative and restored-positive smoke outputs |
 | `dofgfood` Visual QA | **Next after Jina closure** | Run only the approved artifact-bound acceptance bundle |
 | Crawl4AI / Crawlee and other gated groups | **Unchanged** | Remain cataloged or gated; do not route automatically |

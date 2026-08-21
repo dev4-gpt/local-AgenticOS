@@ -170,9 +170,10 @@ of truth for activation status.
 
 Wave 4A has begun locally with eight native specialist playbooks. The shared
 cloud image and the isolated Jina Reader worker smoke are now passed on
-`veloce-cloud-test-00164-8vh`; the remaining Jina evidence bundle is budget,
-two-tenant isolation, deletion lineage, and rollback. After that closure, run
-the bounded `dofgfood` Visual QA acceptance gate, then expand the
+`veloce-cloud-test-00168-h5t`; two-tenant isolation, deletion lineage, and
+rollback have passed. The remaining Jina evidence item is the dedicated
+per-job budget assertion. After that closure, run the bounded `dofgfood` Visual
+QA acceptance gate, then expand the
 specialist-role and quality subset (`wshobson/agents`,
 `agent-skills`, `agents.md`, `social-media-skills`, and the quality references)
 in measured slices rather than activating all 60–80 industry candidates at
