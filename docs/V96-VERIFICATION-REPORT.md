@@ -1408,8 +1408,8 @@ or worker should be activated in parallel with those checks.
 
 | Next-round item | Status | Next action |
 |---|---|---|
-| Local focused suite | **Passed**; 111/111 | Keep as the pre-deployment gate |
-| Reference suite | **Passed**; 71/71 | Keep as the catalog/regression gate |
+| Local focused suite | **Passed**; 112/112 | Keep as the pre-deployment gate |
+| Reference suite | **Passed**; 72/72 | Keep as the catalog/regression gate |
 | Typecheck / lint / worker policy | **Passed** | No local code blocker |
 | Production build | **Passed** with existing Turbopack filesystem-tracing warnings | Treat warnings as a separate hardening task, not a Jina blocker |
 | Jina budget evidence | **Passed**; the aggregate meter is healthy and under cap (`392,835` of `10,000,000` micros), and the dedicated bounded worker job has a reservation/settlement ledger row with redacted usage metadata | Retain the owner-cloud ledger query result |
