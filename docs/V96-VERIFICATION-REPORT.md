@@ -1435,3 +1435,27 @@ The hostname plan is intentionally separate from the application release:
 `parity.veloceos.cloud` is reserved for the trusted local tunnel, while
 `app.veloceos.cloud` is the proposed final public application host. No DNS
 authority or production hostname change is claimed by this report.
+
+## 41. Trusted local tunnel parity closure — 2026-08-21 UTC
+
+Authenticated full local parity passed through the manually managed named
+Cloudflare Tunnel at `https://parity.veloceos.cloud`:
+
+```text
+VELOCE_LOCAL_PUBLIC_URL=https://parity.veloceos.cloud \
+VELOCE_PARITY_REQUEST_TIMEOUT_MS=15000 \
+npm run verify:parity:local:tunnel
+
+Client runtime surface-map verification passed for https://parity.veloceos.cloud.
+```
+
+This closes the local HTTPS callback, authenticated Cloud Tasks delivery,
+worker authentication, workflow surface, brief surface, and local/cloud
+surface-map parity gate. The tunnel remains manually managed and is not
+started, persisted, or installed by Veloce.
+
+The next executable gate is the bounded `dofgfood` Visual QA acceptance bundle.
+It still requires the approved owner-cloud target manifest and artifact
+fixture; no Visual QA promotion, GPU activation, security execution,
+communications, worktree, or streaming-speech promotion is implied by this
+parity result.
