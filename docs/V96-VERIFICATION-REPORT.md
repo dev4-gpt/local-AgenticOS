@@ -1481,3 +1481,38 @@ session cookie after password exchange, and perform a hard same-origin
 redirect. The live session endpoint already accepts the saved Tenant A cookie;
 the browser still needs the next image deployment before this UI fix can be
 validated in Chrome.
+
+## 43. Bounded dofgfood Visual QA acceptance — 2026-08-21 UTC
+
+The approved isolated owner-cloud Visual QA target is now deployed and the
+authenticated acceptance bundle passes.
+
+| Checkpoint | Result |
+|---|---|
+| Cloud Build | **Passed**; source commit `9cd2334`, image `client-runtime:v123-dofgfood-visual-qa-20260821` |
+| Image pinning | **Passed**; digest `sha256:aa733e1348ee9a08c25eedf02fac41fda7606c47d41d560786ad9d14f29e324b` |
+| Isolated Cloud Run service | **Passed**; `veloce-dofgfood-00002-tcl`, 100% traffic, Ready |
+| Isolated jobs | **Passed**; `veloce-dofgfood-workspace` and `veloce-dofgfood-visual-qa` deployed |
+| Tenant and membership | **Passed**; `dofgfood` active, `aryamandev777@gmail.com` active owner |
+| Worker secret | **Passed**; isolated Secret Manager version created and hashed tenant verifier stored |
+| Visual QA schema | **Passed**; reports/findings tables and worker RPC verified in Supabase |
+| Authenticated session | **Passed**; Tenant A session accepted by the dofgfood runtime |
+| Workflow acceptance | **Passed**; bounded workflow creation, execution, and cleanup |
+| Visual QA acceptance | **Passed**; artifact allocation/upload/completion, job execution, idempotent replay, durable report, trait evidence, and cleanup |
+
+The final smoke was:
+
+```text
+node scripts/verify-client-runtime-authenticated.mjs \
+  --url https://veloce-dofgfood-mquo4bf7aq-el.a.run.app \
+  --cookie-file /private/tmp/veloce-runtime-cookie.txt \
+  --workflow-only \
+  --visual-qa-smoke
+
+Authenticated client runtime verification passed for https://veloce-dofgfood-mquo4bf7aq-el.a.run.app (workflow only) + visual QA.
+```
+
+The Cloud Tasks service-account binding was corrected during acceptance and no
+additional image build was required. Crawl4AI, Crawlee, GPU, security,
+communications, worktrees, and streaming speech remain intentionally gated;
+Jina remains the separately isolated native-enabled research worker.
