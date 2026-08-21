@@ -1430,3 +1430,8 @@ certificate or named tunnel, so authenticated Cloud Tasks parity is not claimed.
 The bounded `dofgfood` Visual QA gate also remains unchanged because no approved
 target manifest or fixture is present in the current workspace or owner-cloud
 deployment.
+
+The hostname plan is intentionally separate from the application release:
+`parity.veloceos.cloud` is reserved for the trusted local tunnel, while
+`app.veloceos.cloud` is the proposed final public application host. No DNS
+authority or production hostname change is claimed by this report.
