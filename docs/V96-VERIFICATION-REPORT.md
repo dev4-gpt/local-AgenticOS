@@ -1411,9 +1411,9 @@ parallel with those checks.
 | Reference suite | **Passed**; 70/70 | Keep as the catalog/regression gate |
 | Typecheck / lint / worker policy | **Passed** | No local code blocker |
 | Production build | **Passed** with existing Turbopack filesystem-tracing warnings | Treat warnings as a separate hardening task, not a Jina blocker |
-| Jina budget evidence | **Partial**; the authenticated budget meter is healthy and under cap (`392,835` of `10,000,000` micros), but a dedicated per-job ledger assertion remains | Capture reservation and settlement metadata for one bounded worker job |
+| Jina budget evidence | **Passed**; the aggregate meter is healthy and under cap (`392,835` of `10,000,000` micros), and the dedicated bounded worker job has a reservation/settlement ledger row with redacted usage metadata | Retain the owner-cloud ledger query result |
 | Jina two-tenant isolation | **Passed**; the existing verifier passed with valid tenant-A and tenant-B sessions | Retain the redacted verifier output as owner-cloud evidence |
 | Jina deletion lineage | **Passed**; deployed `delete_client_research_run`, deleted a disposable run, and verified it was absent from the tenant listing | Retain the deletion response and follow-up absence check |
 | Jina rollback | **Passed**; disabled-worker smoke returned `403`, then the known-good manifest was restored and the positive smoke passed | Retain the negative and restored-positive smoke outputs |
-| `dofgfood` Visual QA | **Next after Jina closure** | Run only the approved artifact-bound acceptance bundle |
+| `dofgfood` Visual QA | **Next gate** | Run only the approved artifact-bound acceptance bundle when the target manifest and fixture are available |
 | Crawl4AI / Crawlee and other gated groups | **Unchanged** | Remain cataloged or gated; do not route automatically |
