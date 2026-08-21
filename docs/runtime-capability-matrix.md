@@ -1,7 +1,8 @@
 # Runtime Capability Matrix
 
-Updated 2026-08-20 after the tenant memory graph deployment, Groq activation,
-and native context-compression pilot.
+Updated 2026-08-21 after the isolated Jina Reader owner-cloud activation,
+tenant memory graph deployment, Groq activation, and native context-compression
+pilot.
 owner-cloud OpenRouter/Gemini activation checkpoint.
 
 For the complete 13-layer business readiness assessment, shareability decision,
@@ -60,7 +61,7 @@ These can be exposed only through server-side provider APIs, a per-client allowl
 | Native research router | Shared client research route + worker job metadata | Flag-gated deterministic selection: Brave for bounded search when approved/available, Firecrawl for content extraction, safe fallback otherwise; enabled on owner-cloud revision `00162-7tn` |
 | Crawl4AI | Separate external Python/browser worker behind `v96-research-worker-v1` | Contract-active adapter and deterministic candidate; disabled until endpoint, secret, authenticated smoke, citation/budget parity, and rollback evidence exist; never bundled |
 | Crawlee | Separate external Node crawler worker behind `v96-research-worker-v1` | Contract-active adapter and deterministic candidate; disabled until endpoint, secret, authenticated smoke, citation/budget parity, and rollback evidence exist; never bundled |
-| Jina Reader | Separate isolated hosted reader worker behind `v96-research-worker-v1` | Worker implementation and local contract tests passed; disabled until its Cloud Run endpoint, `JINA_WORKER_TOKEN`, upstream `JINA_API_KEY`, authenticated smoke, citation/budget parity, and rollback evidence exist; never bundled |
+| Jina Reader | Separate isolated hosted reader worker behind `v96-research-worker-v1` | Active only in owner-cloud research routing on `veloce-cloud-test-00164-8vh`; worker endpoint, separate secrets, direct extraction, authenticated Brave+Jina smoke, citations, bounded output, and replay identity passed; explicit two-tenant isolation, deletion lineage, and rollback evidence remain; never bundled |
 
 The shared provider adapter also applies the server-manifest-controlled native
 `context-compression` trait to provider-bound jobs. It is dependency-free,

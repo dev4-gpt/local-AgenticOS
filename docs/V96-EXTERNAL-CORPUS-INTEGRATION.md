@@ -2,8 +2,9 @@
 
 **Status:** active governed registry; Waves 1 and 2 are accepted, Waves 3–5
 are implemented locally and present in the owner-cloud image. The shared
-authenticated smoke passed on `veloce-cloud-test-00162-7tn`; Brave research
-routing is now cloud-enabled. Visual QA, full tunnel-parity, and two-tenant
+authenticated smoke passed on `veloce-cloud-test-00164-8vh`; Brave research
+routing and the isolated Jina Reader extraction worker are now cloud-enabled.
+Visual QA, full tunnel-parity, and explicit two-tenant/deletion/rollback
 evidence remain separate gates.
 Native Veloce behavior is enabled only where evidence says so; upstream
 runtimes remain outside the product image.
@@ -34,15 +35,14 @@ jobs. Brave is now cloud-enabled: direct Brave smoke passed on `00160-x4m`,
 and automatic-routing smoke passed on `00162-7tn`. Firecrawl remains the
 extraction fallback and configured provider default.
 
-Crawl4AI, Crawlee, and Jina Reader are pinned Apache-2.0 architectural
-references with a Veloce-owned `v96-research-worker-v1` contract adapter. They
-are contract-active in the registry but still disabled: no upstream runtime is
-installed, no worker endpoint is bundled, and no client can choose one. The
-Jina worker implementation is now present in `workers/research-jina/` and
-locally tested; it remains disabled until its endpoint, separate worker and
-upstream secrets, authenticated smoke, citation/budget parity, tenant/deletion
-evidence, and rollback bundle pass. The server router may compose Brave search
-with a worker only after those gates pass.
+Crawl4AI and Crawlee remain pinned Apache-2.0 architectural references with a
+Veloce-owned `v96-research-worker-v1` contract adapter and are still disabled.
+Jina Reader now has a separately deployed isolated worker and is enabled only
+for the owner-cloud research route: the main manifest composes Brave search
+with Jina extraction under the capability allowlist. The worker remains
+outside the Next.js image and no client can choose it directly. Explicit
+cross-tenant, deletion-lineage, and manifest-rollback evidence remain before
+the complete external-worker gate is closed.
 
 For full local Cloud Tasks parity, start the tunnel manually and pass its
 HTTPS origin to the launcher:

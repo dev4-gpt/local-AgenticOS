@@ -113,15 +113,14 @@ caller cannot select a worker or provide an arbitrary crawl list. The worker
 config is derived from `researchWorkerConfig` in the server manifest and is
 disabled unless its secret, allowlist, and evidence reference are present.
 
-The three catalog entries remain `contract-active`, not installed or
-cloud-enabled. The Jina Reader worker implementation now lives in
-`workers/research-jina/` and is covered by focused boundary tests; it validates
-the Veloce worker token, rejects private targets, calls only `r.jina.ai`, and
-returns bounded normalized evidence. This is local implementation evidence,
-not deployment evidence. Jina still requires a separately deployed worker,
-`JINA_WORKER_TOKEN`, an upstream `JINA_API_KEY`, authenticated smoke, budget and
-citation parity, tenant/deletion evidence, and rollback proof before its
-manifest entry can be enabled.
+The three catalog entries remain external-worker references, not installed
+dependencies or client-selectable plugins. The Jina Reader worker now lives in
+`workers/research-jina/`, is deployed separately on Cloud Run, and passed the
+authenticated owner-cloud research-worker smoke on `veloce-cloud-test-00164-8vh`.
+The manifest currently composes Brave search with Jina extraction under the
+`seo-research` provider allowlist. Jina still requires explicit cross-tenant,
+deletion-lineage, and rollback evidence before the complete external-worker
+gate is closed; Crawl4AI and Crawlee remain disabled.
 
 ## Headroom compression pilot — 2026-08-12
 

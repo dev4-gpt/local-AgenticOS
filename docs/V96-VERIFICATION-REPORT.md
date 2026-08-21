@@ -1369,3 +1369,31 @@ Cloud promotion must wait for a separately deployed worker endpoint, a
 anonymous-tier run), authenticated citation/budget/tenant/deletion/idempotency
 smokes, and a rollback record. Crawl4AI, Crawlee, Visual QA, GPU, security,
 communications, worktrees, and streaming speech remain unchanged.
+
+## 38. Jina Reader owner-cloud activation checkpoint — 2026-08-21 UTC
+
+The isolated Jina Reader worker is now deployed separately from the Next.js
+image and is active only through the server-controlled research route. The
+owner-cloud manifest uses Brave for bounded search and the Jina worker for
+extraction under `CLIENT_CAPABILITY_PROVIDER_ALLOWLIST_JSON={"seo-research":["brave"]}`.
+Clients cannot select the worker or supply an arbitrary endpoint.
+
+| Checkpoint | Result |
+|---|---|
+| Worker image | **Passed**; `jina-reader-worker:v1`, digest `sha256:d5121b34a99d783d306fa48b1aa4861d04273de80b2a3625d8c1cc25895f04a6` |
+| Worker service | **Passed**; `veloce-jina-reader-00002-hwj`, 100% traffic, Ready |
+| Worker secrets | **Passed**; independent `jina-worker-token` and worker-local `jina-api-key` Secret Manager bindings |
+| Direct worker extraction | **Passed**; authenticated `v96-research-worker-v1` request returned bounded normalized output for a public HTTPS URL |
+| Main client revision | **Passed**; `veloce-cloud-test-00164-8vh`, 100% traffic, Ready |
+| Authenticated research-worker smoke | **Passed**; Brave search selected, `jina-reader` selected for extraction, citations persisted, output bounded, secrets redacted, and replay preserved the original job identity |
+| Routing policy | **Passed**; Jina is enabled only for the owner-cloud `seo-research` capability allowlist; Crawl4AI and Crawlee remain disabled |
+| Explicit budget reservation/settlement evidence | **Pending**; the bounded worker path ran, but a dedicated budget ledger assertion is still required |
+| Explicit tenant isolation | **Pending**; a dedicated two-tenant A/B evidence run is still required |
+| Deletion lineage | **Pending**; a dedicated delete-and-verify evidence run is still required |
+| Manifest rollback | **Pending**; the disable-and-negative-smoke record is still required |
+
+This checkpoint closes the endpoint, secret, direct extraction, routing, and
+authenticated idempotent worker-path gates for Jina. It does not yet close the
+full external-worker promotion bundle because tenant-isolation, deletion, and
+rollback evidence are intentionally tracked separately. The worker remains an
+isolated hosted adapter, never a bundled runtime or client-installed skill.
