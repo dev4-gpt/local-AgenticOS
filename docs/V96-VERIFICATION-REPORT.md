@@ -1407,7 +1407,7 @@ parallel with those checks.
 
 | Next-round item | Status | Next action |
 |---|---|---|
-| Local focused suite | **Passed**; 110/110 | Keep as the pre-deployment gate |
+| Local focused suite | **Passed**; 111/111 | Keep as the pre-deployment gate |
 | Reference suite | **Passed**; 70/70 | Keep as the catalog/regression gate |
 | Typecheck / lint / worker policy | **Passed** | No local code blocker |
 | Production build | **Passed** with existing Turbopack filesystem-tracing warnings | Treat warnings as a separate hardening task, not a Jina blocker |
