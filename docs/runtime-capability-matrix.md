@@ -2,8 +2,7 @@
 
 Updated 2026-08-21 after the isolated Jina Reader owner-cloud activation,
 tenant memory graph deployment, Groq activation, and native context-compression
-pilot.
-owner-cloud OpenRouter/Gemini activation checkpoint.
+pilot. The current Jina deployment is revision `veloce-cloud-test-00168-h5t`.
 
 For the complete 13-layer business readiness assessment, shareability decision,
 and tab-by-tab operator dependency inventory, see
@@ -58,19 +57,20 @@ These can be exposed only through server-side provider APIs, a per-client allowl
 |---|---|---|
 | Firecrawl | Existing governed research worker | Default provider; existing cloud behavior unchanged |
 | Brave Search API | Existing governed research worker | Native-enabled; Secret Manager binding, direct Brave smoke, durable citations, HTTPS/result bounds, and idempotency passed on owner-cloud |
-| Native research router | Shared client research route + worker job metadata | Flag-gated deterministic selection: Brave for bounded search when approved/available, Firecrawl for content extraction, safe fallback otherwise; enabled on owner-cloud revision `00162-7tn` |
+| Native research router | Shared client research route + worker job metadata | Flag-gated deterministic selection: Brave for bounded search when approved/available, Firecrawl for content extraction, Jina for approved extraction-worker composition, and safe fallback otherwise; enabled on owner-cloud revision `00168-h5t` |
 | Crawl4AI | Separate external Python/browser worker behind `v96-research-worker-v1` | Contract-active adapter and deterministic candidate; disabled until endpoint, secret, authenticated smoke, citation/budget parity, and rollback evidence exist; never bundled |
 | Crawlee | Separate external Node crawler worker behind `v96-research-worker-v1` | Contract-active adapter and deterministic candidate; disabled until endpoint, secret, authenticated smoke, citation/budget parity, and rollback evidence exist; never bundled |
-| Jina Reader | Separate isolated hosted reader worker behind `v96-research-worker-v1` | Active only in owner-cloud research routing on `veloce-cloud-test-00164-8vh`; worker endpoint, separate secrets, direct extraction, authenticated Brave+Jina smoke, citations, bounded output, and replay identity passed; explicit two-tenant isolation, deletion lineage, and rollback evidence remain; never bundled |
+| Jina Reader | Separate isolated hosted reader worker behind `v96-research-worker-v1` | Native-enabled only in owner-cloud research routing on `veloce-cloud-test-00168-h5t`; separate secrets, direct extraction, authenticated Brave+Jina smoke, citations, bounded output, replay identity, budget reservation/settlement, two-tenant isolation, deletion lineage, and disable/restore rollback all passed; never bundled |
 
 The shared provider adapter also applies the server-manifest-controlled native
 `context-compression` trait to provider-bound jobs. It is dependency-free,
 deterministic, preserves authoritative content, and records only redacted
 hash/count evidence. Compression/intent evidence is preserved on revision
-`veloce-cloud-test-00158-24s`; the current research-routing evidence is on
-`veloce-cloud-test-00162-7tn`, with Brave Secret Manager binding and an
-authenticated provider smoke passed. Older revisions remain historical evidence
-in the verification report; no current-image claim is inferred from them.
+`veloce-cloud-test-00158-24s`; the current research-routing and isolated-worker
+evidence is on `veloce-cloud-test-00168-h5t`, with Brave and Jina Secret Manager
+bindings plus the complete authenticated provider/worker evidence bundle passed.
+Older revisions remain historical evidence in the verification report; no
+current-image claim is inferred from them.
 
 Adding one of these keys does not automatically enable the route. The implementation must stop using local CLI/filesystem calls, use the client provider API, write to tenant-scoped storage, and be added to that client manifest.
 

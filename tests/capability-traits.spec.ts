@@ -57,6 +57,16 @@ test("native-enabled references declare implementation, evidence, and rollback",
   expect(V96_REPOSITORY_CATALOG.find((item) => item.id === "wan2gp")?.activation).toBe("externally-gated");
 });
 
+test("Jina is promoted only after its complete isolated-worker evidence bundle", () => {
+  const jina = V96_REPOSITORY_CATALOG.find((item) => item.id === "jina-reader");
+  expect(jina?.status).toBe("enabled");
+  expect(jina?.activation).toBe("native-enabled");
+  expect(jina?.activationEvidence).toContain("00168-h5t");
+  expect(jina?.activationEvidence).toContain("two-tenant isolation");
+  expect(jina?.activationEvidence).toContain("deletion lineage");
+  expect(jina?.rollbackRule).toContain("403");
+});
+
 test("unlicensed portfolio references remain explicit and non-executable", () => {
   expect(V96_UNCATALOGED_LICENSE_REFERENCES).toEqual(expect.arrayContaining([
     expect.objectContaining({ id: "ai-builder-club-skills", licenseStatus: "no-license-file", disposition: "reference-only" }),

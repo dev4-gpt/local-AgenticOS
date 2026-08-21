@@ -1400,10 +1400,11 @@ isolated hosted adapter, never a bundled runtime or client-installed skill.
 
 ## 39. Next-round status — 2026-08-21 UTC
 
-The local implementation gate is closed for this round. The next round should
-finish the Jina evidence bundle, then move to the bounded `dofgfood` Visual QA
-acceptance gate. No additional provider or worker should be activated in
-parallel with those checks.
+The local implementation gate is closed for this round. The Jina evidence
+bundle is complete and the catalog now records Jina as `native-enabled` through
+its isolated worker. The next round moves to trusted local tunnel parity and
+then the bounded `dofgfood` Visual QA acceptance gate. No additional provider
+or worker should be activated in parallel with those checks.
 
 | Next-round item | Status | Next action |
 |---|---|---|

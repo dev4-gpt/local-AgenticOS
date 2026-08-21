@@ -65,9 +65,10 @@ search-only behavior at the worker even if a job is manually crafted.
 The local parity command remains intentionally non-GCP-dependent. The separate
 `verify:parity:local:tunnel` command accepts only a manually supplied public
 HTTPS tunnel URL and runs the Cloud Tasks-dependent surfaces. `cloudflared` is
-not installed or launched automatically. Crawl4AI, Crawlee, and Jina Reader
-are `contract-active` references with disabled external workers; their upstream
-runtimes remain outside the image until separately evidenced.
+not installed or launched automatically. Crawl4AI and Crawlee remain
+`contract-active` references with disabled external workers. Jina Reader is
+now `native-enabled` only through its separately deployed, isolated worker;
+its upstream runtime remains outside the image.
 
 Current evidence: focused tests, typecheck, lint, reference validation, worker
 verification, and the production Docker build pass. Full local tunnel parity
@@ -116,11 +117,11 @@ disabled unless its secret, allowlist, and evidence reference are present.
 The three catalog entries remain external-worker references, not installed
 dependencies or client-selectable plugins. The Jina Reader worker now lives in
 `workers/research-jina/`, is deployed separately on Cloud Run, and passed the
-authenticated owner-cloud research-worker smoke on `veloce-cloud-test-00164-8vh`.
-The manifest currently composes Brave search with Jina extraction under the
-`seo-research` provider allowlist. Jina still requires explicit cross-tenant,
-deletion-lineage, and rollback evidence before the complete external-worker
-gate is closed; Crawl4AI and Crawlee remain disabled.
+complete owner-cloud evidence bundle on `veloce-cloud-test-00168-h5t`:
+authenticated worker smoke, budget reservation/settlement, two-tenant
+isolation, deletion lineage, and disable/restore rollback. The manifest
+composes Brave search with Jina extraction under the `seo-research` provider
+allowlist. Crawl4AI and Crawlee remain disabled.
 
 ## Headroom compression pilot — 2026-08-12
 
