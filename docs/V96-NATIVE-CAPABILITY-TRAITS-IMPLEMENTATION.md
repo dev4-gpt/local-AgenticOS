@@ -113,9 +113,13 @@ caller cannot select a worker or provide an arbitrary crawl list. The worker
 config is derived from `researchWorkerConfig` in the server manifest and is
 disabled unless its secret, allowlist, and evidence reference are present.
 
-The three catalog entries are now `contract-active`, not installed or
-cloud-enabled. Their focused adapter evidence is local contract evidence only;
-each requires a separately deployed worker, authenticated smoke, budget and
+The three catalog entries remain `contract-active`, not installed or
+cloud-enabled. The Jina Reader worker implementation now lives in
+`workers/research-jina/` and is covered by focused boundary tests; it validates
+the Veloce worker token, rejects private targets, calls only `r.jina.ai`, and
+returns bounded normalized evidence. This is local implementation evidence,
+not deployment evidence. Jina still requires a separately deployed worker,
+`JINA_WORKER_TOKEN`, an upstream `JINA_API_KEY`, authenticated smoke, budget and
 citation parity, tenant/deletion evidence, and rollback proof before its
 manifest entry can be enabled.
 

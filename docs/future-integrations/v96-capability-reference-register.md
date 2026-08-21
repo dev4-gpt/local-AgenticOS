@@ -36,7 +36,7 @@ are reviewed. Activation is explicit: native Veloce behavior is
 | [Brave Search API](https://brave.com/search/api/) | Research, Knowledge | adapter | pilot | native-enabled | Server-only `BRAVE_API_KEY`; direct smoke passed on `00160-x4m`, automatic-routing smoke passed on `00161-gc6`, with max 3 HTTPS results and budget/citation/idempotency evidence |
 | [Crawl4AI](https://github.com/unclecode/crawl4AI) | Research, Knowledge external worker | operator-worker | contract-only | contract-active | Veloce `v96-research-worker-v1` adapter is locally tested; isolated Python/browser worker, SSRF/egress, cost, citation, authenticated smoke, and rollback evidence still required |
 | [Crawlee](https://github.com/apify/crawlee) | Research, Knowledge external worker | operator-worker | contract-only | contract-active | Veloce `v96-research-worker-v1` adapter is locally tested; isolated Node crawler, SSRF/egress, rate/budget, citation, authenticated smoke, and rollback evidence still required |
-| [Jina Reader](https://github.com/jina-ai/reader) | Research, Knowledge reader adapter | adapter | contract-only | contract-active | Veloce `v96-research-worker-v1` adapter is locally tested; hosted boundary, tenant isolation, provider terms, citation, rate/budget, authenticated smoke, and rollback evidence still required |
+| [Jina Reader](https://github.com/jina-ai/reader) | Research, Knowledge isolated reader worker | operator-worker | contract-only | contract-active | Veloce worker implementation and local contract tests passed; Cloud Run endpoint, separate worker/upstream secrets, tenant isolation, provider terms, citation, rate/budget, authenticated smoke, and rollback evidence still required |
 
 ## Placement rules
 

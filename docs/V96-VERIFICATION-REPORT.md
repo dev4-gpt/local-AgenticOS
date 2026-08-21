@@ -1344,3 +1344,28 @@ revision `00162-7tn` became Ready.
 
 No manifest flag was changed by this audit. The remaining external gates and
 all intentionally gated capability statuses are unchanged.
+
+## 37. Jina Reader worker implementation checkpoint — 2026-08-20 UTC
+
+The first isolated research-worker implementation is now present locally at
+`workers/research-jina/`. It implements the Veloce `v96-research-worker-v1`
+boundary and calls only the official Jina Reader endpoint. The worker requires
+an independent Veloce worker token, keeps the upstream Jina key worker-local,
+checks public HTTPS targets and DNS resolution, bounds request/output size,
+and returns normalized citation-ready evidence without tenant text or secrets
+in logs or response metadata.
+
+| Checkpoint | Result |
+|---|---|
+| Worker implementation | **Passed locally**; isolated Node worker, Dockerfile, and runbook added |
+| Focused worker tests | **Passed**; 4 Jina boundary/normalization tests; full focused suite 110/110 |
+| Typecheck / lint / build | **Passed**; production build completed with existing Turbopack warnings only |
+| Static worker-policy verification | **Passed**; worker contract, public-target, secret, and output-bound checks |
+| Cloud worker endpoint | **Not provisioned**; no endpoint or Secret Manager bundle was available in owner-cloud |
+| Manifest activation | **Unchanged**; Jina remains `contract-active` and disabled |
+
+Cloud promotion must wait for a separately deployed worker endpoint, a
+`JINA_WORKER_TOKEN`, a worker-local `JINA_API_KEY` (or an explicitly approved
+anonymous-tier run), authenticated citation/budget/tenant/deletion/idempotency
+smokes, and a rollback record. Crawl4AI, Crawlee, Visual QA, GPU, security,
+communications, worktrees, and streaming speech remain unchanged.

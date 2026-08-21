@@ -48,6 +48,7 @@ const providerContracts = await readFile(join(root, "src/lib/clientProviderContr
 const mediaAdapter = await readFile(join(root, "src/lib/clientMediaAdapter.ts"), "utf8");
 const seoAdapter = await readFile(join(root, "src/lib/clientSeoAdapter.ts"), "utf8");
 const researchWorkerAdapter = await readFile(join(root, "src/lib/researchWorkerAdapters.ts"), "utf8");
+const jinaWorker = await readFile(join(root, "workers/research-jina/worker.mjs"), "utf8");
 const deliveryAdapter = await readFile(join(root, "src/lib/clientDeliveryAdapter.ts"), "utf8");
 const networkSafety = await readFile(join(root, "src/lib/clientNetworkSafety.ts"), "utf8");
 const runtimePolicy = await readFile(join(root, "src/lib/clientRuntimePolicy.ts"), "utf8");
@@ -274,6 +275,10 @@ expect(mediaAdapter.includes("isPrivateAddress") && mediaAdapter.includes("safeP
 expect(seoAdapter.includes("safePublicUrl") && seoAdapter.includes("isPrivateAddress"), "SEO adapter must enforce public host and private-address blocking");
 expect(researchWorkerAdapter.includes("v96-research-worker-v1") && researchWorkerAdapter.includes("public-https-only") && researchWorkerAdapter.includes("readBoundedResponseBytes"), "external research workers must use the bounded Veloce HTTPS contract");
 expect(researchWorkerAdapter.includes("selectResearchWorker") && researchWorkerAdapter.includes("costMicros") && researchWorkerAdapter.includes("reliability"), "external research workers must be selected deterministically using cost and reliability policy");
+expect(jinaWorker.includes("VELOCE_WORKER_TOKEN") && jinaWorker.includes("JINA_API_KEY") && jinaWorker.includes("v96-research-worker-v1"), "Jina worker must use separate Veloce and upstream secrets behind the research contract");
+expect(jinaWorker.includes("targetResolvesPublicly") && jinaWorker.includes("isPrivateAddress") && jinaWorker.includes("MAX_OUTPUT_CHARS"), "Jina worker must enforce public-target DNS checks and bounded output");
+expect(jinaWorker.includes("https://r.jina.ai") && jinaWorker.includes("buildReaderUrl"), "Jina worker must call only the official Reader endpoint");
+expect(!jinaWorker.includes("console.log(jinaApiKey") && !jinaWorker.includes("response.end(jinaApiKey"), "Jina worker must not log or return the upstream secret");
 expect(workerRoute.includes("runResearchWorkerAdapter") && researchWorkerAdapter.includes("worker_not_configured"), "research jobs must call isolated workers only through the governed adapter");
 expect(provisioner.includes("CLIENT_RESEARCH_WORKER_CONFIG_JSON") && provisioner.includes("researchWorkerConfig"), "worker endpoints must be server-manifest-derived");
 expect(deliveryAdapter.includes("approved-webhook") && deliveryAdapter.includes("safeDeliveryUrl") && deliveryAdapter.includes('parsed.protocol === "https:"'), "delivery adapter must require an allowlisted HTTPS approved webhook");

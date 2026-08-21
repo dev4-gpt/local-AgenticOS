@@ -10,6 +10,7 @@ const runWorkspaceSmoke = args.includes("--workspace-smoke");
 const runVisualQaSmoke = args.includes("--visual-qa-smoke");
 const runProviderSmoke = args.includes("--provider-smoke");
 const runResearchProviderSmoke = args.includes("--research-provider-smoke");
+const runResearchWorkerSmoke = args.includes("--research-worker-smoke");
 const runIntentSmoke = args.includes("--intent-smoke");
 const runLoopSmoke = args.includes("--loop-smoke");
 let cookie = await readCookie(cookieFile);
@@ -52,6 +53,7 @@ try {
   if (runArtifacts) await verifyArtifactRoundTrip();
   if (runProviderSmoke) await verifyProviderCompression();
   if (runResearchProviderSmoke) await verifyResearchProvider();
+  if (runResearchWorkerSmoke) await verifyResearchWorker();
   if (runIntentSmoke) await verifyIntentRouting();
   if (runLoopSmoke) await verifyHostedLoop();
   if (runWorkspaceSmoke) await verifyWorkspaceExecution();
@@ -77,7 +79,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Authenticated client runtime verification passed for ${baseUrl}${runArtifacts ? " (workflow + artifact)" : " (workflow only)"}${runProviderSmoke ? " + provider compression" : ""}${runResearchProviderSmoke ? " + research provider" : ""}${runIntentSmoke ? " + intent routing" : ""}${runLoopSmoke ? " + hosted loop" : ""}${runWorkspaceSmoke ? " + workspace execution" : ""}${runVisualQaSmoke ? " + visual QA" : ""}.`);
+console.log(`Authenticated client runtime verification passed for ${baseUrl}${runArtifacts ? " (workflow + artifact)" : " (workflow only)"}${runProviderSmoke ? " + provider compression" : ""}${runResearchProviderSmoke ? " + research provider" : ""}${runResearchWorkerSmoke ? " + research worker" : ""}${runIntentSmoke ? " + intent routing" : ""}${runLoopSmoke ? " + hosted loop" : ""}${runWorkspaceSmoke ? " + workspace execution" : ""}${runVisualQaSmoke ? " + visual QA" : ""}.`);
 
 async function verifyIntentRouting() {
   const idempotencyKey = `intent-acceptance-${Date.now()}`;
@@ -192,6 +194,45 @@ async function verifyResearchProvider() {
   expect(Array.isArray(run?.records) && run.records.length <= 3, "research provider exceeded the three-result bound");
   expect(Array.isArray(run?.citations) && run.citations.length > 0, "research provider did not persist citations");
   expect((run?.citations ?? []).every((citation) => typeof citation?.url === "string" && citation.url.startsWith("https://")), "research provider persisted a non-HTTPS citation URL");
+}
+
+async function verifyResearchWorker() {
+  const expectedProvider = process.env.EXPECTED_RESEARCH_PROVIDER?.trim().toLowerCase() || "brave";
+  const expectedWorker = process.env.EXPECTED_RESEARCH_WORKER?.trim().toLowerCase() || "jina-reader";
+  const idempotencyKey = `research-worker-acceptance-${Date.now()}`;
+  const payload = {
+    query: "Veloce isolated research worker acceptance",
+    limit: 2,
+    scrapeResults: true,
+    contentType: "html",
+    idempotencyKey,
+  };
+  const first = await api("/api/client-runtime/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const firstBody = await safeJson(first);
+  expect(first.status === 202 && isUuid(firstBody?.jobId), `research worker enqueue failed (${first.status})`);
+  const replay = await api("/api/client-runtime/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const replayBody = await safeJson(replay);
+  expect(replay.status === 202 && replayBody?.jobId === firstBody?.jobId, "research worker replay did not preserve the original job identity");
+  if (!isUuid(firstBody?.jobId)) return;
+
+  const job = await waitForJob(firstBody.jobId);
+  expect(job?.status === "succeeded", `research worker job ended as ${String(job?.status ?? "unknown")}: ${String(job?.error_code ?? "")}`);
+  expect(job?.provider === expectedProvider, `research worker job used ${String(job?.provider ?? "unknown")}, expected ${expectedProvider}`);
+  const metadata = job?.output_metadata && typeof job.output_metadata === "object" ? job.output_metadata : {};
+  expect(metadata.adapter === `${expectedProvider}-${expectedWorker}-search-extract`, `research worker adapter was ${String(metadata.adapter ?? "missing")}`);
+  expect(metadata.workerSelection?.worker === expectedWorker, `research worker selection was ${String(metadata.workerSelection?.worker ?? "missing")}`);
+  expect(Number(metadata.workerCompleted) > 0, "research worker completed no extractions");
+  expect(!JSON.stringify(metadata).match(/jina[_-]?api[_-]?key|veloce[_-]?worker[_-]?token|authorization/i), "research worker evidence exposed a worker secret");
+
+  const listed = await api("/api/client-runtime/research");
+  const listedBody = await safeJson(listed);
+  const runs = Array.isArray(listedBody?.runs) ? listedBody.runs : [];
+  const matches = runs.filter((run) => run?.job_id === firstBody.jobId);
+  const run = matches[0];
+  expect(listed.status === 200 && matches.length === 1, "research worker replay created duplicate durable runs");
+  expect(Array.isArray(run?.records) && run.records.length <= 2, "research worker exceeded the result bound");
+  expect(Array.isArray(run?.citations) && run.citations.length > 0, "research worker did not persist citations");
+  expect((run?.citations ?? []).every((citation) => typeof citation?.url === "string" && citation.url.startsWith("https://")), "research worker persisted a non-HTTPS citation URL");
 }
 
 async function verifyHostedLoop() {

@@ -38,9 +38,11 @@ Crawl4AI, Crawlee, and Jina Reader are pinned Apache-2.0 architectural
 references with a Veloce-owned `v96-research-worker-v1` contract adapter. They
 are contract-active in the registry but still disabled: no upstream runtime is
 installed, no worker endpoint is bundled, and no client can choose one. The
-server router may compose Brave search with one only after that worker's
-manifest secret, endpoint, authenticated smoke, citation/budget parity,
-tenant/deletion evidence, and rollback bundle pass.
+Jina worker implementation is now present in `workers/research-jina/` and
+locally tested; it remains disabled until its endpoint, separate worker and
+upstream secrets, authenticated smoke, citation/budget parity, tenant/deletion
+evidence, and rollback bundle pass. The server router may compose Brave search
+with a worker only after those gates pass.
 
 For full local Cloud Tasks parity, start the tunnel manually and pass its
 HTTPS origin to the launcher:
@@ -669,8 +671,11 @@ file must be added to it or it is silently unlinted.
 
 ## Sequencing
 
-**Waves 1 and 2 are accepted; Wave 3 is implemented locally and awaiting cloud
-evidence.** — *updated 2026-08-19*
+**Waves 1 and 2 are accepted; Waves 3–5 are implemented and present in the
+owner-cloud image.** Native research routing is cloud-enabled on revision
+`veloce-cloud-test-00162-7tn`; full local tunnel parity, isolated external
+research workers, and the explicitly gated Visual QA/GPU/security/communications
+lanes remain separate evidence gates. — *updated 2026-08-20*
 
 The blocker recorded here previously — the intent router sitting uncommitted on
 `codex/reviewed-additions-2026-08-10`, 52 files dirty — **is resolved.** That work
@@ -682,9 +687,9 @@ against cloud revision `veloce-cloud-test-00153-wn6` with a clean tree.
 |---|---|
 | Wave 1 — plane gaps | Landed; `loop` is a real intake surface with a test asserting it |
 | Wave 2 — parity spine | **Accepted** `7cc7d3f` |
-| **Wave 3 — named loops** | **Implemented; hosted-loop smoke passed on `veloce-cloud-test-00158-24s`** |
-| Wave 4 — industry sweep | **Wave 4A/4B/4C implemented locally; shared intent smoke passed; specialist adapter evidence remains bounded** |
-| Wave 5 — design + harness audit | **Wave 5A/5B implemented locally; shared cloud smoke passed; full environment audit remains pending** |
+| **Wave 3 — named loops** | **Implemented; hosted-loop smoke passed on `veloce-cloud-test-00162-7tn`** |
+| Wave 4 — industry sweep | **Wave 4A/4B/4C implemented; shared intent and authenticated cloud smokes passed** |
+| Wave 5 — design + harness audit | **Wave 5A/5B implemented; authenticated cloud smoke and live infrastructure audit recorded** |
 
 Wave 3 executes in four steps, and the order is load-bearing — cost enforcement
 lands *before* the tests that prove it, and cataloguing lands last so rows are
