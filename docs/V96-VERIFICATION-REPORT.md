@@ -1408,7 +1408,7 @@ parallel with those checks.
 | Next-round item | Status | Next action |
 |---|---|---|
 | Local focused suite | **Passed**; 111/111 | Keep as the pre-deployment gate |
-| Reference suite | **Passed**; 70/70 | Keep as the catalog/regression gate |
+| Reference suite | **Passed**; 71/71 | Keep as the catalog/regression gate |
 | Typecheck / lint / worker policy | **Passed** | No local code blocker |
 | Production build | **Passed** with existing Turbopack filesystem-tracing warnings | Treat warnings as a separate hardening task, not a Jina blocker |
 | Jina budget evidence | **Passed**; the aggregate meter is healthy and under cap (`392,835` of `10,000,000` micros), and the dedicated bounded worker job has a reservation/settlement ledger row with redacted usage metadata | Retain the owner-cloud ledger query result |
@@ -1417,3 +1417,13 @@ parallel with those checks.
 | Jina rollback | **Passed**; disabled-worker smoke returned `403`, then the known-good manifest was restored and the positive smoke passed | Retain the negative and restored-positive smoke outputs |
 | `dofgfood` Visual QA | **Next gate** | Run only the approved artifact-bound acceptance bundle when the target manifest and fixture are available |
 | Crawl4AI / Crawlee and other gated groups | **Unchanged** | Remain cataloged or gated; do not route automatically |
+
+## 40. Next-wave readiness audit — 2026-08-21 UTC
+
+The Jina evidence bundle is closed. The local reference suite is now 71/71,
+the focused suite remains 111/111, and typecheck/lint pass. The next executable
+infrastructure gate is trusted local tunnel parity: `cloudflared` is installed,
+but this workstation has no Cloudflare origin certificate or named tunnel, so
+authenticated Cloud Tasks parity is not claimed. The bounded `dofgfood` Visual
+QA gate also remains unchanged because no approved target manifest or fixture is
+present in the current workspace or owner-cloud deployment.
