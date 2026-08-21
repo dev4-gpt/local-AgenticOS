@@ -168,9 +168,12 @@ of truth for activation status.
 6. Run local and owner-cloud smoke where the capability is enabled.
 7. Promote the row only after the evidence bundle is durable and reviewable.
 
-Wave 4A has begun locally with eight native specialist playbooks. The next
-concrete gate is still the Wave 3/Wave 4 shared cloud image smoke. After that,
-expand the specialist-role and quality subset (`wshobson/agents`,
+Wave 4A has begun locally with eight native specialist playbooks. The shared
+cloud image and the isolated Jina Reader worker smoke are now passed on
+`veloce-cloud-test-00164-8vh`; the remaining Jina evidence bundle is budget,
+two-tenant isolation, deletion lineage, and rollback. After that closure, run
+the bounded `dofgfood` Visual QA acceptance gate, then expand the
+specialist-role and quality subset (`wshobson/agents`,
 `agent-skills`, `agents.md`, `social-media-skills`, and the quality references)
 in measured slices rather than activating all 60–80 industry candidates at
 once. Wave 5 adds the cost/observability row to the harness audit before broad

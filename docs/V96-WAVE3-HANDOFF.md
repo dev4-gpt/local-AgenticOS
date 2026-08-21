@@ -137,15 +137,18 @@ by planting a violation and watching the right test fail.
 ## Gated — leave unchanged
 
 Visual QA cloud promotion, GPU, Supervision enhancement, security execution,
-communications, worktrees, streaming speech. Also **Crawl4AI, Crawlee and Jina
-Reader**: pinned Apache-2.0 catalog references only, each needing isolated
-worker evidence for security, cost, licensing and rollback before activation.
-**Brave Search** is implemented and locally tested but not cloud-enabled until
-`BRAVE_API_KEY` has a Secret Manager version and an authenticated smoke.
+communications, worktrees, streaming speech. **Crawl4AI and Crawlee** remain
+pinned Apache-2.0 catalog references only. Jina Reader now has an isolated
+owner-cloud worker and a passing authenticated Brave→Jina smoke on
+`veloce-cloud-test-00164-8vh`; its explicit budget, two-tenant, deletion, and
+rollback evidence is still pending before the full external-worker bundle is
+closed. **Brave Search** is cloud-enabled with its Secret Manager binding and
+authenticated smoke.
 
 The current image has passed the shared authenticated workflow, provider
-compression, intent-routing, and hosted-loop smoke. Dedicated Brave, Visual QA,
-full tunnel-parity, and two-tenant isolation evidence remains separate work.
+compression, intent-routing, hosted-loop, Brave, and Jina worker smoke.
+Visual QA, full tunnel-parity, and the remaining Jina two-tenant/deletion/
+rollback evidence remain separate work.
 Waves 4A/4B/4C and 5A/5B are implemented and locally verified; their
 specialized provider and operator-runtime evidence remains bounded by the
 gates below. This is an evidence-status boundary, not permission to activate

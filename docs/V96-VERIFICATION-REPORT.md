@@ -1397,3 +1397,23 @@ authenticated idempotent worker-path gates for Jina. It does not yet close the
 full external-worker promotion bundle because tenant-isolation, deletion, and
 rollback evidence are intentionally tracked separately. The worker remains an
 isolated hosted adapter, never a bundled runtime or client-installed skill.
+
+## 39. Next-round status — 2026-08-21 UTC
+
+The local implementation gate is closed for this round. The next round should
+finish the Jina evidence bundle, then move to the bounded `dofgfood` Visual QA
+acceptance gate. No additional provider or worker should be activated in
+parallel with those checks.
+
+| Next-round item | Status | Next action |
+|---|---|---|
+| Local focused suite | **Passed**; 110/110 | Keep as the pre-deployment gate |
+| Reference suite | **Passed**; 70/70 | Keep as the catalog/regression gate |
+| Typecheck / lint / worker policy | **Passed** | No local code blocker |
+| Production build | **Passed** with existing Turbopack filesystem-tracing warnings | Treat warnings as a separate hardening task, not a Jina blocker |
+| Jina budget evidence | **Pending** | Capture reservation and settlement rows for one bounded worker job |
+| Jina two-tenant isolation | **Pending** | Run the existing two-token isolation verifier with valid tenant-A and tenant-B sessions |
+| Jina deletion lineage | **Pending** | Create a disposable research run, delete it through the approved lifecycle path, and verify records/citations are gone |
+| Jina rollback | **Pending** | Disable the manifest entry, run a negative worker smoke, then restore the known-good manifest |
+| `dofgfood` Visual QA | **Next after Jina closure** | Run only the approved artifact-bound acceptance bundle |
+| Crawl4AI / Crawlee and other gated groups | **Unchanged** | Remain cataloged or gated; do not route automatically |
