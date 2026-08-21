@@ -43,7 +43,7 @@ of truth for activation status.
 | 2 | [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) | W5 license review; no LICENSE |
 | 3 | [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) | W4 curation; no LICENSE |
 | 4 | [travisvn/awesome-claude-skills](https://github.com/travisvn/awesome-claude-skills) | W4 curation; no LICENSE |
-| 5 | [jina-ai/reader](https://github.com/jina-ai/reader) | Research/Knowledge contract candidate |
+| 5 | [jina-ai/reader](https://github.com/jina-ai/reader) | Research/Knowledge native-enabled isolated worker; owner-cloud evidence bundle passed |
 | 6 | [apify/crawlee](https://github.com/apify/crawlee) | Research worker reference; external runtime |
 | 7 | [unclecode/crawl4ai](https://github.com/unclecode/crawl4ai) | Research worker reference; external runtime |
 | 8 | [aman556/DevOps-System-Design](https://github.com/aman556/DevOps-System-Design) | W5 reference; no LICENSE |

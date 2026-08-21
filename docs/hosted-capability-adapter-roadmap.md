@@ -1,6 +1,6 @@
 # Hosted Capability Adapter Roadmap
 
-Updated 2026-08-20.
+Updated 2026-08-21.
 
 The current reference portfolio and the next native capability sequence are
 preserved in [`V96-NATIVE-CAPABILITY-PLANE-BRIEF.md`](./future-integrations/V96-NATIVE-CAPABILITY-PLANE-BRIEF.md).
@@ -9,7 +9,9 @@ compression is the current measured routing pilot and runs as a native,
 dependency-free trait in the shared provider adapter; the upstream runtime is
 not installed. The adjacent Wave 5B standing-instruction measurement records
 redacted line/character cost at that same boundary without editing mandatory
-guardrails.
+guardrails. The isolated Jina Reader worker is native-enabled in owner-cloud on
+revision `veloce-cloud-test-00168-h5t`; its budget, tenant, deletion-lineage,
+and rollback evidence bundle is closed.
 
 This is the implementation order for turning the private `3939` operator
 edition into a safe client edition. A provider key alone does not make a tab
@@ -41,7 +43,7 @@ private.
 | Additive research providers | Research, Knowledge | Server-selected Brave search adapter beside Firecrawl plus the Veloce `v96-research-worker-v1` extraction boundary; the isolated Jina Reader worker is active in owner-cloud behind the `seo-research` allowlist on `00168-h5t` | Selected-provider/worker secrets, max-three HTTPS results, no scraping for Brave, bounded worker output, citation/idempotency/routing, budget, two-tenant, deletion-lineage, and rollback evidence passed; Crawl4AI/Crawlee stay disabled |
 | Delivery | Delivery actions and external publishing | Approval-only, idempotent tenant delivery action record plus tenant-token worker and allowlisted HTTPS webhook adapter | Preview, approve, execute once, audit, rollback/undo where possible; live worker evidence is still required |
 | Visual QA | Quality, Media, artifact review | Authenticated artifact-bound queue route, bounded frame adapter, worker-only report/findings RPC, and a distinct `visual-qa` Cloud Run Job dispatcher; enabled only for the `dofgfood` owner-cloud test | Auth, artifact ownership, frame bounds, idempotency, report persistence, tenant isolation, deletion lineage, budget/audit evidence |
-| Routing compression | Text agents, Research, Notebook, Workflow, Room | Native `context-compression` trait at the shared provider adapter; compressed payload counts are used before budget estimation and evidence is hash/count-only; compression evidence passed on `00158-24s`; the current research-routing rollout is `00162-7tn` | Deterministic preservation of requests, code, URLs, citations, policy text, quality parity, budget trace, fallback, and authenticated smoke |
+| Routing compression | Text agents, Research, Notebook, Workflow, Room | Native `context-compression` trait at the shared provider adapter; compressed payload counts are used before budget estimation and evidence is hash/count-only; compression evidence passed on `00158-24s`; current research-routing and isolated-worker evidence is on `00168-h5t` | Deterministic preservation of requests, code, URLs, citations, policy text, quality parity, budget trace, fallback, and authenticated smoke |
 
 ## Adapter contract
 

@@ -1421,10 +1421,12 @@ or worker should be activated in parallel with those checks.
 
 ## 40. Next-wave readiness audit — 2026-08-21 UTC
 
-The Jina evidence bundle is closed. The local reference suite is now 71/71,
-the focused suite remains 111/111, and typecheck/lint pass. The next executable
-infrastructure gate is trusted local tunnel parity: `cloudflared` is installed,
-but this workstation has no Cloudflare origin certificate or named tunnel, so
-authenticated Cloud Tasks parity is not claimed. The bounded `dofgfood` Visual
-QA gate also remains unchanged because no approved target manifest or fixture is
-present in the current workspace or owner-cloud deployment.
+The Jina evidence bundle is closed and the catalog promotion is recorded in
+commit `34cf65c`. The local focused suite is now 112/112, the reference suite is
+72/72, typecheck/lint/build pass, and the static worker-boundary verifier
+passes. The next executable infrastructure gate is trusted local tunnel parity:
+`cloudflared` is installed, but this workstation has no Cloudflare origin
+certificate or named tunnel, so authenticated Cloud Tasks parity is not claimed.
+The bounded `dofgfood` Visual QA gate also remains unchanged because no approved
+target manifest or fixture is present in the current workspace or owner-cloud
+deployment.
