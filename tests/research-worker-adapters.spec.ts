@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   normalizeResearchWorkerConfigs,
   normalizeResearchWorkerResponse,
@@ -116,4 +118,14 @@ test("worker adapter fails closed for malformed output and private source URLs",
 test("disabled or unavailable workers cannot become automatic candidates", () => {
   const result = selectResearchWorker({ operation: "extract", workers: [worker({ enabled: false }), worker({ id: "crawlee", endpoint: "https://crawlee.example.test/v1/extract", secretEnv: "CRAWLEE_WORKER_TOKEN", available: false })] });
   expect(result).toMatchObject({ error: "worker_not_configured" });
+});
+
+test("research deletion is an authenticated tenant-scoped cascade", () => {
+  const route = readFileSync(join(process.cwd(), "src/app/api/client-runtime/research/route.ts"), "utf8");
+  const migration = readFileSync(join(process.cwd(), "product-experience/supabase-client-structured-research.sql"), "utf8");
+  expect(route).toContain('clientRpc("delete_client_research_run"');
+  expect(route).toContain('await recordClientAudit("tenant.research_run.deleted"');
+  expect(migration).toContain("delete from public.client_research_runs");
+  expect(migration).toContain("and tenant_slug = p_tenant_slug");
+  expect(migration).toContain("grant execute on function public.delete_client_research_run(text, uuid) to authenticated");
 });

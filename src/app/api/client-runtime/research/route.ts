@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { checkClientRuntimeRateLimit, enqueueClientRuntimeJob, selectClientRecords } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, clientRpc, enqueueClientRuntimeJob, recordClientAudit, selectClientRecords } from "@/lib/clientDataPlane";
 import { deterministicCapabilityIdempotencyKey } from "@/lib/capabilityContracts";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
@@ -50,6 +50,27 @@ export async function GET(request: Request) {
       };
     }),
   }, { headers: noStore() });
+}
+
+export async function DELETE(request: Request) {
+  const session = await member();
+  if (!session) return fail("not_authenticated", 401);
+  const rate = await checkClientRuntimeRateLimit("research-delete", 10, 900);
+  if (!rate.ok) return fail("runtime_limit_unavailable", 503);
+  if (!rate.allowed) return fail("runtime_rate_limited", 429);
+
+  const researchRunId = new URL(request.url).searchParams.get("id")?.trim() ?? "";
+  if (!UUID.test(researchRunId)) return fail("research_run_invalid", 400);
+
+  const deleted = await clientRpc("delete_client_research_run", {
+    p_tenant_slug: session.tenantSlug,
+    p_research_run_id: researchRunId,
+  });
+  if (!deleted.ok || deleted.value !== true) {
+    return fail(deleted.status === 404 ? "research_schema_missing" : "research_run_delete_failed", deleted.status === 404 ? 503 : 502);
+  }
+  await recordClientAudit("tenant.research_run.deleted", { researchRunId });
+  return NextResponse.json({ ok: true, researchRunId, status: "deleted" }, { headers: { "cache-control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {

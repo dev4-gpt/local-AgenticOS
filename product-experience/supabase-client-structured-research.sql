@@ -264,3 +264,34 @@ $$;
 
 revoke all on function public.update_client_research_run_worker(text, uuid, text, text, text, text, integer, uuid) from public, authenticated;
 grant execute on function public.update_client_research_run_worker(text, uuid, text, text, text, text, integer, uuid) to anon;
+
+-- Authenticated tenant members may delete one research run and its derived
+-- records/citations. The foreign-key cascades remove the derived lineage;
+-- the runtime job remains as the minimal audit/idempotency record.
+create or replace function public.delete_client_research_run(
+  p_tenant_slug text,
+  p_research_run_id uuid
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  if p_tenant_slug is null
+     or p_research_run_id is null
+     or not public.client_member(p_tenant_slug) then
+    return false;
+  end if;
+
+  delete from public.client_research_runs
+   where id = p_research_run_id
+     and tenant_slug = p_tenant_slug;
+  return found;
+exception when others then
+  return false;
+end;
+$$;
+
+revoke all on function public.delete_client_research_run(text, uuid) from public, anon;
+grant execute on function public.delete_client_research_run(text, uuid) to authenticated;
