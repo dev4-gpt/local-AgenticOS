@@ -4,7 +4,7 @@ import { checkClientRuntimeRateLimit, clientRpc } from "@/lib/clientDataPlane";
 import { openRouterKey, providerEnvKey } from "@/lib/providerKeys";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { CLIENT_CREDENTIAL_OPTIONS } from "@/lib/clientCredentialCatalog";
-import { publicCatalogProviderOptions } from "@/lib/publicProviderCatalog";
+import { publicCatalogCredentialOptions, publicCatalogProviderOptions } from "@/lib/publicProviderCatalog";
 import { pricingSnapshotForCredential } from "@/lib/providerPricingCatalog";
 
 export const runtime = "nodejs";
@@ -15,7 +15,7 @@ export async function GET() {
   const rateLimit = await checkClientRuntimeRateLimit("credentials-read", 60, 900);
   if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });
   if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
-  const credentialOptions = CLIENT_CREDENTIAL_OPTIONS.filter((item) => item.submitAllowed);
+  const credentialOptions = publicCatalogCredentialOptions();
   const connectionResult = await clientRpc("list_client_provider_connections", { p_tenant_slug: process.env.CLIENT_SLUG || "" });
   const connections = Array.isArray(connectionResult.value) ? connectionResult.value as Array<Record<string, unknown>> : [];
   const credentials = CLIENT_CREDENTIAL_OPTIONS.filter((item) => clientProviderEnabled(item.key)).map((item) => {

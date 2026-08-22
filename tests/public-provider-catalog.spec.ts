@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   PUBLIC_PROVIDER_CATALOG,
+  publicCatalogCredentialOptions,
   publicCatalogEntryForCredential,
   publicCatalogProviderOptions,
 } from "../src/lib/publicProviderCatalog";
@@ -28,6 +29,16 @@ test("BYOK rows map only to approved credential options", () => {
     expect(entry.credentialKey).toBeTruthy();
     expect(publicCatalogEntryForCredential(entry.credentialKey!)).toEqual(entry);
   }
+});
+
+test("every matrix BYOK provider is available in the tenant add-credential list", () => {
+  const matrixKeys = PUBLIC_PROVIDER_CATALOG
+    .filter((entry) => entry.kind === "provider" && entry.credentialKey)
+    .map((entry) => entry.credentialKey)
+    .sort();
+  const credentialKeys = publicCatalogCredentialOptions().map((option) => option.key).sort();
+
+  expect(credentialKeys).toEqual(matrixKeys);
 });
 
 test("Ponytail is visible as a native governed capability, not a bundled runtime", () => {

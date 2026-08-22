@@ -3,8 +3,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, KeyRound, LockKeyhole, LogOut, RefreshCw, Send, ShieldCheck, XCircle, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { CLIENT_CREDENTIAL_OPTIONS, type ClientCredentialOption } from "@/lib/clientCredentialCatalog";
-import { publicCatalogEntryForCredential } from "@/lib/publicProviderCatalog";
+import type { ClientCredentialOption } from "@/lib/clientCredentialCatalog";
+import { publicCatalogCredentialOptions, publicCatalogEntryForCredential } from "@/lib/publicProviderCatalog";
 
 interface Credential {
   key: string;
@@ -55,7 +55,7 @@ export default function CredentialsView() {
   const [creditNotice, setCreditNotice] = useState("");
 
   const credentialOptions = useMemo(
-    () => (status?.credentialOptions?.length ? status.credentialOptions : CLIENT_CREDENTIAL_OPTIONS).filter((option) => option.submitAllowed),
+    () => (status?.credentialOptions?.length ? status.credentialOptions : publicCatalogCredentialOptions()).filter((option) => option.submitAllowed),
     [status?.credentialOptions],
   );
 
@@ -100,7 +100,7 @@ export default function CredentialsView() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const requested = new URLSearchParams(window.location.search).get("provider")?.trim().toUpperCase();
-      if (requested && CLIENT_CREDENTIAL_OPTIONS.some((option) => option.submitAllowed && option.key === requested)) setProviderKey(requested);
+      if (requested && publicCatalogCredentialOptions().some((option) => option.key === requested)) setProviderKey(requested);
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);

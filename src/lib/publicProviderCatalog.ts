@@ -1,4 +1,4 @@
-import { CLIENT_CREDENTIAL_OPTIONS } from "@/lib/clientCredentialCatalog";
+import { CLIENT_CREDENTIAL_OPTIONS, clientCredentialOption, type ClientCredentialOption } from "@/lib/clientCredentialCatalog";
 import { V96_REPOSITORY_CATALOG, type V96RepositoryReference } from "@/lib/v96RepositoryCatalog";
 import { pricingDisplay, pricingSnapshotForCredential, type ProviderPricingOption } from "@/lib/providerPricingCatalog";
 
@@ -186,9 +186,21 @@ export function publicCatalogEntryForCredential(key: string) {
 }
 
 export function publicCatalogProviderOptions() {
-  return CLIENT_CREDENTIAL_OPTIONS.filter((option) => option.submitAllowed)
+  return publicCatalogCredentialOptions()
     .map((option) => publicCatalogEntryForCredential(option.key))
     .filter((entry): entry is PublicProviderCatalogEntry => Boolean(entry));
+}
+
+/**
+ * The provider matrix is the source of truth for customer-facing BYOK choices.
+ * Keep the credentials form/API derived from the same entries so a provider
+ * cannot be selectable in the matrix without also being addable per tenant.
+ */
+export function publicCatalogCredentialOptions(): ClientCredentialOption[] {
+  return PROVIDER_ENTRIES
+    .filter((entry) => entry.status === "client-key" && entry.credentialKey)
+    .map((entry) => clientCredentialOption(entry.credentialKey!))
+    .filter((option): option is ClientCredentialOption => Boolean(option?.submitAllowed));
 }
 
 export function publicCatalogStatusLabel(status: PublicCatalogStatus) {
