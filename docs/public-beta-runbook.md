@@ -74,6 +74,42 @@ two-tenant isolation, deletion-lineage, and disable/restore rollback outputs
 have been retained. Visual QA remains an isolated worker gate and is not a
 promise to the public catalog until its evidence bundle is complete.
 
+## Current execution-surface promotion
+
+The public catalog, credits policy, and intake are served by the production
+Product Experience deployment. The client execution image must still be
+promoted separately so the authenticated runtime receives the activation,
+usage-evidence, and public-route code from the same source revision.
+
+Run this from Cloud Shell with the project owner/deploy identity, not from a
+local account that only has Vercel access:
+
+```bash
+PROJECT=veloce-agenticos-2026
+REGION=asia-south1
+BUILD_DIR=$(mktemp -d /tmp/veloce-public-beta.XXXXXX)
+gh repo clone dev4-gpt/local-AgenticOS "$BUILD_DIR"
+cd "$BUILD_DIR"
+git checkout c44484c
+
+IMAGE=asia-south1-docker.pkg.dev/$PROJECT/veloce/client-runtime:v124-public-beta-20260822
+gcloud builds submit . \
+  --project "$PROJECT" \
+  --config cloudbuild.client.yaml \
+  --substitutions="_IMAGE=$IMAGE"
+
+gcloud run services update veloce-cloud-test \
+  --project "$PROJECT" \
+  --region "$REGION" \
+  --image "$IMAGE"
+```
+
+After the update, verify the public routes return `200` rather than the old
+`client-unavailable` redirect, then rerun the authenticated research and
+visual-QA smoke against the approved runtime. Keep the new revision and image
+digest with the existing citation, budget, isolation, deletion, idempotency,
+and rollback evidence bundle before promoting any additional provider.
+
 ## Repository boundary
 
 Ponytail, Superpowers, Headroom, AGENTS.md, Agent Skills, Agency Agents, Open
