@@ -37,6 +37,7 @@ interface CreditStatus {
   reservedMicros: number;
   warningThresholdMicros: number;
   status: string;
+  checkoutConfigured?: boolean;
 }
 
 const fieldClass = "w-full rounded-lg border border-[var(--panel-border)] bg-black/20 px-3 py-2.5 text-[12px] text-[var(--fg)] outline-none transition focus:border-sky-300/70";
@@ -77,7 +78,9 @@ export default function CredentialsView() {
       const session = await sessionResponse.json();
       setEmail(session.user?.email ?? null);
       const creditData = await creditResponse.json().catch(() => null);
-      if (creditData?.ok && creditData.account) setCredits(creditData.account);
+      if (creditData?.ok && creditData.account) {
+        setCredits({ ...creditData.account, checkoutConfigured: creditData.checkoutConfigured === true });
+      }
     } catch {
       setStatus(null);
       setNotice("Could not load runtime status.");
@@ -85,6 +88,10 @@ export default function CredentialsView() {
   }
 
   async function buyManagedCredits() {
+    if (credits && credits.checkoutConfigured === false) {
+      setCreditNotice("Managed credits are not enabled for this tenant yet. BYOK provider keys are available now.");
+      return;
+    }
     setCreditNotice("Opening secure checkout…");
     const response = await fetch("/api/client-runtime/credits/checkout", { method: "POST" }).catch(() => null);
     const data = await response?.json().catch(() => null);
@@ -139,6 +146,8 @@ export default function CredentialsView() {
       setSubmitting(false);
     }
   }
+
+  const managedCreditsConfigured = credits?.checkoutConfigured === true;
 
   return (
     <div className="pb-8 space-y-5">
@@ -243,8 +252,13 @@ export default function CredentialsView() {
       </section>
 
       <section className="panel flex flex-wrap items-center justify-between gap-4 p-5">
-        <div><div className="eyebrow">Managed credit wallet</div><div className="mt-1 text-lg font-semibold text-[var(--fg)]">{credits ? `${(credits.balanceMicros / 1_000_000).toFixed(2)} credits available` : "Not configured"}</div><p className="mt-1 text-[10px] text-[var(--fg-dim)]">Managed provider jobs reserve, settle, or refund credits. BYOK provider charges remain with the client.</p>{creditNotice && <p className="mt-2 text-[10px] text-sky-200">{creditNotice}</p>}</div>
-        <button type="button" onClick={() => void buyManagedCredits()} className="rounded-lg border border-sky-300/40 px-3 py-2 text-[11px] font-semibold text-sky-200">Buy managed credits</button>
+        <div>
+          <div className="eyebrow">Managed credit wallet</div>
+          <div className="mt-1 text-lg font-semibold text-[var(--fg)]">{credits && managedCreditsConfigured ? `${(credits.balanceMicros / 1_000_000).toFixed(2)} credits available` : "Not enabled for this tenant"}</div>
+          <p className="mt-1 max-w-2xl text-[10px] text-[var(--fg-dim)]">Managed provider jobs reserve, settle, or refund credits. BYOK provider charges remain with the client. {managedCreditsConfigured ? "Checkout is available." : "A Veloce administrator must configure the managed-credit checkout before purchase is available."}</p>
+          {creditNotice && <p className="mt-2 text-[10px] text-sky-200">{creditNotice}</p>}
+        </div>
+        <button type="button" onClick={() => void buyManagedCredits()} disabled={!managedCreditsConfigured} className="rounded-lg border border-sky-300/40 px-3 py-2 text-[11px] font-semibold text-sky-200 disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-500">{managedCreditsConfigured ? "Buy managed credits" : "Checkout not configured"}</button>
       </section>
 
       <section className="panel overflow-hidden">

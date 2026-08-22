@@ -12,5 +12,9 @@ export async function GET() {
   if (!limit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
   const result = await clientRpc("client_credit_account_snapshot", { p_tenant_slug: process.env.CLIENT_SLUG || "" });
   if (!result.ok || !result.value) return NextResponse.json({ ok: false, error: "credits_unavailable" }, { status: 503 });
-  return NextResponse.json({ ok: true, account: result.value }, { headers: { "cache-control": "no-store" } });
+  return NextResponse.json({
+    ok: true,
+    account: result.value,
+    checkoutConfigured: Boolean(process.env.STRIPE_SECRET_KEY?.trim() && process.env.STRIPE_CREDIT_PRICE_ID?.trim()),
+  }, { headers: { "cache-control": "no-store" } });
 }

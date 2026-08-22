@@ -1561,6 +1561,105 @@ blockquote cite {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────
+   Client workspace readability pass
+   Keep the operating surfaces quiet and high-contrast: system-sized body
+   copy, slate ink, one indigo action accent, and generous control targets.
+   This intentionally lives at the end of the file so legacy utility classes
+   used by older tabs receive the same readable baseline without a page-by-page
+   rewrite.
+   ───────────────────────────────────────────────────────────────────── */
+.workspace-shell {
+  --bg-deep: #f4f6f8;
+  --bg-mid: #edf1f5;
+  --bg-card: #ffffff;
+  --bg-elev: #ffffff;
+  --cream: #17212b;
+  --cream-soft: #334155;
+  --cream-dim: #526273;
+  --cream-mute: #64748b;
+  --gold: #4f46e5;
+  --gold-soft: #6366f1;
+  --gold-deep: #3730a3;
+  --emerald: #0f766e;
+  --emerald-dim: #115e59;
+  --plum: #be185d;
+  --rust: #b45309;
+  --line: rgba(15, 23, 42, 0.16);
+  --line-soft: rgba(15, 23, 42, 0.11);
+  --line-deep: rgba(15, 23, 42, 0.07);
+  --panel: rgba(255, 255, 255, 0.94);
+  --panel-border: var(--line-soft);
+  --panel-border-hot: var(--line);
+  --fg: var(--cream);
+  --fg-dim: var(--cream-soft);
+  --fg-dimmer: var(--cream-dim);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.workspace-shell .panel {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: var(--line-soft);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.workspace-shell .panel::before { opacity: 0.35; }
+
+/* Legacy dense metadata sizes are still useful, but 10px is not readable
+   body copy at normal zoom. Raise them consistently across every surface. */
+.workspace-shell [class~="text-[9px]"] { font-size: 0.72rem !important; line-height: 1.4 !important; }
+.workspace-shell [class~="text-[10px]"] { font-size: 0.78rem !important; line-height: 1.45 !important; }
+.workspace-shell [class~="text-[11px]"] { font-size: 0.84rem !important; line-height: 1.5 !important; }
+.workspace-shell [class~="text-[12px]"] { font-size: 0.91rem !important; line-height: 1.55 !important; }
+
+.workspace-shell table { font-size: 0.88rem; line-height: 1.5; }
+.workspace-shell th {
+  color: var(--cream-dim) !important;
+  font-size: 0.72rem !important;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.workspace-shell td { color: var(--cream-soft); }
+.workspace-shell td .text-\[var\(--fg\)\] { color: var(--cream) !important; }
+
+.workspace-shell input:not([type="checkbox"]):not([type="radio"]),
+.workspace-shell textarea,
+.workspace-shell select {
+  min-height: 42px;
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  color: var(--cream) !important;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.workspace-shell textarea { min-height: 92px; }
+.workspace-shell input::placeholder,
+.workspace-shell textarea::placeholder { color: #64748b !important; opacity: 1; }
+.workspace-shell button { line-height: 1.35; }
+.workspace-shell button:disabled { cursor: not-allowed; }
+
+/* Tailwind's light-on-dark status utilities become low contrast on the
+   parchment/surface theme. Normalize the handful used by client pages. */
+.workspace-shell [class~="text-sky-200"] { color: #1d4ed8 !important; }
+.workspace-shell [class~="text-emerald-200"],
+.workspace-shell [class~="text-emerald-300"] { color: #047857 !important; }
+.workspace-shell [class~="text-amber-200"],
+.workspace-shell [class~="text-amber-300"] { color: #a16207 !important; }
+.workspace-shell [class~="text-rose-200"],
+.workspace-shell [class~="text-rose-300"] { color: #be123c !important; }
+.workspace-shell [class~="text-violet-200"],
+.workspace-shell [class~="text-violet-300"] { color: #6d28d9 !important; }
+
+.workspace-shell .workspace-nav__brand span,
+.workspace-shell .workspace-nav__edition,
+.workspace-shell .workspace-nav__footer { font-size: 0.7rem; }
+.workspace-shell .workspace-nav__chapter-copy strong { font-size: 0.86rem; }
+.workspace-shell .workspace-nav__chapter-copy small { font-size: 0.66rem; letter-spacing: 0.04em; }
+.workspace-shell .workspace-nav__tool { font-size: 0.88rem; }
+.workspace-shell .workspace-page-head__chrome > div:first-child { font-size: 0.82rem; }
+.workspace-shell .workspace-page-head__runtime { font-size: 0.7rem; }
+
 /* Mission Control edition: scroll-led chapter system. The scene remains
    procedural and decorative; every action and operating artifact is DOM. */
 .home-edition-head {
