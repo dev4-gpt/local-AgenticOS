@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Wallet } from "lucide-react";
+import { formatUsageCredits, microsToUsageCredits } from "@/lib/usageCredits";
 
 type Budget = {
   capMicros: number;
@@ -19,6 +20,10 @@ type Budget = {
   warning: boolean;
   exhausted: boolean;
   byProvider: Record<string, number>;
+  spentCredits?: number;
+  capCredits?: number;
+  remainingCredits?: number;
+  byProviderCredits?: Record<string, number>;
 };
 
 /** Micros are millionths of a dollar. Small spends round to a visible figure
@@ -38,7 +43,10 @@ export default function ClientSpendMeter({ compact = false }: { compact?: boolea
     const data = await response?.json().catch(() => null);
     if (response?.ok && data?.ok) setBudget(data as Budget);
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   // No cap configured means no ceiling to report, and inventing one would be
   // worse than showing nothing.
@@ -55,10 +63,10 @@ export default function ClientSpendMeter({ compact = false }: { compact?: boolea
           ? <AlertTriangle size={14} style={{ color: tone }} />
           : <Wallet size={14} style={{ color: tone }} />}
         <span className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>
-          {formatMicros(budget.spentMicros)}
+          {formatUsageCredits(budget.spentCredits ?? microsToUsageCredits(budget.spentMicros))}
         </span>
         <span className="text-[11px]" style={{ color: "var(--cream-mute)" }}>
-          of {formatMicros(budget.capMicros)} this month
+          of {formatUsageCredits(budget.capCredits ?? microsToUsageCredits(budget.capMicros))} this month · {formatMicros(budget.spentMicros)}
         </span>
       </div>
 
@@ -73,7 +81,7 @@ export default function ClientSpendMeter({ compact = false }: { compact?: boolea
 
     {!compact && providers.length > 0 && <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1">
       {providers.map(([provider, micros]) => <span key={provider} className="text-[10px]" style={{ color: "var(--cream-mute)" }}>
-        {provider} <span style={{ color: "var(--cream-dim)" }}>{formatMicros(micros)}</span>
+        {provider} <span style={{ color: "var(--cream-dim)" }}>{formatUsageCredits(budget.byProviderCredits?.[provider] ?? microsToUsageCredits(micros))} · {formatMicros(micros)}</span>
       </span>)}
     </div>}
 
@@ -83,7 +91,7 @@ export default function ClientSpendMeter({ compact = false }: { compact?: boolea
         </p>
       : budget.warning
         ? <p className="mt-2 text-[10px] leading-relaxed" style={{ color: "#fbbf24" }}>
-            Past the warning threshold. Remaining this month: {formatMicros(budget.remainingMicros)}.
+            Past the warning threshold. Remaining this month: {formatUsageCredits(budget.remainingCredits ?? microsToUsageCredits(budget.remainingMicros))} ({formatMicros(budget.remainingMicros)}).
           </p>
         : null}
   </section>;

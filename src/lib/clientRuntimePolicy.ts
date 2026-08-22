@@ -1,5 +1,5 @@
 const DEFAULT_CLIENT_ROUTES = [
-  "/", "/context", "/orchestrate", "/create", "/credentials", "/capabilities", "/deliver",
+  "/", "/provider-catalog", "/credits", "/context", "/orchestrate", "/create", "/credentials", "/capabilities", "/deliver",
   "/paperclip", "/room", "/pipeline", "/claude", "/openclaw", "/hermes", "/antigravity", "/codex",
   "/kimi", "/glm", "/glm-code", "/grok", "/freeclaude", "/fusion", "/sakana", "/local", "/engine",
   "/agent-kanban", "/loop", "/ruflo", "/goals", "/journal", "/seo", "/opendesign", "/web-studio",

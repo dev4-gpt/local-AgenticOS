@@ -13,6 +13,8 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/_next/") ||
     pathname === "/favicon.ico" ||
     pathname === "/login" ||
+    pathname === "/provider-catalog" ||
+    pathname === "/credits" ||
     pathname === "/client-unavailable" ||
     pathname.startsWith("/api/client-auth/")
   ) return next(requestHeaders, requestId);

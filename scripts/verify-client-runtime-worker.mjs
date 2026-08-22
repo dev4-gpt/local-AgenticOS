@@ -35,6 +35,9 @@ const hermesFactorySql = await readFile(join(root, "product-experience/supabase-
 const workflowWorkspace = await readFile(join(root, "src/components/ClientWorkflowWorkspace.tsx"), "utf8");
 const credentialsRoute = await readFile(join(root, "src/app/api/client-runtime/credentials/route.ts"), "utf8");
 const credentialSubmissionRoute = await readFile(join(root, "src/app/api/client-runtime/credential-submissions/route.ts"), "utf8");
+const publicCatalog = await readFile(join(root, "src/lib/publicProviderCatalog.ts"), "utf8");
+const budgetRoute = await readFile(join(root, "src/app/api/client-runtime/budget/route.ts"), "utf8");
+const loopLedger = await readFile(join(root, "src/lib/loopCostLedger.ts"), "utf8");
 const inputSafety = await readFile(join(root, "src/lib/clientInputSafety.ts"), "utf8");
 const controlsSql = await readFile(join(root, "product-experience/supabase-client-runtime-controls.sql"), "utf8");
 const hostedSql = await readFile(join(root, "product-experience/supabase-client-runtime-hosted-capabilities.sql"), "utf8");
@@ -221,6 +224,10 @@ expect(lifecycleScript.includes("confirm-restore") && lifecycleScript.includes("
 expect(lifecycleScript.includes("name~veloce-${slug}-") && lifecycleScript.includes("deleteRuntimeAlerts") && lifecycleScript.includes("deleteClientNotificationChannel"), "lifecycle offboarding must enumerate all client secrets and remove client alert resources");
 expect(promotion.includes("Source inbox secret must be inside the client namespace") && promotion.includes("Target secret must be a provider secret") && promotion.includes("disable-source-version") && promotion.includes("latestEnabledVersion"), "credential promotion must enforce client-namespaced source and target secrets and support post-promotion inbox cleanup");
 expect(credentialsRoute.includes("item.submitAllowed") && credentialSubmissionRoute.includes("clientCredentialSubmissionEnabled") && credentialSubmissionRoute.includes("option.submitAllowed"), "credential intake must be available before provider activation but limited to catalogued secrets");
+expect(publicCatalog.includes('"available-now"') && publicCatalog.includes('"client-key"') && publicCatalog.includes('"reference-only"') && publicCatalog.includes("V96_REPOSITORY_CATALOG") && publicCatalog.includes('reference.id === "jina-reader"'), "public provider catalog must expose activation states and repository provenance");
+expect(credentialSubmissionRoute.includes("catalogId") && credentialSubmissionRoute.includes("catalog_selection_invalid") && credentialSubmissionRoute.includes("secret_inbox_write_failed"), "BYOK intake must bind submissions to the public catalog and keep values in the server-side inbox");
+expect(budgetRoute.includes("microsToUsageCredits") && budgetRoute.includes("spentCredits") && budgetRoute.includes("byProviderCredits"), "budget responses must expose normalized credits alongside exact USD micros");
+expect(loopLedger.includes("ponytailRestraintVerdict") && loopLedger.includes('reason: "restraint"'), "loop workers must enforce and explain the Ponytail restraint stop condition");
 expect(provisioner.includes("credentialInboxSecret") && provisioner.includes("requestInboxSecret") && provisioner.includes("CLIENT_CREDENTIAL_INBOX_SECRET"), "GCP provisioning must normalize inbox secret names into the client namespace");
 expect(workerProvisioner.includes("worker_token_hash") && workerProvisioner.includes("base64url") && workerProvisioner.includes("SUPABASE_SERVICE_ROLE_KEY"), "worker provisioning must rotate a random token and persist only its hash with operator credentials");
 expect(!workerProvisioner.includes("console.log(token") && !workerProvisioner.includes("console.log(hash"), "worker provisioning must never print the token or hash");
@@ -263,6 +270,7 @@ expect(workerRoute.includes("safeClientProviderOutput") && workerRoute.includes(
 expect(providerAdapter.includes("prompt_tokens") && providerAdapter.includes("input_tokens") && providerAdapter.includes("promptTokenCount"), "provider adapters must normalize OpenAI-compatible, Anthropic, and Gemini usage");
 expect(alerts.includes('mimeType: "text/markdown"') && alerts.includes("undefined, metricName"), "runtime alert policies must include valid documentation MIME metadata and idempotent metric checks");
 expect(middleware.includes("x-request-id") && middleware.includes("crypto.randomUUID") && middleware.includes("response.headers.set(\"x-request-id\""), "client responses must carry generated request correlation IDs");
+expect(middleware.includes('pathname === "/provider-catalog"') && shell.includes('pathname === "/provider-catalog"'), "the provider catalog must remain publicly inspectable under client auth enforcement");
 expect(observability.includes("SAFE_ID") && observability.includes("SAFE_CODE") && observability.includes("classifyClientRuntimeFailure") && observability.includes("provider_rate_limited"), "runtime observability must strictly redact values and classify provider failures");
 expect(alerts.includes('"monitoring", "policies", "update"') && alerts.includes("add-notification-channels"), "rerunning alert provisioning with a channel must attach it to existing policies");
 expect(workerRoute.includes("runClientSpeechAdapter") && workerRoute.includes("provider: job.provider"), "speech failures must identify the selected speech provider in redacted logs");

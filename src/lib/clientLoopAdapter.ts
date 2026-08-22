@@ -195,7 +195,7 @@ export function loopShouldContinue(input: { round: number; maxRounds: number; pa
 
 export function loopFinalStatus(input: { passed: boolean; rounds: number; maxRounds: number; stopReason?: string | null }): LoopStatus {
   if (input.passed) return "passed";
-  if (input.stopReason === "budget-exhausted") return "exhausted";
+  if (input.stopReason === "budget-exhausted" || input.stopReason === "restraint" || input.stopReason === "no-progress") return "exhausted";
   return input.rounds >= input.maxRounds ? "exhausted" : "failed";
 }
 

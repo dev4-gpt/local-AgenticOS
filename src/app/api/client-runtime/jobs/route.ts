@@ -6,6 +6,7 @@ import { clientProviderRequestAllowed } from "@/lib/clientProviderAdapter";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
+import { estimateClientTextCostMicros, clientTextMaxOutputTokens } from "@/lib/clientProviderAdapter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
   const idempotencyKey = typeof body.idempotencyKey === "string" && body.idempotencyKey.trim().length >= 8
     ? body.idempotencyKey.trim().slice(0, 180)
     : randomUUID();
-  const history = Array.isArray(body.history) ? body.history.filter((item): item is Record<string, string> => Boolean(item && typeof item === "object" && ["system", "user", "assistant"].includes(String((item as Record<string, unknown>).role)) && typeof (item as Record<string, unknown>).content === "string")).slice(-16) : [];
+  const history = Array.isArray(body.history) ? body.history.filter((item): item is { role: "system" | "user" | "assistant"; content: string } => Boolean(item && typeof item === "object" && ["system", "user", "assistant"].includes(String((item as Record<string, unknown>).role)) && typeof (item as Record<string, unknown>).content === "string")).slice(-16) : [];
   if (!provider || !prompt) return NextResponse.json({ ok: false, error: "job_input_invalid" }, { status: 400 });
   const providerPolicy = clientProviderRequestAllowed(provider, model);
   if (!providerPolicy.ok) return NextResponse.json({ ok: false, error: providerPolicy.error }, { status: providerPolicy.status });
@@ -38,7 +39,9 @@ export async function POST(request: Request) {
 
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!tenantSlug) return NextResponse.json({ ok: false, error: "tenant_not_configured" }, { status: 503 });
-  const jobId = await enqueueClientRuntimeJob({ capability: "text-agents", provider: providerPolicy.provider, model: providerPolicy.model, idempotencyKey, inputMetadata: { prompt, history } });
+  const messages = [...history, { role: "user" as const, content: prompt }].slice(-16);
+  const estimatedCostMicros = estimateClientTextCostMicros(providerPolicy.model, messages, clientTextMaxOutputTokens());
+  const jobId = await enqueueClientRuntimeJob({ capability: "text-agents", provider: providerPolicy.provider, model: providerPolicy.model, idempotencyKey, inputMetadata: { prompt, history, estimatedCostMicros, usage: { estimatedCostMicros, budgetStatus: "reservation-pending" } } });
   if (!jobId) return NextResponse.json({ ok: false, error: "job_store_failed" }, { status: 503 });
   const task = await enqueueClientRuntimeTask({ jobId, tenantSlug });
   if (!task.ok) {
@@ -47,5 +50,5 @@ export async function POST(request: Request) {
     await refundClientRuntimeRateLimit("jobs", 900);
     return NextResponse.json({ ok: false, error }, { status: task.status >= 500 ? 503 : task.status });
   }
-  return NextResponse.json({ ok: true, jobId, status: "queued" }, { status: 202, headers: { "cache-control": "no-store" } });
+  return NextResponse.json({ ok: true, jobId, status: "queued", usage: { estimatedCostMicros, estimatedCredits: estimatedCostMicros === null ? null : Math.ceil(estimatedCostMicros / 1000), provider: providerPolicy.provider, budgetStatus: "reservation-pending" } }, { status: 202, headers: { "cache-control": "no-store" } });
 }

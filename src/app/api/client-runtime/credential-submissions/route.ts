@@ -5,6 +5,8 @@ import { clientCredentialOption } from "@/lib/clientCredentialCatalog";
 import { checkClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientCredentialSubmissionEnabled } from "@/lib/clientRuntimePolicy";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
+import { publicCatalogEntryForCredential } from "@/lib/publicProviderCatalog";
+import { buildClientActivationManifestProposal } from "@/lib/clientActivationManifest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,9 +30,14 @@ export async function POST(request: Request) {
   const providerKey = typeof body.providerKey === "string" ? body.providerKey.trim().toUpperCase() : "";
   const secretValue = typeof body.secretValue === "string" ? body.secretValue.trim() : "";
   const notes = typeof body.notes === "string" ? body.notes.trim().slice(0, 1200) : "";
+  const catalogId = typeof body.catalogId === "string" ? body.catalogId.trim() : "";
   const option = clientCredentialOption(providerKey);
+  const catalogEntry = publicCatalogEntryForCredential(providerKey);
 
   if (!option || !option.submitAllowed) return NextResponse.json({ ok: false, error: "unsupported_provider" }, { status: 400 });
+  if (!catalogEntry || catalogEntry.status !== "client-key" || (catalogId && catalogId !== catalogEntry.id)) {
+    return NextResponse.json({ ok: false, error: "catalog_selection_invalid" }, { status: 400 });
+  }
   if (secretValue.length < 6 || secretValue.length > 12000) {
     return NextResponse.json({ ok: false, error: "invalid_secret_value" }, { status: 400 });
   }
@@ -57,6 +64,20 @@ export async function POST(request: Request) {
       category: option.category,
       secret: option.secret,
     },
+    catalog: {
+      id: catalogEntry.id,
+      status: catalogEntry.status,
+      pipelineStage: catalogEntry.pipelineStage,
+      credentialMode: catalogEntry.credentialMode,
+    },
+    activationManifest: buildClientActivationManifestProposal({
+      tenantSlug: process.env.CLIENT_SLUG || null,
+      user: { id: user.id, email: user.email ?? null },
+      providerKey: option.key,
+      providerLabel: option.label,
+      catalog: catalogEntry,
+      secretName: option.key,
+    }),
     value: secretValue,
     notes,
   };
@@ -72,8 +93,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "secret_inbox_write_failed" }, { status: 502 });
   }
 
-  await recordClientAudit("credential.submitted", { provider: option.key });
-  return NextResponse.json({ ok: true, provider: { key: option.key, label: option.label } }, { headers: { "cache-control": "no-store" } });
+  await recordClientAudit("credential.submitted", { provider: option.key, catalogId: catalogEntry.id, activation: "submitted-for-review" });
+  return NextResponse.json({
+    ok: true,
+    provider: { key: option.key, label: option.label },
+    catalog: { id: catalogEntry.id, status: catalogEntry.status, pipelineStage: catalogEntry.pipelineStage },
+    activation: { status: "submitted-for-review", tenantSlug: process.env.CLIENT_SLUG || null, providerId: catalogEntry.id, manifestStatus: "proposal-created" },
+  }, { headers: { "cache-control": "no-store" } });
 }
 
 async function metadataText(path: string) {

@@ -44,6 +44,22 @@ test("product experience contact form is present and submittable", async ({ page
   await expect(page.getByRole("button", { name: /start the conversation/i })).toBeVisible();
 });
 
+test("product experience exposes the public catalog and credits policy", async ({ page }) => {
+  await page.goto("/start", { waitUntil: "networkidle" });
+  await expect(page.getByRole("link", { name: /provider catalog/i })).toHaveAttribute("href", "/provider-catalog");
+  await expect(page.getByRole("link", { name: /credits policy/i })).toHaveAttribute("href", "/credits");
+
+  await page.goto("/provider-catalog", { waitUntil: "networkidle" });
+  await expect(page.getByRole("heading", { name: /see what powers the pipeline/i })).toBeVisible();
+  await expect(page.getByText(/Ponytail restraint guard/i)).toBeVisible();
+  await expect(page.getByText(/Brave Search/i)).toBeVisible();
+  await expect(page.getByText(/OpenSEO/i)).toBeVisible();
+
+  await page.goto("/credits", { waitUntil: "networkidle" });
+  await expect(page.getByRole("heading", { name: /credits, fees, and settlement/i })).toBeVisible();
+  await expect(page.getByText(/Default: BYOK/i)).toBeVisible();
+});
+
 test("product experience legal links resolve to real policy sections", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
 

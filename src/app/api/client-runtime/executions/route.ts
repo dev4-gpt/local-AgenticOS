@@ -7,7 +7,8 @@ import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { clientProviderRequestAllowed } from "@/lib/clientProviderAdapter";
 import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { clientWorkspaceJobConfigured } from "@/lib/clientCloudRunJobs";
-import { isClientWorkspaceSurface, workspaceTerminalEvents, type ClientWorkspaceSurface } from "@/lib/clientWorkspaceExecution";
+import { isClientWorkspaceSurface, workspaceTerminalEvents } from "@/lib/clientWorkspaceExecution";
+import { presentClientJobUsage } from "@/lib/clientJobUsage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,7 +32,8 @@ export async function GET(request: Request) {
   if (surface && isClientWorkspaceSurface(surface)) filters["input_metadata->>surface"] = `eq.${surface}`;
   const result = await selectClientRecords("client_runtime_jobs", filters);
   if (!result.ok) return error("workspace_execution_read_failed", 502);
-  return NextResponse.json({ ok: true, executions: result.records.map(publicExecution) }, { headers: { "cache-control": "private, no-store" } });
+  const ledger = await selectClientRecords("client_runtime_budget_ledger", { tenant_slug: `eq.${process.env.CLIENT_SLUG ?? ""}`, limit: "1000" });
+  return NextResponse.json({ ok: true, executions: result.records.map((record) => publicExecution(record, ledger.ok ? ledger.records : [])) }, { headers: { "cache-control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true, jobId, status: "queued" }, { status: 202, headers: { "cache-control": "private, no-store" } });
 }
 
-function publicExecution(record: Record<string, unknown>) {
+function publicExecution(record: Record<string, unknown>, ledgerRecords: Record<string, unknown>[]) {
   const metadata = record.input_metadata && typeof record.input_metadata === "object" && !Array.isArray(record.input_metadata) ? record.input_metadata as Record<string, unknown> : {};
   const output = record.output_metadata && typeof record.output_metadata === "object" && !Array.isArray(record.output_metadata) ? record.output_metadata as Record<string, unknown> : {};
   return {
@@ -94,6 +96,7 @@ function publicExecution(record: Record<string, unknown>) {
     artifactId: typeof output.artifactId === "string" ? output.artifactId : null,
     previewHtml: typeof output.previewHtml === "string" ? output.previewHtml : null,
     terminalEvents: Array.isArray(output.terminalEvents) ? output.terminalEvents : (Array.isArray(metadata.terminalEvents) ? metadata.terminalEvents : []),
+    usage: presentClientJobUsage({ provider: record.provider, inputMetadata: metadata, outputMetadata: output, ledgerRecords: ledgerRecords.filter((ledger) => ledger.job_id === record.id) }),
   };
 }
 

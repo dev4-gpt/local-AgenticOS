@@ -29,6 +29,7 @@
     "verify:client-runtime": "node scripts/verify-client-runtime.mjs",
     "verify:client-authenticated": "node scripts/verify-client-runtime-authenticated.mjs",
     "verify:client-worker": "node scripts/verify-client-runtime-worker.mjs",
+    "verify:public-beta": "node scripts/verify-public-beta-contract.mjs",
     "verify:client-surface-map": "node scripts/verify-client-runtime-surface-map.mjs",
     "verify:parity:local": "node scripts/verify-client-runtime-surface-map.mjs --url http://127.0.0.1:3939 --cookie-file ${VELOCE_LOCAL_COOKIE_FILE:-/private/tmp/veloce-runtime-cookie.txt} --no-gcp-dependent",
     "verify:parity:local:tunnel": "node scripts/verify-client-runtime-local-tunnel.mjs",
@@ -52,6 +53,7 @@
     "provision:client-worker-token": "node scripts/provision-client-worker-token.mjs",
     "approve:client-delivery": "node scripts/approve-client-delivery.mjs",
     "verify:experience": "npm --prefix product-experience run build && npx playwright test tests/product-experience.spec.ts --reporter=line",
+    "verify:experience:production": "PRODUCT_EXPERIENCE_URL=${PRODUCT_EXPERIENCE_URL:-https://product-experience-five.vercel.app} npx playwright test tests/product-experience.spec.ts --config=playwright.product-experience.config.ts --reporter=line",
     "provision:gcp-client": "node scripts/provision-gcp-client.mjs",
     "build:client-image": "gcloud builds submit --config cloudbuild.client.yaml --substitutions=_IMAGE=$CLIENT_IMAGE .",
     "record:reference": "node scripts/record-reference-scroll.mjs"

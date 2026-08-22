@@ -9,6 +9,9 @@ const checks = [
   ["src/app/api/lead/route.ts", "allowPublicRequest"],
   ["supabase-public-request-hardening.sql", "consume_public_request_rate_limit"],
   ["next.config.ts", "X-Content-Type-Options"],
+  ["src/app/provider-catalog/page.tsx", "PublicBetaCatalog"],
+  ["src/app/credits/page.tsx", "Managed credits later"],
+  ["src/data/publicBetaCatalog.ts", "Ponytail"],
 ];
 
 for (const [file, marker] of checks) {

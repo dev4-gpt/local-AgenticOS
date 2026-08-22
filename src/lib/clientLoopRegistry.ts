@@ -93,7 +93,7 @@ const PROVIDER_LOOP_TRAITS: readonly CapabilityTraitId[] = [
 ];
 
 /** Terminating conditions every loop carries regardless of its shape. */
-const UNIVERSAL_STOPS: readonly LoopStopCondition[] = ["round-cap", "budget-exhausted"];
+const UNIVERSAL_STOPS: readonly LoopStopCondition[] = ["round-cap", "budget-exhausted", "restraint"];
 
 export const CLIENT_LOOP_CONTRACTS: readonly ClientLoopContract[] = [
   {
@@ -159,7 +159,7 @@ export const CLIENT_LOOP_CONTRACTS: readonly ClientLoopContract[] = [
     description: "Stop a loop that has stopped making progress: no score gain, recurring issues, or nothing left worth changing.",
     intents: ["stop if it stalls", "do not go in circles", "give up if stuck", "bail out when spinning"],
     maxRounds: LOOP_MAX_ROUNDS,
-    stopConditions: [...UNIVERSAL_STOPS, "verdict-pass", "no-progress", "restraint"],
+    stopConditions: [...UNIVERSAL_STOPS, "verdict-pass", "no-progress"],
     requiredTraits: PROVIDER_LOOP_TRAITS,
     riskClass: "low", approval: "none", outputType: "loop-artifact",
     origin: "new",

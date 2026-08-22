@@ -765,7 +765,7 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
       consecutivePasses = 0;
       rounds = [...rounds, loopRoundForDecision(round, false, 0, issues, lastSummary, artifactText.length, roundCost)];
       ledger = recordRoundCost(ledger, { actualMicros: roundCost, estimatedMicros: perCall * 2 });
-      stopDecision = decideLoopStop(contract, { round, maxRounds, passed: false, ledger, rounds, consecutivePasses });
+      stopDecision = decideLoopStop(contract, { round, maxRounds, passed: false, ledger, rounds, consecutivePasses, restraint: loopRestraintForDecision(rounds, ledger) });
       continue;
     }
     passed = verdict.pass;
@@ -779,7 +779,7 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
       estimatedMicros: perCall * 2,
       compressionSavedMicros: compressionSavedMicros(buildResult.compression) + compressionSavedMicros(judgeResult.ok ? judgeResult.compression : undefined),
     });
-    stopDecision = decideLoopStop(contract, { round, maxRounds, passed, ledger, rounds, consecutivePasses });
+    stopDecision = decideLoopStop(contract, { round, maxRounds, passed, ledger, rounds, consecutivePasses, restraint: loopRestraintForDecision(rounds, ledger) });
   }
 
   const artifact = artifactFromWorkspaceOutput({ surface: "loop", title: `loop-${jobId.slice(0, 8)}`, artifactIntent: "preview", output: artifactText });
@@ -790,6 +790,7 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
     loopContractId: contract?.id ?? "plan-generate-verify-fix",
     loopStopReason: stopDecision?.reason ?? null,
     loopStopDetail: stopDecision?.detail ?? null,
+    loopRestraint: stopDecision?.reason === "restraint",
     loopCost: costSummary,
     costMicros: spent,
   };
@@ -815,6 +816,20 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
 
 function loopRoundForDecision(round: number, passed: boolean, score: number, issues: string[], summary: string, artifactChars: number, costMicros: number): LoopRound {
   return { id: `decision-${round}`, runId: "in-memory", round, passed, score, issues, summary, artifactChars, costMicros, errorCode: null, createdAt: new Date().toISOString() };
+}
+
+function loopRestraintForDecision(rounds: readonly LoopRound[], ledger: { roundMicros: readonly number[] }) {
+  if (rounds.length < 2) return undefined;
+  const previous = rounds[rounds.length - 2];
+  const latest = rounds[rounds.length - 1];
+  const previousIssues = [...previous.issues].sort().join("|");
+  const latestIssues = [...latest.issues].sort().join("|");
+  return {
+    expectedScoreDelta: (latest.score ?? 0) - (previous.score ?? 0),
+    nextRoundCostMicros: ledger.roundMicros.length ? Math.max(...ledger.roundMicros) : 0,
+    minimumScoreDelta: 1,
+    repeatedIssueSignature: Boolean(previousIssues && previousIssues === latestIssues),
+  };
 }
 
 function compressionSavedMicros(value: unknown) {

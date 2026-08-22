@@ -1,9 +1,10 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, KeyRound, LockKeyhole, LogOut, RefreshCw, Send, ShieldCheck, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { CLIENT_CREDENTIAL_OPTIONS, type ClientCredentialOption } from "@/lib/clientCredentialCatalog";
+import { publicCatalogEntryForCredential } from "@/lib/publicProviderCatalog";
 
 interface Credential {
   key: string;
@@ -40,7 +41,10 @@ export default function CredentialsView() {
   const [formNotice, setFormNotice] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const credentialOptions = (status?.credentialOptions?.length ? status.credentialOptions : CLIENT_CREDENTIAL_OPTIONS).filter((option) => option.submitAllowed);
+  const credentialOptions = useMemo(
+    () => (status?.credentialOptions?.length ? status.credentialOptions : CLIENT_CREDENTIAL_OPTIONS).filter((option) => option.submitAllowed),
+    [status?.credentialOptions],
+  );
 
   async function load() {
     try {
@@ -65,7 +69,16 @@ export default function CredentialsView() {
   }
 
   useEffect(() => {
-    void load();
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const requested = new URLSearchParams(window.location.search).get("provider")?.trim().toUpperCase();
+      if (requested && CLIENT_CREDENTIAL_OPTIONS.some((option) => option.submitAllowed && option.key === requested)) setProviderKey(requested);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   async function logout() {
@@ -86,7 +99,7 @@ export default function CredentialsView() {
       const response = await fetch("/api/client-runtime/credential-submissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ providerKey, secretValue, notes }),
+        body: JSON.stringify({ providerKey, catalogId: publicCatalogEntryForCredential(providerKey)?.id, secretValue, notes }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.ok) {
@@ -96,7 +109,8 @@ export default function CredentialsView() {
       const label = data.provider?.label ?? providerKey;
       setSecretValue("");
       setNotes("");
-      setFormNotice(`${label} submitted to the client vault inbox.`);
+      const activation = data.activation?.status === "submitted-for-review" ? " Activation is submitted for tenant-manifest review; it is not enabled by the upload alone." : "";
+      setFormNotice(`${label} submitted to the client vault inbox.${activation}`);
     } finally {
       setSubmitting(false);
     }
@@ -113,7 +127,7 @@ export default function CredentialsView() {
             <div className="eyebrow">Runtime access and provider status</div>
             <h1 className="mt-1 text-2xl font-semibold text-[var(--fg)]">Credentials</h1>
             <p className="mt-2 text-[12px] leading-relaxed text-[var(--fg-dim)]">
-              Submit provider keys to the client vault inbox and review which runtime connections are active.
+              Submit a provider key through the reviewed BYOK flow. The key is written to a server-side vault inbox, never returned to the browser, and does not activate a provider until Veloce approves the tenant manifest.
             </p>
           </div>
           <button onClick={() => void load()} title="Refresh" className="ml-auto rounded-lg border border-[var(--panel-border)] p-2 text-[var(--fg-dim)]">
@@ -178,6 +192,7 @@ export default function CredentialsView() {
               <Send size={13} /> {submitting ? "Submitting" : "Submit"}
             </button>
             {formNotice && <p className="text-[11px] text-sky-200">{formNotice}</p>}
+            <p className="text-[10px] leading-relaxed text-[var(--fg-dim)]">Need to compare options first? <a href="/provider-catalog" className="text-sky-300 underline">View the public provider catalog</a>.</p>
           </div>
         </form>
       </section>

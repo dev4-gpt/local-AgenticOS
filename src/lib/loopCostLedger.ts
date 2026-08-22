@@ -169,6 +169,30 @@ export function detectLoopSpin(rounds: readonly LoopRound[], window = 2): boolea
   return noGain && repeating;
 }
 
+export interface LoopRestraintSignal {
+  /** Expected score improvement for the next paid round. */
+  expectedScoreDelta: number;
+  /** The next round's conservative cost projection. */
+  nextRoundCostMicros: number;
+  /** Minimum improvement required to justify another round. Defaults to one point. */
+  minimumScoreDelta?: number;
+  /** Whether the latest unresolved issues are still the same. */
+  repeatedIssueSignature?: boolean;
+}
+
+/**
+ * Ponytail restraint is deliberately separate from anti-spin. Anti-spin says
+ * "the loop is repeating"; restraint says "even the best expected improvement
+ * does not justify another paid round". Both are worker decisions, so a prompt
+ * cannot override either one.
+ */
+export function ponytailRestraintVerdict(signal: LoopRestraintSignal) {
+  const minimum = Number.isFinite(signal.minimumScoreDelta) ? Math.max(0, signal.minimumScoreDelta ?? 1) : 1;
+  const cost = Number.isFinite(signal.nextRoundCostMicros) ? Math.max(0, Math.round(signal.nextRoundCostMicros)) : 0;
+  const delta = Number.isFinite(signal.expectedScoreDelta) ? signal.expectedScoreDelta : 0;
+  return cost > 0 && delta < minimum && (signal.repeatedIssueSignature === true || delta <= 0);
+}
+
 export interface LoopStopDecision {
   stop: boolean;
   reason: LoopStopCondition | null;
@@ -190,6 +214,7 @@ export function loopStopDecision(input: {
   rounds?: readonly LoopRound[];
   consecutivePasses?: number;
   streakTarget?: number;
+  restraint?: LoopRestraintSignal;
 }): LoopStopDecision {
   const budget = loopBudgetVerdict(input.ledger);
   if (budget.exhausted) {
@@ -211,6 +236,13 @@ export function loopStopDecision(input: {
   }
   if (input.round >= input.maxRounds) {
     return { stop: true, reason: "round-cap", detail: `reached the ${input.maxRounds}-round cap` };
+  }
+  if (input.restraint && ponytailRestraintVerdict(input.restraint)) {
+    return {
+      stop: true,
+      reason: "restraint",
+      detail: `expected score improvement ${input.restraint.expectedScoreDelta} is below the ${input.restraint.minimumScoreDelta ?? 1}-point threshold for another paid round`,
+    };
   }
   if (input.rounds && detectLoopSpin(input.rounds)) {
     return { stop: true, reason: "no-progress", detail: "no score gain and the same issues recurring" };

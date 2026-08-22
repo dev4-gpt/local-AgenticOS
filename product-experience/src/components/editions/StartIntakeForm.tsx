@@ -47,15 +47,16 @@ export function StartIntakeForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      const body = await res.json().catch(() => ({}));
 
       if (res.ok) {
         form.reset();
         setState("sent");
-        setNotice("Request received. Veloce will review it before any client runtime is opened.");
+        const requestId = typeof body.requestId === "string" ? body.requestId : null;
+        setNotice(requestId ? `Request received (${requestId.slice(0, 8)}…). Veloce will review it before any client runtime is opened.` : "Request received. Veloce will review it before any client runtime is opened.");
         return;
       }
 
-      const body = await res.json().catch(() => ({}));
       if (body.error === "secret_like_content") {
         setState("blocked");
         setNotice("Remove anything that looks like a key, token, password, or secret before submitting.");

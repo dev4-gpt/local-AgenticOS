@@ -16,6 +16,7 @@ import {
   ledgerFromRounds,
   loopBudgetVerdict,
   loopStopDecision,
+  ponytailRestraintVerdict,
   recordRoundCost,
   summarizeLoopCost,
 } from "../src/lib/loopCostLedger";
@@ -188,6 +189,22 @@ test("anti-spin fires on stalled rounds and stays quiet on progress", () => {
   const decision = loopStopDecision({ round: 3, maxRounds: 5, passed: false, ledger: emptyLoopLedger(null), rounds: stalled });
   expect(decision.stop).toBe(true);
   expect(decision.reason).toBe("no-progress");
+});
+
+test("Ponytail restraint stops a low-value paid round and is recorded as restraint", () => {
+  expect(ponytailRestraintVerdict({ expectedScoreDelta: 0, nextRoundCostMicros: 500 })).toBe(true);
+  expect(ponytailRestraintVerdict({ expectedScoreDelta: 0, nextRoundCostMicros: 0 })).toBe(false);
+  expect(ponytailRestraintVerdict({ expectedScoreDelta: 2, nextRoundCostMicros: 500 })).toBe(false);
+
+  const decision = loopStopDecision({
+    round: 2,
+    maxRounds: 5,
+    passed: false,
+    ledger: recordRoundCost(emptyLoopLedger(null), { actualMicros: 500 }),
+    restraint: { expectedScoreDelta: 0, nextRoundCostMicros: 500 },
+  });
+  expect(decision.stop).toBe(true);
+  expect(decision.reason).toBe("restraint");
 });
 
 test("a quality streak needs consecutive passes, not one lucky round", () => {

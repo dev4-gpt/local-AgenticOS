@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, selectClientRecords } from "@/lib/clientDataPlane";
+import { microsToUsageCredits } from "@/lib/usageCredits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,11 +51,15 @@ export async function GET() {
   }
 
   const usedFraction = capMicros > 0 ? Math.min(1, spentMicros / capMicros) : 0;
+  const byProviderCredits = Object.fromEntries(Object.entries(byProvider).map(([provider, micros]) => [provider, microsToUsageCredits(micros)]));
   return NextResponse.json({
     ok: true,
     capMicros,
     spentMicros,
     remainingMicros: Math.max(0, capMicros - spentMicros),
+    capCredits: microsToUsageCredits(capMicros),
+    spentCredits: microsToUsageCredits(spentMicros),
+    remainingCredits: microsToUsageCredits(Math.max(0, capMicros - spentMicros)),
     usedFraction,
     // Stated rather than inferred client-side, so the warning appears at the
     // same point the runtime itself starts warning.
@@ -63,6 +68,7 @@ export async function GET() {
     // The keys are the client's own, so spend is shown per provider: this is
     // their bill, not an abstract quota.
     byProvider,
+    byProviderCredits,
     periodStart: monthStart.toISOString(),
   }, { headers: { "cache-control": "private, no-store" } });
 }

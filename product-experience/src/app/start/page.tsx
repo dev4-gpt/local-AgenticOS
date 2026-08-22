@@ -87,6 +87,10 @@ export default function StartPage() {
               Provider keys and OAuth connections happen later, inside the approved authenticated runtime.
             </p>
           </div>
+          <div className="mb-6 flex flex-wrap gap-3 text-sm">
+            <a href="/provider-catalog" className="rounded-full border border-[var(--g5)]/18 px-4 py-2 font-semibold no-underline">Provider catalog</a>
+            <a href="/credits" className="rounded-full border border-[var(--g5)]/18 px-4 py-2 font-semibold no-underline">Credits policy</a>
+          </div>
           <StartIntakeForm />
         </section>
       </section>

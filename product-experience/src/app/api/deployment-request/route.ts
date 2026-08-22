@@ -99,7 +99,7 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
         apikey: SERVICE_KEY,
         Authorization: `Bearer ${SERVICE_KEY}`,
-        Prefer: "return=minimal",
+        Prefer: "return=representation",
       },
       body: JSON.stringify(row),
     });
@@ -109,6 +109,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "store_failed" }, { status: 502 });
     }
 
+    const stored = await res.json().catch(() => []) as Array<{ id?: unknown }>;
+    const requestId = typeof stored[0]?.id === "string" ? stored[0].id : null;
     const notification = await notifyLead({
       kind: "runtime request",
       name: values.name,
@@ -116,7 +118,7 @@ export async function POST(req: Request) {
       company: values.company,
       source: "product-start",
     });
-    return NextResponse.json({ ok: true, notification });
+    return NextResponse.json({ ok: true, requestId, status: "pending_approval", notification });
   } catch (e) {
     console.error("deployment request store unreachable", e instanceof Error ? e.message : "unknown error");
     return NextResponse.json({ ok: false, error: "store_unreachable" }, { status: 502 });
