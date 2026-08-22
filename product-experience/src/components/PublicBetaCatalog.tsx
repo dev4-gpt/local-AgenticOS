@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { ExternalLink, Filter, KeyRound, ShieldCheck, Wallet } from "lucide-react";
 import { PUBLIC_BETA_CATALOG, PUBLIC_BETA_STATUS_ORDER, type PublicBetaCatalogEntry, type PublicBetaKind, type PublicBetaStatus } from "@/data/publicBetaCatalog";
 
@@ -30,15 +31,15 @@ export function PublicBetaCatalog() {
     <main className="min-h-screen bg-[var(--paper)] text-[var(--g5)]">
       <header className="border-b border-[var(--g5)]/12 bg-[var(--paper)]/95">
         <nav className="mx-auto flex max-w-[1240px] items-center justify-between px-5 py-5 lg:px-8">
-          <a href="/" className="font-heading text-lg font-bold no-underline">Veloce AgenticOS</a>
+          <Link href="/" className="font-heading text-lg font-bold no-underline">Veloce AgenticOS</Link>
           <div className="flex gap-3 text-sm font-semibold">
             <a href="/credits" className="rounded-full border border-[var(--g5)]/18 px-4 py-2 no-underline">Credits</a>
-            <a href="/start" className="rounded-full bg-[var(--g5)] px-4 py-2 text-white no-underline">Request invite</a>
+            <a href="/start" className="rounded-full bg-[var(--g5)] px-4 py-2 text-white no-underline">Start onboarding</a>
           </div>
         </nav>
       </header>
       <section className="mx-auto max-w-[1240px] px-5 py-12 lg:px-8 lg:py-16">
-        <p className="font-display text-base italic text-[var(--g5)]/62">Public beta transparency</p>
+        <p className="font-display text-base italic text-[var(--g5)]/62">Public catalog · governed activation</p>
         <h1 className="font-heading mt-3 max-w-4xl text-5xl font-bold leading-[0.98] lg:text-7xl">See what powers the pipeline.</h1>
         <p className="mt-6 max-w-3xl text-base leading-relaxed text-[var(--g5)]/68">A public map of Veloce-owned contracts, approved provider lanes, and repository provenance across research, memory, planning, creation, quality review, approval, and delivery.</p>
         <div className="mt-8 grid gap-3 md:grid-cols-3">

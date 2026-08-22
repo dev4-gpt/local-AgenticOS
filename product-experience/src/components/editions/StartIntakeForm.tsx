@@ -38,6 +38,8 @@ export function StartIntakeForm() {
       preferredSubdomain: asString(data, "preferredSubdomain"),
       timeline: asString(data, "timeline"),
       notes: asString(data, "notes"),
+      termsAccepted: data.get("termsAccepted") === "on",
+      privacyAccepted: data.get("privacyAccepted") === "on",
     };
 
     setState("sending");
@@ -53,7 +55,7 @@ export function StartIntakeForm() {
         form.reset();
         setState("sent");
         const requestId = typeof body.requestId === "string" ? body.requestId : null;
-        setNotice(requestId ? `Request received (${requestId.slice(0, 8)}…). Veloce will review it before any client runtime is opened.` : "Request received. Veloce will review it before any client runtime is opened.");
+        setNotice(requestId ? `Request received (${requestId.slice(0, 8)}…). Check your email to verify the request. Payment and activation happen only after review.` : "Request received. Check your email to verify the request.");
         return;
       }
 
@@ -72,6 +74,12 @@ export function StartIntakeForm() {
       if (body.error === "invalid_email") {
         setState("blocked");
         setNotice("Enter a valid work email so Veloce can respond to your request.");
+        return;
+      }
+
+      if (body.error === "consent_required") {
+        setState("blocked");
+        setNotice("Accept the Terms, Privacy Notice, and acceptable-use conditions to continue.");
         return;
       }
 
@@ -112,6 +120,17 @@ export function StartIntakeForm() {
         Company website
         <input name="website" type="url" placeholder="https://example.com" className={fieldClass} />
       </label>
+
+      <div className="grid gap-3 rounded-lg border border-[var(--g5)]/12 bg-white/35 p-4 text-sm text-[var(--g5)]/70">
+        <label className="flex items-start gap-3">
+          <input name="termsAccepted" type="checkbox" required className="mt-1" />
+          <span>I agree to the <a href="/terms" target="_blank" className="font-semibold underline">Terms of Service</a> and <a href="/acceptable-use" target="_blank" className="font-semibold underline">Acceptable Use Policy</a>.</span>
+        </label>
+        <label className="flex items-start gap-3">
+          <input name="privacyAccepted" type="checkbox" required className="mt-1" />
+          <span>I have read the <a href="/privacy" target="_blank" className="font-semibold underline">Privacy Notice</a> and consent to Veloce processing this intake to evaluate and provision the requested service.</span>
+        </label>
+      </div>
 
       <label className={labelClass}>
         The workflow you want your Veloce OS to run first
@@ -199,14 +218,14 @@ export function StartIntakeForm() {
           disabled={state === "sending"}
           className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--g5)] px-6 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
         >
-          {state === "sending" ? "Submitting..." : state === "sent" ? "Request sent" : "Request gated runtime"}
+          {state === "sending" ? "Submitting..." : state === "sent" ? "Request sent" : "Start public onboarding"}
         </button>
       </div>
     </form>
   );
 }
 
-function makeBrief(payload: Record<string, string>) {
+function makeBrief(payload: Record<string, string | boolean>) {
   return `Veloce client runtime request
 
 Name: ${payload.name}

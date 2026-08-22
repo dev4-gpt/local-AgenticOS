@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { currentClientMember } from "@/lib/clientAuth";
-import { checkClientRuntimeRateLimit } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, clientRpc } from "@/lib/clientDataPlane";
 import { openRouterKey, providerEnvKey } from "@/lib/providerKeys";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { CLIENT_CREDENTIAL_OPTIONS } from "@/lib/clientCredentialCatalog";
+import { publicCatalogProviderOptions } from "@/lib/publicProviderCatalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,13 +15,18 @@ export async function GET() {
   if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });
   if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
   const credentialOptions = CLIENT_CREDENTIAL_OPTIONS.filter((item) => item.submitAllowed);
+  const connectionResult = await clientRpc("list_client_provider_connections", { p_tenant_slug: process.env.CLIENT_SLUG || "" });
+  const connections = Array.isArray(connectionResult.value) ? connectionResult.value as Array<Record<string, unknown>> : [];
   const credentials = CLIENT_CREDENTIAL_OPTIONS.filter((item) => clientProviderEnabled(item.key)).map((item) => {
     const value = item.key === "OPENROUTER_API_KEY" ? openRouterKey() : providerEnvKey(item.key);
+    const connection = connections.find((candidate) => candidate.provider_key === item.key);
     return {
       key: item.key,
       label: item.label,
       connected: Boolean(value),
       secret: item.secret,
+      connectionStatus: typeof connection?.status === "string" ? connection.status : null,
+      credentialMode: typeof connection?.credential_mode === "string" ? connection.credential_mode : "byok",
     };
   });
 
@@ -40,6 +46,17 @@ export async function GET() {
       },
       credentials,
       credentialOptions,
+      catalog: publicCatalogProviderOptions().map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        customerTool: entry.customerTool,
+        pipelineStage: entry.pipelineStage,
+        pricingBasis: entry.pricingBasis,
+        creditEstimate: entry.creditEstimate,
+        status: entry.status,
+        credentialMode: entry.credentialMode,
+        approval: entry.approval,
+      })),
     },
     { headers: { "cache-control": "no-store" } },
   );

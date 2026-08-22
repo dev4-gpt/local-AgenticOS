@@ -1,6 +1,8 @@
+import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { allowPublicRequest, payloadTooLarge } from "@/lib/publicRequestGuard";
 import { notifyLead } from "@/lib/leadNotification";
+import { hashSetupToken, publicEmail, requestId as launchRequestId, sendSetupEmail, supabaseServiceInsert, supabaseServiceSelect } from "@/lib/publicLaunch";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -26,8 +28,8 @@ const fields = [
   "notes",
 ] as const;
 
-function clean(value: unknown) {
-  return String(value ?? "").trim();
+function clean(value: unknown, max = 4_000) {
+  return String(value ?? "").trim().slice(0, max);
 }
 
 export async function POST(req: Request) {
@@ -51,11 +53,25 @@ export async function POST(req: Request) {
   }
 
   const values = Object.fromEntries(fields.map((field) => [field, clean(body[field])]));
+  const termsAccepted = body.termsAccepted === true;
+  const privacyAccepted = body.privacyAccepted === true;
+  if (!termsAccepted || !privacyAccepted) return NextResponse.json({ ok: false, error: "consent_required" }, { status: 400 });
+
+  if (process.env.TURNSTILE_SECRET_KEY?.trim()) {
+    const captchaToken = clean(body.captchaToken, 2_000);
+    if (!captchaToken) return NextResponse.json({ ok: false, error: "captcha_required" }, { status: 400 });
+    const captchaResponse = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret: process.env.TURNSTILE_SECRET_KEY, response: captchaToken, remoteip: req.headers.get("x-forwarded-for")?.split(",", 1)[0]?.trim() }),
+    }).catch(() => null);
+    const captcha = await captchaResponse?.json().catch(() => null) as { success?: unknown } | null;
+    if (!captchaResponse?.ok || captcha?.success !== true) return NextResponse.json({ ok: false, error: "captcha_failed" }, { status: 400 });
+  }
   if (!values.name || !values.email || !values.company || !values.workflow) {
     return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
   }
 
-  if (!/^\S+@\S+\.\S+$/.test(values.email)) {
+  const email = publicEmail(values.email);
+  if (!email) {
     return NextResponse.json({ ok: false, error: "invalid_email" }, { status: 400 });
   }
 
@@ -68,9 +84,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "secret_like_content" }, { status: 400 });
   }
 
+  const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim().slice(0, 180) : "";
+  if (idempotencyKey) {
+    const prior = await supabaseServiceSelect("deployment_requests", { idempotency_key: `eq.${idempotencyKey}` });
+    if (prior.rows[0]?.id) return NextResponse.json({ ok: true, requestId: prior.rows[0].id, status: "requested", duplicate: true });
+  }
+
   const row = {
     name: values.name,
-    email: values.email,
+    email,
     company: values.company,
     role: values.role || null,
     website: values.website || null,
@@ -85,6 +107,10 @@ export async function POST(req: Request) {
     timeline: values.timeline || null,
     notes: values.notes || null,
     status: "pending_approval",
+    billing_status: "not_started",
+    terms_accepted_at: new Date().toISOString(),
+    privacy_accepted_at: new Date().toISOString(),
+    idempotency_key: idempotencyKey || launchRequestId(),
     source: "product-start",
     meta: {
       userAgent: req.headers.get("user-agent") ?? null,
@@ -111,14 +137,35 @@ export async function POST(req: Request) {
 
     const stored = await res.json().catch(() => []) as Array<{ id?: unknown }>;
     const requestId = typeof stored[0]?.id === "string" ? stored[0].id : null;
-    const notification = await notifyLead({
+    if (!requestId) return NextResponse.json({ ok: false, error: "store_failed" }, { status: 502 });
+
+    const onboarding = await supabaseServiceInsert("client_onboarding_accounts", {
+      request_id: requestId,
+      email,
+      status: "requested",
+    });
+    const onboardingId = typeof onboarding.rows[0]?.id === "string" ? onboarding.rows[0].id : null;
+    if (!onboarding.ok || !onboardingId) {
+      console.error("onboarding account store failed", { status: onboarding.status, requestId });
+      return NextResponse.json({ ok: false, error: "onboarding_store_failed", requestId }, { status: 502 });
+    }
+
+    const rawToken = randomBytes(32).toString("base64url");
+    const token = await supabaseServiceInsert("client_onboarding_tokens", {
+      onboarding_id: onboardingId,
+      token_hash: hashSetupToken(rawToken),
+      purpose: "verify-email",
+      expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+    });
+    const emailDelivery = token.ok ? await sendSetupEmail({ email, name: values.name, token: rawToken, kind: "verify" }) : "failed";
+    await notifyLead({
       kind: "runtime request",
       name: values.name,
-      email: values.email,
+      email,
       company: values.company,
       source: "product-start",
     });
-    return NextResponse.json({ ok: true, requestId, status: "pending_approval", notification });
+    return NextResponse.json({ ok: true, requestId, onboardingId, status: "requested", emailDelivery, checkoutRequired: false, message: "Verify your email to continue. Payment and activation happen after review; no runtime is created by signup alone." });
   } catch (e) {
     console.error("deployment request store unreachable", e instanceof Error ? e.message : "unknown error");
     return NextResponse.json({ ok: false, error: "store_unreachable" }, { status: 502 });

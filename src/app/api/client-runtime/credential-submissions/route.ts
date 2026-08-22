@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { clientCredentialOption } from "@/lib/clientCredentialCatalog";
-import { checkClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, clientRpc, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientCredentialSubmissionEnabled } from "@/lib/clientRuntimePolicy";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { publicCatalogEntryForCredential } from "@/lib/publicProviderCatalog";
@@ -92,6 +92,16 @@ export async function POST(request: Request) {
   if (!response?.ok) {
     return NextResponse.json({ ok: false, error: "secret_inbox_write_failed" }, { status: 502 });
   }
+
+  const connection = await clientRpc("record_client_provider_connection", {
+    p_tenant_slug: process.env.CLIENT_SLUG || "",
+    p_catalog_id: catalogEntry.id,
+    p_provider_key: option.key,
+    p_credential_mode: "byok",
+    p_secret_resource: secretResource,
+    p_validation_metadata: { status: "submitted-for-review", submittedAt: new Date().toISOString() },
+  });
+  if (!connection.ok || connection.value !== true) return NextResponse.json({ ok: false, error: "connection_record_failed" }, { status: 502 });
 
   await recordClientAudit("credential.submitted", { provider: option.key, catalogId: catalogEntry.id, activation: "submitted-for-review" });
   return NextResponse.json({

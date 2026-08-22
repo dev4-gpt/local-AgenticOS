@@ -10,7 +10,10 @@ const checks = [
   ["supabase-public-request-hardening.sql", "consume_public_request_rate_limit"],
   ["next.config.ts", "X-Content-Type-Options"],
   ["src/app/provider-catalog/page.tsx", "PublicBetaCatalog"],
-  ["src/app/credits/page.tsx", "Managed credits later"],
+  ["src/app/credits/page.tsx", "Platform setup"],
+  ["src/app/api/billing/webhook/route.ts", "verifyStripeSignature"],
+  ["src/app/api/onboarding/verify/route.ts", "token_invalid_or_expired"],
+  ["src/app/api/support/route.ts", "secret_like_content"],
   ["src/data/publicBetaCatalog.ts", "Ponytail"],
 ];
 

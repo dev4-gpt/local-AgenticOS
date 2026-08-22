@@ -3,9 +3,9 @@ import { StartIntakeForm } from "@/components/editions/StartIntakeForm";
 
 const steps = [
   "You submit requirements, tools, budget, and approval rules.",
-  "Veloce reviews the request before any runtime is created.",
-  "A separate GCP client edition is provisioned with isolated storage and logs.",
-  "Your team logs in and connects credentials inside the gated runtime.",
+  "You verify your email; payment and manifest review happen before activation.",
+  "The control plane provisions an isolated runtime and runs its evidence bundle.",
+  "You enter the portal and connect BYOK or Veloce-managed providers server-side.",
 ];
 
 const guardrails = [
@@ -38,14 +38,14 @@ export default function StartPage() {
       <section className="mx-auto grid max-w-[1240px] gap-12 px-5 py-14 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-20">
         <div className="flex flex-col justify-between gap-10">
           <div>
-            <p className="font-display text-base italic text-[var(--g5)]/62">Gated client runtime request</p>
+            <p className="font-display text-base italic text-[var(--g5)]/62">Public onboarding · governed execution</p>
             <h1 className="font-heading mt-4 max-w-2xl text-5xl font-bold leading-[0.98] lg:text-7xl">
               Request your own Veloce OS.
             </h1>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-[var(--g5)]/68">
-              This is the approval gate for a 3939-style client edition: the same operating
-              feel, rebuilt on an isolated GCP runtime around your credentials, your storage,
-              your budget, and your approval rules.
+              Anyone can start here. Veloce turns a verified, paid request into an isolated
+              client operating system with a personal provider page, transparent credits,
+              approval checkpoints, and tenant-scoped data.
             </p>
           </div>
 
@@ -80,11 +80,11 @@ export default function StartPage() {
         <section className="rounded-lg border border-[var(--g5)]/14 bg-[var(--g1)]/55 p-5 shadow-sm lg:p-8">
           <div className="mb-7">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--g5)]/50">
-              Intake only
+              Public signup
             </p>
-            <h2 className="font-heading mt-2 text-3xl font-bold">No credentials here.</h2>
+            <h2 className="font-heading mt-2 text-3xl font-bold">Describe the service you need.</h2>
             <p className="mt-3 text-sm leading-relaxed text-[var(--g5)]/62">
-              Provider keys and OAuth connections happen later, inside the approved authenticated runtime.
+              Never paste credentials into intake. After verification, payment, and approval, add BYOK keys or choose managed credits in your private portal.
             </p>
           </div>
           <div className="mb-6 flex flex-wrap gap-3 text-sm">

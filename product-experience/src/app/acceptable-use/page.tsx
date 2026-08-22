@@ -1,0 +1,7 @@
+import Link from "next/link";
+
+export const metadata = { title: "Acceptable Use · Veloce AgenticOS" };
+
+export default function AcceptableUsePage() {
+  return <main className="min-h-screen bg-[var(--paper)] text-[var(--g5)]"><header className="border-b border-[var(--g5)]/12"><nav className="mx-auto flex max-w-[1040px] items-center justify-between px-5 py-5 lg:px-8"><Link href="/" className="font-heading text-lg font-bold no-underline">Veloce AgenticOS</Link><Link href="/terms" className="text-sm font-semibold underline">Terms</Link></nav></header><article className="mx-auto max-w-[840px] px-5 py-14 lg:px-8"><p className="font-display text-base italic text-[var(--g5)]/62">Safety and abuse policy</p><h1 className="font-heading mt-3 text-5xl font-bold leading-tight">Acceptable Use</h1><div className="mt-8 space-y-5 text-sm leading-relaxed text-[var(--g5)]/72"><p>Do not use Veloce to violate law or third-party rights, distribute malware, evade access controls, harass or impersonate people, send unsolicited communications, scrape private data, or automate high-impact decisions without appropriate human review.</p><p>External publishing, communications, security testing, financial activity, and other high-risk actions remain approval-gated. Veloce may rate-limit, suspend, investigate, or offboard activity that threatens people, providers, the service, or tenant isolation.</p><p>Report suspected abuse or a security issue through <Link href="/support" className="underline">support</Link>.</p></div></article></main>;
+}

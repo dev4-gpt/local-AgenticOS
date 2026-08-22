@@ -11,6 +11,8 @@ interface Credential {
   label: string;
   connected: boolean;
   secret: boolean;
+  connectionStatus?: string | null;
+  credentialMode?: string;
 }
 
 interface Status {
@@ -21,11 +23,19 @@ interface Status {
     approvalsRequired: boolean;
   };
   credentials: Credential[];
+  catalog?: Array<{ id: string; name: string; customerTool: string; pipelineStage: string; pricingBasis: string; creditEstimate: string; status: string; credentialMode: string; approval: string }>;
   credentialOptions?: ClientCredentialOption[];
   client: {
     slug: string | null;
     name: string | null;
   };
+}
+
+interface CreditStatus {
+  balanceMicros: number;
+  reservedMicros: number;
+  warningThresholdMicros: number;
+  status: string;
 }
 
 const fieldClass = "w-full rounded-lg border border-[var(--panel-border)] bg-black/20 px-3 py-2.5 text-[12px] text-[var(--fg)] outline-none transition focus:border-sky-300/70";
@@ -40,6 +50,8 @@ export default function CredentialsView() {
   const [notice, setNotice] = useState("");
   const [formNotice, setFormNotice] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [credits, setCredits] = useState<CreditStatus | null>(null);
+  const [creditNotice, setCreditNotice] = useState("");
 
   const credentialOptions = useMemo(
     () => (status?.credentialOptions?.length ? status.credentialOptions : CLIENT_CREDENTIAL_OPTIONS).filter((option) => option.submitAllowed),
@@ -48,9 +60,10 @@ export default function CredentialsView() {
 
   async function load() {
     try {
-      const [credentialResponse, sessionResponse] = await Promise.all([
+      const [credentialResponse, sessionResponse, creditResponse] = await Promise.all([
         fetch("/api/client-runtime/credentials", { cache: "no-store" }),
         fetch("/api/client-auth/session", { cache: "no-store" }),
+        fetch("/api/client-runtime/credits", { cache: "no-store" }),
       ]);
       const credentialData = await credentialResponse.json().catch(() => null);
       if (!credentialResponse.ok || !credentialData?.ok) {
@@ -62,10 +75,20 @@ export default function CredentialsView() {
       }
       const session = await sessionResponse.json();
       setEmail(session.user?.email ?? null);
+      const creditData = await creditResponse.json().catch(() => null);
+      if (creditData?.ok && creditData.account) setCredits(creditData.account);
     } catch {
       setStatus(null);
       setNotice("Could not load runtime status.");
     }
+  }
+
+  async function buyManagedCredits() {
+    setCreditNotice("Opening secure checkout…");
+    const response = await fetch("/api/client-runtime/credits/checkout", { method: "POST" }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    if (response?.ok && typeof data?.checkoutUrl === "string") { window.location.assign(data.checkoutUrl); return; }
+    setCreditNotice(data?.error === "managed_credits_not_configured" ? "Managed credits are not configured for this tenant yet." : "Could not open managed-credit checkout.");
   }
 
   useEffect(() => {
@@ -127,7 +150,7 @@ export default function CredentialsView() {
             <div className="eyebrow">Runtime access and provider status</div>
             <h1 className="mt-1 text-2xl font-semibold text-[var(--fg)]">Credentials</h1>
             <p className="mt-2 text-[12px] leading-relaxed text-[var(--fg-dim)]">
-              Submit a provider key through the reviewed BYOK flow. The key is written to a server-side vault inbox, never returned to the browser, and does not activate a provider until Veloce approves the tenant manifest.
+              Submit a provider key through the reviewed BYOK flow, or ask Veloce to enable managed credits for an approved provider. Keys are written to server-side tenant storage, never returned to the browser, and do not activate a provider until the tenant manifest and smoke test succeed.
             </p>
           </div>
           <button onClick={() => void load()} title="Refresh" className="ml-auto rounded-lg border border-[var(--panel-border)] p-2 text-[var(--fg-dim)]">
@@ -207,10 +230,21 @@ export default function CredentialsView() {
             </div>
             <div className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider ${credential.connected ? "text-emerald-300" : "text-[var(--fg-dimmer)]"}`}>
               {credential.connected ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
-              {credential.connected ? "Connected" : "Not connected"}
+              {credential.connectionStatus === "submitted" ? "Pending review" : credential.connected ? "Connected" : "Not connected"}
             </div>
           </div>
         ))}
+      </section>
+
+      <section className="panel flex flex-wrap items-center justify-between gap-4 p-5">
+        <div><div className="eyebrow">Managed credit wallet</div><div className="mt-1 text-lg font-semibold text-[var(--fg)]">{credits ? `${(credits.balanceMicros / 1_000_000).toFixed(2)} credits available` : "Not configured"}</div><p className="mt-1 text-[10px] text-[var(--fg-dim)]">Managed provider jobs reserve, settle, or refund credits. BYOK provider charges remain with the client.</p>{creditNotice && <p className="mt-2 text-[10px] text-sky-200">{creditNotice}</p>}</div>
+        <button type="button" onClick={() => void buyManagedCredits()} className="rounded-lg border border-sky-300/40 px-3 py-2 text-[11px] font-semibold text-sky-200">Buy managed credits</button>
+      </section>
+
+      <section className="panel overflow-hidden">
+        <div className="border-b border-[var(--panel-border)] px-5 py-3 text-[12px] font-semibold text-[var(--fg)]">Approved provider matrix</div>
+        <div className="hidden grid-cols-[1.1fr_1.3fr_1fr_1fr] gap-3 border-b border-[var(--panel-border)] px-5 py-2 text-[9px] uppercase tracking-wider text-[var(--fg-dimmer)] md:grid"><span>Tool</span><span>Use</span><span>Stage / mode</span><span>Pricing</span></div>
+        {status?.catalog?.map((entry) => <div key={entry.id} className="grid gap-1 border-b border-[var(--panel-border)] px-5 py-3 text-[10px] last:border-b-0 md:grid-cols-[1.1fr_1.3fr_1fr_1fr] md:gap-3"><div className="text-[12px] text-[var(--fg)]">{entry.name}<div className="text-[9px] text-[var(--fg-dimmer)]">{entry.status} · {entry.credentialMode}</div></div><div className="text-[var(--fg-dim)]">{entry.customerTool}</div><div className="text-[var(--fg-dim)]">{entry.pipelineStage}<div className="text-[9px] text-amber-200">{entry.approval}</div></div><div className="text-[var(--fg-dim)]">{entry.pricingBasis}<div className="text-[9px] text-sky-200">{entry.creditEstimate}</div></div></div>)}
       </section>
 
       {notice && <p className="text-[11px] text-rose-300">{notice}</p>}
