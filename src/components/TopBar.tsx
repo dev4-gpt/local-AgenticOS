@@ -14,6 +14,7 @@ interface PageMeta { numeral: string; label: string; title: string; sub: string;
 // These overrides replace the sub-copy on every route whose default mentions a
 // laptop-only dependency.
 const CLIENT_SUBS: Record<string, string> = {
+  "/provider-matrix": "Select approved tools, compare current pricing snapshots, and submit a tenant-scoped manifest proposal before any provider is activated.",
   "/room": "A live group chat with your agents — each on its own approved model. They read this workspace's memory, reply in turn, and can save notes or start pipeline items. Tag one with @claude.",
   "/pipeline": "Capture an idea → the shaping agent classifies and plans it → you approve once at the human gate → the hosted runner builds it. Items are tenant records.",
   "/kanban": "A tenant work board with real stages, assignees, priorities, comments, and an event trail.",
@@ -75,6 +76,7 @@ const TITLES: Record<string, PageMeta> = {
   "/integrations":{ numeral: "XIX.",  label: "Govern · Integrations", title: "Integrations",          sub: "See the services and delivery adapters configured for this private operating environment." },
   "/capabilities":{ numeral: "XX.",   label: "Govern · Capabilities", title: "Capabilities",          sub: "Curated skills and connectors with clear scopes, boundaries, and client-readiness." },
   "/credentials":{ numeral: "XX.",   label: "Govern · Credentials", title: "Credentials",          sub: "Review runtime identity, provider connection state, and the secret boundary." },
+  "/provider-matrix":{ numeral: "XX.", label: "Govern · Provider Matrix", title: "Provider Matrix", sub: "Select tools and pricing routes for a reviewed tenant manifest." },
   "/video":       { numeral: "XXI.",  label: "Create · Video",     title: "Video Studio",            sub: "Move from approved script to voice, avatar, assembly, and preview through provider-aware production stages." },
   "/openmontage": { numeral: "XXII.", label: "Create · OpenMontage", title: "OpenMontage",          sub: "Plan and run agentic video workflows with local scripts, inspectable outputs, and explicit model gates." },
   "/music":       { numeral: "XXIII.",label: "Create · Music",     title: "Music Studio",            sub: "Draft music direction, choose an available engine, and keep generated tracks in the local workspace." },

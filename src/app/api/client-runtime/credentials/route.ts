@@ -5,6 +5,7 @@ import { openRouterKey, providerEnvKey } from "@/lib/providerKeys";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { CLIENT_CREDENTIAL_OPTIONS } from "@/lib/clientCredentialCatalog";
 import { publicCatalogProviderOptions } from "@/lib/publicProviderCatalog";
+import { pricingSnapshotForCredential } from "@/lib/providerPricingCatalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +28,7 @@ export async function GET() {
       secret: item.secret,
       connectionStatus: typeof connection?.status === "string" ? connection.status : null,
       credentialMode: typeof connection?.credential_mode === "string" ? connection.credential_mode : "byok",
+      lastValidatedAt: typeof connection?.last_validated_at === "string" ? connection.last_validated_at : null,
     };
   });
 
@@ -56,6 +58,16 @@ export async function GET() {
         status: entry.status,
         credentialMode: entry.credentialMode,
         approval: entry.approval,
+        pricingSnapshotId: entry.pricingSnapshotId ?? pricingSnapshotForCredential(entry.credentialKey ?? "")?.id ?? null,
+        pricingVersion: entry.pricingVersion ?? null,
+        pricingVerifiedAt: entry.pricingVerifiedAt ?? null,
+        pricingSourceUrl: entry.pricingSourceUrl ?? null,
+        freeTier: entry.freeTier ?? null,
+        costOwner: entry.costOwner ?? "client",
+        modelOptions: entry.modelOptions ?? [],
+        runtimePlacement: entry.runtimePlacement ?? "Tenant runtime provider adapter",
+        managedCredentialAvailable: entry.managedCredentialAvailable === true,
+        selectionAllowed: entry.selectionAllowed !== false,
       })),
     },
     { headers: { "cache-control": "no-store" } },

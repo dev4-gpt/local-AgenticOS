@@ -79,7 +79,7 @@ function CatalogCard({ entry }: { entry: PublicBetaCatalogEntry }) {
       {entry.source && <a href={entry.source} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 no-underline">Source <ExternalLink size={12} /></a>}
     </div>
     <p className="mt-4 max-w-4xl text-sm leading-relaxed text-[var(--g5)]/72">{entry.outcome}</p>
-    <div className="mt-5 grid gap-4 text-xs md:grid-cols-2 lg:grid-cols-4"><Detail label="Customer tool" value={entry.customerTool} /><Detail label="Data and permissions" value={entry.data} /><Detail label="Cost basis" value={entry.cost} /><Detail label="Credentials and approval" value={`${entry.credentials} ${entry.approval}`} /></div>
+    <div className="mt-5 grid gap-4 text-xs md:grid-cols-2 lg:grid-cols-4"><Detail label="Customer tool" value={entry.customerTool} /><Detail label="Data and permissions" value={entry.data} /><Detail label="Cost basis" value={`${entry.cost}${entry.freeTier ? ` Free tier: ${entry.freeTier}` : ""}`} /><Detail label="Runtime / ownership" value={`${entry.runtime || "Governed Veloce contract"}${entry.costOwner ? ` · ${entry.costOwner === "client" ? "customer-paid" : entry.costOwner === "veloce" ? "Veloce-paid" : "shared"}` : ""}`} /><Detail label="Credentials and approval" value={`${entry.credentials} ${entry.approval}`} /></div>
   </article>;
 }
 

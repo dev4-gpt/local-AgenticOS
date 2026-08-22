@@ -1,5 +1,5 @@
 const DEFAULT_CLIENT_ROUTES = [
-  "/", "/provider-catalog", "/credits", "/context", "/orchestrate", "/create", "/credentials", "/capabilities", "/deliver",
+  "/", "/provider-catalog", "/credits", "/context", "/orchestrate", "/create", "/credentials", "/provider-matrix", "/capabilities", "/deliver",
   "/paperclip", "/room", "/pipeline", "/claude", "/openclaw", "/hermes", "/antigravity", "/codex",
   "/kimi", "/glm", "/glm-code", "/grok", "/freeclaude", "/fusion", "/sakana", "/local", "/engine",
   "/agent-kanban", "/loop", "/ruflo", "/goals", "/journal", "/seo", "/opendesign", "/web-studio",
@@ -10,6 +10,7 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/capabilities",
   "/api/speech/transcribe",
   "/api/client-runtime/credentials",
+  "/api/client-runtime/manifest-proposals",
   "/api/client-runtime/credential-submissions",
   "/api/client-runtime/requests",
   "/api/client-runtime/artifacts",

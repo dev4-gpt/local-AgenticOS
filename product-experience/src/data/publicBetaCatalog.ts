@@ -21,6 +21,10 @@ export type PublicBetaCatalogEntry = {
   credentials: string;
   approval: string;
   source?: string;
+  freeTier?: string;
+  pricingSource?: string;
+  runtime?: string;
+  costOwner?: "client" | "veloce" | "shared";
 };
 
 const nativeEntries: PublicBetaCatalogEntry[] = [
@@ -124,6 +128,12 @@ const repositoryEntries: readonly [string, string, string, string, string][] = [
   ["Appsmith / FounderOS", "Control-room references", "Inform operator dashboards and governance surfaces", "Operator plane", "Reference only; not hosted-runtime dependencies"],
 ];
 
+const additionalRepositoryEntries: PublicBetaCatalogEntry[] = [
+  { id: "repository-repomix", name: "Repomix", kind: "Repository provenance", status: "Available now", customerTool: "Operator and CI context compiler", outcome: "Pack selected codebase context, count tokens, and compress safely for reviewed operator work.", stage: "Context → routing", data: "Reference or explicitly exported operator context; customer-private data is never packed automatically.", cost: "No upstream runtime fee; token and CI compute costs apply.", credentials: "No provider key.", approval: "Token-count, secret-exclusion, and compression-parity evidence.", source: "https://github.com/yamadashy/repomix", runtime: "Operator/CI", costOwner: "veloce" },
+  { id: "repository-plunk", name: "Plunk", kind: "Repository provenance", status: "Review required", customerTool: "Internal transactional email fallback", outcome: "Evaluate self-hosted notification delivery without making it a customer send path by default.", stage: "Support and notifications", data: "Operator notification records only during evaluation.", cost: "AGPL-3.0 self-hosted software; mail, compute, deliverability, and support costs apply.", credentials: "Operator-managed SMTP/provider credentials.", approval: "Deliverability, tenant isolation, legal retention, and rollback evidence.", source: "https://github.com/useplunk/plunk", runtime: "Operator worker", costOwner: "veloce" },
+  { id: "repository-novu", name: "Novu", kind: "Repository provenance", status: "Review required", customerTool: "Internal multi-channel notification fallback", outcome: "Evaluate audited email, SMS, push, and in-app notification workflows.", stage: "Support and notifications", data: "Operator notification records only during evaluation.", cost: "MIT self-hosted software; channel provider, compute, and support costs apply.", credentials: "Operator-managed channel credentials.", approval: "Provider failure, delivery audit, retention, and rollback evidence.", source: "https://github.com/novuhq/novu", runtime: "Operator worker", costOwner: "veloce" },
+];
+
 export const PUBLIC_BETA_CATALOG: readonly PublicBetaCatalogEntry[] = [
   ...nativeEntries,
   ...providerEntries,
@@ -140,6 +150,7 @@ export const PUBLIC_BETA_CATALOG: readonly PublicBetaCatalogEntry[] = [
     credentials: "No upstream credentials are exposed by the catalog entry.",
     approval: "Catalog visibility is not execution permission; promotion requires its own evidence bundle.",
   })),
+  ...additionalRepositoryEntries,
 ];
 
 export const PUBLIC_BETA_STATUS_ORDER: readonly PublicBetaStatus[] = [

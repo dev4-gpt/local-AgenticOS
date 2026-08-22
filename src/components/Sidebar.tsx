@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { LayoutGrid, Brain, Sparkles as SparklesIcon, TrendingUp, Columns3, NotebookText, Film, Building2, Workflow, MessagesSquare, Image as ImageIcon, Gamepad2, Music2, Network, Clapperboard, Repeat, Cpu, LayoutDashboard, Palette, GripVertical, Eye, EyeOff, SlidersHorizontal, Check, SquareTerminal, Globe2, PlugZap, Orbit, Blocks, Target, BookOpenText, RadioTower, ContactRound, GitBranch, Mic2, ChevronDown, KeyRound } from "lucide-react";
+import { LayoutGrid, Brain, Sparkles as SparklesIcon, TrendingUp, Columns3, NotebookText, Film, Building2, Workflow, MessagesSquare, Image as ImageIcon, Gamepad2, Music2, Network, Clapperboard, Repeat, Cpu, LayoutDashboard, Palette, GripVertical, Eye, EyeOff, SlidersHorizontal, Check, SquareTerminal, Globe2, PlugZap, Orbit, Blocks, Target, BookOpenText, RadioTower, ContactRound, GitBranch, Mic2, ChevronDown, KeyRound, ListChecks } from "lucide-react";
 import { useState, useEffect, type ReactNode } from "react";
 import AgentAvatar from "./AgentAvatar";
 
@@ -53,6 +53,7 @@ const NAV: NavItem[] = [
   { href: "/integrations", label: "Integrations", icon: <PlugZap size={16} />, accent: "#5ab896", dim: "rgba(90,184,150,0.16)" },
   { href: "/capabilities", label: "Capabilities", icon: <Blocks size={16} />, accent: "#34d399", dim: "rgba(52,211,153,0.16)" },
   { href: "/credentials", label: "Credentials", icon: <KeyRound size={16} />, accent: "#60a5fa", dim: "rgba(96,165,250,0.16)" },
+  { href: "/provider-matrix", label: "Provider matrix", icon: <ListChecks size={16} />, accent: "#34d399", dim: "rgba(52,211,153,0.16)" },
   { href: "/video",    label: "Video",    icon: <Film size={16} />,      accent: "#ef4444", dim: "rgba(239,68,68,0.16)" },
   { href: "/studio",   label: "Agent Studio", icon: <Mic2 size={16} />,   accent: "#fb7185", dim: "rgba(251,113,133,0.16)" },
   { href: "/openmontage", label: "OpenMontage", icon: <Clapperboard size={16} />, accent: "#f0a868", dim: "rgba(240,168,104,0.16)" },
@@ -78,9 +79,9 @@ const LS_HIDDEN = "agentos.sidebar.hidden";
 const ORCHESTRATION_ROUTES = new Set(["/paperclip", "/room", "/pipeline", "/agent-kanban", "/loop", "/kanban", "/ruflo"]);
 const CONTEXT_ROUTES = new Set(["/memory", "/notebook", "/goals", "/journal"]);
 const CLIENT_ONLY_ROUTES = new Set(["/context", "/orchestrate", "/create", "/deliver"]);
-const CLIENT_NAV_ROUTES = new Set(["/", ...CLIENT_ONLY_ROUTES, "/capabilities", "/credentials"]);
+const CLIENT_NAV_ROUTES = new Set(["/", ...CLIENT_ONLY_ROUTES, "/capabilities", "/credentials", "/provider-matrix"]);
 const CREATE_ROUTES = new Set(["/create", "/opendesign", "/web-studio", "/flow-lab", "/video", "/studio", "/openmontage", "/music", "/games", "/thumbnails"]);
-const GOVERN_ROUTES = new Set(["/integrations", "/capabilities", "/credentials", "/seo", "/guide"]);
+const GOVERN_ROUTES = new Set(["/integrations", "/capabilities", "/credentials", "/provider-matrix", "/seo", "/guide"]);
 const DELIVERY_ROUTES = new Set(["/deliver", "/leads", "/radar"]);
 function sectionOf(href: string): string {
   if (href === "/" || AGENT_ROUTES.has(href)) return "Command";

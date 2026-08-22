@@ -32,7 +32,7 @@ const ROUTE_LENS: Array<[string[], string]> = [
   [["/context", "/memory", "/notebook", "/goals", "/journal"], "context"],
   [["/orchestrate", "/paperclip", "/room", "/pipeline", "/agent-kanban", "/kanban", "/loop", "/ruflo"], "orchestrate"],
   [["/create", "/flow-lab", "/web-studio", "/opendesign", "/video", "/openmontage", "/music", "/games", "/thumbnails", "/studio"], "create"],
-  [["/integrations", "/capabilities", "/credentials", "/seo", "/seo-guide", "/guide"], "govern"],
+  [["/integrations", "/capabilities", "/credentials", "/provider-matrix", "/seo", "/seo-guide", "/guide"], "govern"],
   [["/deliver", "/leads", "/radar"], "deliver"],
 ];
 
@@ -40,7 +40,7 @@ function lensFor(pathname: string) {
   return ROUTE_LENS.find(([routes]) => routes.some((route) => pathname.startsWith(route)))?.[1] ?? "command";
 }
 
-const CLIENT_SURFACE_ROUTES = new Set(["/", "/context", "/orchestrate", "/create", "/capabilities", "/credentials", "/deliver"]);
+const CLIENT_SURFACE_ROUTES = new Set(["/", "/context", "/orchestrate", "/create", "/capabilities", "/credentials", "/provider-matrix", "/deliver"]);
 const CLIENT_EXECUTION_ROUTES: Record<string, ClientWorkspaceSurface> = {
   "/create": "create", "/opendesign": "opendesign", "/web-studio": "web-studio", "/flow-lab": "flow-lab",
   "/video": "video", "/studio": "studio", "/openmontage": "openmontage", "/music": "music", "/games": "games",

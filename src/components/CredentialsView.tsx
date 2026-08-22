@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, KeyRound, LockKeyhole, LogOut, RefreshCw, Send, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, KeyRound, LockKeyhole, LogOut, RefreshCw, Send, ShieldCheck, XCircle, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { CLIENT_CREDENTIAL_OPTIONS, type ClientCredentialOption } from "@/lib/clientCredentialCatalog";
 import { publicCatalogEntryForCredential } from "@/lib/publicProviderCatalog";
@@ -13,6 +13,7 @@ interface Credential {
   secret: boolean;
   connectionStatus?: string | null;
   credentialMode?: string;
+  lastValidatedAt?: string | null;
 }
 
 interface Status {
@@ -23,7 +24,7 @@ interface Status {
     approvalsRequired: boolean;
   };
   credentials: Credential[];
-  catalog?: Array<{ id: string; name: string; customerTool: string; pipelineStage: string; pricingBasis: string; creditEstimate: string; status: string; credentialMode: string; approval: string }>;
+  catalog?: Array<{ id: string; name: string; customerTool: string; pipelineStage: string; pricingBasis: string; creditEstimate: string; status: string; credentialMode: string; approval: string; pricingVerifiedAt?: string | null; freeTier?: string | null; modelOptions?: Array<{ model: string; units?: Array<{ display: string }> }> }>;
   credentialOptions?: ClientCredentialOption[];
   client: {
     slug: string | null;
@@ -157,6 +158,11 @@ export default function CredentialsView() {
             <RefreshCw size={14} />
           </button>
         </div>
+      </section>
+
+      <section className="panel flex flex-wrap items-center justify-between gap-3 p-4">
+        <div><div className="text-[13px] font-semibold text-[var(--fg)]">Choose tools before adding keys</div><p className="mt-1 text-[11px] text-[var(--fg-dim)]">Compare cost, free-tier limits, runtime placement, and activation requirements in the provider matrix.</p></div>
+        <button type="button" onClick={() => router.push("/provider-matrix")} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--panel-border)] px-3 py-2 text-[11px] text-[var(--fg-dim)]">Open provider matrix <ArrowRight size={13} /></button>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">

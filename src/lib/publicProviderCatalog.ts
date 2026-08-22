@@ -1,5 +1,6 @@
 import { CLIENT_CREDENTIAL_OPTIONS } from "@/lib/clientCredentialCatalog";
 import { V96_REPOSITORY_CATALOG, type V96RepositoryReference } from "@/lib/v96RepositoryCatalog";
+import { pricingDisplay, pricingSnapshotForCredential, type ProviderPricingOption } from "@/lib/providerPricingCatalog";
 
 export type PublicCatalogStatus =
   | "available-now"
@@ -32,6 +33,16 @@ export interface PublicProviderCatalogEntry {
   sourceCommit?: string;
   license?: string;
   sourceNote?: string;
+  pricingSnapshotId?: string;
+  pricingVersion?: string;
+  pricingVerifiedAt?: string;
+  pricingSourceUrl?: string;
+  freeTier?: string;
+  costOwner?: "client" | "veloce" | "shared";
+  modelOptions?: readonly ProviderPricingOption[];
+  runtimePlacement?: string;
+  managedCredentialAvailable?: boolean;
+  selectionAllowed?: boolean;
 }
 
 const NATIVE_ENTRIES: readonly PublicProviderCatalogEntry[] = [
@@ -91,6 +102,9 @@ const PROVIDER_ENTRIES: readonly PublicProviderCatalogEntry[] = [
   permissions: "Server-side provider call; no browser key exposure; outputs remain tenant-owned.",
   pricingBasis: pricing, creditEstimate: "Shown before execution when provider pricing is configured.",
   credentialMode: credentialMode as PublicCredentialMode, approval, credentialKey: key,
+  runtimePlacement: "Tenant runtime provider adapter",
+  managedCredentialAvailable: false,
+  selectionAllowed: true,
   sourceNote: "Available only after this provider is approved in the tenant manifest.",
 }));
 
@@ -133,12 +147,34 @@ const REPOSITORY_ENTRIES: readonly PublicProviderCatalogEntry[] = V96_REPOSITORY
   sourceCommit: reference.sourceCommit,
   license: reference.license,
   sourceNote: reference.activation === "native-enabled" ? reference.implementationMapping : "Provenance record only; catalog status is not an execution grant.",
+  runtimePlacement: reference.placement,
+  managedCredentialAvailable: reference.id === "jina-reader",
+  selectionAllowed: reference.activation === "native-enabled" && (reference.runtime === "dependency-free" || reference.id === "jina-reader"),
 }));
 
+function enrichEntry(entry: PublicProviderCatalogEntry): PublicProviderCatalogEntry {
+  const pricing = pricingSnapshotForCredential(entry.credentialKey ?? "");
+  return {
+    ...entry,
+    ...(pricing ? {
+      pricingSnapshotId: pricing.id,
+      pricingVersion: pricing.version,
+      pricingVerifiedAt: pricing.verifiedAt,
+      pricingSourceUrl: pricing.sourceUrl,
+      freeTier: pricing.freeTier,
+      costOwner: pricing.costOwner,
+      modelOptions: pricing.options,
+      pricingBasis: `${entry.pricingBasis} ${pricingDisplay(pricing)}`,
+    } : {
+      costOwner: entry.kind === "provider" ? "client" : "veloce",
+      selectionAllowed: entry.selectionAllowed ?? (entry.status === "available-now"),
+    }),
+    selectionAllowed: entry.status === "reference-only" || entry.status === "operator-only" ? false : (entry.selectionAllowed ?? entry.status === "available-now"),
+  };
+}
+
 export const PUBLIC_PROVIDER_CATALOG: readonly PublicProviderCatalogEntry[] = [
-  ...NATIVE_ENTRIES,
-  ...PROVIDER_ENTRIES,
-  ...REPOSITORY_ENTRIES,
+  ...[...NATIVE_ENTRIES, ...PROVIDER_ENTRIES, ...REPOSITORY_ENTRIES].map(enrichEntry),
 ];
 
 export function publicCatalogEntryById(id: string) {

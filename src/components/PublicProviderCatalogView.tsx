@@ -41,6 +41,7 @@ function CatalogRow({ entry }: { entry: PublicProviderCatalogEntry }) {
       <Detail label="Cost basis" value={`${entry.pricingBasis} ${entry.creditEstimate}`} />
       <Detail label="Credentials and approval" value={`${entry.credentialMode === "byok" ? "Client-owned key" : entry.credentialMode === "none" ? "No provider key" : entry.credentialMode === "reviewed" ? "Reviewed activation" : "Veloce-managed"}. ${entry.approval}`} />
     </div>
+    {entry.modelOptions?.length ? <div className="mt-3 rounded-lg border p-3" style={{ borderColor: "var(--line-soft)", background: "rgba(0,0,0,0.12)" }}><p className="text-[9px] uppercase tracking-[0.12em]" style={{ color: "var(--cream-mute)" }}>Pricing snapshot {entry.pricingVersion || ""} · {entry.pricingVerifiedAt || "verification pending"}</p><div className="mt-2 grid gap-2 md:grid-cols-2">{entry.modelOptions.map((option) => <div key={option.id} className="rounded-md border p-2" style={{ borderColor: "var(--line-soft)" }}><p className="text-[10px] font-semibold" style={{ color: "var(--cream)" }}>{option.label}{option.recommended ? " · recommended" : ""}</p><p className="mt-1 text-[9px]" style={{ color: "var(--cream-mute)" }}>{option.units.map((unit) => unit.display).join(" · ")}</p></div>)}</div>{entry.pricingSourceUrl && <a href={entry.pricingSourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-[9px]" style={{ color: "#93c5fd" }}>Verify current provider pricing</a>}</div> : null}
     {(entry.sourceUrl || entry.sourceNote) && <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-3 text-[10px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-mute)" }}>
       {entry.sourceUrl && <a href={entry.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1" style={{ color: "#93c5fd" }}>Source <ExternalLink size={10} /></a>}
       {entry.sourceCommit && <span className="font-mono">{entry.sourceCommit.slice(0, 12)}</span>}
@@ -86,7 +87,7 @@ export default function PublicProviderCatalogView() {
             <p className="mt-4 max-w-3xl text-[13px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>A transparent map of the tools, provider adapters, and repository-derived contracts that can support research, memory, planning, creation, quality review, approval, and delivery.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href="https://veloceos.cloud/start" className="inline-flex items-center gap-2 rounded-lg border border-slate-600 px-3.5 py-2 text-[11px] font-semibold text-slate-200">Request invite <ArrowRight size={13} /></Link>
+            <Link href="https://veloceos.cloud/start" className="inline-flex items-center gap-2 rounded-lg border border-slate-600 px-3.5 py-2 text-[11px] font-semibold text-slate-200">Start onboarding <ArrowRight size={13} /></Link>
             <Link href="/credits" className="inline-flex items-center gap-2 rounded-lg border border-slate-600 px-3.5 py-2 text-[11px] font-semibold text-slate-200">Credits policy <Wallet size={13} /></Link>
             <Link href="/login?next=%2Fcapabilities" className="inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[11px] font-semibold" style={{ color: "#07111e", background: "#93c5fd" }}>Open client runtime <ArrowRight size={13} /></Link>
           </div>
