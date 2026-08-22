@@ -90,7 +90,7 @@ REGION=asia-south1
 BUILD_DIR=$(mktemp -d /tmp/veloce-public-beta.XXXXXX)
 gh repo clone dev4-gpt/local-AgenticOS "$BUILD_DIR"
 cd "$BUILD_DIR"
-git checkout c44484c
+git checkout 736c7e6
 
 IMAGE=asia-south1-docker.pkg.dev/$PROJECT/veloce/client-runtime:v124-public-beta-20260822
 gcloud builds submit . \
