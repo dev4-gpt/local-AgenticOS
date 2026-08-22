@@ -1,18 +1,38 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { stripeConfigured, supabaseServiceInsert, supabaseServiceRpc, supabaseServiceSelect, supabaseServiceUpdate, verifyStripeSignature } from "@/lib/publicLaunch";
+import { supabaseServiceInsert, supabaseServiceRpc, supabaseServiceSelect, supabaseServiceUpdate, verifyStripeSignature } from "@/lib/publicLaunch";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const payload = await request.text();
-  if (!stripeConfigured() || !verifyStripeSignature(payload, request.headers.get("stripe-signature"))) return NextResponse.json({ ok: false, error: "invalid_signature" }, { status: 400 });
+  // Webhook delivery only needs the Stripe secret and signing secret. The
+  // public-launch setup/platform prices are unrelated to managed-credit plans.
+  if (!process.env.STRIPE_SECRET_KEY?.trim() || !verifyStripeSignature(payload, request.headers.get("stripe-signature"))) return NextResponse.json({ ok: false, error: "invalid_signature" }, { status: 400 });
   const event = JSON.parse(payload) as { id?: string; type?: string; data?: { object?: Record<string, unknown> } };
   if (!event.id || !event.type) return NextResponse.json({ ok: false, error: "invalid_event" }, { status: 400 });
   const prior = await supabaseServiceSelect("stripe_webhook_events", { event_id: `eq.${event.id}` });
-  if (prior.rows.length > 0) return NextResponse.json({ ok: true, duplicate: true });
   const object = event.data?.object ?? {};
   const metadata = (object.metadata ?? {}) as Record<string, unknown>;
+  if (prior.rows.some((row) => row.status === "processed")) return NextResponse.json({ ok: true, duplicate: true });
+  if (event.type === "checkout.session.completed" && metadata.product === "veloce-managed-credits-plan" && typeof metadata.credit_plan_id === "string") {
+    const amountTotal = typeof object.amount_total === "number" ? object.amount_total : 0;
+    const settled = await supabaseServiceRpc("settle_client_credit_purchase_plan", {
+      p_plan_id: metadata.credit_plan_id,
+      p_amount_micros: Math.round(amountTotal * 10_000),
+      p_stripe_event_id: event.id,
+      p_stripe_checkout_session_id: typeof object.id === "string" ? object.id : null,
+      p_metadata: { source: "stripe", product: "veloce-managed-credits-plan" },
+    });
+    if (!settled.ok || settled.value !== true) {
+      if (prior.rows.length > 0) await supabaseServiceUpdate("stripe_webhook_events", { event_id: `eq.${event.id}` }, { status: "failed", error_code: "credit_plan_settlement_failed" });
+      else await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "failed", error_code: "credit_plan_settlement_failed" });
+      return NextResponse.json({ ok: false, error: "credit_plan_settlement_failed" }, { status: 502 });
+    }
+    if (prior.rows.length > 0) await supabaseServiceUpdate("stripe_webhook_events", { event_id: `eq.${event.id}` }, { status: "processed", error_code: null });
+    else await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "processed" });
+    return NextResponse.json({ ok: true, eventId: event.id, status: "processed" });
+  }
   const requestId = typeof metadata.request_id === "string" ? metadata.request_id : null;
   const eventRecord = await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "processed" });
   if (!eventRecord.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
