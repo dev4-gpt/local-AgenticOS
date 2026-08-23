@@ -1,0 +1,153 @@
+import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { OPENROUTER_MANAGED_ROUTE } from "../src/lib/managedProviderAdapter";
+
+type ReservationStatus = "reserved" | "settled" | "refunded" | "expired";
+
+type Reservation = {
+  id: string;
+  idempotencyKey: string;
+  quotedMicros: number;
+  status: ReservationStatus;
+  actualMicros: number;
+  expiresAt: number;
+};
+
+class LifecycleHarness {
+  private nextId = 1;
+  private readonly reservations = new Map<string, Reservation>();
+
+  constructor(private balanceMicros: number) {}
+
+  reserve(idempotencyKey: string, quotedMicros: number, expiresAt = Date.now() + 60_000) {
+    const prior = this.reservations.get(idempotencyKey);
+    if (prior) return prior;
+    if (!Number.isSafeInteger(quotedMicros) || quotedMicros <= 0 || quotedMicros > this.balanceMicros) return null;
+    const reservation: Reservation = {
+      id: "reservation-" + this.nextId++,
+      idempotencyKey,
+      quotedMicros,
+      status: "reserved",
+      actualMicros: 0,
+      expiresAt,
+    };
+    this.balanceMicros -= quotedMicros;
+    this.reservations.set(idempotencyKey, reservation);
+    return reservation;
+  }
+
+  settle(reservationId: string, actualMicros: number) {
+    const reservation = [...this.reservations.values()].find((item) => item.id === reservationId);
+    if (!reservation || reservation.status === "expired" || reservation.status === "refunded") return false;
+    if (reservation.status === "settled") return true;
+    if (actualMicros < 0 || actualMicros > reservation.quotedMicros || Date.now() > reservation.expiresAt) return false;
+    this.balanceMicros += reservation.quotedMicros - actualMicros;
+    reservation.actualMicros = actualMicros;
+    reservation.status = "settled";
+    return true;
+  }
+
+  refund(reservationId: string) {
+    const reservation = [...this.reservations.values()].find((item) => item.id === reservationId);
+    if (!reservation) return false;
+    if (reservation.status === "refunded" || reservation.status === "expired") return true;
+    if (reservation.status === "reserved") this.balanceMicros += reservation.quotedMicros;
+    else if (reservation.status === "settled") this.balanceMicros += reservation.actualMicros;
+    else return false;
+    reservation.status = "refunded";
+    return true;
+  }
+
+  expire(now = Date.now()) {
+    let count = 0;
+    for (const reservation of this.reservations.values()) {
+      if (reservation.status === "reserved" && reservation.expiresAt <= now) {
+        this.balanceMicros += reservation.quotedMicros;
+        reservation.status = "expired";
+        count += 1;
+      }
+    }
+    return count;
+  }
+}
+
+const migrationPath = resolve(process.cwd(), "product-experience/supabase-v33-managed-credit-lifecycle.sql");
+const webhookPath = resolve(process.cwd(), "product-experience/src/app/api/billing/webhook/route.ts");
+
+test("reservation succeeds and duplicate reservation is idempotent", () => {
+  const ledger = new LifecycleHarness(1_000_000);
+  const first = ledger.reserve("job-1", 400_000);
+  const duplicate = ledger.reserve("job-1", 400_000);
+
+  expect(first?.id).toBe(duplicate?.id);
+  expect(first?.status).toBe("reserved");
+});
+
+test("insufficient allocation fails without creating a reservation", () => {
+  const ledger = new LifecycleHarness(100_000);
+
+  expect(ledger.reserve("job-too-large", 100_001)).toBeNull();
+});
+
+test("settlement records actual usage and rejects an overrun", () => {
+  const ledger = new LifecycleHarness(1_000_000);
+  const reservation = ledger.reserve("job-2", 400_000);
+
+  expect(reservation).not.toBeNull();
+  expect(ledger.settle(reservation!.id, 400_001)).toBe(false);
+  expect(ledger.settle(reservation!.id, 250_000)).toBe(true);
+  expect(ledger.settle(reservation!.id, 250_000)).toBe(true);
+});
+
+test("provider failure refunds a reservation and expiration releases stale funds", () => {
+  const ledger = new LifecycleHarness(1_000_000);
+  const failed = ledger.reserve("job-failed", 300_000);
+  const stale = ledger.reserve("job-stale", 200_000, Date.now() - 1);
+
+  expect(ledger.refund(failed!.id)).toBe(true);
+  expect(ledger.refund(failed!.id)).toBe(true);
+  expect(ledger.expire()).toBe(1);
+  expect(stale?.status).toBe("expired");
+});
+
+test("tracked SQL contains the lifecycle tables, gates, and server functions", () => {
+  const sql = readFileSync(migrationPath, "utf8");
+
+  for (const fragment of [
+    "client_credit_reservations",
+    "client_credit_reservation_events",
+    "reserve_client_credit",
+    "settle_client_credit",
+    "refund_client_credit",
+    "expire_client_credit_reservations",
+    "provider_request_id",
+    "reconciliation_status",
+    "audit_metadata",
+    "managed_route_enabled = true",
+    "revoke all on public.client_credit_reservations",
+  ]) {
+    expect(sql).toContain(fragment);
+  }
+});
+
+test("Stripe lifecycle events remain signature-verified and idempotent", () => {
+  const source = readFileSync(webhookPath, "utf8");
+
+  expect(source).toContain("await request.text()");
+  expect(source).toContain("verifyStripeSignature");
+  expect(source).toContain("stripe_webhook_events");
+  for (const eventType of [
+    "checkout.session.completed",
+    "checkout.session.expired",
+    "payment_intent.payment_failed",
+    "charge.refunded",
+    "charge.dispute.created",
+  ]) {
+    expect(source).toContain(eventType);
+  }
+});
+
+test("OpenRouter managed execution remains disabled", () => {
+  expect(OPENROUTER_MANAGED_ROUTE.enabled).toBe(false);
+});

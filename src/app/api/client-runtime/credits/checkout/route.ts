@@ -48,6 +48,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error }, { status: error === "not_authenticated" ? 401 : 502 });
     }
     const params = new URLSearchParams({ mode: "payment", customer_email: user.email || "", success_url: `${appUrl}/credentials?purchase=success`, cancel_url: `${appUrl}/credentials?purchase=cancelled`, "managed_payments[enabled]": "false", "metadata[tenant_slug]": process.env.CLIENT_SLUG || "", "metadata[credit_plan_id]": planId, "metadata[product]": "veloce-managed-credits-plan", "metadata[stripe_mode]": stripeMode });
+    params.set("payment_intent_data[metadata][tenant_slug]", process.env.CLIENT_SLUG || "");
+    params.set("payment_intent_data[metadata][credit_plan_id]", planId);
+    params.set("payment_intent_data[metadata][product]", "veloce-managed-credits-plan");
+    params.set("payment_intent_data[metadata][stripe_mode]", stripeMode);
     validAllocations.forEach((item, index) => {
       params.set(`line_items[${index}][price_data][currency]`, "usd");
       params.set(`line_items[${index}][price_data][unit_amount]`, String(Math.round(item.amount_micros / 10000)));

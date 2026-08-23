@@ -4,12 +4,41 @@ import { supabaseServiceInsert, supabaseServiceRpc, supabaseServiceSelect, supab
 
 export const runtime = "nodejs";
 
+const MANAGED_CREDIT_LIFECYCLE_EVENTS = new Set([
+  "checkout.session.expired",
+  "payment_intent.payment_failed",
+  "charge.refunded",
+  "charge.dispute.created",
+]);
+
+async function storeWebhookEvent(eventId: string, eventType: string, payload: string, status: "processed" | "failed", errorCode: string | null = null) {
+  const record = {
+    event_id: eventId,
+    event_type: eventType,
+    payload_hash: createHash("sha256").update(payload).digest("hex"),
+    status,
+    error_code: errorCode,
+  };
+  const prior = await supabaseServiceSelect("stripe_webhook_events", { event_id: "eq." + eventId });
+  if (prior.rows.length > 0) return supabaseServiceUpdate("stripe_webhook_events", { event_id: "eq." + eventId }, record);
+  return supabaseServiceInsert("stripe_webhook_events", record);
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
 export async function POST(request: Request) {
   const payload = await request.text();
   // Webhook delivery only needs the Stripe secret and signing secret. The
   // public-launch setup/platform prices are unrelated to managed-credit plans.
   if (!process.env.STRIPE_SECRET_KEY?.trim() || !verifyStripeSignature(payload, request.headers.get("stripe-signature"))) return NextResponse.json({ ok: false, error: "invalid_signature" }, { status: 400 });
-  const event = JSON.parse(payload) as { id?: string; type?: string; data?: { object?: Record<string, unknown> } };
+  let event: { id?: string; type?: string; data?: { object?: Record<string, unknown> } };
+  try {
+    event = JSON.parse(payload) as { id?: string; type?: string; data?: { object?: Record<string, unknown> } };
+  } catch {
+    return NextResponse.json({ ok: false, error: "invalid_event" }, { status: 400 });
+  }
   if (!event.id || !event.type) return NextResponse.json({ ok: false, error: "invalid_event" }, { status: 400 });
   const prior = await supabaseServiceSelect("stripe_webhook_events", { event_id: `eq.${event.id}` });
   const object = event.data?.object ?? {};
@@ -29,10 +58,58 @@ export async function POST(request: Request) {
       else await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "failed", error_code: "credit_plan_settlement_failed" });
       return NextResponse.json({ ok: false, error: "credit_plan_settlement_failed" }, { status: 502 });
     }
+    const planUpdate = await supabaseServiceUpdate("client_credit_purchase_plans", { id: `eq.${metadata.credit_plan_id}` }, {
+      stripe_payment_intent_id: stringValue(object.payment_intent),
+      stripe_mode: metadata.stripe_mode === "live" ? "live" : "test",
+      reconciliation_status: "matched",
+      updated_at: new Date().toISOString(),
+    });
+    if (!planUpdate.ok || planUpdate.rows.length === 0) {
+      if (prior.rows.length > 0) await supabaseServiceUpdate("stripe_webhook_events", { event_id: `eq.${event.id}` }, { status: "failed", error_code: "credit_plan_metadata_update_failed" });
+      else await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "failed", error_code: "credit_plan_metadata_update_failed" });
+      return NextResponse.json({ ok: false, error: "credit_plan_metadata_update_failed" }, { status: 502 });
+    }
     if (prior.rows.length > 0) await supabaseServiceUpdate("stripe_webhook_events", { event_id: `eq.${event.id}` }, { status: "processed", error_code: null });
     else await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "processed" });
     return NextResponse.json({ ok: true, eventId: event.id, status: "processed" });
   }
+
+  if (MANAGED_CREDIT_LIFECYCLE_EVENTS.has(event.type)) {
+    const paymentIntentId = stringValue(object.payment_intent) || stringValue(object.id);
+    let creditPlanId = stringValue(metadata.credit_plan_id);
+    if (!creditPlanId && paymentIntentId) {
+      const matchingPlan = await supabaseServiceSelect("client_credit_purchase_plans", { stripe_payment_intent_id: "eq." + paymentIntentId });
+      creditPlanId = stringValue(matchingPlan.rows[0]?.id);
+    }
+    if (!creditPlanId) {
+      await storeWebhookEvent(event.id, event.type, payload, "failed", "credit_plan_metadata_missing");
+      return NextResponse.json({ ok: false, error: "credit_plan_metadata_missing" }, { status: 422 });
+    }
+
+    const amountMicros = typeof object.amount_refunded === "number"
+      ? Math.round(object.amount_refunded * 10_000)
+      : 0;
+    const lifecycle = await supabaseServiceRpc("record_client_credit_purchase_lifecycle_event", {
+      p_plan_id: creditPlanId,
+      p_event_type: event.type,
+      p_stripe_event_id: event.id,
+      p_amount_micros: amountMicros,
+      p_metadata: {
+        source: "stripe",
+        stripeMode: metadata.stripe_mode === "live" ? "live" : "test",
+        paymentIntentId,
+        checkoutSessionId: stringValue(object.id),
+        failureReason: stringValue((object.last_payment_error as Record<string, unknown> | undefined)?.message),
+      },
+    });
+    if (!lifecycle.ok || lifecycle.value !== true) {
+      await storeWebhookEvent(event.id, event.type, payload, "failed", "credit_plan_lifecycle_failed");
+      return NextResponse.json({ ok: false, error: "credit_plan_lifecycle_failed" }, { status: 502 });
+    }
+    await storeWebhookEvent(event.id, event.type, payload, "processed");
+    return NextResponse.json({ ok: true, eventId: event.id, status: "processed" });
+  }
+
   const requestId = typeof metadata.request_id === "string" ? metadata.request_id : null;
   const eventRecord = await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "processed" });
   if (!eventRecord.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
