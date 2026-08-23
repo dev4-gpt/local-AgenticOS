@@ -216,6 +216,16 @@ begin
 
   perform pg_advisory_xact_lock(hashtext(left(p_tenant_slug, 64)));
 
+  select id
+    into existing_id
+  from public.client_credit_reservations
+  where tenant_slug = p_tenant_slug
+    and idempotency_key = p_idempotency_key;
+
+  if existing_id is not null then
+    return existing_id;
+  end if;
+
   insert into public.client_credit_accounts (tenant_slug)
   values (p_tenant_slug)
   on conflict (tenant_slug) do nothing;
@@ -828,6 +838,17 @@ begin
     return false;
   end if;
 
+  -- Recheck after locking the plan so concurrent deliveries of the same
+  -- Stripe event cannot both apply a refund before the marker is committed.
+  if exists (
+    select 1
+    from public.client_credit_transactions
+    where tenant_slug = plan_row.tenant_slug
+      and idempotency_key = 'stripe-event:' || p_stripe_event_id
+  ) then
+    return true;
+  end if;
+
   if p_event_type in ('checkout.session.expired', 'payment_intent.payment_failed') then
     update public.client_credit_purchase_plans
     set status = case when status = 'pending' then
@@ -888,13 +909,48 @@ begin
     return true;
   end if;
 
+  if plan_row.status = 'refunded' then
+    return true;
+  end if;
+
   if plan_row.status <> 'paid' then
     return false;
   end if;
 
-  refund_amount := case when p_amount_micros = 0 then plan_row.total_micros - plan_row.refunded_micros else p_amount_micros end;
+  -- Stripe's amount_refunded is cumulative. Convert it to the new delta so
+  -- a later partial-refund event cannot debit the same amount twice.
+  refund_amount := case
+    when p_amount_micros = 0 then plan_row.total_micros - plan_row.refunded_micros
+    else greatest(0, p_amount_micros - plan_row.refunded_micros)
+  end;
+
+  if refund_amount = 0 then
+    update public.client_credit_purchase_plans
+    set metadata = coalesce(metadata, '{}'::jsonb) || p_metadata,
+        updated_at = now()
+    where id = p_plan_id;
+
+    insert into public.client_credit_transactions (
+      tenant_slug, idempotency_key, kind, amount_micros, balance_after_micros,
+      stripe_event_id, metadata
+    )
+    select
+      plan_row.tenant_slug,
+      'stripe-event:' || p_stripe_event_id,
+      'refund',
+      0,
+      coalesce(a.balance_micros, 0),
+      p_stripe_event_id,
+      jsonb_build_object('event_type', p_event_type, 'plan_id', p_plan_id, 'direction', 'no_op') || p_metadata
+    from public.client_credit_accounts a
+    where a.tenant_slug = plan_row.tenant_slug
+    on conflict (tenant_slug, idempotency_key) do nothing;
+
+    return true;
+  end if;
+
   refund_remaining := refund_amount;
-  if refund_amount <= 0 or refund_amount > plan_row.total_micros - plan_row.refunded_micros then
+  if refund_amount > plan_row.total_micros - plan_row.refunded_micros then
     return false;
   end if;
 
@@ -937,7 +993,7 @@ begin
     from public.client_credit_budgets
     where tenant_slug = plan_row.tenant_slug
       and catalog_id = plan_allocation.catalog_id
-      and provider_key = plan_allocation.provider_key;
+      and provider_key = plan_allocation.provider_key
     for update;
 
     if available is null or available < allocation_refund then
@@ -949,7 +1005,7 @@ begin
         updated_at = now()
     where tenant_slug = plan_row.tenant_slug
       and catalog_id = plan_allocation.catalog_id
-      and provider_key = plan_allocation.provider_key
+      and provider_key = plan_allocation.provider_key;
 
     update public.client_credit_purchase_plan_allocations
     set refunded_micros = refunded_micros + allocation_refund,

@@ -127,6 +127,9 @@ test("tracked SQL contains the lifecycle tables, gates, and server functions", (
     "reconciliation_status",
     "audit_metadata",
     "managed_route_enabled = true",
+    "and provider_key = plan_allocation.provider_key\n    for update;",
+    "and provider_key = plan_allocation.provider_key;\n\n    update public.client_credit_purchase_plan_allocations",
+    "greatest(0, p_amount_micros - plan_row.refunded_micros)",
     "revoke all on public.client_credit_purchase_plan_allocations",
   ]) {
     expect(sql).toContain(fragment);
