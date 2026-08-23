@@ -16,6 +16,8 @@ const required = [
   ["product-experience/src/app/api/support/route.ts", "secret_like_content"],
   ["src/app/api/client-runtime/credential-submissions/route.ts", "record_client_provider_connection"],
   ["src/app/api/client-runtime/credits/route.ts", "client_credit_account_snapshot"],
+  ["workers/public-provisioner/worker.mjs", "gcp_scope_not_allowed"],
+  ["workers/public-provisioner/worker.mjs", "secret_in_manifest"],
 ];
 for (const [file, marker] of required) if (!read(file).includes(marker)) throw new Error(`Public launch contract missing ${marker} in ${file}`);
 for (const file of ["product-experience/src/app/api/deployment-request/route.ts", "product-experience/src/app/api/support/route.ts", "product-experience/src/app/api/onboarding/setup/route.ts"]) {

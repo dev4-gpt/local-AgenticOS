@@ -36,6 +36,7 @@ create table if not exists public.client_onboarding_accounts (
   runtime_url text,
   manifest_version text,
   manifest_hash text,
+  approved_manifest jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

@@ -12,7 +12,7 @@ Configure both custom domains at the hosting layer and keep Cloudflare DNS recor
 
 ## Required server configuration
 
-`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `PUBLIC_EMAIL_FROM`, `LEAD_NOTIFICATION_*`, `PUBLIC_APP_URL`, `PUBLIC_SITE_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_SETUP_PRICE_ID`, `STRIPE_PLATFORM_PRICE_ID`, `STRIPE_CREDIT_PRICE_ID`, `CONTROL_PLANE_OPERATOR_SECRET`, and `CONTROL_PLANE_PROVISIONER_URL` are server-side values. Add `TURNSTILE_SECRET_KEY` when abuse-challenge enforcement is enabled. Never expose these as `NEXT_PUBLIC_*` values.
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `PUBLIC_EMAIL_FROM`, `LEAD_NOTIFICATION_*`, `PUBLIC_APP_URL`, `PUBLIC_SITE_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_SETUP_PRICE_ID`, `STRIPE_PLATFORM_PRICE_ID`, `STRIPE_CREDIT_PRICE_ID`, `CONTROL_PLANE_OPERATOR_SECRET`, `CONTROL_PLANE_WORKER_TOKEN`, and `CONTROL_PLANE_PROVISIONER_URL` are server-side values. Add `TURNSTILE_SECRET_KEY` when abuse-challenge enforcement is enabled. Never expose these as `NEXT_PUBLIC_*` values.
 
 Create the Stripe webhook endpoint at `/api/billing/webhook` for checkout completion, invoice payment failure, and subscription changes. Test signature verification and duplicate-event handling before live mode.
 
@@ -22,7 +22,7 @@ Apply `product-experience/supabase-public-launch-control-plane.sql` after the ex
 
 ## Provisioning worker boundary
 
-The public web process never runs `gcloud`, deploys Cloud Run, creates secrets, or mutates tenant infrastructure. A least-privileged worker receives a queued provisioning run at `CONTROL_PLANE_PROVISIONER_URL`, creates tenant resources, runs the evidence bundle, and calls `/api/onboarding/provision-result` with the control-plane secret. Promotion to active must call `/api/onboarding/activate` only after smoke testing and rollback evidence pass.
+The public web process never runs `gcloud`, deploys Cloud Run, creates secrets, or mutates tenant infrastructure. Deploy `workers/public-provisioner` as the `CONTROL_PLANE_PROVISIONER_URL` service. It accepts only approved manifests, enforces the allowed project/region, rejects secret-like manifest content, and delegates GCP mutations to a private `GCP_PROVISIONER_URL` adapter. The adapter creates tenant resources, runs the evidence bundle, and the worker calls `/api/onboarding/provision-result` with the control-plane secret. Promotion to active must call `/api/onboarding/activate` only after smoke testing and rollback evidence pass.
 
 The worker records request and tenant IDs, manifest version/hash, image digest, Cloud Run revision, created resources, evidence results, rollback target, retry count, and automation identity. Failed provisioning remains failed or rolled back; it never silently activates.
 
