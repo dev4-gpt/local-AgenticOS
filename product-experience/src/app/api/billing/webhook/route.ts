@@ -69,8 +69,8 @@ export async function POST(request: Request) {
       else await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "failed", error_code: "credit_plan_metadata_update_failed" });
       return NextResponse.json({ ok: false, error: "credit_plan_metadata_update_failed" }, { status: 502 });
     }
-    if (prior.rows.length > 0) await supabaseServiceUpdate("stripe_webhook_events", { event_id: `eq.${event.id}` }, { status: "processed", error_code: null });
-    else await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "processed" });
+    const stored = await storeWebhookEvent(event.id, event.type, payload, "processed");
+    if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
     return NextResponse.json({ ok: true, eventId: event.id, status: "processed" });
   }
 
@@ -82,7 +82,8 @@ export async function POST(request: Request) {
       creditPlanId = stringValue(matchingPlan.rows[0]?.id);
     }
     if (!creditPlanId) {
-      await storeWebhookEvent(event.id, event.type, payload, "failed", "credit_plan_metadata_missing");
+      const stored = await storeWebhookEvent(event.id, event.type, payload, "failed", "credit_plan_metadata_missing");
+      if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
       return NextResponse.json({ ok: false, error: "credit_plan_metadata_missing" }, { status: 422 });
     }
 
@@ -97,16 +98,18 @@ export async function POST(request: Request) {
       p_metadata: {
         source: "stripe",
         stripeMode: metadata.stripe_mode === "live" ? "live" : "test",
-        paymentIntentId,
-        checkoutSessionId: stringValue(object.id),
-        failureReason: stringValue((object.last_payment_error as Record<string, unknown> | undefined)?.message),
+        payment_intent_id: paymentIntentId,
+        checkout_session_id: stringValue(object.id),
+        failure_reason: stringValue((object.last_payment_error as Record<string, unknown> | undefined)?.message),
       },
     });
     if (!lifecycle.ok || lifecycle.value !== true) {
-      await storeWebhookEvent(event.id, event.type, payload, "failed", "credit_plan_lifecycle_failed");
+      const stored = await storeWebhookEvent(event.id, event.type, payload, "failed", "credit_plan_lifecycle_failed");
+      if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
       return NextResponse.json({ ok: false, error: "credit_plan_lifecycle_failed" }, { status: 502 });
     }
-    await storeWebhookEvent(event.id, event.type, payload, "processed");
+    const stored = await storeWebhookEvent(event.id, event.type, payload, "processed");
+    if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
     return NextResponse.json({ ok: true, eventId: event.id, status: "processed" });
   }
 

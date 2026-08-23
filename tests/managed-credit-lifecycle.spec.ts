@@ -115,8 +115,10 @@ test("tracked SQL contains the lifecycle tables, gates, and server functions", (
   const sql = readFileSync(migrationPath, "utf8");
 
   for (const fragment of [
+    "client_credit_purchase_plan_allocations",
     "client_credit_reservations",
     "client_credit_reservation_events",
+    "sync_client_credit_purchase_plan_allocations",
     "reserve_client_credit",
     "settle_client_credit",
     "refund_client_credit",
@@ -125,7 +127,7 @@ test("tracked SQL contains the lifecycle tables, gates, and server functions", (
     "reconciliation_status",
     "audit_metadata",
     "managed_route_enabled = true",
-    "revoke all on public.client_credit_reservations",
+    "revoke all on public.client_credit_purchase_plan_allocations",
   ]) {
     expect(sql).toContain(fragment);
   }
@@ -143,6 +145,8 @@ test("Stripe lifecycle events remain signature-verified and idempotent", () => {
     "payment_intent.payment_failed",
     "charge.refunded",
     "charge.dispute.created",
+    "failure_reason",
+    "event_store_failed",
   ]) {
     expect(source).toContain(eventType);
   }
