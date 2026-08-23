@@ -21,6 +21,7 @@ export async function POST(request: Request) {
   if (!limit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429 });
   const secret = process.env.STRIPE_SECRET_KEY?.trim();
   if (!secret) return NextResponse.json({ ok: false, error: "managed_credits_not_configured" }, { status: 503 });
+  const stripeMode = process.env.STRIPE_MODE === "live" ? "live" : "test";
   const requestBody = await request.json().catch(() => ({})) as { quantity?: unknown };
   const appUrl = (process.env.PUBLIC_APP_URL || process.env.CLIENT_RUNTIME_BASE_URL || "https://app.veloceos.cloud").replace(/\/$/, "");
   const allocations = Array.isArray((requestBody as { allocations?: unknown }).allocations) ? (requestBody as { allocations: unknown[] }).allocations : null;
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
       const error = plan.status === 404 ? "credit_plan_schema_missing" : plan.status === 401 ? "not_authenticated" : "credit_plan_failed";
       return NextResponse.json({ ok: false, error }, { status: error === "not_authenticated" ? 401 : 502 });
     }
-    const params = new URLSearchParams({ mode: "payment", customer_email: user.email || "", success_url: `${appUrl}/credentials?purchase=success`, cancel_url: `${appUrl}/credentials?purchase=cancelled`, "managed_payments[enabled]": "false", "metadata[tenant_slug]": process.env.CLIENT_SLUG || "", "metadata[credit_plan_id]": planId, "metadata[product]": "veloce-managed-credits-plan" });
+    const params = new URLSearchParams({ mode: "payment", customer_email: user.email || "", success_url: `${appUrl}/credentials?purchase=success`, cancel_url: `${appUrl}/credentials?purchase=cancelled`, "managed_payments[enabled]": "false", "metadata[tenant_slug]": process.env.CLIENT_SLUG || "", "metadata[credit_plan_id]": planId, "metadata[product]": "veloce-managed-credits-plan", "metadata[stripe_mode]": stripeMode });
     validAllocations.forEach((item, index) => {
       params.set(`line_items[${index}][price_data][currency]`, "usd");
       params.set(`line_items[${index}][price_data][unit_amount]`, String(Math.round(item.amount_micros / 10000)));
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
   if (!price || !Number.isSafeInteger(quantity) || quantity < 1) {
     return NextResponse.json({ ok: false, error: !price ? "managed_credits_not_configured" : "invalid_credit_quantity" }, { status: 400 });
   }
-  const params = new URLSearchParams({ mode: "payment", customer_email: user.email || "", success_url: `${appUrl}/credentials?purchase=success`, cancel_url: `${appUrl}/credentials?purchase=cancelled`, "managed_payments[enabled]": "false", "line_items[0][price]": price, "line_items[0][quantity]": String(quantity), "metadata[tenant_slug]": process.env.CLIENT_SLUG || "", "metadata[quantity]": String(quantity), "metadata[product]": "veloce-managed-credits" });
+  const params = new URLSearchParams({ mode: "payment", customer_email: user.email || "", success_url: `${appUrl}/credentials?purchase=success`, cancel_url: `${appUrl}/credentials?purchase=cancelled`, "managed_payments[enabled]": "false", "line_items[0][price]": price, "line_items[0][quantity]": String(quantity), "metadata[tenant_slug]": process.env.CLIENT_SLUG || "", "metadata[quantity]": String(quantity), "metadata[product]": "veloce-managed-credits", "metadata[stripe_mode]": stripeMode });
   const response = await fetch("https://api.stripe.com/v1/checkout/sessions", { method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/x-www-form-urlencoded" }, body: params, cache: "no-store" }).catch(() => null);
   const responseBody = await response?.json().catch(() => null) as { url?: unknown } | null;
   if (!response?.ok || typeof responseBody?.url !== "string") return NextResponse.json({ ok: false, error: "checkout_create_failed" }, { status: 502 });

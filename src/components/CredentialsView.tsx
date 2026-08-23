@@ -39,7 +39,8 @@ interface CreditStatus {
   status: string;
   checkoutConfigured?: boolean;
   creditPackConfigured?: boolean;
-  creditBudgets?: Array<{ catalog_id: string; provider_key: string; available_micros: number; status: string }>;
+  stripeMode?: "test" | "live";
+  creditBudgets?: Array<{ catalog_id: string; provider_key: string; available_micros: number; status: string; walletStatus?: string; providerStatus?: string; providerStatusLabel?: string; providerStatusReason?: string; providerUsable?: boolean; providerName?: string }>;
 }
 
 const fieldClass = "w-full rounded-lg border border-[var(--panel-border)] bg-black/20 px-3 py-2.5 text-[12px] text-[var(--fg)] outline-none transition focus:border-sky-300/70";
@@ -65,6 +66,7 @@ export default function CredentialsView() {
       setCredits({
         ...creditData.account,
         creditBudgets: Array.isArray(creditData.creditBudgets) ? creditData.creditBudgets : [],
+        stripeMode: creditData.stripeMode === "live" ? "live" : "test",
         checkoutConfigured: creditData.checkoutConfigured === true,
         creditPackConfigured: creditData.creditPackConfigured === true,
       });
@@ -95,7 +97,7 @@ export default function CredentialsView() {
       setEmail(session.user?.email ?? null);
       const creditData = await creditResponse.json().catch(() => null);
       if (creditData?.ok && creditData.account) {
-        setCredits({ ...creditData.account, creditBudgets: Array.isArray(creditData.creditBudgets) ? creditData.creditBudgets : [], checkoutConfigured: creditData.checkoutConfigured === true, creditPackConfigured: creditData.creditPackConfigured === true });
+        setCredits({ ...creditData.account, creditBudgets: Array.isArray(creditData.creditBudgets) ? creditData.creditBudgets : [], stripeMode: creditData.stripeMode === "live" ? "live" : "test", checkoutConfigured: creditData.checkoutConfigured === true, creditPackConfigured: creditData.creditPackConfigured === true });
       }
     } catch {
       setStatus(null);
@@ -283,9 +285,9 @@ export default function CredentialsView() {
         <div>
           <div className="eyebrow">Managed credit wallet</div>
           <div className="mt-1 text-lg font-semibold text-[var(--fg)]">{credits && managedCreditsConfigured ? `${(credits.balanceMicros / 1_000_000).toFixed(2)} credits available` : "Not enabled for this tenant"}</div>
-          <p className="mt-1 max-w-2xl text-[10px] text-[var(--fg-dim)]">Managed provider jobs reserve, settle, or refund credits. BYOK provider charges remain with the client. {managedCreditsConfigured ? "Provider-specific checkout is available in Provider Matrix." : "A Veloce administrator must configure the managed-credit checkout before purchase is available."}</p>
+          <p className="mt-1 max-w-2xl text-[10px] text-[var(--fg-dim)]">Managed provider jobs reserve, settle, or refund credits. BYOK provider charges remain with the client. {managedCreditsConfigured ? `Checkout is configured in ${credits?.stripeMode || "test"} mode; payment funds the Veloce wallet and does not automatically fund a provider.` : "A Veloce administrator must configure the managed-credit checkout before purchase is available."}</p>
           {creditNotice && <p className="mt-2 text-[10px] text-sky-200">{creditNotice}</p>}
-          {credits?.creditBudgets && credits.creditBudgets.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{credits.creditBudgets.map((budget) => <div key={budget.catalog_id} className="rounded-lg border border-[var(--panel-border)] px-3 py-2"><div className="text-[11px] text-[var(--fg)]">{budget.provider_key}</div><div className="mt-1 text-[10px] text-[var(--fg-dim)]">${(budget.available_micros / 1_000_000).toFixed(2)} available · {budget.status}</div></div>)}</div>}
+          {credits?.creditBudgets && credits.creditBudgets.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{credits.creditBudgets.map((budget) => <div key={budget.catalog_id} className="rounded-lg border border-[var(--panel-border)] px-3 py-2"><div className="text-[11px] text-[var(--fg)]">{budget.providerName || budget.provider_key}</div><div className="mt-1 text-[10px] text-[var(--fg-dim)]">${(budget.available_micros / 1_000_000).toFixed(2)} wallet-funded · {budget.providerStatusLabel || budget.providerStatus || "provider status pending"}</div><div className="mt-1 text-[10px] text-amber-200">{budget.providerStatusReason || "Provider readiness is checked separately from wallet balance."}</div></div>)}</div>}
         </div>
         <div className="flex flex-wrap items-end gap-3">
           {managedCreditsConfigured && <label className="grid gap-1 text-[10px] uppercase tracking-wider text-[var(--fg-dimmer)]">

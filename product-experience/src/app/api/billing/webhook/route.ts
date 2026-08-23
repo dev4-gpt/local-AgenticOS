@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       p_amount_micros: Math.round(amountTotal * 10_000),
       p_stripe_event_id: event.id,
       p_stripe_checkout_session_id: typeof object.id === "string" ? object.id : null,
-      p_metadata: { source: "stripe", product: "veloce-managed-credits-plan" },
+      p_metadata: { source: "stripe", product: "veloce-managed-credits-plan", stripeMode: metadata.stripe_mode === "live" ? "live" : "test", paymentIntentId: typeof object.payment_intent === "string" ? object.payment_intent : null },
     });
     if (!settled.ok || settled.value !== true) {
       if (prior.rows.length > 0) await supabaseServiceUpdate("stripe_webhook_events", { event_id: `eq.${event.id}` }, { status: "failed", error_code: "credit_plan_settlement_failed" });
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   }
   if (event.type === "checkout.session.completed" && metadata.product === "veloce-managed-credits" && typeof metadata.tenant_slug === "string") {
     const amountTotal = typeof object.amount_total === "number" ? object.amount_total : 0;
-    await supabaseServiceRpc("credit_client_managed_wallet", { p_tenant_slug: metadata.tenant_slug, p_amount_micros: Math.round(amountTotal * 10_000), p_stripe_event_id: event.id, p_metadata: { source: "stripe", sessionId: object.id ?? null } });
+    await supabaseServiceRpc("credit_client_managed_wallet", { p_tenant_slug: metadata.tenant_slug, p_amount_micros: Math.round(amountTotal * 10_000), p_stripe_event_id: event.id, p_metadata: { source: "stripe", sessionId: object.id ?? null, stripeMode: metadata.stripe_mode === "live" ? "live" : "test", paymentIntentId: typeof object.payment_intent === "string" ? object.payment_intent : null } });
   }
   if (requestId && event.type === "invoice.payment_failed") await supabaseServiceUpdate("deployment_requests", { id: `eq.${requestId}` }, { billing_status: "failed" });
   if (event.type === "customer.subscription.deleted" && typeof object.customer === "string") await supabaseServiceUpdate("client_onboarding_accounts", { stripe_customer_id: `eq.${object.customer}` }, { status: "suspended", suspended_at: new Date().toISOString(), updated_at: new Date().toISOString() });

@@ -9,6 +9,7 @@ type CreditSnapshot = {
   balanceMicros: number;
   reservedMicros: number;
   status: string;
+  stripeMode?: "test" | "live";
   creditBudgets: Array<{ catalog_id: string; provider_key: string; available_micros: number; status: string }>;
 };
 
@@ -46,6 +47,7 @@ export default function ProviderMatrixView() {
         balanceMicros: Number(data.account.balanceMicros) || 0,
         reservedMicros: Number(data.account.reservedMicros) || 0,
         status: typeof data.account.status === "string" ? data.account.status : "unknown",
+        stripeMode: data.stripeMode === "live" ? "live" : "test",
         creditBudgets: Array.isArray(data.creditBudgets) ? data.creditBudgets : [],
       });
     }
@@ -163,7 +165,8 @@ export default function ProviderMatrixView() {
         <div>
           <div className="eyebrow">Managed credit wallet</div>
           <div className="mt-1 text-xl font-semibold text-[var(--fg)]">{credits ? `$${(credits.balanceMicros / 1_000_000).toFixed(2)} available` : "Loading balance…"}</div>
-          <p className="mt-1 text-[10px] text-[var(--fg-dim)]">{credits ? `${credits.creditBudgets.length} provider allocation${credits.creditBudgets.length === 1 ? "" : "s"} · ${credits.status}` : "The balance refreshes automatically after payment settlement."}</p>
+          <p className="mt-1 text-[10px] text-[var(--fg-dim)]">{credits ? `${credits.creditBudgets.length} provider allocation${credits.creditBudgets.length === 1 ? "" : "s"} · wallet ${credits.status} · ${credits.stripeMode || "test"} checkout` : "The balance refreshes automatically after payment settlement."}</p>
+          <p className="mt-2 text-[10px] text-amber-200">Wallet funding does not activate a provider. Managed execution remains disabled until manifest, credential, health, and reconciliation gates pass.</p>
         </div>
         <Link href="/credentials" className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--panel-border)] px-3 py-2 text-[11px] text-[var(--fg-dim)]">View wallet details <ChevronRight size={13} /></Link>
       </section>
@@ -205,7 +208,7 @@ export default function ProviderMatrixView() {
                       <div>
                         <div className="font-semibold text-[var(--fg)]">{entry.name}</div>
                         <div className="mt-1 text-[10px] text-[var(--fg-dim)]">{entry.modelOptions?.slice(0, 2).map((option) => `${option.model}: ${option.units[0]?.display || "provider-defined"}`).join(" · ") || "Provider-defined pricing; verify before execution."}</div>
-                        <div className="mt-1 text-[10px] text-amber-200">{entry.managedCredentialAvailable ? "Managed route available for review." : "Credit allocation is available; provider activation still requires an approved route. BYOK remains separate."}</div>
+                        <div className="mt-1 text-[10px] text-amber-200">{entry.managedCredentialAvailable ? "Managed route available for review." : "Wallet allocation only; provider route is not enabled. BYOK remains separate."}</div>
                       </div>
                       <label className="grid gap-1 text-[10px] uppercase tracking-wider text-[var(--fg-dimmer)]">Budget (USD)<input type="text" inputMode="decimal" placeholder="1.00" value={allocations[entry.id] || ""} onChange={(event) => setAllocations((current) => ({ ...current, [entry.id]: event.target.value }))} className="w-28 rounded-lg border border-[var(--panel-border)] bg-black/20 px-3 py-2 text-right text-[12px] text-[var(--fg)] outline-none focus:border-sky-300/70" aria-label={`${entry.name} credit budget`} /></label>
                     </div>
