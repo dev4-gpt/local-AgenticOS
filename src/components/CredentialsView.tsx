@@ -38,6 +38,7 @@ interface CreditStatus {
   warningThresholdMicros: number;
   status: string;
   checkoutConfigured?: boolean;
+  creditPackConfigured?: boolean;
   creditBudgets?: Array<{ catalog_id: string; provider_key: string; available_micros: number; status: string }>;
 }
 
@@ -56,6 +57,19 @@ export default function CredentialsView() {
   const [credits, setCredits] = useState<CreditStatus | null>(null);
   const [creditQuantity, setCreditQuantity] = useState(1);
   const [creditNotice, setCreditNotice] = useState("");
+
+  async function loadCredits() {
+    const creditResponse = await fetch("/api/client-runtime/credits", { cache: "no-store" }).catch(() => null);
+    const creditData = await creditResponse?.json().catch(() => null);
+    if (creditData?.ok && creditData.account) {
+      setCredits({
+        ...creditData.account,
+        creditBudgets: Array.isArray(creditData.creditBudgets) ? creditData.creditBudgets : [],
+        checkoutConfigured: creditData.checkoutConfigured === true,
+        creditPackConfigured: creditData.creditPackConfigured === true,
+      });
+    }
+  }
 
   const credentialOptions = useMemo(
     () => (status?.credentialOptions?.length ? status.credentialOptions : publicCatalogCredentialOptions()).filter((option) => option.submitAllowed),
@@ -81,7 +95,7 @@ export default function CredentialsView() {
       setEmail(session.user?.email ?? null);
       const creditData = await creditResponse.json().catch(() => null);
       if (creditData?.ok && creditData.account) {
-        setCredits({ ...creditData.account, creditBudgets: Array.isArray(creditData.creditBudgets) ? creditData.creditBudgets : [], checkoutConfigured: creditData.checkoutConfigured === true });
+        setCredits({ ...creditData.account, creditBudgets: Array.isArray(creditData.creditBudgets) ? creditData.creditBudgets : [], checkoutConfigured: creditData.checkoutConfigured === true, creditPackConfigured: creditData.creditPackConfigured === true });
       }
     } catch {
       setStatus(null);
@@ -90,8 +104,8 @@ export default function CredentialsView() {
   }
 
   async function buyManagedCredits() {
-    if (credits && credits.checkoutConfigured === false) {
-      setCreditNotice("Managed credits are not enabled for this tenant yet. BYOK provider keys are available now.");
+    if (credits?.creditPackConfigured === false) {
+      setCreditNotice("Use Provider Matrix to assign a provider-specific credit budget. The generic credit pack is not configured.");
       return;
     }
     setCreditNotice("Opening secure checkout…");
@@ -104,6 +118,18 @@ export default function CredentialsView() {
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const purchase = new URLSearchParams(window.location.search).get("purchase");
+    if (purchase !== "success") return;
+    let attempts = 0;
+    const refresh = window.setInterval(() => {
+      attempts += 1;
+      void loadCredits();
+      if (attempts >= 12) window.clearInterval(refresh);
+    }, 5000);
+    return () => window.clearInterval(refresh);
   }, []);
 
   useEffect(() => {
@@ -257,7 +283,7 @@ export default function CredentialsView() {
         <div>
           <div className="eyebrow">Managed credit wallet</div>
           <div className="mt-1 text-lg font-semibold text-[var(--fg)]">{credits && managedCreditsConfigured ? `${(credits.balanceMicros / 1_000_000).toFixed(2)} credits available` : "Not enabled for this tenant"}</div>
-          <p className="mt-1 max-w-2xl text-[10px] text-[var(--fg-dim)]">Managed provider jobs reserve, settle, or refund credits. BYOK provider charges remain with the client. {managedCreditsConfigured ? "Checkout is available." : "A Veloce administrator must configure the managed-credit checkout before purchase is available."}</p>
+          <p className="mt-1 max-w-2xl text-[10px] text-[var(--fg-dim)]">Managed provider jobs reserve, settle, or refund credits. BYOK provider charges remain with the client. {managedCreditsConfigured ? "Provider-specific checkout is available in Provider Matrix." : "A Veloce administrator must configure the managed-credit checkout before purchase is available."}</p>
           {creditNotice && <p className="mt-2 text-[10px] text-sky-200">{creditNotice}</p>}
           {credits?.creditBudgets && credits.creditBudgets.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{credits.creditBudgets.map((budget) => <div key={budget.catalog_id} className="rounded-lg border border-[var(--panel-border)] px-3 py-2"><div className="text-[11px] text-[var(--fg)]">{budget.provider_key}</div><div className="mt-1 text-[10px] text-[var(--fg-dim)]">${(budget.available_micros / 1_000_000).toFixed(2)} available · {budget.status}</div></div>)}</div>}
         </div>
@@ -266,7 +292,7 @@ export default function CredentialsView() {
             Credit packs
             <input type="number" min={1} step={1} value={creditQuantity} onChange={(event) => setCreditQuantity(Math.max(1, Number(event.target.value) || 1))} className="w-24 rounded-lg border border-[var(--panel-border)] bg-black/20 px-3 py-2 text-[12px] text-[var(--fg)] outline-none focus:border-sky-300/70" aria-label="Credit pack quantity" />
           </label>}
-          <button type="button" onClick={() => void buyManagedCredits()} disabled={!managedCreditsConfigured} className="rounded-lg border border-sky-300/40 px-3 py-2 text-[11px] font-semibold text-sky-200 disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-500">{managedCreditsConfigured ? "Buy managed credits" : "Checkout not configured"}</button>
+          <button type="button" onClick={() => void buyManagedCredits()} disabled={!credits?.creditPackConfigured} className="rounded-lg border border-sky-300/40 px-3 py-2 text-[11px] font-semibold text-sky-200 disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-500">{credits?.creditPackConfigured ? "Buy managed credits" : "Use Provider Matrix"}</button>
         </div>
       </section>
 

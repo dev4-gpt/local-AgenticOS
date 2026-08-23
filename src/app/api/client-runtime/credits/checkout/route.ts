@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const secret = process.env.STRIPE_SECRET_KEY?.trim();
   if (!secret) return NextResponse.json({ ok: false, error: "managed_credits_not_configured" }, { status: 503 });
   const requestBody = await request.json().catch(() => ({})) as { quantity?: unknown };
-  const appUrl = (process.env.PUBLIC_APP_URL || "https://app.veloceos.cloud").replace(/\/$/, "");
+  const appUrl = (process.env.PUBLIC_APP_URL || process.env.CLIENT_RUNTIME_BASE_URL || "https://app.veloceos.cloud").replace(/\/$/, "");
   const allocations = Array.isArray((requestBody as { allocations?: unknown }).allocations) ? (requestBody as { allocations: unknown[] }).allocations : null;
   if (allocations) {
     const normalized = allocations.slice(0, 100).map((item) => {
@@ -42,8 +42,11 @@ export async function POST(request: Request) {
     if (!Number.isSafeInteger(totalMicros) || totalMicros <= 0) return NextResponse.json({ ok: false, error: "invalid_credit_allocations" }, { status: 400 });
     const plan = await clientRpc("create_client_credit_purchase_plan", { p_tenant_slug: process.env.CLIENT_SLUG || "", p_allocations: validAllocations, p_total_micros: totalMicros });
     const planId = typeof plan.value === "string" ? plan.value : null;
-    if (!plan.ok || !planId) return NextResponse.json({ ok: false, error: "credit_plan_failed" }, { status: 502 });
-    const params = new URLSearchParams({ mode: "payment", customer_email: user.email || "", success_url: `${appUrl}/credentials?purchase=success`, cancel_url: `${appUrl}/credentials?purchase=cancelled`, "metadata[tenant_slug]": process.env.CLIENT_SLUG || "", "metadata[credit_plan_id]": planId, "metadata[product]": "veloce-managed-credits-plan" });
+    if (!plan.ok || !planId) {
+      const error = plan.status === 404 ? "credit_plan_schema_missing" : plan.status === 401 ? "not_authenticated" : "credit_plan_failed";
+      return NextResponse.json({ ok: false, error }, { status: error === "not_authenticated" ? 401 : 502 });
+    }
+    const params = new URLSearchParams({ mode: "payment", customer_email: user.email || "", success_url: `${appUrl}/credentials?purchase=success`, cancel_url: `${appUrl}/credentials?purchase=cancelled`, "managed_payments[enabled]": "false", "metadata[tenant_slug]": process.env.CLIENT_SLUG || "", "metadata[credit_plan_id]": planId, "metadata[product]": "veloce-managed-credits-plan" });
     validAllocations.forEach((item, index) => {
       params.set(`line_items[${index}][price_data][currency]`, "usd");
       params.set(`line_items[${index}][price_data][unit_amount]`, String(Math.round(item.amount_micros / 10000)));
@@ -61,7 +64,7 @@ export async function POST(request: Request) {
   if (!price || !Number.isSafeInteger(quantity) || quantity < 1) {
     return NextResponse.json({ ok: false, error: !price ? "managed_credits_not_configured" : "invalid_credit_quantity" }, { status: 400 });
   }
-  const params = new URLSearchParams({ mode: "payment", customer_email: user.email || "", success_url: `${appUrl}/credentials?purchase=success`, cancel_url: `${appUrl}/credentials?purchase=cancelled`, "line_items[0][price]": price, "line_items[0][quantity]": String(quantity), "metadata[tenant_slug]": process.env.CLIENT_SLUG || "", "metadata[quantity]": String(quantity), "metadata[product]": "veloce-managed-credits" });
+  const params = new URLSearchParams({ mode: "payment", customer_email: user.email || "", success_url: `${appUrl}/credentials?purchase=success`, cancel_url: `${appUrl}/credentials?purchase=cancelled`, "managed_payments[enabled]": "false", "line_items[0][price]": price, "line_items[0][quantity]": String(quantity), "metadata[tenant_slug]": process.env.CLIENT_SLUG || "", "metadata[quantity]": String(quantity), "metadata[product]": "veloce-managed-credits" });
   const response = await fetch("https://api.stripe.com/v1/checkout/sessions", { method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/x-www-form-urlencoded" }, body: params, cache: "no-store" }).catch(() => null);
   const responseBody = await response?.json().catch(() => null) as { url?: unknown } | null;
   if (!response?.ok || typeof responseBody?.url !== "string") return NextResponse.json({ ok: false, error: "checkout_create_failed" }, { status: 502 });

@@ -10,6 +10,8 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/capabilities",
   "/api/speech/transcribe",
   "/api/client-runtime/credentials",
+  "/api/client-runtime/credits",
+  "/api/client-runtime/credits/checkout",
   "/api/client-runtime/manifest-proposals",
   "/api/client-runtime/credential-submissions",
   "/api/client-runtime/requests",

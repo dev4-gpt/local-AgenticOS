@@ -17,6 +17,7 @@ export async function GET() {
     ok: true,
     account: result.value,
     creditBudgets: budgets.ok && Array.isArray(budgets.value) ? budgets.value : [],
-    checkoutConfigured: Boolean(process.env.STRIPE_SECRET_KEY?.trim() && process.env.STRIPE_CREDIT_PRICE_ID?.trim()),
+    checkoutConfigured: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
+    creditPackConfigured: Boolean(process.env.STRIPE_SECRET_KEY?.trim() && process.env.STRIPE_CREDIT_PRICE_ID?.trim()),
   }, { headers: { "cache-control": "no-store" } });
 }

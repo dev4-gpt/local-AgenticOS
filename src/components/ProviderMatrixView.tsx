@@ -5,6 +5,13 @@ import Link from "next/link";
 import { Check, ChevronRight, CreditCard, ExternalLink, KeyRound, LockKeyhole, Send, ShieldCheck } from "lucide-react";
 import { PUBLIC_PROVIDER_CATALOG, publicCatalogStatusLabel, type PublicProviderCatalogEntry } from "@/lib/publicProviderCatalog";
 
+type CreditSnapshot = {
+  balanceMicros: number;
+  reservedMicros: number;
+  status: string;
+  creditBudgets: Array<{ catalog_id: string; provider_key: string; available_micros: number; status: string }>;
+};
+
 const COLORS: Record<PublicProviderCatalogEntry["status"], string> = {
   "available-now": "#34d399",
   "client-key": "#60a5fa",
@@ -23,6 +30,7 @@ export default function ProviderMatrixView() {
   const [allocations, setAllocations] = useState<Record<string, string>>({});
   const [checkoutNotice, setCheckoutNotice] = useState("");
   const [checkoutPending, setCheckoutPending] = useState(false);
+  const [credits, setCredits] = useState<CreditSnapshot | null>(null);
 
   async function loadProposals() {
     const response = await fetch("/api/client-runtime/manifest-proposals", { cache: "no-store" }).catch(() => null);
@@ -30,7 +38,25 @@ export default function ProviderMatrixView() {
     if (response?.ok && Array.isArray(data?.proposals)) setProposals(data.proposals);
   }
 
-  useEffect(() => { void loadProposals(); }, []);
+  async function loadCredits() {
+    const response = await fetch("/api/client-runtime/credits", { cache: "no-store" }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    if (response?.ok && data?.ok && data.account) {
+      setCredits({
+        balanceMicros: Number(data.account.balanceMicros) || 0,
+        reservedMicros: Number(data.account.reservedMicros) || 0,
+        status: typeof data.account.status === "string" ? data.account.status : "unknown",
+        creditBudgets: Array.isArray(data.creditBudgets) ? data.creditBudgets : [],
+      });
+    }
+  }
+
+  useEffect(() => {
+    void loadProposals();
+    void loadCredits();
+    const refresh = window.setInterval(() => void loadCredits(), 15_000);
+    return () => window.clearInterval(refresh);
+  }, []);
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -84,7 +110,15 @@ export default function ProviderMatrixView() {
       window.location.assign(data.checkoutUrl);
       return;
     }
-    setCheckoutNotice(data?.error === "managed_credits_not_configured" ? "Managed-credit checkout is not configured yet." : "Could not prepare the credit plan checkout.");
+    if (data?.error === "managed_credits_not_configured") {
+      setCheckoutNotice("Managed-credit checkout is not configured yet.");
+    } else if (data?.error === "credit_plan_schema_missing") {
+      setCheckoutNotice("Credit ledger migration is missing in Supabase. Apply supabase-v31-managed-credit-plans.sql, then retry.");
+    } else if (typeof data?.error === "string") {
+      setCheckoutNotice(`Checkout preparation failed (${data.error}).`);
+    } else {
+      setCheckoutNotice("Could not prepare the credit plan checkout.");
+    }
   }
 
   async function submit() {
@@ -122,7 +156,16 @@ export default function ProviderMatrixView() {
 
       <section className="panel p-5">
         <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--fg)]"><LockKeyhole size={15} color="#34d399" /> Managed credentials</div>
-        <p className="mt-2 text-[11px] leading-relaxed text-[var(--fg-dim)]">Veloce-managed credentials are optional and separately budgeted. Keys stay in tenant-scoped Secret Manager references, are validated server-side, and are never returned to this page. Rotation, suspension, and offboarding revoke the reference and record an audit event. Paid provider bills remain your responsibility in BYOK mode; managed mode adds provider, infrastructure, support, and risk allocation through credits.</p>
+        <p className="mt-2 text-[11px] leading-relaxed text-[var(--fg-dim)]">Veloce-managed credentials are optional and separately budgeted. Keys stay in tenant-scoped Secret Manager references, are validated server-side, and are never returned to this page. A credit purchase funds the tenant wallet; provider execution still requires an approved route and manifest. Paid provider bills remain your responsibility in BYOK mode.</p>
+      </section>
+
+      <section className="panel flex flex-wrap items-center justify-between gap-4 p-4">
+        <div>
+          <div className="eyebrow">Managed credit wallet</div>
+          <div className="mt-1 text-xl font-semibold text-[var(--fg)]">{credits ? `$${(credits.balanceMicros / 1_000_000).toFixed(2)} available` : "Loading balance…"}</div>
+          <p className="mt-1 text-[10px] text-[var(--fg-dim)]">{credits ? `${credits.creditBudgets.length} provider allocation${credits.creditBudgets.length === 1 ? "" : "s"} · ${credits.status}` : "The balance refreshes automatically after payment settlement."}</p>
+        </div>
+        <Link href="/credentials" className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--panel-border)] px-3 py-2 text-[11px] text-[var(--fg-dim)]">View wallet details <ChevronRight size={13} /></Link>
       </section>
 
       <section className="panel p-4">
@@ -162,7 +205,7 @@ export default function ProviderMatrixView() {
                       <div>
                         <div className="font-semibold text-[var(--fg)]">{entry.name}</div>
                         <div className="mt-1 text-[10px] text-[var(--fg-dim)]">{entry.modelOptions?.slice(0, 2).map((option) => `${option.model}: ${option.units[0]?.display || "provider-defined"}`).join(" · ") || "Provider-defined pricing; verify before execution."}</div>
-                        <div className="mt-1 text-[10px] text-amber-200">{entry.managedCredentialAvailable ? "Managed route available for review." : "Managed route is not enabled in the current catalog; BYOK remains separate."}</div>
+                        <div className="mt-1 text-[10px] text-amber-200">{entry.managedCredentialAvailable ? "Managed route available for review." : "Credit allocation is available; provider activation still requires an approved route. BYOK remains separate."}</div>
                       </div>
                       <label className="grid gap-1 text-[10px] uppercase tracking-wider text-[var(--fg-dimmer)]">Budget (USD)<input type="text" inputMode="decimal" placeholder="1.00" value={allocations[entry.id] || ""} onChange={(event) => setAllocations((current) => ({ ...current, [entry.id]: event.target.value }))} className="w-28 rounded-lg border border-[var(--panel-border)] bg-black/20 px-3 py-2 text-right text-[12px] text-[var(--fg)] outline-none focus:border-sky-300/70" aria-label={`${entry.name} credit budget`} /></label>
                     </div>
