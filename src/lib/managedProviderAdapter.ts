@@ -1,4 +1,4 @@
-export type ManagedProviderOperation = "quote" | "healthCheck" | "reserve" | "execute" | "settle" | "refund" | "balance" | "disable";
+export type ManagedProviderOperation = "quote" | "healthCheck" | "reserve" | "execute" | "settle" | "refund" | "balance" | "disable" | "restore";
 
 export interface ManagedProviderContext {
   tenantSlug: string;
@@ -8,6 +8,7 @@ export interface ManagedProviderContext {
   manifestVersion?: string | null;
   pricingSnapshotId?: string | null;
   requestId?: string | null;
+  idempotencyKey?: string | null;
 }
 
 export interface ManagedProviderQuote {
@@ -29,6 +30,34 @@ export interface ManagedProviderUsage {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * The managed adapter never mutates the ledger directly. The worker supplies
+ * these RPC-backed operations so the provider boundary can be tested with a
+ * fake ledger and production execution can remain tenant-scoped and audited.
+ */
+export interface ManagedCreditLedger {
+  reserve(input: {
+    context: ManagedProviderContext;
+    quote: ManagedProviderQuote;
+    idempotencyKey: string;
+  }): Promise<string | null>;
+  settle(input: {
+    context: ManagedProviderContext;
+    reservationId: string;
+    actualMicros: number;
+    providerRequestId?: string | null;
+    idempotencyKey: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<boolean>;
+  refund(input: {
+    context: ManagedProviderContext;
+    reservationId: string;
+    reason: string;
+    idempotencyKey: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<boolean>;
+}
+
 export interface ManagedProviderAdapter {
   providerId: string;
   quote(context: ManagedProviderContext, input: Record<string, unknown>): Promise<ManagedProviderQuote>;
@@ -42,16 +71,11 @@ export interface ManagedProviderAdapter {
 }
 
 export const MANAGED_PROVIDER_OPERATIONS: readonly ManagedProviderOperation[] = [
-  "quote", "healthCheck", "reserve", "execute", "settle", "refund", "balance", "disable",
+  "quote", "healthCheck", "reserve", "execute", "settle", "refund", "balance", "disable", "restore",
 ];
 
-/**
- * The OpenRouter managed lane is deliberately a contract-only placeholder.
- * Keeping it explicit prevents a funded wallet from silently becoming a
- * pooled provider credential or an unaccounted provider call.
- */
 export const OPENROUTER_MANAGED_ROUTE = {
   providerId: "openrouter",
   enabled: false,
-  reason: "Managed OpenRouter execution requires tenant-scoped account ownership, balance reconciliation, and smoke evidence.",
+  reason: "Managed OpenRouter execution is implemented behind explicit account, credential, readiness, and smoke gates; it is not enabled by funding alone.",
 } as const;

@@ -1,6 +1,6 @@
 import { CLIENT_CREDENTIAL_OPTIONS, clientCredentialOption, type ClientCredentialOption } from "@/lib/clientCredentialCatalog";
 import { V96_REPOSITORY_CATALOG, type V96RepositoryReference } from "@/lib/v96RepositoryCatalog";
-import { pricingDisplay, pricingSnapshotForCredential, type ProviderPricingOption } from "@/lib/providerPricingCatalog";
+import { pricingDisplay, pricingSnapshotForCredential, verifiedPricingSnapshotForCredential, type ProviderPricingOption } from "@/lib/providerPricingCatalog";
 
 export type PublicCatalogStatus =
   | "available-now"
@@ -153,9 +153,16 @@ const REPOSITORY_ENTRIES: readonly PublicProviderCatalogEntry[] = V96_REPOSITORY
 }));
 
 function enrichEntry(entry: PublicProviderCatalogEntry): PublicProviderCatalogEntry {
-  const pricing = pricingSnapshotForCredential(entry.credentialKey ?? "");
+  const pricing = entry.kind === "provider"
+    ? verifiedPricingSnapshotForCredential(entry.credentialKey ?? "")
+    : pricingSnapshotForCredential(entry.credentialKey ?? "");
+  const providerPricingReady = entry.kind !== "provider" || Boolean(pricing);
   return {
     ...entry,
+    ...(entry.kind === "provider" && !providerPricingReady ? {
+      approval: `${entry.approval} Current pricing evidence is required before selection or execution.`,
+      sourceNote: "Catalog entry is visible for planning, but activation is gated until a current provider pricing snapshot is recorded.",
+    } : {}),
     ...(pricing ? {
       pricingSnapshotId: pricing.id,
       pricingVersion: pricing.version,
@@ -169,7 +176,7 @@ function enrichEntry(entry: PublicProviderCatalogEntry): PublicProviderCatalogEn
       costOwner: entry.kind === "provider" ? "client" : "veloce",
       selectionAllowed: entry.selectionAllowed ?? (entry.status === "available-now"),
     }),
-    selectionAllowed: entry.status === "reference-only" || entry.status === "operator-only" ? false : (entry.selectionAllowed ?? entry.status === "available-now"),
+      selectionAllowed: entry.status === "reference-only" || entry.status === "operator-only" || !providerPricingReady ? false : (entry.selectionAllowed ?? entry.status === "available-now"),
   };
 }
 
@@ -182,7 +189,7 @@ export function publicCatalogEntryById(id: string) {
 }
 
 export function publicCatalogEntryForCredential(key: string) {
-  return PROVIDER_ENTRIES.find((entry) => entry.credentialKey === key) ?? null;
+  return PUBLIC_PROVIDER_CATALOG.find((entry) => entry.credentialKey === key) ?? null;
 }
 
 export function publicCatalogProviderOptions() {
@@ -198,7 +205,7 @@ export function publicCatalogProviderOptions() {
  */
 export function publicCatalogCredentialOptions(): ClientCredentialOption[] {
   return PROVIDER_ENTRIES
-    .filter((entry) => entry.status === "client-key" && entry.credentialKey)
+    .filter((entry) => entry.status === "client-key" && entry.credentialKey && publicCatalogEntryById(entry.id)?.selectionAllowed !== false)
     .map((entry) => clientCredentialOption(entry.credentialKey!))
     .filter((option): option is ClientCredentialOption => Boolean(option?.submitAllowed));
 }

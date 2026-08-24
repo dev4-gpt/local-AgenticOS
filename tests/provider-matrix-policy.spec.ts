@@ -18,11 +18,18 @@ test("provider snapshots are dated, sourced, and use exact micros when known", (
 test("provider catalog exposes pricing and never makes reference-only rows selectable", () => {
   const providers = PUBLIC_PROVIDER_CATALOG.filter((entry) => entry.kind === "provider");
   expect(providers.length).toBeGreaterThan(10);
+  const pricedProviderKeys = new Set(["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "FIRECRAWL_API_KEY", "BRAVE_API_KEY", "ELEVENLABS_API_KEY"]);
   for (const entry of providers) {
-    expect(entry.pricingSnapshotId).toBeTruthy();
-    expect(entry.pricingSourceUrl).toMatch(/^https:\/\//);
-    expect(entry.pricingVerifiedAt).toBe("2026-08-22");
-    expect(entry.modelOptions?.length).toBeGreaterThan(0);
+    if (pricedProviderKeys.has(entry.credentialKey ?? "")) {
+      expect(entry.pricingSnapshotId).toBeTruthy();
+      expect(entry.pricingSourceUrl).toMatch(/^https:\/\//);
+      expect(entry.pricingVerifiedAt).toBe("2026-08-22");
+      expect(entry.modelOptions?.length).toBeGreaterThan(0);
+      expect(entry.selectionAllowed).toBe(true);
+    } else {
+      expect(entry.selectionAllowed).toBe(false);
+      expect(entry.approval).toContain("Current pricing evidence is required");
+    }
   }
   for (const entry of PUBLIC_PROVIDER_CATALOG.filter((item) => item.status === "reference-only" || item.status === "operator-only")) {
     expect(entry.selectionAllowed).toBe(false);

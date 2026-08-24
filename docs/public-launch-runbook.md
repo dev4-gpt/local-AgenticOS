@@ -36,7 +36,8 @@ The worker records request and tenant IDs, manifest version/hash, image digest, 
 6. Provision an isolated runtime and run research, budget, tenant-isolation, deletion, rollback, and visual-quality evidence.
 7. Activate the account and send a single-use setup link.
 8. Add a BYOK provider in the private portal, validate server-side, rotate/revoke it, or purchase managed credits.
-9. Verify estimate, reservation, settlement/refund, pricing snapshot, audit evidence, support, suspension, export, and offboarding.
+9. If the tenant cannot or does not want to manage a provider key, submit a managed-provider access request with the provider and requested budget. Team approval is required; the request itself never activates a provider.
+10. Verify estimate, reservation, settlement/refund, pricing snapshot, audit evidence, support, suspension, export, and offboarding.
 
 ## Launch limits
 

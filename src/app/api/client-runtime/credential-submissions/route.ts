@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   const catalogEntry = publicCatalogEntryForCredential(providerKey);
 
   if (!option || !option.submitAllowed) return NextResponse.json({ ok: false, error: "unsupported_provider" }, { status: 400 });
-  if (!catalogEntry || catalogEntry.status !== "client-key" || (catalogId && catalogId !== catalogEntry.id)) {
+  if (!catalogEntry || catalogEntry.status !== "client-key" || catalogEntry.selectionAllowed !== true || (catalogId && catalogId !== catalogEntry.id)) {
     return NextResponse.json({ ok: false, error: "catalog_selection_invalid" }, { status: 400 });
   }
   if (secretValue.length < 6 || secretValue.length > 12000) {

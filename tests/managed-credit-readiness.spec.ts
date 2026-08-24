@@ -52,5 +52,5 @@ test("depleted and suspended budgets fail closed", () => {
 
 test("the OpenRouter managed route remains explicitly disabled", () => {
   expect(OPENROUTER_MANAGED_ROUTE.enabled).toBe(false);
-  expect(MANAGED_PROVIDER_OPERATIONS).toEqual(["quote", "healthCheck", "reserve", "execute", "settle", "refund", "balance", "disable"]);
+  expect(MANAGED_PROVIDER_OPERATIONS).toEqual(["quote", "healthCheck", "reserve", "execute", "settle", "refund", "balance", "disable", "restore"]);
 });

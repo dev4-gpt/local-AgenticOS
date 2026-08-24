@@ -1,9 +1,10 @@
 type LeadNotification = {
-  kind: "lead" | "runtime request";
+  kind: "lead" | "runtime request" | "support request";
   name: string;
   email: string;
   company?: string | null;
   source: string;
+  details?: string[];
 };
 
 type NotificationResult = "sent" | "not_configured" | "failed";
@@ -29,6 +30,7 @@ export async function notifyLead(notification: LeadNotification): Promise<Notifi
     `Email: ${notification.email}`,
     `Company: ${company}`,
     `Source: ${notification.source}`,
+    ...(notification.details ?? []),
     "",
     "The full, server-side record is in Supabase.",
   ].join("\n");
@@ -47,7 +49,7 @@ export async function notifyLead(notification: LeadNotification): Promise<Notifi
         reply_to: notification.email,
         subject,
         text,
-        html: `<p>A new Veloce ${escapeHtml(notification.kind)} was captured.</p><ul><li><strong>Name:</strong> ${escapeHtml(notification.name)}</li><li><strong>Email:</strong> ${escapeHtml(notification.email)}</li><li><strong>Company:</strong> ${escapeHtml(company)}</li><li><strong>Source:</strong> ${escapeHtml(notification.source)}</li></ul><p>The full, server-side record is in Supabase.</p>`,
+        html: `<p>A new Veloce ${escapeHtml(notification.kind)} was captured.</p><ul><li><strong>Name:</strong> ${escapeHtml(notification.name)}</li><li><strong>Email:</strong> ${escapeHtml(notification.email)}</li><li><strong>Company:</strong> ${escapeHtml(company)}</li><li><strong>Source:</strong> ${escapeHtml(notification.source)}</li>${(notification.details ?? []).map((detail) => `<li>${escapeHtml(detail)}</li>`).join("")}</ul><p>The full, server-side record is in Supabase.</p>`,
       }),
     });
     if (result.ok) return "sent";

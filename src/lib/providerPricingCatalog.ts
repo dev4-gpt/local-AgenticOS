@@ -96,6 +96,11 @@ export function pricingSnapshotForCredential(providerKey: string) {
   return PROVIDER_PRICING_SNAPSHOTS.find((item) => item.providerKey === providerKey) ?? snapshot({ id: `pricing-${providerKey.toLowerCase()}-unverified`, providerKey, providerName: providerKey, sourceUrl: FALLBACK_SOURCE, freeTier: "No verified free tier in the current snapshot.", costOwner: "client", recommendedOptionId: "provider-defined", options: [{ id: "provider-defined", label: "Provider-defined", model: "Selected provider model", recommended: true, units: [{ unit: "model-defined", priceMicros: null, display: "Verify current provider pricing before execution" }] }] });
 }
 
+export function verifiedPricingSnapshotForCredential(providerKey: string) {
+  if (!providerKey.trim()) return null;
+  return PROVIDER_PRICING_SNAPSHOTS.find((item) => item.providerKey === providerKey) ?? null;
+}
+
 export function pricingSnapshotForCatalog(input: { credentialKey?: string; name: string }) {
   return input.credentialKey ? pricingSnapshotForCredential(input.credentialKey) : null;
 }

@@ -176,6 +176,21 @@ create table if not exists public.client_support_requests (
   updated_at timestamptz not null default now()
 );
 
+-- A managed-provider request is a reviewed support/control-plane workflow,
+-- not an activation grant. The team must approve provider ownership, pricing,
+-- budget, and the tenant manifest before a Veloce-owned credential is usable.
+alter table public.client_support_requests
+  add column if not exists request_type text not null default 'general'
+    check (request_type in ('general', 'managed_provider_access'));
+alter table public.client_support_requests
+  add column if not exists provider_key text;
+alter table public.client_support_requests
+  add column if not exists requested_budget_micros bigint
+    check (requested_budget_micros is null or requested_budget_micros >= 0);
+
+create index if not exists client_support_managed_provider_idx
+  on public.client_support_requests (request_type, provider_key, created_at desc);
+
 create or replace function public.record_client_provider_connection(
   p_tenant_slug text,
   p_catalog_id text,

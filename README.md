@@ -79,6 +79,11 @@ local-versus-client capability boundary is in
 
 For v2 product boundaries, Flow Lab policy, approved capabilities, and explicit deferrals, see [VELOCE-AGENTICOS-V2.md](./VELOCE-AGENTICOS-V2.md). For the deliberate stable-path migration policy, see [MIGRATION-TO-VELOCE-AGENTICOS.md](./MIGRATION-TO-VELOCE-AGENTICOS.md).
 
+For the honest completion plan across V1, V2, V3, V3.1, and the current V3.2
+wallet/readiness work, see
+[VELOCE-AGENTICOS-V3.3-COMPLETION-PLAN.md](./VELOCE-AGENTICOS-V3.3-COMPLETION-PLAN.md)
+and the concise [V3.3 completion matrix](./docs/v3.3-completion-matrix.md).
+
 ## Current Local Stack
 
 This repo is configured for a Mac-local Veloce AgenticOS setup:
