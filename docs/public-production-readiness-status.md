@@ -48,7 +48,7 @@ These are primarily owner-controlled external gates and are intentionally not cl
 
 4. **Provider catalog evidence**
    - Keep providers gated unless each exposed provider has current pricing, health, safe smoke, failure, budget, audit, and rollback/disable evidence.
-   - The current catalog has **7 providers selectable with current pricing evidence** and **9 providers visible but gated** until pricing evidence is refreshed.
+   - The current catalog has **14 providers selectable with current pricing evidence** and **2 providers visible but gated**: Moonshot/Kimi lacks a current public API price snapshot, and Suno's official pricing is for its consumer product rather than the API integration used here.
 
 5. **BYOK lifecycle evidence**
    - For every exposed provider, prove server-side validation, rotation, revocation, suspension, offboarding, quota, retry, timeout, redaction, budget enforcement, and disable behavior.

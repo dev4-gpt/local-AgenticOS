@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { PROVIDER_PRICING_SNAPSHOTS } from "../src/lib/providerPricingCatalog";
 import { publicCatalogEntryForCredential, publicCatalogProviderOptions } from "../src/lib/publicProviderCatalog";
 
 const providerKeys = [
@@ -7,10 +8,7 @@ const providerKeys = [
   "ELEVENLABS_MUSIC_API_KEY", "HEYGEN_API_KEY", "SUNO_API_KEY", "FIRECRAWL_API_KEY",
   "BRAVE_API_KEY", "HUNTER_API_KEY",
 ] as const;
-const currentPricingKeys = new Set([
-  "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY",
-  "FIRECRAWL_API_KEY", "BRAVE_API_KEY", "ELEVENLABS_API_KEY",
-]);
+const currentPricingKeys = new Set(PROVIDER_PRICING_SNAPSHOTS.map((snapshot) => snapshot.providerKey).filter((key): key is string => Boolean(key)));
 
 test("every public BYOK provider has an explicit catalog row", () => {
   for (const key of providerKeys) {

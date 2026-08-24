@@ -7,9 +7,9 @@ import { V96_REPOSITORY_CATALOG } from "../src/lib/v96RepositoryCatalog";
 test("provider snapshots are dated, sourced, and use exact micros when known", () => {
   expect(PROVIDER_PRICING_SNAPSHOTS.length).toBeGreaterThanOrEqual(8);
   for (const snapshot of PROVIDER_PRICING_SNAPSHOTS) {
-    expect(snapshot.id).toContain("v2026-08-22");
+    expect(snapshot.id).toContain(`v${snapshot.verifiedAt}`);
     expect(snapshot.sourceUrl).toMatch(/^https:\/\//);
-    expect(snapshot.verifiedAt).toBe("2026-08-22");
+    expect(snapshot.verifiedAt).toMatch(/^2026-08-\d{2}$/);
     expect(snapshot.options.length).toBeGreaterThan(0);
     expect(snapshot.options.some((option) => option.id === snapshot.recommendedOptionId)).toBe(true);
   }
@@ -18,12 +18,12 @@ test("provider snapshots are dated, sourced, and use exact micros when known", (
 test("provider catalog exposes pricing and never makes reference-only rows selectable", () => {
   const providers = PUBLIC_PROVIDER_CATALOG.filter((entry) => entry.kind === "provider");
   expect(providers.length).toBeGreaterThan(10);
-  const pricedProviderKeys = new Set(["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "FIRECRAWL_API_KEY", "BRAVE_API_KEY", "ELEVENLABS_API_KEY"]);
+  const pricedProviderKeys = new Set(PROVIDER_PRICING_SNAPSHOTS.map((snapshot) => snapshot.providerKey).filter((key): key is string => Boolean(key)));
   for (const entry of providers) {
     if (pricedProviderKeys.has(entry.credentialKey ?? "")) {
       expect(entry.pricingSnapshotId).toBeTruthy();
       expect(entry.pricingSourceUrl).toMatch(/^https:\/\//);
-      expect(entry.pricingVerifiedAt).toBe("2026-08-22");
+      expect(entry.pricingVerifiedAt).toMatch(/^2026-08-\d{2}$/);
       expect(entry.modelOptions?.length).toBeGreaterThan(0);
       expect(entry.selectionAllowed).toBe(true);
     } else {
