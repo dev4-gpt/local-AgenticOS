@@ -26,10 +26,8 @@
     "next-env.d.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
-    ".next/types/**/*.d.ts",
-    ".next/types/validator.ts",
-    ".next/dev/types/**/*.d.ts",
-    ".next/dev/types/validator.ts"
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

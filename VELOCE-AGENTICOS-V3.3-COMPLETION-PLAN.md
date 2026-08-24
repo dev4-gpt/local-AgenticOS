@@ -48,9 +48,10 @@ Do not mark the release production-ready while any `open` or `gated` row lacks
 its stated proof.
 
 Verification note: the focused managed-credit suite and
-`verify:managed-credit` pass after the source change. The TypeScript configs now
-include only canonical Next.js declaration outputs (`*.d.ts` plus the single
-`validator.ts`) instead of duplicate generated files such as `routes.d 2.ts`.
+`verify:managed-credit` pass after the source change. The TypeScript configs
+include the Next.js-required type globs while keeping alternate build outputs
+(`.next-v0` and `.next-client*`) narrowed to canonical declarations, avoiding
+duplicate generated files such as `routes.d 2.ts`.
 The repository secret scanner now excludes all alternate generated Next.js and
 duplicate dependency directories as well. Re-run the security scan before
 claiming a green release check. Both production builds also pass when run in a
