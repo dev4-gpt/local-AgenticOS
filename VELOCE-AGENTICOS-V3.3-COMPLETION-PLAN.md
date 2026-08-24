@@ -54,11 +54,10 @@ The connected Vercel project currently reports production deployment
 from GitHub commit `b917d1486a472b65809217a6d6fe2aac8158852e`. The deployed SQL
 still contains `case when p_event_type = 'checkout.session.expired' then
 'expired' else 'cancelled' end`, so this is confirmed pre-fix evidence, not a
-current release. The local `v3.3-managed-credit-lifecycle` branch is 16 commits
-ahead of `origin/v3.3-managed-credit-lifecycle`; Cloud Shell cannot obtain the
-corrected source through `git pull` until the current branch is published through
-the existing repository workflow or otherwise transferred by an authorized
-operator.
+current release. The corrected branch has since been published at commit
+`c8b4943`; local HEAD and `origin/v3.3-managed-credit-lifecycle` now match.
+Cloud Shell can obtain the source through the existing repository workflow, but
+Vercel still requires an explicit deployment of the published commit.
 
 Verification note: the focused managed-credit suite and
 `verify:managed-credit` pass after the source change. The TypeScript configs
