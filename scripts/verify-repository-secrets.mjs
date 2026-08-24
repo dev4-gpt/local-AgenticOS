@@ -3,7 +3,19 @@ import { extname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const ignored = new Set([".git", ".next", "node_modules", "dist", "coverage", "test-results", "out"]);
+const ignored = new Set([
+  ".git",
+  ".next",
+  ".next-v0",
+  ".next-client",
+  ".next-client-test",
+  "node_modules",
+  "node_modules 2",
+  "dist",
+  "coverage",
+  "test-results",
+  "out",
+]);
 const textExtensions = new Set(["", ".css", ".html", ".js", ".json", ".jsx", ".md", ".mjs", ".sh", ".toml", ".ts", ".tsx", ".txt", ".yaml", ".yml"]);
 const directPatterns = [
   ["private key", /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],

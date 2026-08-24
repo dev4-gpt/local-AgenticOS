@@ -32,11 +32,12 @@ Immediate next gates, in order:
 5. Continue with two-tenant isolation and current-revision production gates.
 
 Verification note: the focused managed-credit suite and
-`verify:managed-credit` pass after the source change. Repository-wide and
-`product-experience` typechecks currently stop on duplicate generated Next.js
-declarations under `.next-v0/types` and `product-experience/.next/types`; this
-must be cleared or excluded in the release build before claiming a green
-release check.
+`verify:managed-credit` pass after the source change. The TypeScript configs now
+include only canonical Next.js declaration outputs (`*.d.ts` plus the single
+`validator.ts`) instead of duplicate generated files such as `routes.d 2.ts`.
+The repository secret scanner now excludes all alternate generated Next.js and
+duplicate dependency directories as well. Re-run the security scan before
+claiming a green release check.
 
 V1, V2, V3, and V3.1 were not four fully shipped products. They were successive
 local, operator, public-control-plane, and cost-governance tracks. V3.2 is the
