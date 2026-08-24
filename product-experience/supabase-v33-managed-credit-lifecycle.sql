@@ -850,10 +850,14 @@ begin
   end if;
 
   if p_event_type in ('checkout.session.expired', 'payment_intent.payment_failed') then
+    -- A failed PaymentIntent is an attempt failure, not Checkout expiration.
+    -- Stripe can retry the same open Checkout Session with a new payment
+    -- method, so preserve a pending plan until checkout.session.expired.
     update public.client_credit_purchase_plans
-    set status = case when status = 'pending' then
-        case when p_event_type = 'checkout.session.expired' then 'expired' else 'cancelled' end
-      else status end,
+    set status = case
+        when p_event_type = 'checkout.session.expired' and status = 'pending' then 'expired'
+        else status
+      end,
       reconciliation_status = 'matched',
       failure_reason = case when p_event_type = 'payment_intent.payment_failed' then
         coalesce(nullif(p_metadata->>'failure_reason', ''), 'payment_intent_payment_failed')

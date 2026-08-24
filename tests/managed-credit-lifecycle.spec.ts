@@ -155,6 +155,14 @@ test("Stripe lifecycle events remain signature-verified and idempotent", () => {
   }
 });
 
+test("failed PaymentIntent preserves a pending purchase for Checkout retry", () => {
+  const sql = readFileSync(migrationPath, "utf8");
+
+  expect(sql).toContain("when p_event_type = 'checkout.session.expired' and status = 'pending' then 'expired'");
+  expect(sql).toContain("-- Stripe can retry the same open Checkout Session with a new payment");
+  expect(sql).not.toContain("then 'expired' else 'cancelled' end");
+});
+
 test("OpenRouter managed execution remains disabled", () => {
   expect(OPENROUTER_MANAGED_ROUTE.enabled).toBe(false);
 });
