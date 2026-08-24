@@ -33,8 +33,8 @@
 
 - Vercel product deployment for the application commit `9a540fc` (the parent of this documentation-only commit): `dpl_Cmn4TesHTSFRQSZqmXSJBhyXgPVd`, ready and aliased to `https://product-experience-five.vercel.app`.
 - Vercel public-site deployment for the application commit `9a540fc` (the parent of this documentation-only commit): `dpl_3dbVH2kfhJqYh93B8q8NzNga4bnu`, ready and aliased to `https://veloce-agenticos-public.vercel.app`.
-- Cloud Run active revision: `veloce-cloud-test-00186-kff`, with rollback target `veloce-cloud-test-00185-bhn`; its image digest is recorded in the release evidence notes.
-- Current-source Cloud Build succeeded for image `client-runtime:v3-3-9a540fc` with digest `sha256:be8b315511a4004d84004f30fabd8acca4ad47f396b75cb5ca08a86a556cc827`, but the resulting zero-traffic revision `veloce-cloud-test-00187-8mx` was retired by Cloud Run and was not promoted. The active revision therefore does not yet represent the current source commit.
+- Cloud Run active revision: `veloce-cloud-test-00204-bil`, serving 100% traffic, with rollback target `veloce-cloud-test-00186-kff`.
+- Current-source Cloud Build succeeded for image `client-runtime:v3-3-9a540fc` with digest `sha256:be8b315511a4004d84004f30fabd8acca4ad47f396b75cb5ca08a86a556cc827`. The tagged readiness smoke passed (`/` 307, `/login` 200, protected credits route 401), and the promoted service smoke passed the same checks.
 - No private public-provisioner service or control-plane Secret Manager configuration was found; that deployment remains owner-controlled and intentionally incomplete.
 
 ## What remains before public production
@@ -42,7 +42,7 @@
 These are primarily owner-controlled external gates and are intentionally not claimed as complete by local tests.
 
 1. **Release identity and deployment**
-   - Promote a healthy Cloud Run revision built from the current source commit; the current-source image built successfully but its zero-traffic revision was retired before promotion.
+   - Promote a healthy Cloud Run revision built from the current source commit. **Completed:** `veloce-cloud-test-00204-bil` is serving 100% traffic with rollback target `veloce-cloud-test-00186-kff`.
    - Deploy the exact revision to the private provisioner.
    - Record the Vercel deployment, Cloud Run revision, immutable image digest, Supabase migration result, and rollback target.
    - Re-run `verify:production-readiness` against those recorded artifacts.
