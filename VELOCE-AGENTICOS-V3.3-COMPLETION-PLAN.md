@@ -69,6 +69,11 @@ duplicate dependency directories as well. Re-run the security scan before
 claiming a green release check. Both production builds also pass when run in a
 build environment with network/process permissions; the local sandbox can
 otherwise block Google Fonts or Turbopack worker startup.
+The broader local release checks also pass from the published branch: public
+launch contract, product intake release gates, client provider policy, and 16
+managed-credit/readiness/provider/route tests. These are source gates only and
+do not substitute for the Supabase, Vercel, Cloud Run, or Stripe evidence rows
+above.
 
 V1, V2, V3, and V3.1 were not four fully shipped products. They were successive
 local, operator, public-control-plane, and cost-governance tracks. V3.2 is the
