@@ -2,7 +2,7 @@
 
 **Snapshot:** 2026-08-24  
 **Current branch:** `v3.3-managed-credit-lifecycle`  
-**Current source commit:** `9a540fc004f9edad10f91cece0fdf03a9e0351b7`
+**Current source commit:** `697eee22392f328292b398e9abe9cb7331e06332`
 **Status:** Implementation and local verification complete; controlled deployment evidence is partial; public production launch is not yet accepted.
 
 ## What is complete locally
