@@ -38,7 +38,7 @@ Immediate next gates, in order:
 | Failed PaymentIntent remains retryable | SQL fix in `0c8fd95`; regression test passes | complete locally | Apply migration in Supabase |
 | Source/type/security gates | Builds, both typechecks, lifecycle tests, contract checks, and secret scan pass | complete locally | Re-run from synchronized Cloud Shell checkout |
 | Corrected migration applied | No current schema-result evidence | open | Run migration and schema/routine checks |
-| Webhook deployed from current source | Local route is verified; deployed revision is not proven here | open | Record Vercel deployment/revision evidence |
+| Webhook deployed from current source | Vercel production deployment `dpl_Fy7CjYWyNYBM3R76esvtKoi8UucE` uses commit `b917d148`, which still contains the pre-fix `payment_intent.payment_failed` cancellation logic | open | Publish the current branch, deploy the tested commit, and record the new Vercel deployment |
 | Decline → retry-success | Pre-fix failure is proven; post-fix retry is not run | open | Fresh Stripe plan; expect `pending` then `paid / matched` |
 | Expiry, refund, dispute, invalid allocation | No post-fix evidence | open | Run each fresh fixture and record non-secret IDs/statuses |
 | Two-tenant isolation and rollback | Not refreshed on this source baseline | open | Disposable tenant A/B run with revision and rollback target |
@@ -46,6 +46,19 @@ Immediate next gates, in order:
 
 Do not mark the release production-ready while any `open` or `gated` row lacks
 its stated proof.
+
+### External deployment audit — 2026-08-23
+
+The connected Vercel project currently reports production deployment
+`dpl_Fy7CjYWyNYBM3R76esvtKoi8UucE` (`product-experience-o21hh74v2-veloce-agentic-os.vercel.app`)
+from GitHub commit `b917d1486a472b65809217a6d6fe2aac8158852e`. The deployed SQL
+still contains `case when p_event_type = 'checkout.session.expired' then
+'expired' else 'cancelled' end`, so this is confirmed pre-fix evidence, not a
+current release. The local `v3.3-managed-credit-lifecycle` branch is 16 commits
+ahead of `origin/v3.3-managed-credit-lifecycle`; Cloud Shell cannot obtain the
+corrected source through `git pull` until the current branch is published through
+the existing repository workflow or otherwise transferred by an authorized
+operator.
 
 Verification note: the focused managed-credit suite and
 `verify:managed-credit` pass after the source change. The TypeScript configs
