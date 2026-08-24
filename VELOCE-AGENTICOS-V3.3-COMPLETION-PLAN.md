@@ -37,7 +37,9 @@ include only canonical Next.js declaration outputs (`*.d.ts` plus the single
 `validator.ts`) instead of duplicate generated files such as `routes.d 2.ts`.
 The repository secret scanner now excludes all alternate generated Next.js and
 duplicate dependency directories as well. Re-run the security scan before
-claiming a green release check.
+claiming a green release check. Both production builds also pass when run in a
+build environment with network/process permissions; the local sandbox can
+otherwise block Google Fonts or Turbopack worker startup.
 
 V1, V2, V3, and V3.1 were not four fully shipped products. They were successive
 local, operator, public-control-plane, and cost-governance tracks. V3.2 is the
