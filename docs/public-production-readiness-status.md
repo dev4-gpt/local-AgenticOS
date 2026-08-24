@@ -51,6 +51,8 @@ These are primarily owner-controlled external gates and are intentionally not cl
 
 2. **Production configuration**
    - Update the two Cloudflare CNAME records listed in the deployment snapshot, then re-run Vercel domain verification.
+   - The current Vercel product environment inventory lacks `PUBLIC_APP_URL`, `PUBLIC_SITE_URL`, `PUBLIC_EMAIL_FROM`, `STRIPE_MODE`, the live Stripe price IDs, `TURNSTILE_SECRET_KEY`, the control-plane/provisioner variables, and the OpenRouter managed Secret Manager/pricing variables.
+   - The current GCP Secret Manager inventory contains tenant/provider test secrets but no production control-plane or provisioner secret set.
    - Configure production email delivery/team routing, Turnstile or equivalent abuse protection, production Supabase control-plane secrets, Stripe live configuration, and the OpenRouter managed Secret Manager resource.
    - Verify configuration by hash/presence only; never place secret values in logs or evidence.
 
