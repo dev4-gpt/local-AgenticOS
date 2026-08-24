@@ -77,6 +77,42 @@ see [DEPLOYMENT-LINKS.md](./DEPLOYMENT-LINKS.md) and
 local-versus-client capability boundary is in
 [docs/runtime-capability-matrix.md](./docs/runtime-capability-matrix.md).
 
+## Public Production Readiness
+
+The current application revision is deployed to Vercel and Cloud Run, but the
+public-production gate is intentionally still closed until the owner-controlled
+commercial, provisioning, provider, tenant, and approval evidence is complete.
+
+Current verified deployment snapshot:
+
+- Application source: `9a540fc`
+- Cloud Run revision: `veloce-cloud-test-00204-bil` at 100% traffic
+- Cloud Run rollback target: `veloce-cloud-test-00186-kff`
+- Client-runtime image digest: `sha256:be8b315511a4004d84004f30fabd8acca4ad47f396b75cb5ca08a86a556cc827`
+- Public-provisioner image is built but not deployed until its private GCP
+  adapter and control-plane secrets are configured.
+- Vercel production domains are attached, but Cloudflare still needs the
+  required CNAME records and verification.
+
+The two billing modes are deliberately separate:
+
+- **BYOK:** the client supplies the provider key and pays that provider directly.
+- **Veloce-managed:** the client funds Veloce or requests team assistance;
+  Veloce approves the request, pays the provider from a Veloce-owned account,
+  and meters the tenant allocation. Wallet funding alone never activates a
+  provider.
+
+Remaining owner gates include production Supabase migration, live Stripe
+  onboarding and low-value billing tests, production secrets and abuse
+  protection, private provisioner deployment, provider-specific BYOK evidence,
+  two-tenant lifecycle/isolation evidence, managed OpenRouter execution tests,
+  and operations/legal/support approvals.
+
+See the [current production-readiness status](./docs/public-production-readiness-status.md),
+[public launch runbook](./docs/public-launch-runbook.md),
+[managed-provider billing model](./docs/managed-provider-access.md), and
+[production operations gates](./docs/production-operations.md).
+
 For v2 product boundaries, Flow Lab policy, approved capabilities, and explicit deferrals, see [VELOCE-AGENTICOS-V2.md](./VELOCE-AGENTICOS-V2.md). For the deliberate stable-path migration policy, see [MIGRATION-TO-VELOCE-AGENTICOS.md](./MIGRATION-TO-VELOCE-AGENTICOS.md).
 
 For the honest completion plan across V1, V2, V3, V3.1, and the current V3.2
