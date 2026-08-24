@@ -31,6 +31,22 @@ Immediate next gates, in order:
    non-secret IDs/statuses to the evidence ledger.
 5. Continue with two-tenant isolation and current-revision production gates.
 
+### Evidence ledger — current state
+
+| Requirement | Current evidence | State | Next proof |
+| --- | --- | --- | --- |
+| Failed PaymentIntent remains retryable | SQL fix in `0c8fd95`; regression test passes | complete locally | Apply migration in Supabase |
+| Source/type/security gates | Builds, both typechecks, lifecycle tests, contract checks, and secret scan pass | complete locally | Re-run from synchronized Cloud Shell checkout |
+| Corrected migration applied | No current schema-result evidence | open | Run migration and schema/routine checks |
+| Webhook deployed from current source | Local route is verified; deployed revision is not proven here | open | Record Vercel deployment/revision evidence |
+| Decline → retry-success | Pre-fix failure is proven; post-fix retry is not run | open | Fresh Stripe plan; expect `pending` then `paid / matched` |
+| Expiry, refund, dispute, invalid allocation | No post-fix evidence | open | Run each fresh fixture and record non-secret IDs/statuses |
+| Two-tenant isolation and rollback | Not refreshed on this source baseline | open | Disposable tenant A/B run with revision and rollback target |
+| Live Stripe/provider activation | Intentionally not started; OpenRouter remains disabled | gated | Owner approval after all mandatory gates |
+
+Do not mark the release production-ready while any `open` or `gated` row lacks
+its stated proof.
+
 Verification note: the focused managed-credit suite and
 `verify:managed-credit` pass after the source change. The TypeScript configs now
 include only canonical Next.js declaration outputs (`*.d.ts` plus the single
