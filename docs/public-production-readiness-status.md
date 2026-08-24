@@ -36,6 +36,7 @@
 - Cloud Run active revision: `veloce-cloud-test-00204-bil`, serving 100% traffic, with rollback target `veloce-cloud-test-00186-kff`.
 - Current-source Cloud Build succeeded for image `client-runtime:v3-3-9a540fc` with digest `sha256:be8b315511a4004d84004f30fabd8acca4ad47f396b75cb5ca08a86a556cc827`. The tagged readiness smoke passed (`/` 307, `/login` 200, protected credits route 401), and the promoted service smoke passed the same checks.
 - Vercel domains are attached to the intended projects, but Cloudflare DNS is not yet pointed at Vercel. Required records are root `CNAME @ → fa76dde4225b6136.vercel-dns-017.com` and portal `CNAME app → 2ea97003a781fd26.vercel-dns-017.com`, with proxying disabled; both domains currently report `invalid-configuration`.
+- Public-provisioner image build succeeded for `public-provisioner:9a540fc` with digest `sha256:9a462927d3eacb7d0e4d39e8a7bae57b04c884e559cb13bf21bebb5e4a17d231`, but it is intentionally not deployed until the private GCP adapter and control-plane secrets exist.
 - No private public-provisioner service or control-plane Secret Manager configuration was found; that deployment remains owner-controlled and intentionally incomplete.
 
 ## What remains before public production
