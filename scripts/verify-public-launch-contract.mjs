@@ -36,6 +36,7 @@ const required = [
   ["workers/public-provisioner/worker.mjs", "secret_in_manifest"],
   ["workers/public-provisioner/worker.mjs", "x-serverless-authorization"],
   ["workers/gcp-provisioner/worker.mjs", "gcp_apply_disabled"],
+  ["workers/gcp-provisioner/worker.mjs", "Both script phases mutate project resources"],
   ["workers/gcp-provisioner/worker.mjs", "artifact_repository_not_allowed"],
   ["workers/managed-openrouter/worker.mjs", "managed_provider_request_not_allowed"],
   ["product-experience/src/app/api/internal/managed-provider/openrouter/route.ts", "OPENROUTER_MANAGED_GATEWAY_URL"],

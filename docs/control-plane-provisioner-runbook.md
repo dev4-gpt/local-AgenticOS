@@ -99,6 +99,10 @@ With `GCP_PROVISIONER_ALLOW_APPLY=0`, verify:
 4. The public worker can reach the private adapter only with its Cloud Run
    identity.
 
+Safe mode blocks both `prepare` and `deploy`: neither phase may create project
+resources until the scoped custom role and the acceptance evidence are
+reviewed.
+
 Only after these checks and the custom adapter role are reviewed may the
 adapter be updated to `GCP_PROVISIONER_ALLOW_APPLY=1`.
 

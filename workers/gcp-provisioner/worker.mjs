@@ -75,7 +75,11 @@ function containsOperatorOnlyEnvironment(value) {
 async function runProvisioning(manifest) {
   const requestedPhase = manifest.provisioning?.phase;
   const phase = requestedPhase === "deploy" ? "deploy" : "prepare";
-  if (phase === "deploy" && !allowApply) throw new Error("gcp_apply_disabled");
+  // Both script phases mutate project resources. Safe mode must not allow a
+  // seemingly harmless prepare request to create a tenant service account,
+  // bucket, queue, or secret before the scoped role and acceptance evidence
+  // have been reviewed.
+  if (!allowApply) throw new Error("gcp_apply_disabled");
 
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "veloce-provision-"));
   const configPath = path.join(temporaryDirectory, "manifest.json");
@@ -148,7 +152,8 @@ const server = http.createServer(async (request, response) => {
     const result = await runProvisioning(input.manifest);
     return json(response, 200, { ok: true, runId: input.runId, ...result });
   } catch (error) {
-    return json(response, 502, { ok: false, runId: input.runId, error: error instanceof Error ? error.message : "gcp_provisioning_failed" });
+    const message = error instanceof Error ? error.message : "gcp_provisioning_failed";
+    return json(response, message === "gcp_apply_disabled" ? 409 : 502, { ok: false, runId: input.runId, error: message });
   }
 });
 

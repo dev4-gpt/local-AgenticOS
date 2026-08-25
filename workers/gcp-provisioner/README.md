@@ -17,9 +17,11 @@ be a dedicated service account with the minimum roles required by that script.
 - `GCP_ALLOWED_REGION=asia-south1`
 - `GCP_ALLOWED_ARTIFACT_REPOSITORY=veloce`
 - `GCP_PROVISIONER_ALLOW_APPLY=0` for the first deployment and all acceptance
-  checks. Set it to `1` only after the IAM and dry-run checks pass.
+  checks. In this mode **no request can mutate GCP**, including a `prepare`
+  request. Set it to `1` only after the scoped IAM role and acceptance checks
+  pass.
 
-The service starts with `prepare` provisioning only. A deployment manifest
-must explicitly set `provisioning.phase` to `deploy`, and an enabled Secret
-Manager version must already exist for every entry in `secretEnv` before a
-deployment can succeed.
+Once mutations are explicitly enabled, the service defaults to the `prepare`
+phase. A deployment manifest must explicitly set `provisioning.phase` to
+`deploy`, and an enabled Secret Manager version must already exist for every
+entry in `secretEnv` before a deployment can succeed.
