@@ -1,0 +1,56 @@
+title: Veloce Tenant Provisioner
+description: >-
+  Creates and configures approved Veloce tenant runtime resources in the
+  pre-bootstrapped veloce-agenticos-2026 project. Does not enable APIs, manage
+  project IAM, read secret values, delete resources, or create repositories.
+stage: BETA
+includedPermissions:
+  # Resolve the approved, pre-existing client runtime image.
+  - artifactregistry.dockerimages.get
+  - artifactregistry.repositories.downloadArtifacts
+
+  # Attach the tenant service account to Cloud Run resources, and grant only
+  # the narrow token-creation bindings required by Cloud Tasks.
+  - iam.serviceAccounts.actAs
+  - iam.serviceAccounts.create
+  - iam.serviceAccounts.get
+  - iam.serviceAccounts.getIamPolicy
+  - iam.serviceAccounts.setIamPolicy
+
+  # Create and configure the tenant's Cloud Storage bucket.
+  - storage.buckets.create
+  - storage.buckets.get
+  - storage.buckets.getIamPolicy
+  - storage.buckets.setIamPolicy
+  - storage.buckets.update
+
+  # Create Secret Manager containers and grant the tenant runtime access.
+  # Secret payloads are supplied later through the credential inbox; this role
+  # intentionally has no secretAccessor or versions.access permission.
+  - secretmanager.secrets.create
+  - secretmanager.secrets.get
+  - secretmanager.secrets.getIamPolicy
+  - secretmanager.secrets.setIamPolicy
+  - secretmanager.versions.list
+
+  # Create the tenant-specific queue and bind only its runtime enqueuer role.
+  - cloudtasks.queues.create
+  - cloudtasks.queues.get
+  - cloudtasks.queues.getIamPolicy
+  - cloudtasks.queues.setIamPolicy
+
+  # Deploy and configure the tenant Cloud Run service and isolated jobs.
+  - run.jobs.create
+  - run.jobs.get
+  - run.jobs.getIamPolicy
+  - run.jobs.setIamPolicy
+  - run.jobs.update
+  - run.operations.get
+  - run.services.create
+  - run.services.get
+  - run.services.getIamPolicy
+  - run.services.setIamPolicy
+  - run.services.update
+
+  # Read the fixed project identity used to derive resource names.
+  - resourcemanager.projects.get

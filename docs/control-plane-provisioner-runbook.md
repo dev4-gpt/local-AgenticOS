@@ -69,6 +69,19 @@ Artifact Registry **read**, and service-account operations performed by
 repository creation are one-time operator bootstrap actions and are not in the
 tenant provisioner role.
 
+The reviewable role source is
+[`iam/veloce-gcp-provisioner-role.yaml`](../iam/veloce-gcp-provisioner-role.yaml).
+After review, an operator can create it with:
+
+```bash
+gcloud iam roles create veloceTenantProvisioner \
+  --project veloce-agenticos-2026 \
+  --file iam/veloce-gcp-provisioner-role.yaml
+```
+
+Do not bind the role to `veloce-gcp-provisioner-run` or set
+`GCP_PROVISIONER_ALLOW_APPLY=1` until the controlled adapter test has passed.
+
 ## 4. Build and deploy in safe mode
 
 Build both images from the repository root with:
