@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Script from "next/script";
 
 type FormState = "idle" | "sending" | "sent" | "fallback" | "blocked";
 
@@ -14,9 +15,11 @@ function asString(data: FormData, key: string) {
 
 export function StartIntakeForm() {
   const [state, setState] = useState<FormState>("idle");
+  const [captchaToken, setCaptchaToken] = useState("");
   const [notice, setNotice] = useState(
     "No passwords, API keys, private documents, or client secrets belong in this form."
   );
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || "";
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,14 +36,32 @@ export function StartIntakeForm() {
       dataSources: asString(data, "dataSources"),
       integrations: asString(data, "integrations"),
       credentialModel: asString(data, "credentialModel"),
-      monthlyBudget: asString(data, "monthlyBudget"),
+      providerUsagePreference: asString(data, "providerUsagePreference"),
+      providerCreditBudgetUsd: asString(data, "providerCreditBudgetUsd"),
       approvalRule: asString(data, "approvalRule"),
+      seatCount: asString(data, "seatCount"),
+      brandCount: asString(data, "brandCount"),
+      workflowCount: asString(data, "workflowCount"),
+      capabilityAreas: Array.from(form.querySelectorAll<HTMLInputElement>('input[name="capabilityAreas"]:checked')).map((input) => input.value),
+      mediaRequirement: asString(data, "mediaRequirement"),
+      externalActions: data.get("externalActions") === "on",
+      knowledgeMigration: data.get("knowledgeMigration") === "on",
+      supportLevel: asString(data, "supportLevel"),
+      managedServiceNeed: asString(data, "managedServiceNeed"),
+      retentionDays: asString(data, "retentionDays"),
       preferredSubdomain: asString(data, "preferredSubdomain"),
       timeline: asString(data, "timeline"),
       notes: asString(data, "notes"),
       termsAccepted: data.get("termsAccepted") === "on",
       privacyAccepted: data.get("privacyAccepted") === "on",
+      captchaToken,
     };
+
+    if (turnstileSiteKey && !captchaToken) {
+      setState("blocked");
+      setNotice("Complete the security check before submitting your onboarding request.");
+      return;
+    }
 
     setState("sending");
     try {
@@ -53,6 +74,8 @@ export function StartIntakeForm() {
 
       if (res.ok) {
         form.reset();
+        setCaptchaToken("");
+        window.turnstile?.reset?.();
         setState("sent");
         const requestId = typeof body.requestId === "string" ? body.requestId : null;
         setNotice(requestId ? `Request received (${requestId.slice(0, 8)}…). Check your email to verify the request. Payment and activation happen only after review.` : "Request received. Check your email to verify the request.");
@@ -116,6 +139,30 @@ export function StartIntakeForm() {
         </label>
       </div>
 
+      <fieldset className="grid gap-3 rounded-lg border border-[var(--g5)]/12 bg-white/35 p-4">
+        <legend className={labelClass}>Requested operating areas</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[
+            ["growth", "SEO, lead generation, and growth workflows"],
+            ["creative", "Content, design, and creative production"],
+            ["automation", "Advanced loops and workflow automation"],
+          ].map(([value, label]) => (
+            <label key={value} className="flex items-center gap-3 text-sm text-[var(--g5)]/72">
+              <input name="capabilityAreas" type="checkbox" value={value} />
+              {label}
+            </label>
+          ))}
+        </div>
+        <label className="flex items-center gap-3 text-sm text-[var(--g5)]/72">
+          <input name="externalActions" type="checkbox" />
+          Publishing, outreach, or paid actions
+        </label>
+        <label className="flex items-center gap-3 text-sm text-[var(--g5)]/72">
+          <input name="knowledgeMigration" type="checkbox" />
+          Migrate existing knowledge, documents, or operating processes
+        </label>
+      </fieldset>
+
       <label className={labelClass}>
         Company website
         <input name="website" type="url" placeholder="https://example.com" className={fieldClass} />
@@ -170,6 +217,14 @@ export function StartIntakeForm() {
           <input name="integrations" className={fieldClass} placeholder="OpenAI, Anthropic, Gmail, Drive..." />
         </label>
         <label className={labelClass}>
+          Provider usage preference
+          <select name="providerUsagePreference" defaultValue="byok" className={fieldClass}>
+            <option value="byok">BYOK — client pays providers directly</option>
+            <option value="managed_credits">Veloce-managed prepaid credits</option>
+            <option value="both">Both BYOK and managed credits</option>
+          </select>
+        </label>
+        <label className={labelClass}>
           Credential model
           <select name="credentialModel" defaultValue="client_owned" className={fieldClass}>
             <option value="client_owned">Client-owned provider keys</option>
@@ -178,8 +233,8 @@ export function StartIntakeForm() {
           </select>
         </label>
         <label className={labelClass}>
-          Monthly budget cap
-          <input name="monthlyBudget" className={fieldClass} placeholder="$100, $500, $1,000..." />
+          Requested managed-provider wallet
+          <input name="providerCreditBudgetUsd" className={fieldClass} placeholder="$100, $500, $1,000..." />
         </label>
         <label className={labelClass}>
           Approval rule
@@ -188,6 +243,50 @@ export function StartIntakeForm() {
             <option value="approve_publish_and_spend">Approve publishing and spend only</option>
             <option value="custom">Custom approval policy</option>
           </select>
+        </label>
+        <label className={labelClass}>
+          Named seats
+          <input name="seatCount" type="number" min="1" max="500" defaultValue="1" className={fieldClass} />
+        </label>
+        <label className={labelClass}>
+          Brands or business units
+          <input name="brandCount" type="number" min="1" max="100" defaultValue="1" className={fieldClass} />
+        </label>
+        <label className={labelClass}>
+          Initial workflows
+          <input name="workflowCount" type="number" min="1" max="500" defaultValue="1" className={fieldClass} />
+        </label>
+        <label className={labelClass}>
+          Media requirement
+          <select name="mediaRequirement" defaultValue="none" className={fieldClass}>
+            <option value="none">No media generation</option>
+            <option value="image">Images and thumbnails</option>
+            <option value="video">Video</option>
+            <option value="music">Music or voice</option>
+            <option value="full_media">Images, video, music, and voice</option>
+          </select>
+        </label>
+        <label className={labelClass}>
+          Support level
+          <select name="supportLevel" defaultValue="standard" className={fieldClass}>
+            <option value="standard">Standard platform support</option>
+            <option value="priority">Priority support</option>
+            <option value="dedicated">Dedicated operating cadence</option>
+          </select>
+        </label>
+        <label className={labelClass}>
+          Managed service need
+          <select name="managedServiceNeed" defaultValue="self_directed" className={fieldClass}>
+            <option value="self_directed">Self-directed platform use</option>
+            <option value="strategy">Strategy support</option>
+            <option value="content">Content production</option>
+            <option value="growth">Growth and lead generation</option>
+            <option value="full_operations">Veloce-led operations</option>
+          </select>
+        </label>
+        <label className={labelClass}>
+          Retention period
+          <input name="retentionDays" type="number" min="1" max="3650" className={fieldClass} placeholder="30" />
         </label>
         <label className={labelClass}>
           Preferred subdomain
@@ -209,6 +308,13 @@ export function StartIntakeForm() {
         />
       </label>
 
+      {turnstileSiteKey && (
+        <div className="grid gap-2 rounded-lg border border-[var(--g5)]/12 bg-white/35 p-4">
+          <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--g5)]/65">Security check</span>
+          <TurnstileWidget siteKey={turnstileSiteKey} onToken={setCaptchaToken} />
+        </div>
+      )}
+
       <div className="flex flex-col gap-4 border-t border-[var(--g5)]/12 pt-5 sm:flex-row sm:items-center sm:justify-between">
         <p aria-live="polite" className="max-w-xl text-sm leading-relaxed text-[var(--g5)]/62">
           {notice}
@@ -225,7 +331,7 @@ export function StartIntakeForm() {
   );
 }
 
-function makeBrief(payload: Record<string, string | boolean>) {
+function makeBrief(payload: Record<string, string | boolean | string[]>) {
   return `Veloce client runtime request
 
 Name: ${payload.name}
@@ -247,11 +353,63 @@ Required integrations:
 ${payload.integrations}
 
 Credential model: ${payload.credentialModel}
-Monthly budget cap: ${payload.monthlyBudget}
+Provider usage preference: ${payload.providerUsagePreference}
+Requested managed-provider wallet: ${payload.providerCreditBudgetUsd}
 Approval rule: ${payload.approvalRule}
+Named seats: ${payload.seatCount}
+Brands or business units: ${payload.brandCount}
+Initial workflows: ${payload.workflowCount}
+Capability areas: ${Array.isArray(payload.capabilityAreas) ? payload.capabilityAreas.join(", ") : payload.capabilityAreas}
+Media requirement: ${payload.mediaRequirement}
+External actions: ${payload.externalActions}
+Knowledge migration: ${payload.knowledgeMigration}
+Support level: ${payload.supportLevel}
+Managed service need: ${payload.managedServiceNeed}
+Retention days: ${payload.retentionDays}
 Preferred subdomain: ${payload.preferredSubdomain}
 Timeline: ${payload.timeline}
 
 Notes:
 ${payload.notes}`;
+}
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (element: HTMLElement, options: {
+        sitekey: string;
+        callback: (token: string) => void;
+        "expired-callback": () => void;
+        "error-callback": () => void;
+      }) => string;
+      reset?: (widgetId?: string) => void;
+    };
+  }
+}
+
+function TurnstileWidget({ siteKey, onToken }: { siteKey: string; onToken: (token: string) => void }) {
+  const containerId = "veloce-turnstile-widget";
+
+  function renderWidget() {
+    const container = document.getElementById(containerId);
+    if (!container || !window.turnstile || container.dataset.rendered === "true") return;
+    window.turnstile.render(container, {
+      sitekey: siteKey,
+      callback: onToken,
+      "expired-callback": () => onToken(""),
+      "error-callback": () => onToken(""),
+    });
+    container.dataset.rendered = "true";
+  }
+
+  return (
+    <>
+      <Script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+        strategy="afterInteractive"
+        onLoad={renderWidget}
+      />
+      <div id={containerId} aria-label="Cloudflare Turnstile security check" />
+    </>
+  );
 }

@@ -85,6 +85,10 @@ export function stripeConfigured() {
   return Boolean(process.env.STRIPE_SECRET_KEY?.trim() && process.env.STRIPE_SETUP_PRICE_ID?.trim() && process.env.STRIPE_PLATFORM_PRICE_ID?.trim());
 }
 
+export function stripeSecretConfigured() {
+  return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
+}
+
 export async function stripeRequest(path: string, body: Record<string, string | number | string[]>) {
   const secret = process.env.STRIPE_SECRET_KEY?.trim();
   if (!secret) return { ok: false, status: 503, value: null as Record<string, unknown> | null };

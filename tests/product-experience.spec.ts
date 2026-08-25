@@ -77,3 +77,13 @@ test("product experience remains usable on mobile", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /ren.*ssance/i })).toBeVisible();
   expect(await page.locator("body").evaluate((body) => body.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test("onboarding exposes commercial scope inputs without exposing provider secrets", async ({ page }) => {
+  await page.goto("/start", { waitUntil: "networkidle" });
+  await expect(page.getByRole("heading", { name: /describe the operation/i })).toBeVisible();
+  for (const label of ["Named seats", "Brands or business units", "Initial workflows", "Media requirement", "Support level", "Managed service need", "Provider usage preference"]) {
+    await expect(page.getByLabel(label, { exact: true })).toBeVisible();
+  }
+  await expect(page.getByText(/provider wallet/i)).toBeVisible();
+  await expect(page.getByText(/never paste credentials/i)).toBeVisible();
+});

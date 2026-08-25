@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { allowPublicRequest, payloadTooLarge } from "@/lib/publicRequestGuard";
 import { notifyLead } from "@/lib/leadNotification";
+import { normalizeCommercialScopeInputs, recommendCommercialScope } from "@/lib/commercialScope";
 import { hashSetupToken, publicEmail, requestId as launchRequestId, sendSetupEmail, supabaseServiceInsert, supabaseServiceSelect } from "@/lib/publicLaunch";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -21,8 +22,17 @@ const fields = [
   "dataSources",
   "integrations",
   "credentialModel",
+  "providerUsagePreference",
+  "providerCreditBudgetUsd",
   "monthlyBudget",
   "approvalRule",
+  "seatCount",
+  "brandCount",
+  "workflowCount",
+  "mediaRequirement",
+  "supportLevel",
+  "managedServiceNeed",
+  "retentionDays",
   "preferredSubdomain",
   "timeline",
   "notes",
@@ -90,6 +100,14 @@ export async function POST(req: Request) {
     if (prior.rows[0]?.id) return NextResponse.json({ ok: true, requestId: prior.rows[0].id, status: "requested", duplicate: true });
   }
 
+  const scopeInputs = normalizeCommercialScopeInputs({
+    ...values,
+    capabilityAreas: Array.isArray(body.capabilityAreas) ? body.capabilityAreas.map((item) => clean(item, 120)) : [],
+    externalActions: body.externalActions === true,
+    knowledgeMigration: body.knowledgeMigration === true,
+  });
+  const scopeRecommendation = recommendCommercialScope(scopeInputs);
+
   const row = {
     name: values.name,
     email,
@@ -101,7 +119,7 @@ export async function POST(req: Request) {
     data_sources: values.dataSources || null,
     required_integrations: values.integrations || null,
     credential_model: values.credentialModel || "client_owned",
-    monthly_budget_cap: values.monthlyBudget || null,
+    monthly_budget_cap: values.providerCreditBudgetUsd || values.monthlyBudget || null,
     approval_rule: values.approvalRule || "approve_external_actions",
     preferred_subdomain: values.preferredSubdomain || null,
     timeline: values.timeline || null,
@@ -112,9 +130,11 @@ export async function POST(req: Request) {
     privacy_accepted_at: new Date().toISOString(),
     idempotency_key: idempotencyKey || launchRequestId(),
     source: "product-start",
+    scope_inputs: scopeInputs,
     meta: {
       userAgent: req.headers.get("user-agent") ?? null,
       receivedAt: new Date().toISOString(),
+      commercialScopeVersion: scopeRecommendation.version,
     },
   };
 
@@ -143,6 +163,9 @@ export async function POST(req: Request) {
       request_id: requestId,
       email,
       status: "requested",
+      commercial_scope_status: "recommended",
+      commercial_scope_inputs: scopeInputs,
+      commercial_scope_recommendation: scopeRecommendation,
     });
     const onboardingId = typeof onboarding.rows[0]?.id === "string" ? onboarding.rows[0].id : null;
     if (!onboarding.ok || !onboardingId) {

@@ -44,6 +44,32 @@ npm run provision:gcp-client -- \
 Current Cloud Run service:
 <https://veloce-cloud-test-1075094991117.asia-south1.run.app>
 
+## Commercial scope and entitlements
+
+Public onboarding is one platform offer, not a three-tier application. The
+starting commercial offer is $2,500 setup plus $1,250/month. The same governed
+workspace is provisioned for every tenant; the approved commercial scope is
+compiled into the tenant manifest to control capabilities, providers, budgets,
+integrations, storage, retention, and approval policy.
+
+The intake form records seats, brands, workflow count, integrations, capability
+areas, media needs, external actions, knowledge migration, support level,
+managed-service needs, credential ownership, and provider-credit preference.
+`src/lib/commercialScope.ts` deterministically recommends a standard, expanded,
+or custom scope with setup and monthly ranges. It never charges a client or
+activates a provider. An operator approves the recommendation through
+`/api/onboarding/scope/approve` before checkout.
+
+Apply the commercial-scope migration after the public launch control plane:
+
+```sql
+-- product-experience/supabase-commercial-scope.sql
+```
+
+BYOK provider charges remain the client's responsibility. Veloce-managed
+provider usage is a separate prepaid wallet and is never included in the
+platform setup or subscription price.
+
 Before enabling the store, run:
 
 ```sql
@@ -73,6 +99,12 @@ Lead storage is deliberately independent of notification delivery: a Resend
 outage cannot discard a submitted lead. Notification email contains only the
 contact identity, source, and reply-to address; the full record remains in
 Supabase.
+
+For production abuse protection, create a Cloudflare Turnstile widget for the
+public domain and add its public site key as `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+and its secret as `TURNSTILE_SECRET_KEY` in Vercel Production. The onboarding
+form stays fail-closed when the secret is enabled but no valid challenge token
+is supplied. Do not commit either value.
 
 Production notification verification on 2026-07-29: Resend verified the
 `veloceos.cloud` sender domain; one synthetic non-personal lead returned

@@ -102,6 +102,26 @@ The two billing modes are deliberately separate:
   and meters the tenant allocation. Wallet funding alone never activates a
   provider.
 
+The public commercial model is one governed platform plus scope-based additions,
+not three software editions:
+
+- Base platform: **$2,500 setup + $1,250/month**.
+- The base includes an isolated tenant workspace, memory, workflows, approvals,
+  audit, monitoring, standard support, and up to five seats.
+- Growth, creative/media, SEO, lead-generation, integrations, extra brands or
+  seats, migrations, and complex automation are quoted add-ons.
+- Strategy, content production, growth execution, training, and Veloce-led
+  operations are separate managed-service scopes.
+- Provider usage is always separate from the platform fee. BYOK is paid directly
+  by the client; managed usage is a visible prepaid Veloce wallet.
+
+Public onboarding collects the scope inputs and creates a deterministic
+recommendation. An operator approves the commercial quote before payment and
+manifest approval. The approved scope is compiled into the tenant manifest;
+recommendations never activate providers or grant access by themselves.
+
+The scope migration is [product-experience/supabase-commercial-scope.sql](./product-experience/supabase-commercial-scope.sql).
+
 Remaining owner gates include production Supabase migration, live Stripe
   onboarding and low-value billing tests, production secrets and abuse
   protection, private provisioner deployment, provider-specific BYOK evidence,

@@ -31,12 +31,40 @@ test("production readiness source keeps live gates explicit", () => {
   expect(runbook).toContain("before live mode");
 });
 
+test("public onboarding wires Turnstile only through public site-key and server secret paths", () => {
+  const form = readFileSync(resolve(process.cwd(), "product-experience/src/components/editions/StartIntakeForm.tsx"), "utf8");
+  const route = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/deployment-request/route.ts"), "utf8");
+  expect(form).toContain("NEXT_PUBLIC_TURNSTILE_SITE_KEY");
+  expect(form).toContain("challenges.cloudflare.com/turnstile/v0/api.js?render=explicit");
+  expect(form).toContain("captchaToken");
+  expect(route).toContain("TURNSTILE_SECRET_KEY");
+  expect(route).toContain("captcha_failed");
+  expect(route).not.toContain("NEXT_PUBLIC_TURNSTILE_SECRET");
+});
+
 test("public launch migration fails closed for control-plane privileges", () => {
   const migration = readFileSync(resolve(process.cwd(), "product-experience/supabase-public-launch-control-plane.sql"), "utf8");
   expect(migration).toContain("from public, anon, authenticated;");
   expect(migration).toContain("revoke execute on function public.credit_client_managed_wallet(text, bigint, text, jsonb)");
   expect(migration).toContain("grant execute on function public.credit_client_managed_wallet(text, bigint, text, jsonb) to service_role;");
   expect(migration).not.toContain("revoke execute on function public.credit_client_managed_wallet(text, bigint, text, jsonb) from anon, authenticated;");
+});
+
+test("commercial scope remains separate from runtime manifest and billing", () => {
+  const migration = readFileSync(resolve(process.cwd(), "product-experience/supabase-commercial-scope.sql"), "utf8");
+  const intake = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/deployment-request/route.ts"), "utf8");
+  const approval = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/scope/approve/route.ts"), "utf8");
+  const manifestApproval = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/approve/route.ts"), "utf8");
+  const checkout = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/billing/checkout/route.ts"), "utf8");
+  expect(migration).toContain("commercial_scope_recommendation");
+  expect(migration).toContain("commercial_scope_quote");
+  expect(intake).toContain("recommendCommercialScope");
+  expect(approval).toContain("commercial_scope_status: \"approved\"");
+  expect(manifestApproval).toContain("applyCommercialScopeToManifest");
+  expect(manifestApproval).toContain("commercial_scope_approval_required");
+  expect(checkout).toContain("commercial_scope_pending");
+  expect(checkout).toContain("metadata[commercial_scope]");
+  expect(approval).toContain("providerCreditsIncluded: false");
 });
 
 test("team support notification is server-side and contains no credential field", async () => {

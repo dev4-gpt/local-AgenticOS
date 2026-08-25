@@ -2,9 +2,10 @@ import Link from "next/link";
 import { StartIntakeForm } from "@/components/editions/StartIntakeForm";
 
 const steps = [
-  "You submit requirements, tools, budget, and approval rules.",
-  "You verify your email; payment and manifest review happen before activation.",
-  "The control plane provisions an isolated runtime and runs its evidence bundle.",
+  "You submit requirements, operating scope, tools, budget, and approval rules.",
+  "Veloce returns a scope recommendation and quote for operator approval before payment.",
+  "You verify your email; approved payment and manifest review happen before activation.",
+  "The control plane compiles the approved scope into a tenant manifest, provisions an isolated runtime, and runs its evidence bundle.",
   "You enter the portal and connect BYOK or Veloce-managed providers server-side.",
 ];
 
@@ -43,9 +44,9 @@ export default function StartPage() {
               Request your own Veloce OS.
             </h1>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-[var(--g5)]/68">
-              Anyone can start here. Veloce turns a verified, paid request into an isolated
-              client operating system with a personal provider page, transparent credits,
-              approval checkpoints, and tenant-scoped data.
+              Anyone can start here. Veloce turns an approved scope into one isolated client
+              operating system with visible capabilities, a personal provider page, transparent
+              credits, approval checkpoints, and tenant-scoped data.
             </p>
           </div>
 
@@ -82,9 +83,9 @@ export default function StartPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--g5)]/50">
               Public signup
             </p>
-            <h2 className="font-heading mt-2 text-3xl font-bold">Describe the service you need.</h2>
+            <h2 className="font-heading mt-2 text-3xl font-bold">Describe the operation you want to build.</h2>
             <p className="mt-3 text-sm leading-relaxed text-[var(--g5)]/62">
-              Never paste credentials into intake. After verification, payment, and approval, add BYOK keys or choose managed credits in your private portal.
+              Veloce uses your answers to recommend a scope and quote. Never paste credentials into intake. After approval and payment, add BYOK keys or choose managed credits in your private portal.
             </p>
           </div>
           <div className="mb-6 flex flex-wrap gap-3 text-sm">
