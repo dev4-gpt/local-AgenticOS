@@ -162,6 +162,39 @@ Grant `roles/run.invoker` on this service only to
 `veloce-vercel-control-plane`, then set these Vercel **Production Config**
 values and redeploy:
 
+```bash
+# Build the gateway image (this config also rebuilds the two provisioner images).
+gcloud builds submit . \
+  --project veloce-agenticos-2026 \
+  --config cloudbuild.control-plane.yaml
+
+gcloud run deploy veloce-managed-openrouter \
+  --project veloce-agenticos-2026 \
+  --region asia-south1 \
+  --image asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/managed-openrouter:managed-openrouter-latest \
+  --service-account veloce-managed-openrouter-run@veloce-agenticos-2026.iam.gserviceaccount.com \
+  --no-allow-unauthenticated \
+  --set-secrets OPENROUTER_API_KEY=openrouter-managed-api-key:latest,CONTROL_PLANE_OPERATOR_SECRET=control-plane-operator-secret:latest \
+  --set-env-vars PUBLIC_SITE_URL=https://app.veloceos.cloud \
+  --cpu 1 --memory 512Mi --concurrency 8 --max-instances 2 --timeout 100s
+
+gcloud run services add-iam-policy-binding veloce-managed-openrouter \
+  --project veloce-agenticos-2026 \
+  --region asia-south1 \
+  --member="serviceAccount:veloce-vercel-control-plane@veloce-agenticos-2026.iam.gserviceaccount.com" \
+  --role=roles/run.invoker
+```
+
+Obtain the exact service URL from the successful `gcloud run deploy` output,
+or with this non-mutating command:
+
+```bash
+gcloud run services describe veloce-managed-openrouter \
+  --project veloce-agenticos-2026 \
+  --region asia-south1 \
+  --format='value(status.url)'
+```
+
 ```text
 OPENROUTER_MANAGED_GATEWAY_URL=https://<managed-openrouter-url>
 OPENROUTER_MANAGED_SECRET_RESOURCE=projects/veloce-agenticos-2026/secrets/openrouter-managed-api-key/versions/latest
