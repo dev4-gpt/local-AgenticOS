@@ -201,8 +201,6 @@ if (apply) {
 
 const prepareCommands = [
   ["gcloud", ["config", "set", "project", projectId]],
-  ["gcloud", ["services", "enable", "run.googleapis.com", "secretmanager.googleapis.com", "storage.googleapis.com", "artifactregistry.googleapis.com", "cloudbuild.googleapis.com", "iamcredentials.googleapis.com", "cloudtasks.googleapis.com", "--project", projectId]],
-  ["gcloud", ["artifacts", "repositories", "create", repository, "--repository-format=docker", "--location", region, "--project", projectId, "--description", "Veloce client runtime images"]],
   ["gcloud", ["iam", "service-accounts", "create", serviceAccount, "--project", projectId, "--display-name", `Veloce ${clientName} runtime`]],
   ["gcloud", ["storage", "buckets", "create", `gs://${bucket}`, "--project", projectId, "--location", region, "--uniform-bucket-level-access"]],
   ["gcloud", ["storage", "buckets", "update", `gs://${bucket}`, `--cors-file=${storageCorsFile}`]],

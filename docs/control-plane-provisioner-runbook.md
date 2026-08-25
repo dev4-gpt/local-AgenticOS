@@ -63,8 +63,11 @@ gcloud secrets add-iam-policy-binding control-plane-worker-token --project veloc
 
 The adapter requires a reviewed custom role before it can provision tenants.
 Do not grant Owner, Editor, or project-wide Secret Manager Admin. Its role
-must be limited to the Cloud Run, Cloud Tasks, Storage, Artifact Registry, and
-service-account operations performed by `scripts/provision-gcp-client.mjs`.
+must be limited to the Cloud Run, Cloud Tasks, Storage, Secret Manager,
+Artifact Registry **read**, and service-account operations performed by
+`scripts/provision-gcp-client.mjs`. API enablement and Artifact Registry
+repository creation are one-time operator bootstrap actions and are not in the
+tenant provisioner role.
 
 ## 4. Build and deploy in safe mode
 

@@ -9,6 +9,11 @@ manifest. It runs the existing, reviewed `scripts/provision-gcp-client.mjs`
 script with the service's attached Google identity. The attached identity must
 be a dedicated service account with the minimum roles required by that script.
 
+Project API enablement and Artifact Registry repository creation are operator
+bootstrap actions. This worker can only use the approved, pre-existing
+repository; it cannot enable services or create repositories from a tenant
+manifest.
+
 ## Required configuration
 
 - `CONTROL_PLANE_WORKER_TOKEN` — Secret Manager binding; same value as the
