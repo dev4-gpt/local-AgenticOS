@@ -271,15 +271,23 @@ alter table public.client_support_requests enable row level security;
 revoke all on public.client_onboarding_accounts, public.client_provisioning_runs,
   public.client_provider_connections, public.client_credit_accounts,
   public.client_credit_transactions, public.client_pricing_snapshots,
-  public.stripe_webhook_events, public.client_onboarding_tokens from anon, authenticated;
+  public.stripe_webhook_events, public.client_onboarding_tokens
+  from public, anon, authenticated;
 
 -- The authenticated runtime receives only tenant-scoped views through server routes.
-revoke all on public.client_support_requests from anon;
+revoke all on public.client_support_requests from public, anon, authenticated;
 grant insert on public.client_support_requests to authenticated;
+revoke execute on function public.record_client_provider_connection(text, text, text, text, text, jsonb)
+  from public, anon, authenticated;
 grant execute on function public.record_client_provider_connection(text, text, text, text, text, jsonb) to authenticated;
+revoke execute on function public.list_client_provider_connections(text)
+  from public, anon, authenticated;
 grant execute on function public.list_client_provider_connections(text) to authenticated;
+revoke execute on function public.client_credit_account_snapshot(text)
+  from public, anon, authenticated;
 grant execute on function public.client_credit_account_snapshot(text) to authenticated;
-revoke execute on function public.credit_client_managed_wallet(text, bigint, text, jsonb) from anon, authenticated;
+revoke execute on function public.credit_client_managed_wallet(text, bigint, text, jsonb)
+  from public, anon, authenticated;
 grant execute on function public.credit_client_managed_wallet(text, bigint, text, jsonb) to service_role;
 
 create index if not exists client_provider_connections_tenant_idx

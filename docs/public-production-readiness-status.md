@@ -1,6 +1,6 @@
 # Veloce AgenticOS Public Production Readiness — Current Status
 
-**Snapshot:** 2026-08-24  
+**Snapshot:** 2026-08-25
 **Current branch:** `v3.3-managed-credit-lifecycle`  
 **Application source commit:** `9a540fc004f9edad10f91cece0fdf03a9e0351b7`  
 **Documentation status commit:** see the latest Git commit for this file.
@@ -23,6 +23,7 @@
 - Focused tests: **131/131 passed**.
 - Managed-credit verification.
 - Public-launch contract verification.
+- Production Supabase control-plane migration applied; privilege verification found an unsafe default `PUBLIC` execute grant and is pending the idempotent privilege fix below.
 - Client lifecycle verification.
 - Public provisioner verification.
 - Root production build.
@@ -38,6 +39,7 @@
 - Vercel domains are attached to the intended projects, but Cloudflare DNS is not yet pointed at Vercel. Required records are root `CNAME @ → fa76dde4225b6136.vercel-dns-017.com` and portal `CNAME app → 2ea97003a781fd26.vercel-dns-017.com`, with proxying disabled; both domains currently report `invalid-configuration`.
 - Public-provisioner image build succeeded for `public-provisioner:9a540fc` with digest `sha256:9a462927d3eacb7d0e4d39e8a7bae57b04c884e559cb13bf21bebb5e4a17d231`, but it is intentionally not deployed until the private GCP adapter and control-plane secrets exist.
 - No private public-provisioner service or control-plane Secret Manager configuration was found; that deployment remains owner-controlled and intentionally incomplete.
+- Supabase verification currently reports `anon_can_credit_wallet = true`; this is a release-blocking privilege failure caused by PostgreSQL's default `PUBLIC` function execute grant. The migration source now revokes `PUBLIC`, `anon`, and `authenticated` before granting the wallet-credit function only to `service_role`.
 
 ## What remains before public production
 
@@ -50,6 +52,32 @@ These are primarily owner-controlled external gates and are intentionally not cl
    - Re-run `verify:production-readiness` against those recorded artifacts.
 
 2. **Production configuration**
+   - Re-run the idempotent Supabase privilege fix and verify `anon_can_credit_wallet = false` while `service_role_can_credit_wallet = true` before accepting the migration gate.
+   - Run this repair in the production Supabase SQL Editor; it is safe to repeat:
+
+```sql
+revoke execute on function public.record_client_provider_connection(text, text, text, text, text, jsonb)
+  from public, anon, authenticated;
+grant execute on function public.record_client_provider_connection(text, text, text, text, text, jsonb)
+  to authenticated;
+
+revoke execute on function public.list_client_provider_connections(text)
+  from public, anon, authenticated;
+grant execute on function public.list_client_provider_connections(text)
+  to authenticated;
+
+revoke execute on function public.client_credit_account_snapshot(text)
+  from public, anon, authenticated;
+grant execute on function public.client_credit_account_snapshot(text)
+  to authenticated;
+
+revoke execute on function public.credit_client_managed_wallet(text, bigint, text, jsonb)
+  from public, anon, authenticated;
+grant execute on function public.credit_client_managed_wallet(text, bigint, text, jsonb)
+  to service_role;
+```
+
+   - Then rerun the privilege query. The required result is `anon_can_credit_wallet = false` and `service_role_can_credit_wallet = true`.
    - Update the two Cloudflare CNAME records listed in the deployment snapshot, then re-run Vercel domain verification.
    - The current Vercel product environment inventory lacks `PUBLIC_APP_URL`, `PUBLIC_SITE_URL`, `PUBLIC_EMAIL_FROM`, `STRIPE_MODE`, the live Stripe price IDs, `TURNSTILE_SECRET_KEY`, the control-plane/provisioner variables, and the OpenRouter managed Secret Manager/pricing variables.
    - The current GCP Secret Manager inventory contains tenant/provider test secrets but no production control-plane or provisioner secret set.

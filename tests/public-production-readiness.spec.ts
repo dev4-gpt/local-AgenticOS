@@ -31,6 +31,14 @@ test("production readiness source keeps live gates explicit", () => {
   expect(runbook).toContain("before live mode");
 });
 
+test("public launch migration fails closed for control-plane privileges", () => {
+  const migration = readFileSync(resolve(process.cwd(), "product-experience/supabase-public-launch-control-plane.sql"), "utf8");
+  expect(migration).toContain("from public, anon, authenticated;");
+  expect(migration).toContain("revoke execute on function public.credit_client_managed_wallet(text, bigint, text, jsonb)");
+  expect(migration).toContain("grant execute on function public.credit_client_managed_wallet(text, bigint, text, jsonb) to service_role;");
+  expect(migration).not.toContain("revoke execute on function public.credit_client_managed_wallet(text, bigint, text, jsonb) from anon, authenticated;");
+});
+
 test("team support notification is server-side and contains no credential field", async () => {
   const saved = {
     apiKey: process.env.RESEND_API_KEY,
