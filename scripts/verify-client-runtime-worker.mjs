@@ -252,7 +252,8 @@ expect(!providerChat.includes("runClientTextAdapter") && !providerChat.includes(
 expect(provisioner.includes("GOOGLE_CLOUD_PROJECT: projectId"), "GCP provisioner must inject the project identifier required by Cloud Tasks");
 expect(provisioner.includes("workspaceJobName") && provisioner.includes('"run", "jobs", "deploy"') && provisioner.includes("roles/run.jobsExecutorWithOverrides"), "GCP provisioner must deploy and narrowly authorize the isolated workspace job");
 expect(provisioner.includes("CLIENT_EXECUTION_BACKEND: \"cloud-run-job\"") && provisioner.includes("CLIENT_WORKSPACE_RUN_JOB: workspaceJobName"), "GCP provisioner must configure the cloud execution backend rather than a generic workspace placeholder");
-expect(provisioner.includes("roles/cloudtasks.enqueuer"), "GCP provisioner must grant the runtime service account Cloud Tasks enqueue permission");
+expect(provisioner.includes('"tasks", "queues", "add-iam-policy-binding"') && provisioner.includes("roles/cloudtasks.enqueuer"), "GCP provisioner must grant the runtime service account Cloud Tasks enqueue permission on its queue");
+expect(!provisioner.includes('["gcloud", ["projects", "add-iam-policy-binding", projectId, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/cloudtasks.enqueuer"]]'), "GCP provisioner must not grant Cloud Tasks enqueue permission project-wide");
 expect(provisioner.includes("CLIENT_RUNTIME_BASE_URL") && provisioner.includes("configureRuntimeBaseUrl"), "GCP provisioner must configure the Cloud Run task callback URL");
 expect(provisioner.includes("routeTrafficToLatestRevision") && provisioner.includes("update-traffic") && provisioner.includes("--to-latest"), "GCP provisioner must route deploy traffic to the latest ready revision");
 expect(cloudTasks.includes("CLIENT_RUNTIME_BASE_URL") && cloudTasks.includes("baseUrl"), "Cloud Tasks helper must use the approved runtime callback URL");

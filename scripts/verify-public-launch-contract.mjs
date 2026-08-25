@@ -37,6 +37,8 @@ const required = [
   ["workers/public-provisioner/worker.mjs", "x-serverless-authorization"],
   ["workers/gcp-provisioner/worker.mjs", "gcp_apply_disabled"],
   ["workers/gcp-provisioner/worker.mjs", "artifact_repository_not_allowed"],
+  ["workers/managed-openrouter/worker.mjs", "managed_provider_request_not_allowed"],
+  ["product-experience/src/app/api/internal/managed-provider/openrouter/route.ts", "OPENROUTER_MANAGED_GATEWAY_URL"],
   ["product-experience/src/lib/cloudRunOidc.ts", "x-vercel-oidc-token"],
   ["product-experience/src/app/api/onboarding/approve/route.ts", "cloudRunIdTokenFromVercel"],
 ];

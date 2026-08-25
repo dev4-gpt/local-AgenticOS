@@ -12,6 +12,7 @@ type Context = {
 type Quote = { estimatedMicros: number; currency: "usd"; pricingSnapshotId: string; expiresAt: string };
 type Reservation = { reservationId: string; reservedMicros: number; expiresAt: string };
 type Usage = { actualMicros: number; providerRequestId?: string | null; metadata?: Record<string, unknown> };
+type ProviderCall = (context: Context, path: string, init?: RequestInit) => Promise<Response>;
 
 interface Ledger {
   reserve(input: { context: Context; quote: Quote; idempotencyKey: string }): Promise<string | null>;
@@ -45,7 +46,12 @@ export function createSupabaseManagedCreditLedger(options: { url: string; servic
 
 export function createOpenRouterManagedAdapter(options: {
   ledger: Ledger;
-  resolveCredential: (context: Context) => Promise<string | null>;
+  resolveCredential?: (context: Context) => Promise<string | null>;
+  /**
+   * A server-side gateway used when the provider credential is intentionally
+   * kept outside this process (for example, in a Cloud Run service identity).
+   */
+  callProvider?: ProviderCall;
   pricingSnapshotId?: string;
   pricing?: Record<string, { inputMicrosPer1k: number; outputMicrosPer1k: number }>;
   fetcher?: typeof fetch;
@@ -57,7 +63,9 @@ export function createOpenRouterManagedAdapter(options: {
   const disabled = new Set<string>();
   const timeout = Math.min(120_000, Math.max(5_000, Math.round(options.timeoutMs ?? 90_000)));
   async function call(context: Context, path: string, init: RequestInit = {}) {
-    const key = disabled.has(context.tenantSlug) ? null : await options.resolveCredential(context).catch(() => null);
+    if (disabled.has(context.tenantSlug)) throw new Error("managed_provider_disabled");
+    if (options.callProvider) return options.callProvider(context, path, init);
+    const key = options.resolveCredential ? await options.resolveCredential(context).catch(() => null) : null;
     if (!key) throw new Error("managed_provider_credential_unavailable");
     return fetcher(`${baseUrl}${path}`, { ...init, headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "HTTP-Referer": process.env.PUBLIC_SITE_URL?.trim() || "https://veloceos.cloud", "X-Title": "Veloce AgenticOS managed execution", ...(init.headers ?? {}) }, signal: init.signal ?? AbortSignal.timeout(timeout), cache: "no-store" });
   }

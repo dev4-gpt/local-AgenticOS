@@ -32,3 +32,10 @@ OpenRouter is the first managed adapter. The adapter is fail-closed until the
 account, Secret Manager reference, reconciliation, manifest, health, and smoke
 gates are all present. Other catalog providers remain BYOK unless separately
 promoted through the same evidence bundle.
+
+The OpenRouter key is not readable by the Vercel application. It is bound only
+to an IAM-protected Cloud Run managed-provider gateway, which accepts a
+short-lived Vercel-to-Google OIDC identity plus the existing control-plane
+operator secret. Vercel stores only the fully-qualified Secret Manager
+**reference** and routes allowed provider calls through the gateway. See
+[`workers/managed-openrouter/README.md`](../workers/managed-openrouter/README.md).

@@ -1,5 +1,5 @@
-import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
+import { cloudRunIdTokenFromVercel } from "@/lib/cloudRunOidc";
 import { createOpenRouterManagedAdapter, createSupabaseManagedCreditLedger } from "@/lib/managedProviderRuntime";
 import { evaluateManagedProviderReadiness, type ManagedProviderOperation } from "@/lib/managedProviderReadiness";
 import { publicLaunchConfig, supabaseServiceSelect, supabaseServiceUpdate } from "@/lib/publicLaunch";
@@ -9,7 +9,6 @@ export const dynamic = "force-dynamic";
 
 const CATALOG_ID = "provider-openrouter_api_key";
 const PROVIDER_KEY = "openrouter";
-const SECRET_MANAGER_ROOT = "https://secretmanager.googleapis.com/v1";
 
 /**
  * Private managed-provider boundary. This route is deliberately separate from
@@ -17,9 +16,12 @@ const SECRET_MANAGER_ROOT = "https://secretmanager.googleapis.com/v1";
  * ledger access, and a database readiness row before it can call OpenRouter.
  */
 export async function POST(request: Request) {
-  if (!authorized(request)) return NextResponse.json({ ok: false, error: "not_authorized" }, { status: 401 });
+  const operatorSecret = process.env.CONTROL_PLANE_OPERATOR_SECRET?.trim() || "";
+  if (!authorized(request, operatorSecret)) return NextResponse.json({ ok: false, error: "not_authorized" }, { status: 401 });
   const config = publicLaunchConfig();
-  if (!config || !process.env.OPENROUTER_MANAGED_SECRET_RESOURCE?.trim()) return NextResponse.json({ ok: false, error: "managed_provider_not_configured" }, { status: 503 });
+  const secretResource = process.env.OPENROUTER_MANAGED_SECRET_RESOURCE?.trim() || "";
+  const gatewayUrl = process.env.OPENROUTER_MANAGED_GATEWAY_URL?.trim().replace(/\/$/, "") || "";
+  if (!config || !secretResource || !gatewayUrl) return NextResponse.json({ ok: false, error: "managed_provider_not_configured" }, { status: 503 });
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const operation = typeof body.operation === "string" ? body.operation.trim() : "";
@@ -33,6 +35,20 @@ export async function POST(request: Request) {
 
   const readiness = await managedReadiness(tenantSlug, operation as ManagedProviderOperation);
   if (!readiness.ok) return NextResponse.json({ ok: false, error: readiness.error }, { status: readiness.status });
+  const requiresGateway = ["healthCheck", "balance", "reserve", "execute"].includes(operation);
+  if (requiresGateway && readiness.credentialReference !== secretResource) {
+    return NextResponse.json({ ok: false, error: "managed_provider_credential_reference_invalid" }, { status: 409 });
+  }
+  let gatewayIdentity: { token: string } | null = null;
+  if (requiresGateway) {
+    try {
+      const minted = await cloudRunIdTokenFromVercel(request, gatewayUrl);
+      if (!minted.ok) return NextResponse.json({ ok: false, error: "managed_provider_gateway_unavailable" }, { status: 503 });
+      gatewayIdentity = minted;
+    } catch {
+      return NextResponse.json({ ok: false, error: "managed_provider_gateway_unavailable" }, { status: 503 });
+    }
+  }
   const context = {
     tenantSlug,
     catalogId: CATALOG_ID,
@@ -45,7 +61,7 @@ export async function POST(request: Request) {
   } as const;
   const adapter = createOpenRouterManagedAdapter({
     ledger: createSupabaseManagedCreditLedger({ url: config.url, serviceRoleKey: config.serviceKey }),
-    resolveCredential: () => readManagedCredential(readiness.credentialReference ?? ""),
+    callProvider: gatewayIdentity ? (_context, path, init) => callManagedGateway(gatewayUrl, gatewayIdentity.token, operatorSecret, path, init) : undefined,
     pricingSnapshotId: readiness.pricingSnapshotId ?? undefined,
     pricing: managedPricing(),
   });
@@ -105,8 +121,26 @@ export async function POST(request: Request) {
   }
 }
 
-function authorized(request: Request) {
-  const expected = process.env.CONTROL_PLANE_OPERATOR_SECRET?.trim();
+async function callManagedGateway(gatewayUrl: string, identityToken: string, operatorSecret: string, path: string, init: RequestInit = {}) {
+  const method = (init.method ?? "GET").toUpperCase();
+  let body: unknown = null;
+  if (typeof init.body === "string" && init.body) {
+    try { body = JSON.parse(init.body); } catch { return new Response(JSON.stringify({ error: "gateway_payload_invalid" }), { status: 400 }); }
+  }
+  return fetch(`${gatewayUrl}/v1/openrouter`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Control-Plane-Secret": operatorSecret,
+      "X-Serverless-Authorization": `Bearer ${identityToken}`,
+    },
+    body: JSON.stringify({ path, method, body }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(100_000),
+  }).catch(() => new Response(JSON.stringify({ error: "managed_provider_gateway_unavailable" }), { status: 502 }));
+}
+
+function authorized(request: Request, expected: string) {
   return Boolean(expected && request.headers.get("x-control-plane-secret")?.trim() === expected);
 }
 
@@ -133,22 +167,6 @@ function managedPricing() {
     const parsed = JSON.parse(process.env.OPENROUTER_MANAGED_PRICING_JSON ?? "{}");
     return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, { inputMicrosPer1k: number; outputMicrosPer1k: number }> : {};
   } catch { return {}; }
-}
-
-async function readManagedCredential(resource: string) {
-  const token = await metadataToken();
-  if (!token || resource !== process.env.OPENROUTER_MANAGED_SECRET_RESOURCE?.trim()) return null;
-  const response = await fetch(`${SECRET_MANAGER_ROOT}/${resource}:access`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => null);
-  if (!response?.ok) return null;
-  const payload = await response.json().catch(() => null) as { payload?: { data?: unknown } } | null;
-  return typeof payload?.payload?.data === "string" ? Buffer.from(payload.payload.data, "base64").toString("utf8").trim() : null;
-}
-
-async function metadataToken() {
-  const response = await fetch("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token", { headers: { "Metadata-Flavor": "Google" }, cache: "no-store" }).catch(() => null);
-  if (!response?.ok) return null;
-  const body = await response.json().catch(() => null) as { access_token?: unknown } | null;
-  return typeof body?.access_token === "string" ? body.access_token : null;
 }
 
 function objectInput(value: unknown) {

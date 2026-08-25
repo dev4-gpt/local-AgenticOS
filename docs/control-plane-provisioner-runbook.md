@@ -101,3 +101,54 @@ With `GCP_PROVISIONER_ALLOW_APPLY=0`, verify:
 
 Only after these checks and the custom adapter role are reviewed may the
 adapter be updated to `GCP_PROVISIONER_ALLOW_APPLY=1`.
+
+## 6. Managed OpenRouter gateway (separate, later boundary)
+
+This gateway is required before enabling Veloce-managed OpenRouter execution.
+It is independent of tenant provisioning and must remain private. The Vercel
+application stores only the Secret Manager resource reference; it never reads
+the OpenRouter key.
+
+Create a dedicated runtime identity:
+
+```bash
+gcloud iam service-accounts create veloce-managed-openrouter-run \
+  --project veloce-agenticos-2026 \
+  --display-name="Veloce managed OpenRouter runtime"
+```
+
+After the Veloce-owned OpenRouter key has been created manually in Secret
+Manager as `openrouter-managed-api-key`, grant that identity access to **only**
+that secret and the existing operator secret:
+
+```bash
+MANAGED_OPENROUTER_SA=veloce-managed-openrouter-run@veloce-agenticos-2026.iam.gserviceaccount.com
+
+gcloud secrets add-iam-policy-binding openrouter-managed-api-key \
+  --project veloce-agenticos-2026 \
+  --member="serviceAccount:${MANAGED_OPENROUTER_SA}" \
+  --role=roles/secretmanager.secretAccessor
+
+gcloud secrets add-iam-policy-binding control-plane-operator-secret \
+  --project veloce-agenticos-2026 \
+  --member="serviceAccount:${MANAGED_OPENROUTER_SA}" \
+  --role=roles/secretmanager.secretAccessor
+```
+
+Deploy `managed-openrouter` from the image built by
+`cloudbuild.control-plane.yaml`, without public access. Bind both values by
+Secret Manager name with `--set-secrets`; never pass their values in a command.
+Grant `roles/run.invoker` on this service only to
+`veloce-vercel-control-plane`, then set these Vercel **Production Config**
+values and redeploy:
+
+```text
+OPENROUTER_MANAGED_GATEWAY_URL=https://<managed-openrouter-url>
+OPENROUTER_MANAGED_SECRET_RESOURCE=projects/veloce-agenticos-2026/secrets/openrouter-managed-api-key/versions/latest
+OPENROUTER_MANAGED_PRICING_SNAPSHOT_ID=<reviewed-snapshot-id>
+OPENROUTER_MANAGED_PRICING_JSON=<matching-reviewed-json>
+```
+
+Do not enable a tenant's managed provider route until the account spend cap,
+current pricing snapshot, health check, reserve/execute/settle-or-refund test,
+and a human approval record all exist.

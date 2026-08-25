@@ -3,6 +3,7 @@ substitutions:
   _REPOSITORY: veloce
   _PUBLIC_PROVISIONER_TAG: control-plane-public-latest
   _GCP_PROVISIONER_TAG: control-plane-gcp-latest
+  _MANAGED_OPENROUTER_TAG: managed-openrouter-latest
 
 steps:
   - name: gcr.io/cloud-builders/docker
@@ -17,7 +18,14 @@ steps:
       - --file=workers/gcp-provisioner/Dockerfile
       - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/gcp-provisioner:${_GCP_PROVISIONER_TAG}
       - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file=workers/managed-openrouter/Dockerfile
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/managed-openrouter:${_MANAGED_OPENROUTER_TAG}
+      - workers/managed-openrouter
 
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/public-provisioner:${_PUBLIC_PROVISIONER_TAG}
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/gcp-provisioner:${_GCP_PROVISIONER_TAG}
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/managed-openrouter:${_MANAGED_OPENROUTER_TAG}

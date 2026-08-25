@@ -36,6 +36,7 @@ audit, and next implementation item are preserved in the
 | LMCache | Inference-time KV-cache reuse | Research and defer | [lmcache.md](./lmcache.md) |
 | Viktor | External AI employee / cross-tool operator | Pilot externally; do not make a core dependency | [viktor-ai-employee.md](./viktor-ai-employee.md) |
 | Workplace integrations | Slack, Teams, WhatsApp, Drive, Gmail, Calendar, CRM, and business tools | Future capability; staged read-first rollout | [workplace-integrations.md](./workplace-integrations.md) |
+| [OpenReply](https://github.com/diwenne/openreply) | Self-hosted Instagram comment-to-DM campaigns | Future, isolated marketing pilot | [OpenReply integration runway](./openreply.md) |
 | Open WebUI | Private model workspace | Reuse existing VPS; do not embed | [V2 candidate register](../../V2-INTEGRATION-CANDIDATES.md) |
 | Vane | Cited research and search | Evaluate later on a private VPS | [V2 candidate register](../../V2-INTEGRATION-CANDIDATES.md) |
 | Cline | Coding lane | Optional local integration | [V2 candidate register](../../V2-INTEGRATION-CANDIDATES.md) |
