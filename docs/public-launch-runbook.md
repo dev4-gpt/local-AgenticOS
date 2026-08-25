@@ -14,6 +14,17 @@ Configure both custom domains at the hosting layer and keep Cloudflare DNS recor
 
 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `PUBLIC_EMAIL_FROM`, `LEAD_NOTIFICATION_*`, `PUBLIC_APP_URL`, `PUBLIC_SITE_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_SETUP_PRICE_ID`, `STRIPE_PLATFORM_PRICE_ID`, `STRIPE_CREDIT_PRICE_ID`, `CONTROL_PLANE_OPERATOR_SECRET`, `CONTROL_PLANE_WORKER_TOKEN`, and `CONTROL_PLANE_PROVISIONER_URL` are server-side values. Add `TURNSTILE_SECRET_KEY` when abuse-challenge enforcement is enabled. Never expose these as `NEXT_PUBLIC_*` values.
 
+The Vercel app authenticates to the public Cloud Run provisioner through short-lived Vercel OIDC federation. Add these non-secret Production configuration values only after the GCP Workload Identity Pool and dedicated invoker identity exist:
+
+```env
+GCP_PROJECT_NUMBER=1075094991117
+GCP_WORKLOAD_IDENTITY_POOL_ID=vercel
+GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID=product-experience
+GCP_CONTROL_PLANE_INVOKER_SERVICE_ACCOUNT=veloce-vercel-control-plane@veloce-agenticos-2026.iam.gserviceaccount.com
+```
+
+Do not replace this with a downloaded service-account JSON key. The inbound Vercel OIDC token is exchanged for a short-lived Google token at request time.
+
 Create the Stripe webhook endpoint at `/api/billing/webhook` for checkout completion, invoice payment failure, and subscription changes. Test signature verification and duplicate-event handling before live mode.
 
 ## Database promotion
@@ -22,7 +33,9 @@ Apply `product-experience/supabase-public-launch-control-plane.sql` after the ex
 
 ## Provisioning worker boundary
 
-The public web process never runs `gcloud`, deploys Cloud Run, creates secrets, or mutates tenant infrastructure. Deploy `workers/public-provisioner` as the `CONTROL_PLANE_PROVISIONER_URL` service. It accepts only approved manifests, enforces the allowed project/region, rejects secret-like manifest content, and delegates GCP mutations to a private `GCP_PROVISIONER_URL` adapter. The adapter creates tenant resources, runs the evidence bundle, and the worker calls `/api/onboarding/provision-result` with the control-plane secret. Promotion to active must call `/api/onboarding/activate` only after smoke testing and rollback evidence pass.
+The public web process never runs `gcloud`, deploys Cloud Run, creates secrets, or mutates tenant infrastructure. Deploy `workers/public-provisioner` as the IAM-protected `CONTROL_PLANE_PROVISIONER_URL` service. It accepts only approved manifests, enforces the allowed project/region and Artifact Registry repository, rejects secret-like manifest content, and delegates GCP mutations to the IAM-protected `workers/gcp-provisioner` adapter at `GCP_PROVISIONER_URL`. The public worker obtains a Cloud Run identity token for the adapter from the Cloud Run metadata server; the adapter also verifies `CONTROL_PLANE_WORKER_TOKEN` as a defence-in-depth application boundary.
+
+The adapter runs the existing `scripts/provision-gcp-client.mjs` only with its attached Cloud Run service account. Its first deployment sets `GCP_PROVISIONER_ALLOW_APPLY=0`; this allows health and rejection testing without mutation. A real deployment is an explicit `manifest.provisioning.phase="deploy"` request, after Secret Manager versions named in `secretEnv` already exist. The worker calls `/api/onboarding/provision-result` with the control-plane secret. Promotion to active must call `/api/onboarding/activate` only after smoke testing and rollback evidence pass.
 
 The worker records request and tenant IDs, manifest version/hash, image digest, Cloud Run revision, created resources, evidence results, rollback target, retry count, and automation identity. Failed provisioning remains failed or rolled back; it never silently activates.
 

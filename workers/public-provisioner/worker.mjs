@@ -8,6 +8,7 @@ const callbackUrl = process.env.CONTROL_PLANE_CALLBACK_URL?.trim() || "";
 const callbackSecret = process.env.CONTROL_PLANE_OPERATOR_SECRET?.trim() || "";
 const allowedProject = process.env.GCP_ALLOWED_PROJECT?.trim() || "";
 const allowedRegion = process.env.GCP_ALLOWED_REGION?.trim() || "";
+const allowedRepository = process.env.GCP_ALLOWED_ARTIFACT_REPOSITORY?.trim() || "veloce";
 
 function authorized(request) {
   const value = request.headers.authorization?.replace(/^Bearer\s+/i, "").trim() || "";
@@ -32,9 +33,11 @@ function readBody(request) {
 function validate(input) {
   const manifest = input?.manifest;
   if (!input?.runId || !input?.requestId || !input?.onboardingId) return "missing_identifiers";
-  if (!manifest || manifest.approved !== true || typeof manifest.clientSlug !== "string") return "manifest_not_approved";
+  if (!manifest || manifest.approved !== true || manifest.acknowledgeClientSafeRuntime !== true || typeof manifest.clientSlug !== "string") return "manifest_not_approved";
   if (!manifest.gcp || manifest.gcp.projectId !== allowedProject || manifest.gcp.region !== allowedRegion) return "gcp_scope_not_allowed";
-  if (typeof manifest.gcp.image !== "string" || !manifest.gcp.image.includes("-docker.pkg.dev/")) return "image_not_approved";
+  const expectedImagePrefix = `${allowedRegion}-docker.pkg.dev/${allowedProject}/${allowedRepository}/`;
+  if (typeof manifest.gcp.image !== "string" || !manifest.gcp.image.startsWith(expectedImagePrefix)) return "image_not_approved";
+  if (!/^[a-z][a-z0-9-]{2,40}$/.test(manifest.clientSlug)) return "client_slug_not_approved";
   const serialized = JSON.stringify(manifest);
   if (/(SERVICE_ROLE_KEY|PRIVATE_KEY|PASSWORD|ACCESS_TOKEN|API_KEY)\s*[:=]/i.test(serialized)) return "secret_in_manifest";
   return null;
@@ -42,14 +45,35 @@ function validate(input) {
 
 async function dispatch(input) {
   if (!adapterUrl) throw new Error("gcp_adapter_not_configured");
+  const identityToken = await cloudRunIdentityToken(adapterUrl);
+  if (!identityToken) throw new Error("gcp_adapter_identity_unavailable");
   const response = await fetch(adapterUrl, {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${operatorToken}` },
+    // Cloud Run consumes this Google identity before the request reaches the
+    // adapter. The application bearer token remains available to the adapter
+    // as a separate defence-in-depth check.
+    headers: { "content-type": "application/json", authorization: `Bearer ${operatorToken}`, "x-serverless-authorization": `Bearer ${identityToken}` },
     body: JSON.stringify({ runId: input.runId, requestId: input.requestId, onboardingId: input.onboardingId, manifest: input.manifest }),
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error(`gcp_adapter_failed_${response.status}`);
   return response.json().catch(() => ({}));
+}
+
+async function cloudRunIdentityToken(target) {
+  let audience;
+  try {
+    const url = new URL(target);
+    if (url.protocol !== "https:" || !url.hostname.endsWith(".run.app")) return null;
+    audience = url.origin;
+  } catch { return null; }
+  const response = await fetch(`http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${encodeURIComponent(audience)}`, {
+    headers: { "Metadata-Flavor": "Google" },
+    signal: AbortSignal.timeout(5_000),
+  }).catch(() => null);
+  if (!response?.ok) return null;
+  const token = await response.text().catch(() => "");
+  return token && token.split(".").length === 3 ? token : null;
 }
 
 async function callback(input, result) {

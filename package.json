@@ -31,7 +31,7 @@
     "verify:client-worker": "node scripts/verify-client-runtime-worker.mjs",
     "verify:public-beta": "node scripts/verify-public-beta-contract.mjs",
     "verify:public-launch": "node scripts/verify-public-launch-contract.mjs",
-    "verify:public-provisioner": "node --check workers/public-provisioner/worker.mjs",
+    "verify:public-provisioner": "node --check workers/public-provisioner/worker.mjs && node --check workers/gcp-provisioner/worker.mjs",
     "verify:managed-credit": "node scripts/verify-managed-credit-contract.mjs",
     "verify:production-readiness": "node scripts/verify-production-readiness.mjs",
     "verify:client-surface-map": "node scripts/verify-client-runtime-surface-map.mjs",

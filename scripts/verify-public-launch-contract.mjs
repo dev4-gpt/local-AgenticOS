@@ -34,6 +34,11 @@ const required = [
   ["src/app/api/client-runtime/credits/route.ts", "client_credit_account_snapshot"],
   ["workers/public-provisioner/worker.mjs", "gcp_scope_not_allowed"],
   ["workers/public-provisioner/worker.mjs", "secret_in_manifest"],
+  ["workers/public-provisioner/worker.mjs", "x-serverless-authorization"],
+  ["workers/gcp-provisioner/worker.mjs", "gcp_apply_disabled"],
+  ["workers/gcp-provisioner/worker.mjs", "artifact_repository_not_allowed"],
+  ["product-experience/src/lib/cloudRunOidc.ts", "x-vercel-oidc-token"],
+  ["product-experience/src/app/api/onboarding/approve/route.ts", "cloudRunIdTokenFromVercel"],
 ];
 for (const [file, marker] of required) if (!read(file).includes(marker)) throw new Error(`Public launch contract missing ${marker} in ${file}`);
 for (const file of ["product-experience/src/app/api/deployment-request/route.ts", "product-experience/src/app/api/support/route.ts", "product-experience/src/app/api/onboarding/setup/route.ts"]) {

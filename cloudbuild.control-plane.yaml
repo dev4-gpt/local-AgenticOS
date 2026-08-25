@@ -1,0 +1,23 @@
+substitutions:
+  _REGION: asia-south1
+  _REPOSITORY: veloce
+  _PUBLIC_PROVISIONER_TAG: control-plane-public-latest
+  _GCP_PROVISIONER_TAG: control-plane-gcp-latest
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file=workers/public-provisioner/Dockerfile
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/public-provisioner:${_PUBLIC_PROVISIONER_TAG}
+      - workers/public-provisioner
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file=workers/gcp-provisioner/Dockerfile
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/gcp-provisioner:${_GCP_PROVISIONER_TAG}
+      - .
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/public-provisioner:${_PUBLIC_PROVISIONER_TAG}
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/gcp-provisioner:${_GCP_PROVISIONER_TAG}

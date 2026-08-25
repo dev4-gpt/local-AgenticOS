@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { applyCommercialScopeToManifest } from "@/lib/commercialScope";
+import { cloudRunIdTokenFromVercel, controlPlaneOidcConfigured } from "@/lib/cloudRunOidc";
 import { supabaseServiceInsert, supabaseServiceSelect, supabaseServiceUpdate } from "@/lib/publicLaunch";
 
 export const runtime = "nodejs";
@@ -23,6 +24,13 @@ export async function POST(request: Request) {
   if (!onboarding.ok || typeof account?.id !== "string") return NextResponse.json({ ok: false, error: "onboarding_not_found" }, { status: 404 });
   if (!["manifest_review", "payment_succeeded"].includes(String(account.status))) return NextResponse.json({ ok: false, error: "invalid_state" }, { status: 409 });
   if (account.commercial_scope_status === "recommended") return NextResponse.json({ ok: false, error: "commercial_scope_approval_required" }, { status: 409 });
+  const provisionerUrl = process.env.CONTROL_PLANE_PROVISIONER_URL?.trim() || "";
+  const workerToken = process.env.CONTROL_PLANE_WORKER_TOKEN?.trim() || "";
+  if (!provisionerUrl || !workerToken || !controlPlaneOidcConfigured()) {
+    return NextResponse.json({ ok: false, error: "control_plane_not_configured" }, { status: 503 });
+  }
+  const identity = await cloudRunIdTokenFromVercel(request, provisionerUrl);
+  if (!identity.ok) return NextResponse.json({ ok: false, error: identity.error }, { status: 503 });
   const scopeInputs = account.commercial_scope_inputs && typeof account.commercial_scope_inputs === "object" && !Array.isArray(account.commercial_scope_inputs)
     ? account.commercial_scope_inputs as Record<string, unknown>
     : null;
@@ -31,11 +39,9 @@ export async function POST(request: Request) {
   const manifestVersion = typeof body.manifestVersion === "string" && body.manifestVersion.trim() ? body.manifestVersion.trim() : "commercial-scope-v1";
   const run = await supabaseServiceInsert("client_provisioning_runs", { onboarding_id: account.id, request_id: requestId, idempotency_key: `approve:${requestId}`, status: "queued", current_step: "provisioning", resource_manifest: {}, evidence_bundle: {} });
   await supabaseServiceUpdate("client_onboarding_accounts", { id: `eq.${account.id}` }, { status: "provisioning", manifest_version: manifestVersion, manifest_hash: manifestHash, approved_manifest: approvedManifest, updated_at: new Date().toISOString() });
-  const provisionerUrl = process.env.CONTROL_PLANE_PROVISIONER_URL?.trim();
   let dispatched = false;
-  const workerToken = process.env.CONTROL_PLANE_WORKER_TOKEN?.trim();
-  if (provisionerUrl && workerToken && run.ok && run.rows[0]?.id) {
-    const response = await fetch(provisionerUrl, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${workerToken}`, "x-control-plane-secret": process.env.CONTROL_PLANE_OPERATOR_SECRET!.trim() }, body: JSON.stringify({ runId: run.rows[0].id, onboardingId: account.id, requestId, manifest: approvedManifest }), signal: AbortSignal.timeout(8_000) }).catch(() => null);
+  if (run.ok && run.rows[0]?.id) {
+    const response = await fetch(provisionerUrl, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${workerToken}`, "X-Serverless-Authorization": `Bearer ${identity.token}` }, body: JSON.stringify({ runId: run.rows[0].id, onboardingId: account.id, requestId, manifest: approvedManifest }), signal: AbortSignal.timeout(15_000) }).catch(() => null);
     dispatched = response?.ok === true;
   }
   return NextResponse.json({ ok: run.ok, runId: run.rows[0]?.id ?? null, status: "provisioning", dispatched, error: run.ok ? undefined : "provisioning_run_create_failed" });
