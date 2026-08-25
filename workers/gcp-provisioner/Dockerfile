@@ -6,7 +6,9 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY worker.mjs ./worker.mjs
+# The Cloud Build context is the repository root so the adapter can reuse the
+# reviewed provisioning scripts below. Keep the worker path explicit.
+COPY workers/gcp-provisioner/worker.mjs ./worker.mjs
 COPY scripts/provision-gcp-client.mjs ./scripts/provision-gcp-client.mjs
 COPY scripts/client-provider-policy.mjs ./scripts/client-provider-policy.mjs
 
