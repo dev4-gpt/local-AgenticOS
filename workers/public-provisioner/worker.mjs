@@ -5,6 +5,7 @@ const port = Number(process.env.PORT || 8080);
 const operatorToken = process.env.CONTROL_PLANE_WORKER_TOKEN?.trim() || "";
 const adapterUrl = process.env.GCP_PROVISIONER_URL?.trim() || "";
 const adapterAudience = process.env.GCP_PROVISIONER_AUDIENCE?.trim() || "";
+const identityTokenSource = process.env.GCP_PROVISIONER_ID_TOKEN_SOURCE?.trim() || "metadata";
 const callbackUrl = process.env.CONTROL_PLANE_CALLBACK_URL?.trim() || "";
 const callbackSecret = process.env.CONTROL_PLANE_OPERATOR_SECRET?.trim() || "";
 const allowedProject = process.env.GCP_ALLOWED_PROJECT?.trim() || "";
@@ -93,6 +94,7 @@ async function adapterHealth() {
       responseHost: new URL(response.url).host,
       responsePath: new URL(response.url).pathname,
       responseRedirected: response.redirected,
+      identityTokenSource,
       configuredAudience: identity.audience,
       tokenAudience: identity.claims.aud,
       tokenEmail: identity.claims.email,
@@ -116,14 +118,53 @@ async function cloudRunIdentity(target) {
     audience = adapterAudience || `${url.origin}/`;
     if (!/^[\x21-\x7e]{1,512}$/.test(audience)) return null;
   } catch { return null; }
+  let token;
+  if (identityTokenSource === "metadata") token = await metadataIdentityToken(audience);
+  else if (identityTokenSource === "iam-credentials") token = await iamCredentialsIdentityToken(audience);
+  else return null;
+  if (!token || token.split(".").length !== 3) return null;
+  return { token, audience, claims: safeIdentityClaims(token) };
+}
+
+async function metadataIdentityToken(audience) {
   const response = await fetch(`http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${encodeURIComponent(audience)}`, {
     headers: { "Metadata-Flavor": "Google" },
     signal: AbortSignal.timeout(5_000),
   }).catch(() => null);
   if (!response?.ok) return null;
-  const token = await response.text().catch(() => "");
-  if (!token || token.split(".").length !== 3) return null;
-  return { token, audience, claims: safeIdentityClaims(token) };
+  return (await response.text().catch(() => "")).trim() || null;
+}
+
+async function iamCredentialsIdentityToken(audience) {
+  const [serviceAccountResponse, accessTokenResponse] = await Promise.all([
+    metadata("instance/service-accounts/default/email"),
+    metadata("instance/service-accounts/default/token"),
+  ]);
+  if (!serviceAccountResponse?.ok || !accessTokenResponse?.ok) return null;
+  const serviceAccount = (await serviceAccountResponse.text().catch(() => "")).trim();
+  const access = await accessTokenResponse.json().catch(() => null);
+  const accessToken = typeof access?.access_token === "string" ? access.access_token.trim() : "";
+  if (!/^[a-z0-9][a-z0-9._-]{1,62}@[a-z0-9.-]+\.iam\.gserviceaccount\.com$/i.test(serviceAccount) || !accessToken) return null;
+
+  const response = await fetch(`https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(serviceAccount)}:generateIdToken`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ audience, includeEmail: true }),
+    signal: AbortSignal.timeout(5_000),
+  }).catch(() => null);
+  if (!response?.ok) return null;
+  const result = await response.json().catch(() => null);
+  return typeof result?.token === "string" ? result.token.trim() || null : null;
+}
+
+function metadata(path) {
+  return fetch(`http://metadata.google.internal/computeMetadata/v1/${path}`, {
+    headers: { "Metadata-Flavor": "Google" },
+    signal: AbortSignal.timeout(5_000),
+  }).catch(() => null);
 }
 
 function safeIdentityClaims(token) {

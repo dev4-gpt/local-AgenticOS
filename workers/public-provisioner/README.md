@@ -9,6 +9,11 @@ It does not accept public traffic and does not expose `gcloud`, Secret Manager, 
 - `GCP_PROVISIONER_AUDIENCE`: explicit service-specific audience configured on
   the adapter with Cloud Run custom audiences. Production must set this instead
   of deriving identity from a generated `run.app` hostname.
+- `GCP_PROVISIONER_ID_TOKEN_SOURCE`: `metadata` by default, or
+  `iam-credentials` when the runtime must mint its Google-signed OIDC token
+  through the IAM Credentials API. The latter requires only
+  `roles/iam.serviceAccountOpenIdTokenCreator` on the runtime service account
+  itself; do not grant the broader Service Account Token Creator role.
 - `CONTROL_PLANE_CALLBACK_URL`: product route ending in `/api/onboarding/provision-result`.
 - `CONTROL_PLANE_OPERATOR_SECRET`: callback authentication secret.
 - `GCP_ALLOWED_PROJECT` and `GCP_ALLOWED_REGION`: hard scope boundary.
