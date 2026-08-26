@@ -9,6 +9,7 @@ test("the control-plane health bridge is operator-only and non-mutating", () => 
   expect(publicWorker).toContain('request.method === "POST" && request.url === "/adapter-healthz"');
   expect(publicWorker).toContain('if (!authorized(request)) return json(response, 401');
   expect(publicWorker).toContain('new URL("/healthz", adapterUrl)');
+  expect(publicWorker).toContain('audience = `${url.origin}/`');
   expect(publicWorker).toContain('x-serverless-authorization');
   expect(route).toContain('"x-control-plane-secret"');
   expect(route).toContain('cloudRunIdTokenFromVercel(request, target)');

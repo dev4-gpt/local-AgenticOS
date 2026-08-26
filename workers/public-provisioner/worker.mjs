@@ -88,7 +88,9 @@ async function cloudRunIdentityToken(target) {
   try {
     const url = new URL(target);
     if (url.protocol !== "https:" || !url.hostname.endsWith(".run.app")) return null;
-    audience = url.origin;
+    // Cloud Run validates aud against the receiving service URL. Keep the
+    // service-root slash rather than the request path (for example, /provision).
+    audience = `${url.origin}/`;
   } catch { return null; }
   const response = await fetch(`http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${encodeURIComponent(audience)}`, {
     headers: { "Metadata-Flavor": "Google" },
