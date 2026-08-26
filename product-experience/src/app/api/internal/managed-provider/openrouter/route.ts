@@ -9,7 +9,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const CATALOG_ID = "provider-openrouter_api_key";
-const PROVIDER_KEY = "openrouter";
+// This is the existing provider identifier used by the tenant-credit catalog.
+// It is an identifier only, never the OpenRouter credential itself.
+const PROVIDER_KEY = "OPENROUTER_API_KEY";
 
 /**
  * Private managed-provider boundary. This route is deliberately separate from
@@ -103,7 +105,23 @@ export async function POST(request: Request) {
       }
     }
     if (operation === "quote") return NextResponse.json({ ok: true, quote: await adapter.quote(context, objectInput(body.input)) });
-    if (operation === "healthCheck") return NextResponse.json({ ok: true, health: await adapter.healthCheck(context) });
+    if (operation === "healthCheck") {
+      // A health probe only reads OpenRouter's model catalog, but its outcome
+      // must be persisted before a later, separately approved execution can
+      // become eligible. The probe never enables the managed route.
+      const health = await adapter.healthCheck(context);
+      const updated = await supabaseServiceUpdate("client_credit_budgets", {
+        tenant_slug: `eq.${tenantSlug}`,
+        catalog_id: `eq.${CATALOG_ID}`,
+        provider_key: `eq.${PROVIDER_KEY}`,
+      }, {
+        health_status: health.ok ? "passed" : "failed",
+        last_health_check_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      if (!updated.ok) return NextResponse.json({ ok: false, error: "managed_provider_health_persist_failed" }, { status: 502 });
+      return NextResponse.json({ ok: health.ok, health }, { status: health.ok ? 200 : 502 });
+    }
     if (operation === "balance") return NextResponse.json({ ok: true, balance: await adapter.balance(context) });
     if (operation === "disable") {
       await adapter.disable(context, typeof body.reason === "string" ? body.reason : "operator_disabled");
