@@ -4,6 +4,30 @@
   "audience": "AI and product teams",
   "cta": "https://product-experience-five.vercel.app/start",
   "mode": "guided-drafts-and-test-delivery",
+  "deliveryConnectors": [
+    {
+      "id": "openreply-instagram",
+      "kind": "external-isolated-worker",
+      "state": "disabled",
+      "activationMode": "human-approved-external-pilot",
+      "allowedEvidence": [
+        "campaign_id",
+        "delivery_counts",
+        "click_totals",
+        "timestamps",
+        "error_categories"
+      ],
+      "prohibitedData": [
+        "instagram_access_tokens",
+        "dm_bodies",
+        "commenter_handles",
+        "raw_webhook_payloads",
+        "database_urls",
+        "redis_urls"
+      ],
+      "approvalRequired": true
+    }
+  ],
   "records": [
     {
       "kind": "memory",

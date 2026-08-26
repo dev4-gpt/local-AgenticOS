@@ -26,6 +26,7 @@ const requiredFiles = [
   "src/lib/clientCredentialCatalog.ts",
   "scripts/verify-production-readiness.mjs",
   "scripts/verify-client-runtime-isolation.mjs",
+  "scripts/verify-openreply-pilot.mjs",
   "scripts/client-lifecycle.mjs",
   "workers/public-provisioner/worker.mjs",
   "workers/gcp-provisioner/worker.mjs",
@@ -36,6 +37,9 @@ const requiredFiles = [
   "product-experience/supabase-public-launch-control-plane.sql",
   "docs/public-launch-runbook.md",
   "docs/production-operations.md",
+  "docs/future-integrations/openreply.md",
+  "infrastructure/openreply/openreply-pilot.manifest.example.json",
+  "infrastructure/openreply/openreply.env.example",
   "product-experience/src/app/api/internal/managed-provider/openrouter/route.ts",
 ];
 for (const file of requiredFiles) {
@@ -43,7 +47,7 @@ for (const file of requiredFiles) {
 }
 
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
-for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:production-readiness"]) {
+for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:openreply-pilot", "verify:production-readiness"]) {
   if (typeof packageJson.scripts?.[script] !== "string") failures.push(`package.json is missing ${script}`);
 }
 
@@ -63,6 +67,8 @@ const sourceChecks = [
   ["managed OpenRouter disable persistence", "product-experience/src/app/api/internal/managed-provider/openrouter/route.ts", "managed_provider_disable_persist_failed"],
   ["managed OpenRouter restore gate", "product-experience/src/app/api/internal/managed-provider/openrouter/route.ts", "restore_requires_health_check"],
   ["managed route remains fail-closed by default", "src/lib/managedProviderAdapter.ts", "enabled: false"],
+  ["OpenReply remains a disabled external connector", "client-blueprints/veloce-self-marketing.campaign.json", "human-approved-external-pilot"],
+  ["OpenReply uses the current Instagram callback", "infrastructure/openreply/openreply-pilot.manifest.example.json", "/api/instagram/callback"],
 ];
 for (const [label, file, marker] of sourceChecks) {
   const content = safeRead(file);

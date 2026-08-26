@@ -32,6 +32,7 @@ them silently.
 | Provisioner | Approved manifest and bearer-auth contract | Partial | Disposable tenant Cloud Run provisioning and rollback |
 | Quotas and alerts | Partial runtime budget controls | Partial | Per-provider quota, alert, suspension, and support evidence |
 | Open-source replacements | Cataloged or gated candidates | Evaluation only | Shadow benchmarks before replacing Supabase, Vercel, Resend, or Stripe |
+| OpenReply Instagram delivery | Secret-free isolated deployment blueprint and verifier | Staged; disabled | Reviewed upstream commit, separate Railway/Vercel deployment, Meta tester setup, healthy worker, private test DM, rollback evidence |
 
 ## Billing truth model
 

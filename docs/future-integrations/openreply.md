@@ -2,8 +2,8 @@
 
 ## Decision
 
-**Future, isolated marketing integration. Do not deploy or connect accounts
-yet.** OpenReply is a self-hosted Instagram comment-to-DM application, not a
+**Staged, isolated marketing pilot. The deployment blueprint is ready, but no
+account is connected and delivery remains disabled.** OpenReply is a self-hosted Instagram comment-to-DM application, not a
 Veloce client-runtime capability. Its dashboard, worker, PostgreSQL database,
 Redis queue, Meta permissions, and encryption key must remain in a separate
 project and separate data stores.
@@ -45,7 +45,7 @@ For the first pilot, keep the Meta app in the self-owned/tester scope. Do not
 offer the instance to other users or clients until the required Meta App Review
 and business verification are complete.
 
-## Later implementation sequence
+## Implementation sequence
 
 1. Fork the upstream repository into the Veloce GitHub organization; pin a
    reviewed commit and retain the MIT license/attribution.
@@ -61,14 +61,22 @@ and business verification are complete.
    `WEBHOOK_VERIFY_TOKEN`. The exact `ENCRYPTION_KEY` must match in the web
    app and worker. Never paste these into Veloce source, a ticket, or chat.
 6. In Meta, configure the exact deployed URLs from OpenReply:
-   - OAuth callback: `https://<openreply-domain>/api/auth/callback/instagram`
+   - OAuth callback: `https://<openreply-domain>/api/instagram/callback`
    - Webhook callback: `https://<openreply-domain>/api/webhook`
-   - Subscribe to the `comments` webhook field.
+   - Subscribe to the `comments` and `messages` webhook fields.
 7. Add the owner's Instagram account as an Instagram Tester and accept the
    tester invite inside the Instagram mobile app.
 8. Test with Meta's webhook test event, then one non-commercial private test
-   campaign. Confirm a queue job, DM log, and tracked-link event before any
-   content promotion.
+   campaign. Confirm `/api/health` reports a healthy worker, a queue job
+   completes, and a `SENT` row appears in the DM log before any content
+   promotion.
+
+The tracked, secret-free deployment contract is in
+[`infrastructure/openreply`](../../infrastructure/openreply/README.md). Validate
+it with `npm run verify:openreply-pilot`. After a reviewed upstream commit and
+deployed URL have been recorded in a private manifest, run the strict live
+check with `npm run verify:openreply-pilot -- --strict --manifest <path>
+--url https://<openreply-domain>`.
 
 ## Veloce integration contract (only after pilot evidence)
 

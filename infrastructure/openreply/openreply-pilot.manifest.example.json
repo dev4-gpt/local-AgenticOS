@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "integration": "openreply",
+  "state": "disabled",
+  "source": {
+    "repository": "https://github.com/diwenne/openreply",
+    "reviewedCommit": null
+  },
+  "deployment": {
+    "deployedUrl": null,
+    "web": {
+      "provider": "vercel",
+      "healthPath": "/api/health",
+      "oauthCallbackPath": "/api/instagram/callback",
+      "webhookPath": "/api/webhook"
+    },
+    "worker": {
+      "provider": "railway",
+      "buildCommand": "npm run db:generate",
+      "startCommand": "npm run worker"
+    },
+    "data": {
+      "provider": "railway",
+      "postgresql": true,
+      "redis": true,
+      "separateProject": true
+    }
+  },
+  "webhookFields": ["comments", "messages"],
+  "sharedSecretNames": ["DATABASE_URL", "REDIS_URL", "ENCRYPTION_KEY"],
+  "safety": {
+    "humanApprovalRequired": true,
+    "automaticPublishingEnabled": false,
+    "directVeloceRuntimeConnection": false,
+    "copySensitiveDataToVeloce": false
+  },
+  "acceptance": {
+    "metaTesterAccepted": false,
+    "workerHealthy": false,
+    "privateTestDmSent": false,
+    "sentLogObserved": false,
+    "rollbackProven": false
+  }
+}

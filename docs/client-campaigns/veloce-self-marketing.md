@@ -9,6 +9,9 @@ This is the guided operator playbook for using `veloce-cloud-test` as Veloce's f
 - CTA: `https://product-experience-five.vercel.app/start`.
 - Approved providers for this run: Anthropic, OpenRouter, and Gemini/Antigravity, subject to the client manifest and budget.
 - Human approval remains required before external publication, outreach, or consequential delivery.
+- The campaign declares OpenReply as a disabled, isolated delivery connector.
+  It may receive only approved aggregate evidence after a separate pilot; this
+  runner never invokes it or sends an Instagram message.
 - The hosted provider prompt does not automatically retrieve all tenant memory. Paste the approved context summary into prompts until retrieval is implemented.
 
 The machine-readable seed is [veloce-self-marketing.campaign.json](/Users/aryamandev/Documents/AgentOS/source/client-blueprints/veloce-self-marketing.campaign.json).

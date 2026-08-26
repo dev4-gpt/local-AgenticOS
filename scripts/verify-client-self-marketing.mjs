@@ -13,6 +13,15 @@ expect(campaign.campaignId === "veloce-self-marketing-ai-product-teams-v1", "une
 expect(campaign.audience === "AI and product teams", "unexpected audience");
 expect(campaign.cta === "https://product-experience-five.vercel.app/start", "unexpected CTA");
 expect(campaign.mode === "guided-drafts-and-test-delivery", "campaign must be guided and draft-only");
+expect(Array.isArray(campaign.deliveryConnectors) && campaign.deliveryConnectors.length === 1, "campaign must declare exactly one external delivery connector");
+const openReply = campaign.deliveryConnectors?.find((item) => item.id === "openreply-instagram");
+expect(openReply?.kind === "external-isolated-worker", "OpenReply must remain an isolated external worker");
+expect(openReply?.state === "disabled", "OpenReply must remain disabled in the campaign blueprint");
+expect(openReply?.activationMode === "human-approved-external-pilot", "OpenReply activation must require an external pilot");
+expect(openReply?.approvalRequired === true, "OpenReply delivery must require human approval");
+for (const prohibited of ["instagram_access_tokens", "dm_bodies", "commenter_handles", "raw_webhook_payloads", "database_urls", "redis_urls"]) {
+  expect(openReply?.prohibitedData?.includes(prohibited), `OpenReply boundary is missing prohibited data: ${prohibited}`);
+}
 expect(Array.isArray(campaign.records) && campaign.records.length === 10, "campaign must contain 10 context records");
 expect(Array.isArray(campaign.workflows) && campaign.workflows.length === requiredSurfaces.length, "campaign must contain all workflow surfaces");
 expect(Array.isArray(campaign.briefs) && campaign.briefs.length === requiredBriefs.length, "campaign must contain all creation briefs");
@@ -32,7 +41,7 @@ if (errors.length) {
   process.exit(1);
 }
 console.log(`Self-marketing campaign validated: ${file}`);
-console.log(JSON.stringify({ records: campaign.records.length, workflows: campaign.workflows.length, briefs: campaign.briefs.length, cta: campaign.cta }, null, 2));
+console.log(JSON.stringify({ records: campaign.records.length, workflows: campaign.workflows.length, briefs: campaign.briefs.length, deliveryConnectors: campaign.deliveryConnectors.length, cta: campaign.cta }, null, 2));
 
 function expect(condition, message) {
   if (!condition) errors.push(message);
