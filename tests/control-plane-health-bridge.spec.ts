@@ -12,6 +12,8 @@ test("the control-plane health bridge is operator-only and non-mutating", () => 
   expect(publicWorker).toContain('process.env.GCP_PROVISIONER_AUDIENCE');
   expect(publicWorker).toContain('audience = adapterAudience || `${url.origin}/`');
   expect(publicWorker).toContain('event: "gcp_adapter_health_failed"');
+  expect(publicWorker).toContain("responseRedirected: response.redirected");
+  expect(publicWorker).toContain("tokenSubject: identity.claims.sub");
   expect(publicWorker).not.toContain('responseBody');
   expect(publicWorker).toContain('"x-control-plane-worker-token": operatorToken');
   expect(publicWorker).toContain('authorization: `Bearer ${identity.token}`');

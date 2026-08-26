@@ -90,9 +90,13 @@ async function adapterHealth() {
       event: "gcp_adapter_health_failed",
       status: response.status,
       targetHost: new URL(healthUrl).host,
+      responseHost: new URL(response.url).host,
+      responsePath: new URL(response.url).pathname,
+      responseRedirected: response.redirected,
       configuredAudience: identity.audience,
       tokenAudience: identity.claims.aud,
       tokenEmail: identity.claims.email,
+      tokenSubject: identity.claims.sub,
       tokenIssuer: identity.claims.iss,
       responseContentType: response.headers.get("content-type"),
     }));
@@ -128,10 +132,11 @@ function safeIdentityClaims(token) {
     return {
       aud: typeof payload.aud === "string" ? payload.aud : null,
       email: typeof payload.email === "string" ? payload.email : null,
+      sub: typeof payload.sub === "string" ? payload.sub : null,
       iss: typeof payload.iss === "string" ? payload.iss : null,
     };
   } catch {
-    return { aud: null, email: null, iss: null };
+    return { aud: null, email: null, sub: null, iss: null };
   }
 }
 
