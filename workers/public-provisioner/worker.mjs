@@ -60,6 +60,29 @@ async function dispatch(input) {
   return response.json().catch(() => ({}));
 }
 
+// This is an operator-only acceptance probe. It deliberately uses the same
+// Cloud Run identity path as a provisioning dispatch, but can only read the
+// private adapter's health endpoint and never invokes the provision script.
+async function adapterHealth() {
+  if (!adapterUrl) throw new Error("gcp_adapter_not_configured");
+  const identityToken = await cloudRunIdentityToken(adapterUrl);
+  if (!identityToken) throw new Error("gcp_adapter_identity_unavailable");
+  let healthUrl;
+  try {
+    healthUrl = new URL("/healthz", adapterUrl).toString();
+  } catch {
+    throw new Error("gcp_adapter_not_configured");
+  }
+  const response = await fetch(healthUrl, {
+    headers: { "x-serverless-authorization": `Bearer ${identityToken}` },
+    signal: AbortSignal.timeout(10_000),
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(`gcp_adapter_health_failed_${response.status}`);
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("gcp_adapter_health_invalid");
+  return body;
+}
+
 async function cloudRunIdentityToken(target) {
   let audience;
   try {
@@ -83,6 +106,15 @@ async function callback(input, result) {
 
 const server = http.createServer(async (request, response) => {
   if (request.method === "GET" && request.url === "/healthz") return json(response, 200, { ok: true, worker: "public-provisioner" });
+  if (request.method === "POST" && request.url === "/adapter-healthz") {
+    if (!authorized(request)) return json(response, 401, { ok: false, error: "not_authorized" });
+    try {
+      return json(response, 200, { ok: true, adapter: await adapterHealth() });
+    } catch (error) {
+      const errorCode = error instanceof Error ? error.message : "gcp_adapter_health_failed";
+      return json(response, 502, { ok: false, error: errorCode });
+    }
+  }
   if (request.method !== "POST" || request.url !== "/provision") return json(response, 404, { ok: false, error: "not_found" });
   if (!authorized(request)) return json(response, 401, { ok: false, error: "not_authorized" });
   let input;
