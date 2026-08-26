@@ -27,7 +27,12 @@ export function controlPlaneOidcConfigured() {
 
 export async function cloudRunIdTokenFromVercel(request: Request, target: string): Promise<Result> {
   const settings = config();
-  const subjectToken = request.headers.get("x-vercel-oidc-token")?.trim() || "";
+  // Match Vercel's OIDC helper: local/prebuilt environments may provide the
+  // assertion as a system variable, while live Functions provide it on the
+  // invocation request. Neither value is persisted or forwarded to clients.
+  const subjectToken = process.env.VERCEL_OIDC_TOKEN?.trim()
+    || request.headers.get("x-vercel-oidc-token")?.trim()
+    || "";
   let audience: string;
   try {
     const parsed = new URL(target);

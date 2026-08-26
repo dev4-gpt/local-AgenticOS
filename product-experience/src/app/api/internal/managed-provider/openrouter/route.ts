@@ -46,7 +46,10 @@ export async function POST(request: Request) {
   if (requiresGateway) {
     try {
       const minted = await cloudRunIdTokenFromVercel(request, gatewayUrl);
-      if (!minted.ok) return NextResponse.json({ ok: false, error: "managed_provider_gateway_unavailable" }, { status: 503 });
+      // This endpoint is already operator-secret protected. Returning the
+      // bounded federation reason makes IAM/OIDC failures diagnosable without
+      // exposing a credential or falling back to unauthenticated access.
+      if (!minted.ok) return NextResponse.json({ ok: false, error: minted.error }, { status: 503 });
       gatewayIdentity = minted;
     } catch {
       return NextResponse.json({ ok: false, error: "managed_provider_gateway_unavailable" }, { status: 503 });
