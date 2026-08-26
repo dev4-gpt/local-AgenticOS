@@ -1,0 +1,4 @@
+# The Vercel product-experience project is rooted at product-experience/.
+# This is a distinct Next.js application at the repository root and must not
+# enter that deployment's Turbopack graph.
+/src/
