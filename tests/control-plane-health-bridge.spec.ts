@@ -13,6 +13,8 @@ test("the control-plane health bridge is operator-only and non-mutating", () => 
   expect(route).toContain('"x-control-plane-secret"');
   expect(route).toContain('cloudRunIdTokenFromVercel(request, target)');
   expect(route).toContain('parsed.pathname = "/adapter-healthz"');
+  expect(route).toContain('function operatorSafeAdapterError');
+  expect(route).toContain('gcp_adapter_health_failed_');
   expect(route).not.toContain("supabaseServiceInsert");
   expect(route).not.toContain("/provision");
 });

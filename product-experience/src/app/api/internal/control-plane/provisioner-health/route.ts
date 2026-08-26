@@ -25,6 +25,18 @@ function healthUrl(provisionerUrl: string) {
   }
 }
 
+// This endpoint is already protected by the operator secret. Preserve the
+// diagnostic needed for an acceptance check, but only for fixed, non-sensitive
+// adapter failures. Do not relay arbitrary upstream response content.
+function operatorSafeAdapterError(body: unknown) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const error = (body as { error?: unknown }).error;
+  if (typeof error !== "string") return null;
+  return /^(?:gcp_adapter_not_configured|gcp_adapter_identity_unavailable|gcp_adapter_health_invalid|gcp_adapter_health_failed_(?:401|403|404|500|502|503|504))$/.test(error)
+    ? error
+    : null;
+}
+
 /**
  * Non-mutating acceptance probe for the production control-plane hop:
  * Vercel WIF -> private public-provisioner -> private gcp-provisioner.
@@ -52,7 +64,10 @@ export async function POST(request: Request) {
   }).catch(() => null);
   const body = await response?.json().catch(() => null);
   if (!response?.ok || !body || typeof body !== "object" || Array.isArray(body)) {
-    return NextResponse.json({ ok: false, error: `control_plane_health_${response?.status ?? 502}` }, { status: 502 });
+    return NextResponse.json({
+      ok: false,
+      error: operatorSafeAdapterError(body) ?? `control_plane_health_${response?.status ?? 502}`,
+    }, { status: 502 });
   }
   return NextResponse.json(body, { headers: { "Cache-Control": "no-store" } });
 }
