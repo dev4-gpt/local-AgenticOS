@@ -39,6 +39,11 @@ The adapter runs the existing `scripts/provision-gcp-client.mjs` only with its a
 
 The worker records request and tenant IDs, manifest version/hash, image digest, Cloud Run revision, created resources, evidence results, rollback target, retry count, and automation identity. Failed provisioning remains failed or rolled back; it never silently activates.
 
+The public worker sends the Cloud Run ID token in `Authorization` and the
+independent control-plane worker token in `X-Control-Plane-Worker-Token`.
+Keeping those credentials separate prevents either authentication layer from
+shadowing the other during the Cloud Run request path.
+
 ## Customer journey acceptance
 
 1. Submit a public request with terms/privacy consent and no credentials.

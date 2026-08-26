@@ -49,10 +49,14 @@ async function dispatch(input) {
   if (!identityToken) throw new Error("gcp_adapter_identity_unavailable");
   const response = await fetch(adapterUrl, {
     method: "POST",
-    // Cloud Run consumes this Google identity before the request reaches the
-    // adapter. The application bearer token remains available to the adapter
-    // as a separate defence-in-depth check.
-    headers: { "content-type": "application/json", authorization: `Bearer ${operatorToken}`, "x-serverless-authorization": `Bearer ${identityToken}` },
+    // Keep the Cloud Run OIDC identity in the standard Authorization header.
+    // The application-level token is deliberately separate, so neither
+    // authentication layer shadows the other at the Cloud Run front door.
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${identityToken}`,
+      "x-control-plane-worker-token": operatorToken,
+    },
     body: JSON.stringify({ runId: input.runId, requestId: input.requestId, onboardingId: input.onboardingId, manifest: input.manifest }),
     signal: AbortSignal.timeout(10_000),
   });
@@ -74,7 +78,7 @@ async function adapterHealth() {
     throw new Error("gcp_adapter_not_configured");
   }
   const response = await fetch(healthUrl, {
-    headers: { "x-serverless-authorization": `Bearer ${identityToken}` },
+    headers: { authorization: `Bearer ${identityToken}` },
     signal: AbortSignal.timeout(10_000),
   });
   const body = await response.json().catch(() => null);

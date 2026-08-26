@@ -19,7 +19,14 @@ function json(response, status, body) {
 }
 
 function authorized(request) {
-  const value = request.headers.authorization?.replace(/^Bearer\s+/i, "").trim() || "";
+  // Cloud Run consumes the Google ID token in Authorization. Keep the
+  // control-plane's independent application token in its own header so this
+  // check remains meaningful after Cloud Run has authenticated the request.
+  // Fall back to Authorization during the rolling deployment from the legacy
+  // header layout, then remove that compatibility path in a later migration.
+  const value = request.headers["x-control-plane-worker-token"]?.trim()
+    || request.headers.authorization?.replace(/^Bearer\s+/i, "").trim()
+    || "";
   if (!workerToken || !value) return false;
   try { return timingSafeEqual(Buffer.from(workerToken), Buffer.from(value)); } catch { return false; }
 }
