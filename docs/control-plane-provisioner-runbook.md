@@ -205,3 +205,25 @@ OPENROUTER_MANAGED_PRICING_JSON=<matching-reviewed-json>
 Do not enable a tenant's managed provider route until the account spend cap,
 current pricing snapshot, health check, reserve/execute/settle-or-refund test,
 and a human approval record all exist.
+
+### Video catalog before video generation
+
+The gateway's video-model catalog and individual job-status reads are safe
+preflight operations. They are deliberately separate from `POST /videos`,
+which can start a billable asynchronous job. Before approving any video model:
+
+1. Fetch the live catalog through the protected managed-provider route and
+   record the chosen model's supported duration, resolution, aspect ratio, and
+   `pricing_skus` in the reviewed pricing snapshot.
+2. Set and document a small OpenRouter account/key spend cap. A tenant wallet
+   balance alone does not cap the Veloce-owned provider account.
+3. Exercise a free text health smoke first; then reserve, submit, poll, and
+   settle or refund one tightly capped paid video job.
+4. Only after that evidence exists, deploy a new gateway revision with both
+   `OPENROUTER_VIDEO_GENERATION_ENABLED=1` and a single-model
+   `OPENROUTER_VIDEO_MODEL_ALLOWLIST`. Keep the allowlist scoped to the
+   approved model until reconciliation has been reviewed.
+
+Never infer a video's price, duration, or capability from an old marketing
+page. The live video-model catalog is the pricing and capability source for
+each approved snapshot.
