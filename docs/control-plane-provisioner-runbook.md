@@ -95,6 +95,27 @@ Deploy `gcp-provisioner` with no public access and
 public access. Bind each control-plane secret by name using `--set-secrets`;
 do not place values on the command line.
 
+Configure one explicit audience contract instead of deriving authentication
+from either of Cloud Run's generated hostnames:
+
+```bash
+GCP_PROVISIONER_AUDIENCE=veloce-gcp-provisioner
+
+gcloud run services update veloce-gcp-provisioner \
+  --project veloce-agenticos-2026 \
+  --region asia-south1 \
+  --add-custom-audiences="$GCP_PROVISIONER_AUDIENCE"
+
+gcloud run services update veloce-public-provisioner \
+  --project veloce-agenticos-2026 \
+  --region asia-south1 \
+  --update-env-vars="GCP_PROVISIONER_AUDIENCE=$GCP_PROVISIONER_AUDIENCE"
+```
+
+The public worker mints its metadata-server ID token for this exact audience;
+the adapter accepts that audience at the Cloud Run IAM boundary. The request
+URL remains the adapter's current generated `run.app` URL.
+
 Here, **no public access** means that neither service grants `allUsers` the
 Cloud Run Invoker role. For the direct public-provisioner-to-adapter call used
 by this architecture, configure the adapter with `--ingress=all` and enforce

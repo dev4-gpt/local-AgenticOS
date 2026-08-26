@@ -6,6 +6,9 @@ It does not accept public traffic and does not expose `gcloud`, Secret Manager, 
 
 - `CONTROL_PLANE_WORKER_TOKEN`: token used by the product control plane. The product's approval route sends it as a bearer token.
 - `GCP_PROVISIONER_URL`: private adapter that performs the approved GCP mutations.
+- `GCP_PROVISIONER_AUDIENCE`: explicit service-specific audience configured on
+  the adapter with Cloud Run custom audiences. Production must set this instead
+  of deriving identity from a generated `run.app` hostname.
 - `CONTROL_PLANE_CALLBACK_URL`: product route ending in `/api/onboarding/provision-result`.
 - `CONTROL_PLANE_OPERATOR_SECRET`: callback authentication secret.
 - `GCP_ALLOWED_PROJECT` and `GCP_ALLOWED_REGION`: hard scope boundary.

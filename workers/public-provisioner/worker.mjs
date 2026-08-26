@@ -4,6 +4,7 @@ import { timingSafeEqual } from "node:crypto";
 const port = Number(process.env.PORT || 8080);
 const operatorToken = process.env.CONTROL_PLANE_WORKER_TOKEN?.trim() || "";
 const adapterUrl = process.env.GCP_PROVISIONER_URL?.trim() || "";
+const adapterAudience = process.env.GCP_PROVISIONER_AUDIENCE?.trim() || "";
 const callbackUrl = process.env.CONTROL_PLANE_CALLBACK_URL?.trim() || "";
 const callbackSecret = process.env.CONTROL_PLANE_OPERATOR_SECRET?.trim() || "";
 const allowedProject = process.env.GCP_ALLOWED_PROJECT?.trim() || "";
@@ -45,8 +46,8 @@ function validate(input) {
 
 async function dispatch(input) {
   if (!adapterUrl) throw new Error("gcp_adapter_not_configured");
-  const identityToken = await cloudRunIdentityToken(adapterUrl);
-  if (!identityToken) throw new Error("gcp_adapter_identity_unavailable");
+  const identity = await cloudRunIdentity(adapterUrl);
+  if (!identity) throw new Error("gcp_adapter_identity_unavailable");
   const response = await fetch(adapterUrl, {
     method: "POST",
     // Keep the Cloud Run OIDC identity in the standard Authorization header.
@@ -54,7 +55,7 @@ async function dispatch(input) {
     // authentication layer shadows the other at the Cloud Run front door.
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${identityToken}`,
+      authorization: `Bearer ${identity.token}`,
       "x-control-plane-worker-token": operatorToken,
     },
     body: JSON.stringify({ runId: input.runId, requestId: input.requestId, onboardingId: input.onboardingId, manifest: input.manifest }),
@@ -69,8 +70,8 @@ async function dispatch(input) {
 // private adapter's health endpoint and never invokes the provision script.
 async function adapterHealth() {
   if (!adapterUrl) throw new Error("gcp_adapter_not_configured");
-  const identityToken = await cloudRunIdentityToken(adapterUrl);
-  if (!identityToken) throw new Error("gcp_adapter_identity_unavailable");
+  const identity = await cloudRunIdentity(adapterUrl);
+  if (!identity) throw new Error("gcp_adapter_identity_unavailable");
   let healthUrl;
   try {
     healthUrl = new URL("/healthz", adapterUrl).toString();
@@ -78,23 +79,38 @@ async function adapterHealth() {
     throw new Error("gcp_adapter_not_configured");
   }
   const response = await fetch(healthUrl, {
-    headers: { authorization: `Bearer ${identityToken}` },
+    headers: { authorization: `Bearer ${identity.token}` },
     signal: AbortSignal.timeout(10_000),
   });
   const body = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(`gcp_adapter_health_failed_${response.status}`);
+  if (!response.ok) {
+    // These claims and response attributes are non-secret diagnostics. Never
+    // log the ID token or an upstream response body.
+    console.error(JSON.stringify({
+      event: "gcp_adapter_health_failed",
+      status: response.status,
+      targetHost: new URL(healthUrl).host,
+      configuredAudience: identity.audience,
+      tokenAudience: identity.claims.aud,
+      tokenEmail: identity.claims.email,
+      tokenIssuer: identity.claims.iss,
+      responseContentType: response.headers.get("content-type"),
+    }));
+    throw new Error(`gcp_adapter_health_failed_${response.status}`);
+  }
   if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("gcp_adapter_health_invalid");
   return body;
 }
 
-async function cloudRunIdentityToken(target) {
+async function cloudRunIdentity(target) {
   let audience;
   try {
     const url = new URL(target);
     if (url.protocol !== "https:" || !url.hostname.endsWith(".run.app")) return null;
-    // Cloud Run validates aud against the receiving service URL. Keep the
-    // service-root slash rather than the request path (for example, /provision).
-    audience = `${url.origin}/`;
+    // Production uses an explicit custom audience accepted by the adapter.
+    // The URL-derived value remains a backwards-compatible local fallback.
+    audience = adapterAudience || `${url.origin}/`;
+    if (!/^[\x21-\x7e]{1,512}$/.test(audience)) return null;
   } catch { return null; }
   const response = await fetch(`http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${encodeURIComponent(audience)}`, {
     headers: { "Metadata-Flavor": "Google" },
@@ -102,7 +118,21 @@ async function cloudRunIdentityToken(target) {
   }).catch(() => null);
   if (!response?.ok) return null;
   const token = await response.text().catch(() => "");
-  return token && token.split(".").length === 3 ? token : null;
+  if (!token || token.split(".").length !== 3) return null;
+  return { token, audience, claims: safeIdentityClaims(token) };
+}
+
+function safeIdentityClaims(token) {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
+    return {
+      aud: typeof payload.aud === "string" ? payload.aud : null,
+      email: typeof payload.email === "string" ? payload.email : null,
+      iss: typeof payload.iss === "string" ? payload.iss : null,
+    };
+  } catch {
+    return { aud: null, email: null, iss: null };
+  }
 }
 
 async function callback(input, result) {

@@ -9,9 +9,12 @@ test("the control-plane health bridge is operator-only and non-mutating", () => 
   expect(publicWorker).toContain('request.method === "POST" && request.url === "/adapter-healthz"');
   expect(publicWorker).toContain('if (!authorized(request)) return json(response, 401');
   expect(publicWorker).toContain('new URL("/healthz", adapterUrl)');
-  expect(publicWorker).toContain('audience = `${url.origin}/`');
+  expect(publicWorker).toContain('process.env.GCP_PROVISIONER_AUDIENCE');
+  expect(publicWorker).toContain('audience = adapterAudience || `${url.origin}/`');
+  expect(publicWorker).toContain('event: "gcp_adapter_health_failed"');
+  expect(publicWorker).not.toContain('responseBody');
   expect(publicWorker).toContain('"x-control-plane-worker-token": operatorToken');
-  expect(publicWorker).toContain('authorization: `Bearer ${identityToken}`');
+  expect(publicWorker).toContain('authorization: `Bearer ${identity.token}`');
   expect(route).toContain('"x-control-plane-secret"');
   expect(route).toContain('cloudRunIdTokenFromVercel(request, target)');
   expect(route).toContain('parsed.pathname = "/adapter-healthz"');
