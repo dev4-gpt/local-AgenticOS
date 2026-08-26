@@ -5,6 +5,10 @@ const appRoot = path.resolve(__dirname);
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Vercel otherwise injects the repository root as the tracing root for this
+  // nested project. Keep it identical to turbopack.root so the root Next.js
+  // application's middleware can never enter this build.
+  outputFileTracingRoot: appRoot,
   async headers() {
     return [{
       source: "/(.*)",
