@@ -39,7 +39,10 @@ const required = [
   ["workers/gcp-provisioner/worker.mjs", "Both script phases mutate project resources"],
   ["workers/gcp-provisioner/worker.mjs", "artifact_repository_not_allowed"],
   ["workers/managed-openrouter/worker.mjs", "managed_provider_request_not_allowed"],
+  ["workers/managed-openrouter/worker.mjs", "managed_video_generation_disabled"],
   ["product-experience/src/app/api/internal/managed-provider/openrouter/route.ts", "OPENROUTER_MANAGED_GATEWAY_URL"],
+  ["product-experience/src/app/api/internal/managed-provider/openrouter/route.ts", "videoModels"],
+  ["product-experience/src/app/api/internal/managed-provider/openrouter/route.ts", "managed_video_job_invalid"],
   ["product-experience/src/lib/cloudRunOidc.ts", "x-vercel-oidc-token"],
   ["product-experience/src/app/api/onboarding/approve/route.ts", "cloudRunIdTokenFromVercel"],
 ];
