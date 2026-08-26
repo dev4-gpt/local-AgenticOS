@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cloudRunIdTokenFromVercel } from "@/lib/cloudRunOidc";
 import { createOpenRouterManagedAdapter, createSupabaseManagedCreditLedger } from "@/lib/managedProviderRuntime";
 import { evaluateManagedProviderReadiness, type ManagedProviderOperation } from "@/lib/managedProviderReadiness";
+import { normalizeManagedVideoInput, parseManagedVideoPricing, quoteManagedVideo } from "@/lib/managedVideoRuntime";
 import { publicLaunchConfig, supabaseServiceSelect, supabaseServiceUpdate } from "@/lib/publicLaunch";
 
 export const runtime = "nodejs";
@@ -28,14 +29,14 @@ export async function POST(request: Request) {
   const tenantSlug = typeof body.tenantSlug === "string" ? body.tenantSlug.trim() : "";
   const requestId = typeof body.requestId === "string" ? body.requestId.trim() : null;
   const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : null;
-  if (!tenantSlug || !/^[-a-z0-9]{2,120}$/.test(tenantSlug) || !["quote", "healthCheck", "reserve", "execute", "settle", "refund", "balance", "disable", "restore", "videoModels", "videoStatus"].includes(operation)) {
+  if (!tenantSlug || !/^[-a-z0-9]{2,120}$/.test(tenantSlug) || !["quote", "healthCheck", "reserve", "execute", "settle", "refund", "balance", "disable", "restore", "videoModels", "videoStatus", "videoQuote", "videoReserve", "videoExecute"].includes(operation)) {
     return NextResponse.json({ ok: false, error: "managed_provider_payload_invalid" }, { status: 400 });
   }
-  if (!["quote", "healthCheck", "balance", "disable", "restore"].includes(operation) && !idempotencyKey) return NextResponse.json({ ok: false, error: "idempotency_required" }, { status: 400 });
+  if (!["quote", "healthCheck", "balance", "disable", "restore", "videoModels", "videoStatus", "videoQuote"].includes(operation) && !idempotencyKey) return NextResponse.json({ ok: false, error: "idempotency_required" }, { status: 400 });
 
   const readiness = await managedReadiness(tenantSlug, operation as ManagedProviderOperation);
   if (!readiness.ok) return NextResponse.json({ ok: false, error: readiness.error }, { status: readiness.status });
-  const requiresGateway = ["healthCheck", "balance", "reserve", "execute", "videoModels", "videoStatus"].includes(operation);
+  const requiresGateway = ["healthCheck", "balance", "reserve", "execute", "videoModels", "videoStatus", "videoExecute"].includes(operation);
   if (requiresGateway && readiness.credentialReference !== secretResource) {
     return NextResponse.json({ ok: false, error: "managed_provider_credential_reference_invalid" }, { status: 409 });
   }
@@ -59,8 +60,9 @@ export async function POST(request: Request) {
     requestId,
     idempotencyKey,
   } as const;
+  const ledger = createSupabaseManagedCreditLedger({ url: config.url, serviceRoleKey: config.serviceKey });
   const adapter = createOpenRouterManagedAdapter({
-    ledger: createSupabaseManagedCreditLedger({ url: config.url, serviceRoleKey: config.serviceKey }),
+    ledger,
     callProvider: gatewayIdentity ? (_context, path, init) => callManagedGateway(gatewayUrl, gatewayIdentity.token, operatorSecret, path, init) : undefined,
     pricingSnapshotId: readiness.pricingSnapshotId ?? undefined,
     pricing: managedPricing(),
@@ -76,6 +78,29 @@ export async function POST(request: Request) {
       const jobId = typeof body.jobId === "string" ? body.jobId.trim() : "";
       if (!/^[A-Za-z0-9_-]{1,128}$/.test(jobId)) return NextResponse.json({ ok: false, error: "managed_video_job_invalid" }, { status: 400 });
       return managedGatewayJson(gatewayUrl, gatewayIdentity?.token, operatorSecret, `/videos/${jobId}`);
+    }
+    if (operation === "videoQuote" || operation === "videoReserve" || operation === "videoExecute") {
+      const input = normalizeManagedVideoInput(objectInput(body.input), managedVideoPricing());
+      if (!input) return NextResponse.json({ ok: false, error: "managed_video_input_invalid" }, { status: 400 });
+      const quote = quoteManagedVideo(input, managedVideoPricing(), process.env.OPENROUTER_MANAGED_VIDEO_PRICING_SNAPSHOT_ID?.trim() || readiness.pricingSnapshotId || "");
+      if (operation === "videoQuote") return NextResponse.json({ ok: true, quote });
+      if (operation === "videoReserve") {
+        const reservationId = await ledger.reserve({ context, quote, idempotencyKey: idempotencyKey! });
+        if (!reservationId) return NextResponse.json({ ok: false, error: "managed_credit_reservation_denied" }, { status: 409 });
+        return NextResponse.json({ ok: true, quote, reservation: { reservationId, reservedMicros: quote.estimatedMicros, expiresAt: quote.expiresAt } });
+      }
+      const reservation = reservationInput(body.reservation);
+      if (!reservation || reservation.reservedMicros < quote.estimatedMicros) return NextResponse.json({ ok: false, error: "managed_video_reservation_invalid" }, { status: 400 });
+      try {
+        const response = await callManagedGateway(gatewayUrl, gatewayIdentity?.token || "", operatorSecret, "/videos", { method: "POST", body: JSON.stringify(input) });
+        const job = await response.json().catch(() => null) as Record<string, unknown> | null;
+        const jobId = typeof job?.id === "string" ? job.id : "";
+        if (!response.ok || !/^[A-Za-z0-9_-]{1,128}$/.test(jobId)) throw new Error(`managed_video_request_${response.status}`);
+        return NextResponse.json({ ok: true, job: { id: jobId, status: typeof job?.status === "string" ? job.status : "pending", pollingUrl: typeof job?.polling_url === "string" ? job.polling_url : null }, usage: { actualMicros: quote.estimatedMicros, providerRequestId: jobId, metadata: { kind: "video", model: input.model, duration: input.duration, resolution: input.resolution, aspectRatio: input.aspect_ratio, quotedMicros: quote.estimatedMicros } } });
+      } catch (error) {
+        await ledger.refund({ context, reservationId: reservation.reservationId, reason: error instanceof Error ? error.message : "managed_video_request_failed", idempotencyKey: `refund:${reservation.reservationId}`, metadata: { kind: "video", stage: "submit" } }).catch(() => undefined);
+        throw error;
+      }
     }
     if (operation === "quote") return NextResponse.json({ ok: true, quote: await adapter.quote(context, objectInput(body.input)) });
     if (operation === "healthCheck") return NextResponse.json({ ok: true, health: await adapter.healthCheck(context) });
@@ -187,6 +212,10 @@ function managedPricing() {
     const parsed = JSON.parse(process.env.OPENROUTER_MANAGED_PRICING_JSON ?? "{}");
     return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, { inputMicrosPer1k: number; outputMicrosPer1k: number }> : {};
   } catch { return {}; }
+}
+
+function managedVideoPricing() {
+  return parseManagedVideoPricing(process.env.OPENROUTER_MANAGED_VIDEO_PRICING_JSON);
 }
 
 function objectInput(value: unknown) {

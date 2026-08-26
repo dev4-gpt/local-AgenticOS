@@ -1,6 +1,7 @@
 export type ManagedProviderOperation =
   | "quote" | "healthCheck" | "reserve" | "execute" | "settle" | "refund"
-  | "balance" | "disable" | "restore" | "videoModels" | "videoStatus";
+  | "balance" | "disable" | "restore" | "videoModels" | "videoStatus"
+  | "videoQuote" | "videoReserve" | "videoExecute";
 
 export type ManagedProviderReadinessRow = {
   managedRouteEnabled: boolean;
@@ -18,7 +19,7 @@ export function evaluateManagedProviderReadiness(
 ) {
   if (!row) return { ok: false as const, status: 409, error: "managed_provider_allocation_missing" };
 
-  const execution = ["quote", "reserve", "execute"].includes(operation);
+  const execution = ["quote", "reserve", "execute", "videoQuote", "videoReserve", "videoExecute"].includes(operation);
   if (execution && row.managedRouteEnabled !== true) return { ok: false as const, status: 409, error: "managed_provider_not_enabled" };
   if (operation !== "disable" && row.status === "suspended") return { ok: false as const, status: 409, error: "managed_provider_suspended" };
   if ((execution || operation === "restore") && !row.manifestVersion) return { ok: false as const, status: 409, error: "managed_provider_manifest_not_approved" };
