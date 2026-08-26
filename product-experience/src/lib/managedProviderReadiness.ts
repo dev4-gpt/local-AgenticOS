@@ -1,6 +1,6 @@
 export type ManagedProviderOperation =
   | "quote" | "healthCheck" | "reserve" | "execute" | "settle" | "refund"
-  | "balance" | "disable" | "restore";
+  | "balance" | "disable" | "restore" | "videoModels" | "videoStatus";
 
 export type ManagedProviderReadinessRow = {
   managedRouteEnabled: boolean;

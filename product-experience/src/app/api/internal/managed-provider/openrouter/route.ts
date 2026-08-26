@@ -28,14 +28,14 @@ export async function POST(request: Request) {
   const tenantSlug = typeof body.tenantSlug === "string" ? body.tenantSlug.trim() : "";
   const requestId = typeof body.requestId === "string" ? body.requestId.trim() : null;
   const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : null;
-  if (!tenantSlug || !/^[-a-z0-9]{2,120}$/.test(tenantSlug) || !["quote", "healthCheck", "reserve", "execute", "settle", "refund", "balance", "disable", "restore"].includes(operation)) {
+  if (!tenantSlug || !/^[-a-z0-9]{2,120}$/.test(tenantSlug) || !["quote", "healthCheck", "reserve", "execute", "settle", "refund", "balance", "disable", "restore", "videoModels", "videoStatus"].includes(operation)) {
     return NextResponse.json({ ok: false, error: "managed_provider_payload_invalid" }, { status: 400 });
   }
   if (!["quote", "healthCheck", "balance", "disable", "restore"].includes(operation) && !idempotencyKey) return NextResponse.json({ ok: false, error: "idempotency_required" }, { status: 400 });
 
   const readiness = await managedReadiness(tenantSlug, operation as ManagedProviderOperation);
   if (!readiness.ok) return NextResponse.json({ ok: false, error: readiness.error }, { status: readiness.status });
-  const requiresGateway = ["healthCheck", "balance", "reserve", "execute"].includes(operation);
+  const requiresGateway = ["healthCheck", "balance", "reserve", "execute", "videoModels", "videoStatus"].includes(operation);
   if (requiresGateway && readiness.credentialReference !== secretResource) {
     return NextResponse.json({ ok: false, error: "managed_provider_credential_reference_invalid" }, { status: 409 });
   }
@@ -67,6 +67,16 @@ export async function POST(request: Request) {
   });
 
   try {
+    // These operations only read OpenRouter metadata/job state. They are
+    // intentionally available before managed generation is enabled so the
+    // control plane can validate live capabilities and pricing before a
+    // billable POST /videos request is ever allowed.
+    if (operation === "videoModels") return managedGatewayJson(gatewayUrl, gatewayIdentity?.token, operatorSecret, "/videos/models");
+    if (operation === "videoStatus") {
+      const jobId = typeof body.jobId === "string" ? body.jobId.trim() : "";
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(jobId)) return NextResponse.json({ ok: false, error: "managed_video_job_invalid" }, { status: 400 });
+      return managedGatewayJson(gatewayUrl, gatewayIdentity?.token, operatorSecret, `/videos/${jobId}`);
+    }
     if (operation === "quote") return NextResponse.json({ ok: true, quote: await adapter.quote(context, objectInput(body.input)) });
     if (operation === "healthCheck") return NextResponse.json({ ok: true, health: await adapter.healthCheck(context) });
     if (operation === "balance") return NextResponse.json({ ok: true, balance: await adapter.balance(context) });
@@ -119,6 +129,16 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "managed_provider_failed" }, { status: 502 });
   }
+}
+
+async function managedGatewayJson(gatewayUrl: string, identityToken: string | undefined, operatorSecret: string, path: string) {
+  if (!identityToken) return NextResponse.json({ ok: false, error: "managed_provider_gateway_unavailable" }, { status: 503 });
+  const response = await callManagedGateway(gatewayUrl, identityToken, operatorSecret, path, { method: "GET" });
+  const body = await response.json().catch(() => null);
+  if (!response.ok || !body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ ok: false, error: `managed_video_gateway_${response.status}` }, { status: response.status >= 400 && response.status < 500 ? response.status : 502 });
+  }
+  return NextResponse.json({ ok: true, data: body }, { headers: { "Cache-Control": "no-store" } });
 }
 
 async function callManagedGateway(gatewayUrl: string, identityToken: string, operatorSecret: string, path: string, init: RequestInit = {}) {
