@@ -24,8 +24,13 @@ export function evaluateManagedProviderReadiness(
   if (operation !== "disable" && row.status === "suspended") return { ok: false as const, status: 409, error: "managed_provider_suspended" };
   if ((execution || operation === "restore") && !row.manifestVersion) return { ok: false as const, status: 409, error: "managed_provider_manifest_not_approved" };
   if (execution && row.healthStatus !== "passed") return { ok: false as const, status: 409, error: "managed_provider_health_not_passed" };
-  if ((execution || operation === "restore") && ["drift", "failed"].includes(row.reconciliationStatus ?? "")) {
-    return { ok: false as const, status: 409, error: "managed_provider_reconciliation_failed" };
+  if (execution || operation === "restore") {
+    if (["drift", "failed"].includes(row.reconciliationStatus ?? "")) {
+      return { ok: false as const, status: 409, error: "managed_provider_reconciliation_failed" };
+    }
+    if (row.reconciliationStatus !== "matched") {
+      return { ok: false as const, status: 409, error: "managed_provider_reconciliation_not_matched" };
+    }
   }
   if (operation !== "disable" && operation !== "settle" && operation !== "refund" && !row.credentialReference) {
     return { ok: false as const, status: 409, error: "managed_provider_credential_missing" };

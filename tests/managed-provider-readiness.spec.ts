@@ -29,3 +29,10 @@ test("restore requires approval and credential evidence, then forces a new healt
   expect(evaluateManagedProviderReadiness("restore", { ...row, credentialReference: null }, null).error).toBe("managed_provider_credential_missing");
   expect(evaluateManagedProviderReadiness("restore", { ...row, healthStatus: "disabled" }, null).ok).toBe(true);
 });
+
+test("paid execution fails closed until reconciliation is explicitly matched", () => {
+  const pending = { ...row, reconciliationStatus: "pending" };
+  expect(evaluateManagedProviderReadiness("healthCheck", pending, "price-1").ok).toBe(true);
+  expect(evaluateManagedProviderReadiness("execute", pending, "price-1").error).toBe("managed_provider_reconciliation_not_matched");
+  expect(evaluateManagedProviderReadiness("restore", pending, "price-1").error).toBe("managed_provider_reconciliation_not_matched");
+});
