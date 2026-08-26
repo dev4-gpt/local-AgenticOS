@@ -75,7 +75,10 @@ async function adapterHealth() {
   if (!identity) throw new Error("gcp_adapter_identity_unavailable");
   let healthUrl;
   try {
-    healthUrl = new URL("/healthz", adapterUrl).toString();
+    // The Google Front End returns its own 1568-byte HTML 404 for the exact
+    // /healthz path before the request reaches some Cloud Run containers.
+    // Use a non-reserved readiness path for service-to-service acceptance.
+    healthUrl = new URL("/readyz", adapterUrl).toString();
   } catch {
     throw new Error("gcp_adapter_not_configured");
   }
@@ -187,7 +190,7 @@ async function callback(input, result) {
 }
 
 const server = http.createServer(async (request, response) => {
-  if (request.method === "GET" && request.url === "/healthz") return json(response, 200, { ok: true, worker: "public-provisioner" });
+  if (request.method === "GET" && (request.url === "/readyz" || request.url === "/healthz")) return json(response, 200, { ok: true, worker: "public-provisioner" });
   if (request.method === "POST" && request.url === "/adapter-healthz") {
     if (!authorized(request)) return json(response, 401, { ok: false, error: "not_authorized" });
     try {

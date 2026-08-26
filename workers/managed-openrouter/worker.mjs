@@ -120,7 +120,7 @@ async function forward(response, input) {
 }
 
 const server = http.createServer(async (request, response) => {
-  if (request.method === "GET" && request.url === "/healthz") return json(response, 200, { ok: true, worker: "managed-openrouter", configured: Boolean(openRouterApiKey) });
+  if (request.method === "GET" && (request.url === "/readyz" || request.url === "/healthz")) return json(response, 200, { ok: true, worker: "managed-openrouter", configured: Boolean(openRouterApiKey) });
   if (request.method !== "POST" || request.url !== "/v1/openrouter") return json(response, 404, { ok: false, error: "not_found" });
   if (!authorized(request)) return json(response, 401, { ok: false, error: "not_authorized" });
   let body;

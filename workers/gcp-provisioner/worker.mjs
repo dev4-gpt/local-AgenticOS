@@ -146,7 +146,7 @@ function redactOutput(value) {
 }
 
 const server = http.createServer(async (request, response) => {
-  if (request.method === "GET" && request.url === "/healthz") {
+  if (request.method === "GET" && (request.url === "/readyz" || request.url === "/healthz")) {
     return json(response, 200, { ok: true, worker: "gcp-provisioner", applyEnabled: allowApply });
   }
   if (request.method !== "POST" || request.url !== "/provision") return json(response, 404, { ok: false, error: "not_found" });

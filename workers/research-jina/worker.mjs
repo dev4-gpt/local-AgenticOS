@@ -84,7 +84,7 @@ export async function targetResolvesPublicly(value, lookupImpl = lookup) {
 }
 
 async function handle(request, response) {
-  if (request.method === "GET" && request.url === "/healthz") return send(response, 200, { ok: true });
+  if (request.method === "GET" && (request.url === "/readyz" || request.url === "/healthz")) return send(response, 200, { ok: true });
   if (request.method !== "POST" || request.url !== "/v1/extract") return send(response, 404, { ok: false, error: "not_found" });
   if (!authorizeWorkerRequest(request.headers.authorization)) return send(response, 401, { ok: false, error: "worker_unauthorized" });
   if (request.headers["x-veloce-worker-contract"] !== CONTRACT_VERSION) return send(response, 400, { ok: false, error: "worker_contract_invalid" });

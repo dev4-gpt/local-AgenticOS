@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 
 const root = process.cwd();
 
-test("cloud verifier protects the isolated adapter boundary", () => {
+test("cloud verifier protects the private adapter boundary", () => {
   const verifier = readFileSync(resolve(root, "scripts/verify-control-plane-cloud.mjs"), "utf8");
 
   expect(verifier).toContain('publicEnv.GCP_PROVISIONER_URL === expectedProvisionUrl');
