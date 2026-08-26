@@ -116,6 +116,116 @@ The public worker mints its metadata-server ID token for this exact audience;
 the adapter accepts that audience at the Cloud Run IAM boundary. The request
 URL remains the adapter's current generated `run.app` URL.
 
+### Isolated adapter project fallback
+
+If a newly created service in the control project is `Ready` and
+`RoutesReady`, but both authenticated and deliberately public canaries return
+Google's generic 1568-byte HTML 404 without creating a Cloud Run request-log
+entry, do not weaken IAM or rewrite the application router. That evidence means
+the request did not reach the container.
+
+Veloce may place only the private adapter in a separate, clean, billed GCP
+project while it continues to provision the allowlisted control project. The
+public provisioner remains in `veloce-agenticos-2026`; tenant resources also
+remain there. The isolated project contains only:
+
+- the private adapter Cloud Run service;
+- its dedicated runtime service account; and
+- a project-local copy of `control-plane-worker-token`.
+
+For the current recovery, the isolated project is
+`project-8b32b88c-13b5-46c4-b29` (project number `416403418851`). Its clean
+Cloud Run route was proven with a disposable public hello canary and the canary
+was deleted afterward.
+
+Use the immutable adapter image digest from the control project. Grant
+`roles/artifactregistry.reader` only on the `veloce` repository to the isolated
+project's Cloud Run service agent. Never grant it project-wide Reader.
+
+Create the isolated runtime identity and secret container:
+
+```bash
+ADAPTER_PROJECT=project-8b32b88c-13b5-46c4-b29
+CONTROL_PROJECT=veloce-agenticos-2026
+REGION=asia-south1
+ADAPTER_SA="veloce-gcp-provisioner-run@${ADAPTER_PROJECT}.iam.gserviceaccount.com"
+
+gcloud iam service-accounts create veloce-gcp-provisioner-run \
+  --project="$ADAPTER_PROJECT" \
+  --display-name="Veloce private GCP provisioner runtime"
+
+gcloud secrets create control-plane-worker-token \
+  --project="$ADAPTER_PROJECT" \
+  --replication-policy=automatic
+```
+
+Copy the existing worker token directly between Secret Manager projects only
+after explicit operator approval. Do not print it or write it to disk:
+
+```bash
+gcloud secrets versions access latest \
+  --project="$CONTROL_PROJECT" \
+  --secret=control-plane-worker-token \
+| gcloud secrets versions add control-plane-worker-token \
+  --project="$ADAPTER_PROJECT" \
+  --data-file=-
+```
+
+Grant the isolated runtime access only to that copied secret, deploy in safe
+mode, add the explicit audience, and grant invocation only to the existing
+public provisioner identity:
+
+```bash
+gcloud secrets add-iam-policy-binding control-plane-worker-token \
+  --project="$ADAPTER_PROJECT" \
+  --member="serviceAccount:${ADAPTER_SA}" \
+  --role=roles/secretmanager.secretAccessor
+
+gcloud run deploy veloce-gcp-provisioner \
+  --project="$ADAPTER_PROJECT" \
+  --region="$REGION" \
+  --image="asia-south1-docker.pkg.dev/${CONTROL_PROJECT}/veloce/gcp-provisioner@sha256:<reviewed-digest>" \
+  --service-account="$ADAPTER_SA" \
+  --set-secrets=CONTROL_PLANE_WORKER_TOKEN=control-plane-worker-token:latest \
+  --set-env-vars="GCP_ALLOWED_PROJECT=${CONTROL_PROJECT},GCP_ALLOWED_REGION=${REGION},GCP_ALLOWED_ARTIFACT_REPOSITORY=veloce,GCP_PROVISIONER_ALLOW_APPLY=0" \
+  --ingress=all \
+  --max-instances=2 \
+  --no-allow-unauthenticated
+
+gcloud run services update veloce-gcp-provisioner \
+  --project="$ADAPTER_PROJECT" \
+  --region="$REGION" \
+  --add-custom-audiences=veloce-gcp-provisioner
+
+gcloud run services add-iam-policy-binding veloce-gcp-provisioner \
+  --project="$ADAPTER_PROJECT" \
+  --region="$REGION" \
+  --member="serviceAccount:veloce-public-provisioner-run@${CONTROL_PROJECT}.iam.gserviceaccount.com" \
+  --role=roles/run.invoker
+```
+
+Point the caller at the isolated project's project-number hostname—not the
+legacy hash hostname—and retain the explicit custom audience:
+
+```bash
+gcloud run services update veloce-public-provisioner \
+  --project="$CONTROL_PROJECT" \
+  --region="$REGION" \
+  --update-env-vars="GCP_PROVISIONER_URL=https://veloce-gcp-provisioner-416403418851.${REGION}.run.app/provision,GCP_PROVISIONER_AUDIENCE=veloce-gcp-provisioner,GCP_PROVISIONER_ID_TOKEN_SOURCE=metadata"
+```
+
+Verify configuration drift and the read-only end-to-end health bridge:
+
+```bash
+npm run verify:control-plane-cloud -- \
+  --adapter-project="$ADAPTER_PROJECT" \
+  --probe
+```
+
+The verifier never calls `/provision`. Keep
+`GCP_PROVISIONER_ALLOW_APPLY=0` until this probe passes and the scoped custom
+role is created and reviewed in the control project.
+
 Here, **no public access** means that neither service grants `allUsers` the
 Cloud Run Invoker role. For the direct public-provisioner-to-adapter call used
 by this architecture, configure the adapter with `--ingress=all` and enforce

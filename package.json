@@ -30,6 +30,7 @@
     "verify:client-authenticated": "node scripts/verify-client-runtime-authenticated.mjs",
     "verify:client-worker": "node scripts/verify-client-runtime-worker.mjs",
     "verify:control-plane-iam": "node scripts/verify-gcp-provisioner-role.mjs",
+    "verify:control-plane-cloud": "node scripts/verify-control-plane-cloud.mjs",
     "verify:public-beta": "node scripts/verify-public-beta-contract.mjs",
     "verify:public-launch": "node scripts/verify-public-launch-contract.mjs",
     "verify:public-provisioner": "node --check workers/public-provisioner/worker.mjs && node --check workers/gcp-provisioner/worker.mjs && node --check workers/managed-openrouter/worker.mjs",

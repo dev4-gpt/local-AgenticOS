@@ -26,6 +26,7 @@ const requiredFiles = [
   "src/lib/clientCredentialCatalog.ts",
   "scripts/verify-production-readiness.mjs",
   "scripts/verify-client-runtime-isolation.mjs",
+  "scripts/verify-control-plane-cloud.mjs",
   "scripts/verify-openreply-pilot.mjs",
   "scripts/client-lifecycle.mjs",
   "workers/public-provisioner/worker.mjs",
@@ -47,7 +48,7 @@ for (const file of requiredFiles) {
 }
 
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
-for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:openreply-pilot", "verify:production-readiness"]) {
+for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:control-plane-cloud", "verify:openreply-pilot", "verify:production-readiness"]) {
   if (typeof packageJson.scripts?.[script] !== "string") failures.push(`package.json is missing ${script}`);
 }
 
