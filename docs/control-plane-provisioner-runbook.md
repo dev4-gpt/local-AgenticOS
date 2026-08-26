@@ -95,6 +95,15 @@ Deploy `gcp-provisioner` with no public access and
 public access. Bind each control-plane secret by name using `--set-secrets`;
 do not place values on the command line.
 
+Here, **no public access** means that neither service grants `allUsers` the
+Cloud Run Invoker role. For the direct public-provisioner-to-adapter call used
+by this architecture, configure the adapter with `--ingress=all` and enforce
+privacy with IAM (`roles/run.invoker` only for the public worker service
+account). Do not use `--ingress=internal` unless both services are configured
+to route through a VPC path that Cloud Run recognizes as internal; otherwise
+Cloud Run rejects the request before it reaches the adapter, commonly as HTTP
+404.
+
 After both URLs exist:
 
 1. Grant the public worker service account `roles/run.invoker` on the private
