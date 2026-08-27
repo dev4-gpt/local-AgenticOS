@@ -211,7 +211,8 @@ gcloud secrets add-iam-policy-binding control-plane-operator-secret \
 ```
 
 Deploy `managed-openrouter` from the image built by
-`cloudbuild.control-plane.yaml`, without public access. Bind both values by
+`cloudbuild.control-plane.yaml`, without public access. Resolve and deploy the
+resulting immutable digest rather than the mutable build tag. Bind both values by
 Secret Manager name with `--set-secrets`; never pass their values in a command.
 Grant `roles/run.invoker` on this service only to
 `veloce-vercel-control-plane`, then set these Vercel **Production Config**
@@ -223,14 +224,16 @@ gcloud builds submit . \
   --project veloce-agenticos-2026 \
   --config cloudbuild.control-plane.yaml
 
+MANAGED_OPENROUTER_IMAGE="asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/managed-openrouter@sha256:<verified-build-digest>"
+
 gcloud run deploy veloce-managed-openrouter \
   --project veloce-agenticos-2026 \
   --region asia-south1 \
-  --image asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/managed-openrouter:managed-openrouter-latest \
+  --image "$MANAGED_OPENROUTER_IMAGE" \
   --service-account veloce-managed-openrouter-run@veloce-agenticos-2026.iam.gserviceaccount.com \
   --no-allow-unauthenticated \
   --set-secrets OPENROUTER_API_KEY=openrouter-managed-api-key:latest,CONTROL_PLANE_OPERATOR_SECRET=control-plane-operator-secret:latest \
-  --set-env-vars PUBLIC_SITE_URL=https://app.veloceos.cloud \
+  --set-env-vars PUBLIC_SITE_URL=https://app.veloceos.cloud,OPENROUTER_MODEL_ALLOWLIST=<reviewed-model-id> \
   --cpu 1 --memory 512Mi --concurrency 8 --max-instances 2 --timeout 100s
 
 gcloud run services add-iam-policy-binding veloce-managed-openrouter \
@@ -257,9 +260,45 @@ OPENROUTER_MANAGED_PRICING_SNAPSHOT_ID=<reviewed-snapshot-id>
 OPENROUTER_MANAGED_PRICING_JSON=<matching-reviewed-json>
 ```
 
+Prepare those two pricing values from the official live OpenRouter model
+catalog. This command creates review evidence only; it does not update Vercel
+or enable the managed route:
+
+```bash
+npm run prepare:openrouter-pricing -- \
+  --models <exact-reviewed-model-id> \
+  --out tmp/openrouter-managed-pricing-review.json
+```
+
+Review the source per-token values, normalized conservative rates, model ID,
+and account spend cap before using the generated `snapshotId` and `pricing`
+object in Production configuration. Tiered and zero-priced models require a
+separate quote policy and are rejected or flagged rather than flattened.
+
 Do not enable a tenant's managed provider route until the account spend cap,
 current pricing snapshot, health check, reserve/execute/settle-or-refund test,
 and a human approval record all exist.
+
+Apply `product-experience/supabase-v34-managed-credit-execution-claims.sql`
+before deploying the matching Vercel revision. The route fails closed unless a
+real, unexpired, tenant/provider/snapshot-matched reservation is atomically
+claimed before the provider request; a second execution cannot reuse it.
+
+After deployment, verify the live service, IAM boundary, secret references,
+and non-spending readiness endpoint without reading either secret value:
+
+```bash
+npm run verify:managed-openrouter-cloud -- --probe \
+  --expected-digest sha256:<verified-build-digest> \
+  --expected-models <reviewed-model-id>
+```
+
+Before the production redeploy, check Vercel configuration metadata without
+downloading or printing any environment value:
+
+```bash
+npm run verify:vercel-production-env
+```
 
 ### Video catalog before video generation
 

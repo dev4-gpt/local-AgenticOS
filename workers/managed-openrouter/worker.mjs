@@ -6,6 +6,7 @@ const operatorSecret = process.env.CONTROL_PLANE_OPERATOR_SECRET?.trim() || "";
 const openRouterApiKey = process.env.OPENROUTER_API_KEY?.trim() || "";
 const siteUrl = process.env.PUBLIC_SITE_URL?.trim() || "https://veloceos.cloud";
 const upstreamBaseUrl = "https://openrouter.ai/api/v1";
+const allowedTextModels = new Set((process.env.OPENROUTER_MODEL_ALLOWLIST || "").split(",").map((value) => value.trim()).filter(Boolean));
 // Video creation is intentionally opt-in. Listing the current catalog and
 // polling an existing job are safe read operations; submitting a job can
 // spend managed OpenRouter credits and therefore requires both flags below.
@@ -46,11 +47,35 @@ function readBody(request) {
 function validInput(value) {
   const path = typeof value?.path === "string" ? value.path : "";
   const method = typeof value?.method === "string" ? value.method.toUpperCase() : "";
+  if (method === "POST" && path === "/chat/completions") {
+    const body = normalizedChatInput(value.body);
+    return body ? { path, method, body } : null;
+  }
   if (allowedCalls.get(`${method}:${path}`)) return { path, method, body: value.body };
   if (method === "GET" && /^\/videos\/[A-Za-z0-9_-]{1,128}$/.test(path)) return { path, method, body: undefined };
   if (method !== "POST" || path !== "/videos") return null;
   const body = normalizedVideoInput(value.body);
   return body ? { path, method, body, requiresVideoGeneration: true } : null;
+}
+
+function normalizedChatInput(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const model = typeof value.model === "string" ? value.model.trim() : "";
+  if (!model || !allowedTextModels.has(model)) return null;
+  if (!Array.isArray(value.messages) || value.messages.length < 1 || value.messages.length > 64) return null;
+  const messages = value.messages.map((message) => {
+    if (!message || typeof message !== "object" || Array.isArray(message)) return null;
+    const role = typeof message.role === "string" ? message.role.trim() : "";
+    const content = typeof message.content === "string" ? message.content : "";
+    if (!["system", "user", "assistant"].includes(role) || !content || content.length > 100_000) return null;
+    return { role, content };
+  });
+  if (!messages.every(Boolean)) return null;
+  const maxTokens = Number(value.max_tokens);
+  const temperature = Number(value.temperature ?? 0.2);
+  if (!Number.isSafeInteger(maxTokens) || maxTokens < 1 || maxTokens > 16_384) return null;
+  if (!Number.isFinite(temperature) || temperature < 0 || temperature > 2) return null;
+  return { model, messages, max_tokens: maxTokens, temperature, stream: false };
 }
 
 function normalizedVideoInput(value) {

@@ -1,9 +1,10 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { cloudRunIdTokenFromVercel } from "@/lib/cloudRunOidc";
 import { createOpenRouterManagedAdapter, createSupabaseManagedCreditLedger } from "@/lib/managedProviderRuntime";
 import { evaluateManagedProviderReadiness, type ManagedProviderOperation } from "@/lib/managedProviderReadiness";
 import { normalizeManagedVideoInput, parseManagedVideoPricing, quoteManagedVideo } from "@/lib/managedVideoRuntime";
-import { publicLaunchConfig, supabaseServiceSelect, supabaseServiceUpdate } from "@/lib/publicLaunch";
+import { publicLaunchConfig, supabaseServiceRpc, supabaseServiceSelect, supabaseServiceUpdate } from "@/lib/publicLaunch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -96,6 +97,8 @@ export async function POST(request: Request) {
       }
       const reservation = reservationInput(body.reservation);
       if (!reservation || reservation.reservedMicros < quote.estimatedMicros) return NextResponse.json({ ok: false, error: "managed_video_reservation_invalid" }, { status: 400 });
+      if (!reservationUsable(reservation)) return NextResponse.json({ ok: false, error: "managed_provider_reservation_expired" }, { status: 409 });
+      if (!await claimReservation(context, reservation, input, "video")) return NextResponse.json({ ok: false, error: "managed_provider_reservation_claim_failed" }, { status: 409 });
       try {
         const response = await callManagedGateway(gatewayUrl, gatewayIdentity?.token || "", operatorSecret, "/videos", { method: "POST", body: JSON.stringify(input) });
         const job = await response.json().catch(() => null) as Record<string, unknown> | null;
@@ -156,8 +159,13 @@ export async function POST(request: Request) {
     const reservation = reservationInput(body.reservation);
     if (!reservation) return NextResponse.json({ ok: false, error: "reservation_invalid" }, { status: 400 });
     if (operation === "execute") {
+      if (!reservationUsable(reservation)) return NextResponse.json({ ok: false, error: "managed_provider_reservation_expired" }, { status: 409 });
       try {
-        const usage = await adapter.execute(context, reservation, objectInput(body.input));
+        const input = objectInput(body.input);
+        const executionQuote = await adapter.quote(context, input);
+        if (reservation.reservedMicros < executionQuote.estimatedMicros) return NextResponse.json({ ok: false, error: "managed_provider_reservation_insufficient" }, { status: 409 });
+        if (!await claimReservation(context, reservation, input, "chat")) return NextResponse.json({ ok: false, error: "managed_provider_reservation_claim_failed" }, { status: 409 });
+        const usage = await adapter.execute(context, reservation, input);
         return NextResponse.json({ ok: true, usage });
       } catch (error) {
         await adapter.refund(context, reservation, error instanceof Error ? error.message : "managed_provider_failed").catch(() => undefined);
@@ -247,8 +255,33 @@ function reservationInput(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const row = value as Record<string, unknown>;
   const reservedMicros = Number(row.reservedMicros);
-  if (typeof row.reservationId !== "string" || !Number.isSafeInteger(reservedMicros) || reservedMicros <= 0 || typeof row.expiresAt !== "string") return null;
+  if (typeof row.reservationId !== "string" || !Number.isSafeInteger(reservedMicros) || reservedMicros <= 0 || typeof row.expiresAt !== "string" || !Number.isFinite(Date.parse(row.expiresAt))) return null;
   return { reservationId: row.reservationId, reservedMicros, expiresAt: row.expiresAt };
+}
+
+function reservationUsable(value: { expiresAt: string }) {
+  return Date.parse(value.expiresAt) > Date.now();
+}
+
+async function claimReservation(
+  context: { tenantSlug: string; catalogId: string; providerKey: string; pricingSnapshotId?: string | null },
+  reservation: { reservationId: string; reservedMicros: number },
+  input: Record<string, unknown>,
+  kind: "chat" | "video",
+) {
+  const requestHash = createHash("sha256").update(JSON.stringify(input)).digest("hex");
+  const claim = await supabaseServiceRpc("claim_client_credit_reservation", {
+    p_reservation_id: reservation.reservationId,
+    p_tenant_slug: context.tenantSlug,
+    p_catalog_id: context.catalogId,
+    p_provider_key: context.providerKey,
+    p_reserved_amount_micros: reservation.reservedMicros,
+    p_pricing_snapshot_id: context.pricingSnapshotId ?? null,
+    p_claim_key: `${kind}:${reservation.reservationId}`,
+    p_request_hash: requestHash,
+    p_metadata: { kind },
+  });
+  return claim.ok && claim.value === true;
 }
 
 function usageInput(value: unknown) {

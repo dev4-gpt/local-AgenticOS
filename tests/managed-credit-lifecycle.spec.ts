@@ -74,6 +74,7 @@ class LifecycleHarness {
 
 const migrationPath = resolve(process.cwd(), "product-experience/supabase-v33-managed-credit-lifecycle.sql");
 const webhookPath = resolve(process.cwd(), "product-experience/src/app/api/billing/webhook/route.ts");
+const executionClaimsPath = resolve(process.cwd(), "product-experience/supabase-v34-managed-credit-execution-claims.sql");
 
 test("reservation succeeds and duplicate reservation is idempotent", () => {
   const ledger = new LifecycleHarness(1_000_000);
@@ -165,4 +166,22 @@ test("failed PaymentIntent preserves a pending purchase for Checkout retry", () 
 
 test("OpenRouter managed execution remains disabled", () => {
   expect(OPENROUTER_MANAGED_ROUTE.enabled).toBe(false);
+});
+
+test("provider spend requires one atomic tenant-matched reservation claim", () => {
+  const sql = readFileSync(executionClaimsPath, "utf8");
+
+  for (const fragment of [
+    "client_credit_execution_claims",
+    "claim_client_credit_reservation",
+    "reservation_row.status <> 'reserved'",
+    "reservation_row.expires_at <= now()",
+    "reservation_row.tenant_slug <> p_tenant_slug",
+    "reservation_row.catalog_id <> p_catalog_id",
+    "reservation_row.provider_key <> p_provider_key",
+    "reservation_row.reserved_amount_micros <> p_reserved_amount_micros",
+    "reservation_row.pricing_snapshot_id is distinct from",
+    "on conflict do nothing",
+    "from public, anon, authenticated",
+  ]) expect(sql).toContain(fragment);
 });

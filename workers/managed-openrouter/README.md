@@ -10,6 +10,10 @@ Required environment bindings:
 - `OPENROUTER_API_KEY` — Secret Manager binding to `openrouter-managed-api-key`.
 - `CONTROL_PLANE_OPERATOR_SECRET` — existing Secret Manager boundary binding.
 - `PUBLIC_SITE_URL` — non-secret HTTP Referer value.
+- `OPENROUTER_MODEL_ALLOWLIST` — comma-separated, human-reviewed text model
+  identifiers with matching pricing entries in the production snapshot. An
+  empty allowlist disables chat execution while metadata health checks remain
+  available.
 
 ## Video generation safety gate
 

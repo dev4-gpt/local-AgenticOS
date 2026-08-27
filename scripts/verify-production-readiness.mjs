@@ -27,6 +27,9 @@ const requiredFiles = [
   "scripts/verify-production-readiness.mjs",
   "scripts/verify-client-runtime-isolation.mjs",
   "scripts/verify-control-plane-cloud.mjs",
+  "scripts/verify-managed-openrouter-cloud.mjs",
+  "scripts/verify-vercel-production-env.mjs",
+  "scripts/prepare-openrouter-pricing-snapshot.mjs",
   "scripts/verify-openreply-pilot.mjs",
   "scripts/client-lifecycle.mjs",
   "workers/public-provisioner/worker.mjs",
@@ -35,6 +38,7 @@ const requiredFiles = [
   "product-experience/supabase-v31-managed-credit-plans.sql",
   "product-experience/supabase-v32-managed-credit-readiness.sql",
   "product-experience/supabase-v33-managed-credit-lifecycle.sql",
+  "product-experience/supabase-v34-managed-credit-execution-claims.sql",
   "product-experience/supabase-public-launch-control-plane.sql",
   "docs/public-launch-runbook.md",
   "docs/production-operations.md",
@@ -48,7 +52,7 @@ for (const file of requiredFiles) {
 }
 
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
-for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:control-plane-cloud", "verify:openreply-pilot", "verify:production-readiness"]) {
+for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:control-plane-cloud", "verify:managed-openrouter-cloud", "verify:vercel-production-env", "prepare:openrouter-pricing", "verify:openreply-pilot", "verify:production-readiness"]) {
   if (typeof packageJson.scripts?.[script] !== "string") failures.push(`package.json is missing ${script}`);
 }
 
@@ -56,6 +60,7 @@ const sourceChecks = [
   ["managed credit reservation RPC", "product-experience/supabase-v33-managed-credit-lifecycle.sql", "reserve_client_credit"],
   ["managed credit settlement RPC", "product-experience/supabase-v33-managed-credit-lifecycle.sql", "settle_client_credit"],
   ["managed credit refund RPC", "product-experience/supabase-v33-managed-credit-lifecycle.sql", "refund_client_credit"],
+  ["managed credit execution claim", "product-experience/supabase-v34-managed-credit-execution-claims.sql", "claim_client_credit_reservation"],
   ["Stripe signature verification", "product-experience/src/app/api/billing/webhook/route.ts", "verifyStripeSignature"],
   ["public provisioner scope checks", "workers/public-provisioner/worker.mjs", "allowedProject"],
   ["private GCP provisioner", "workers/gcp-provisioner/worker.mjs", "GCP_PROVISIONER_ALLOW_APPLY"],
@@ -129,7 +134,7 @@ const configurationShape = {
     "TURNSTILE_SECRET_KEY", "OPENROUTER_MANAGED_SECRET_RESOURCE", "OPENROUTER_MANAGED_GATEWAY_URL", "OPENROUTER_MANAGED_PRICING_SNAPSHOT_ID", "OPENROUTER_MANAGED_PRICING_JSON",
   ].map((key) => [key, Boolean(process.env[key]?.trim())])),
   nonSecretModes: { stripeMode: process.env.STRIPE_MODE?.trim() || null },
-  publicSecretNames: Object.keys(process.env).filter((key) => /^NEXT_PUBLIC_.*(KEY|SECRET|TOKEN|PASSWORD)/i.test(key)),
+  publicSecretNames: Object.keys(process.env).filter((key) => /^NEXT_PUBLIC_.*(SECRET|PASSWORD|PRIVATE_KEY|ACCESS_TOKEN|API_KEY)$/i.test(key) && key !== "NEXT_PUBLIC_TURNSTILE_SITE_KEY"),
 };
 if (configurationShape.publicSecretNames.length) failures.push("Secret-like NEXT_PUBLIC_* variables are present in the release environment");
 if (strict && external.environment === "production" && configurationShape.nonSecretModes.stripeMode !== "live") failures.push("Production release requires STRIPE_MODE=live");
