@@ -4,7 +4,27 @@
   "state": "disabled",
   "source": {
     "repository": "https://github.com/diwenne/openreply",
-    "reviewedCommit": null
+    "candidateCommit": "c51f04d9423f3e38d1e9c13e8077bf0b8f40bfa7",
+    "reviewedCommit": null,
+    "review": {
+      "reviewedAt": "2026-08-27",
+      "decision": "blocked",
+      "tests": {
+        "result": "passed",
+        "count": 145
+      },
+      "typecheck": "passed",
+      "productionAudit": {
+        "critical": 3,
+        "high": 10,
+        "moderate": 3,
+        "low": 0,
+        "total": 16
+      },
+      "blockers": [
+        "Production dependency audit contains critical and high severity advisories"
+      ]
+    }
   },
   "deployment": {
     "deployedUrl": null,

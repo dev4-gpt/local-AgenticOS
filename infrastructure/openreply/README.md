@@ -36,8 +36,15 @@ Validate the repository blueprint:
 npm run verify:openreply-pilot
 ```
 
-For a real pilot, copy the manifest outside the repository, set a reviewed
-40-character upstream commit and the deployed HTTPS URL, then run:
+The tracked manifest records the latest reviewed candidate separately from an
+approved `reviewedCommit`. A candidate with critical or high production
+dependency advisories remains blocked and must not be copied into the approved
+field. Re-run the upstream test, typecheck, and production-only dependency
+audit before every pilot.
+
+For a real pilot, copy the manifest outside the repository, record an approved
+40-character upstream commit with zero critical/high production advisories and
+the deployed HTTPS URL, then run:
 
 ```bash
 npm run verify:openreply-pilot -- \
@@ -48,7 +55,7 @@ npm run verify:openreply-pilot -- \
 
 The live check performs only `GET /api/health`. It does not enqueue work,
 publish a reply, or send a DM. Strict acceptance requires HTTP 200, valid JSON,
-and `worker.healthy: true`.
+and `checks.worker.healthy: true`.
 
 ## Meta endpoints
 

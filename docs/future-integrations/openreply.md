@@ -3,10 +3,14 @@
 ## Decision
 
 **Staged, isolated marketing pilot. The deployment blueprint is ready, but no
-account is connected and delivery remains disabled.** OpenReply is a self-hosted Instagram comment-to-DM application, not a
-Veloce client-runtime capability. Its dashboard, worker, PostgreSQL database,
-Redis queue, Meta permissions, and encryption key must remain in a separate
-project and separate data stores.
+account is connected and delivery remains disabled.** The upstream candidate
+`c51f04d9423f3e38d1e9c13e8077bf0b8f40bfa7` passed 145 tests and typecheck on
+2026-08-27, but its production dependency audit reported 3 critical and 10
+high advisories. It is therefore recorded as blocked, not approved or
+deployable. OpenReply is a self-hosted Instagram comment-to-DM application,
+not a Veloce client-runtime capability. Its dashboard, worker, PostgreSQL
+database, Redis queue, Meta permissions, and encryption key must remain in a
+separate project and separate data stores.
 
 Primary source: [diwenne/openreply](https://github.com/diwenne/openreply).
 Read the upstream [setup guide](https://github.com/diwenne/openreply/blob/main/docs/setup.md)
@@ -48,7 +52,9 @@ and business verification are complete.
 ## Implementation sequence
 
 1. Fork the upstream repository into the Veloce GitHub organization; pin a
-   reviewed commit and retain the MIT license/attribution.
+   reviewed commit with zero critical/high production dependency advisories
+   and retain the MIT license/attribution. Do not deploy the currently blocked
+   candidate recorded in the tracked manifest.
 2. In a **new Railway project**, create PostgreSQL, Redis, and a worker
    service. The worker build command is `npm run db:generate`; start command
    is `npm run worker`.

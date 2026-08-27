@@ -19,6 +19,24 @@ expect(manifest.schemaVersion === 1, "manifest schemaVersion must be 1");
 expect(manifest.integration === "openreply", "manifest integration must be openreply");
 expect(manifest.state === "disabled", "tracked pilot manifest must remain disabled");
 expect(manifest.source?.repository === "https://github.com/diwenne/openreply", "manifest must use the official upstream repository");
+expect(/^[0-9a-f]{40}$/i.test(manifest.source?.candidateCommit || ""), "manifest must record the reviewed upstream candidate commit");
+expect(["approved", "blocked"].includes(manifest.source?.review?.decision), "source review decision must be approved or blocked");
+expect(manifest.source?.review?.tests?.result === "passed", "reviewed upstream tests must pass");
+expect(Number.isInteger(manifest.source?.review?.tests?.count) && manifest.source.review.tests.count > 0, "source review must record a positive test count");
+expect(manifest.source?.review?.typecheck === "passed", "reviewed upstream typecheck must pass");
+const productionAudit = manifest.source?.review?.productionAudit || {};
+for (const severity of ["critical", "high", "moderate", "low", "total"]) {
+  expect(Number.isInteger(productionAudit[severity]) && productionAudit[severity] >= 0, `production audit ${severity} count must be a non-negative integer`);
+}
+expect(productionAudit.total === productionAudit.critical + productionAudit.high + productionAudit.moderate + productionAudit.low, "production audit severity counts must add up to total");
+if (manifest.source?.review?.decision === "blocked") {
+  expect(manifest.source?.reviewedCommit === null, "a blocked upstream candidate must not be recorded as reviewedCommit");
+  expect(productionAudit.critical > 0 || productionAudit.high > 0, "a blocked source review must retain its critical/high blocker evidence");
+}
+if (manifest.source?.review?.decision === "approved") {
+  expect(manifest.source?.reviewedCommit === manifest.source?.candidateCommit, "an approved source review must bind reviewedCommit to candidateCommit");
+  expect(productionAudit.critical === 0 && productionAudit.high === 0, "an approved source review cannot retain critical/high production advisories");
+}
 expect(manifest.deployment?.web?.healthPath === "/api/health", "health path must be /api/health");
 expect(manifest.deployment?.web?.oauthCallbackPath === "/api/instagram/callback", "OAuth callback path must be /api/instagram/callback");
 expect(manifest.deployment?.web?.webhookPath === "/api/webhook", "webhook path must be /api/webhook");
@@ -52,7 +70,10 @@ expect(!/postgres(?:ql)?:\/\/[^\s:@]+:[^\s@]+@/i.test(envTemplate), "tracked Ope
 expect(!/redis(?:s)?:\/\/[^\s:@]+:[^\s@]+@/i.test(envTemplate), "tracked OpenReply configuration contains Redis credentials");
 
 if (strict) {
+  expect(manifest.source?.review?.decision === "approved", "strict mode requires an approved upstream source review");
   expect(/^[0-9a-f]{40}$/i.test(manifest.source?.reviewedCommit || ""), "strict mode requires a reviewed 40-character upstream commit");
+  expect(manifest.source?.reviewedCommit === manifest.source?.candidateCommit, "strict mode requires the deployed commit to match the approved candidate");
+  expect(productionAudit.critical === 0 && productionAudit.high === 0, "strict mode requires zero critical/high production advisories");
   expect(isHttpsUrl(manifest.deployment?.deployedUrl), "strict mode requires an HTTPS deployedUrl in the manifest");
   for (const [key, passed] of Object.entries(manifest.acceptance || {})) expect(passed === true, `strict mode acceptance gate is not passed: ${key}`);
   expect(Boolean(liveUrl), "strict mode requires --url for a read-only live health check");
@@ -67,9 +88,9 @@ if (liveUrl) {
     try {
       const response = await fetch(`${liveUrl.replace(/\/$/, "")}/api/health`, { signal: AbortSignal.timeout(15000), redirect: "error" });
       const body = await response.json();
-      health = { status: response.status, workerHealthy: body?.worker?.healthy === true };
+      health = { status: response.status, workerHealthy: body?.checks?.worker?.healthy === true };
       expect(response.status === 200, `live health returned HTTP ${response.status}`);
-      expect(body?.worker?.healthy === true, "live health does not report worker.healthy=true");
+      expect(body?.checks?.worker?.healthy === true, "live health does not report checks.worker.healthy=true");
     } catch (error) {
       failures.push(`live health check failed: ${error instanceof Error ? error.message : String(error)}`);
     }

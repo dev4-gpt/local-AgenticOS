@@ -42,6 +42,7 @@ const requiredFiles = [
   "product-experience/supabase-public-launch-control-plane.sql",
   "docs/public-launch-runbook.md",
   "docs/production-operations.md",
+  "docs/v3.3-current-release-audit.md",
   "docs/future-integrations/openreply.md",
   "infrastructure/openreply/openreply-pilot.manifest.example.json",
   "infrastructure/openreply/openreply.env.example",
