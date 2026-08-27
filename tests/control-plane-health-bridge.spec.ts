@@ -22,7 +22,7 @@ test("the control-plane health bridge is operator-only and non-mutating", () => 
   expect(publicWorker).toContain("tokenSubject: identity.claims.sub");
   expect(publicWorker).not.toContain('responseBody');
   expect(publicWorker).not.toContain('serviceAccountTokenCreator');
-  expect(publicWorker).toContain('"x-control-plane-worker-token": operatorToken');
+  expect(publicWorker).toContain('"X-Control-Plane-Worker-Token": operatorToken');
   expect(publicWorker).toContain('authorization: `Bearer ${identity.token}`');
   expect(route).toContain('"x-control-plane-secret"');
   expect(route).toContain('cloudRunIdTokenFromVercel(request, target)');

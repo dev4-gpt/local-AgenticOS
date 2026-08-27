@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   let dispatched = false;
   if (run.ok && run.rows[0]?.id) {
     const response = await fetch(provisionerUrl, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${workerToken}`, "X-Serverless-Authorization": `Bearer ${identity.token}` }, body: JSON.stringify({ runId: run.rows[0].id, onboardingId: account.id, requestId, manifest: approvedManifest }), signal: AbortSignal.timeout(15_000) }).catch(() => null);
-    dispatched = response?.ok === true;
+    dispatched = response?.status === 202;
   }
-  return NextResponse.json({ ok: run.ok, runId: run.rows[0]?.id ?? null, status: "provisioning", dispatched, error: run.ok ? undefined : "provisioning_run_create_failed" });
+  return NextResponse.json({ ok: run.ok, runId: run.rows[0]?.id ?? null, status: dispatched ? "queued" : "provisioning", dispatched, error: run.ok ? undefined : "provisioning_run_create_failed" });
 }

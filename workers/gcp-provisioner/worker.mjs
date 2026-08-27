@@ -12,6 +12,8 @@ const allowedRegion = process.env.GCP_ALLOWED_REGION?.trim() || "";
 const allowedRepository = process.env.GCP_ALLOWED_ARTIFACT_REPOSITORY?.trim() || "veloce";
 const allowApply = process.env.GCP_PROVISIONER_ALLOW_APPLY?.trim() === "1";
 const provisionScript = process.env.GCP_PROVISIONER_SCRIPT?.trim() || "/app/scripts/provision-gcp-client.mjs";
+const callbackUrl = process.env.CONTROL_PLANE_CALLBACK_URL?.trim() || "";
+const callbackSecret = process.env.CONTROL_PLANE_OPERATOR_SECRET?.trim() || "";
 
 function json(response, status, body) {
   response.writeHead(status, { "content-type": "application/json", "cache-control": "no-store" });
@@ -145,6 +147,21 @@ function redactOutput(value) {
     .replace(/(api[_-]?key|token|secret|password)\s*[=:]\s*[^\s,]+/gi, "$1=[REDACTED]");
 }
 
+async function callback(input, result) {
+  if (!callbackUrl || !callbackSecret || !input?.runId) return false;
+  const response = await fetch(callbackUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-control-plane-secret": callbackSecret },
+    body: JSON.stringify({ runId: input.runId, ...result }),
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => null);
+  return response?.ok === true;
+}
+
+function callbackConfigured() {
+  return /^https:\/\//i.test(callbackUrl) && callbackSecret.length > 0;
+}
+
 const server = http.createServer(async (request, response) => {
   if (request.method === "GET" && (request.url === "/readyz" || request.url === "/healthz")) {
     return json(response, 200, { ok: true, worker: "gcp-provisioner", applyEnabled: allowApply });
@@ -153,14 +170,21 @@ const server = http.createServer(async (request, response) => {
   if (!authorized(request)) return json(response, 401, { ok: false, error: "not_authorized" });
   let input;
   try { input = await readBody(request); } catch (error) { return json(response, 400, { ok: false, error: error.message }); }
+  if (!callbackConfigured()) return json(response, 503, { ok: false, runId: input?.runId || null, error: "control_plane_callback_not_configured" });
   const invalid = validate(input);
-  if (invalid) return json(response, 400, { ok: false, error: invalid });
+  if (invalid) {
+    const callbackDelivered = await callback(input, { status: "failed", errorCode: invalid, errorMessage: "Provisioning manifest was rejected before mutation." });
+    return json(response, 400, { ok: false, runId: input?.runId || null, error: invalid, callbackDelivered });
+  }
   try {
     const result = await runProvisioning(input.manifest);
-    return json(response, 200, { ok: true, runId: input.runId, ...result });
+    const callbackDelivered = await callback(input, { status: "succeeded", ...result });
+    if (!callbackDelivered) return json(response, 502, { ok: false, runId: input.runId, error: "control_plane_callback_failed" });
+    return json(response, 200, { ok: true, runId: input.runId, ...result, callbackDelivered });
   } catch (error) {
     const message = error instanceof Error ? error.message : "gcp_provisioning_failed";
-    return json(response, message === "gcp_apply_disabled" ? 409 : 502, { ok: false, runId: input.runId, error: message });
+    const callbackDelivered = await callback(input, { status: "failed", errorCode: message, errorMessage: "Provisioning adapter failed; inspect the redacted adapter logs." });
+    return json(response, message === "gcp_apply_disabled" ? 409 : 502, { ok: false, runId: input.runId, error: message, callbackDelivered });
   }
 });
 

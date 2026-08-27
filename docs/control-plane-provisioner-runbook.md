@@ -18,7 +18,7 @@ existing `veloce-cloud-test` service or reuse its service account.
 
 ```bash
 gcloud config set project veloce-agenticos-2026
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com iamcredentials.googleapis.com sts.googleapis.com --project veloce-agenticos-2026
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com iamcredentials.googleapis.com cloudtasks.googleapis.com sts.googleapis.com --project veloce-agenticos-2026
 
 gcloud iam service-accounts create veloce-public-provisioner-run --project veloce-agenticos-2026 --display-name="Veloce public provisioner runtime"
 gcloud iam service-accounts create veloce-gcp-provisioner-run --project veloce-agenticos-2026 --display-name="Veloce private GCP provisioner runtime"
@@ -56,9 +56,21 @@ to this Vercel team, project, and Production environment.
 PUBLIC_SA=veloce-public-provisioner-run@veloce-agenticos-2026.iam.gserviceaccount.com
 ADAPTER_SA=veloce-gcp-provisioner-run@veloce-agenticos-2026.iam.gserviceaccount.com
 
-gcloud secrets add-iam-policy-binding control-plane-operator-secret --project veloce-agenticos-2026 --member="serviceAccount:${PUBLIC_SA}" --role=roles/secretmanager.secretAccessor
 gcloud secrets add-iam-policy-binding control-plane-worker-token --project veloce-agenticos-2026 --member="serviceAccount:${PUBLIC_SA}" --role=roles/secretmanager.secretAccessor
 gcloud secrets add-iam-policy-binding control-plane-worker-token --project veloce-agenticos-2026 --member="serviceAccount:${ADAPTER_SA}" --role=roles/secretmanager.secretAccessor
+gcloud secrets add-iam-policy-binding control-plane-operator-secret --project veloce-agenticos-2026 --member="serviceAccount:${ADAPTER_SA}" --role=roles/secretmanager.secretAccessor
+```
+
+The public dispatcher never receives `control-plane-operator-secret`; the
+private adapter is the sole terminal-status callback writer. For an upgrade
+from the deployed legacy dispatcher, remove its old accessor only after the
+new public revision is serving:
+
+```bash
+gcloud secrets remove-iam-policy-binding control-plane-operator-secret \
+  --project veloce-agenticos-2026 \
+  --member="serviceAccount:${PUBLIC_SA}" \
+  --role=roles/secretmanager.secretAccessor
 ```
 
 The adapter requires a reviewed custom role before it can provision tenants.
@@ -82,6 +94,48 @@ gcloud iam roles create veloceTenantProvisioner \
 Do not bind the role to `veloce-gcp-provisioner-run` or set
 `GCP_PROVISIONER_ALLOW_APPLY=1` until the controlled adapter test has passed.
 
+### 3A. Create the durable provisioning queue
+
+The Vercel approval request has a short execution window, while tenant
+provisioning may take up to 15 minutes. Do not bridge that mismatch with a
+long synchronous HTTP request. Create one dedicated queue, initially with one
+attempt and one concurrent dispatch:
+
+```bash
+PROJECT_NUMBER=1075094991117
+TASK_QUEUE=veloce-control-plane-provisioning
+
+gcloud tasks queues create "$TASK_QUEUE" \
+  --project veloce-agenticos-2026 \
+  --location asia-south1 \
+  --max-attempts 1 \
+  --max-concurrent-dispatches 1
+
+gcloud tasks queues add-iam-policy-binding "$TASK_QUEUE" \
+  --project veloce-agenticos-2026 \
+  --location asia-south1 \
+  --member="serviceAccount:${PUBLIC_SA}" \
+  --role=roles/cloudtasks.enqueuer
+
+# The queue creator must be allowed to attach this exact identity to its OIDC
+# task target. This grants only iam.serviceAccounts.actAs on itself, not token
+# creation or impersonation of another service account.
+gcloud iam service-accounts add-iam-policy-binding "$PUBLIC_SA" \
+  --project veloce-agenticos-2026 \
+  --member="serviceAccount:${PUBLIC_SA}" \
+  --role=roles/iam.serviceAccountUser
+
+gcloud iam service-accounts add-iam-policy-binding "$PUBLIC_SA" \
+  --project veloce-agenticos-2026 \
+  --member="serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-cloudtasks.iam.gserviceaccount.com" \
+  --role=roles/iam.serviceAccountTokenCreator
+```
+
+Cloud Tasks uses `PUBLIC_SA` only to mint a scoped OIDC token for the private
+adapter. `PUBLIC_SA` retains `roles/run.invoker` on the adapter; no broad
+invoker grant is needed. Do not increase queue retries until a completed
+canary proves the operation's idempotency and cleanup record.
+
 ## 4. Build and deploy in safe mode
 
 Build both images from the repository root with:
@@ -90,10 +144,10 @@ Build both images from the repository root with:
 gcloud builds submit . --project veloce-agenticos-2026 --config cloudbuild.control-plane.yaml
 ```
 
-Deploy `gcp-provisioner` with no public access and
-`GCP_PROVISIONER_ALLOW_APPLY=0`, then deploy `public-provisioner` with no
-public access. Bind each control-plane secret by name using `--set-secrets`;
-do not place values on the command line.
+Deploy `gcp-provisioner` with no public access,
+`GCP_PROVISIONER_ALLOW_APPLY=0`, and `--timeout=1000s`, then deploy
+`public-provisioner` with no public access. Bind each control-plane secret by
+name using `--set-secrets`; do not place values on the command line.
 
 Configure one explicit audience contract instead of deriving authentication
 from either of Cloud Run's generated hostnames:
@@ -112,9 +166,33 @@ gcloud run services update veloce-public-provisioner \
   --update-env-vars="GCP_PROVISIONER_AUDIENCE=$GCP_PROVISIONER_AUDIENCE"
 ```
 
-The public worker mints its metadata-server ID token for this exact audience;
-the adapter accepts that audience at the Cloud Run IAM boundary. The request
-URL remains the adapter's current generated `run.app` URL.
+Set these non-secret dispatcher values on `veloce-public-provisioner`:
+
+```text
+GCP_PROVISIONER_TASK_PROJECT=veloce-agenticos-2026
+GCP_PROVISIONER_TASK_LOCATION=asia-south1
+GCP_PROVISIONER_TASK_QUEUE=veloce-control-plane-provisioning
+GCP_PROVISIONER_TASK_SERVICE_ACCOUNT=veloce-public-provisioner-run@veloce-agenticos-2026.iam.gserviceaccount.com
+```
+
+Set these on `veloce-gcp-provisioner`:
+
+```text
+CONTROL_PLANE_CALLBACK_URL=https://app.veloceos.cloud/api/onboarding/provision-result
+```
+
+Bind `CONTROL_PLANE_OPERATOR_SECRET` to the adapter with `--set-secrets`.
+The public dispatcher returns `202 Accepted` after queueing an idempotently
+named task. The adapter is the only component that writes the terminal
+success/failure callback, preventing a short caller timeout from incorrectly
+marking a still-running mutation as failed.
+Each task has a 960-second Cloud Tasks dispatch deadline; it must remain below
+the adapter's 1000-second Cloud Run timeout.
+
+Cloud Tasks mints its OIDC token for this exact audience; the adapter accepts
+that audience at the Cloud Run IAM boundary. The public worker separately mints
+a metadata-server ID token only for the non-mutating adapter health probe. The
+request URL remains the adapter's current generated `run.app` URL.
 
 ### Cloud Run readiness path
 

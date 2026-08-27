@@ -1,16 +1,18 @@
 import http from "node:http";
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 const port = Number(process.env.PORT || 8080);
 const operatorToken = process.env.CONTROL_PLANE_WORKER_TOKEN?.trim() || "";
 const adapterUrl = process.env.GCP_PROVISIONER_URL?.trim() || "";
 const adapterAudience = process.env.GCP_PROVISIONER_AUDIENCE?.trim() || "";
 const identityTokenSource = process.env.GCP_PROVISIONER_ID_TOKEN_SOURCE?.trim() || "metadata";
-const callbackUrl = process.env.CONTROL_PLANE_CALLBACK_URL?.trim() || "";
-const callbackSecret = process.env.CONTROL_PLANE_OPERATOR_SECRET?.trim() || "";
 const allowedProject = process.env.GCP_ALLOWED_PROJECT?.trim() || "";
 const allowedRegion = process.env.GCP_ALLOWED_REGION?.trim() || "";
 const allowedRepository = process.env.GCP_ALLOWED_ARTIFACT_REPOSITORY?.trim() || "veloce";
+const taskProject = process.env.GCP_PROVISIONER_TASK_PROJECT?.trim() || allowedProject;
+const taskLocation = process.env.GCP_PROVISIONER_TASK_LOCATION?.trim() || allowedRegion;
+const taskQueue = process.env.GCP_PROVISIONER_TASK_QUEUE?.trim() || "";
+const taskServiceAccount = process.env.GCP_PROVISIONER_TASK_SERVICE_ACCOUNT?.trim() || "";
 
 function authorized(request) {
   const value = request.headers.authorization?.replace(/^Bearer\s+/i, "").trim() || "";
@@ -45,25 +47,49 @@ function validate(input) {
   return null;
 }
 
-async function dispatch(input) {
-  if (!adapterUrl) throw new Error("gcp_adapter_not_configured");
-  const identity = await cloudRunIdentity(adapterUrl);
-  if (!identity) throw new Error("gcp_adapter_identity_unavailable");
-  const response = await fetch(adapterUrl, {
+async function enqueueProvisioning(input) {
+  if (!adapterUrl || !adapterAudience || !taskProject || !taskLocation || !taskQueue || !taskServiceAccount) {
+    throw new Error("gcp_provisioner_queue_not_configured");
+  }
+  if (!/^[a-z][a-z0-9-]{2,62}$/.test(taskProject) || !/^[a-z][a-z0-9-]{2,62}$/.test(taskLocation) || !/^[a-z][a-z0-9-]{2,62}$/.test(taskQueue)) {
+    throw new Error("gcp_provisioner_queue_config_invalid");
+  }
+  if (!/^[a-z][a-z0-9-]{4,29}@[a-z][a-z0-9-]{4,62}\.iam\.gserviceaccount\.com$/i.test(taskServiceAccount)) {
+    throw new Error("gcp_provisioner_task_identity_invalid");
+  }
+  const accessToken = await metadataAccessToken();
+  if (!accessToken) throw new Error("gcp_provisioner_queue_identity_unavailable");
+  const taskId = `provision-${createHash("sha256").update(String(input.runId)).digest("hex").slice(0, 48)}`;
+  const queuePath = `projects/${taskProject}/locations/${taskLocation}/queues/${taskQueue}`;
+  const response = await fetch(`https://cloudtasks.googleapis.com/v2/${queuePath}/tasks`, {
     method: "POST",
-    // Keep the Cloud Run OIDC identity in the standard Authorization header.
-    // The application-level token is deliberately separate, so neither
-    // authentication layer shadows the other at the Cloud Run front door.
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${identity.token}`,
-      "x-control-plane-worker-token": operatorToken,
-    },
-    body: JSON.stringify({ runId: input.runId, requestId: input.requestId, onboardingId: input.onboardingId, manifest: input.manifest }),
+    headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      task: {
+        name: `${queuePath}/tasks/${taskId}`,
+        // HTTP tasks otherwise default to a 10-minute deadline. Provisioning
+        // can run for 15 minutes, and must retain time for its final callback.
+        // Keep this below the adapter's 1000-second Cloud Run timeout.
+        dispatchDeadline: "960s",
+        httpRequest: {
+          httpMethod: "POST",
+          url: adapterUrl,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Control-Plane-Worker-Token": operatorToken,
+          },
+          body: Buffer.from(JSON.stringify({ runId: input.runId, requestId: input.requestId, onboardingId: input.onboardingId, manifest: input.manifest })).toString("base64"),
+          oidcToken: { serviceAccountEmail: taskServiceAccount, audience: adapterAudience },
+        },
+      },
+    }),
     signal: AbortSignal.timeout(10_000),
-  });
-  if (!response.ok) throw new Error(`gcp_adapter_failed_${response.status}`);
-  return response.json().catch(() => ({}));
+  }).catch(() => null);
+  if (response?.ok) return { taskId, alreadyQueued: false };
+  // The fixed task name makes a retried approval request idempotent. A 409
+  // means the durable dispatch already exists; do not create a second task.
+  if (response?.status === 409) return { taskId, alreadyQueued: true };
+  throw new Error(`gcp_provisioner_queue_failed_${response?.status || "network"}`);
 }
 
 // This is an operator-only acceptance probe. It deliberately uses the same
@@ -138,6 +164,15 @@ async function metadataIdentityToken(audience) {
   return (await response.text().catch(() => "")).trim() || null;
 }
 
+async function metadataAccessToken() {
+  const response = await fetch("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token", {
+    headers: { "Metadata-Flavor": "Google" },
+    signal: AbortSignal.timeout(5_000),
+  }).catch(() => null);
+  const body = await response?.json().catch(() => null);
+  return response?.ok && typeof body?.access_token === "string" ? body.access_token.trim() || null : null;
+}
+
 async function iamCredentialsIdentityToken(audience) {
   const [serviceAccountResponse, accessTokenResponse] = await Promise.all([
     metadata("instance/service-accounts/default/email"),
@@ -184,11 +219,6 @@ function safeIdentityClaims(token) {
   }
 }
 
-async function callback(input, result) {
-  if (!callbackUrl || !callbackSecret) return;
-  await fetch(callbackUrl, { method: "POST", headers: { "content-type": "application/json", "x-control-plane-secret": callbackSecret }, body: JSON.stringify({ runId: input.runId, ...result }), signal: AbortSignal.timeout(8_000) }).catch(() => undefined);
-}
-
 const server = http.createServer(async (request, response) => {
   if (request.method === "GET" && (request.url === "/readyz" || request.url === "/healthz")) return json(response, 200, { ok: true, worker: "public-provisioner" });
   if (request.method === "POST" && request.url === "/adapter-healthz") {
@@ -207,13 +237,11 @@ const server = http.createServer(async (request, response) => {
   const validationError = validate(input);
   if (validationError) return json(response, 400, { ok: false, error: validationError });
   try {
-    const result = await dispatch(input);
-    await callback(input, { status: "succeeded", ...result });
-    return json(response, 200, { ok: true, runId: input.runId, status: "succeeded" });
+    const task = await enqueueProvisioning(input);
+    return json(response, 202, { ok: true, runId: input.runId, status: "queued", taskId: task.taskId, alreadyQueued: task.alreadyQueued });
   } catch (error) {
     const errorCode = error instanceof Error ? error.message : "provisioning_failed";
-    await callback(input, { status: "failed", errorCode, errorMessage: "Provisioning adapter failed; inspect the redacted worker logs." });
-    return json(response, 502, { ok: false, runId: input.runId, status: "failed", error: errorCode });
+    return json(response, 503, { ok: false, runId: input.runId, status: "queue_unavailable", error: errorCode });
   }
 });
 
