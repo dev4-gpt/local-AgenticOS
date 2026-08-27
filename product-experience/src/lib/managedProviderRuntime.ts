@@ -76,9 +76,12 @@ export function createOpenRouterManagedAdapter(options: {
     async quote(context: Context, input: Record<string, unknown>): Promise<Quote> {
       const { model, rate: modelRate } = rate(input);
       const maxOutput = Number.isSafeInteger(Number(input.maxOutputTokens)) ? Math.min(16_384, Math.max(256, Number(input.maxOutputTokens))) : 256;
-      if (!modelRate || !Number.isFinite(modelRate.inputMicrosPer1k) || !Number.isFinite(modelRate.outputMicrosPer1k)) throw new Error("managed_pricing_not_configured");
+      const pricingSnapshotId = context.pricingSnapshotId?.trim() || options.pricingSnapshotId?.trim() || "";
+      if (!pricingSnapshotId) throw new Error("managed_pricing_snapshot_not_configured");
+      if (!modelRate || !Number.isSafeInteger(modelRate.inputMicrosPer1k) || modelRate.inputMicrosPer1k < 0 || !Number.isSafeInteger(modelRate.outputMicrosPer1k) || modelRate.outputMicrosPer1k < 0 || (modelRate.inputMicrosPer1k === 0 && modelRate.outputMicrosPer1k === 0)) throw new Error("managed_pricing_not_configured");
       const estimatedMicros = Math.ceil(Math.max(1, messageSize(input)) / 1000 * modelRate.inputMicrosPer1k + maxOutput / 1000 * modelRate.outputMicrosPer1k);
-      return { estimatedMicros, currency: "usd", pricingSnapshotId: context.pricingSnapshotId?.trim() || options.pricingSnapshotId || "openrouter-managed-unconfigured", expiresAt: new Date(Date.now() + 900_000).toISOString() };
+      if (!Number.isSafeInteger(estimatedMicros) || estimatedMicros <= 0) throw new Error("managed_pricing_not_configured");
+      return { estimatedMicros, currency: "usd", pricingSnapshotId, expiresAt: new Date(Date.now() + 900_000).toISOString() };
     },
     async healthCheck(context: Context) { try { const result = await call(context, "/models", { method: "GET" }); return result.ok ? { ok: true } : { ok: false, reason: `openrouter_health_${result.status}` }; } catch (error) { return { ok: false, reason: error instanceof Error ? error.message : "openrouter_health_failed" }; } },
     async reserve(context: Context, quote: Quote): Promise<Reservation> {

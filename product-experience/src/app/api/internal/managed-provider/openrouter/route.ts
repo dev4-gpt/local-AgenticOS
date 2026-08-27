@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { cloudRunIdTokenFromVercel } from "@/lib/cloudRunOidc";
 import { createOpenRouterManagedAdapter, createSupabaseManagedCreditLedger } from "@/lib/managedProviderRuntime";
+import { parseManagedTextPricing, validateManagedPricingSnapshot, type ManagedTextPricing } from "@/lib/managedProviderPricing";
 import { evaluateManagedProviderReadiness, type ManagedProviderOperation } from "@/lib/managedProviderReadiness";
 import { normalizeManagedVideoInput, parseManagedVideoPricing, quoteManagedVideo } from "@/lib/managedVideoRuntime";
 import { publicLaunchConfig, supabaseServiceRpc, supabaseServiceSelect, supabaseServiceUpdate } from "@/lib/publicLaunch";
@@ -37,7 +38,8 @@ export async function POST(request: Request) {
   }
   if (!["quote", "healthCheck", "balance", "disable", "restore", "videoModels", "videoStatus", "videoQuote"].includes(operation) && !idempotencyKey) return NextResponse.json({ ok: false, error: "idempotency_required" }, { status: 400 });
 
-  const readiness = await managedReadiness(tenantSlug, operation as ManagedProviderOperation);
+  const configuredPricing = parseManagedTextPricing(process.env.OPENROUTER_MANAGED_PRICING_JSON);
+  const readiness = await managedReadiness(tenantSlug, operation as ManagedProviderOperation, configuredPricing);
   if (!readiness.ok) return NextResponse.json({ ok: false, error: readiness.error }, { status: readiness.status });
   const requiresGateway = ["healthCheck", "balance", "reserve", "execute", "videoModels", "videoStatus", "videoExecute"].includes(operation);
   if (requiresGateway && readiness.credentialReference !== secretResource) {
@@ -71,7 +73,7 @@ export async function POST(request: Request) {
     ledger,
     callProvider: gatewayIdentity ? (_context, path, init) => callManagedGateway(gatewayUrl, gatewayIdentity.token, operatorSecret, path, init) : undefined,
     pricingSnapshotId: readiness.pricingSnapshotId ?? undefined,
-    pricing: managedPricing(),
+    pricing: configuredPricing ?? {},
   });
 
   try {
@@ -116,16 +118,29 @@ export async function POST(request: Request) {
       // must be persisted before a later, separately approved execution can
       // become eligible. The probe never enables the managed route.
       const health = await adapter.healthCheck(context);
-      const updated = await supabaseServiceUpdate("client_credit_budgets", {
-        tenant_slug: `eq.${tenantSlug}`,
-        catalog_id: `eq.${CATALOG_ID}`,
-        provider_key: `eq.${PROVIDER_KEY}`,
-      }, {
-        health_status: health.ok ? "passed" : "failed",
-        last_health_check_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-      if (!updated.ok) return NextResponse.json({ ok: false, error: "managed_provider_health_persist_failed" }, { status: 502 });
+      const checkedAt = new Date().toISOString();
+      const [updated, connectionUpdated] = await Promise.all([
+        supabaseServiceUpdate("client_credit_budgets", {
+          tenant_slug: `eq.${tenantSlug}`,
+          catalog_id: `eq.${CATALOG_ID}`,
+          provider_key: `eq.${PROVIDER_KEY}`,
+        }, {
+          health_status: health.ok ? "passed" : "failed",
+          last_health_check_at: checkedAt,
+          updated_at: checkedAt,
+        }),
+        supabaseServiceUpdate("client_provider_connections", {
+          tenant_slug: `eq.${tenantSlug}`,
+          catalog_id: `eq.${CATALOG_ID}`,
+          provider_key: `eq.${PROVIDER_KEY}`,
+        }, {
+          status: health.ok ? "connected" : "validating",
+          last_validated_at: checkedAt,
+          validation_metadata: { health_ok: health.ok, health_reason: health.ok ? null : health.reason ?? "managed_provider_health_failed", validated_at: checkedAt },
+          updated_at: checkedAt,
+        }),
+      ]);
+      if (!updated.ok || updated.rows.length !== 1 || !connectionUpdated.ok || connectionUpdated.rows.length !== 1) return NextResponse.json({ ok: false, error: "managed_provider_health_persist_failed" }, { status: 502 });
       return NextResponse.json({ ok: health.ok, health }, { status: health.ok ? 200 : 502 });
     }
     if (operation === "balance") return NextResponse.json({ ok: true, balance: await adapter.balance(context) });
@@ -218,29 +233,60 @@ function authorized(request: Request, expected: string) {
   return Boolean(expected && request.headers.get("x-control-plane-secret")?.trim() === expected);
 }
 
-async function managedReadiness(tenantSlug: string, operation: ManagedProviderOperation) {
-  const result = await supabaseServiceSelect("client_credit_budgets", {
-    tenant_slug: `eq.${tenantSlug}`,
-    catalog_id: `eq.${CATALOG_ID}`,
-    provider_key: `eq.${PROVIDER_KEY}`,
-    select: "managed_route_enabled,status,credential_reference,manifest_version,health_status,reconciliation_status",
-  });
-  const row = result.rows[0];
-  return evaluateManagedProviderReadiness(operation, !result.ok || !row ? null : {
+async function managedReadiness(tenantSlug: string, operation: ManagedProviderOperation, configuredPricing: ManagedTextPricing | null) {
+  const pricingSnapshotId = process.env.OPENROUTER_MANAGED_PRICING_SNAPSHOT_ID?.trim() || null;
+  const [budgetResult, connectionResult] = await Promise.all([
+    supabaseServiceSelect("client_credit_budgets", {
+      tenant_slug: `eq.${tenantSlug}`,
+      catalog_id: `eq.${CATALOG_ID}`,
+      provider_key: `eq.${PROVIDER_KEY}`,
+      select: "managed_route_enabled,status,credential_reference,manifest_version,health_status,reconciliation_status",
+    }),
+    supabaseServiceSelect("client_provider_connections", {
+      tenant_slug: `eq.${tenantSlug}`,
+      catalog_id: `eq.${CATALOG_ID}`,
+      provider_key: `eq.${PROVIDER_KEY}`,
+      select: "credential_mode,status,secret_resource,pricing_snapshot_id,manifest_version,last_validated_at",
+    }),
+  ]);
+  const row = budgetResult.rows[0];
+  const connection = connectionResult.rows[0];
+  const connectionMaxAgeHoursValue = Number(process.env.OPENROUTER_MANAGED_CONNECTION_MAX_AGE_HOURS ?? 720);
+  const connectionMaxAgeHours = Number.isFinite(connectionMaxAgeHoursValue) ? Math.min(2160, Math.max(1, connectionMaxAgeHoursValue)) : 720;
+  const connectionValidatedAt = connectionResult.ok && typeof connection?.last_validated_at === "string" ? Date.parse(connection.last_validated_at) : Number.NaN;
+  const connectionValidationCurrent = Number.isFinite(connectionValidatedAt)
+    && connectionValidatedAt <= Date.now() + 300_000
+    && connectionValidatedAt >= Date.now() - connectionMaxAgeHours * 3_600_000;
+  const readiness = evaluateManagedProviderReadiness(operation, !budgetResult.ok || !row ? null : {
     managedRouteEnabled: row.managed_route_enabled === true,
     status: typeof row.status === "string" ? row.status : null,
     credentialReference: typeof row.credential_reference === "string" && row.credential_reference.trim() ? row.credential_reference.trim() : null,
     manifestVersion: typeof row.manifest_version === "string" && row.manifest_version.trim() ? row.manifest_version.trim() : null,
     healthStatus: typeof row.health_status === "string" ? row.health_status : null,
     reconciliationStatus: typeof row.reconciliation_status === "string" ? row.reconciliation_status : null,
-  }, process.env.OPENROUTER_MANAGED_PRICING_SNAPSHOT_ID?.trim() || null);
-}
-
-function managedPricing() {
-  try {
-    const parsed = JSON.parse(process.env.OPENROUTER_MANAGED_PRICING_JSON ?? "{}");
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, { inputMicrosPer1k: number; outputMicrosPer1k: number }> : {};
-  } catch { return {}; }
+    connectionStatus: connectionResult.ok && typeof connection?.status === "string" ? connection.status : null,
+    credentialMode: connectionResult.ok && typeof connection?.credential_mode === "string" ? connection.credential_mode : null,
+    connectionSecretResource: connectionResult.ok && typeof connection?.secret_resource === "string" ? connection.secret_resource.trim() || null : null,
+    connectionPricingSnapshotId: connectionResult.ok && typeof connection?.pricing_snapshot_id === "string" ? connection.pricing_snapshot_id.trim() || null : null,
+    connectionManifestVersion: connectionResult.ok && typeof connection?.manifest_version === "string" ? connection.manifest_version.trim() || null : null,
+    connectionValidationCurrent,
+  }, pricingSnapshotId);
+  if (!readiness.ok) return readiness;
+  const execution = ["quote", "reserve", "execute", "videoQuote", "videoReserve", "videoExecute"].includes(operation);
+  if (!execution) return readiness;
+  const snapshotResult = await supabaseServiceSelect("client_pricing_snapshots", {
+    id: `eq.${pricingSnapshotId}`,
+    select: "id,version,effective_at,prices",
+  });
+  const snapshot = snapshotResult.ok ? snapshotResult.rows[0] : null;
+  const maxAgeHours = Number(process.env.OPENROUTER_MANAGED_PRICING_MAX_AGE_HOURS ?? 168);
+  const validation = validateManagedPricingSnapshot({
+    configuredSnapshotId: pricingSnapshotId,
+    configuredPricing,
+    row: snapshot ? { id: snapshot.id, version: snapshot.version, effective_at: snapshot.effective_at, prices: snapshot.prices } : null,
+    maxAgeHours,
+  });
+  return validation.ok ? readiness : validation;
 }
 
 function managedVideoPricing() {

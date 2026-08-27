@@ -42,7 +42,7 @@ export interface OpenRouterManagedAdapterOptions {
 export function createOpenRouterManagedAdapter(options: OpenRouterManagedAdapterOptions): ManagedProviderAdapter {
   const fetcher = options.fetcher ?? fetch;
   const baseUrl = (options.baseUrl ?? "https://openrouter.ai/api/v1").replace(/\/$/, "");
-  const pricingSnapshotId = options.pricingSnapshotId?.trim() || "openrouter-managed-unconfigured";
+  const pricingSnapshotId = options.pricingSnapshotId?.trim() || "";
   const disabledTenants = new Set<string>();
   const timeoutMs = clampTimeout(options.timeoutMs);
 
@@ -78,7 +78,9 @@ export function createOpenRouterManagedAdapter(options: OpenRouterManagedAdapter
       const messages = Array.isArray(input.messages) ? input.messages : [];
       const maxOutputTokens = boundedInteger(input.maxOutputTokens, 256, 16_384);
       const rate = options.pricing?.[model];
-      if (!model || !rate || !Number.isFinite(rate.inputMicrosPer1k) || !Number.isFinite(rate.outputMicrosPer1k)) {
+      const approvedSnapshotId = context.pricingSnapshotId?.trim() || pricingSnapshotId;
+      if (!approvedSnapshotId) throw new Error("managed_pricing_snapshot_not_configured");
+      if (!model || !rate || !Number.isSafeInteger(rate.inputMicrosPer1k) || rate.inputMicrosPer1k < 0 || !Number.isSafeInteger(rate.outputMicrosPer1k) || rate.outputMicrosPer1k < 0 || (rate.inputMicrosPer1k === 0 && rate.outputMicrosPer1k === 0)) {
         throw new Error("managed_pricing_not_configured");
       }
       const inputChars = messages.reduce((total, message) => total + messageTextLength(message), 0);
@@ -91,7 +93,7 @@ export function createOpenRouterManagedAdapter(options: OpenRouterManagedAdapter
       return {
         estimatedMicros,
         currency: "usd",
-        pricingSnapshotId: context.pricingSnapshotId?.trim() || pricingSnapshotId,
+        pricingSnapshotId: approvedSnapshotId,
         expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
       } satisfies ManagedProviderQuote;
     },
@@ -124,7 +126,6 @@ export function createOpenRouterManagedAdapter(options: OpenRouterManagedAdapter
           messages,
           max_tokens: boundedInteger(input.maxOutputTokens, 256, 16_384),
           temperature: 0.2,
-          ...(typeof input.providerOrder === "object" ? { provider: input.providerOrder } : {}),
         }),
       }).catch((error) => {
         throw new Error(error instanceof Error ? error.message : "managed_openrouter_request_failed");

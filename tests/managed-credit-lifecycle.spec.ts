@@ -180,7 +180,9 @@ test("provider spend requires one atomic tenant-matched reservation claim", () =
     "reservation_row.catalog_id <> p_catalog_id",
     "reservation_row.provider_key <> p_provider_key",
     "reservation_row.reserved_amount_micros <> p_reserved_amount_micros",
-    "reservation_row.pricing_snapshot_id is distinct from",
+    "reservation_row.pricing_snapshot_id is null",
+    "reservation_row.pricing_snapshot_id <> p_pricing_snapshot_id",
+    "references public.client_pricing_snapshots(id)",
     "on conflict do nothing",
     "from public, anon, authenticated",
   ]) expect(sql).toContain(fragment);

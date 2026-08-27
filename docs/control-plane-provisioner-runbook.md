@@ -272,7 +272,15 @@ npm run prepare:openrouter-pricing -- \
 
 Review the source per-token values, normalized conservative rates, model ID,
 and account spend cap before using the generated `snapshotId` and `pricing`
-object in Production configuration. Tiered and zero-priced models require a
+object in Production configuration. Insert the artifact's exact
+`databaseRecord` into `client_pricing_snapshots`, and bind that ID plus the
+same managed secret resource and manifest version to the approved
+`client_provider_connections` row. The runtime rejects a missing, stale,
+hash-mismatched, price-mismatched, BYOK, or unapproved connection before a
+provider request. Paid execution also requires a recent successful connection
+validation (30 days by default); the protected health operation refreshes both
+the budget health status and authoritative provider-connection evidence.
+Tiered and zero-priced models require a
 separate quote policy and are rejected or flagged rather than flattened.
 
 Do not enable a tenant's managed provider route until the account spend cap,

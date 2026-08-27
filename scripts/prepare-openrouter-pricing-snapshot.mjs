@@ -62,6 +62,17 @@ const artifact = {
   selected,
   failures,
   warnings,
+  databaseRecord: {
+    id: snapshotId,
+    version: "openrouter-managed-v1",
+    effective_at: retrievedAt,
+    prices: pricing,
+  },
+  productionConfigAfterApproval: {
+    OPENROUTER_MANAGED_PRICING_SNAPSHOT_ID: snapshotId,
+    OPENROUTER_MANAGED_PRICING_JSON: canonical,
+    OPENROUTER_MODEL_ALLOWLIST: Object.keys(pricing).sort().join(","),
+  },
 };
 
 if (outputPath) {
