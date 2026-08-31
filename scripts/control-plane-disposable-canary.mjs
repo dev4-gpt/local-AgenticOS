@@ -119,11 +119,23 @@ function canonicalInventory(value) {
 function readChecks(value) {
   const { project, region, resources } = value;
   return [
-    state("serviceAccount", resources.serviceAccount, ["iam", "service-accounts", "describe", resources.serviceAccount, "--project", project]),
+    serviceAccountState(resources.serviceAccount, project),
     state("storageBucket", resources.storageBucket, ["storage", "buckets", "describe", `gs://${resources.storageBucket}`, "--project", project]),
     state("taskQueue", resources.taskQueue, ["tasks", "queues", "describe", resources.taskQueue, "--project", project, "--location", region]),
     ...resources.secrets.map((name) => state("secret", name, ["secrets", "describe", name, "--project", project])),
   ];
+}
+
+function serviceAccountState(name, project) {
+  const described = state("serviceAccount", name, ["iam", "service-accounts", "describe", name, "--project", project]);
+  if (described.absent !== null || !/permission_denied/.test(described.error || "")) return described;
+  // A project role can allow a successful deletion without a subsequent get.
+  // A successful filtered list is authoritative for this exact email and lets
+  // rollback prove absence without treating a 403 as proof.
+  const listed = spawnSync("gcloud", ["iam", "service-accounts", "list", "--project", project, "--filter", `email:${name}`, "--format=value(email)"], { encoding: "utf8" });
+  if (listed.status !== 0) return described;
+  const emails = listed.stdout.split("\n").map((entry) => entry.trim()).filter(Boolean);
+  return { kind: "serviceAccount", name, absent: !emails.includes(name), verification: "filtered_service_account_list" };
 }
 
 function state(kind, name, command) {
@@ -152,8 +164,11 @@ function removeResources(value, checks) {
   const { project, region, resources } = value;
   const present = new Set(checks.filter((check) => check.absent === false).map((check) => `${check.kind}:${check.name}`));
   if (present.has(`storageBucket:${resources.storageBucket}`)) {
-    const objects = spawnSync("gcloud", ["storage", "ls", "--recursive", `gs://${resources.storageBucket}/**`], { encoding: "utf8" });
-    if (objects.status !== 0 || objects.stdout.trim()) fail("refusing to delete a non-empty or unreadable canary bucket");
+    const bucketUrl = `gs://${resources.storageBucket}`;
+    const objects = spawnSync("gcloud", ["storage", "ls", "--recursive", bucketUrl], { encoding: "utf8" });
+    const objectLines = objects.stdout.split("\n").map((line) => line.trim()).filter(Boolean)
+      .filter((line) => line !== `${bucketUrl}/:`);
+    if (objects.status !== 0 || objectLines.length > 0) fail("refusing to delete a non-empty or unreadable canary bucket");
     run(["storage", "buckets", "delete", `gs://${resources.storageBucket}`, "--project", project, "--quiet"]);
   }
   if (present.has(`taskQueue:${resources.taskQueue}`)) run(["tasks", "queues", "delete", resources.taskQueue, "--project", project, "--location", region, "--quiet"]);

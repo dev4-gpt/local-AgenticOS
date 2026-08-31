@@ -86,7 +86,7 @@ const sourceChecks = [
   ["OpenReply uses the current Instagram callback", "infrastructure/openreply/openreply-pilot.manifest.example.json", "/api/instagram/callback"],
   ["VoxCPM remains a private disabled GPU pilot", "infrastructure/voxcpm/voxcpm-pilot.manifest.example.json", "isolated-gpu-worker"],
   ["Ponytail and Headroom remain bounded engineering controls", "infrastructure/engineering-controls/agent-efficiency.manifest.json", "avoidUnrequestedRuntimeDependencies"],
-  ["control-plane canary has a disposable manifest", "client-blueprints/control-plane-disposable-canary.gcp.json", "cp-canary-a826-rollback"],
+  ["control-plane canary has a disposable manifest", "client-blueprints/control-plane-disposable-canary.gcp.json", "cp-canary-a827-rollback"],
 ];
 for (const [label, file, marker] of sourceChecks) {
   const content = safeRead(file);

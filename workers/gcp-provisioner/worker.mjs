@@ -96,7 +96,11 @@ async function runProvisioning(manifest) {
     await writeFile(configPath, JSON.stringify(manifest), { encoding: "utf8", mode: 0o600 });
     const args = [provisionScript, "--config", configPath, "--phase", phase, "--apply"];
     const output = await run("node", args, 15 * 60_000);
-    if (output.code !== 0) throw new Error("gcp_provisioning_command_failed");
+    if (output.code !== 0) {
+      const error = new Error("gcp_provisioning_command_failed");
+      error.failureOutput = redactOutput(`${output.stdout}\n${output.stderr}`).slice(-12_000);
+      throw error;
+    }
     return {
       completedSteps: phase === "prepare" ? ["validated_manifest", "gcp_prepare"] : ["validated_manifest", "gcp_deploy"],
       // The callback must describe the actual resource names that the
@@ -250,7 +254,13 @@ const server = http.createServer(async (request, response) => {
     return json(response, 200, { ok: true, runId: input.runId, ...result, callbackDelivered });
   } catch (error) {
     const message = error instanceof Error ? error.message : "gcp_provisioning_failed";
-    const callbackDelivered = await callback(input, { status: "failed", errorCode: message, errorMessage: "Provisioning adapter failed; inspect the redacted adapter logs." });
+    const failureOutput = error instanceof Error && typeof error.failureOutput === "string" ? error.failureOutput : "";
+    const callbackDelivered = await callback(input, {
+      status: "failed",
+      errorCode: message,
+      errorMessage: "Provisioning adapter failed; inspect the redacted command evidence.",
+      ...(failureOutput ? { evidenceBundle: { phase: input.manifest?.provisioning?.phase || "unknown", command: "provision-gcp-client", failureOutput } } : {}),
+    });
     return json(response, message === "gcp_apply_disabled" ? 409 : 502, { ok: false, runId: input.runId, error: message, callbackDelivered });
   }
 });

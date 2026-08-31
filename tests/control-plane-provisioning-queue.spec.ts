@@ -24,7 +24,9 @@ test("approved onboarding uses one durable task and the adapter owns terminal ca
   expect(adapterWorker).toContain("CONTROL_PLANE_OPERATOR_SECRET");
   expect(adapterWorker).toContain('if (!callbackConfigured()) return json(response, 503');
   expect(adapterWorker).toContain('const callbackDelivered = await callback(input, { status: "succeeded", ...result });');
-  expect(adapterWorker).toContain('const callbackDelivered = await callback(input, { status: "failed", errorCode: message');
+  expect(adapterWorker).toContain('const callbackDelivered = await callback(input, {');
+  expect(adapterWorker).toContain('errorCode: message');
+  expect(adapterWorker).toContain('failureOutput');
   expect(adapterWorker).toContain('error: "control_plane_callback_failed"');
   expect(adapterWorker).toContain('request.url === "/queue-authz"');
   expect(adapterWorker).toContain("gcp_adapter_queue_authz_denied");
