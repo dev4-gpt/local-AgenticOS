@@ -26,6 +26,9 @@ test("the disposable control-plane canary is inventory-bound and cannot target d
   const canaryTool = readFileSync(resolve(root, "scripts/control-plane-disposable-canary.mjs"), "utf8");
   expect(canaryTool).toContain("function adapterRoleCheck");
   expect(canaryTool).toContain("not[ _-]found");
+  expect(canaryTool).toContain("function startCanary");
+  expect(canaryTool).toContain("function readStatus");
+  expect(canaryTool).toContain('https://app.veloceos.cloud/api/internal/control-plane/canary');
 });
 
 test("canary tool derives the tracked inventory and refuses a cleanup apply without confirmation", () => {
@@ -43,4 +46,12 @@ test("canary tool derives the tracked inventory and refuses a cleanup apply with
   const cleanup = spawnSync(process.execPath, ["scripts/control-plane-disposable-canary.mjs", "--mode", "cleanup", "--apply"], { cwd: root, encoding: "utf8" });
   expect(cleanup.status).toBe(1);
   expect(JSON.parse(cleanup.stdout).failures).toContain("cleanup requires --confirm-slug cp-canary-a826-rollback");
+
+  const start = spawnSync(process.execPath, ["scripts/control-plane-disposable-canary.mjs", "--mode", "start"], { cwd: root, encoding: "utf8" });
+  expect(start.status, start.stderr || start.stdout).toBe(0);
+  expect(JSON.parse(start.stdout)).toMatchObject({ ok: true, dryRun: true, mode: "start" });
+
+  const status = spawnSync(process.execPath, ["scripts/control-plane-disposable-canary.mjs", "--mode", "status"], { cwd: root, encoding: "utf8" });
+  expect(status.status).toBe(1);
+  expect(JSON.parse(status.stdout).failures).toContain("--status-url must be https://app.veloceos.cloud/api/internal/control-plane/canary");
 });

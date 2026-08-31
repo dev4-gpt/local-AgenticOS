@@ -11,8 +11,8 @@ const manifestPath = valueAfter("--manifest") || "client-blueprints/control-plan
 const apply = args.includes("--apply");
 const failures = [];
 
-if (!["inventory", "preflight", "cleanup", "record-cleanup"].includes(mode)) fail("--mode must be inventory, preflight, cleanup, or record-cleanup");
-if (apply && !["cleanup", "record-cleanup"].includes(mode)) fail("--apply is only valid for cleanup or record-cleanup");
+if (!["inventory", "preflight", "start", "status", "cleanup", "record-cleanup"].includes(mode)) fail("--mode must be inventory, preflight, start, status, cleanup, or record-cleanup");
+if (apply && !["start", "cleanup", "record-cleanup"].includes(mode)) fail("--apply is only valid for start, cleanup, or record-cleanup");
 
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 const inventory = deriveInventory(manifest);
@@ -25,6 +25,25 @@ if (mode === "preflight") {
   const roleCheck = adapterRoleCheck(inventory);
   const clean = checks.every((check) => check.absent === true) && roleCheck.present === true;
   finish({ ok: clean, mode, inventory, checks, roleCheck, failures: clean ? [] : ["canary resource collision, unreadable GCP state, or missing adapter provisioner role"] });
+}
+
+if (mode === "status") finish(await readStatus());
+
+if (mode === "start") {
+  if (!apply) finish({
+    ok: true,
+    mode,
+    dryRun: true,
+    inventory,
+    next: `Re-run with --apply --confirm-slug ${inventory.slug} only after the adapter has been explicitly enabled for this bounded canary window.`,
+  });
+  if (valueAfter("--confirm-slug") !== inventory.slug) fail(`start requires --confirm-slug ${inventory.slug}`);
+  const checks = readChecks(inventory);
+  const roleCheck = adapterRoleCheck(inventory);
+  if (!checks.every((check) => check.absent === true) || roleCheck.present !== true) {
+    finish({ ok: false, mode, inventory, checks, roleCheck, failures: ["canary preflight failed; refusing to dispatch"] });
+  }
+  finish(await startCanary());
 }
 
 if (!apply) {
@@ -143,19 +162,55 @@ function removeResources(value, checks) {
 }
 
 async function recordCleanup(cleanupEvidence) {
-  const url = valueAfter("--record-url");
+  const url = canaryUrl("--record-url");
   const runId = valueAfter("--run-id");
   const onboardingId = valueAfter("--onboarding-id");
   if (!url || !runId || !onboardingId) fail("record-cleanup requires --record-url, --run-id, and --onboarding-id");
+  const result = await operatorPost(url, { action: "record_cleanup", runId, onboardingId, cleanupEvidence });
+  if (!result.ok || result.body?.status !== "rolled_back") fail(`cleanup evidence recording failed with HTTP ${result.status}`);
+}
+
+async function startCanary() {
+  const url = canaryUrl("--start-url");
+  const result = await operatorPost(url, { action: "start", manifest });
+  const runId = typeof result.body?.runId === "string" ? result.body.runId : null;
+  const onboardingId = typeof result.body?.onboardingId === "string" ? result.body.onboardingId : null;
+  if (!result.ok || result.body?.ok !== true || result.body?.status !== "queued" || !runId || !onboardingId) {
+    return { ok: false, mode, inventory, status: result.status, response: result.body, failures: ["canary dispatch was not queued"] };
+  }
+  return { ok: true, mode, applied: true, inventory, runId, onboardingId, status: "queued" };
+}
+
+async function readStatus() {
+  const url = canaryUrl("--status-url");
+  const runId = valueAfter("--run-id");
+  const onboardingId = valueAfter("--onboarding-id");
+  if (!runId || !onboardingId) fail("status requires --status-url, --run-id, and --onboarding-id");
+  const result = await operatorPost(url, { action: "status", runId, onboardingId });
+  if (!result.ok || result.body?.ok !== true) return { ok: false, mode, status: result.status, response: result.body, failures: ["canary status lookup failed"] };
+  return { ok: true, mode, response: result.body };
+}
+
+function canaryUrl(flag) {
+  const url = valueAfter(flag);
+  if (url !== "https://app.veloceos.cloud/api/internal/control-plane/canary") {
+    fail(`${flag} must be https://app.veloceos.cloud/api/internal/control-plane/canary`);
+  }
+  return url;
+}
+
+async function operatorPost(url, body) {
   const secretResult = spawnSync("gcloud", ["secrets", "versions", "access", "latest", "--project", inventory.project, "--secret", "control-plane-operator-secret"], { encoding: "utf8" });
-  if (secretResult.status !== 0 || !secretResult.stdout.trim()) fail("unable to obtain the operator secret for cleanup recording");
+  if (secretResult.status !== 0 || !secretResult.stdout.trim()) fail("unable to obtain the operator secret");
   const response = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json", "x-control-plane-secret": secretResult.stdout.trim() },
-    body: JSON.stringify({ action: "record_cleanup", runId, onboardingId, cleanupEvidence }),
-    signal: AbortSignal.timeout(20_000),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30_000),
   }).catch(() => null);
-  if (!response?.ok) fail(`cleanup evidence recording failed with HTTP ${response?.status || 503}`);
+  const status = response?.status || 503;
+  const result = await response?.json().catch(() => null);
+  return { ok: response?.ok === true, status, body: result && typeof result === "object" ? result : null };
 }
 
 function run(command) {
