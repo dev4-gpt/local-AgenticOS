@@ -13,7 +13,9 @@ test("the control-plane health bridge is operator-only and non-mutating", () => 
   expect(adapterWorker).toContain('request.url === "/readyz"');
   expect(publicWorker).toContain('process.env.GCP_PROVISIONER_AUDIENCE');
   expect(publicWorker).toContain('process.env.GCP_PROVISIONER_ID_TOKEN_SOURCE');
-  expect(publicWorker).toContain('audience = adapterAudience || `${url.origin}/`');
+  expect(publicWorker).toContain('const audience = canonicalAdapterAudience();');
+  expect(publicWorker).toContain('if (!audience || adapterAudience !== audience) return null;');
+  expect(publicWorker).toContain('url.pathname !== "/provision"');
   expect(publicWorker).toContain(':generateIdToken`');
   expect(publicWorker).toContain('includeEmail: true');
   expect(publicWorker).toContain('identityTokenSource === "iam-credentials"');

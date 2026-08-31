@@ -1,6 +1,6 @@
 # ADR 002: Explicit Cloud Run audience for the GCP adapter
 
-**Status:** accepted  
+**Status:** superseded by [ADR 004](adr-004-canonical-cloud-run-task-audience.md)
 **Date:** 2026-08-26  
 **Scope:** public-provisioner to gcp-provisioner authentication
 

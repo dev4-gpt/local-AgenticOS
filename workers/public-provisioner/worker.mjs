@@ -1,5 +1,5 @@
 import http from "node:http";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 
 const port = Number(process.env.PORT || 8080);
 const operatorToken = process.env.CONTROL_PLANE_WORKER_TOKEN?.trim() || "";
@@ -48,19 +48,44 @@ function validate(input) {
 }
 
 async function enqueueProvisioning(input) {
-  if (!adapterUrl || !adapterAudience || !taskProject || !taskLocation || !taskQueue || !taskServiceAccount) {
+  const config = queueConfig();
+  const accessToken = await metadataAccessToken();
+  if (!accessToken) throw new Error("gcp_provisioner_queue_identity_unavailable");
+  const taskId = `provision-${createHash("sha256").update(String(input.runId)).digest("hex").slice(0, 48)}`;
+  return enqueueTask({
+    accessToken,
+    taskId,
+    queuePath: config.queuePath,
+    url: adapterUrl,
+    body: { runId: input.runId, requestId: input.requestId, onboardingId: input.onboardingId, manifest: input.manifest },
+  });
+}
+
+async function enqueueAdapterQueueAuthProbe() {
+  const config = queueConfig();
+  const accessToken = await metadataAccessToken();
+  if (!accessToken) throw new Error("gcp_provisioner_queue_identity_unavailable");
+  const target = new URL("/queue-authz", adapterUrl).toString();
+  const taskId = `queue-authz-${randomUUID().replace(/-/g, "")}`;
+  return enqueueTask({ accessToken, taskId, queuePath: config.queuePath, url: target, body: { probe: "queue_authz" } });
+}
+
+function queueConfig() {
+  const canonicalAudience = canonicalAdapterAudience();
+  if (!adapterUrl || !adapterAudience || !canonicalAudience || !operatorToken || !taskProject || !taskLocation || !taskQueue || !taskServiceAccount) {
     throw new Error("gcp_provisioner_queue_not_configured");
   }
+  if (adapterAudience !== canonicalAudience) throw new Error("gcp_provisioner_audience_must_match_target_url");
   if (!/^[a-z][a-z0-9-]{2,62}$/.test(taskProject) || !/^[a-z][a-z0-9-]{2,62}$/.test(taskLocation) || !/^[a-z][a-z0-9-]{2,62}$/.test(taskQueue)) {
     throw new Error("gcp_provisioner_queue_config_invalid");
   }
   if (!/^[a-z][a-z0-9-]{4,29}@[a-z][a-z0-9-]{4,62}\.iam\.gserviceaccount\.com$/i.test(taskServiceAccount)) {
     throw new Error("gcp_provisioner_task_identity_invalid");
   }
-  const accessToken = await metadataAccessToken();
-  if (!accessToken) throw new Error("gcp_provisioner_queue_identity_unavailable");
-  const taskId = `provision-${createHash("sha256").update(String(input.runId)).digest("hex").slice(0, 48)}`;
-  const queuePath = `projects/${taskProject}/locations/${taskLocation}/queues/${taskQueue}`;
+  return { queuePath: `projects/${taskProject}/locations/${taskLocation}/queues/${taskQueue}` };
+}
+
+async function enqueueTask({ accessToken, taskId, queuePath, url, body }) {
   const response = await fetch(`https://cloudtasks.googleapis.com/v2/${queuePath}/tasks`, {
     method: "POST",
     headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
@@ -73,12 +98,12 @@ async function enqueueProvisioning(input) {
         dispatchDeadline: "960s",
         httpRequest: {
           httpMethod: "POST",
-          url: adapterUrl,
+          url,
           headers: {
             "Content-Type": "application/json",
             "X-Control-Plane-Worker-Token": operatorToken,
           },
-          body: Buffer.from(JSON.stringify({ runId: input.runId, requestId: input.requestId, onboardingId: input.onboardingId, manifest: input.manifest })).toString("base64"),
+          body: Buffer.from(JSON.stringify(body)).toString("base64"),
           oidcToken: { serviceAccountEmail: taskServiceAccount, audience: adapterAudience },
         },
       },
@@ -138,21 +163,23 @@ async function adapterHealth() {
 }
 
 async function cloudRunIdentity(target) {
-  let audience;
-  try {
-    const url = new URL(target);
-    if (url.protocol !== "https:" || !url.hostname.endsWith(".run.app")) return null;
-    // Production uses an explicit custom audience accepted by the adapter.
-    // The URL-derived value remains a backwards-compatible local fallback.
-    audience = adapterAudience || `${url.origin}/`;
-    if (!/^[\x21-\x7e]{1,512}$/.test(audience)) return null;
-  } catch { return null; }
+  if (target !== adapterUrl) return null;
+  const audience = canonicalAdapterAudience();
+  if (!audience || adapterAudience !== audience) return null;
   let token;
   if (identityTokenSource === "metadata") token = await metadataIdentityToken(audience);
   else if (identityTokenSource === "iam-credentials") token = await iamCredentialsIdentityToken(audience);
   else return null;
   if (!token || token.split(".").length !== 3) return null;
   return { token, audience, claims: safeIdentityClaims(token) };
+}
+
+function canonicalAdapterAudience() {
+  try {
+    const url = new URL(adapterUrl);
+    if (url.protocol !== "https:" || !url.hostname.endsWith(".run.app") || url.pathname !== "/provision" || url.search || url.hash) return "";
+    return url.origin;
+  } catch { return ""; }
 }
 
 async function metadataIdentityToken(audience) {
@@ -228,6 +255,16 @@ const server = http.createServer(async (request, response) => {
     } catch (error) {
       const errorCode = error instanceof Error ? error.message : "gcp_adapter_health_failed";
       return json(response, 502, { ok: false, error: errorCode });
+    }
+  }
+  if (request.method === "POST" && request.url === "/adapter-queue-authz") {
+    if (!authorized(request)) return json(response, 401, { ok: false, error: "not_authorized" });
+    try {
+      const task = await enqueueAdapterQueueAuthProbe();
+      return json(response, 202, { ok: true, status: "queued", taskId: task.taskId, alreadyQueued: task.alreadyQueued });
+    } catch (error) {
+      const errorCode = error instanceof Error ? error.message : "queue_authz_unavailable";
+      return json(response, 503, { ok: false, error: errorCode });
     }
   }
   if (request.method !== "POST" || request.url !== "/provision") return json(response, 404, { ok: false, error: "not_found" });

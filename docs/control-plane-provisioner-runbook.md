@@ -149,16 +149,12 @@ Deploy `gcp-provisioner` with no public access,
 `public-provisioner` with no public access. Bind each control-plane secret by
 name using `--set-secrets`; do not place values on the command line.
 
-Configure one explicit audience contract instead of deriving authentication
-from either of Cloud Run's generated hostnames:
+Configure the Cloud Tasks audience as the canonical origin of the exact
+adapter target. Do not use a short custom audience for this queue:
 
 ```bash
-GCP_PROVISIONER_AUDIENCE=veloce-gcp-provisioner
-
-gcloud run services update veloce-gcp-provisioner \
-  --project veloce-agenticos-2026 \
-  --region asia-south1 \
-  --add-custom-audiences="$GCP_PROVISIONER_AUDIENCE"
+ADAPTER_URL="https://veloce-gcp-provisioner-1075094991117.asia-south1.run.app"
+GCP_PROVISIONER_AUDIENCE="$ADAPTER_URL"
 
 gcloud run services update veloce-public-provisioner \
   --project veloce-agenticos-2026 \
@@ -189,10 +185,10 @@ marking a still-running mutation as failed.
 Each task has a 960-second Cloud Tasks dispatch deadline; it must remain below
 the adapter's 1000-second Cloud Run timeout.
 
-Cloud Tasks mints its OIDC token for this exact audience; the adapter accepts
-that audience at the Cloud Run IAM boundary. The public worker separately mints
-a metadata-server ID token only for the non-mutating adapter health probe. The
-request URL remains the adapter's current generated `run.app` URL.
+Cloud Tasks mints its OIDC token for this exact service URL. The adapter's
+default generated URL remains the only accepted audience at the Cloud Run IAM
+boundary. The public worker separately mints a metadata-server ID token only
+for the non-mutating adapter health probe.
 
 ### Cloud Run readiness path
 
@@ -213,6 +209,13 @@ Verify configuration drift and the read-only end-to-end bridge with:
 
 ```bash
 npm run verify:control-plane-cloud -- --probe
+```
+
+Then run the Cloud Tasks-specific read-only acceptance probe. It must receive
+adapter HTTP 200 while `GCP_PROVISIONER_ALLOW_APPLY=0`:
+
+```bash
+node scripts/probe-control-plane-task-auth.mjs
 ```
 
 The verifier never calls `/provision`. Keep

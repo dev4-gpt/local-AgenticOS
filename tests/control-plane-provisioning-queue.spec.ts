@@ -11,6 +11,9 @@ test("approved onboarding uses one durable task and the adapter owns terminal ca
   expect(publicWorker).toContain('createHash("sha256").update(String(input.runId))');
   expect(publicWorker).toContain('dispatchDeadline: "960s"');
   expect(publicWorker).toContain("oidcToken: { serviceAccountEmail: taskServiceAccount, audience: adapterAudience }");
+  expect(publicWorker).toContain("gcp_provisioner_audience_must_match_target_url");
+  expect(publicWorker).toContain('new URL("/queue-authz", adapterUrl)');
+  expect(publicWorker).toContain('request.url === "/adapter-queue-authz"');
   expect(publicWorker).toContain('return { taskId, alreadyQueued: true }');
   expect(publicWorker).toContain('return json(response, 202, { ok: true, runId: input.runId, status: "queued"');
   expect(publicWorker).toContain('status: "queue_unavailable"');
@@ -23,6 +26,8 @@ test("approved onboarding uses one durable task and the adapter owns terminal ca
   expect(adapterWorker).toContain('const callbackDelivered = await callback(input, { status: "succeeded", ...result });');
   expect(adapterWorker).toContain('const callbackDelivered = await callback(input, { status: "failed", errorCode: message');
   expect(adapterWorker).toContain('error: "control_plane_callback_failed"');
+  expect(adapterWorker).toContain('request.url === "/queue-authz"');
+  expect(adapterWorker).toContain("gcp_adapter_queue_authz_denied");
   expect(approvalRoute).toContain("dispatched = response?.status === 202");
   expect(approvalRoute).toContain('status: dispatched ? "queued" : "provisioning"');
 });

@@ -8,7 +8,6 @@ const adapterProject = valueAfter("--adapter-project") || process.env.VELOCE_ADA
 const region = valueAfter("--region") || "asia-south1";
 const publicService = valueAfter("--public-service") || "veloce-public-provisioner";
 const adapterService = valueAfter("--adapter-service") || "veloce-gcp-provisioner";
-const audience = valueAfter("--audience") || "veloce-gcp-provisioner";
 const taskQueue = valueAfter("--task-queue") || "veloce-control-plane-provisioning";
 const probe = args.includes("--probe");
 const allowApply = args.includes("--allow-apply");
@@ -29,11 +28,11 @@ const adapterEnv = envMap(adapterConfig);
 const projectNumber = String(adapterProjectInfo?.projectNumber || "");
 const expectedOrigin = `https://${adapterService}-${projectNumber}.${region}.run.app`;
 const expectedProvisionUrl = `${expectedOrigin}/provision`;
+const audience = valueAfter("--audience") || expectedOrigin;
 const expectedPublicIdentity = `veloce-public-provisioner-run@${controlProject}.iam.gserviceaccount.com`;
 const expectedAdapterIdentity = `veloce-gcp-provisioner-run@${adapterProject}.iam.gserviceaccount.com`;
 const expectedCallbackUrl = "https://app.veloceos.cloud/api/onboarding/provision-result";
 const annotations = adapterConfig?.metadata?.annotations || {};
-const customAudiences = parseJsonArray(annotations["run.googleapis.com/custom-audiences"]);
 
 expect(projectNumber.length > 0, "unable to resolve adapter project number");
 expect(publicEnv.GCP_PROVISIONER_URL === expectedProvisionUrl, `public provisioner target must be ${expectedProvisionUrl}`);
@@ -47,7 +46,7 @@ expect(publicConfig?.spec?.template?.spec?.serviceAccountName === expectedPublic
 expect(adapterConfig?.spec?.template?.spec?.serviceAccountName === expectedAdapterIdentity, `adapter identity must be ${expectedAdapterIdentity}`);
 expect(annotations["run.googleapis.com/ingress"] === "all", "adapter ingress must be all; IAM remains the privacy boundary");
 expect(annotations["run.googleapis.com/invoker-iam-disabled"] !== "true", "adapter IAM invoker check must remain enabled");
-expect(customAudiences.includes(audience), `adapter must accept custom audience ${audience}`);
+expect(parseJsonArray(annotations["run.googleapis.com/custom-audiences"]).length === 0, "adapter must not accept extra custom audiences; Cloud Tasks uses the canonical target URL");
 expect(adapterEnv.GCP_ALLOWED_PROJECT === controlProject, `adapter allowed project must be ${controlProject}`);
 expect(adapterEnv.GCP_ALLOWED_REGION === region, `adapter allowed region must be ${region}`);
 expect(adapterEnv.GCP_ALLOWED_ARTIFACT_REPOSITORY === "veloce", "adapter repository allowlist must be veloce");
@@ -104,6 +103,7 @@ console.log(JSON.stringify({
   adapterProject,
   region,
   expectedProvisionUrl,
+  audience,
   expectedCallbackUrl,
   taskQueue,
   publicRevision: publicConfig?.status?.latestReadyRevisionName || null,

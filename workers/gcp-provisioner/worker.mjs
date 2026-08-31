@@ -166,6 +166,18 @@ const server = http.createServer(async (request, response) => {
   if (request.method === "GET" && (request.url === "/readyz" || request.url === "/healthz")) {
     return json(response, 200, { ok: true, worker: "gcp-provisioner", applyEnabled: allowApply });
   }
+  if (request.method === "POST" && request.url === "/queue-authz") {
+    if (!authorized(request)) {
+      console.warn(JSON.stringify({
+        event: "gcp_adapter_queue_authz_denied",
+        workerTokenConfigured: workerToken.length > 0,
+        workerTokenHeaderPresent: typeof request.headers["x-control-plane-worker-token"] === "string",
+        authorizationHeaderPresent: typeof request.headers.authorization === "string",
+      }));
+      return json(response, 401, { ok: false, error: "not_authorized" });
+    }
+    return json(response, 200, { ok: true, worker: "gcp-provisioner", queueAuthz: true, applyEnabled: allowApply });
+  }
   if (request.method !== "POST" || request.url !== "/provision") return json(response, 404, { ok: false, error: "not_found" });
   if (!authorized(request)) return json(response, 401, { ok: false, error: "not_authorized" });
   let input;

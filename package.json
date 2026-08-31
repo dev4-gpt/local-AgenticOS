@@ -31,6 +31,7 @@
     "verify:client-worker": "node scripts/verify-client-runtime-worker.mjs",
     "verify:control-plane-iam": "node scripts/verify-gcp-provisioner-role.mjs",
     "verify:control-plane-cloud": "node scripts/verify-control-plane-cloud.mjs",
+    "verify:control-plane-task-auth": "node scripts/probe-control-plane-task-auth.mjs",
     "verify:managed-openrouter-cloud": "node scripts/verify-managed-openrouter-cloud.mjs",
     "verify:vercel-production-env": "node scripts/verify-vercel-production-env.mjs",
     "prepare:openrouter-pricing": "node scripts/prepare-openrouter-pricing-snapshot.mjs",
