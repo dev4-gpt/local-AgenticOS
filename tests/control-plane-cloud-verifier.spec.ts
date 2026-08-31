@@ -11,6 +11,7 @@ test("cloud verifier protects the private adapter boundary", () => {
   expect(verifier).toContain('publicEnv.GCP_PROVISIONER_AUDIENCE === audience');
   expect(verifier).toContain('const audience = valueAfter("--audience") || expectedOrigin');
   expect(verifier).toContain('GCP_PROVISIONER_ID_TOKEN_SOURCE === "metadata"');
+  expect(verifier).toContain('adapterEnv.GCP_PROJECT_NUMBER === projectNumber');
   expect(verifier).toContain('GCP_PROVISIONER_TASK_QUEUE === taskQueue');
   expect(verifier).toContain('queueConfig?.rateLimits?.maxConcurrentDispatches');
   expect(verifier).toContain('queueConfig?.retryConfig?.maxAttempts');

@@ -50,6 +50,7 @@ expect(parseJsonArray(annotations["run.googleapis.com/custom-audiences"]).length
 expect(adapterEnv.GCP_ALLOWED_PROJECT === controlProject, `adapter allowed project must be ${controlProject}`);
 expect(adapterEnv.GCP_ALLOWED_REGION === region, `adapter allowed region must be ${region}`);
 expect(adapterEnv.GCP_ALLOWED_ARTIFACT_REPOSITORY === "veloce", "adapter repository allowlist must be veloce");
+expect(adapterEnv.GCP_PROJECT_NUMBER === projectNumber, `adapter project number must be ${projectNumber}`);
 expect(allowApply ? adapterEnv.GCP_PROVISIONER_ALLOW_APPLY === "1" : adapterEnv.GCP_PROVISIONER_ALLOW_APPLY === "0", `adapter apply mode must be ${allowApply ? "1" : "0"}`);
 expect(adapterEnv.CONTROL_PLANE_CALLBACK_URL === expectedCallbackUrl, `adapter callback URL must be ${expectedCallbackUrl}`);
 expect(secretRefName(adapterConfig, "CONTROL_PLANE_OPERATOR_SECRET") === "control-plane-operator-secret", "adapter must receive the operator callback secret from Secret Manager");

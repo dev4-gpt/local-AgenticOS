@@ -30,6 +30,9 @@ test("approved onboarding uses one durable task and the adapter owns terminal ca
   expect(adapterWorker).toContain('error: "control_plane_callback_failed"');
   expect(adapterWorker).toContain('request.url === "/queue-authz"');
   expect(adapterWorker).toContain("gcp_adapter_queue_authz_denied");
+  const provisioner = readFileSync(resolve(process.cwd(), "scripts/provision-gcp-client.mjs"), "utf8");
+  expect(provisioner).toContain('process.env.GCP_PROJECT_NUMBER?.trim()');
+  expect(provisioner).toContain('GCP_PROJECT_NUMBER must be configured when Cloud Resource Manager is unavailable.');
   expect(approvalRoute).toContain("dispatched = response?.status === 202");
   expect(approvalRoute).toContain('status: dispatched ? "queued" : "provisioning"');
 });
