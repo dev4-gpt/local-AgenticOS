@@ -6,23 +6,23 @@ const project = "veloce-agenticos-2026";
 const region = "asia-south1";
 const publicService = "veloce-public-provisioner";
 const adapterService = "veloce-gcp-provisioner";
+const appUrl = process.env.CONTROL_PLANE_APP_URL || "https://app.veloceos.cloud";
 const startedAt = new Date(Date.now() - 5_000).toISOString();
 
 const publicConfig = gcloudJson(["run", "services", "describe", publicService, "--project", project, "--region", region, "--format=json"]);
 const adapterConfig = gcloudJson(["run", "services", "describe", adapterService, "--project", project, "--region", region, "--format=json"]);
-const publicUrl = publicConfig?.status?.url || "";
 const adapterUrl = env(publicConfig, "GCP_PROVISIONER_URL");
 const adapterAudience = env(publicConfig, "GCP_PROVISIONER_AUDIENCE");
 const applyEnabled = env(adapterConfig, "GCP_PROVISIONER_ALLOW_APPLY") === "1";
 
-if (!publicUrl || !adapterUrl || !adapterAudience) fail("control-plane queue probe is not configured");
+if (!adapterUrl || !adapterAudience) fail("control-plane queue probe is not configured");
 if (applyEnabled) fail("refusing queue-authz probe while GCP_PROVISIONER_ALLOW_APPLY=1");
 if (adapterAudience !== new URL(adapterUrl).origin) fail("public provisioner audience does not match its canonical adapter target URL");
 
 const workerToken = gcloudText(["secrets", "versions", "access", "latest", "--project", project, "--secret", "control-plane-worker-token"]);
 if (!workerToken) fail("unable to read the dispatcher worker token");
 
-const response = await fetch(`${publicUrl}/adapter-queue-authz`, {
+const response = await fetch(new URL("/api/internal/control-plane/task-authz", appUrl), {
   method: "POST",
   headers: { authorization: `Bearer ${workerToken}` },
   signal: AbortSignal.timeout(20_000),

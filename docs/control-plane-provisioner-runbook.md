@@ -218,6 +218,11 @@ adapter HTTP 200 while `GCP_PROVISIONER_ALLOW_APPLY=0`:
 node scripts/probe-control-plane-task-auth.mjs
 ```
 
+The probe enters through the operator-secret-protected Vercel
+`/api/internal/control-plane/task-authz` bridge, which mints the same WIF
+identity used by an approval. Do not call the private public-provisioner URL
+directly from Cloud Shell or grant additional invokers merely to test it.
+
 The verifier never calls `/provision`. Keep
 `GCP_PROVISIONER_ALLOW_APPLY=0` until this probe passes and the scoped custom
 role is created and reviewed.
