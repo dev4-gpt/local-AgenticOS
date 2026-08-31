@@ -22,8 +22,9 @@ if (failures.length) finish({ ok: false, mode, failures });
 if (mode === "inventory") finish({ ok: true, mode, inventory });
 if (mode === "preflight") {
   const checks = readChecks(inventory);
-  const clean = checks.every((check) => check.absent === true);
-  finish({ ok: clean, mode, inventory, checks, failures: clean ? [] : ["canary resource collision or unreadable GCP state"] });
+  const roleCheck = adapterRoleCheck(inventory);
+  const clean = checks.every((check) => check.absent === true) && roleCheck.present === true;
+  finish({ ok: clean, mode, inventory, checks, roleCheck, failures: clean ? [] : ["canary resource collision, unreadable GCP state, or missing adapter provisioner role"] });
 }
 
 if (!apply) {
@@ -110,8 +111,22 @@ function state(kind, name, command) {
   const result = spawnSync("gcloud", command, { encoding: "utf8" });
   if (result.status === 0) return { kind, name, absent: false };
   const detail = `${result.stderr || ""}\n${result.stdout || ""}`.toLowerCase();
-  if (/not found|does not exist|status=404|\b404\b/.test(detail)) return { kind, name, absent: true };
+  if (/not[ _-]found|does not exist|status=404|\b404\b/.test(detail)) return { kind, name, absent: true };
   return { kind, name, absent: null, error: detail.trim().slice(-500) || "gcloud command failed" };
+}
+
+function adapterRoleCheck(value) {
+  const identity = `serviceAccount:veloce-gcp-provisioner-run@${value.project}.iam.gserviceaccount.com`;
+  const role = `projects/${value.project}/roles/veloceTenantProvisioner`;
+  const result = spawnSync("gcloud", ["projects", "get-iam-policy", value.project, "--format=json"], { encoding: "utf8" });
+  if (result.status !== 0) return { role, identity, present: null, error: `${result.stderr || result.stdout || "gcloud command failed"}`.trim().slice(-500) };
+  try {
+    const policy = JSON.parse(result.stdout);
+    const members = policy.bindings?.find((binding) => binding.role === role)?.members || [];
+    return { role, identity, present: members.includes(identity) };
+  } catch {
+    return { role, identity, present: null, error: "unable to parse project IAM policy" };
+  }
 }
 
 function removeResources(value, checks) {

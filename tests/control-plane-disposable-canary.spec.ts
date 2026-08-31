@@ -23,6 +23,9 @@ test("the disposable control-plane canary is inventory-bound and cannot target d
   expect(route).toContain("isVerifiedCleanupEvidence");
   expect(adapter).toContain("function provisionedResourceManifest");
   expect(adapter).toContain("resourceManifest: provisionedResourceManifest(manifest, phase)");
+  const canaryTool = readFileSync(resolve(root, "scripts/control-plane-disposable-canary.mjs"), "utf8");
+  expect(canaryTool).toContain("function adapterRoleCheck");
+  expect(canaryTool).toContain("not[ _-]found");
 });
 
 test("canary tool derives the tracked inventory and refuses a cleanup apply without confirmation", () => {
