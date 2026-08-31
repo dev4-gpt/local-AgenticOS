@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "integration": "voxcpm",
+  "state": "disabled",
+  "source": {
+    "repository": "https://github.com/OpenBMB/VoxCPM",
+    "license": "Apache-2.0",
+    "candidateCommit": null,
+    "reviewedCommit": null,
+    "review": {
+      "decision": "blocked",
+      "blockers": [
+        "Pin and audit an exact upstream commit and model-weight revision",
+        "Run a measured GPU benchmark for the intended model and concurrency",
+        "Approve the biometric-data, consent, retention, and deletion controls"
+      ]
+    }
+  },
+  "deployment": {
+    "runtime": "isolated-gpu-worker",
+    "separateProject": true,
+    "publicIngress": false,
+    "network": "private-adapter-only",
+    "minimumRequirements": {
+      "python": ">=3.10,<3.13",
+      "pytorch": ">=2.5.0",
+      "cuda": ">=12.0"
+    }
+  },
+  "safety": {
+    "referenceAudioAccepted": false,
+    "voiceDesignOnlyWhenEnabled": true,
+    "humanApprovalRequired": true,
+    "explicitVoiceOwnerConsentRequired": true,
+    "thirdPartyVoiceCloningProhibited": true,
+    "automaticPublishingEnabled": false,
+    "retainReferenceAudio": false,
+    "directVeloceRuntimeConnection": false
+  },
+  "acceptance": {
+    "pinnedSourceReviewed": false,
+    "modelWeightsReviewed": false,
+    "gpuCostBenchmarkPassed": false,
+    "speakerConsentFlowTested": false,
+    "deletionTestPassed": false,
+    "watermarkOrDisclosureReviewed": false,
+    "rollbackProven": false
+  }
+}

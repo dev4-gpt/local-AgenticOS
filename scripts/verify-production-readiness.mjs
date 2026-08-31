@@ -31,6 +31,9 @@ const requiredFiles = [
   "scripts/verify-vercel-production-env.mjs",
   "scripts/prepare-openrouter-pricing-snapshot.mjs",
   "scripts/verify-openreply-pilot.mjs",
+  "scripts/verify-voxcpm-pilot.mjs",
+  "scripts/verify-engineering-controls.mjs",
+  "scripts/control-plane-disposable-canary.mjs",
   "scripts/client-lifecycle.mjs",
   "workers/public-provisioner/worker.mjs",
   "workers/gcp-provisioner/worker.mjs",
@@ -44,16 +47,21 @@ const requiredFiles = [
   "docs/production-operations.md",
   "docs/v3.3-current-release-audit.md",
   "docs/future-integrations/openreply.md",
+  "docs/future-integrations/voxcpm.md",
   "infrastructure/openreply/openreply-pilot.manifest.example.json",
   "infrastructure/openreply/openreply.env.example",
+  "infrastructure/voxcpm/voxcpm-pilot.manifest.example.json",
+  "infrastructure/engineering-controls/agent-efficiency.manifest.json",
+  "client-blueprints/control-plane-disposable-canary.gcp.json",
   "product-experience/src/app/api/internal/managed-provider/openrouter/route.ts",
+  "product-experience/src/app/api/internal/control-plane/canary/route.ts",
 ];
 for (const file of requiredFiles) {
   try { readFileSync(resolve(root, file)); } catch { failures.push(`Required readiness artifact missing: ${file}`); }
 }
 
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
-for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:control-plane-cloud", "verify:managed-openrouter-cloud", "verify:vercel-production-env", "prepare:openrouter-pricing", "verify:openreply-pilot", "verify:production-readiness"]) {
+for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:control-plane-cloud", "verify:control-plane-canary", "verify:managed-openrouter-cloud", "verify:vercel-production-env", "prepare:openrouter-pricing", "verify:openreply-pilot", "verify:voxcpm-pilot", "verify:engineering-controls", "verify:production-readiness"]) {
   if (typeof packageJson.scripts?.[script] !== "string") failures.push(`package.json is missing ${script}`);
 }
 
@@ -76,6 +84,9 @@ const sourceChecks = [
   ["managed route remains fail-closed by default", "src/lib/managedProviderAdapter.ts", "enabled: false"],
   ["OpenReply remains a disabled external connector", "client-blueprints/veloce-self-marketing.campaign.json", "human-approved-external-pilot"],
   ["OpenReply uses the current Instagram callback", "infrastructure/openreply/openreply-pilot.manifest.example.json", "/api/instagram/callback"],
+  ["VoxCPM remains a private disabled GPU pilot", "infrastructure/voxcpm/voxcpm-pilot.manifest.example.json", "isolated-gpu-worker"],
+  ["Ponytail and Headroom remain bounded engineering controls", "infrastructure/engineering-controls/agent-efficiency.manifest.json", "avoidUnrequestedRuntimeDependencies"],
+  ["control-plane canary has a disposable manifest", "client-blueprints/control-plane-disposable-canary.gcp.json", "cp-canary-a826-rollback"],
 ];
 for (const [label, file, marker] of sourceChecks) {
   const content = safeRead(file);

@@ -99,7 +99,11 @@ async function runProvisioning(manifest) {
     if (output.code !== 0) throw new Error("gcp_provisioning_command_failed");
     return {
       completedSteps: phase === "prepare" ? ["validated_manifest", "gcp_prepare"] : ["validated_manifest", "gcp_deploy"],
-      resourceManifest: redactManifest(manifest),
+      // The callback must describe the actual resource names that the
+      // provisioner derived, not merely echo the request. This makes a later
+      // rollback auditable and avoids treating a redacted request as evidence
+      // of cleanup.
+      resourceManifest: provisionedResourceManifest(manifest, phase),
       evidenceBundle: {
         phase,
         command: "provision-gcp-client",
@@ -135,10 +139,61 @@ function imageDigest(image) {
   return match?.[1] || null;
 }
 
-function redactManifest(manifest) {
-  const copy = structuredClone(manifest);
-  if (copy.secretEnv) copy.secretEnv = Object.fromEntries(Object.keys(copy.secretEnv).map((name) => [name, "Secret Manager reference"]));
-  return copy;
+function provisionedResourceManifest(manifest, phase) {
+  const slug = manifest.clientSlug;
+  const gcp = manifest.gcp || {};
+  const projectId = gcp.projectId;
+  const region = gcp.region;
+  const serviceName = cleanName(gcp.serviceName || `veloce-${slug}`, 63);
+  const serviceAccount = cleanName(gcp.runtimeServiceAccount || `veloce-${shorten(slug, 14)}-run`, 30);
+  const bucket = cleanBucket(gcp.storageBucket || `${projectId}-veloce-${slug}`);
+  const secretEnv = manifest.secretEnv && typeof manifest.secretEnv === "object" && !Array.isArray(manifest.secretEnv)
+    ? Object.values(manifest.secretEnv)
+    : [];
+  const inboxRaw = manifest.runtimeEnv?.CLIENT_CREDENTIAL_INBOX_SECRET || "client-credential-inbox";
+  const requestInboxRaw = manifest.runtimeEnv?.CLIENT_REQUEST_INBOX_SECRET || inboxRaw;
+  const secretNames = [...new Set([
+    ...secretEnv.map((value) => secretName(slug, String(value))),
+    secretName(slug, String(inboxRaw)),
+    secretName(slug, String(requestInboxRaw)),
+  ])].sort();
+  return {
+    schemaVersion: 1,
+    phase,
+    projectId,
+    region,
+    createdResources: {
+      serviceAccount: `${serviceAccount}@${projectId}.iam.gserviceaccount.com`,
+      storageBucket: bucket,
+      taskQueue: `veloce-${slug}`,
+      secrets: secretNames,
+      cloudRunService: phase === "deploy" ? serviceName : null,
+      cloudRunJobs: phase === "deploy" ? [
+        cleanName(gcp.workspaceJobName || `${serviceName}-workspace`, 63),
+        ...(Array.isArray(manifest.enabledCapabilities) && manifest.enabledCapabilities.includes("visual-qa")
+          ? [cleanName(gcp.visualQaJobName || `${serviceName}-visual-qa`, 63)]
+          : []),
+      ] : [],
+    },
+  };
+}
+
+function cleanName(value, max) {
+  return String(value).toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, max).replace(/-$/g, "");
+}
+
+function cleanBucket(value) {
+  return String(value).toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+}
+
+function shorten(value, max) {
+  return String(value).length <= max ? String(value) : String(value).slice(0, max).replace(/-$/g, "");
+}
+
+function secretName(slug, value) {
+  const clean = String(value).toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  const prefix = `veloce-${slug}-`;
+  return clean.startsWith(prefix) ? clean : `${prefix}${clean}`;
 }
 
 function redactOutput(value) {

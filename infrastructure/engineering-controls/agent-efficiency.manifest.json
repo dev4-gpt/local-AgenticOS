@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "state": "active-engineering-policy",
+  "sources": {
+    "ponytail": "https://github.com/DietrichGebert/ponytail",
+    "headroom": "https://github.com/headroomlabs-ai/headroom"
+  },
+  "rules": {
+    "yagni": true,
+    "preferPlatformAndStandardLibrary": true,
+    "preserveSecurityAndValidation": true,
+    "avoidUnrequestedRuntimeDependencies": true,
+    "compactDiagnostics": true,
+    "redactSecretsBeforePersistence": true,
+    "retainRawEvidenceOutsideModelContext": true
+  },
+  "deployment": {
+    "ponytail": "operating-policy-only",
+    "headroom": "evaluation-only; do not proxy production tenant data until a separate privacy and retrieval review passes"
+  }
+}

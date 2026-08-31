@@ -147,7 +147,8 @@ gcloud builds submit . --project veloce-agenticos-2026 --config cloudbuild.contr
 Deploy `gcp-provisioner` with no public access,
 `GCP_PROVISIONER_ALLOW_APPLY=0`, and `--timeout=1000s`, then deploy
 `public-provisioner` with no public access. Bind each control-plane secret by
-name using `--set-secrets`; do not place values on the command line.
+name using `--update-secrets`; this preserves existing bindings when adding a
+second secret. Do not place secret values on the command line.
 
 Configure the Cloud Tasks audience as the canonical origin of the exact
 adapter target. Do not use a short custom audience for this queue:
@@ -417,3 +418,49 @@ which can start a billable asynchronous job. Before approving any video model:
 Never infer a video's price, duration, or capability from an old marketing
 page. The live video-model catalog is the pricing and capability source for
 each approved snapshot.
+# Disposable mutation canary
+
+The Cloud Tasks authorization probe proves only the non-mutating path. Before
+calling the provisioner production-ready, run exactly one disposable
+**prepare-only** canary and retain the resulting queue/callback/cleanup
+evidence. The tracked canary is `cp-canary-a826-rollback`; it is not the
+existing `dofgfood` tenant and must never be renamed to a client slug.
+
+1. Deploy the current public provisioner, GCP adapter, and Vercel operator
+   route from an immutable source revision. Confirm `npm run
+   verify:control-plane-cloud -- --probe` returns `applyEnabled: false`.
+2. Run the read-only collision check. It must report every exact canary
+   resource as absent:
+
+   ```bash
+   npm run verify:control-plane-canary
+   node scripts/control-plane-disposable-canary.mjs --mode preflight
+   ```
+
+3. Verify the adapter service account has only the reviewed
+   `roles/veloceTenantProvisioner` custom role needed to create the canary.
+   Enable `GCP_PROVISIONER_ALLOW_APPLY=1` only immediately before dispatch.
+4. POST the tracked manifest to the operator-only canary route. Wait for the
+   Cloud Tasks request and adapter callback to report `succeeded`, then record
+   the returned deterministic `resourceManifest`. A prepare canary may create
+   only one service account, one empty bucket, one queue, and the listed empty
+   Secret Manager container; it must not create a Cloud Run service or job.
+5. Restore `GCP_PROVISIONER_ALLOW_APPLY=0` before cleanup. Verify the adapter
+   again with `npm run verify:control-plane-cloud -- --probe`.
+6. Delete only the inventory-derived canary resources and atomically record
+   the absence evidence back to the operator route:
+
+   ```bash
+   node scripts/control-plane-disposable-canary.mjs \
+     --mode record-cleanup --apply \
+     --confirm-slug cp-canary-a826-rollback \
+     --run-id <run-id> --onboarding-id <onboarding-id> \
+     --record-url https://app.veloceos.cloud/api/internal/control-plane/canary
+   ```
+
+   The tool refuses a non-empty bucket, an unreadable resource state, a wrong
+   slug, or a missing explicit confirmation. It never targets `dofgfood`.
+
+Do not use the general client offboarding tool as a canary shortcut: it exports
+tenant database data and has a broader lifecycle scope than this exact
+four-resource cleanup.

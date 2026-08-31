@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Disposable prepare-only control-plane provisioning canary. It must be cleaned up immediately after verification.",
+  "clientSlug": "cp-canary-a826-rollback",
+  "clientName": "Veloce Control Plane Disposable Canary",
+  "approved": true,
+  "approvalOwner": "Aryaman",
+  "acknowledgeClientSafeRuntime": true,
+  "providerCallsEnabled": false,
+  "provisioning": {
+    "phase": "prepare"
+  },
+  "gcp": {
+    "projectId": "veloce-agenticos-2026",
+    "region": "asia-south1",
+    "artifactRegistryRepository": "veloce",
+    "image": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v123-dofgfood-visual-qa-20260821"
+  },
+  "access": {
+    "mode": "app-auth",
+    "allowedUserEmails": [
+      "aryamandev777@gmail.com"
+    ]
+  },
+  "enabledCapabilities": [],
+  "enabledTraits": [],
+  "providerAllowlist": [],
+  "modelAllowlist": [],
+  "approvalPolicy": "approve_external_actions",
+  "storage": {
+    "namespace": "cp-canary-a826-rollback",
+    "corsOrigins": ["*"]
+  },
+  "retention": {
+    "days": 1
+  },
+  "canary": {
+    "disposable": true,
+    "expectedInventory": {
+      "serviceAccount": "veloce-cp-canary-a826-run@veloce-agenticos-2026.iam.gserviceaccount.com",
+      "storageBucket": "veloce-agenticos-2026-veloce-cp-canary-a826-rollback",
+      "taskQueue": "veloce-cp-canary-a826-rollback",
+      "secrets": ["veloce-cp-canary-a826-rollback-client-credential-inbox"],
+      "cloudRunService": null,
+      "cloudRunJobs": []
+    }
+  }
+}
