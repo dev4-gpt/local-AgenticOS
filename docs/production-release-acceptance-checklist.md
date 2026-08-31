@@ -57,11 +57,15 @@ bill a customer, or publish a campaign.
    with zero credit. Run
    `product-experience/supabase-v34-managed-openrouter-health-canary-cleanup.sql`
    after recording its evidence. Then, only with
-   the $4 cap evidence and a disposable tenant credit, run one idempotent
-   reserve/execute/settle-or-refund acceptance. Record the request ID,
-   reservation ID, pricing snapshot ID, exact ledger outcome, and remaining
-   account balance metadata. Revoke/disable the managed route immediately if
-   anything differs from the recorded quote or cap policy.
+   the $4 cap evidence and explicit owner approval, use
+   `product-experience/supabase-v34-managed-openrouter-paid-canary.sql`. It
+   creates exactly one distinct $0.01 tenant wallet and starts health-gated;
+   it is not reusable. Run one idempotent reserve/execute/settle/refund
+   acceptance, disable the route, then run the paired exact cleanup SQL.
+   Record the request ID, reservation ID, pricing snapshot ID, exact ledger
+   outcome, remaining account balance metadata, and cleanup result.
+   Revoke/disable the managed route immediately if anything differs from the
+   recorded quote or cap policy.
 
 ## 3. Public product acceptance
 
