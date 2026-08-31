@@ -14,7 +14,7 @@ test("OpenReply stays an isolated disabled connector with current routes", () =>
   expect(manifest.source.candidateCommit).toMatch(/^[0-9a-f]{40}$/);
   expect(manifest.source.reviewedCommit).toBeNull();
   expect(manifest.source.review.decision).toBe("blocked");
-  expect(manifest.source.review.tests).toEqual({ result: "passed", count: 145 });
+  expect(manifest.source.review.tests).toEqual({ result: "passed", count: 168 });
   expect(manifest.source.review.typecheck).toBe("passed");
   expect(manifest.source.review.productionAudit.critical).toBeGreaterThan(0);
   expect(manifest.source.review.productionAudit.high).toBeGreaterThan(0);
