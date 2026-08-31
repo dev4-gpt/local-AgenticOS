@@ -42,13 +42,21 @@ bill a customer, or publish a campaign.
    Review the model ID and normalized pricing. Add exactly the resulting
    snapshot ID and JSON to Vercel Production, never a secret value.
 4. Apply and record the exact pending Supabase migrations, including
-   `product-experience/supabase-v34-managed-credit-execution-claims.sql`.
-   Insert the matching pricing snapshot and an approved managed provider
-   connection for a disposable test tenant. The connection must reference the
-   existing Secret Manager resource; it must not contain an API key value.
+   `product-experience/supabase-v34-managed-credit-execution-claims.sql` and
+   `product-experience/supabase-v34-managed-provider-reconciliation-gate.sql`.
+   Before any funded configuration, run
+   `product-experience/supabase-v34-managed-openrouter-health-canary.sql`.
+   It creates a zero-credit, execution-disabled disposable tenant and reports
+   the migration and connection preflight in one result. The connection refers
+   only to the existing Secret Manager resource; it must not contain an API key
+   value.
 5. Enable only `openai/gpt-4o-mini` on the private Cloud Run gateway. Keep
    video generation disabled.
-6. Run the non-spending managed-provider health check first. Then, only with
+6. Run the non-spending managed-provider health check first. Its only allowed
+   fixture is `managed-openrouter-hc-20260831`, and it must remain disabled
+   with zero credit. Run
+   `product-experience/supabase-v34-managed-openrouter-health-canary-cleanup.sql`
+   after recording its evidence. Then, only with
    the $4 cap evidence and a disposable tenant credit, run one idempotent
    reserve/execute/settle-or-refund acceptance. Record the request ID,
    reservation ID, pricing snapshot ID, exact ledger outcome, and remaining
