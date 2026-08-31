@@ -45,6 +45,7 @@ const requiredFiles = [
   "product-experience/supabase-public-launch-control-plane.sql",
   "docs/public-launch-runbook.md",
   "docs/production-operations.md",
+  "docs/production-release-acceptance-checklist.md",
   "docs/v3.3-current-release-audit.md",
   "docs/future-integrations/openreply.md",
   "docs/future-integrations/voxcpm.md",

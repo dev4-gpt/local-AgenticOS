@@ -15,6 +15,7 @@ test("release verifier records the current revision without secrets", () => {
 test("production readiness source keeps live gates explicit", () => {
   const verifier = readFileSync(resolve(process.cwd(), "scripts/verify-production-readiness.mjs"), "utf8");
   const runbook = readFileSync(resolve(process.cwd(), "docs/public-launch-runbook.md"), "utf8");
+  const checklist = readFileSync(resolve(process.cwd(), "docs/production-release-acceptance-checklist.md"), "utf8");
   const supportRoute = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/support/route.ts"), "utf8");
   expect(verifier).toContain("migrationResult");
   expect(verifier).toContain("rollbackTarget");
@@ -29,6 +30,9 @@ test("production readiness source keeps live gates explicit", () => {
   expect(supportRoute).toContain("teamNotification");
   expect(runbook).toContain("Do not point the public domain at a tenant runtime directly");
   expect(runbook).toContain("before live mode");
+  expect(checklist).toContain("configure a $4");
+  expect(checklist).toContain("lifetime cap");
+  expect(checklist).toContain("verify:production-readiness -- --strict");
 });
 
 test("public onboarding wires Turnstile only through public site-key and server secret paths", () => {
