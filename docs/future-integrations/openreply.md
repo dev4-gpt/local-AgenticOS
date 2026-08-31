@@ -3,10 +3,11 @@
 ## Decision
 
 **Staged, isolated marketing pilot. The deployment blueprint is ready, but no
-account is connected and delivery remains disabled.** The upstream candidate
-`c51f04d9423f3e38d1e9c13e8077bf0b8f40bfa7` passed 145 tests and typecheck on
-2026-08-27, but its production dependency audit reported 3 critical and 10
-high advisories. It is therefore recorded as blocked, not approved or
+account is connected and delivery remains disabled.** The latest upstream
+candidate `d97e293834fdb76054e5cabfca61225476571267` passed Prisma generation,
+typecheck, and 168 tests on 2026-08-31, but its production dependency audit
+still reported 3 critical and 10 high advisories. It is therefore recorded as
+blocked, not approved or
 deployable. OpenReply is a self-hosted Instagram comment-to-DM application,
 not a Veloce client-runtime capability. Its dashboard, worker, PostgreSQL
 database, Redis queue, Meta permissions, and encryption key must remain in a

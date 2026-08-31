@@ -4,14 +4,14 @@
   "state": "disabled",
   "source": {
     "repository": "https://github.com/diwenne/openreply",
-    "candidateCommit": "c51f04d9423f3e38d1e9c13e8077bf0b8f40bfa7",
+    "candidateCommit": "d97e293834fdb76054e5cabfca61225476571267",
     "reviewedCommit": null,
     "review": {
-      "reviewedAt": "2026-08-27",
+      "reviewedAt": "2026-08-31",
       "decision": "blocked",
       "tests": {
         "result": "passed",
-        "count": 145
+        "count": 168
       },
       "typecheck": "passed",
       "productionAudit": {
