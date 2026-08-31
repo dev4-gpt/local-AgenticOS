@@ -177,7 +177,9 @@ Set these on `veloce-gcp-provisioner`:
 CONTROL_PLANE_CALLBACK_URL=https://app.veloceos.cloud/api/onboarding/provision-result
 ```
 
-Bind `CONTROL_PLANE_OPERATOR_SECRET` to the adapter with `--set-secrets`.
+Bind both `CONTROL_PLANE_OPERATOR_SECRET` and `CONTROL_PLANE_WORKER_TOKEN` to
+the adapter with merge-safe `--update-secrets`; do not use `--set-secrets` for
+a partial update because it replaces the existing secret bindings.
 The public dispatcher returns `202 Accepted` after queueing an idempotently
 named task. The adapter is the only component that writes the terminal
 success/failure callback, preventing a short caller timeout from incorrectly

@@ -19,16 +19,16 @@ if (!adapterUrl || !adapterAudience) fail("control-plane queue probe is not conf
 if (applyEnabled) fail("refusing queue-authz probe while GCP_PROVISIONER_ALLOW_APPLY=1");
 if (adapterAudience !== new URL(adapterUrl).origin) fail("public provisioner audience does not match its canonical adapter target URL");
 
-const workerToken = gcloudText(["secrets", "versions", "access", "latest", "--project", project, "--secret", "control-plane-worker-token"]);
-if (!workerToken) fail("unable to read the dispatcher worker token");
+const operatorSecret = gcloudText(["secrets", "versions", "access", "latest", "--project", project, "--secret", "control-plane-operator-secret"]);
+if (!operatorSecret) fail("unable to read the control-plane operator secret");
 
 const response = await fetch(new URL("/api/internal/control-plane/task-authz", appUrl), {
   method: "POST",
-  headers: { authorization: `Bearer ${workerToken}` },
+  headers: { "x-control-plane-secret": operatorSecret },
   signal: AbortSignal.timeout(20_000),
 }).catch(() => null);
 const body = await response?.json().catch(() => null);
-if (response?.status !== 202 || body?.ok !== true || typeof body?.taskId !== "string") {
+if (response?.status !== 200 || body?.ok !== true || body?.status !== "queued" || typeof body?.taskId !== "string") {
   fail(`dispatcher did not queue the non-mutating authorization probe (HTTP ${response?.status || "network"})`);
 }
 

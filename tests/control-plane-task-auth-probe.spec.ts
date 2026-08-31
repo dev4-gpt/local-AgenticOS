@@ -7,6 +7,9 @@ test("queue authentication probe refuses mutation and verifies a Cloud Tasks ada
   const bridge = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/internal/control-plane/task-authz/route.ts"), "utf8");
 
   expect(probe).toContain('"/api/internal/control-plane/task-authz"');
+  expect(probe).toContain('"control-plane-operator-secret"');
+  expect(probe).toContain('"x-control-plane-secret": operatorSecret');
+  expect(probe).toContain('response?.status !== 200');
   expect(probe).toContain('GCP_PROVISIONER_ALLOW_APPLY=1');
   expect(probe).toContain('adapterAudience !== new URL(adapterUrl).origin');
   expect(probe).toContain('row?.httpRequest?.userAgent === "Google-Cloud-Tasks"');

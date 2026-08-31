@@ -19,6 +19,7 @@ test("cloud verifier protects the private adapter boundary", () => {
   expect(verifier).toContain('roles/iam.serviceAccountTokenCreator');
   expect(verifier).toContain('CONTROL_PLANE_CALLBACK_URL === expectedCallbackUrl');
   expect(verifier).toContain('secretRefName(adapterConfig, "CONTROL_PLANE_OPERATOR_SECRET")');
+  expect(verifier).toContain('secretRefName(adapterConfig, "CONTROL_PLANE_WORKER_TOKEN")');
   expect(verifier).toContain('timeoutSeconds || 0) >= 900');
   expect(verifier).toContain('adapter must not accept extra custom audiences');
   expect(verifier).toContain('run.googleapis.com/invoker-iam-disabled');

@@ -53,6 +53,7 @@ expect(adapterEnv.GCP_ALLOWED_ARTIFACT_REPOSITORY === "veloce", "adapter reposit
 expect(allowApply ? adapterEnv.GCP_PROVISIONER_ALLOW_APPLY === "1" : adapterEnv.GCP_PROVISIONER_ALLOW_APPLY === "0", `adapter apply mode must be ${allowApply ? "1" : "0"}`);
 expect(adapterEnv.CONTROL_PLANE_CALLBACK_URL === expectedCallbackUrl, `adapter callback URL must be ${expectedCallbackUrl}`);
 expect(secretRefName(adapterConfig, "CONTROL_PLANE_OPERATOR_SECRET") === "control-plane-operator-secret", "adapter must receive the operator callback secret from Secret Manager");
+expect(secretRefName(adapterConfig, "CONTROL_PLANE_WORKER_TOKEN") === "control-plane-worker-token", "adapter must receive the dispatcher worker token from Secret Manager");
 expect(Number(adapterConfig?.spec?.template?.spec?.timeoutSeconds || 0) >= 900, "adapter timeout must be at least 900 seconds");
 expect(imageOf(adapterConfig).includes("@sha256:"), "adapter must deploy an immutable image digest");
 
