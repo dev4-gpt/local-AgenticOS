@@ -74,7 +74,7 @@ export function createOpenRouterManagedAdapter(options: {
   function messageSize(input: Record<string, unknown>) { return Array.isArray(input.messages) ? input.messages.reduce((total, item) => total + (item && typeof item === "object" ? JSON.stringify((item as Record<string, unknown>).content ?? "").length : 0), 0) : 0; }
   return {
     async quote(context: Context, input: Record<string, unknown>): Promise<Quote> {
-      const { model, rate: modelRate } = rate(input);
+      const { rate: modelRate } = rate(input);
       const maxOutput = Number.isSafeInteger(Number(input.maxOutputTokens)) ? Math.min(16_384, Math.max(256, Number(input.maxOutputTokens))) : 256;
       const pricingSnapshotId = context.pricingSnapshotId?.trim() || options.pricingSnapshotId?.trim() || "";
       if (!pricingSnapshotId) throw new Error("managed_pricing_snapshot_not_configured");
@@ -106,6 +106,6 @@ export function createOpenRouterManagedAdapter(options: {
     async settle(context: Context, reservation: Reservation, usage: Usage) { if (!await options.ledger.settle({ context, reservationId: reservation.reservationId, actualMicros: usage.actualMicros, providerRequestId: usage.providerRequestId, idempotencyKey: `settle:${reservation.reservationId}`, metadata: usage.metadata })) throw new Error("managed_credit_settlement_failed"); },
     async refund(context: Context, reservation: Reservation, reason: string) { if (!await options.ledger.refund({ context, reservationId: reservation.reservationId, reason: reason.slice(0, 1000), idempotencyKey: `refund:${reservation.reservationId}` })) throw new Error("managed_credit_refund_failed"); },
     async balance(context: Context) { const response = await call(context, "/credits", { method: "GET" }); const data = await json(response); const credits = data?.data && typeof data.data === "object" ? data.data as Record<string, unknown> : null; const available = Number(credits?.total_credits) - Number(credits?.total_usage); if (!response.ok || !credits || !Number.isFinite(available) || available < 0) throw new Error(`managed_openrouter_balance_${response.status}`); return { availableMicros: Math.floor(available * 1_000_000), currency: "usd" as const }; },
-    async disable(context: Context, _reason?: string) { disabled.add(context.tenantSlug); },
+    async disable(context: Context, reason?: string) { void reason; disabled.add(context.tenantSlug); },
   };
 }
