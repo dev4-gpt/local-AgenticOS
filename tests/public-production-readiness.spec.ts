@@ -24,6 +24,8 @@ test("production readiness source keeps live gates explicit", () => {
   expect(verifier).toContain("managedOpenRouterResult");
   expect(verifier).toContain("OPENROUTER_MANAGED_SECRET_RESOURCE");
   expect(verifier).toContain("OPENROUTER_MANAGED_PRICING_SNAPSHOT_ID");
+  expect(verifier).toContain("verify-content-os-video-pilot.mjs");
+  expect(verifier).toContain("manual-pilot");
   expect(verifier).toContain("TURNSTILE_SECRET_KEY");
   expect(verifier).toContain("LEAD_NOTIFICATION_TO");
   expect(supportRoute).toContain("notifyLead");
@@ -33,6 +35,7 @@ test("production readiness source keeps live gates explicit", () => {
   expect(checklist).toContain("configure a $4");
   expect(checklist).toContain("lifetime cap");
   expect(checklist).toContain("verify:production-readiness -- --strict");
+  expect(checklist).toContain("Personal video Content OS");
 });
 
 test("public onboarding wires Turnstile only through public site-key and server secret paths", () => {

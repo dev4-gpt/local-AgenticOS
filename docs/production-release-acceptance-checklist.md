@@ -92,6 +92,12 @@ scope approved by the billing owner.
   voice consent, retention/deletion, disclosure, and rollback tests pass.
 - **Ponytail/Headroom:** remain engineering controls only. Do not introduce a
   runtime plugin or a context proxy that can receive tenant secrets.
+- **Personal video Content OS:** remain a manual pilot until the owner has
+  supplied a portfolio brief, likeness/voice consent scope, an approved script
+  and visual plan, provider-specific terms/cost controls, disclosure review,
+  retention/deletion evidence, and a native-publishing acceptance record. Do
+  not connect Gemini Flow/Veo, HeyGen, ElevenLabs, or a social account as part
+  of a general product release.
 
 ## 5. Final attestation
 
