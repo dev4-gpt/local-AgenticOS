@@ -96,6 +96,11 @@ payloads, email session data, or database/Redis URLs into Veloce.
 All campaign activation, public replies, outbound DMs, and changes to Meta
 permissions remain human-approved external actions.
 
+Scout or any similar lead-research tool may only contribute a human-reviewed,
+aggregate campaign brief after a separate lawful-basis review. It must never
+send raw profiles, handles, contact details, scraped bios, browser cookies, or
+CSV lead data into OpenReply or Veloce.
+
 ## Rollback
 
 Disable the campaign in OpenReply, pause the worker deployment, revoke the
