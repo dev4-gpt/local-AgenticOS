@@ -33,6 +33,7 @@ const requiredFiles = [
   "scripts/verify-openreply-pilot.mjs",
   "scripts/verify-voxcpm-pilot.mjs",
   "scripts/verify-engineering-controls.mjs",
+  "scripts/verify-integration-governance.mjs",
   "scripts/control-plane-disposable-canary.mjs",
   "scripts/client-lifecycle.mjs",
   "workers/public-provisioner/worker.mjs",
@@ -49,6 +50,7 @@ const requiredFiles = [
   "docs/v3.3-current-release-audit.md",
   "docs/future-integrations/openreply.md",
   "docs/future-integrations/voxcpm.md",
+  "infrastructure/integration-control-plane.manifest.json",
   "infrastructure/openreply/openreply-pilot.manifest.example.json",
   "infrastructure/openreply/openreply.env.example",
   "infrastructure/voxcpm/voxcpm-pilot.manifest.example.json",
@@ -62,7 +64,7 @@ for (const file of requiredFiles) {
 }
 
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
-for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:control-plane-cloud", "verify:control-plane-canary", "verify:managed-openrouter-cloud", "verify:vercel-production-env", "prepare:openrouter-pricing", "verify:openreply-pilot", "verify:voxcpm-pilot", "verify:engineering-controls", "verify:production-readiness"]) {
+for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:control-plane-cloud", "verify:control-plane-canary", "verify:managed-openrouter-cloud", "verify:vercel-production-env", "prepare:openrouter-pricing", "verify:openreply-pilot", "verify:voxcpm-pilot", "verify:integration-governance", "verify:engineering-controls", "verify:production-readiness"]) {
   if (typeof packageJson.scripts?.[script] !== "string") failures.push(`package.json is missing ${script}`);
 }
 
@@ -86,6 +88,7 @@ const sourceChecks = [
   ["OpenReply remains a disabled external connector", "client-blueprints/veloce-self-marketing.campaign.json", "human-approved-external-pilot"],
   ["OpenReply uses the current Instagram callback", "infrastructure/openreply/openreply-pilot.manifest.example.json", "/api/instagram/callback"],
   ["VoxCPM remains a private disabled GPU pilot", "infrastructure/voxcpm/voxcpm-pilot.manifest.example.json", "isolated-gpu-worker"],
+  ["governed integrations are registered across pipeline and backend", "infrastructure/integration-control-plane.manifest.json", "native-enabled"],
   ["Ponytail and Headroom remain bounded engineering controls", "infrastructure/engineering-controls/agent-efficiency.manifest.json", "avoidUnrequestedRuntimeDependencies"],
   ["control-plane canary has a disposable manifest", "client-blueprints/control-plane-disposable-canary.gcp.json", "cp-canary-a828-rollback"],
 ];

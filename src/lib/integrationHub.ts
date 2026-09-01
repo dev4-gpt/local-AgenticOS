@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { REVIEWED_ADDITIONS } from "@/lib/reviewedAdditions";
 import { V96_CURATED_SKILL_PACK } from "@/lib/v96SkillPack";
+import { governedIntegrations } from "@/lib/integrationGovernance";
 
 const execFileAsync = promisify(execFile);
 const HOME = os.homedir();
@@ -178,6 +179,7 @@ export async function integrationOverview() {
       external: [],
       reviewed: REVIEWED_ADDITIONS.map((item) => ({ ...item, detected: false })),
       skillPack: V96_CURATED_SKILL_PACK,
+      governed: governedIntegrations(),
       configPath: "client-safe reviewed catalog",
     };
   }
@@ -215,6 +217,7 @@ export async function integrationOverview() {
     external,
     reviewed: REVIEWED_ADDITIONS.map((item) => ({ ...item, detected: item.detectedId ? detected.has(item.detectedId) && local.find((candidate) => candidate.id === item.detectedId)?.state === "working" : false })),
     skillPack: V96_CURATED_SKILL_PACK,
+    governed: governedIntegrations(),
     configPath: CONFIG_FILE,
   };
 }

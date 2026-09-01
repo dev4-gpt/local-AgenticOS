@@ -1,4 +1,6 @@
 // Typed hosted Pipeline contract.
+
+import { governedPipelineGuardrails } from "@/lib/integrationGovernance";
 //
 // The local pipeline stores each item as a Markdown file with YAML frontmatter
 // in an Obsidian vault, and runs three separate provider calls to classify,
@@ -117,6 +119,7 @@ export function normalizePipelineItem(row: Record<string, unknown>): PipelineIte
  * makes the result parseable without three round trips.
  */
 export function pipelineShapePrompt(input: { idea: string; title: string }) {
+  const governance = governedPipelineGuardrails(`${input.title}\n${input.idea}`);
   // Deliberately line-oriented rather than JSON. The plan and tasks are
   // Markdown with real newlines; asking for those inside JSON string values
   // makes models emit unescaped newlines and the parse fails.
@@ -143,6 +146,7 @@ export function pipelineShapePrompt(input: { idea: string; title: string }) {
     "Route meanings: project = multi-step build worth its own workstream; action = a single concrete task;",
     "idea = worth keeping but not yet actionable; reference = information to file; escalate = needs a human decision first.",
     "Do not invent facts about the business. Do not include credentials.",
+    governance,
   ].join("\n").slice(0, 20_000);
 }
 
