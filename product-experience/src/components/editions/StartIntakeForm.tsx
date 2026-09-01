@@ -218,7 +218,7 @@ export function StartIntakeForm() {
         </label>
         <label className={labelClass}>
           Provider usage preference
-          <select name="providerUsagePreference" defaultValue="byok" className={fieldClass}>
+          <select name="providerUsagePreference" aria-label="Provider usage preference" defaultValue="byok" className={fieldClass}>
             <option value="byok">BYOK — client pays providers directly</option>
             <option value="managed_credits">Veloce-managed prepaid credits</option>
             <option value="both">Both BYOK and managed credits</option>
@@ -226,7 +226,7 @@ export function StartIntakeForm() {
         </label>
         <label className={labelClass}>
           Credential model
-          <select name="credentialModel" defaultValue="client_owned" className={fieldClass}>
+          <select name="credentialModel" aria-label="Credential model" defaultValue="client_owned" className={fieldClass}>
             <option value="client_owned">Client-owned provider keys</option>
             <option value="managed_allowance">Managed allowance with written cap</option>
             <option value="oauth">OAuth connection where supported</option>
@@ -238,7 +238,7 @@ export function StartIntakeForm() {
         </label>
         <label className={labelClass}>
           Approval rule
-          <select name="approvalRule" defaultValue="approve_external_actions" className={fieldClass}>
+          <select name="approvalRule" aria-label="Approval rule" defaultValue="approve_external_actions" className={fieldClass}>
             <option value="approve_external_actions">Approve every external action</option>
             <option value="approve_publish_and_spend">Approve publishing and spend only</option>
             <option value="custom">Custom approval policy</option>
@@ -258,7 +258,7 @@ export function StartIntakeForm() {
         </label>
         <label className={labelClass}>
           Media requirement
-          <select name="mediaRequirement" defaultValue="none" className={fieldClass}>
+          <select name="mediaRequirement" aria-label="Media requirement" defaultValue="none" className={fieldClass}>
             <option value="none">No media generation</option>
             <option value="image">Images and thumbnails</option>
             <option value="video">Video</option>
@@ -268,7 +268,7 @@ export function StartIntakeForm() {
         </label>
         <label className={labelClass}>
           Support level
-          <select name="supportLevel" defaultValue="standard" className={fieldClass}>
+          <select name="supportLevel" aria-label="Support level" defaultValue="standard" className={fieldClass}>
             <option value="standard">Standard platform support</option>
             <option value="priority">Priority support</option>
             <option value="dedicated">Dedicated operating cadence</option>
@@ -276,7 +276,7 @@ export function StartIntakeForm() {
         </label>
         <label className={labelClass}>
           Managed service need
-          <select name="managedServiceNeed" defaultValue="self_directed" className={fieldClass}>
+          <select name="managedServiceNeed" aria-label="Managed service need" defaultValue="self_directed" className={fieldClass}>
             <option value="self_directed">Self-directed platform use</option>
             <option value="strategy">Strategy support</option>
             <option value="content">Content production</option>

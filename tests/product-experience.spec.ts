@@ -56,8 +56,8 @@ test("product experience exposes the public catalog and credits policy", async (
   await expect(page.getByText(/OpenSEO/i)).toBeVisible();
 
   await page.goto("/credits", { waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { name: /credits, fees, and settlement/i })).toBeVisible();
-  await expect(page.getByText(/Default: BYOK/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: /platform fees, scope, and provider credits/i })).toBeVisible();
+  await expect(page.getByText(/With BYOK, you pay the provider directly/i)).toBeVisible();
 });
 
 test("product experience legal links resolve to real policy sections", async ({ page }) => {
