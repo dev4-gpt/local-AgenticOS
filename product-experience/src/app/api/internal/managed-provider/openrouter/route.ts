@@ -169,7 +169,17 @@ export async function POST(request: Request) {
       const balance = await adapter.balance(context);
       if (balance.availableMicros <= 0) return NextResponse.json({ ok: false, error: "managed_provider_account_depleted" }, { status: 409 });
       const quote = await adapter.quote(context, objectInput(body.input));
-      return NextResponse.json({ ok: true, quote, reservation: await adapter.reserve(context, quote) });
+      try {
+        return NextResponse.json({ ok: true, quote, reservation: await adapter.reserve(context, quote) });
+      } catch (error) {
+        if (error instanceof Error && error.message === "managed_credit_reservation_denied") {
+          return NextResponse.json({ ok: false, error: "managed_credit_reservation_denied" }, { status: 409 });
+        }
+        if (error instanceof Error && error.message.startsWith("managed_credit_reservation_rpc_")) {
+          return NextResponse.json({ ok: false, error: "managed_credit_reservation_rpc_failed" }, { status: 502 });
+        }
+        throw error;
+      }
     }
     const reservation = reservationInput(body.reservation);
     if (!reservation) return NextResponse.json({ ok: false, error: "reservation_invalid" }, { status: 400 });

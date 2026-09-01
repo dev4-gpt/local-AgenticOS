@@ -185,7 +185,7 @@ set search_path = public
 as $$
 declare
   existing_id uuid;
-  reservation_id uuid;
+  new_reservation_id uuid;
   account_balance bigint;
   account_reserved bigint;
   budget_available bigint;
@@ -276,7 +276,7 @@ begin
     jsonb_build_object('state', 'reserved') || p_metadata,
     jsonb_build_object('operation', 'reserve', 'idempotency_key', p_idempotency_key)
   )
-  returning id into reservation_id;
+  returning id into new_reservation_id;
 
   update public.client_credit_accounts
   set reserved_micros = reserved_micros + p_quoted_amount_micros,
@@ -301,14 +301,14 @@ begin
   )
   values (
     p_tenant_slug,
-    'reservation:' || reservation_id,
+    'reservation:' || new_reservation_id,
     'reservation',
     p_quoted_amount_micros,
     account_balance,
     p_provider_key,
     nullif(p_pricing_snapshot_id, ''),
     jsonb_build_object(
-      'reservation_id', reservation_id,
+      'reservation_id', new_reservation_id,
       'direction', 'reserved',
       'expires_at', expires_at_value
     ) || p_metadata
@@ -324,7 +324,7 @@ begin
     metadata
   )
   values (
-    reservation_id,
+    new_reservation_id,
     p_tenant_slug,
     'reserved',
     'reserve:' || p_idempotency_key,
@@ -333,7 +333,7 @@ begin
   )
   on conflict (reservation_id, idempotency_key) do nothing;
 
-  return reservation_id;
+  return new_reservation_id;
 end;
 $$;
 

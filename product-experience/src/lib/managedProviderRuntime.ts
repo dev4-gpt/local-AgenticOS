@@ -26,12 +26,13 @@ export function createSupabaseManagedCreditLedger(options: { url: string; servic
   const fetcher = options.fetcher ?? fetch;
   async function rpc(name: string, body: Record<string, unknown>) {
     const response = await fetcher(`${url}/rest/v1/rpc/${name}`, { method: "POST", headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify(body), cache: "no-store" }).catch(() => null);
-    return { ok: response?.ok === true, value: await response?.json().catch(() => null) };
+    return { ok: response?.ok === true, status: response?.status ?? 503, value: await response?.json().catch(() => null) };
   }
   return {
     async reserve(input) {
       const result = await rpc("reserve_client_credit", { p_tenant_slug: input.context.tenantSlug, p_catalog_id: input.context.catalogId, p_provider_key: input.context.providerKey, p_idempotency_key: input.idempotencyKey, p_quoted_amount_micros: input.quote.estimatedMicros, p_expires_at: input.quote.expiresAt, p_pricing_snapshot_id: input.quote.pricingSnapshotId, p_metadata: { request_id: input.context.requestId ?? null, operation: "managed_provider_reserve" } });
-      return result.ok && typeof result.value === "string" ? result.value : null;
+      if (!result.ok) throw new Error(`managed_credit_reservation_rpc_${result.status}`);
+      return typeof result.value === "string" ? result.value : null;
     },
     async settle(input) {
       const result = await rpc("settle_client_credit", { p_reservation_id: input.reservationId, p_actual_amount_micros: input.actualMicros, p_provider_request_id: input.providerRequestId ?? null, p_idempotency_key: input.idempotencyKey, p_usage_metadata: input.metadata ?? {} });
