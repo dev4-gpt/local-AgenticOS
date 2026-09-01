@@ -1,6 +1,7 @@
 // Typed hosted Pipeline contract.
 
 import { governedPipelineGuardrails } from "@/lib/integrationGovernance";
+import { contentOsVideoPilotGuardrails } from "@/lib/contentOsVideoPilot";
 //
 // The local pipeline stores each item as a Markdown file with YAML frontmatter
 // in an Obsidian vault, and runs three separate provider calls to classify,
@@ -147,6 +148,7 @@ export function pipelineShapePrompt(input: { idea: string; title: string }) {
     "idea = worth keeping but not yet actionable; reference = information to file; escalate = needs a human decision first.",
     "Do not invent facts about the business. Do not include credentials.",
     governance,
+    contentOsVideoPilotGuardrails(`${input.title}\n${input.idea}`),
   ].join("\n").slice(0, 20_000);
 }
 
