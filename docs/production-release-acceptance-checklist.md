@@ -82,6 +82,11 @@ current shell and running `npm run approve:stripe-test-fixture -- --request-id
 <uuid> --email <test-email> --approved-by <operator>`. The command refuses
 anything except the explicit $1 test fixture and prints no secret.
 
+After retaining the Test-mode webhook and idempotency evidence, remove the
+fixture variables, restore the separately approved live Stripe configuration,
+and deploy again. Test-mode evidence must never be recorded as a live-mode
+payment result or used for the strict final attestation.
+
 | Gate | Required evidence |
 | --- | --- |
 | Public journey | Consent-only intake, one-time email verification, manifest review, queued provisioning, smoke test, activation, and offboarding. |
