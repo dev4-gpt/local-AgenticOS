@@ -85,10 +85,13 @@ test("the disposable Stripe fixture can only run under an explicit test key", ()
   expect(launch).toContain('secret.startsWith("sk_test_")');
   expect(launch).toContain("STRIPE_TEST_FIXTURE_ENABLED");
   expect(approval).toContain("const testFixture = stripeTestFixtureConfig()");
+  expect(approval).toContain("body.stripeTestFixture === true && !testFixture");
+  expect(approval).toContain('error: "stripe_test_fixture_not_configured"');
   expect(approval).toContain("testFixture: true");
   expect(checkout).toContain("stripe_test_fixture_not_configured");
   expect(checkout).toContain('"metadata[test_fixture]": "true"');
   expect(operatorTool).toContain("CONTROL_PLANE_OPERATOR_SECRET");
+  expect(operatorTool).toContain("stripeTestFixture: true");
   expect(operatorTool).toContain("quote?.testFixture !== true");
   expect(operatorTool).toContain("initialTotalCents !== 100");
 });

@@ -33,7 +33,7 @@ function quoteLineItems(value: unknown) {
 
 export async function POST(request: Request) {
   if (!authorized(request)) return NextResponse.json({ ok: false, error: "not_authorized" }, { status: 401 });
-  const body = await request.json().catch(() => ({})) as { requestId?: unknown; approvedBy?: unknown; quote?: unknown };
+  const body = await request.json().catch(() => ({})) as { requestId?: unknown; approvedBy?: unknown; quote?: unknown; stripeTestFixture?: unknown };
   const requestId = typeof body.requestId === "string" ? body.requestId.trim() : "";
   if (!requestId) return NextResponse.json({ ok: false, error: "missing_request_id" }, { status: 400 });
 
@@ -47,6 +47,9 @@ export async function POST(request: Request) {
     : {};
   const recommendation = recommendCommercialScope(inputs);
   const testFixture = stripeTestFixtureConfig();
+  if (body.stripeTestFixture === true && !testFixture) {
+    return NextResponse.json({ ok: false, error: "stripe_test_fixture_not_configured" }, { status: 409 });
+  }
   const quoteSource = body.quote && typeof body.quote === "object" && !Array.isArray(body.quote) ? body.quote as Record<string, unknown> : {};
   const lineItems = quoteLineItems(quoteSource.lineItems);
   if (lineItems === null) return NextResponse.json({ ok: false, error: "invalid_commercial_quote_line_items" }, { status: 400 });

@@ -15,7 +15,7 @@ if (!secret) fail("CONTROL_PLANE_OPERATOR_SECRET is required and must not be pla
 const approval = await requestJson("/api/onboarding/scope/approve", {
   method: "POST",
   headers: { "x-control-plane-secret": secret },
-  body: { requestId, approvedBy },
+  body: { requestId, approvedBy, stripeTestFixture: true },
 });
 if (!approval.ok || approval.body?.quote?.testFixture !== true || approval.body.quote.initialTotalCents !== 100) {
   fail(`test fixture approval was rejected (${approval.status || "network"}); confirm Stripe Test mode and the 50¢ + 50¢ fixture configuration`);
