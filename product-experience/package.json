@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev -H 127.0.0.1 -p 3565",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start -H 127.0.0.1 -p 3565",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
