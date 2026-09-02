@@ -14,7 +14,13 @@
     "projectId": "veloce-agenticos-2026",
     "region": "asia-south1",
     "artifactRegistryRepository": "veloce",
-    "image": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v123-dofgfood-visual-qa-20260821"
+    "image": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v123-dofgfood-visual-qa-20260821",
+    "minInstances": 0,
+    "maxInstances": 1,
+    "cpu": "1",
+    "memory": "1Gi",
+    "concurrency": 1,
+    "timeout": "900s"
   },
   "access": {
     "mode": "app-auth",
@@ -22,14 +28,28 @@
       "aryamandev777@gmail.com"
     ]
   },
-  "enabledCapabilities": [],
+  "runtimeEnv": {
+    "VELOCE_CLIENT_EDITION": "1",
+    "AGENTIC_OS_DISABLE_LOCAL_CLI": "1",
+    "AGENTIC_OS_DISABLE_LOCAL_FILES": "1",
+    "AGENTIC_OS_REQUIRE_APPROVALS": "1",
+    "CLIENT_RUNTIME_ENFORCE_AUTH": "1",
+    "CLIENT_RUNTIME_WORKER_ENABLED": "0",
+    "CLIENT_INTENT_ROUTING_ENABLED": "0",
+    "CLIENT_RUNTIME_DATA_MODE": "supabase"
+  },
+  "enabledCapabilities": ["tenant-data"],
   "enabledTraits": [],
   "providerAllowlist": [],
   "modelAllowlist": [],
+  "budget": {
+    "monthlyCap": "1",
+    "warningThreshold": "0.5"
+  },
   "approvalPolicy": "approve_external_actions",
   "storage": {
     "namespace": "cp-canary-a828-rollback",
-    "corsOrigins": ["*"]
+    "corsOrigins": ["https://app.veloceos.cloud"]
   },
   "retention": {
     "days": 1

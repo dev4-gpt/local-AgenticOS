@@ -164,11 +164,53 @@ function isFixedPrepareOnlyManifest(value: unknown) {
     && gcp?.projectId === canaryProject
     && gcp?.region === canaryRegion
     && gcp?.image === canaryImage
+    && gcp?.minInstances === 0
+    && gcp?.maxInstances === 1
+    && gcp?.cpu === "1"
+    && gcp?.memory === "1Gi"
+    && gcp?.concurrency === 1
+    && gcp?.timeout === "900s"
+    && access?.mode === "app-auth"
     && Array.isArray(access?.allowedUserEmails)
     && access.allowedUserEmails.length === 1
     && access.allowedUserEmails[0] === canaryEmail
+    && manifestRuntimeMatches(manifest.runtimeEnv)
+    && sameSet(manifest.enabledCapabilities, ["tenant-data"])
+    && sameSet(manifest.providerAllowlist, [])
+    && sameSet(manifest.modelAllowlist, [])
+    && hasCanaryBudget(manifest.budget)
+    && storageMatches(manifest.storage)
     && canary?.disposable === true
     && inventoryMatches(canary?.expectedInventory);
+}
+
+function manifestRuntimeMatches(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const runtime = value as Record<string, unknown>;
+  return runtime.VELOCE_CLIENT_EDITION === "1"
+    && runtime.AGENTIC_OS_DISABLE_LOCAL_CLI === "1"
+    && runtime.AGENTIC_OS_DISABLE_LOCAL_FILES === "1"
+    && runtime.AGENTIC_OS_REQUIRE_APPROVALS === "1"
+    && runtime.CLIENT_RUNTIME_ENFORCE_AUTH === "1"
+    && runtime.CLIENT_RUNTIME_WORKER_ENABLED === "0"
+    && runtime.CLIENT_INTENT_ROUTING_ENABLED === "0"
+    && runtime.CLIENT_RUNTIME_DATA_MODE === "supabase";
+}
+
+function sameSet(value: unknown, expected: string[]) {
+  return Array.isArray(value) && value.length === expected.length && expected.every((item) => value.includes(item));
+}
+
+function hasCanaryBudget(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const budget = value as Record<string, unknown>;
+  return budget.monthlyCap === "1" && budget.warningThreshold === "0.5";
+}
+
+function storageMatches(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const storage = value as Record<string, unknown>;
+  return storage.namespace === canarySlug && sameSet(storage.corsOrigins, ["https://app.veloceos.cloud"]);
 }
 
 function isVerifiedCleanupEvidence(value: unknown) {

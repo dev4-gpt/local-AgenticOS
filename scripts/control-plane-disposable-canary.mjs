@@ -81,6 +81,14 @@ function validateManifest(value, expected) {
   if (value?.approved !== true || value?.acknowledgeClientSafeRuntime !== true) failures.push("canary must retain explicit approval flags");
   if (!String(value?.clientSlug || "").startsWith("cp-canary-")) failures.push("canary slug must begin cp-canary-");
   if (gcp?.projectId !== "veloce-agenticos-2026" || gcp?.region !== "asia-south1" || gcp?.artifactRegistryRepository !== "veloce") failures.push("canary project, region, or repository is not allowlisted");
+  if (gcp?.minInstances !== 0 || gcp?.maxInstances !== 1 || gcp?.cpu !== "1" || gcp?.memory !== "1Gi" || gcp?.concurrency !== 1 || gcp?.timeout !== "900s") failures.push("canary must retain the low-cost single-instance runtime envelope");
+  if (value?.access?.mode !== "app-auth" || !Array.isArray(value?.access?.allowedUserEmails) || value.access.allowedUserEmails.length !== 1) failures.push("canary must retain one approved app-auth user");
+  if (!sameSet(value?.enabledCapabilities, ["tenant-data"]) || !sameSet(value?.providerAllowlist, []) || !sameSet(value?.modelAllowlist, [])) failures.push("canary must retain its provider-free capability scope");
+  if (value?.budget?.monthlyCap !== "1" || value?.budget?.warningThreshold !== "0.5") failures.push("canary must retain the one-dollar Veloce budget cap");
+  for (const [key, expectedValue] of Object.entries({ VELOCE_CLIENT_EDITION: "1", AGENTIC_OS_DISABLE_LOCAL_CLI: "1", AGENTIC_OS_DISABLE_LOCAL_FILES: "1", AGENTIC_OS_REQUIRE_APPROVALS: "1", CLIENT_RUNTIME_ENFORCE_AUTH: "1", CLIENT_RUNTIME_WORKER_ENABLED: "0", CLIENT_INTENT_ROUTING_ENABLED: "0", CLIENT_RUNTIME_DATA_MODE: "supabase" })) {
+    if (value?.runtimeEnv?.[key] !== expectedValue) failures.push(`canary runtimeEnv.${key} must be ${expectedValue}`);
+  }
+  if (value?.storage?.namespace !== value?.clientSlug || !sameSet(value?.storage?.corsOrigins, ["https://app.veloceos.cloud"])) failures.push("canary must use its own storage namespace and the Veloce app origin only");
   if (gcp?.serviceName || gcp?.workspaceJobName || gcp?.visualQaJobName || gcp?.runtimeServiceAccount || gcp?.storageBucket) failures.push("canary must use only deterministic default resource names");
   if (JSON.stringify(canonicalInventory(canary?.expectedInventory)) !== JSON.stringify(canonicalInventory(expected.resources))) failures.push("manifest expectedInventory does not match deterministic canary resources");
 }
@@ -114,6 +122,10 @@ function canonicalInventory(value) {
     cloudRunService: value?.cloudRunService || null,
     cloudRunJobs: Array.isArray(value?.cloudRunJobs) ? [...value.cloudRunJobs].sort() : [],
   };
+}
+
+function sameSet(value, expected) {
+  return Array.isArray(value) && value.length === expected.length && expected.every((item) => value.includes(item));
 }
 
 function readChecks(value) {

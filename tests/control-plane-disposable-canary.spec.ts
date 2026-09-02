@@ -14,6 +14,14 @@ test("the disposable control-plane canary is inventory-bound and cannot target d
   expect(manifest.clientSlug).not.toBe("dofgfood");
   expect(manifest.provisioning.phase).toBe("prepare");
   expect(manifest.providerCallsEnabled).toBe(false);
+  expect(manifest.gcp).toMatchObject({ minInstances: 0, maxInstances: 1, cpu: "1", memory: "1Gi", concurrency: 1, timeout: "900s" });
+  expect(manifest.access).toEqual({ mode: "app-auth", allowedUserEmails: ["aryamandev777@gmail.com"] });
+  expect(manifest.runtimeEnv).toMatchObject({ VELOCE_CLIENT_EDITION: "1", AGENTIC_OS_DISABLE_LOCAL_CLI: "1", AGENTIC_OS_DISABLE_LOCAL_FILES: "1", AGENTIC_OS_REQUIRE_APPROVALS: "1", CLIENT_RUNTIME_ENFORCE_AUTH: "1", CLIENT_RUNTIME_WORKER_ENABLED: "0", CLIENT_INTENT_ROUTING_ENABLED: "0", CLIENT_RUNTIME_DATA_MODE: "supabase" });
+  expect(manifest.enabledCapabilities).toEqual(["tenant-data"]);
+  expect(manifest.providerAllowlist).toEqual([]);
+  expect(manifest.modelAllowlist).toEqual([]);
+  expect(manifest.budget).toEqual({ monthlyCap: "1", warningThreshold: "0.5" });
+  expect(manifest.storage).toEqual({ namespace: manifest.clientSlug, corsOrigins: ["https://app.veloceos.cloud"] });
   expect(manifest.canary.disposable).toBe(true);
   expect(manifest.canary.expectedInventory.cloudRunService).toBeNull();
   expect(manifest.canary.expectedInventory.cloudRunJobs).toEqual([]);
@@ -21,6 +29,9 @@ test("the disposable control-plane canary is inventory-bound and cannot target d
   expect(route).not.toContain('const canarySlug = "dofgfood"');
   expect(route).toContain("canary_cleanup_evidence_required");
   expect(route).toContain("isVerifiedCleanupEvidence");
+  expect(route).toContain("manifestRuntimeMatches");
+  expect(route).toContain("hasCanaryBudget");
+  expect(route).toContain("storageMatches");
   expect(adapter).toContain("function provisionedResourceManifest");
   expect(adapter).toContain("resourceManifest: provisionedResourceManifest(manifest, phase, output.stdout)");
   expect(adapter).toContain("failureOutput = redactOutput");
