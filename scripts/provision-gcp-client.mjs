@@ -276,6 +276,10 @@ if (phase === "deploy" || phase === "all") {
   runCommands(deployCommands);
   if (apply) {
     const serviceUrl = configureRuntimeBaseUrl();
+    // This machine-readable value is consumed by the private adapter only.
+    // It contains no credential and lets the callback bind the exact deployed
+    // Cloud Run URL instead of reconstructing it from user-controlled input.
+    console.log(`VELOCE_RUNTIME_URL=${serviceUrl}`);
     deployWorkspaceJob(serviceUrl);
     if (enabledCapabilities.includes("visual-qa")) deployVisualQaJob(serviceUrl);
     routeTrafficToLatestRevision();

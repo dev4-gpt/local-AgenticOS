@@ -101,17 +101,25 @@ async function runProvisioning(manifest) {
       error.failureOutput = redactOutput(`${output.stdout}\n${output.stderr}`).slice(-12_000);
       throw error;
     }
+    const resourceManifest = provisionedResourceManifest(manifest, phase, output.stdout);
+    const smoke = phase === "deploy" ? await smokeRuntime(resourceManifest.runtimeUrl) : null;
+    if (phase === "deploy" && !smoke?.ok) {
+      const error = new Error("runtime_smoke_failed");
+      error.failureOutput = redactOutput(`runtime smoke failed: ${smoke?.error || "unknown"}`).slice(-12_000);
+      throw error;
+    }
     return {
-      completedSteps: phase === "prepare" ? ["validated_manifest", "gcp_prepare"] : ["validated_manifest", "gcp_deploy"],
+      completedSteps: phase === "prepare" ? ["validated_manifest", "gcp_prepare"] : ["validated_manifest", "gcp_deploy", "runtime_smoke"],
       // The callback must describe the actual resource names that the
       // provisioner derived, not merely echo the request. This makes a later
       // rollback auditable and avoids treating a redacted request as evidence
       // of cleanup.
-      resourceManifest: provisionedResourceManifest(manifest, phase),
+      resourceManifest,
       evidenceBundle: {
         phase,
         command: "provision-gcp-client",
         output: redactOutput(output.stdout).slice(-12_000),
+        ...(smoke ? { smoke } : {}),
       },
       imageDigest: imageDigest(manifest.gcp.image),
     };
@@ -143,7 +151,7 @@ function imageDigest(image) {
   return match?.[1] || null;
 }
 
-function provisionedResourceManifest(manifest, phase) {
+function provisionedResourceManifest(manifest, phase, output = "") {
   const slug = manifest.clientSlug;
   const gcp = manifest.gcp || {};
   const projectId = gcp.projectId;
@@ -164,6 +172,10 @@ function provisionedResourceManifest(manifest, phase) {
   return {
     schemaVersion: 1,
     phase,
+    clientSlug: slug,
+    clientName: typeof manifest.clientName === "string" ? manifest.clientName.slice(0, 240) : slug,
+    retentionDays: Number.isSafeInteger(manifest.retention?.days) ? manifest.retention.days : 30,
+    runtimeUrl: phase === "deploy" ? runtimeUrlFromOutput(output) : null,
     projectId,
     region,
     createdResources: {
@@ -180,6 +192,22 @@ function provisionedResourceManifest(manifest, phase) {
       ] : [],
     },
   };
+}
+
+function runtimeUrlFromOutput(output) {
+  const match = String(output).match(/^VELOCE_RUNTIME_URL=(https:\/\/[^\s/]+(?:\/[^\s]*)?)$/m);
+  const value = match?.[1]?.replace(/\/$/, "") || "";
+  if (!/^https:\/\/[^\s/]+\.run\.app(?:\/|$)/i.test(value)) return null;
+  return value;
+}
+
+async function smokeRuntime(runtimeUrl) {
+  if (!runtimeUrl) return { ok: false, error: "runtime_url_missing" };
+  const checkedAt = new Date().toISOString();
+  const response = await fetch(runtimeUrl, { redirect: "manual", signal: AbortSignal.timeout(15_000) }).catch(() => null);
+  const status = response?.status ?? 0;
+  if (status < 200 || status >= 400) return { ok: false, url: runtimeUrl, status, checkedAt, error: "unexpected_status" };
+  return { ok: true, url: runtimeUrl, status, checkedAt };
 }
 
 function cleanName(value, max) {

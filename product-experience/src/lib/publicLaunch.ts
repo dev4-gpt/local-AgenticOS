@@ -54,6 +54,20 @@ export async function supabaseServiceInsert(table: string, record: Record<string
   return { ok: response?.ok === true, status: response?.status ?? 503, rows: Array.isArray(rows) ? rows : [] };
 }
 
+export async function supabaseServiceUpsert(table: string, record: Record<string, unknown>, onConflict: string) {
+  const config = publicLaunchConfig();
+  if (!config) return { ok: false, status: 503, rows: [] as Record<string, unknown>[] };
+  const query = new URLSearchParams({ on_conflict: onConflict });
+  const response = await fetch(`${config.url}/rest/v1/${table}?${query.toString()}`, {
+    method: "POST",
+    headers: { ...serviceHeaders(config), Prefer: "resolution=merge-duplicates,return=representation" },
+    body: JSON.stringify(record),
+    cache: "no-store",
+  }).catch(() => null);
+  const rows = await response?.json().catch(() => []) as Record<string, unknown>[];
+  return { ok: response?.ok === true, status: response?.status ?? 503, rows: Array.isArray(rows) ? rows : [] };
+}
+
 export async function supabaseServiceUpdate(table: string, filters: Record<string, string>, record: Record<string, unknown>) {
   const config = publicLaunchConfig();
   if (!config) return { ok: false, status: 503, rows: [] as Record<string, unknown>[] };

@@ -20,7 +20,13 @@ export async function POST(request: Request) {
   const accounts = await supabaseServiceSelect("client_onboarding_accounts", { id: `eq.${onboardingId}` });
   const account = accounts.rows[0];
   if (!accounts.ok || typeof account?.request_id !== "string" || typeof account.email !== "string") return NextResponse.json({ ok: false, error: "onboarding_not_found" }, { status: 404 });
-  if (!["smoke_testing", "provisioning"].includes(String(account.status))) return NextResponse.json({ ok: false, error: "invalid_state" }, { status: 409 });
+  if (account.status !== "smoke_testing" || typeof account.tenant_slug !== "string" || !/^https:\/\/[^\s/]+\.run\.app$/i.test(String(account.runtime_url || ""))) return NextResponse.json({ ok: false, error: "runtime_smoke_required" }, { status: 409 });
+  const runs = await supabaseServiceSelect("client_provisioning_runs", { onboarding_id: `eq.${onboardingId}`, status: "eq.succeeded", current_step: "eq.smoke_testing", order: "finished_at.desc", limit: "1" });
+  const run = runs.rows[0];
+  const smoke = run?.evidence_bundle && typeof run.evidence_bundle === "object" && !Array.isArray(run.evidence_bundle)
+    ? (run.evidence_bundle as Record<string, unknown>).smoke as Record<string, unknown> | undefined
+    : undefined;
+  if (!runs.ok || smoke?.ok !== true || smoke.url !== account.runtime_url) return NextResponse.json({ ok: false, error: "runtime_smoke_required" }, { status: 409 });
   const requests = await supabaseServiceSelect("deployment_requests", { id: `eq.${account.request_id}` });
   const name = typeof requests.rows[0]?.name === "string" ? requests.rows[0].name : "there";
   const rawToken = randomBytes(32).toString("base64url");

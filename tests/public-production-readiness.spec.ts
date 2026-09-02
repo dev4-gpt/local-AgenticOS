@@ -74,6 +74,24 @@ test("commercial scope remains separate from runtime manifest and billing", () =
   expect(approval).toContain("providerCreditsIncluded: false");
 });
 
+test("tenant activation is bound to a deployed runtime smoke and the verified owner membership", () => {
+  const provisionResult = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/provision-result/route.ts"), "utf8");
+  const activate = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/activate/route.ts"), "utf8");
+  const setup = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/setup/route.ts"), "utf8");
+  const adapter = readFileSync(resolve(process.cwd(), "workers/gcp-provisioner/worker.mjs"), "utf8");
+
+  expect(adapter).toContain("VELOCE_RUNTIME_URL");
+  expect(adapter).toContain("async function smokeRuntime(runtimeUrl)");
+  expect(adapter).toContain('"runtime_smoke"');
+  expect(provisionResult).toContain("provisioning_callback_manifest_mismatch");
+  expect(provisionResult).toContain('supabaseServiceUpsert("client_tenants"');
+  expect(provisionResult).toContain("activationReady: true");
+  expect(activate).toContain("runtime_smoke_required");
+  expect(activate).not.toContain('["smoke_testing", "provisioning"]');
+  expect(setup).toContain('supabaseServiceUpsert("client_memberships"');
+  expect(setup).toContain('role: "owner"');
+});
+
 test("team support notification is server-side and contains no credential field", async () => {
   const saved = {
     apiKey: process.env.RESEND_API_KEY,

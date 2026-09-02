@@ -22,7 +22,7 @@ test("the disposable control-plane canary is inventory-bound and cannot target d
   expect(route).toContain("canary_cleanup_evidence_required");
   expect(route).toContain("isVerifiedCleanupEvidence");
   expect(adapter).toContain("function provisionedResourceManifest");
-  expect(adapter).toContain("resourceManifest: provisionedResourceManifest(manifest, phase)");
+  expect(adapter).toContain("resourceManifest: provisionedResourceManifest(manifest, phase, output.stdout)");
   expect(adapter).toContain("failureOutput = redactOutput");
   expect(adapter).toContain("redacted command evidence");
   const canaryTool = readFileSync(resolve(root, "scripts/control-plane-disposable-canary.mjs"), "utf8");
