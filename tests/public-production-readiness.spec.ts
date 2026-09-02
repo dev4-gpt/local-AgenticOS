@@ -99,6 +99,7 @@ test("the disposable Stripe fixture can only run under an explicit test key", ()
 });
 
 test("tenant activation is bound to a deployed runtime smoke and the verified owner membership", () => {
+  const deploy = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/deploy/route.ts"), "utf8");
   const provisionResult = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/provision-result/route.ts"), "utf8");
   const activate = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/activate/route.ts"), "utf8");
   const setup = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/setup/route.ts"), "utf8");
@@ -107,6 +108,9 @@ test("tenant activation is bound to a deployed runtime smoke and the verified ow
   expect(adapter).toContain("VELOCE_RUNTIME_URL");
   expect(adapter).toContain("async function smokeRuntime(runtimeUrl)");
   expect(adapter).toContain('"runtime_smoke"');
+  expect(deploy).toContain('current_step: "eq.prepared"');
+  expect(deploy).toContain('phase: "deploy"');
+  expect(deploy).toContain('idempotency_key: `deploy:${requestId}`');
   expect(provisionResult).toContain("provisioning_callback_manifest_mismatch");
   expect(provisionResult).toContain('supabaseServiceUpsert("client_tenants"');
   expect(provisionResult).toContain("activationReady: true");

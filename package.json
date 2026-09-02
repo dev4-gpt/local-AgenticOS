@@ -42,6 +42,8 @@
     "verify:managed-credit": "node scripts/verify-managed-credit-contract.mjs",
     "verify:production-readiness": "node scripts/verify-production-readiness.mjs",
     "approve:stripe-test-fixture": "node scripts/approve-stripe-test-fixture.mjs",
+    "approve:client-manifest": "node scripts/approve-client-manifest.mjs",
+    "deploy:client-manifest": "node scripts/deploy-client-manifest.mjs",
     "verify:client-surface-map": "node scripts/verify-client-runtime-surface-map.mjs",
     "verify:parity:local": "node scripts/verify-client-runtime-surface-map.mjs --url http://127.0.0.1:3939 --cookie-file ${VELOCE_LOCAL_COOKIE_FILE:-/private/tmp/veloce-runtime-cookie.txt} --no-gcp-dependent",
     "verify:parity:local:tunnel": "node scripts/verify-client-runtime-local-tunnel.mjs",
