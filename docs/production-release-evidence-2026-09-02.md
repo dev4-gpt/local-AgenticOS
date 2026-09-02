@@ -38,6 +38,9 @@ or session data.
   `Ready`, aliased to `https://app.veloceos.cloud`.
 - Canary-hardening deployment: `dpl_FFCeQPLjfDXtPUmx6DMJYFmzEJyo`, status
   `Ready`, aliased to `https://app.veloceos.cloud`.
+- Current operator-secret reconciliation deployment: `dpl_91MKJNUAsX8Acsc2ZanZEJJdTDH9`,
+  status `Ready`, current Production deployment, aliased to
+  `https://app.veloceos.cloud`.
 - The product app now has a secret-protected prepare route and a separate
   secret-protected deploy route. The deploy route requires a successful
   prepare run and uses an independent `deploy:<request id>` idempotency key.
@@ -66,24 +69,33 @@ tree contains malformed duplicate type-package directories (for example,
 `@types/* 2`). Vercel's clean remote build succeeded; that is deployment
 evidence, not a substitute for the clean-runner focused-test requirement.
 
-## Current blocker before tenant preparation
+## Current control-plane evidence and qualification
 
-The repository's read-only control-plane probe was run before enabling apply.
-It failed because the local `gcloud` principal lacks permission to read Cloud
-Run, Cloud Tasks, IAM policy, and project metadata in
-`veloce-agenticos-2026`. No tenant was queued and no GCP resource was created.
+An authorized project-owner Cloud Shell session reran the full read-only
+control-plane probe after reconciling the Vercel operator secret with Secret
+Manager. It returned `ok: true`, `applyEnabled: false`, HTTP `200`, and
+`adapterWorker: "gcp-provisioner"` for the current private adapter revision
+`veloce-gcp-provisioner-00027-slg`. This proves the expected Cloud Tasks queue
+configuration, OIDC boundary, callback target, immutable adapter image, and
+the Vercel-to-private-adapter health bridge with writes disabled.
 
-Before the bounded disposable window is opened, an authorized project identity
-must rerun:
+The historical disposable canary record was read directly from Supabase and
+again through the secret-protected status endpoint:
 
-```bash
-npm run verify:control-plane-cloud -- --probe
-```
+- onboarding `ed55b31a-7e8b-44f5-926f-c2b6b816465e` is `offboarded`;
+- run `3fdf20ae-44e4-4fc7-8a55-8c1a05190578` is `rolled_back` with
+  `canary_cleanup_complete`;
+- its exact service account, bucket, queue, and inbox secret are all absent;
+- no Cloud Run service or job was created, and no `dofgfood` resource was
+  selected or changed.
 
-Required result: `ok: true` with `applyEnabled: false`. Only then can an owner
-temporarily enable apply, dispatch the two **prepare** manifests, add the
-tenant-scoped Supabase anon-key Secret Manager versions, and dispatch the
-separate **deploy** stage.
+The historical run predates the later canary hardening. Its retained adapter
+output reports a wildcard bucket CORS configuration and a mutable-canary queue
+configured with ten max attempts. The present manifest and route reject those
+settings (Veloce-only CORS and the narrowed contract), but the old run must not
+be presented as end-to-end proof of the newer policy. A second, newly named
+disposable canary would require explicit owner approval if that current-policy
+execution evidence is required.
 
 ## Still required for release acceptance
 
@@ -110,9 +122,9 @@ separate **deploy** stage.
 | Post-Checkout customer confirmation | Commit `5649c69` deployed the non-sensitive confirmation page. | proved |
 | Duplicate webhook idempotency and failed-payment flow | No retained Test evidence for either outcome yet. | pending |
 | Fixed, isolated canary scope | Canary commit `902a79c`, manifest validation, and inventory verifier pin four named disposable resources; no Cloud Run service or job is part of the prepare phase. | proved locally and deployed |
-| Owner read-only control-plane preflight | Current local `gcloud` identity has no project permission. | blocked on GCP owner identity |
-| Cloud Tasks to private-adapter callback | Requires the owner preflight followed by the single authorized prepare canary. | pending |
-| Exact canary inventory and deletion proof | Inventory is fixed and cleanup code is fail-closed, but no resource has yet been created or deleted. | pending |
+| Owner read-only control-plane preflight | Owner Cloud Shell probe returned `ok: true`, health `200`, and `applyEnabled: false` for adapter revision `veloce-gcp-provisioner-00027-slg`. | proved |
+| Cloud Tasks to private-adapter callback | The current queue/OIDC/callback path and private adapter health bridge passed; the historical canary recorded `gcp_prepare` before rollback. | proved for the historical canary; current-policy execution not rerun |
+| Exact canary inventory and deletion proof | Historical canary record is `rolled_back`, onboarding is `offboarded`, and its four exact resources are absent. Its raw output predates the current CORS/retry hardening. | proved for rollback; current-policy execution pending approval |
 | Test tenant prepare/deploy/smoke/activation | Both Test requests are at `manifest_review`; no tenant resource has been created. | pending |
 | Tenant isolation, export, and offboarding | Requires two activated disposable runtimes and access tokens. | pending |
 | Headroom and Ponytail integration | Both are registered as Veloce-owned, dependency-free engineering controls; production tenant data is not proxied upstream. | proved by static governance checks |
