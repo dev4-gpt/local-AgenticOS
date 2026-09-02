@@ -29,7 +29,14 @@ or session data.
 
 - Commit `5649c69`: billing confirmation page.
 - Commit `2ced985`: two-stage disposable tenant provisioning.
+- Commit `902a79c`: hardens the fixed disposable control-plane canary to the
+  standard provider-disabled tenant-manifest contract. It pins one Veloce-only
+  CORS origin, one-dollar Veloce budget metadata, min=0/max=1 sizing, and the
+  required safe runtime environment; both the local canary tool and the live
+  API route now reject drift from that contract.
 - Production Vercel deployment: `dpl_7j3niUmBrLotZc6oFWR1rYpaxiZJ`, status
+  `Ready`, aliased to `https://app.veloceos.cloud`.
+- Canary-hardening deployment: `dpl_FFCeQPLjfDXtPUmx6DMJYFmzEJyo`, status
   `Ready`, aliased to `https://app.veloceos.cloud`.
 - The product app now has a secret-protected prepare route and a separate
   secret-protected deploy route. The deploy route requires a successful
@@ -47,6 +54,9 @@ time.
 ## Verification performed
 
 - Both disposable manifests passed `npm run validate:client-manifest`.
+- The control-plane canary now also passes `npm run validate:client-manifest`
+  and `npm run verify:control-plane-canary`; its inventory remains exactly one
+  service account, bucket, queue, and tenant-scoped credential-inbox secret.
 - The new operator scripts passed `node --check`.
 - `git diff --check` passed before commit.
 - Vercel completed the production build of commit `2ced985` successfully.
