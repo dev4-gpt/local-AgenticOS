@@ -90,7 +90,9 @@ test("the disposable Stripe fixture can only run under an explicit test key", ()
   expect(approval).toContain("testFixture: true");
   expect(checkout).toContain("stripe_test_fixture_not_configured");
   expect(checkout).toContain('"metadata[test_fixture]": "true"');
+  expect(checkout).toContain('"managed_payments[enabled]": "false"');
   expect(operatorTool).toContain("CONTROL_PLANE_OPERATOR_SECRET");
+  expect(operatorTool).toContain("export CONTROL_PLANE_OPERATOR_SECRET");
   expect(operatorTool).toContain("stripeTestFixture: true");
   expect(operatorTool).toContain("quote?.testFixture !== true");
   expect(operatorTool).toContain("initialTotalCents !== 100");

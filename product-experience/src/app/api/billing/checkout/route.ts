@@ -37,6 +37,10 @@ export async function POST(request: Request) {
     "metadata[product]": "veloce-public-launch",
     "metadata[commercial_scope]": account?.commercial_scope_status === "approved" ? "approved" : "legacy",
     ...(testFixture ? { "metadata[stripe_mode]": "test", "metadata[test_fixture]": "true", "metadata[test_fixture_initial_total_cents]": String(testFixture.initialTotalCents) } : {}),
+    // Stripe Managed Payments requires tax-coded catalog products. The disposable
+    // test fixture intentionally creates inline 50¢ products, so opt out only
+    // for that bounded sandbox path rather than changing the account default.
+    ...(testFixture ? { "managed_payments[enabled]": "false" } : {}),
   };
   if (customQuote) {
     const allItems = [

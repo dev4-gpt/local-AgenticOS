@@ -10,7 +10,7 @@ const secret = process.env.CONTROL_PLANE_OPERATOR_SECRET?.trim() || "";
 
 if (!/^https:\/\//i.test(appUrl)) fail("--url must use HTTPS");
 if (!/^\S+@\S+\.\S+$/.test(email)) fail("--email must be valid");
-if (!secret) fail("CONTROL_PLANE_OPERATOR_SECRET is required and must not be placed in shell history");
+if (!secret) fail("CONTROL_PLANE_OPERATOR_SECRET is required. After using read, run: export CONTROL_PLANE_OPERATOR_SECRET");
 
 const approval = await requestJson("/api/onboarding/scope/approve", {
   method: "POST",
