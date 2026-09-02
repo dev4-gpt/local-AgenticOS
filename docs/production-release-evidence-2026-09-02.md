@@ -100,3 +100,24 @@ separate **deploy** stage.
 - OpenReply remains disabled pending an upstream security audit and explicit
   consented Meta/Instagram pilot approval; VoxCPM remains disabled pending
   license, cost/performance, and voice-consent approvals.
+
+## Acceptance matrix
+
+| Requirement | Current evidence | Status |
+| --- | --- | --- |
+| Public intake and verified email | Two independent Test A/Test B records show verified email. | proved |
+| Stripe Test Checkout and signed webhook | Both records reached `billing_status = succeeded`; no real charge was made. | proved |
+| Post-Checkout customer confirmation | Commit `5649c69` deployed the non-sensitive confirmation page. | proved |
+| Duplicate webhook idempotency and failed-payment flow | No retained Test evidence for either outcome yet. | pending |
+| Fixed, isolated canary scope | Canary commit `902a79c`, manifest validation, and inventory verifier pin four named disposable resources; no Cloud Run service or job is part of the prepare phase. | proved locally and deployed |
+| Owner read-only control-plane preflight | Current local `gcloud` identity has no project permission. | blocked on GCP owner identity |
+| Cloud Tasks to private-adapter callback | Requires the owner preflight followed by the single authorized prepare canary. | pending |
+| Exact canary inventory and deletion proof | Inventory is fixed and cleanup code is fail-closed, but no resource has yet been created or deleted. | pending |
+| Test tenant prepare/deploy/smoke/activation | Both Test requests are at `manifest_review`; no tenant resource has been created. | pending |
+| Tenant isolation, export, and offboarding | Requires two activated disposable runtimes and access tokens. | pending |
+| Headroom and Ponytail integration | Both are registered as Veloce-owned, dependency-free engineering controls; production tenant data is not proxied upstream. | proved by static governance checks |
+| OpenReply integration | Isolated design is registered; upstream audit records 3 critical and 10 high advisories, so the pilot remains disabled. | correctly blocked |
+| VoxCPM integration | Isolated private-GPU design is registered; commit pin, cost/performance, consent, and deletion evidence are not approved. | correctly blocked |
+| BYOK lifecycle and secret-exposure evidence | No completed rotation/revocation/deletion or browser/export credential scan record. | pending |
+| Clean-runner focused regression | Local Playwright packaging fails before discovery; clean-runner output has not been retained. | pending |
+| Operations, legal, catalog approvals and strict attestation | No complete approval/attestation record. | pending |
