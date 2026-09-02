@@ -63,6 +63,7 @@ test("commercial scope remains separate from runtime manifest and billing", () =
   const approval = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/scope/approve/route.ts"), "utf8");
   const manifestApproval = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/approve/route.ts"), "utf8");
   const checkout = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/billing/checkout/route.ts"), "utf8");
+  const operatorTool = readFileSync(resolve(process.cwd(), "scripts/approve-stripe-test-fixture.mjs"), "utf8");
   expect(migration).toContain("commercial_scope_recommendation");
   expect(migration).toContain("commercial_scope_quote");
   expect(intake).toContain("recommendCommercialScope");
@@ -72,6 +73,24 @@ test("commercial scope remains separate from runtime manifest and billing", () =
   expect(checkout).toContain("commercial_scope_pending");
   expect(checkout).toContain("metadata[commercial_scope]");
   expect(approval).toContain("providerCreditsIncluded: false");
+});
+
+test("the disposable Stripe fixture can only run under an explicit test key", () => {
+  const launch = readFileSync(resolve(process.cwd(), "product-experience/src/lib/publicLaunch.ts"), "utf8");
+  const approval = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/scope/approve/route.ts"), "utf8");
+  const checkout = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/billing/checkout/route.ts"), "utf8");
+
+  expect(launch).toContain("function stripeTestFixtureConfig()");
+  expect(launch).toContain('process.env.STRIPE_MODE?.trim() !== "test"');
+  expect(launch).toContain('secret.startsWith("sk_test_")');
+  expect(launch).toContain("STRIPE_TEST_FIXTURE_ENABLED");
+  expect(approval).toContain("const testFixture = stripeTestFixtureConfig()");
+  expect(approval).toContain("testFixture: true");
+  expect(checkout).toContain("stripe_test_fixture_not_configured");
+  expect(checkout).toContain('"metadata[test_fixture]": "true"');
+  expect(operatorTool).toContain("CONTROL_PLANE_OPERATOR_SECRET");
+  expect(operatorTool).toContain("quote?.testFixture !== true");
+  expect(operatorTool).toContain("initialTotalCents !== 100");
 });
 
 test("tenant activation is bound to a deployed runtime smoke and the verified owner membership", () => {

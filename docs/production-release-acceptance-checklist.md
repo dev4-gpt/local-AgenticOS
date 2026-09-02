@@ -18,7 +18,7 @@ bill a customer, or publish a campaign.
 | Gate | Operator action | Passing evidence |
 | --- | --- | --- |
 | Clean release source | Commit or safely stash user-owned changes, then run `git status --short`. | No output; a recorded commit SHA. |
-| Focused regression | Run `npm run test:focused`. | 148 passing tests or a newer reviewed count. |
+| Focused regression | Run `npm run test:focused`. | A current reviewed passing count from a clean runner. |
 | Public provisioner | Run `npm run verify:control-plane-cloud -- --probe`. | `ok: true`, apply disabled, current public/adapter revisions and immutable adapter digest. |
 | Managed gateway boundary | Run `npm run verify:managed-openrouter-cloud -- --expected-digest sha256:<digest> --expected-models openai/gpt-4o-mini`. | Private IAM, exact secret bindings, one invoker, immutable image, approved allowlist, and `/readyz` passing. |
 | Vercel metadata | Run `npm run verify:vercel-production-env`. | Required production names present; sensitive values remain typed sensitive; pricing snapshot fields present after activation configuration. |
@@ -69,8 +69,18 @@ bill a customer, or publish a campaign.
 
 ## 3. Public product acceptance
 
-Run these with two disposable test users/tenants and Stripe live-mode test
-scope approved by the billing owner.
+Run the disposable test fixture before any live billing action. It requires
+`STRIPE_MODE=test`, a Stripe `sk_test_` key, and
+`STRIPE_TEST_FIXTURE_ENABLED=1`; the default fixture is 50¢ setup plus 50¢
+monthly ($1 initial total per tenant). It never authorizes a live charge.
+A separate billing-owner approval with a real total cap is still required for
+the later live-mode Stripe smoke.
+
+After deployment, the owner can generate a single test checkout link without
+placing a secret in the command line by loading the operator secret into the
+current shell and running `npm run approve:stripe-test-fixture -- --request-id
+<uuid> --email <test-email> --approved-by <operator>`. The command refuses
+anything except the explicit $1 test fixture and prints no secret.
 
 | Gate | Required evidence |
 | --- | --- |

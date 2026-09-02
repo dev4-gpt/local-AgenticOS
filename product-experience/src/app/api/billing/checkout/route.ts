@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { allowPublicRequest } from "@/lib/publicRequestGuard";
-import { stripeConfigured, stripeRequest, stripeSecretConfigured, supabaseServiceSelect, supabaseServiceUpdate } from "@/lib/publicLaunch";
+import { stripeConfigured, stripeRequest, stripeSecretConfigured, stripeTestFixtureConfig, supabaseServiceSelect, supabaseServiceUpdate } from "@/lib/publicLaunch";
 
 export const runtime = "nodejs";
 
@@ -18,11 +18,13 @@ export async function POST(request: Request) {
   if (account && account.commercial_scope_status === "recommended") return NextResponse.json({ ok: false, error: "commercial_scope_pending" }, { status: 409 });
 
   const quote = account?.commercial_scope_quote && typeof account.commercial_scope_quote === "object" && !Array.isArray(account.commercial_scope_quote)
-    ? account.commercial_scope_quote as { setupUsd?: unknown; monthlyUsd?: unknown; lineItems?: unknown }
+    ? account.commercial_scope_quote as { setupUsd?: unknown; monthlyUsd?: unknown; lineItems?: unknown; testFixture?: unknown }
     : null;
   const setupUsd = Number(quote?.setupUsd);
   const monthlyUsd = Number(quote?.monthlyUsd);
   const lineItems = Array.isArray(quote?.lineItems) ? quote.lineItems.filter((item): item is { name?: unknown; amountUsd?: unknown; recurring?: unknown } => Boolean(item && typeof item === "object" && !Array.isArray(item))) : [];
+  const testFixture = quote?.testFixture === true ? stripeTestFixtureConfig() : null;
+  if (quote?.testFixture === true && !testFixture) return NextResponse.json({ ok: false, error: "stripe_test_fixture_not_configured" }, { status: 503 });
   const customQuote = Boolean(quote && Number.isFinite(setupUsd) && Number.isFinite(monthlyUsd) && (setupUsd !== 2_500 || monthlyUsd !== 1_250 || lineItems.length > 0));
   if (!customQuote && !stripeConfigured()) return NextResponse.json({ ok: false, error: "billing_not_configured" }, { status: 503 });
 
@@ -34,6 +36,7 @@ export async function POST(request: Request) {
     "metadata[request_id]": requestId,
     "metadata[product]": "veloce-public-launch",
     "metadata[commercial_scope]": account?.commercial_scope_status === "approved" ? "approved" : "legacy",
+    ...(testFixture ? { "metadata[stripe_mode]": "test", "metadata[test_fixture]": "true", "metadata[test_fixture_initial_total_cents]": String(testFixture.initialTotalCents) } : {}),
   };
   if (customQuote) {
     const allItems = [
@@ -41,7 +44,8 @@ export async function POST(request: Request) {
       { name: "Veloce platform subscription", amountUsd: monthlyUsd, recurring: true },
       ...lineItems.map((item) => ({ name: String(item.name ?? "").trim(), amountUsd: Number(item.amountUsd), recurring: item.recurring === true })),
     ];
-    if (allItems.some((item) => !item.name || !Number.isFinite(item.amountUsd) || item.amountUsd < 1 || item.amountUsd > 1_000_000)) return NextResponse.json({ ok: false, error: "invalid_commercial_quote" }, { status: 409 });
+    const minimumAmount = testFixture ? 0.5 : 1;
+    if (allItems.some((item) => !item.name || !Number.isFinite(item.amountUsd) || item.amountUsd < minimumAmount || item.amountUsd > 1_000_000)) return NextResponse.json({ ok: false, error: "invalid_commercial_quote" }, { status: 409 });
     allItems.forEach((item, index) => {
       checkoutBody[`line_items[${index}][price_data][currency]`] = "usd";
       checkoutBody[`line_items[${index}][price_data][unit_amount]`] = Math.round(item.amountUsd * 100);

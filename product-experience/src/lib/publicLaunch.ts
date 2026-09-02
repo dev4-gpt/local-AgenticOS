@@ -103,6 +103,23 @@ export function stripeSecretConfigured() {
   return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
 }
 
+// This is deliberately separate from the public production price settings.
+// It can only be enabled with a Stripe test secret key and is capped to a
+// small, disposable acceptance fixture. A live key always disables it.
+export function stripeTestFixtureConfig() {
+  const secret = process.env.STRIPE_SECRET_KEY?.trim() || "";
+  if (process.env.STRIPE_MODE?.trim() !== "test" || process.env.STRIPE_TEST_FIXTURE_ENABLED?.trim() !== "1" || !secret.startsWith("sk_test_")) return null;
+  const setupCents = fixtureCents(process.env.STRIPE_TEST_FIXTURE_SETUP_CENTS, 50);
+  const monthlyCents = fixtureCents(process.env.STRIPE_TEST_FIXTURE_MONTHLY_CENTS, 50);
+  if (setupCents === null || monthlyCents === null) return null;
+  return { setupCents, monthlyCents, initialTotalCents: setupCents + monthlyCents };
+}
+
+function fixtureCents(value: string | undefined, fallback: number) {
+  const cents = value == null || value.trim() === "" ? fallback : Number(value);
+  return Number.isSafeInteger(cents) && cents >= 50 && cents <= 500 ? cents : null;
+}
+
 export async function stripeRequest(path: string, body: Record<string, string | number | string[]>) {
   const secret = process.env.STRIPE_SECRET_KEY?.trim();
   if (!secret) return { ok: false, status: 503, value: null as Record<string, unknown> | null };
