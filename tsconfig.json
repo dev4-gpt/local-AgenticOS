@@ -45,9 +45,7 @@
     ".next-client/types/**/*.d.ts",
     ".next-client/types/validator.ts",
     ".next-client/dev/types/**/*.d.ts",
-    ".next-client/dev/types/validator.ts",
-    ".next-v0/types/**/*.ts",
-    ".next-v0/dev/types/**/*.ts"
+    ".next-client/dev/types/validator.ts"
   ],
   "exclude": [
     "node_modules",
