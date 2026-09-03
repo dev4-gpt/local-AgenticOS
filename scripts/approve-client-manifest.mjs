@@ -35,8 +35,17 @@ const response = await fetch(`${appUrl}/api/onboarding/approve`, {
   signal: AbortSignal.timeout(15_000),
 }).catch(() => null);
 const body = await response?.json().catch(() => null);
-if (!response?.ok || !body?.ok || typeof body.runId !== "string" || body.dispatched !== true) {
+if (!response?.ok || !body?.ok || typeof body.runId !== "string") {
+  fail(`tenant prepare was not accepted (${response?.status || "network"})${typeof body?.error === "string" ? `: ${body.error}` : ""}`);
+}
+if (body.dispatched !== true && body.idempotent !== true) {
   fail(`tenant prepare was not queued (${response?.status || "network"})`);
+}
+if (body.idempotent === true) {
+  console.log(`Tenant prepare already recorded for ${requestId.slice(0, 8)}; run ${body.runId} (${body.status || "unknown"}).`);
+  console.log("The approved manifest was reconciled without dispatching another prepare run.");
+  console.log("The operator secret, runtime token, and secret values were not printed.");
+  process.exit(0);
 }
 
 console.log(`Tenant prepare queued for ${requestId.slice(0, 8)}; run ${body.runId}.`);
