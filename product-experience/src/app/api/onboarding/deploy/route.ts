@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   const onboarding = await supabaseServiceSelect("client_onboarding_accounts", { request_id: `eq.${requestId}` });
   const account = onboarding.rows[0];
   if (!onboarding.ok || typeof account?.id !== "string") return NextResponse.json({ ok: false, error: "onboarding_not_found" }, { status: 404 });
-  if (account.status !== "provisioning") return NextResponse.json({ ok: false, error: "prepare_required" }, { status: 409 });
+  if (!["manifest_review", "provisioning"].includes(String(account.status))) return NextResponse.json({ ok: false, error: "prepare_required" }, { status: 409 });
 
   const preparedRuns = await supabaseServiceSelect("client_provisioning_runs", {
     onboarding_id: `eq.${account.id}`,
@@ -36,6 +36,10 @@ export async function POST(request: Request) {
   });
   if (!preparedRuns.ok || typeof preparedRuns.rows[0]?.id !== "string") {
     return NextResponse.json({ ok: false, error: "prepare_required" }, { status: 409 });
+  }
+  if (account.status !== "provisioning") {
+    const accountUpdate = await supabaseServiceUpdate("client_onboarding_accounts", { id: `eq.${account.id}` }, { status: "provisioning", updated_at: new Date().toISOString() });
+    if (!accountUpdate.ok) return NextResponse.json({ ok: false, error: "prepare_state_update_failed" }, { status: 502 });
   }
 
   const existingDeploy = await supabaseServiceSelect("client_provisioning_runs", {

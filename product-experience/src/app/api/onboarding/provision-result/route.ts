@@ -31,6 +31,11 @@ export async function POST(request: Request) {
   const deploySucceeded = status === "succeeded" && phase === "deploy" && /^https:\/\/[^\s/]+\.run\.app$/i.test(runtimeUrl) && smoke?.ok === true && smoke.url === runtimeUrl;
   const run = await supabaseServiceUpdate("client_provisioning_runs", { id: `eq.${runId}` }, { status, current_step: deploySucceeded ? "smoke_testing" : status === "succeeded" ? "prepared" : "rollback", completed_steps: Array.isArray(body.completedSteps) ? body.completedSteps : [], resource_manifest: resourceManifest, evidence_bundle: evidenceBundle, image_digest: typeof body.imageDigest === "string" ? body.imageDigest : null, cloud_run_revision: typeof body.cloudRunRevision === "string" ? body.cloudRunRevision : null, error_code: typeof body.errorCode === "string" ? body.errorCode : null, error_message: typeof body.errorMessage === "string" ? body.errorMessage : null, finished_at: new Date().toISOString() });
   if (!run.ok) return NextResponse.json({ ok: false, error: "run_update_failed" }, { status: 502 });
+  if (status === "succeeded" && phase === "prepare") {
+    const accountUpdate = await supabaseServiceUpdate("client_onboarding_accounts", { id: `eq.${runRecord.onboarding_id}` }, { status: "provisioning", updated_at: new Date().toISOString() });
+    if (!accountUpdate.ok) return NextResponse.json({ ok: false, error: "prepare_state_update_failed" }, { status: 502 });
+    return NextResponse.json({ ok: true, runId, status, phase, activationReady: false });
+  }
   if (!deploySucceeded) return NextResponse.json({ ok: true, runId, status, phase, activationReady: false });
 
   const accounts = await supabaseServiceSelect("client_onboarding_accounts", { id: `eq.${runRecord.onboarding_id}` });
