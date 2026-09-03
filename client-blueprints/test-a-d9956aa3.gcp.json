@@ -7,6 +7,7 @@
   "approvalOwner": "Aryaman",
   "acknowledgeClientSafeRuntime": true,
   "providerCallsEnabled": false,
+  "intentRoutingEnabled": false,
   "provisioning": { "phase": "prepare" },
   "gcp": {
     "projectId": "veloce-agenticos-2026",
@@ -36,7 +37,6 @@
     "AGENTIC_OS_REQUIRE_APPROVALS": "1",
     "CLIENT_RUNTIME_ENFORCE_AUTH": "1",
     "CLIENT_RUNTIME_WORKER_ENABLED": "0",
-    "CLIENT_INTENT_ROUTING_ENABLED": "0",
     "SUPABASE_URL": "https://ppmoqjtmjtfxadsnejqc.supabase.co",
     "CLIENT_RUNTIME_DATA_MODE": "supabase"
   },
