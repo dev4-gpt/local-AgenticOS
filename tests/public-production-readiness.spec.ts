@@ -79,6 +79,7 @@ test("the disposable Stripe fixture can only run under an explicit test key", ()
   const launch = readFileSync(resolve(process.cwd(), "product-experience/src/lib/publicLaunch.ts"), "utf8");
   const approval = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/scope/approve/route.ts"), "utf8");
   const checkout = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/billing/checkout/route.ts"), "utf8");
+  const operatorTool = readFileSync(resolve(process.cwd(), "scripts/approve-stripe-test-fixture.mjs"), "utf8");
 
   expect(launch).toContain("function stripeTestFixtureConfig()");
   expect(launch).toContain('process.env.STRIPE_MODE?.trim() !== "test"');
