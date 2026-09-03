@@ -11,7 +11,9 @@ const canarySlug = "cp-canary-a828-rollback";
 const canaryEmail = "aryamandev777@gmail.com";
 const canaryProject = "veloce-agenticos-2026";
 const canaryRegion = "asia-south1";
-const canaryImage = "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v123-dofgfood-visual-qa-20260821";
+// Pin the canary to the same immutable runtime image currently serving the
+// verified client runtime. Never inherit a dogfood image or mutable tag.
+const canaryImage = "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v3-3-295bdd3b5efe@sha256:8498b6fa61645b9168db74b1454738c6ffb1d33155303d52fd8f6a90dfe39765";
 const expectedInventory = {
   serviceAccount: "veloce-cp-canary-a828-run@veloce-agenticos-2026.iam.gserviceaccount.com",
   storageBucket: "veloce-agenticos-2026-veloce-cp-canary-a828-rollback",

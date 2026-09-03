@@ -14,7 +14,7 @@
     "projectId": "veloce-agenticos-2026",
     "region": "asia-south1",
     "artifactRegistryRepository": "veloce",
-    "image": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v123-dofgfood-visual-qa-20260821",
+    "image": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v3-3-295bdd3b5efe@sha256:8498b6fa61645b9168db74b1454738c6ffb1d33155303d52fd8f6a90dfe39765",
     "minInstances": 0,
     "maxInstances": 1,
     "cpu": "1",

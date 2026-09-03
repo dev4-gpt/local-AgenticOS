@@ -12,6 +12,8 @@ test("the disposable control-plane canary is inventory-bound and cannot target d
 
   expect(manifest.clientSlug).toBe("cp-canary-a828-rollback");
   expect(manifest.clientSlug).not.toBe("dofgfood");
+  expect(manifest.gcp.image).toMatch(/client-runtime:v3-3-[^@]+@sha256:[a-f0-9]{64}$/);
+  expect(manifest.gcp.image).not.toContain("dofgfood");
   expect(manifest.provisioning.phase).toBe("prepare");
   expect(manifest.providerCallsEnabled).toBe(false);
   expect(manifest.gcp).toMatchObject({ minInstances: 0, maxInstances: 1, cpu: "1", memory: "1Gi", concurrency: 1, timeout: "900s" });
@@ -27,13 +29,15 @@ test("the disposable control-plane canary is inventory-bound and cannot target d
   expect(manifest.canary.expectedInventory.cloudRunJobs).toEqual([]);
   expect(route).toContain('const canarySlug = "cp-canary-a828-rollback"');
   expect(route).not.toContain('const canarySlug = "dofgfood"');
+  expect(route).toContain("client-runtime:v3-3-295bdd3b5efe@sha256:8498b6fa61645b9168db74b1454738c6ffb1d33155303d52fd8f6a90dfe39765");
   expect(route).toContain("canary_cleanup_evidence_required");
   expect(route).toContain("isVerifiedCleanupEvidence");
   expect(route).toContain("manifestRuntimeMatches");
   expect(route).toContain("hasCanaryBudget");
   expect(route).toContain("storageMatches");
   expect(adapter).toContain("function provisionedResourceManifest");
-  expect(adapter).toContain("resourceManifest: provisionedResourceManifest(manifest, phase, output.stdout)");
+  expect(adapter).toContain("const resourceManifest = provisionedResourceManifest(manifest, phase, output.stdout)");
+  expect(adapter).toContain("resourceManifest,");
   expect(adapter).toContain("failureOutput = redactOutput");
   expect(adapter).toContain("redacted command evidence");
   const canaryTool = readFileSync(resolve(root, "scripts/control-plane-disposable-canary.mjs"), "utf8");

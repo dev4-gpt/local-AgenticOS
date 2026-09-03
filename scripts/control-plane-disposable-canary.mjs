@@ -81,6 +81,7 @@ function validateManifest(value, expected) {
   if (value?.approved !== true || value?.acknowledgeClientSafeRuntime !== true) failures.push("canary must retain explicit approval flags");
   if (!String(value?.clientSlug || "").startsWith("cp-canary-")) failures.push("canary slug must begin cp-canary-");
   if (gcp?.projectId !== "veloce-agenticos-2026" || gcp?.region !== "asia-south1" || gcp?.artifactRegistryRepository !== "veloce") failures.push("canary project, region, or repository is not allowlisted");
+  if (!/^asia-south1-docker\.pkg\.dev\/veloce-agenticos-2026\/veloce\/client-runtime:[^@]+@sha256:[a-f0-9]{64}$/i.test(String(gcp?.image || "")) || /dofgfood/i.test(String(gcp?.image || ""))) failures.push("canary must use an immutable non-dogfood client runtime image");
   if (gcp?.minInstances !== 0 || gcp?.maxInstances !== 1 || gcp?.cpu !== "1" || gcp?.memory !== "1Gi" || gcp?.concurrency !== 1 || gcp?.timeout !== "900s") failures.push("canary must retain the low-cost single-instance runtime envelope");
   if (value?.access?.mode !== "app-auth" || !Array.isArray(value?.access?.allowedUserEmails) || value.access.allowedUserEmails.length !== 1) failures.push("canary must retain one approved app-auth user");
   if (!sameSet(value?.enabledCapabilities, ["tenant-data"]) || !sameSet(value?.providerAllowlist, []) || !sameSet(value?.modelAllowlist, [])) failures.push("canary must retain its provider-free capability scope");
