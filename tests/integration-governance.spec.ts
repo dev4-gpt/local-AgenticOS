@@ -8,7 +8,7 @@ test("the governed registry exposes native traits and keeps external candidates 
   expect(entries.find((entry) => entry.id === "ponytail")?.state).toBe("native-enabled");
   expect(entries.find((entry) => entry.id === "headroom")?.state).toBe("native-enabled");
   for (const id of ["openreply", "voxcpm", "scout"]) expect(entries.find((entry) => entry.id === id)?.state).toBe("disabled");
-  for (const entry of entries) expect(entry.placements).toEqual(expect.arrayContaining(["pipeline", "backend"]));
+  for (const entry of entries) expect(entry.placements).toEqual(expect.arrayContaining(["pipeline", "infrastructure", "stack", "backend"]));
 });
 
 test("pipeline planning adds constraints for named governed integrations without enabling them", () => {

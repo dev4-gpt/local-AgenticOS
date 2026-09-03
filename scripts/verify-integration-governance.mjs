@@ -17,7 +17,11 @@ expect(Array.isArray(manifest.integrations), "integration governance entries are
 for (const [id, state] of required) {
   const entry = manifest.integrations?.find((candidate) => candidate?.id === id);
   expect(entry?.state === state, `${id} must remain ${state}`);
-  expect(Array.isArray(entry?.placements) && entry.placements.includes("pipeline") && entry.placements.includes("backend"), `${id} must be registered for pipeline and backend`);
+  expect(
+    Array.isArray(entry?.placements)
+      && ["pipeline", "infrastructure", "stack", "backend"].every((placement) => entry.placements.includes(placement)),
+    `${id} must be registered for pipeline, infrastructure, stack, and backend`,
+  );
   expect(typeof entry?.repository === "string" && /^https:\/\/github\.com\//.test(entry.repository), `${id} requires its official repository`);
   expect(typeof entry?.dataBoundary === "string" && entry.dataBoundary.length > 20, `${id} requires an explicit data boundary`);
   expect(Array.isArray(entry?.activationEvidence) && entry.activationEvidence.length > 0, `${id} requires activation evidence`);

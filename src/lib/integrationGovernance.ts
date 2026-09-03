@@ -7,7 +7,7 @@ export type GovernedIntegration = {
   name: string;
   repository: string;
   state: GovernedIntegrationState;
-  placements: readonly ("pipeline" | "infrastructure" | "backend" | "engineering-controls")[];
+  placements: readonly ("pipeline" | "infrastructure" | "stack" | "backend" | "engineering-controls")[];
   runtime: string;
   dataBoundary: string;
   activationEvidence: readonly string[];
