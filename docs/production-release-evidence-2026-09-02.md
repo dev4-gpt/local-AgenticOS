@@ -140,10 +140,32 @@ route on the promoted alias also returns `401 not_authorized` without the
 operator header. This is an access-boundary check only; it does not execute a
 canary.
 
-The current-policy prepare-only canary has **not yet been dispatched**. Its
-Cloud Tasks callback, four-resource cleanup, and Supabase rollback record
-remain required before release acceptance. Applies stay disabled until the
-short, documented canary window.
+The current-policy prepare-only canary has **not yet been proved dispatched**.
+Its Cloud Tasks callback and Supabase rollback record remain required before
+release acceptance. Applies stay disabled outside a short, documented canary
+window.
+
+## 2026-09-03 interrupted-canary recovery evidence
+
+One bounded current-policy window was opened after a protected `409
+canary_disabled` check, with Vercel dispatch temporarily enabled and the
+private adapter changed to `GCP_PROVISIONER_ALLOW_APPLY=1`. The Cloud Shell
+session restarted before it retained the dispatch response identifiers, so no
+current-policy callback, run status, or Supabase rollback record is claimed.
+
+The recovery action was nevertheless exact and successful: the local cleanup
+tool reported `ok: true` and independently proved absence of only the four
+tracked resources for `cp-canary-a828-rollback` (service account, bucket,
+queue, and credential-inbox secret) at `2026-09-03T13:51:36.807Z`. It did not
+select or modify `dofgfood`, and it does not create a Cloud Run service or job.
+Vercel dispatch was then explicitly set back to `0` and production was
+promoted to closure deployment `dpl_BnqZKQevp4cgPmR6zvwnLzZg4vsR`.
+
+At the time of this record, the owner started the Cloud Run update that returns
+`GCP_PROVISIONER_ALLOW_APPLY` to `0`, but its terminal completion and the
+post-change control-plane probe have not been retained. Therefore apply-off is
+still **unproved**, and the current-policy canary remains **not accepted** as
+Cloud Tasks-to-adapter or callback evidence.
 
 ## Still required for release acceptance
 
