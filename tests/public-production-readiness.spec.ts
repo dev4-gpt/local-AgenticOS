@@ -110,7 +110,9 @@ test("tenant activation is bound to a deployed runtime smoke and the verified ow
   expect(adapter).toContain('"runtime_smoke"');
   expect(deploy).toContain('current_step: "eq.prepared"');
   expect(deploy).toContain('phase: "deploy"');
-  expect(deploy).toContain('idempotency_key: `deploy:${requestId}`');
+  expect(deploy).toContain('const initialDeployKey = `deploy:${requestId}`');
+  expect(deploy).toContain("function isSafePreMutationFailure");
+  expect(deploy).toContain("retry_of_run_id");
   expect(provisionResult).toContain("provisioning_callback_manifest_mismatch");
   expect(provisionResult).toContain('supabaseServiceUpsert("client_tenants"');
   expect(provisionResult).toContain("activationReady: true");

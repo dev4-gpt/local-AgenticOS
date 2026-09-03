@@ -16,6 +16,18 @@ function authorized(request: Request) {
   }
 }
 
+function isEmptyObject(value: unknown) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value) && Object.keys(value as Record<string, unknown>).length === 0;
+}
+
+function isSafePreMutationFailure(run: Record<string, unknown>) {
+  return ["failed", "rolled_back"].includes(String(run.status))
+    && run.error_code === "gcp_provisioning_command_failed"
+    && Array.isArray(run.completed_steps)
+    && run.completed_steps.length === 0
+    && isEmptyObject(run.resource_manifest);
+}
+
 export async function POST(request: Request) {
   if (!authorized(request)) return NextResponse.json({ ok: false, error: "not_authorized" }, { status: 401 });
   const body = await request.json().catch(() => ({})) as { requestId?: unknown };
@@ -42,20 +54,32 @@ export async function POST(request: Request) {
     if (!accountUpdate.ok) return NextResponse.json({ ok: false, error: "prepare_state_update_failed" }, { status: 502 });
   }
 
-  const existingDeploy = await supabaseServiceSelect("client_provisioning_runs", {
+  const deployRuns = await supabaseServiceSelect("client_provisioning_runs", {
     onboarding_id: `eq.${account.id}`,
-    idempotency_key: `eq.deploy:${requestId}`,
-    limit: "1",
+    order: "created_at.desc",
+    limit: "20",
   });
-  if (existingDeploy.ok && typeof existingDeploy.rows[0]?.id === "string") {
+  if (!deployRuns.ok) return NextResponse.json({ ok: false, error: "deployment_runs_lookup_failed" }, { status: 502 });
+  const initialDeployKey = `deploy:${requestId}`;
+  const priorDeploys = deployRuns.rows.filter((run) => {
+    const key = typeof run.idempotency_key === "string" ? run.idempotency_key : "";
+    return key === initialDeployKey || key.startsWith(`${initialDeployKey}:retry:`);
+  });
+  const latestDeploy = priorDeploys[0];
+  if (typeof latestDeploy?.id === "string" && ["queued", "running", "succeeded"].includes(String(latestDeploy.status))) {
     return NextResponse.json({
       ok: true,
-      runId: existingDeploy.rows[0].id,
-      status: existingDeploy.rows[0].status || "queued",
-      dispatched: existingDeploy.rows[0].status === "queued" || existingDeploy.rows[0].status === "running",
+      runId: latestDeploy.id,
+      status: latestDeploy.status || "queued",
+      dispatched: latestDeploy.status === "queued" || latestDeploy.status === "running",
       idempotent: true,
     });
   }
+  if (latestDeploy && !isSafePreMutationFailure(latestDeploy)) {
+    return NextResponse.json({ ok: false, error: "deployment_retry_requires_manual_review" }, { status: 409 });
+  }
+  const retryAttempt = priorDeploys.length;
+  if (retryAttempt > 2) return NextResponse.json({ ok: false, error: "deployment_retry_limit_reached" }, { status: 409 });
 
   const approved = account.approved_manifest;
   if (!approved || typeof approved !== "object" || Array.isArray(approved)) {
@@ -83,13 +107,21 @@ export async function POST(request: Request) {
   const run = await supabaseServiceInsert("client_provisioning_runs", {
     onboarding_id: account.id,
     request_id: requestId,
-    idempotency_key: `deploy:${requestId}`,
+    // Cloud Tasks derives its durable task name from runId. A safe retry must
+    // therefore create a fresh run, not reopen a completed task with the same
+    // idempotency key. Only zero-mutation adapter failures reach this branch.
+    idempotency_key: retryAttempt === 0 ? initialDeployKey : `${initialDeployKey}:retry:${retryAttempt}`,
     status: "queued",
     current_step: "deploying",
     resource_manifest: {},
     evidence_bundle: {
       prepared_run_id: preparedRuns.rows[0].id,
       approved_manifest_sha256: createHash("sha256").update(JSON.stringify(deploymentManifest)).digest("hex"),
+      ...(retryAttempt > 0 ? {
+        retry_of_run_id: latestDeploy?.id,
+        retry_attempt: retryAttempt,
+        prior_error_code: latestDeploy?.error_code,
+      } : {}),
     },
   });
   if (!run.ok || typeof run.rows[0]?.id !== "string") {
