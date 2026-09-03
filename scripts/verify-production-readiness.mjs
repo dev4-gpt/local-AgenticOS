@@ -95,7 +95,7 @@ const sourceChecks = [
   ["Content OS keeps provider asset generation disabled", "infrastructure/content-os/personal-video-pilot.manifest.json", "geminiFlowVeo"],
   ["governed integrations are registered across pipeline and backend", "infrastructure/integration-control-plane.manifest.json", "native-enabled"],
   ["Ponytail and Headroom remain bounded engineering controls", "infrastructure/engineering-controls/agent-efficiency.manifest.json", "avoidUnrequestedRuntimeDependencies"],
-  ["control-plane canary has a disposable manifest", "client-blueprints/control-plane-disposable-canary.gcp.json", "cp-canary-a828-rollback"],
+  ["control-plane canary has a disposable manifest", "client-blueprints/control-plane-disposable-canary.gcp.json", "cp-canary-b903-rollback"],
 ];
 for (const [label, file, marker] of sourceChecks) {
   const content = safeRead(file);

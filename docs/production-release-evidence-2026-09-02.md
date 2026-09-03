@@ -170,6 +170,16 @@ accepted** as Cloud Tasks-to-adapter or callback evidence because its run IDs
 were lost in the restarted Cloud Shell session and no Supabase callback record
 was retained.
 
+A read-only Supabase lookup subsequently showed that the only
+`cp-canary-a828-rollback` record is the older, already-offboarded historical
+canary. The operator route correctly rejects reusing that tenant slug, which
+explains why no current-policy run was created. The next tracked candidate is
+therefore `cp-canary-b903-rollback`; it has a newly derived four-resource
+inventory, the same immutable non-dogfood runtime image, no Cloud Run
+service/job, provider calls disabled, and a one-dollar cap. Its manifest,
+route binding, inventory verifier, and focused tests passed locally. It has
+not been dispatched or deployed while the gates remain closed.
+
 ## Still required for release acceptance
 
 - exact prepare resource inventory, Cloud Tasks → private-adapter callback,

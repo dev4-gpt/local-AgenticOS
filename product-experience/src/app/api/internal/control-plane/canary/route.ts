@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 // This route is deliberately narrower than normal onboarding. It is for one
 // disposable prepare-only control-plane proof, never for a customer tenant.
 // Do not point it at an existing dogfood environment.
-const canarySlug = "cp-canary-a828-rollback";
+const canarySlug = "cp-canary-b903-rollback";
 const canaryEmail = "aryamandev777@gmail.com";
 const canaryProject = "veloce-agenticos-2026";
 const canaryRegion = "asia-south1";
@@ -15,10 +15,10 @@ const canaryRegion = "asia-south1";
 // verified client runtime. Never inherit a dogfood image or mutable tag.
 const canaryImage = "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v3-3-295bdd3b5efe@sha256:8498b6fa61645b9168db74b1454738c6ffb1d33155303d52fd8f6a90dfe39765";
 const expectedInventory = {
-  serviceAccount: "veloce-cp-canary-a828-run@veloce-agenticos-2026.iam.gserviceaccount.com",
-  storageBucket: "veloce-agenticos-2026-veloce-cp-canary-a828-rollback",
-  taskQueue: "veloce-cp-canary-a828-rollback",
-  secrets: ["veloce-cp-canary-a828-rollback-client-credential-inbox"],
+  serviceAccount: "veloce-cp-canary-b903-run@veloce-agenticos-2026.iam.gserviceaccount.com",
+  storageBucket: "veloce-agenticos-2026-veloce-cp-canary-b903-rollback",
+  taskQueue: "veloce-cp-canary-b903-rollback",
+  secrets: ["veloce-cp-canary-b903-rollback-client-credential-inbox"],
   cloudRunService: null,
   cloudRunJobs: [],
 };

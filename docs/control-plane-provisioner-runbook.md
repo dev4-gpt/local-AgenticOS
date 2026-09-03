@@ -423,7 +423,7 @@ each approved snapshot.
 The Cloud Tasks authorization probe proves only the non-mutating path. Before
 calling the provisioner production-ready, run exactly one disposable
 **prepare-only** canary and retain the resulting queue/callback/cleanup
-evidence. The tracked canary is `cp-canary-a828-rollback`; it is not the
+evidence. The tracked canary is `cp-canary-b903-rollback`; it is not the
 existing `dofgfood` tenant and must never be renamed to a client slug.
 
 1. Deploy the current public provisioner, GCP adapter, and Vercel operator
@@ -453,7 +453,7 @@ existing `dofgfood` tenant and must never be renamed to a client slug.
    ```bash
    node scripts/control-plane-disposable-canary.mjs \
      --mode record-cleanup --apply \
-     --confirm-slug cp-canary-a828-rollback \
+     --confirm-slug cp-canary-b903-rollback \
      --run-id <run-id> --onboarding-id <onboarding-id> \
      --record-url https://app.veloceos.cloud/api/internal/control-plane/canary
    ```

@@ -10,7 +10,7 @@ test("the disposable control-plane canary is inventory-bound and cannot target d
   const route = readFileSync(resolve(root, "product-experience/src/app/api/internal/control-plane/canary/route.ts"), "utf8");
   const adapter = readFileSync(resolve(root, "workers/gcp-provisioner/worker.mjs"), "utf8");
 
-  expect(manifest.clientSlug).toBe("cp-canary-a828-rollback");
+  expect(manifest.clientSlug).toBe("cp-canary-b903-rollback");
   expect(manifest.clientSlug).not.toBe("dofgfood");
   expect(manifest.gcp.image).toMatch(/client-runtime:v3-3-[^@]+@sha256:[a-f0-9]{64}$/);
   expect(manifest.gcp.image).not.toContain("dofgfood");
@@ -27,7 +27,7 @@ test("the disposable control-plane canary is inventory-bound and cannot target d
   expect(manifest.canary.disposable).toBe(true);
   expect(manifest.canary.expectedInventory.cloudRunService).toBeNull();
   expect(manifest.canary.expectedInventory.cloudRunJobs).toEqual([]);
-  expect(route).toContain('const canarySlug = "cp-canary-a828-rollback"');
+  expect(route).toContain('const canarySlug = "cp-canary-b903-rollback"');
   expect(route).not.toContain('const canarySlug = "dofgfood"');
   expect(route).toContain("client-runtime:v3-3-295bdd3b5efe@sha256:8498b6fa61645b9168db74b1454738c6ffb1d33155303d52fd8f6a90dfe39765");
   expect(route).toContain("canary_cleanup_evidence_required");
@@ -57,16 +57,16 @@ test("canary tool derives the tracked inventory and refuses a cleanup apply with
   expect(inventory.status, inventory.stderr || inventory.stdout).toBe(0);
   const output = JSON.parse(inventory.stdout);
   expect(output.inventory.resources).toEqual({
-    serviceAccount: "veloce-cp-canary-a828-run@veloce-agenticos-2026.iam.gserviceaccount.com",
-    storageBucket: "veloce-agenticos-2026-veloce-cp-canary-a828-rollback",
-    taskQueue: "veloce-cp-canary-a828-rollback",
-    secrets: ["veloce-cp-canary-a828-rollback-client-credential-inbox"],
+    serviceAccount: "veloce-cp-canary-b903-run@veloce-agenticos-2026.iam.gserviceaccount.com",
+    storageBucket: "veloce-agenticos-2026-veloce-cp-canary-b903-rollback",
+    taskQueue: "veloce-cp-canary-b903-rollback",
+    secrets: ["veloce-cp-canary-b903-rollback-client-credential-inbox"],
     cloudRunService: null,
     cloudRunJobs: [],
   });
   const cleanup = spawnSync(process.execPath, ["scripts/control-plane-disposable-canary.mjs", "--mode", "cleanup", "--apply"], { cwd: root, encoding: "utf8" });
   expect(cleanup.status).toBe(1);
-  expect(JSON.parse(cleanup.stdout).failures).toContain("cleanup requires --confirm-slug cp-canary-a828-rollback");
+  expect(JSON.parse(cleanup.stdout).failures).toContain("cleanup requires --confirm-slug cp-canary-b903-rollback");
 
   const start = spawnSync(process.execPath, ["scripts/control-plane-disposable-canary.mjs", "--mode", "start"], { cwd: root, encoding: "utf8" });
   expect(start.status, start.stderr || start.stdout).toBe(0);
