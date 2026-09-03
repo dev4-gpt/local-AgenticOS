@@ -45,6 +45,11 @@ or session data.
   status `Ready`, aliased to `https://app.veloceos.cloud`. It was deployed
   from an isolated `product-experience` snapshot of source commit `552abdf`,
   which includes the recovery-route change in `c4e2953`.
+- Current governed-integration deployment: `dpl_B8gXkt3zBgnxF693zJbxpKJJEpky`,
+  status `Ready`, aliased to `https://app.veloceos.cloud`. It was deployed
+  from source commit `97ff20a`, which machine-checks coverage for Ponytail,
+  Headroom, OpenReply, and VoxCPM across pipeline, infrastructure, stack, and
+  backend.
 - The product app now has a secret-protected prepare route and a separate
   secret-protected deploy route. The deploy route requires a successful
   prepare run and uses an independent `deploy:<request id>` idempotency key.
@@ -72,11 +77,13 @@ time.
   check then passed: all 37 required variables are production-scoped and all
   seven sensitive variables are Vercel `sensitive` values. No values were
   read or recorded.
+- `npm run typecheck`, `npm run verify:integration-governance`, and `npm run
+  verify:engineering-controls` passed for the governed-integration release.
 
-The local product type-check remains unavailable because the local dependency
-tree contains malformed duplicate type-package directories (for example,
-`@types/* 2`). Vercel's clean remote build succeeded; that is deployment
-evidence, not a substitute for the clean-runner focused-test requirement.
+The local root type-check and Vercel clean remote build passed. The focused
+Playwright runner still cannot collect tests because its installed transformer
+reports `babelTransform is not a function`; this is not accepted as
+clean-runner evidence.
 
 ## Current control-plane evidence and qualification
 
@@ -131,12 +138,12 @@ execution evidence is required.
 | Post-Checkout customer confirmation | Commit `5649c69` deployed the non-sensitive confirmation page. | proved |
 | Duplicate webhook idempotency and failed-payment flow | No retained Test evidence for either outcome yet. | pending |
 | Fixed, isolated canary scope | Canary commit `902a79c`, manifest validation, and inventory verifier pin four named disposable resources; no Cloud Run service or job is part of the prepare phase. | proved locally and deployed |
-| Owner read-only control-plane preflight | Owner Cloud Shell probe returned `ok: true`, health `200`, and `applyEnabled: false` for adapter revision `veloce-gcp-provisioner-00027-slg`. | proved |
+| Owner read-only control-plane preflight | Owner Cloud Shell probe returned `ok: true`, health `200`, and `applyEnabled: false` for adapter revision `veloce-gcp-provisioner-00029-5ws`. | proved |
 | Cloud Tasks to private-adapter callback | The current queue/OIDC/callback path and private adapter health bridge passed; the historical canary recorded `gcp_prepare` before rollback. | proved for the historical canary; current-policy execution not rerun |
 | Exact canary inventory and deletion proof | Historical canary record is `rolled_back`, onboarding is `offboarded`, and its four exact resources are absent. Its raw output predates the current CORS/retry hardening. | proved for rollback; current-policy execution pending approval |
 | Test tenant prepare/deploy/smoke/activation | Both Test requests are at `manifest_review`; no tenant resource has been created. | pending |
 | Tenant isolation, export, and offboarding | Requires two activated disposable runtimes and access tokens. | pending |
-| Headroom and Ponytail integration | Both are registered as Veloce-owned, dependency-free engineering controls; production tenant data is not proxied upstream. | proved by static governance checks |
+| Headroom and Ponytail integration | Both are registered as Veloce-owned, dependency-free engineering controls; production tenant data is not proxied upstream. Their pipeline, infrastructure, stack, and backend placements are machine-checked. | proved by static governance checks |
 | OpenReply integration | Isolated design is registered; upstream audit records 3 critical and 10 high advisories, so the pilot remains disabled. | correctly blocked |
 | VoxCPM integration | Isolated private-GPU design is registered; commit pin, cost/performance, consent, and deletion evidence are not approved. | correctly blocked |
 | BYOK lifecycle and secret-exposure evidence | No completed rotation/revocation/deletion or browser/export credential scan record. | pending |
