@@ -37,7 +37,26 @@ export async function POST(request: Request) {
   const approvedManifest = scopeInputs ? applyCommercialScopeToManifest(body.manifest as Record<string, unknown>, scopeInputs) : body.manifest;
   const manifestHash = createHash("sha256").update(JSON.stringify(approvedManifest)).digest("hex");
   const manifestVersion = typeof body.manifestVersion === "string" && body.manifestVersion.trim() ? body.manifestVersion.trim() : "commercial-scope-v1";
-  const run = await supabaseServiceInsert("client_provisioning_runs", { onboarding_id: account.id, request_id: requestId, idempotency_key: `approve:${requestId}`, status: "queued", current_step: "provisioning", resource_manifest: {}, evidence_bundle: {} });
+  // A corrected manifest must be able to retry a failed prepare without
+  // replaying an unchanged approval. The old request-only key permanently
+  // collided after any failed attempt.
+  const approvalKey = `approve:${requestId}:${manifestHash.slice(0, 16)}`;
+  const priorRun = await supabaseServiceSelect("client_provisioning_runs", {
+    idempotency_key: `eq.${approvalKey}`,
+    limit: "1",
+  });
+  if (priorRun.ok && typeof priorRun.rows[0]?.id === "string") {
+    const prior = priorRun.rows[0];
+    return NextResponse.json({
+      ok: true,
+      runId: prior.id,
+      status: prior.status || "queued",
+      dispatched: prior.status === "queued" || prior.status === "running",
+      idempotent: true,
+    });
+  }
+
+  const run = await supabaseServiceInsert("client_provisioning_runs", { onboarding_id: account.id, request_id: requestId, idempotency_key: approvalKey, status: "queued", current_step: "provisioning", resource_manifest: {}, evidence_bundle: {} });
   await supabaseServiceUpdate("client_onboarding_accounts", { id: `eq.${account.id}` }, { status: "provisioning", manifest_version: manifestVersion, manifest_hash: manifestHash, approved_manifest: approvedManifest, updated_at: new Date().toISOString() });
   let dispatched = false;
   if (run.ok && run.rows[0]?.id) {
