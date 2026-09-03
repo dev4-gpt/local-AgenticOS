@@ -87,10 +87,11 @@ time.
 - `npm run typecheck`, `npm run verify:integration-governance`, and `npm run
   verify:engineering-controls` passed for the governed-integration release.
 
-The local root type-check and Vercel clean remote build passed. The focused
-Playwright runner still cannot collect tests because its installed transformer
-reports `babelTransform is not a function`; this is not accepted as
-clean-runner evidence.
+The local root type-check and Vercel clean remote build passed. On 2026-09-03,
+the focused Playwright suite completed from clean source commit `cc35e6d`:
+**158 passed in 4.4 seconds**. This replaces the earlier local transformer
+collection failure; it is source-regression evidence only, not a substitute
+for the remaining production acceptance tests.
 
 ## Current control-plane evidence and qualification
 
@@ -182,7 +183,11 @@ candidate route is deployed to Vercel production deployment
 `dpl_3QJra4jek28ticr8dPSXrydcowmJ` with
 `CONTROL_PLANE_CANARY_ENABLED=0`; `https://app.veloceos.cloud/` returned 200
 and an anonymous canary request returned `401 not_authorized`. It has not been
-dispatched, and the GCP apply gate remains closed.
+dispatched, and the GCP apply gate remains closed. A subsequent owner Cloud
+Shell preflight for this exact `b903` inventory returned `ok: true`: its
+service account, bucket, queue, and credential-inbox secret were all absent,
+and `veloce-gcp-provisioner-run@veloce-agenticos-2026.iam.gserviceaccount.com`
+held `projects/veloce-agenticos-2026/roles/veloceTenantProvisioner`.
 
 ## Still required for release acceptance
 
@@ -192,7 +197,6 @@ dispatched, and the GCP apply gate remains closed.
 - duplicate-webhook and failed-payment Stripe Test evidence;
 - BYOK validation, rotation, revocation, deletion, and browser/evidence secret
   scans;
-- clean-runner focused regression output;
 - operations/legal/provider approvals and final strict release attestation;
 - restore production Stripe Live keys and matching Live webhook signing secret
   only after the Test fixture is fully offboarded;
@@ -218,7 +222,7 @@ dispatched, and the GCP apply gate remains closed.
 | OpenReply integration | Isolated design is registered; upstream audit records 3 critical and 10 high advisories, so the pilot remains disabled. | correctly blocked |
 | VoxCPM integration | Isolated private-GPU design is registered; commit pin, cost/performance, consent, and deletion evidence are not approved. | correctly blocked |
 | BYOK lifecycle and secret-exposure evidence | No completed rotation/revocation/deletion or browser/export credential scan record. | pending |
-| Clean-runner focused regression | Local Playwright packaging fails before discovery; clean-runner output has not been retained. | pending |
+| Clean-runner focused regression | `npm run test:focused` completed 158/158 passing tests in 4.4 seconds from clean source commit `cc35e6d`. | proved locally |
 | Operations, legal, catalog approvals and strict attestation | No complete approval/attestation record. | pending |
 
 ## Recovery update — source commit `c4e2953`
