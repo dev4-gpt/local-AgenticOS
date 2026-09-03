@@ -50,6 +50,13 @@ or session data.
   from source commit `97ff20a`, which machine-checks coverage for Ponytail,
   Headroom, OpenReply, and VoxCPM across pipeline, infrastructure, stack, and
   backend.
+- Current canary-isolation baseline: `dpl_2eqtuDtpfkwqQQ7H6mifuYhgmnxJ`,
+  status `Ready`, promoted to `https://app.veloceos.cloud` from commit
+  `22bc6fd`. It pins the canary manifest and route to the immutable,
+  non-dogfood runtime image
+  `asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v3-3-295bdd3b5efe@sha256:8498b6fa61645b9168db74b1454738c6ffb1d33155303d52fd8f6a90dfe39765`.
+  `CONTROL_PLANE_CANARY_ENABLED` was explicitly set to `0` before this
+  deployment; no secret value was read or recorded.
 - The product app now has a secret-protected prepare route and a separate
   secret-protected deploy route. The deploy route requires a successful
   prepare run and uses an independent `deploy:<request id>` idempotency key.
@@ -113,6 +120,31 @@ be presented as end-to-end proof of the newer policy. A second, newly named
 disposable canary would require explicit owner approval if that current-policy
 execution evidence is required.
 
+## 2026-09-03 current-policy canary baseline
+
+The owner Cloud Shell preflight passed for the new canary inventory: the exact
+service account, bucket, queue, and credential-inbox secret are all absent,
+and the private provisioner service account holds the reviewed
+`veloceTenantProvisioner` role. The inventory contains no Cloud Run service or
+job. The Cloud Shell control-plane probe also returned `ok: true`, health
+`200`, adapter revision `veloce-gcp-provisioner-00029-5ws`, immutable adapter
+digest `sha256:28b328536c80ea3c682d7255e04dfc3f5945edfed817e9347ea8b8a40660fc00`,
+and `applyEnabled: false`.
+
+The current `veloce-cloud-test-00204-bil` revision is serving 100% of Cloud
+Run traffic from image digest
+`sha256:8498b6fa61645b9168db74b1454738c6ffb1d33155303d52fd8f6a90dfe39765`.
+Its unauthenticated credits endpoint returns `401 not_authenticated`, which
+proves the public runtime still enforces authentication. The Vercel canary
+route on the promoted alias also returns `401 not_authorized` without the
+operator header. This is an access-boundary check only; it does not execute a
+canary.
+
+The current-policy prepare-only canary has **not yet been dispatched**. Its
+Cloud Tasks callback, four-resource cleanup, and Supabase rollback record
+remain required before release acceptance. Applies stay disabled until the
+short, documented canary window.
+
 ## Still required for release acceptance
 
 - exact prepare resource inventory, Cloud Tasks → private-adapter callback,
@@ -137,7 +169,7 @@ execution evidence is required.
 | Stripe Test Checkout and signed webhook | Both records reached `billing_status = succeeded`; no real charge was made. | proved |
 | Post-Checkout customer confirmation | Commit `5649c69` deployed the non-sensitive confirmation page. | proved |
 | Duplicate webhook idempotency and failed-payment flow | No retained Test evidence for either outcome yet. | pending |
-| Fixed, isolated canary scope | Canary commit `902a79c`, manifest validation, and inventory verifier pin four named disposable resources; no Cloud Run service or job is part of the prepare phase. | proved locally and deployed |
+| Fixed, isolated canary scope | Commits `902a79c` and `22bc6fd`, manifest validation, inventory verifier, and current Vercel baseline pin four named disposable resources and one immutable non-dogfood image; no Cloud Run service or job is part of the prepare phase. | proved locally and deployed |
 | Owner read-only control-plane preflight | Owner Cloud Shell probe returned `ok: true`, health `200`, and `applyEnabled: false` for adapter revision `veloce-gcp-provisioner-00029-5ws`. | proved |
 | Cloud Tasks to private-adapter callback | The current queue/OIDC/callback path and private adapter health bridge passed; the historical canary recorded `gcp_prepare` before rollback. | proved for the historical canary; current-policy execution not rerun |
 | Exact canary inventory and deletion proof | Historical canary record is `rolled_back`, onboarding is `offboarded`, and its four exact resources are absent. Its raw output predates the current CORS/retry hardening. | proved for rollback; current-policy execution pending approval |
