@@ -161,11 +161,14 @@ select or modify `dofgfood`, and it does not create a Cloud Run service or job.
 Vercel dispatch was then explicitly set back to `0` and production was
 promoted to closure deployment `dpl_BnqZKQevp4cgPmR6zvwnLzZg4vsR`.
 
-At the time of this record, the owner started the Cloud Run update that returns
-`GCP_PROVISIONER_ALLOW_APPLY` to `0`, but its terminal completion and the
-post-change control-plane probe have not been retained. Therefore apply-off is
-still **unproved**, and the current-policy canary remains **not accepted** as
-Cloud Tasks-to-adapter or callback evidence.
+The Cloud Run closure operation completed asynchronously. The authoritative
+owner Cloud Shell probe then returned `ok: true`, adapter revision
+`veloce-gcp-provisioner-00033-c5c`, health `200`, and
+`applyEnabled: false`, with no failures or warnings. The dispatch gate is
+closed in both systems. The current-policy canary still remains **not
+accepted** as Cloud Tasks-to-adapter or callback evidence because its run IDs
+were lost in the restarted Cloud Shell session and no Supabase callback record
+was retained.
 
 ## Still required for release acceptance
 
