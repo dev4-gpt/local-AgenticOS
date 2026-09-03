@@ -177,8 +177,12 @@ explains why no current-policy run was created. The next tracked candidate is
 therefore `cp-canary-b903-rollback`; it has a newly derived four-resource
 inventory, the same immutable non-dogfood runtime image, no Cloud Run
 service/job, provider calls disabled, and a one-dollar cap. Its manifest,
-route binding, inventory verifier, and focused tests passed locally. It has
-not been dispatched or deployed while the gates remain closed.
+route binding, inventory verifier, and focused tests passed locally. The
+candidate route is deployed to Vercel production deployment
+`dpl_3QJra4jek28ticr8dPSXrydcowmJ` with
+`CONTROL_PLANE_CANARY_ENABLED=0`; `https://app.veloceos.cloud/` returned 200
+and an anonymous canary request returned `401 not_authorized`. It has not been
+dispatched, and the GCP apply gate remains closed.
 
 ## Still required for release acceptance
 
