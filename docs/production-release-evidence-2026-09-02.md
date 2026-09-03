@@ -133,3 +133,34 @@ execution evidence is required.
 | BYOK lifecycle and secret-exposure evidence | No completed rotation/revocation/deletion or browser/export credential scan record. | pending |
 | Clean-runner focused regression | Local Playwright packaging fails before discovery; clean-runner output has not been retained. | pending |
 | Operations, legal, catalog approvals and strict attestation | No complete approval/attestation record. | pending |
+
+## Recovery update — source commit `c4e2953`
+
+Two disposable tenant deploy runs failed before mutation because the reviewed
+runtime image tag was temporarily unavailable. Their callbacks recorded an
+empty `completed_steps` array and empty `resource_manifest`; no tenant runtime,
+queue, bucket, service account, or tenant binding was created by either run.
+
+The exact image tag was subsequently confirmed available in Artifact Registry.
+Commit `c4e2953` changes the deploy route to preserve the original failed run
+and create a fresh, bounded retry run only for that precise zero-mutation
+failure shape. It never reopens a completed Cloud Tasks task, accepts queued,
+running, and successful deploys as idempotent, rejects any partial or unknown
+failure for manual review, and permits at most two recovery retries.
+
+Source validation on this commit passed `npm run typecheck`, the product
+production build, `npm run verify:public-launch`, `npm run
+verify:public-provisioner`, `npm run verify:engineering-controls`, `npm run
+verify:integration-governance`, `npm run verify:openreply-pilot`, `npm run
+verify:voxcpm-pilot`, and `npm run verify:control-plane-canary`. The local
+focused Playwright runner still cannot collect tests because its installed
+transformer reports `babelTransform is not a function`; this is not accepted
+as clean-runner evidence.
+
+The source commit is pushed but has not been evidenced as deployed to the
+production Vercel alias. Do not reopen the GCP apply window or dispatch either
+retry until the alias serves this commit and the owner preflight again reports
+the adapter healthy with apply disabled. The full strict readiness verifier on
+this source intentionally remains false until Vercel, Cloud Run, migration,
+journey, Stripe, BYOK, tenant-isolation, operations, and legal evidence are
+attached.
