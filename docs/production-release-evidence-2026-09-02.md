@@ -41,6 +41,10 @@ or session data.
 - Current operator-secret reconciliation deployment: `dpl_91MKJNUAsX8Acsc2ZanZEJJdTDH9`,
   status `Ready`, current Production deployment, aliased to
   `https://app.veloceos.cloud`.
+- Current bounded-recovery deployment: `dpl_9arXq1Lc6a57cCe2RPKB5CrMX99f`,
+  status `Ready`, aliased to `https://app.veloceos.cloud`. It was deployed
+  from an isolated `product-experience` snapshot of source commit `552abdf`,
+  which includes the recovery-route change in `c4e2953`.
 - The product app now has a secret-protected prepare route and a separate
   secret-protected deploy route. The deploy route requires a successful
   prepare run and uses an independent `deploy:<request id>` idempotency key.
@@ -63,6 +67,11 @@ time.
 - The new operator scripts passed `node --check`.
 - `git diff --check` passed before commit.
 - Vercel completed the production build of commit `2ced985` successfully.
+- Vercel completed the current bounded-recovery build with the production
+  Next.js build and TypeScript check. A metadata-only Production environment
+  check then passed: all 37 required variables are production-scoped and all
+  seven sensitive variables are Vercel `sensitive` values. No values were
+  read or recorded.
 
 The local product type-check remains unavailable because the local dependency
 tree contains malformed duplicate type-package directories (for example,
@@ -157,10 +166,9 @@ focused Playwright runner still cannot collect tests because its installed
 transformer reports `babelTransform is not a function`; this is not accepted
 as clean-runner evidence.
 
-The source commit is pushed but has not been evidenced as deployed to the
-production Vercel alias. Do not reopen the GCP apply window or dispatch either
-retry until the alias serves this commit and the owner preflight again reports
-the adapter healthy with apply disabled. The full strict readiness verifier on
-this source intentionally remains false until Vercel, Cloud Run, migration,
-journey, Stripe, BYOK, tenant-isolation, operations, and legal evidence are
-attached.
+The recovery route is now deployed to the production Vercel alias as
+`dpl_9arXq1Lc6a57cCe2RPKB5CrMX99f`. Do not reopen the GCP apply window or
+dispatch either retry until an authorized project-owner preflight again
+reports the adapter healthy with apply disabled. The full strict readiness
+verifier intentionally remains false until Cloud Run, migration, journey,
+Stripe, BYOK, tenant-isolation, operations, and legal evidence are attached.
