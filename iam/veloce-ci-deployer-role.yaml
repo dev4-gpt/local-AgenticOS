@@ -34,3 +34,15 @@ includedPermissions:
   # references, and read secret versions needed to authenticate CI's own
   # callback to the platform-deploy-run tracking route.
   - secretmanager.versions.access
+
+  # Read-only visibility needed by scripts/verify-control-plane-cloud.mjs to
+  # confirm the deployed configuration (project number resolution, provisioning
+  # queue shape, and the pre-existing IAM bindings this role does not grant --
+  # it only ever reads them). Caught live: without these, the verify step
+  # reported the same bindings as "failures" that were already correctly in
+  # place, because it couldn't see them, not because they were missing.
+  - resourcemanager.projects.get
+  - cloudtasks.queues.get
+  - cloudtasks.queues.getIamPolicy
+  - iam.serviceAccounts.get
+  - iam.serviceAccounts.getIamPolicy
