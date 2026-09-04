@@ -280,7 +280,9 @@ function gcloudTextSoft(command) {
 }
 
 function publishToLedger(evidenceRecord) {
-  const objectPath = `releases/${commit}/${evidenceRecord.generatedAt.replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")}.json`;
+  const environment = evidenceRecord.deployment?.environment;
+  const environmentPrefix = environment && environment !== "unknown" ? `${environment}-` : "";
+  const objectPath = `releases/${commit}/${environmentPrefix}${evidenceRecord.generatedAt.replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")}.json`;
   const tmp = resolve(root, `tmp/release-ledger-${commit}.json`);
   mkdirSync(dirname(tmp), { recursive: true, mode: 0o700 });
   writeFileSync(tmp, JSON.stringify(evidenceRecord, null, 2) + "\n", { mode: 0o600 });
@@ -303,7 +305,9 @@ function fetchLatestLedgerRecord(forCommit) {
   }
   const listing = gcloudTextSoft(["storage", "ls", `gs://${ledgerBucket}/releases/${forCommit}/`]);
   if (!listing) return null;
-  const objects = listing.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).sort();
+  let objects = listing.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).sort();
+  const environmentFilter = valueAfter("--environment");
+  if (environmentFilter) objects = objects.filter((path) => path.includes(`/${environmentFilter}-`));
   const latest = objects[objects.length - 1];
   if (!latest) return null;
   const contents = gcloudTextSoft(["storage", "cat", latest]);
