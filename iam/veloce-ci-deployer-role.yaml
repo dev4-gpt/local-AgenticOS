@@ -6,16 +6,19 @@ description: >-
   infrastructure.
 stage: BETA
 includedPermissions:
-  # Push and resolve the exact image digest built by CI. repositories.get is
-  # required by `gcloud artifacts docker images describe` (repository-level
-  # metadata read), separate from the image-level dockerimages.get below --
-  # missing this caused the pipeline's first real digest-resolution attempt
-  # to fail with a permission-denied error.
+  # Push and resolve the exact image digest built by CI. `gcloud artifacts
+  # docker images describe <image>:<tag>` needs repository-level, image-level,
+  # AND tag-level read access to resolve a tag to its immutable digest --
+  # missing any one of these caused the pipeline's first real digest-
+  # resolution attempts to fail with permission-denied, one permission at a
+  # time, until all three were identified live.
   - artifactregistry.repositories.get
   - artifactregistry.repositories.uploadArtifacts
   - artifactregistry.repositories.downloadArtifacts
   - artifactregistry.dockerimages.get
   - artifactregistry.dockerimages.list
+  - artifactregistry.tags.get
+  - artifactregistry.tags.list
 
   # Update an already-existing Cloud Run service to a new digest. No
   # run.services.create/setIamPolicy/delete: CI can never create a new
