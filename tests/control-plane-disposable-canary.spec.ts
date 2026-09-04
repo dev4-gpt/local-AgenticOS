@@ -32,6 +32,8 @@ test("the disposable control-plane canary is inventory-bound and cannot target d
   expect(route).toContain("client-runtime:v3-3-295bdd3b5efe@sha256:8498b6fa61645b9168db74b1454738c6ffb1d33155303d52fd8f6a90dfe39765");
   expect(route).toContain("canary_cleanup_evidence_required");
   expect(route).toContain("isVerifiedCleanupEvidence");
+  expect(route).toContain('if (body.action === "start") {');
+  expect(route).toContain('if (!enabled()) return NextResponse.json({ ok: false, error: "canary_disabled" }, { status: 409 });');
   expect(route).toContain("manifestRuntimeMatches");
   expect(route).toContain("hasCanaryBudget");
   expect(route).toContain("storageMatches");

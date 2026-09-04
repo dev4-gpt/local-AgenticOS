@@ -36,9 +36,14 @@ function enabled() {
 
 export async function POST(request: Request) {
   if (!authorized(request)) return NextResponse.json({ ok: false, error: "not_authorized" }, { status: 401 });
-  if (!enabled()) return NextResponse.json({ ok: false, error: "canary_disabled" }, { status: 409 });
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
-  if (body.action === "start") return start(request, body.manifest);
+  // The dispatch gate protects only the mutating action. Status and cleanup
+  // recording must remain available after we close that gate, otherwise a
+  // completed canary cannot be evidenced or safely rolled back.
+  if (body.action === "start") {
+    if (!enabled()) return NextResponse.json({ ok: false, error: "canary_disabled" }, { status: 409 });
+    return start(request, body.manifest);
+  }
   if (body.action === "status") return status(body);
   if (body.action === "record_cleanup") return recordCleanup(body);
   return NextResponse.json({ ok: false, error: "unsupported_canary_action" }, { status: 400 });
