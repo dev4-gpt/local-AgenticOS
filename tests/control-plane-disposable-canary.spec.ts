@@ -16,6 +16,7 @@ test("the disposable control-plane canary is inventory-bound and cannot target d
   expect(manifest.gcp.image).not.toContain("dofgfood");
   expect(manifest.provisioning.phase).toBe("prepare");
   expect(manifest.providerCallsEnabled).toBe(false);
+  expect(manifest.intentRoutingEnabled).toBe(false);
   expect(manifest.gcp).toMatchObject({ minInstances: 0, maxInstances: 1, cpu: "1", memory: "1Gi", concurrency: 1, timeout: "900s" });
   expect(manifest.access).toEqual({ mode: "app-auth", allowedUserEmails: ["aryamandev777@gmail.com"] });
   expect(manifest.runtimeEnv).toMatchObject({ VELOCE_CLIENT_EDITION: "1", AGENTIC_OS_DISABLE_LOCAL_CLI: "1", AGENTIC_OS_DISABLE_LOCAL_FILES: "1", AGENTIC_OS_REQUIRE_APPROVALS: "1", CLIENT_RUNTIME_ENFORCE_AUTH: "1", CLIENT_RUNTIME_WORKER_ENABLED: "0", CLIENT_INTENT_ROUTING_ENABLED: "0", CLIENT_RUNTIME_DATA_MODE: "supabase" });

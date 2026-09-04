@@ -167,6 +167,7 @@ function isFixedPrepareOnlyManifest(value: unknown) {
     && manifest.approved === true
     && manifest.acknowledgeClientSafeRuntime === true
     && manifest.providerCallsEnabled === false
+    && manifest.intentRoutingEnabled === false
     && provisioning?.phase === "prepare"
     && gcp?.projectId === canaryProject
     && gcp?.region === canaryRegion

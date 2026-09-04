@@ -78,6 +78,7 @@ function validateManifest(value, expected) {
   if (value?.schemaVersion !== 1 || canary?.disposable !== true) failures.push("manifest must be a schemaVersion 1 disposable canary");
   if (value?.provisioning?.phase !== "prepare") failures.push("canary must be prepare-only");
   if (value?.providerCallsEnabled !== false) failures.push("canary must keep provider calls disabled");
+  if (value?.intentRoutingEnabled !== false) failures.push("canary must keep intent routing disabled");
   if (value?.approved !== true || value?.acknowledgeClientSafeRuntime !== true) failures.push("canary must retain explicit approval flags");
   if (!String(value?.clientSlug || "").startsWith("cp-canary-")) failures.push("canary slug must begin cp-canary-");
   if (gcp?.projectId !== "veloce-agenticos-2026" || gcp?.region !== "asia-south1" || gcp?.artifactRegistryRepository !== "veloce") failures.push("canary project, region, or repository is not allowlisted");
