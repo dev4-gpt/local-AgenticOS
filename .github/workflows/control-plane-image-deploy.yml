@@ -124,13 +124,20 @@ jobs:
         env:
           VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          # No -e: a failing node script's JSON diagnostic must still print
+          # before this step exits, or the real cause is silently swallowed
+          # (caught live: a 404 from the callback route produced zero log
+          # output because `result=$(...)` failing under `set -e` aborted
+          # the step before the following `echo "$result"` ever ran).
           result=$(node scripts/ci-deploy-staging.mjs --action start \
             --workflow control-plane-image-deploy \
             --git-commit "${GITHUB_SHA}" \
             --idempotency-key "${{ steps.digests.outputs.gcp_image }}" \
             --triggered-by ci-auto --apply)
+          rc=$?
           echo "$result"
+          if [ $rc -ne 0 ]; then exit 1; fi
           echo "run_id=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).runId||"")')" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to staging
@@ -189,9 +196,11 @@ jobs:
         env:
           VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
-          set -euo pipefail
+          set -uo pipefail
           result=$(node scripts/ci-promote-production.mjs --action verify --staging-run-id "${{ github.event.inputs.promote_staging_run_id }}" --apply)
+          rc=$?
           echo "$result"
+          if [ $rc -ne 0 ]; then exit 1; fi
           echo "image=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).imageDigest||"")')" >> "$GITHUB_OUTPUT"
           echo "commit=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).gitCommit||"")')" >> "$GITHUB_OUTPUT"
 
@@ -200,12 +209,14 @@ jobs:
         env:
           VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
-          set -euo pipefail
+          set -uo pipefail
           result=$(node scripts/ci-promote-production.mjs --action start \
             --staging-run-id "${{ github.event.inputs.promote_staging_run_id }}" \
             --git-commit "${{ steps.verify.outputs.commit }}" \
             --idempotency-key "${{ steps.verify.outputs.image }}" --apply)
+          rc=$?
           echo "$result"
+          if [ $rc -ne 0 ]; then exit 1; fi
           echo "run_id=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).runId||"")')" >> "$GITHUB_OUTPUT"
 
       - name: Deploy the identical digest to production
