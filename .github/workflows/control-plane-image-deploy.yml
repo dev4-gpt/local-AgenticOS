@@ -64,15 +64,30 @@ jobs:
           docker build -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/managed-openrouter:${GITHUB_SHA}" \
             -f workers/managed-openrouter/Dockerfile workers/managed-openrouter
 
+      - name: Stage application files for SBOM scanning
+        # These workers have no package.json/node_modules -- scanning the
+        # built image would mostly catalog the base image's own OS/SDK
+        # packages (confirmed live: a full-image scan of gcp-provisioner
+        # produced a 32MB SBOM, too large for Rekor's attestation API,
+        # because its base is google-cloud-cli:slim; the app layer itself
+        # is 3 dependency-free .mjs files). Scan exactly what Veloce ships
+        # instead -- the base image is Google's own published, independently
+        # verifiable supply chain, not something to re-catalog here.
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/sbom-src/gcp-provisioner /tmp/sbom-src/public-provisioner
+          cp workers/gcp-provisioner/worker.mjs scripts/provision-gcp-client.mjs scripts/client-provider-policy.mjs /tmp/sbom-src/gcp-provisioner/
+          cp workers/public-provisioner/worker.mjs /tmp/sbom-src/public-provisioner/
+
       - name: Generate SBOM per image
         uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/gcp-provisioner:${{ github.sha }}
+          path: /tmp/sbom-src/gcp-provisioner
           format: spdx-json
           output-file: sbom-gcp-provisioner.spdx.json
       - uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/public-provisioner:${{ github.sha }}
+          path: /tmp/sbom-src/public-provisioner
           format: spdx-json
           output-file: sbom-public-provisioner.spdx.json
 
