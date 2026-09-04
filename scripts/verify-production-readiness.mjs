@@ -28,6 +28,8 @@ const requiredFiles = [
   "src/lib/clientCredentialCatalog.ts",
   "scripts/verify-production-readiness.mjs",
   "scripts/verify-client-runtime-isolation.mjs",
+  "scripts/verify-platform-environment-isolation.mjs",
+  "product-experience/supabase-v36-platform-deploy-runs.sql",
   "scripts/verify-control-plane-cloud.mjs",
   "scripts/verify-managed-openrouter-cloud.mjs",
   "scripts/verify-vercel-production-env.mjs",
@@ -69,7 +71,7 @@ for (const file of requiredFiles) {
 }
 
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
-for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:control-plane-cloud", "verify:control-plane-canary", "verify:managed-openrouter-cloud", "verify:vercel-production-env", "prepare:openrouter-pricing", "verify:openreply-pilot", "verify:voxcpm-pilot", "verify:content-os-video-pilot", "verify:integration-governance", "verify:engineering-controls", "verify:production-readiness"]) {
+for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:platform-isolation", "verify:control-plane-cloud", "verify:control-plane-canary", "verify:managed-openrouter-cloud", "verify:vercel-production-env", "prepare:openrouter-pricing", "verify:openreply-pilot", "verify:voxcpm-pilot", "verify:content-os-video-pilot", "verify:integration-governance", "verify:engineering-controls", "verify:production-readiness"]) {
   if (typeof packageJson.scripts?.[script] !== "string") failures.push(`package.json is missing ${script}`);
 }
 

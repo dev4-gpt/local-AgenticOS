@@ -13,6 +13,9 @@ const taskProject = process.env.GCP_PROVISIONER_TASK_PROJECT?.trim() || allowedP
 const taskLocation = process.env.GCP_PROVISIONER_TASK_LOCATION?.trim() || allowedRegion;
 const taskQueue = process.env.GCP_PROVISIONER_TASK_QUEUE?.trim() || "";
 const taskServiceAccount = process.env.GCP_PROVISIONER_TASK_SERVICE_ACCOUNT?.trim() || "";
+// Reserved so a tenant slug can never be indistinguishable from a bare
+// platform-environment resource name (e.g. veloce-staging-*).
+const reservedSlugs = new Set(["staging", "production", "env", "platform", "ci"]);
 
 function authorized(request) {
   const value = request.headers.authorization?.replace(/^Bearer\s+/i, "").trim() || "";
@@ -41,7 +44,7 @@ function validate(input) {
   if (!manifest.gcp || manifest.gcp.projectId !== allowedProject || manifest.gcp.region !== allowedRegion) return "gcp_scope_not_allowed";
   const expectedImagePrefix = `${allowedRegion}-docker.pkg.dev/${allowedProject}/${allowedRepository}/`;
   if (typeof manifest.gcp.image !== "string" || !manifest.gcp.image.startsWith(expectedImagePrefix)) return "image_not_approved";
-  if (!/^[a-z][a-z0-9-]{2,40}$/.test(manifest.clientSlug)) return "client_slug_not_approved";
+  if (!/^[a-z][a-z0-9-]{2,40}$/.test(manifest.clientSlug) || reservedSlugs.has(manifest.clientSlug)) return "client_slug_not_approved";
   const serialized = JSON.stringify(manifest);
   if (/(SERVICE_ROLE_KEY|PRIVATE_KEY|PASSWORD|ACCESS_TOKEN|API_KEY)\s*[:=]/i.test(serialized)) return "secret_in_manifest";
   return null;

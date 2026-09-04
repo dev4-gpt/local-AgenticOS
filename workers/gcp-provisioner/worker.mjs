@@ -14,6 +14,9 @@ const allowApply = process.env.GCP_PROVISIONER_ALLOW_APPLY?.trim() === "1";
 const provisionScript = process.env.GCP_PROVISIONER_SCRIPT?.trim() || "/app/scripts/provision-gcp-client.mjs";
 const callbackUrl = process.env.CONTROL_PLANE_CALLBACK_URL?.trim() || "";
 const callbackSecret = process.env.CONTROL_PLANE_OPERATOR_SECRET?.trim() || "";
+// Reserved so a tenant slug can never be indistinguishable from a bare
+// platform-environment resource name (e.g. veloce-staging-*).
+const reservedSlugs = new Set(["staging", "production", "env", "platform", "ci"]);
 
 function json(response, status, body) {
   response.writeHead(status, { "content-type": "application/json", "cache-control": "no-store" });
@@ -52,7 +55,7 @@ function validate(input) {
   if (!input?.runId || !input?.requestId || !input?.onboardingId) return "missing_identifiers";
   if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) return "manifest_missing";
   if (manifest.approved !== true || manifest.acknowledgeClientSafeRuntime !== true) return "manifest_not_approved";
-  if (typeof manifest.clientSlug !== "string" || !/^[a-z][a-z0-9-]{2,40}$/.test(manifest.clientSlug)) return "client_slug_not_approved";
+  if (typeof manifest.clientSlug !== "string" || !/^[a-z][a-z0-9-]{2,40}$/.test(manifest.clientSlug) || reservedSlugs.has(manifest.clientSlug)) return "client_slug_not_approved";
   const gcp = manifest.gcp;
   if (!gcp || typeof gcp !== "object" || Array.isArray(gcp)) return "gcp_manifest_missing";
   if (gcp.projectId !== allowedProject || gcp.region !== allowedRegion) return "gcp_scope_not_allowed";
