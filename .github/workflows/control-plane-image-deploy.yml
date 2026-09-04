@@ -51,12 +51,18 @@ jobs:
       - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
       - name: Build worker images (tagged by commit SHA, not "latest")
+        # Build context matches cloudbuild.control-plane.yaml: gcp-provisioner's
+        # Dockerfile also copies shared scripts/ files, so it needs the repo
+        # root as context; the other two only copy their own worker.mjs, so
+        # their own directory is the context.
         run: |
           set -euo pipefail
-          for worker in public-provisioner gcp-provisioner managed-openrouter; do
-            docker build -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${worker}:${GITHUB_SHA}" \
-              -f "workers/${worker}/Dockerfile" .
-          done
+          docker build -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/public-provisioner:${GITHUB_SHA}" \
+            -f workers/public-provisioner/Dockerfile workers/public-provisioner
+          docker build -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/gcp-provisioner:${GITHUB_SHA}" \
+            -f workers/gcp-provisioner/Dockerfile .
+          docker build -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/managed-openrouter:${GITHUB_SHA}" \
+            -f workers/managed-openrouter/Dockerfile workers/managed-openrouter
 
       - name: Generate SBOM per image
         uses: anchore/sbom-action@v0
