@@ -145,7 +145,7 @@ jobs:
   promote-production:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.promote_staging_run_id != ''
     runs-on: ubuntu-latest
-    environment: production
+    environment: Production
     permissions:
       contents: read
       id-token: write
