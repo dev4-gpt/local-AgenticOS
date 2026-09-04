@@ -56,8 +56,6 @@ jobs:
           echo "Deployed preview: $url"
 
       - name: Record deploy run
-        env:
-          VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
           set +e -uo pipefail
           result=$(node scripts/ci-deploy-staging.mjs --action start \
@@ -98,8 +96,6 @@ jobs:
       - run: vercel promote "${{ github.event.inputs.promote_deployment_id }}" --token="${{ secrets.VERCEL_TOKEN }}" --yes
 
       - name: Publish release-evidence ledger record
-        env:
-          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
           npm run publish:release-ledger -- \
             --allow-dirty \

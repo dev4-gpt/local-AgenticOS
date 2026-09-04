@@ -121,8 +121,6 @@ jobs:
 
       - name: Start deploy run
         id: start
-        env:
-          VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
           set +e -uo pipefail
           # No -e: a failing node script's JSON diagnostic must still print
@@ -141,8 +139,6 @@ jobs:
           echo "run_id=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).runId||"")')" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to staging
-        env:
-          VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
           set -euo pipefail
           node scripts/ci-deploy-staging.mjs --action deploy --service veloce-gcp-provisioner-staging --image "${{ steps.digests.outputs.gcp_image }}" --apply
@@ -161,8 +157,6 @@ jobs:
 
       - name: Record result
         if: always()
-        env:
-          VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
           node scripts/ci-deploy-staging.mjs --action record-result \
             --run-id "${{ steps.start.outputs.run_id }}" \
@@ -193,8 +187,6 @@ jobs:
 
       - name: Verify the staging digest's signature before touching production
         id: verify
-        env:
-          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
           set +e -uo pipefail
           result=$(node scripts/ci-promote-production.mjs --action verify --staging-run-id "${{ github.event.inputs.promote_staging_run_id }}" --apply)
@@ -206,8 +198,6 @@ jobs:
 
       - name: Start promotion run
         id: start
-        env:
-          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
           set +e -uo pipefail
           result=$(node scripts/ci-promote-production.mjs --action start \
@@ -220,8 +210,6 @@ jobs:
           echo "run_id=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).runId||"")')" >> "$GITHUB_OUTPUT"
 
       - name: Deploy the identical digest to production
-        env:
-          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
           node scripts/ci-promote-production.mjs --action deploy --service veloce-gcp-provisioner --image "${{ steps.verify.outputs.image }}" --apply
 
@@ -230,8 +218,6 @@ jobs:
 
       - name: Record result
         if: always()
-        env:
-          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
           node scripts/ci-promote-production.mjs --action record-result \
             --run-id "${{ steps.start.outputs.run_id }}" \
