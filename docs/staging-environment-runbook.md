@@ -109,6 +109,20 @@ gcloud secrets add-iam-policy-binding control-plane-worker-token-staging --proje
 gcloud secrets add-iam-policy-binding control-plane-operator-secret-staging --project veloce-agenticos-2026 --member="serviceAccount:${ADAPTER_SA_STAGING}" --role=roles/secretmanager.secretAccessor
 ```
 
+The CI deployer identities also need to read the operator secret directly —
+`scripts/ci-deploy-staging.mjs`/`scripts/ci-promote-production.mjs` fetch it
+themselves to authenticate their own callback POST to the platform-deploy
+route. Being included in `iam/veloce-ci-deployer-role.yaml`'s permission list
+is not sufficient on its own — Secret Manager also requires a resource-level
+binding on the specific secret (caught live: the pipeline's first real
+`ci-deploy-staging.mjs --action start` call failed with "unable to obtain
+the operator secret" until this binding was added):
+
+```bash
+gcloud secrets add-iam-policy-binding control-plane-operator-secret-staging --project veloce-agenticos-2026 --member="serviceAccount:veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com" --role=roles/secretmanager.secretAccessor
+gcloud secrets add-iam-policy-binding control-plane-operator-secret --project veloce-agenticos-2026 --member="serviceAccount:veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com" --role=roles/secretmanager.secretAccessor
+```
+
 Add `CONTROL_PLANE_OPERATOR_SECRET_STAGING` to the **production** Vercel
 environment too (as its own Sensitive variable, alongside the existing
 `CONTROL_PLANE_OPERATOR_SECRET`) — the platform-deploy callback route (PR 3)
