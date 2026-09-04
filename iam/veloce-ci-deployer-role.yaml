@@ -1,0 +1,28 @@
+title: Veloce CI Deployer
+description: >-
+  Builds and deploys already-bootstrapped control-plane Cloud Run services in
+  veloce-agenticos-2026 at an exact image digest. Cannot create or delete
+  Cloud Run services, manage service IAM, rotate secrets, or provision
+  infrastructure.
+stage: BETA
+includedPermissions:
+  # Push and resolve the exact image digest built by CI.
+  - artifactregistry.repositories.uploadArtifacts
+  - artifactregistry.repositories.downloadArtifacts
+  - artifactregistry.dockerimages.get
+  - artifactregistry.dockerimages.list
+
+  # Update an already-existing Cloud Run service to a new digest. No
+  # run.services.create/setIamPolicy/delete: CI can never create a new
+  # service or change who is allowed to invoke one.
+  - run.services.get
+  - run.services.update
+  - run.services.getIamPolicy
+  - run.revisions.get
+  - run.revisions.list
+  - run.operations.get
+
+  # Read (never rotate or grant) the secrets the target service already
+  # references, and read secret versions needed to authenticate CI's own
+  # callback to the platform-deploy-run tracking route.
+  - secretmanager.versions.access
