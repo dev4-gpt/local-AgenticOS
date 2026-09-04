@@ -124,7 +124,7 @@ jobs:
         env:
           VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
-          set -uo pipefail
+          set +e -uo pipefail
           # No -e: a failing node script's JSON diagnostic must still print
           # before this step exits, or the real cause is silently swallowed
           # (caught live: a 404 from the callback route produced zero log
@@ -196,7 +196,7 @@ jobs:
         env:
           VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
-          set -uo pipefail
+          set +e -uo pipefail
           result=$(node scripts/ci-promote-production.mjs --action verify --staging-run-id "${{ github.event.inputs.promote_staging_run_id }}" --apply)
           rc=$?
           echo "$result"
@@ -209,7 +209,7 @@ jobs:
         env:
           VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
-          set -uo pipefail
+          set +e -uo pipefail
           result=$(node scripts/ci-promote-production.mjs --action start \
             --staging-run-id "${{ github.event.inputs.promote_staging_run_id }}" \
             --git-commit "${{ steps.verify.outputs.commit }}" \

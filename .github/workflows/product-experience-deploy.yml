@@ -59,7 +59,7 @@ jobs:
         env:
           VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
-          set -uo pipefail
+          set +e -uo pipefail
           result=$(node scripts/ci-deploy-staging.mjs --action start \
             --workflow product-experience-deploy \
             --git-commit "${GITHUB_SHA}" \
