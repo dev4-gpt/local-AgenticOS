@@ -26,6 +26,17 @@ existing production resource.
   first if you haven't — this runbook mirrors its structure and reuses its
   §2 Vercel-OIDC pattern for step 6 below, just for GitHub's OIDC issuer
   instead.
+- **`cloudresourcemanager.googleapis.com` must be enabled on the project**
+  (`gcloud services enable cloudresourcemanager.googleapis.com --project
+  veloce-agenticos-2026`) — not required by production's original runbook
+  API list, but genuinely needed once a WIF-authenticated identity (not a
+  human user session) calls `gcloud projects describe` to resolve the
+  project number, which `scripts/verify-control-plane-cloud.mjs` does.
+  Caught live: identical `projects describe` calls succeed under a human
+  user's own `gcloud auth login` session regardless of this API's state,
+  but fail with `SERVICE_DISABLED` under service-account impersonation or
+  WIF, which explicitly bills the call against the target project's own
+  quota — a real, one-time project-level gap, not a role/IAM-binding issue.
 
 ## 1. Create the staging identities
 
