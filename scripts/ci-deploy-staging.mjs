@@ -62,7 +62,9 @@ async function callback(body) {
     "--project", project, "--secret", operatorSecretName,
     ...(impersonate ? [`--impersonate-service-account=${impersonate}`] : []),
   ], { encoding: "utf8" });
-  if (secretResult.status !== 0 || !secretResult.stdout.trim()) return { ok: false, failures: ["unable to obtain the operator secret"] };
+  if (secretResult.status !== 0 || !secretResult.stdout.trim()) {
+    return { ok: false, failures: [`unable to obtain the operator secret: ${(secretResult.stderr || "no stderr").trim().slice(-800)}`] };
+  }
   const secret = secretResult.stdout.trim();
   const response = await fetch(callbackUrl, {
     method: "POST",
