@@ -6,7 +6,12 @@ description: >-
   infrastructure.
 stage: BETA
 includedPermissions:
-  # Push and resolve the exact image digest built by CI.
+  # Push and resolve the exact image digest built by CI. repositories.get is
+  # required by `gcloud artifacts docker images describe` (repository-level
+  # metadata read), separate from the image-level dockerimages.get below --
+  # missing this caused the pipeline's first real digest-resolution attempt
+  # to fail with a permission-denied error.
+  - artifactregistry.repositories.get
   - artifactregistry.repositories.uploadArtifacts
   - artifactregistry.repositories.downloadArtifacts
   - artifactregistry.dockerimages.get
