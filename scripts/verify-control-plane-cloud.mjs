@@ -29,9 +29,11 @@ const projectNumber = String(adapterProjectInfo?.projectNumber || "");
 const expectedOrigin = `https://${adapterService}-${projectNumber}.${region}.run.app`;
 const expectedProvisionUrl = `${expectedOrigin}/provision`;
 const audience = valueAfter("--audience") || expectedOrigin;
-const expectedPublicIdentity = `veloce-public-provisioner-run@${controlProject}.iam.gserviceaccount.com`;
-const expectedAdapterIdentity = `veloce-gcp-provisioner-run@${adapterProject}.iam.gserviceaccount.com`;
-const expectedCallbackUrl = "https://app.veloceos.cloud/api/onboarding/provision-result";
+const expectedPublicIdentity = valueAfter("--public-identity") || `veloce-public-provisioner-run@${controlProject}.iam.gserviceaccount.com`;
+const expectedAdapterIdentity = valueAfter("--adapter-identity") || `veloce-gcp-provisioner-run@${adapterProject}.iam.gserviceaccount.com`;
+const expectedCallbackUrl = valueAfter("--callback-url") || "https://app.veloceos.cloud/api/onboarding/provision-result";
+const operatorSecretName = valueAfter("--operator-secret-name") || "control-plane-operator-secret";
+const workerSecretName = valueAfter("--worker-secret-name") || "control-plane-worker-token";
 const annotations = adapterConfig?.metadata?.annotations || {};
 
 expect(projectNumber.length > 0, "unable to resolve adapter project number");
@@ -53,8 +55,8 @@ expect(adapterEnv.GCP_ALLOWED_ARTIFACT_REPOSITORY === "veloce", "adapter reposit
 expect(adapterEnv.GCP_PROJECT_NUMBER === projectNumber, `adapter project number must be ${projectNumber}`);
 expect(allowApply ? adapterEnv.GCP_PROVISIONER_ALLOW_APPLY === "1" : adapterEnv.GCP_PROVISIONER_ALLOW_APPLY === "0", `adapter apply mode must be ${allowApply ? "1" : "0"}`);
 expect(adapterEnv.CONTROL_PLANE_CALLBACK_URL === expectedCallbackUrl, `adapter callback URL must be ${expectedCallbackUrl}`);
-expect(secretRefName(adapterConfig, "CONTROL_PLANE_OPERATOR_SECRET") === "control-plane-operator-secret", "adapter must receive the operator callback secret from Secret Manager");
-expect(secretRefName(adapterConfig, "CONTROL_PLANE_WORKER_TOKEN") === "control-plane-worker-token", "adapter must receive the dispatcher worker token from Secret Manager");
+expect(secretRefName(adapterConfig, "CONTROL_PLANE_OPERATOR_SECRET") === operatorSecretName, `adapter must receive the operator callback secret (${operatorSecretName}) from Secret Manager`);
+expect(secretRefName(adapterConfig, "CONTROL_PLANE_WORKER_TOKEN") === workerSecretName, `adapter must receive the dispatcher worker token (${workerSecretName}) from Secret Manager`);
 expect(Number(adapterConfig?.spec?.template?.spec?.timeoutSeconds || 0) >= 900, "adapter timeout must be at least 900 seconds");
 expect(imageOf(adapterConfig).includes("@sha256:"), "adapter must deploy an immutable image digest");
 
@@ -76,7 +78,7 @@ expect(taskTokenCreators.includes(`serviceAccount:${taskServiceAgent}`), "Cloud 
 
 let health = null;
 if (probe && failures.length === 0) {
-  const secret = gcloudText(["secrets", "versions", "access", "latest", "--project", controlProject, "--secret", "control-plane-operator-secret"]);
+  const secret = gcloudText(["secrets", "versions", "access", "latest", "--project", controlProject, "--secret", operatorSecretName]);
   if (!secret) {
     failures.push("unable to read the operator secret for the health bridge probe");
   } else {

@@ -30,11 +30,11 @@ existing production resource.
 ## 1. Create the staging identities
 
 ```bash
-gcloud iam service-accounts create veloce-public-provisioner-staging-run \
+gcloud iam service-accounts create veloce-pub-prov-stg-run \
   --project veloce-agenticos-2026 --display-name="Veloce public provisioner runtime (staging)"
-gcloud iam service-accounts create veloce-gcp-provisioner-staging-run \
+gcloud iam service-accounts create veloce-gcp-prov-stg-run \
   --project veloce-agenticos-2026 --display-name="Veloce private GCP provisioner runtime (staging)"
-gcloud iam service-accounts create veloce-vercel-control-plane-staging \
+gcloud iam service-accounts create veloce-vercel-cp-staging \
   --project veloce-agenticos-2026 --display-name="Vercel control-plane invoker (staging)"
 gcloud iam service-accounts create veloce-ci-deployer-staging \
   --project veloce-agenticos-2026 --display-name="Veloce CI deployer (staging)"
@@ -47,7 +47,7 @@ colliding with a tenant slug: the environment suffixes an existing platform
 *component* name (`public-provisioner`, `gcp-provisioner`, `ci-deployer`),
 never a bare `veloce-staging-*`. A tenant `clientSlug` can never contain a
 second segment matching one of these component names, so
-`veloce-gcp-provisioner-staging-run` can't collide with any tenant service
+`veloce-gcp-prov-stg-run` can't collide with any tenant service
 account — see the reserved-slug denylist added in PR 2 for the
 belt-and-suspenders half of this guarantee.
 
@@ -101,8 +101,8 @@ openssl rand -hex 32 | gcloud secrets versions add control-plane-operator-secret
 Bind read access to the staging identities only:
 
 ```bash
-PUBLIC_SA_STAGING=veloce-public-provisioner-staging-run@veloce-agenticos-2026.iam.gserviceaccount.com
-ADAPTER_SA_STAGING=veloce-gcp-provisioner-staging-run@veloce-agenticos-2026.iam.gserviceaccount.com
+PUBLIC_SA_STAGING=veloce-pub-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com
+ADAPTER_SA_STAGING=veloce-gcp-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com
 
 gcloud secrets add-iam-policy-binding control-plane-worker-token-staging --project veloce-agenticos-2026 --member="serviceAccount:${PUBLIC_SA_STAGING}" --role=roles/secretmanager.secretAccessor
 gcloud secrets add-iam-policy-binding control-plane-worker-token-staging --project veloce-agenticos-2026 --member="serviceAccount:${ADAPTER_SA_STAGING}" --role=roles/secretmanager.secretAccessor
@@ -148,33 +148,47 @@ gcloud iam service-accounts add-iam-policy-binding "$PUBLIC_SA_STAGING" \
 
 Build from the same `cloudbuild.control-plane.yaml` used for production —
 no separate staging Cloud Build config is needed, only a separate deploy
-target:
+target. If the production mutable tags (`control-plane-gcp-latest`,
+`control-plane-public-latest`) are already current, skip rebuilding and
+resolve their digests directly:
 
 ```bash
 gcloud builds submit . --project veloce-agenticos-2026 --config cloudbuild.control-plane.yaml
+
+GCP_DIGEST=$(gcloud artifacts docker images describe asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/gcp-provisioner:control-plane-gcp-latest --project veloce-agenticos-2026 --format="value(image_summary.digest)")
+PUB_DIGEST=$(gcloud artifacts docker images describe asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/public-provisioner:control-plane-public-latest --project veloce-agenticos-2026 --format="value(image_summary.digest)")
 ```
 
-Deploy `gcp-provisioner-staging` with no public access,
+**Deploy by resolved digest, not the mutable tag** — `verify:control-plane-cloud`
+requires an immutable `@sha256:...` reference, matching production's own
+posture. Deploy `gcp-provisioner-staging` with no public access,
 `GCP_PROVISIONER_ALLOW_APPLY=0`, `--timeout=1000s`, then
 `public-provisioner-staging` with no public access — same safe-mode posture
-production started in:
+production started in. **Every env var below is required**; the worker code
+falls back to a default for a couple of them, but `verify:control-plane-cloud`
+checks the Cloud Run service's *configured* value, not the runtime default,
+so omitting any of them fails verification even though the service still
+boots (confirmed the hard way — the first deploy attempt here was missing
+`GCP_ALLOWED_PROJECT`/`GCP_ALLOWED_REGION`/`GCP_ALLOWED_ARTIFACT_REPOSITORY`/
+`GCP_PROJECT_NUMBER` on the adapter and `GCP_PROVISIONER_URL`/
+`GCP_PROVISIONER_ID_TOKEN_SOURCE` on the dispatcher):
 
 ```bash
 gcloud run deploy veloce-gcp-provisioner-staging \
   --project veloce-agenticos-2026 --region asia-south1 \
-  --image asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/gcp-provisioner:control-plane-gcp-latest \
+  --image "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/gcp-provisioner@${GCP_DIGEST}" \
   --service-account "$ADAPTER_SA_STAGING" \
   --no-allow-unauthenticated --timeout=1000s \
   --update-secrets=CONTROL_PLANE_WORKER_TOKEN=control-plane-worker-token-staging:latest,CONTROL_PLANE_OPERATOR_SECRET=control-plane-operator-secret-staging:latest \
-  --set-env-vars="GCP_PROVISIONER_ALLOW_APPLY=0,CONTROL_PLANE_CALLBACK_URL=https://app.veloceos.cloud/api/onboarding/provision-result"
+  --set-env-vars="GCP_ALLOWED_PROJECT=veloce-agenticos-2026,GCP_ALLOWED_REGION=asia-south1,GCP_ALLOWED_ARTIFACT_REPOSITORY=veloce,GCP_PROVISIONER_ALLOW_APPLY=0,CONTROL_PLANE_CALLBACK_URL=https://app.veloceos.cloud/api/onboarding/provision-result,GCP_PROJECT_NUMBER=1075094991117"
 
 gcloud run deploy veloce-public-provisioner-staging \
   --project veloce-agenticos-2026 --region asia-south1 \
-  --image asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/public-provisioner:control-plane-public-latest \
+  --image "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/public-provisioner@${PUB_DIGEST}" \
   --service-account "$PUBLIC_SA_STAGING" \
   --no-allow-unauthenticated \
   --update-secrets=CONTROL_PLANE_WORKER_TOKEN=control-plane-worker-token-staging:latest \
-  --set-env-vars="GCP_PROVISIONER_TASK_PROJECT=veloce-agenticos-2026,GCP_PROVISIONER_TASK_LOCATION=asia-south1,GCP_PROVISIONER_TASK_QUEUE=veloce-control-plane-provisioning-staging,GCP_PROVISIONER_TASK_SERVICE_ACCOUNT=${PUBLIC_SA_STAGING}"
+  --set-env-vars="GCP_ALLOWED_PROJECT=veloce-agenticos-2026,GCP_ALLOWED_REGION=asia-south1,GCP_ALLOWED_ARTIFACT_REPOSITORY=veloce,GCP_PROVISIONER_URL=https://veloce-gcp-provisioner-staging-1075094991117.asia-south1.run.app/provision,GCP_PROVISIONER_AUDIENCE=https://veloce-gcp-provisioner-staging-1075094991117.asia-south1.run.app,GCP_PROVISIONER_ID_TOKEN_SOURCE=metadata,GCP_PROVISIONER_TASK_PROJECT=veloce-agenticos-2026,GCP_PROVISIONER_TASK_LOCATION=asia-south1,GCP_PROVISIONER_TASK_QUEUE=veloce-control-plane-provisioning-staging,GCP_PROVISIONER_TASK_SERVICE_ACCOUNT=${PUBLIC_SA_STAGING}"
 ```
 
 `CONTROL_PLANE_CALLBACK_URL` above points at the same production tenant-
@@ -186,9 +200,39 @@ tracking callback (`/api/internal/platform-deploy`, added in PR 3), which
 is authenticated by the staging operator secret regardless of URL — revisit
 this callback URL when a real staging tenant-provisioning flow is built.
 
-Configure the Cloud Tasks audience and remaining public-dispatcher wiring
-exactly as `docs/control-plane-provisioner-runbook.md` §4 describes for
-production, substituting the staging service URLs and queue name.
+Grant the invoker bindings — public dispatcher may invoke the adapter,
+Vercel's staging identity may invoke the public dispatcher:
+
+```bash
+gcloud run services add-iam-policy-binding veloce-gcp-provisioner-staging \
+  --project veloce-agenticos-2026 --region asia-south1 \
+  --member="serviceAccount:${PUBLIC_SA_STAGING}" --role=roles/run.invoker
+
+gcloud run services add-iam-policy-binding veloce-public-provisioner-staging \
+  --project veloce-agenticos-2026 --region asia-south1 \
+  --member="serviceAccount:veloce-vercel-cp-staging@veloce-agenticos-2026.iam.gserviceaccount.com" \
+  --role=roles/run.invoker
+```
+
+Verify the whole configuration in one shot — this is the actual command
+this runbook was validated against:
+
+```bash
+node scripts/verify-control-plane-cloud.mjs \
+  --public-service veloce-public-provisioner-staging \
+  --adapter-service veloce-gcp-provisioner-staging \
+  --task-queue veloce-control-plane-provisioning-staging \
+  --public-identity veloce-pub-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com \
+  --adapter-identity veloce-gcp-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com \
+  --operator-secret-name control-plane-operator-secret-staging \
+  --worker-secret-name control-plane-worker-token-staging
+```
+
+Expect `"ok": true`, `"applyEnabled": false`, `"failures": []`. The
+`--probe` flag is intentionally omitted here — the health-bridge probe hits
+a production-only Vercel route (`/api/internal/control-plane/provisioner-health`)
+that isn't staging-aware yet; that's follow-on work, not required for this
+slice's structural verification.
 
 ## 6. Configure GitHub Actions OIDC federation
 
@@ -240,11 +284,17 @@ With `GCP_PROVISIONER_ALLOW_APPLY=0` on the staging adapter, verify:
 1. Public requests to either staging Cloud Run URL receive authentication
    failures.
 2. Invalid worker tokens are rejected by both staging workers.
-3. `npm run verify:control-plane-cloud -- --public-service veloce-public-provisioner-staging --adapter-service veloce-gcp-provisioner-staging --task-queue veloce-control-plane-provisioning-staging --probe` returns `applyEnabled: false`.
-4. The staging adapter service account has only the reviewed
-   `roles/veloceCiDeployer` custom role — confirm it does **not** also carry
-   `roles/veloceTenantProvisioner` (that role is for the production tenant
-   provisioner only; staging in this slice never provisions a tenant).
+3. The full `verify:control-plane-cloud` command in §5 above returns
+   `"ok": true`, `"applyEnabled": false`, `"failures": []` (confirmed —
+   see the command as actually run, output recorded there).
+4. Neither staging service account carries `roles/veloceTenantProvisioner`
+   (that role is production-only; staging in this slice never provisions a
+   tenant) — confirm via `gcloud projects get-iam-policy veloce-agenticos-2026`
+   that only `veloce-gcp-provisioner-run@…` (production) holds it. The two
+   CI deployer service accounts (`veloce-ci-deployer-staging`,
+   `veloce-ci-deployer-production`) should each hold exactly one project-level
+   role, `roles/veloceCiDeployer` — confirm no broader role (e.g. Editor,
+   Owner) is also bound to either.
 
 ## Disposable pipeline canary
 
