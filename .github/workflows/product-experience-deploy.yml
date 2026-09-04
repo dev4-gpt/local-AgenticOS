@@ -1,0 +1,106 @@
+name: product-experience deploy
+
+# Push-to-default-branch only, not every PR — the existing product-experience.yml
+# stays the fast PR-gate workflow for quick feedback. This workflow produces
+# a Preview deployment on every push to main; promoting that exact build to
+# Production is a separate, manually-triggered step (see promote-production
+# job), never a second build.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      promote_deployment_id:
+        description: "Vercel deployment ID to promote to Production. Leave empty to build + deploy a Preview instead."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_ORG_ID: team_hSQ6FOhkWASsGSpmRlZDbIMO
+  VERCEL_PROJECT_ID: prj_Sn1szo6t0gWkXxfqvOMXRpgUYqWx
+
+jobs:
+  build-and-preview:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.promote_deployment_id == '')
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      # Run from repo root, never from inside product-experience/ — the
+      # Vercel project's Root Directory setting is "product-experience", so
+      # a build invoked from repo root resolves into it correctly; running
+      # from inside that directory hits a "Root Directory does not exist"
+      # error (confirmed the hard way in an earlier session).
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1075094991117/locations/global/workloadIdentityPools/github-actions/providers/github-actions
+          service_account: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      - run: vercel pull --yes --environment=preview --token="${{ secrets.VERCEL_TOKEN }}"
+      - run: vercel build --token="${{ secrets.VERCEL_TOKEN }}"
+      - id: deploy
+        run: |
+          set -euo pipefail
+          url=$(vercel deploy --prebuilt --token="${{ secrets.VERCEL_TOKEN }}")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed preview: $url"
+
+      - name: Record deploy run
+        env:
+          VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
+        run: |
+          set -euo pipefail
+          result=$(node scripts/ci-deploy-staging.mjs --action start \
+            --workflow product-experience-deploy \
+            --git-commit "${GITHUB_SHA}" \
+            --idempotency-key "${GITHUB_SHA}" \
+            --triggered-by ci-auto --apply)
+          echo "$result"
+          run_id=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).runId||"")')
+          node scripts/ci-deploy-staging.mjs --action record-result \
+            --run-id "$run_id" --status succeeded \
+            --apply
+
+  promote-production:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.promote_deployment_id != ''
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1075094991117/locations/global/workloadIdentityPools/github-actions/providers/github-actions
+          service_account: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      # vercel promote re-points Production at an EXISTING deployment's
+      # build output without rebuilding — the Vercel-native equivalent of
+      # "redeploy this exact digest," since a fresh rebuild isn't guaranteed
+      # byte-identical if any env var legitimately differs between Preview
+      # and Production scope (e.g. STRIPE_MODE).
+      - run: vercel promote "${{ github.event.inputs.promote_deployment_id }}" --token="${{ secrets.VERCEL_TOKEN }}" --yes
+
+      - name: Publish release-evidence ledger record
+        env:
+          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
+        run: |
+          npm run publish:release-ledger -- \
+            --allow-dirty \
+            --impersonate-service-account veloce-release-ledger-writer@veloce-agenticos-2026.iam.gserviceaccount.com \
+            --environment production \
+            --vercel-deployment "${{ github.event.inputs.promote_deployment_id }}"

@@ -1,0 +1,218 @@
+name: Control-plane image deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      promote_staging_run_id:
+        description: "Staging platform_deploy_runs id to promote to production. Leave empty to build + deploy to staging instead."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_ID: veloce-agenticos-2026
+  REGION: asia-south1
+  REPOSITORY: veloce
+
+jobs:
+  build-audit-sign-stage:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.promote_staging_run_id == '')
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm run verify:secrets
+      - run: npm run verify:security
+      - run: npm run verify:capability-traits
+      - run: npm audit --audit-level=high
+      # POLICY_GATE_EXTENSION_POINT: a future license/egress/provider-budget
+      # policy-as-code job becomes a `needs:` dependency inserted here, before
+      # any image is built or pushed. verify:secrets and npm audit above
+      # already cover two of that future gate's dimensions — extend, don't
+      # duplicate them.
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1075094991117/locations/global/workloadIdentityPools/github-actions/providers/github-actions
+          service_account: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build worker images (tagged by commit SHA, not "latest")
+        run: |
+          set -euo pipefail
+          for worker in public-provisioner gcp-provisioner managed-openrouter; do
+            docker build -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${worker}:${GITHUB_SHA}" \
+              -f "workers/${worker}/Dockerfile" .
+          done
+
+      - name: Generate SBOM per image
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/gcp-provisioner:${{ github.sha }}
+          format: spdx-json
+          output-file: sbom-gcp-provisioner.spdx.json
+      - uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/public-provisioner:${{ github.sha }}
+          format: spdx-json
+          output-file: sbom-public-provisioner.spdx.json
+
+      - name: Push images
+        run: |
+          set -euo pipefail
+          for worker in public-provisioner gcp-provisioner managed-openrouter; do
+            docker push "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${worker}:${GITHUB_SHA}"
+          done
+
+      - name: Resolve immutable digests
+        id: digests
+        run: |
+          set -euo pipefail
+          gcp_digest=$(gcloud artifacts docker images describe "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/gcp-provisioner:${GITHUB_SHA}" --format="value(image_summary.digest)")
+          public_digest=$(gcloud artifacts docker images describe "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/public-provisioner:${GITHUB_SHA}" --format="value(image_summary.digest)")
+          echo "gcp_image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/gcp-provisioner@${gcp_digest}" >> "$GITHUB_OUTPUT"
+          echo "public_image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/public-provisioner@${public_digest}" >> "$GITHUB_OUTPUT"
+
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign images (keyless, GitHub OIDC)
+        run: |
+          set -euo pipefail
+          cosign sign --yes "${{ steps.digests.outputs.gcp_image }}"
+          cosign sign --yes "${{ steps.digests.outputs.public_image }}"
+      - name: Attest SBOMs
+        run: |
+          set -euo pipefail
+          cosign attest --yes --predicate sbom-gcp-provisioner.spdx.json --type spdxjson "${{ steps.digests.outputs.gcp_image }}"
+          cosign attest --yes --predicate sbom-public-provisioner.spdx.json --type spdxjson "${{ steps.digests.outputs.public_image }}"
+
+      - name: Start deploy run
+        id: start
+        env:
+          VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
+        run: |
+          set -euo pipefail
+          result=$(node scripts/ci-deploy-staging.mjs --action start \
+            --workflow control-plane-image-deploy \
+            --git-commit "${GITHUB_SHA}" \
+            --idempotency-key "${{ steps.digests.outputs.gcp_image }}" \
+            --triggered-by ci-auto --apply)
+          echo "$result"
+          echo "run_id=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).runId||"")')" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to staging
+        env:
+          VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
+        run: |
+          set -euo pipefail
+          node scripts/ci-deploy-staging.mjs --action deploy --service veloce-gcp-provisioner-staging --image "${{ steps.digests.outputs.gcp_image }}" --apply
+          node scripts/ci-deploy-staging.mjs --action deploy --service veloce-public-provisioner-staging --image "${{ steps.digests.outputs.public_image }}" --apply
+
+      - name: Verify staging configuration
+        run: |
+          npm run verify:control-plane-cloud -- \
+            --public-service veloce-public-provisioner-staging \
+            --adapter-service veloce-gcp-provisioner-staging \
+            --task-queue veloce-control-plane-provisioning-staging \
+            --public-identity veloce-pub-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com \
+            --adapter-identity veloce-gcp-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com \
+            --operator-secret-name control-plane-operator-secret-staging \
+            --worker-secret-name control-plane-worker-token-staging
+
+      - name: Record result
+        if: always()
+        env:
+          VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
+        run: |
+          node scripts/ci-deploy-staging.mjs --action record-result \
+            --run-id "${{ steps.start.outputs.run_id }}" \
+            --status "${{ job.status == 'success' && 'succeeded' || 'failed' }}" \
+            --image-digest "${{ steps.digests.outputs.gcp_image }}" \
+            --cloud-run-revision veloce-gcp-provisioner-staging --apply
+
+  promote-production:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.promote_staging_run_id != ''
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1075094991117/locations/global/workloadIdentityPools/github-actions/providers/github-actions
+          service_account: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: sigstore/cosign-installer@v3
+
+      - name: Verify the staging digest's signature before touching production
+        id: verify
+        env:
+          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
+        run: |
+          set -euo pipefail
+          result=$(node scripts/ci-promote-production.mjs --action verify --staging-run-id "${{ github.event.inputs.promote_staging_run_id }}" --apply)
+          echo "$result"
+          echo "image=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).imageDigest||"")')" >> "$GITHUB_OUTPUT"
+          echo "commit=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).gitCommit||"")')" >> "$GITHUB_OUTPUT"
+
+      - name: Start promotion run
+        id: start
+        env:
+          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
+        run: |
+          set -euo pipefail
+          result=$(node scripts/ci-promote-production.mjs --action start \
+            --staging-run-id "${{ github.event.inputs.promote_staging_run_id }}" \
+            --git-commit "${{ steps.verify.outputs.commit }}" \
+            --idempotency-key "${{ steps.verify.outputs.image }}" --apply)
+          echo "$result"
+          echo "run_id=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).runId||"")')" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy the identical digest to production
+        env:
+          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
+        run: |
+          node scripts/ci-promote-production.mjs --action deploy --service veloce-gcp-provisioner --image "${{ steps.verify.outputs.image }}" --apply
+
+      - name: Verify production configuration
+        run: npm run verify:control-plane-cloud -- --probe
+
+      - name: Record result
+        if: always()
+        env:
+          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
+        run: |
+          node scripts/ci-promote-production.mjs --action record-result \
+            --run-id "${{ steps.start.outputs.run_id }}" \
+            --status "${{ job.status == 'success' && 'succeeded' || 'failed' }}" \
+            --image-digest "${{ steps.verify.outputs.image }}" \
+            --cloud-run-revision veloce-gcp-provisioner --apply
+
+      - name: Publish release-evidence ledger record
+        if: success()
+        run: |
+          npm run publish:release-ledger -- \
+            --allow-dirty \
+            --impersonate-service-account veloce-release-ledger-writer@veloce-agenticos-2026.iam.gserviceaccount.com \
+            --environment production \
+            --image-digest "${{ steps.verify.outputs.image }}" \
+            --cloud-run-revision veloce-gcp-provisioner
