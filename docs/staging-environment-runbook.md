@@ -123,6 +123,22 @@ gcloud secrets add-iam-policy-binding control-plane-operator-secret-staging --pr
 gcloud secrets add-iam-policy-binding control-plane-operator-secret --project veloce-agenticos-2026 --member="serviceAccount:veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com" --role=roles/secretmanager.secretAccessor
 ```
 
+The CI deployer identities also need `roles/iam.serviceAccountUser` on each
+target Cloud Run service's own runtime service account — deploying a
+revision to a service that runs as a given identity requires
+`iam.serviceAccounts.actAs` on that exact identity. This does **not** belong
+in `iam/veloce-ci-deployer-role.yaml` itself: granting `actAs` at the
+project-scoped custom role would let CI impersonate every service account in
+the project, not just the ones it deploys to — grant it per-target-identity
+instead (caught live: `gcloud run deploy` failed with "Permission
+'iam.serviceaccounts.actAs' denied" until these were added):
+
+```bash
+gcloud iam service-accounts add-iam-policy-binding veloce-gcp-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com --project veloce-agenticos-2026 --member="serviceAccount:veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com" --role=roles/iam.serviceAccountUser
+gcloud iam service-accounts add-iam-policy-binding veloce-pub-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com --project veloce-agenticos-2026 --member="serviceAccount:veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com" --role=roles/iam.serviceAccountUser
+gcloud iam service-accounts add-iam-policy-binding veloce-gcp-provisioner-run@veloce-agenticos-2026.iam.gserviceaccount.com --project veloce-agenticos-2026 --member="serviceAccount:veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com" --role=roles/iam.serviceAccountUser
+```
+
 Add `CONTROL_PLANE_OPERATOR_SECRET_STAGING` to the **production** Vercel
 environment too (as its own Sensitive variable, alongside the existing
 `CONTROL_PLANE_OPERATOR_SECRET`) — the platform-deploy callback route (PR 3)
