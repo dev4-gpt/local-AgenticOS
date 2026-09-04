@@ -1,0 +1,14 @@
+title: Veloce Release Ledger Writer
+description: >-
+  Publishes new, immutable release-evidence records to the private
+  veloce-agenticos-2026-veloce-release-ledger bucket. Cannot delete or
+  overwrite existing objects, modify bucket IAM, or access any other bucket.
+stage: BETA
+includedPermissions:
+  # Upload one new evidence object per release and confirm it landed. No
+  # storage.objects.delete: combined with unique per-release object paths and
+  # an --if-generation-match=0 upload precondition, this keeps the ledger
+  # append-only at the IAM layer, not just by convention.
+  - storage.objects.create
+  - storage.objects.get
+  - storage.objects.list

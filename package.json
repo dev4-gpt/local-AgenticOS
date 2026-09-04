@@ -41,6 +41,7 @@
     "verify:public-provisioner": "node --check workers/public-provisioner/worker.mjs && node --check workers/gcp-provisioner/worker.mjs && node --check workers/managed-openrouter/worker.mjs",
     "verify:managed-credit": "node scripts/verify-managed-credit-contract.mjs",
     "verify:production-readiness": "node scripts/verify-production-readiness.mjs",
+    "publish:release-ledger": "node scripts/verify-production-readiness.mjs --publish-ledger",
     "approve:stripe-test-fixture": "node scripts/approve-stripe-test-fixture.mjs",
     "approve:client-manifest": "node scripts/approve-client-manifest.mjs",
     "deploy:client-manifest": "node scripts/deploy-client-manifest.mjs",

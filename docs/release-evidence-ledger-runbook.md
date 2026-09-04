@@ -1,0 +1,123 @@
+# Release-evidence ledger deployment runbook
+
+This runbook creates the one-time, org-wide infrastructure for the release
+evidence ledger. It is a singleton, like the provisioner service accounts and
+the `veloceTenantProvisioner` role in
+[`docs/control-plane-provisioner-runbook.md`](control-plane-provisioner-runbook.md)
+— set up once by hand, not by an idempotent per-tenant script.
+
+## Preconditions
+
+- Project: `veloce-agenticos-2026`
+- Region: `asia-south1`
+- Run all commands with a human Google account that can manage IAM and
+  Cloud Storage (`aryamandev777@gmail.com` holds Owner on this project).
+
+## 1. Create the bucket: private and versioned
+
+```bash
+gcloud storage buckets create gs://veloce-agenticos-2026-veloce-release-ledger \
+  --project veloce-agenticos-2026 --location asia-south1 --uniform-bucket-level-access
+
+gcloud storage buckets update gs://veloce-agenticos-2026-veloce-release-ledger --versioning
+gcloud storage buckets update gs://veloce-agenticos-2026-veloce-release-ledger --public-access-prevention
+```
+
+Object versioning is genuinely new to this project — no other bucket in this
+repo enables it. It exists here because a release-evidence record must never
+be silently overwritten; the upload path also enforces this at write time
+(see step 3).
+
+## 2. Create the writer identity and its custom role
+
+The reviewable role source is
+[`iam/veloce-release-ledger-writer-role.yaml`](../iam/veloce-release-ledger-writer-role.yaml).
+It deliberately excludes `storage.objects.delete` — this is what makes the
+ledger append-only, not just convention.
+
+```bash
+gcloud iam service-accounts create veloce-release-ledger-writer \
+  --project veloce-agenticos-2026 --display-name="Veloce release ledger writer"
+
+gcloud iam roles create veloceReleaseLedgerWriter \
+  --project veloce-agenticos-2026 --file iam/veloce-release-ledger-writer-role.yaml
+
+gcloud storage buckets add-iam-policy-binding gs://veloce-agenticos-2026-veloce-release-ledger \
+  --member=serviceAccount:veloce-release-ledger-writer@veloce-agenticos-2026.iam.gserviceaccount.com \
+  --role=projects/veloce-agenticos-2026/roles/veloceReleaseLedgerWriter
+```
+
+Approved human operators impersonate the writer service account rather than
+holding a static key for it:
+
+```bash
+gcloud iam service-accounts add-iam-policy-binding \
+  veloce-release-ledger-writer@veloce-agenticos-2026.iam.gserviceaccount.com \
+  --project veloce-agenticos-2026 \
+  --member=user:aryamandev777@gmail.com --role=roles/iam.serviceAccountTokenCreator
+```
+
+A CI service account can be granted the same `iam.serviceAccountTokenCreator`
+binding once deploys are automated (Phase 2) — out of scope for now, since
+this repo has no deploy automation yet.
+
+## 3. Grant read access to operators running the verifier
+
+No custom role is needed for reading; the predefined
+`roles/storage.objectViewer` is already minimal (get/list, no write/delete):
+
+```bash
+gcloud storage buckets add-iam-policy-binding gs://veloce-agenticos-2026-veloce-release-ledger \
+  --member=user:aryamandev777@gmail.com --role=roles/storage.objectViewer
+```
+
+## Object layout
+
+Records are stored under `releases/<full-40-char-commit-sha>/<compact-ISO8601-timestamp>.json`,
+e.g. `releases/0cf0ac2.../20260904T031500Z.json`. This groups every record for
+a commit under one prefix (`gcloud storage ls gs://<bucket>/releases/<sha>/`
+finds them all; the lexicographically-latest name is also the chronologically
+latest, since the timestamp is compact ISO-8601). Publishing uses
+`--if-generation-match=0`, which fails the upload if an object already exists
+at that exact path — belt-and-suspenders with the writer role's missing
+delete permission, so two publish attempts for the same commit never collide
+silently; each gets its own timestamped object instead.
+
+**Why no pointer file in `docs/`:** the SHA-keyed object path plus the
+`source.commit` field inside each record is the link back to Git — that is
+sufficient and verifiable from any checked-out commit with one `gcloud
+storage ls` call. A synced pointer file in `docs/` would recreate exactly the
+"does docs/ match reality" drift problem that the hand-written markdown
+ledgers this work replaces already have
+(`docs/client-runtime-release-ledger.md`,
+`docs/production-release-evidence-2026-09-02.md`).
+
+## Usage
+
+Publish a new record (see `npm run publish:release-ledger -- --help`-style
+flags documented at the top of `scripts/verify-production-readiness.mjs`, or
+[`docs/production-release-acceptance-checklist.md`](production-release-acceptance-checklist.md)
+for the full flag list used at release time):
+
+```bash
+npm run publish:release-ledger -- \
+  --impersonate-service-account veloce-release-ledger-writer@veloce-agenticos-2026.iam.gserviceaccount.com \
+  --environment production \
+  --vercel-deployment <deployment-id> \
+  --cloud-run-revision <revision> \
+  --image-digest sha256:<digest> \
+  --migration-file product-experience/supabase-vNN-....sql \
+  --rollback-target <known-good-revision> \
+  --test-result focused=passed
+```
+
+Then validate the current commit against whatever was published:
+
+```bash
+npm run verify:production-readiness            # non-strict: reports gaps, exits 0
+npm run verify:production-readiness -- --strict # strict: fails on any gap
+```
+
+If no ledger record exists yet for the current commit, both modes report
+`release_ledger_record_missing` (as a warning in non-strict mode, as a hard
+failure under `--strict`) rather than silently trusting anything.

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -8,6 +8,8 @@ const root = resolve(new URL("..", import.meta.url).pathname);
 const args = process.argv.slice(2);
 const strict = args.includes("--strict");
 const allowDirty = args.includes("--allow-dirty");
+const publishLedger = args.includes("--publish-ledger");
+const ledgerBucket = valueAfter("--ledger-bucket") || process.env.VELOCE_RELEASE_LEDGER_BUCKET || "veloce-agenticos-2026-veloce-release-ledger";
 const failures = [];
 const warnings = [];
 
@@ -106,16 +108,25 @@ const testResults = Object.fromEntries(valuesAfter("--test-result").map((value) 
   const separator = value.indexOf("=");
   return separator > 0 ? [value.slice(0, separator), value.slice(separator + 1)] : [value, "unknown"];
 }));
-if (!Object.keys(testResults).length) warnings.push("No test-result metadata supplied; run the focused suite and attach its results before release");
-for (const [name, result] of Object.entries(testResults)) if (result !== "passed") failures.push(`Test result is not passed: ${name}=${result}`);
+if (publishLedger) {
+  if (!Object.keys(testResults).length) warnings.push("No test-result metadata supplied; run the focused suite and attach its results before publishing");
+  for (const [name, result] of Object.entries(testResults)) if (result !== "passed") failures.push(`Test result is not passed: ${name}=${result}`);
+} else if (Object.keys(testResults).length) {
+  warnings.push("--test-result is ignored outside --publish-ledger; run 'npm run publish:release-ledger' to record test results in the ledger");
+}
 
-const external = {
+const migrationFiles = valuesAfter("--migration-file");
+const migrationApplied = migrationFiles.map((file) => {
+  const content = safeRead(file);
+  return { file, sha256: content ? sha256(content) : null };
+});
+if (publishLedger && !migrationFiles.length) warnings.push("No --migration-file supplied; attach the applied schema file(s) before publishing");
+
+const deployment = {
   environment: valueAfter("--environment") || process.env.VELOCE_RELEASE_ENVIRONMENT || "unknown",
   vercelDeployment: valueAfter("--vercel-deployment") || process.env.VELOCE_VERCEL_DEPLOYMENT || null,
   cloudRunRevision: valueAfter("--cloud-run-revision") || process.env.VELOCE_CLOUD_RUN_REVISION || null,
   imageDigest: valueAfter("--image-digest") || process.env.VELOCE_IMAGE_DIGEST || null,
-  migrationResult: valueAfter("--migration-result") || process.env.VELOCE_MIGRATION_RESULT || null,
-  rollbackTarget: valueAfter("--rollback-target") || process.env.VELOCE_ROLLBACK_TARGET || null,
   publicJourneyResult: valueAfter("--public-journey-result") || process.env.VELOCE_PUBLIC_JOURNEY_RESULT || null,
   stripeSmokeResult: valueAfter("--stripe-smoke-result") || process.env.VELOCE_STRIPE_SMOKE_RESULT || null,
   providerCatalogResult: valueAfter("--provider-catalog-result") || process.env.VELOCE_PROVIDER_CATALOG_RESULT || null,
@@ -125,15 +136,48 @@ const external = {
   operationsApproval: valueAfter("--operations-approval") || process.env.VELOCE_OPERATIONS_APPROVAL || null,
   legalApproval: valueAfter("--legal-approval") || process.env.VELOCE_LEGAL_APPROVAL || null,
 };
-if (external.imageDigest && !/^sha256:[0-9a-f]{64}$/i.test(external.imageDigest)) failures.push("Image digest must be sha256:<64 hex characters>");
+if (deployment.imageDigest && !/^sha256:[0-9a-f]{64}$/i.test(deployment.imageDigest)) failures.push("Image digest must be sha256:<64 hex characters>");
+
+const rollbackTarget = {
+  cloudRunRevision: valueAfter("--rollback-cloud-run-revision") || process.env.VELOCE_ROLLBACK_CLOUD_RUN_REVISION || null,
+  vercelDeploymentId: valueAfter("--rollback-vercel-deployment") || process.env.VELOCE_ROLLBACK_VERCEL_DEPLOYMENT || null,
+  imageDigest: valueAfter("--rollback-image-digest") || process.env.VELOCE_ROLLBACK_IMAGE_DIGEST || null,
+  note: valueAfter("--rollback-note") || process.env.VELOCE_ROLLBACK_NOTE || null,
+};
+if (publishLedger) {
+  for (const [key, value] of Object.entries(deployment)) if (key !== "environment" && !value) warnings.push(`Ledger record is missing deployment.${key}`);
+  if (!rollbackTarget.cloudRunRevision && !rollbackTarget.vercelDeploymentId) warnings.push("Ledger record is missing a rollback target");
+}
+
 const releaseGateFailures = [];
 if (dirtyFiles.length) releaseGateFailures.push("working_tree_clean");
-for (const [key, value] of Object.entries(external)) if (!value) releaseGateFailures.push(key);
-if (external.migrationResult !== "passed") releaseGateFailures.push("migration_result_passed");
-if (!Object.keys(testResults).length) releaseGateFailures.push("test_results_attached");
-if (Object.values(testResults).some((result) => result !== "passed")) releaseGateFailures.push("all_tests_passed");
-for (const key of ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"]) {
-  if (external[key] !== "approved" && external[key] !== "passed") releaseGateFailures.push(`${key}_approved`);
+
+let ledgerRecord = null;
+let ledgerRecordPath = null;
+if (!publishLedger) {
+  const releaseKey = valueAfter("--release-id") || commit;
+  const lookup = fetchLatestLedgerRecord(releaseKey);
+  if (!lookup) {
+    releaseGateFailures.push("release_ledger_record_missing");
+    warnings.push(`No published release ledger record found for ${releaseKey} in gs://${ledgerBucket}/releases/${releaseKey}/. Run 'npm run publish:release-ledger' first.`);
+  } else {
+    ledgerRecord = lookup.record;
+    ledgerRecordPath = lookup.path;
+    assertNoSecretLikeValues(ledgerRecord, "ledgerRecord");
+    if (ledgerRecord.schemaVersion !== 2) releaseGateFailures.push("release_ledger_schema_version");
+    if (!valueAfter("--release-id") && ledgerRecord.source?.commit !== commit) releaseGateFailures.push("release_ledger_commit_mismatch");
+    for (const key of ["vercelDeployment", "cloudRunRevision", "imageDigest"]) {
+      if (!ledgerRecord.deployment?.[key]) releaseGateFailures.push(key);
+    }
+    if (!ledgerRecord.migration?.applied?.length) releaseGateFailures.push("migration_evidence_attached");
+    if (!Object.keys(ledgerRecord.tests || {}).length) releaseGateFailures.push("test_results_attached");
+    if (Object.values(ledgerRecord.tests || {}).some((result) => result !== "passed")) releaseGateFailures.push("all_tests_passed");
+    for (const key of ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"]) {
+      const value = ledgerRecord.deployment?.[key];
+      if (value !== "approved" && value !== "passed") releaseGateFailures.push(`${key}_approved`);
+    }
+    if (!ledgerRecord.rollbackTarget?.cloudRunRevision && !ledgerRecord.rollbackTarget?.vercelDeploymentId) releaseGateFailures.push("rollback_target");
+  }
 }
 if (strict) for (const gate of releaseGateFailures) failures.push(`Strict release evidence missing or failed: ${gate}`);
 
@@ -158,26 +202,33 @@ const configurationShape = {
   publicSecretNames: Object.keys(process.env).filter((key) => /^NEXT_PUBLIC_.*(SECRET|PASSWORD|PRIVATE_KEY|ACCESS_TOKEN|API_KEY)$/i.test(key) && key !== "NEXT_PUBLIC_TURNSTILE_SITE_KEY"),
 };
 if (configurationShape.publicSecretNames.length) failures.push("Secret-like NEXT_PUBLIC_* variables are present in the release environment");
-if (strict && external.environment === "production" && configurationShape.nonSecretModes.stripeMode !== "live") failures.push("Production release requires STRIPE_MODE=live");
+if (strict && deployment.environment === "production" && configurationShape.nonSecretModes.stripeMode !== "live") failures.push("Production release requires STRIPE_MODE=live");
 const configurationHash = valueAfter("--config-hash") || process.env.VELOCE_CONFIGURATION_HASH || sha256(JSON.stringify(configurationShape));
 if (!/^[0-9a-f]{64}$/i.test(configurationHash)) failures.push("Configuration hash must be 64 hexadecimal characters");
 
+const generatedAt = new Date().toISOString();
 const evidence = {
-  schemaVersion: 1,
-  generatedAt: new Date().toISOString(),
+  schemaVersion: 2,
+  releaseId: `${commit}@${generatedAt}`,
+  generatedAt,
   source: { commit, branch, dirtyFiles },
-  deployment: external,
-  migration: { result: external.migrationResult },
-  tests: testResults,
+  deployment: publishLedger ? deployment : (ledgerRecord?.deployment ?? deployment),
+  migration: publishLedger
+    ? { applied: migrationApplied, appliedAt: migrationApplied.length ? generatedAt : null, appliedBy: valueAfter("--applied-by") || process.env.VELOCE_MIGRATION_APPLIED_BY || null }
+    : (ledgerRecord?.migration ?? { applied: [], appliedAt: null, appliedBy: null }),
+  tests: publishLedger ? testResults : (ledgerRecord?.tests ?? {}),
   configurationHash,
   configurationShape: { requiredServerVariables: configurationShape.requiredServerVariables, present: configurationShape.present, publicSecretNames: configurationShape.publicSecretNames },
-  rollbackTarget: external.rollbackTarget,
+  rollbackTarget: publishLedger ? rollbackTarget : (ledgerRecord?.rollbackTarget ?? rollbackTarget),
   releaseReady: failures.length === 0 && releaseGateFailures.length === 0,
   failures,
   releaseGateFailures,
   warnings,
+  ledgerRecordUsed: ledgerRecord ? { path: ledgerRecordPath, generatedAt: ledgerRecord.generatedAt } : null,
 };
 assertNoSecretLikeValues(evidence);
+
+if (publishLedger) publishToLedger(evidence);
 
 const outputPath = valueAfter("--out");
 if (outputPath) {
@@ -219,6 +270,43 @@ function git(command) {
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function gcloudTextSoft(command) {
+  const result = spawnSync("gcloud", command, { encoding: "utf8" });
+  return result.status === 0 ? result.stdout.trim() : "";
+}
+
+function publishToLedger(evidenceRecord) {
+  const objectPath = `releases/${commit}/${evidenceRecord.generatedAt.replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")}.json`;
+  const tmp = resolve(root, `tmp/release-ledger-${commit}.json`);
+  mkdirSync(dirname(tmp), { recursive: true, mode: 0o700 });
+  writeFileSync(tmp, JSON.stringify(evidenceRecord, null, 2) + "\n", { mode: 0o600 });
+  const impersonate = valueAfter("--impersonate-service-account") || process.env.VELOCE_RELEASE_LEDGER_WRITER;
+  const command = ["storage", "cp", tmp, `gs://${ledgerBucket}/${objectPath}`, "--if-generation-match=0"];
+  if (impersonate) command.push(`--impersonate-service-account=${impersonate}`);
+  const result = spawnSync("gcloud", command, { stdio: "inherit" });
+  try { unlinkSync(tmp); } catch {}
+  if (result.status !== 0) {
+    failures.push(`Failed to publish release ledger record to gs://${ledgerBucket}/${objectPath}`);
+    return;
+  }
+  console.log(`Published release ledger record: gs://${ledgerBucket}/${objectPath}`);
+}
+
+function fetchLatestLedgerRecord(forCommit) {
+  const override = valueAfter("--ledger-record-file");
+  if (override) {
+    try { return { record: JSON.parse(readFileSync(resolve(override), "utf8")), path: override }; } catch { return null; }
+  }
+  const listing = gcloudTextSoft(["storage", "ls", `gs://${ledgerBucket}/releases/${forCommit}/`]);
+  if (!listing) return null;
+  const objects = listing.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).sort();
+  const latest = objects[objects.length - 1];
+  if (!latest) return null;
+  const contents = gcloudTextSoft(["storage", "cat", latest]);
+  if (!contents) return null;
+  try { return { record: JSON.parse(contents), path: latest }; } catch { return null; }
 }
 
 function assertNoSecretLikeValues(value, path = "evidence") {

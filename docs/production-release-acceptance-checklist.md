@@ -116,18 +116,24 @@ payment result or used for the strict final attestation.
 
 ## 5. Final attestation
 
-After every preceding row has real evidence, run the release verifier with
-actual IDs and outcomes. Do not use placeholder values or mark a missing test
-as passed.
+After every preceding row has real evidence, publish it to the release
+evidence ledger, then validate the current commit against what was published.
+Do not use placeholder values or mark a missing test as passed — the ledger
+accepts a partial record, but `--strict` will fail loud on anything still
+missing rather than let it through. See
+[`docs/release-evidence-ledger-runbook.md`](release-evidence-ledger-runbook.md)
+for the one-time bucket/IAM setup this depends on.
 
 ```bash
-npm run verify:production-readiness -- --strict \
+npm run publish:release-ledger -- \
+  --impersonate-service-account veloce-release-ledger-writer@veloce-agenticos-2026.iam.gserviceaccount.com \
   --environment production \
   --vercel-deployment <reviewed-deployment-id> \
   --cloud-run-revision <reviewed-revision> \
   --image-digest sha256:<reviewed-image-digest> \
-  --migration-result passed \
-  --rollback-target <known-good-revision> \
+  --migration-file product-experience/supabase-vNN-<applied-migration>.sql \
+  --rollback-cloud-run-revision <known-good-revision> \
+  --rollback-vercel-deployment <known-good-deployment-id> \
   --public-journey-result passed \
   --stripe-smoke-result passed \
   --provider-catalog-result passed \
@@ -136,9 +142,12 @@ npm run verify:production-readiness -- --strict \
   --managed-openrouter-result passed \
   --operations-approval approved \
   --legal-approval approved \
-  --test-result focused=passed \
-  --out tmp/production-release-evidence.json
+  --test-result focused=passed
+
+npm run verify:production-readiness -- --strict --out tmp/production-release-evidence.json
 ```
 
 The only acceptable final result is `releaseReady: true` with a clean source
-tree and a redacted evidence artifact.
+tree and a redacted evidence artifact validated against the published ledger
+record (`ledgerRecordUsed` in the output points at the exact `gs://` object
+used).

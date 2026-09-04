@@ -17,7 +17,7 @@ test("production readiness source keeps live gates explicit", () => {
   const runbook = readFileSync(resolve(process.cwd(), "docs/public-launch-runbook.md"), "utf8");
   const checklist = readFileSync(resolve(process.cwd(), "docs/production-release-acceptance-checklist.md"), "utf8");
   const supportRoute = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/support/route.ts"), "utf8");
-  expect(verifier).toContain("migrationResult");
+  expect(verifier).toContain("migrationApplied");
   expect(verifier).toContain("rollbackTarget");
   expect(verifier).toContain("configurationHash");
   expect(verifier).toContain("tenantIsolationResult");
