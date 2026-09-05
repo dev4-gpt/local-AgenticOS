@@ -36,11 +36,18 @@ jobs:
       - run: npm run verify:security
       - run: npm run verify:capability-traits
       - run: npm audit --audit-level=high
-      # POLICY_GATE_EXTENSION_POINT: a future license/egress/provider-budget
-      # policy-as-code job becomes a `needs:` dependency inserted here, before
-      # any image is built or pushed. verify:secrets and npm audit above
-      # already cover two of that future gate's dimensions — extend, don't
-      # duplicate them.
+
+      # POLICY_GATE: license compliance, provider budget/egress, and tenant-
+      # boundary static checks (scripts/verify-license-compliance.mjs,
+      # scripts/verify-provider-egress-budget.mjs,
+      # scripts/verify-client-runtime-tenant-boundary.mjs). verify:secrets and
+      # npm audit above already cover secret-exposure and dependency-advisory;
+      # connector risk classification and customer-facing spend approval are
+      # deferred to later roadmap phases. Inline steps, not a separate
+      # `needs:` job -- no isolation benefit for read-only checks, and a
+      # second job would duplicate checkout/npm ci for a purely sequential
+      # dependency.
+      - run: npm run verify:policy-gates
 
       - id: auth
         uses: google-github-actions/auth@v2
@@ -49,6 +56,25 @@ jobs:
           service_account: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
       - uses: google-github-actions/setup-gcloud@v2
       - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      # POLICY_GATE: infrastructure-drift pre-flight. Refuses to build a new
+      # image on top of a staging environment that has already silently
+      # drifted, instead of only discovering that after build/push/sign work
+      # is wasted. Reuses the identical verify-control-plane-cloud.mjs check
+      # and staging flags as the existing post-deploy "Verify staging
+      # configuration" step below -- that step proves the *new* revision is
+      # correct; this one proves the environment was already correct before
+      # we touched it.
+      - name: Verify staging configuration has not drifted (pre-build gate)
+        run: |
+          npm run verify:control-plane-cloud -- \
+            --public-service veloce-public-provisioner-staging \
+            --adapter-service veloce-gcp-provisioner-staging \
+            --task-queue veloce-control-plane-provisioning-staging \
+            --public-identity veloce-pub-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com \
+            --adapter-identity veloce-gcp-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com \
+            --operator-secret-name control-plane-operator-secret-staging \
+            --worker-secret-name control-plane-worker-token-staging
 
       - name: Build worker images (tagged by commit SHA, not "latest")
         # Build context matches cloudbuild.control-plane.yaml: gcp-provisioner's
@@ -184,6 +210,13 @@ jobs:
           service_account: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
       - uses: google-github-actions/setup-gcloud@v2
       - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      # POLICY_GATE: infrastructure-drift pre-flight for production, mirroring
+      # the staging job's pre-build gate. Confirms production hasn't silently
+      # drifted before this promotion deploys on top of it.
+      - name: Verify production configuration has not drifted (pre-deploy gate)
+        run: npm run verify:control-plane-cloud -- --probe
+
       - uses: sigstore/cosign-installer@v3
 
       - name: Verify the staging digest's signature before touching production
