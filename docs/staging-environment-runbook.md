@@ -369,5 +369,25 @@ IDs and the published `gs://` ledger object path here as acceptance
 evidence, mirroring how the tenant provisioner required one disposable
 canary (`cp-canary-b903-rollback`) before being called production-ready.
 
-*(Evidence recorded after PR 5 lands — see the Phase 2 Slice 1 plan's
-Sequencing §5 and Verification §5–6.)*
+**Recorded, 2026-09-05:**
+
+- Staging deploy (`control-plane-image-deploy.yml`, `build-audit-sign-stage`,
+  run [33926621319](https://github.com/dev4-gpt/local-AgenticOS/actions/runs/33926621319)):
+  `platform_deploy_runs` id `ad834fc7-8db7-455e-92f4-dd21e41edc6e`, status
+  `succeeded`, image
+  `asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/gcp-provisioner@sha256:5864d14d93a7396696283666c3952b00d2a61759a48ffd41ae9a9050005c7292`.
+- Production promotion (`workflow_dispatch`, `promote-production`, run
+  [33940554463](https://github.com/dev4-gpt/local-AgenticOS/actions/runs/33940554463)):
+  `platform_deploy_runs` id `c67f3ef2-96a9-49af-8964-447a51e66683`, status
+  `succeeded`, promoted from the staging run above, identical digest
+  deployed to `veloce-gcp-provisioner` as revision
+  `veloce-gcp-provisioner-00036-c9d`, post-deploy health probe `200 ok`.
+- Release ledger record:
+  `gs://veloce-agenticos-2026-veloce-release-ledger/releases/90aa0bedf1d31638abce3c22f88793ec5d5725ef/production-20260905T030004Z.json`.
+
+Two real bugs were found and fixed by this canary run, both now folded into
+this runbook and the workflow itself: the WIF principal-set case-sensitivity
+gotcha in §6 above, and a missing `gcloud auth configure-docker` step in the
+`promote-production` job (cosign's registry pull was unauthenticated without
+it — `build-audit-sign-stage` already had this step, `promote-production`
+didn't).
