@@ -310,8 +310,30 @@ gcloud iam service-accounts add-iam-policy-binding veloce-ci-deployer-staging@ve
 gcloud iam service-accounts add-iam-policy-binding veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com \
   --project veloce-agenticos-2026 \
   --role=roles/iam.workloadIdentityUser \
-  --member="principalSet://iam.googleapis.com/${WIP}/attribute.environment/production"
+  --member="principalSet://iam.googleapis.com/${WIP}/attribute.environment/Production"
 ```
+
+**Case-sensitivity gotcha, found live:** `attribute.environment` is a
+verbatim, untransformed copy of `assertion.environment` (see the
+`--attribute-mapping` above) — GitHub's OIDC `environment` claim carries the
+*exact* configured GitHub Environment name, case included. This repo's
+`promote-production` job specifies `environment: Production` (capital P,
+matching the GitHub Environment actually configured in repo settings — see
+PR 4's environment-casing fix), so the principal-set member above must be
+`attribute.environment/Production`, not `attribute.environment/production`.
+Binding the lowercase form (an easy mistake — `staging`'s job legitimately
+does use lowercase `environment: staging`, so the natural pattern-match is
+wrong for production specifically) makes the WIF-federated token never
+match this principal at all: `google-github-actions/auth@v2` still succeeds
+(the WIF *authentication* step doesn't check this binding), but every
+subsequent `gcloud`/API call that relies on the credential file's
+`service_account_impersonation_url` (i.e. every call in the job) fails with
+`PERMISSION_DENIED` / `iam.serviceAccounts.getAccessToken` — a generic
+"impersonation denied" error with no hint that the actual cause is a casing
+mismatch one layer up in the WIF principal binding, not a permissions gap
+on the target SA itself. Confirm the live binding's case matches the
+job's `environment:` value exactly:
+`gcloud iam service-accounts get-iam-policy veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com --project=veloce-agenticos-2026`.
 
 Verify the exact attribute-condition and principal-set syntax against
 Google's current Workload Identity Federation docs at execution time — this
