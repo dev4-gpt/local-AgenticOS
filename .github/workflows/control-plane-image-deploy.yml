@@ -72,7 +72,7 @@ jobs:
             --adapter-service veloce-gcp-provisioner-staging \
             --task-queue veloce-control-plane-provisioning-staging \
             --public-identity veloce-pub-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com \
-            --adapter-identity wrong-identity@veloce-agenticos-2026.iam.gserviceaccount.com \
+            --adapter-identity veloce-gcp-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com \
             --operator-secret-name control-plane-operator-secret-staging \
             --worker-secret-name control-plane-worker-token-staging
 
