@@ -183,6 +183,7 @@ jobs:
           workload_identity_provider: projects/1075094991117/locations/global/workloadIdentityPools/github-actions/providers/github-actions
           service_account: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
       - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
       - uses: sigstore/cosign-installer@v3
 
       - name: Verify the staging digest's signature before touching production
