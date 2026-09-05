@@ -391,3 +391,63 @@ gotcha in §6 above, and a missing `gcloud auth configure-docker` step in the
 `promote-production` job (cosign's registry pull was unauthenticated without
 it — `build-audit-sign-stage` already had this step, `promote-production`
 didn't).
+
+## 7. Policy-as-code release gates (Phase 2 closer)
+
+Closes the last remaining piece of Phase 2's roadmap scope: *"Add
+policy-as-code release gates for dependency advisories, licenses, secret
+exposure, infrastructure drift, tenant-boundary rules, provider budgets,
+approved egress, and connector risk classification."* Dependency advisories
+and secret exposure were already covered by the pipeline's existing `npm
+audit`/`verify:secrets` steps. Connector risk classification and the
+customer-facing paid-approval governance model are explicitly deferred —
+the former depends on a "risk tier" concept that belongs to the later
+ecosystem/registry control-plane phase; the latter depends on the
+managed-credit system being proven live first.
+
+Four new gates, three new read-only scripts plus one reused script invoked
+earlier in the pipeline:
+- `scripts/verify-license-compliance.mjs` — checks every `package-lock.json`
+  entry's license against an explicit allowlist.
+- `scripts/verify-provider-egress-budget.mjs` — applies
+  `client-provider-policy.mjs`'s existing `validateProviderActivation`/
+  `validateResearchWorkerConfig` to every checked-in client manifest
+  automatically (previously only run by hand, one manifest at a time).
+- `scripts/verify-client-runtime-tenant-boundary.mjs` — static check that
+  every `src/app/api/client-runtime/**/route.ts` file imports
+  `@/lib/clientAuth`/`@/lib/clientDataPlane`, directly or via an explicit
+  allowlisted data-layer module.
+- `scripts/verify-control-plane-cloud.mjs --probe` reused as a *pre*-build
+  (staging) and *pre*-deploy (production) drift gate, alongside its existing
+  post-deploy use.
+
+**Recorded, 2026-09-05:**
+
+All three static gates and the drift gate were proven with a real failure
+before being proven clean, not just claimed:
+- License: temporarily removing `MPL-2.0` from the allowlist correctly
+  failed citing `axe-core`/every `lightningcss` platform variant; reverted.
+- Provider egress/budget: temporarily enabling `providerCallsEnabled` on
+  `client-blueprints/dofgfood-visual-qa.gcp.json` without pricing/allowlist
+  correctly failed citing that file; reverted.
+- Tenant boundary: temporarily breaking the `clientAuth`/`clientDataPlane`
+  import markers in `src/app/api/client-runtime/telemetry/route.ts`
+  correctly failed citing that route; reverted.
+- Infra drift: temporarily passing a wrong `--adapter-identity` in the new
+  staging pre-build step correctly failed against live GCP state (proven
+  via workflow run
+  [33942757312](https://github.com/dev4-gpt/local-AgenticOS/actions/runs/33942757312),
+  reverted via `git revert`).
+
+Clean end-to-end proof, both gates now permanently wired in:
+- Staging (run
+  [33942839870](https://github.com/dev4-gpt/local-AgenticOS/actions/runs/33942839870)):
+  `platform_deploy_runs` id `1434fa3b-d1b8-4455-8655-4525f28c0204`, all
+  steps green including the new `verify:policy-gates` and pre-build drift
+  steps.
+- Production promotion (run
+  [33943178662](https://github.com/dev4-gpt/local-AgenticOS/actions/runs/33943178662)):
+  promoted from the staging run above, production revision now
+  `veloce-gcp-provisioner-00037-np2`, new pre-deploy drift step green, new
+  release-ledger record at
+  `gs://veloce-agenticos-2026-veloce-release-ledger/releases/6ee180b26d782a034877eada3ba1e7cd1d0a30e2/production-20260905T035734Z.json`.
