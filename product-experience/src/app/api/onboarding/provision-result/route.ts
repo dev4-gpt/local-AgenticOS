@@ -47,6 +47,27 @@ export async function POST(request: Request) {
   }
   const tenant = await supabaseServiceUpsert("client_tenants", { slug: clientSlug, name: clientName, status: "active", retention_days: retentionDays, updated_at: new Date().toISOString() }, "slug");
   if (!tenant.ok) return NextResponse.json({ ok: false, error: "tenant_bind_failed" }, { status: 502 });
+  // Wire the approved manifest's optional monthly spend cap/alert threshold
+  // into the managed-credit wallet. Best-effort: this is an additive safety
+  // feature, not a provisioning prerequisite -- a write failure here must
+  // never block activation, it only means the tenant starts with no
+  // enforced cap until an operator retries this write.
+  const manifestBudget = approvedManifest.budget && typeof approvedManifest.budget === "object" && !Array.isArray(approvedManifest.budget)
+    ? approvedManifest.budget as Record<string, unknown>
+    : {};
+  const monthlyCapDollars = Number(manifestBudget.monthlyCap);
+  const warningThresholdDollars = Number(manifestBudget.warningThreshold);
+  if (Number.isFinite(monthlyCapDollars) && monthlyCapDollars > 0) {
+    const creditAccountFields: Record<string, unknown> = {
+      tenant_slug: clientSlug,
+      monthly_cap_micros: Math.round(monthlyCapDollars * 1_000_000),
+      updated_at: new Date().toISOString(),
+    };
+    if (Number.isFinite(warningThresholdDollars) && warningThresholdDollars > 0) {
+      creditAccountFields.warning_threshold_micros = Math.round(warningThresholdDollars * 1_000_000);
+    }
+    await supabaseServiceUpsert("client_credit_accounts", creditAccountFields, "tenant_slug").catch(() => undefined);
+  }
   const accountUpdate = await supabaseServiceUpdate("client_onboarding_accounts", { id: `eq.${runRecord.onboarding_id}` }, { status: "smoke_testing", tenant_slug: clientSlug, runtime_url: runtimeUrl, updated_at: new Date().toISOString() });
   if (!accountUpdate.ok) return NextResponse.json({ ok: false, error: "onboarding_bind_failed" }, { status: 502 });
   return NextResponse.json({ ok: true, runId, status, phase, activationReady: true });

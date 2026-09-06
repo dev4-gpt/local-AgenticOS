@@ -5,7 +5,7 @@ import { createOpenRouterManagedAdapter, createSupabaseManagedCreditLedger } fro
 import { parseManagedTextPricing, validateManagedPricingSnapshot, type ManagedTextPricing } from "@/lib/managedProviderPricing";
 import { evaluateManagedProviderReadiness, type ManagedProviderOperation } from "@/lib/managedProviderReadiness";
 import { normalizeManagedVideoInput, parseManagedVideoPricing, quoteManagedVideo } from "@/lib/managedVideoRuntime";
-import { publicLaunchConfig, supabaseServiceRpc, supabaseServiceSelect, supabaseServiceUpdate } from "@/lib/publicLaunch";
+import { publicLaunchConfig, sendManagedCreditSpendAlertEmail, supabaseServiceRpc, supabaseServiceSelect, supabaseServiceUpdate } from "@/lib/publicLaunch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -201,6 +201,7 @@ export async function POST(request: Request) {
       const usage = usageInput(body.usage);
       if (!usage) return NextResponse.json({ ok: false, error: "usage_invalid" }, { status: 400 });
       await adapter.settle(context, reservation, usage);
+      await notifySpendAlertIfCrossed(ledger, tenantSlug, usage.actualMicros).catch(() => undefined);
       return NextResponse.json({ ok: true, status: "settled" });
     }
     await adapter.refund(context, reservation, typeof body.reason === "string" ? body.reason : "operator_refund");
@@ -208,6 +209,18 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "managed_provider_failed" }, { status: 502 });
   }
+}
+
+// Best-effort, non-blocking spend alert -- a failure here must never turn an
+// already-successful settlement into an error response to the caller (see
+// the `.catch(() => undefined)` at the call site above).
+async function notifySpendAlertIfCrossed(ledger: ReturnType<typeof createSupabaseManagedCreditLedger>, tenantSlug: string, settledAmountMicros: number) {
+  const alert = await ledger.checkSpendAlert({ tenantSlug, settledAmountMicros });
+  if (!alert || !alert.crossedThreshold) return;
+  const onboarding = await supabaseServiceSelect("client_onboarding_accounts", { tenant_slug: `eq.${tenantSlug}`, select: "email" });
+  const email = typeof onboarding.rows[0]?.email === "string" ? onboarding.rows[0].email : null;
+  if (!onboarding.ok || !email) return;
+  await sendManagedCreditSpendAlertEmail({ email, tenantSlug, currentSpendMicros: alert.currentSpendMicros, thresholdMicros: alert.thresholdMicros });
 }
 
 async function managedGatewayJson(gatewayUrl: string, identityToken: string | undefined, operatorSecret: string, path: string) {

@@ -177,3 +177,17 @@ export async function sendSupportAcknowledgement(email: string, supportId: strin
   const response = await fetch("https://api.resend.com/emails", { method: "POST", signal: AbortSignal.timeout(5_000), headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ from, to: [email], subject: `Veloce support request ${supportId.slice(0, 8)}`, text: `Your Veloce support request ${supportId} was received. Please keep this ID for follow-up. Do not reply with passwords or API keys.` }) }).catch(() => null);
   return response?.ok ? "sent" as const : "failed" as const;
 }
+
+export async function sendManagedCreditSpendAlertEmail(input: { email: string; tenantSlug: string; currentSpendMicros: number; thresholdMicros: number }) {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.PUBLIC_EMAIL_FROM?.trim() || process.env.LEAD_NOTIFICATION_FROM?.trim();
+  if (!apiKey || !from) return "not_configured" as const;
+  const currentSpend = (input.currentSpendMicros / 1_000_000).toFixed(2);
+  const threshold = (input.thresholdMicros / 1_000_000).toFixed(2);
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST", signal: AbortSignal.timeout(5_000),
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from, to: [input.email], subject: `Veloce managed-credit spend alert for ${input.tenantSlug}`, text: `Your Veloce AgenticOS tenant "${input.tenantSlug}" has spent $${currentSpend} in managed credit this month, crossing your configured alert threshold of $${threshold}. This is informational only; no action is required. No provider credentials or account secrets are included in this email.` }),
+  }).catch(() => null);
+  return response?.ok ? "sent" as const : "failed" as const;
+}

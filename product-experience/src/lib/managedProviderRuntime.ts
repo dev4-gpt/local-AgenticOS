@@ -18,6 +18,12 @@ interface Ledger {
   reserve(input: { context: Context; quote: Quote; idempotencyKey: string }): Promise<string | null>;
   settle(input: { context: Context; reservationId: string; actualMicros: number; providerRequestId?: string | null; idempotencyKey: string; metadata?: Record<string, unknown> }): Promise<boolean>;
   refund(input: { context: Context; reservationId: string; reason: string; idempotencyKey: string; metadata?: Record<string, unknown> }): Promise<boolean>;
+  checkSpendAlert(input: { tenantSlug: string; settledAmountMicros: number }): Promise<{
+    crossedThreshold: boolean;
+    currentSpendMicros: number;
+    thresholdMicros: number;
+    capMicros: number | null;
+  } | null>;
 }
 
 export function createSupabaseManagedCreditLedger(options: { url: string; serviceRoleKey: string; fetcher?: typeof fetch }): Ledger {
@@ -41,6 +47,17 @@ export function createSupabaseManagedCreditLedger(options: { url: string; servic
     async refund(input) {
       const result = await rpc("refund_client_credit", { p_reservation_id: input.reservationId, p_reason: input.reason, p_idempotency_key: input.idempotencyKey, p_metadata: input.metadata ?? {} });
       return result.ok && result.value === true;
+    },
+    async checkSpendAlert(input) {
+      const result = await rpc("client_credit_spend_alert_check", { p_tenant_slug: input.tenantSlug, p_settled_amount_micros: input.settledAmountMicros });
+      const row = result.ok && Array.isArray(result.value) ? (result.value[0] as Record<string, unknown> | undefined) : undefined;
+      if (!row) return null;
+      return {
+        crossedThreshold: row.crossed_threshold === true,
+        currentSpendMicros: Number(row.current_spend_micros) || 0,
+        thresholdMicros: Number(row.threshold_micros) || 0,
+        capMicros: row.cap_micros == null ? null : Number(row.cap_micros),
+      };
     },
   };
 }
