@@ -5,9 +5,18 @@ description: >-
   project IAM, read secret values, delete resources, or create repositories.
 stage: BETA
 includedPermissions:
-  # Resolve the approved, pre-existing client runtime image.
+  # Resolve the approved, pre-existing client runtime image. `gcloud
+  # artifacts docker images describe <image>:<tag>` needs repository-level,
+  # image-level, AND tag-level read access to resolve a tag to its immutable
+  # digest -- missing repositories.get/tags.get here caused a real deploy to
+  # fail with a false-negative "image not available in Artifact Registry
+  # yet" (the image existed; the runtime service account just couldn't read
+  # it) -- the exact same gap already found and fixed for veloceCiDeployer
+  # in iam/veloce-ci-deployer-role.yaml.
   - artifactregistry.dockerimages.get
   - artifactregistry.repositories.downloadArtifacts
+  - artifactregistry.repositories.get
+  - artifactregistry.tags.get
 
   # Attach the tenant service account to Cloud Run resources, and grant only
   # the narrow token-creation bindings required by Cloud Tasks.
