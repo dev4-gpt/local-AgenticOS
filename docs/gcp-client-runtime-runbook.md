@@ -481,19 +481,29 @@ real Auth schema. The cleanup query returned `fixture_removed`,
 `connection_removed`, `membership_removed`, and `fixture_user_removed` all
 `true`. The revoke function's real authorization gate is proven live.
 
-The "mark connected" PATCH in `promote-client-credential.mjs` and the DELETE
-in `delete-client-credential.mjs` are not yet exercised live in this
-session -- doing so needs a real Secret Manager secret and
-`SUPABASE_SERVICE_ROLE_KEY` in an operator shell, neither available to the
-automated session at the time this stage closed. Both reuse REST call shapes
-already proven live elsewhere in this codebase (`approve-client-delivery.mjs`'s
-direct PATCH; `client-lifecycle.mjs`'s `gcloud secrets delete`), and both
-passed `node --check` plus a full `npm run build` in CI
-(`gh run 34076562302`, workflow-dispatched against this branch, all steps
-green including the build). They have not been run end-to-end against a real
-secret and connection row; that will happen the first time an operator
-actually promotes or deletes a real tenant credential, or on request as a
-follow-up live drill.
+**Live drill (2026-09-06): passed.** The promote and delete scripts were run
+for real, end-to-end, against disposable fixtures (`byok-drill-20260907`
+tenant, `veloce-byok-drill-20260907-inbox`/`-fixture-key` secrets, fake
+placeholder value, never a real provider key), with independent verification
+after each step rather than trusting the scripts' own success messages:
+- `promote-client-credential.mjs --apply`: dry run first, then applied.
+  Independently confirmed with `gcloud secrets versions access latest` that
+  the target secret's actual value matched the fixture's inbox envelope
+  (proving the value genuinely moved, not just an HTTP 200), and confirmed
+  via a direct Supabase read that the connection row flipped to
+  `status: connected` with `secret_resource` pointing at the target secret
+  and `last_validated_at` set.
+- `delete-client-credential.mjs --apply --confirm-delete`: dry run first
+  (correctly reported the real pre-deletion status), then applied.
+  Independently confirmed with `gcloud secrets describe` (`NOT_FOUND`) and a
+  direct Supabase read (`[]`) that both the secret and the connection row
+  were actually gone, not just that the script exited 0.
+- All fixtures (inbox secret, fixture tenant row) were cleaned up
+  afterward, with a final independent check confirming zero residue.
+
+Both scripts are now proven live end-to-end, in addition to the CI build
+verification (`gh run 34076562302`) already confirming they compile/typecheck
+correctly.
 
 ## Worker identity and long jobs
 
