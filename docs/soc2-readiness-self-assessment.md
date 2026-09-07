@@ -20,16 +20,18 @@ stated as a gap, not implied to be covered.
 ## Security (Common Criteria) -- mandatory for every SOC2 report
 
 ### CC1 -- Control environment
-- **Covered.** `docs/information-security-policy.md` now provides the
-  formal, written policies (access control, change management, risk
-  assessment, data classification/retention, encryption, vendor risk,
-  business continuity, acceptable use/code of conduct), each citing the
-  real technical control that already enforces it. **Remaining gap**:
-  background-check policy, org chart, and board oversight are genuinely
-  organizational facts about the company (not the codebase) that no
-  document drafted from here can substitute for -- these need the
-  business owner's own input once there is more than one person to
-  govern.
+- **Covered.** `docs/information-security-policy.md` provides the formal,
+  written policies (access control, change management, risk assessment,
+  data classification/retention, encryption, vendor risk, business
+  continuity, acceptable use/code of conduct), each citing the real
+  technical control that already enforces it. `docs/organizational-structure.md`
+  now documents the actual org structure -- currently a single founder
+  holding every functional department, honestly stated as such rather
+  than implying a team that doesn't exist. Board oversight and
+  background-check policy are explicitly marked not-applicable at
+  solo-founder stage, with the exact trigger for when each becomes
+  required (a board forming; a second person being granted system
+  access) rather than left as an open question.
 
 ### CC2 -- Communication and information
 - **Covered.** Extensive real runbooks document objectives, roles, and
@@ -172,6 +174,5 @@ JupiterOne's policy templates, a NIST-SP-800-61-based incident-response
 template, and open privacy-policy generators) covers the organizational
 side that pure engineering never could. What genuinely remains outside
 any session's ability to produce: a lawyer's review of the privacy
-policy, an actual paid CPA attestation, and organizational facts (org
-chart, background-check policy, board oversight) that only exist once the
-business itself has them to document.
+policy, and an actual paid CPA attestation whenever the founder is ready
+for one.
