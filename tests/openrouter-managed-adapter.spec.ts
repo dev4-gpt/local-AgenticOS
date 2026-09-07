@@ -80,6 +80,22 @@ test("missing pricing and over-reservation are rejected", async () => {
   await expect(adapter.execute(context, reservation, { model: "openai/gpt-4o-mini", messages: [{ content: "x" }] })).rejects.toThrow("managed_usage_exceeds_reservation");
 });
 
+test("managed quotes fail closed without an approved pricing snapshot ID", async () => {
+  const adapter = createOpenRouterManagedAdapter({
+    ledger: {
+      async reserve() { return "reservation-1"; },
+      async settle() { return true; },
+      async refund() { return true; },
+    },
+    resolveCredential: async () => "managed-test-key",
+    pricing: { "openai/gpt-4o-mini": { inputMicrosPer1k: 150, outputMicrosPer1k: 600 } },
+  });
+  await expect(adapter.quote(context, {
+    model: "openai/gpt-4o-mini",
+    messages: [{ role: "user", content: "hello" }],
+  })).rejects.toThrow("managed_pricing_snapshot_not_configured");
+});
+
 test("the Supabase ledger bridge uses only service-role RPCs and preserves idempotency", async () => {
   const calls: Array<{ functionName: string; body: Record<string, unknown>; authorization: string }> = [];
   const ledger = createSupabaseManagedCreditLedger({

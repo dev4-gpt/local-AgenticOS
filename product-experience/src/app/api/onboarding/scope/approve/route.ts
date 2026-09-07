@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { recommendCommercialScope } from "@/lib/commercialScope";
-import { supabaseServiceSelect, supabaseServiceUpdate } from "@/lib/publicLaunch";
+import { stripeTestFixtureConfig, supabaseServiceSelect, supabaseServiceUpdate } from "@/lib/publicLaunch";
 
 export const runtime = "nodejs";
 
@@ -33,7 +33,7 @@ function quoteLineItems(value: unknown) {
 
 export async function POST(request: Request) {
   if (!authorized(request)) return NextResponse.json({ ok: false, error: "not_authorized" }, { status: 401 });
-  const body = await request.json().catch(() => ({})) as { requestId?: unknown; approvedBy?: unknown; quote?: unknown };
+  const body = await request.json().catch(() => ({})) as { requestId?: unknown; approvedBy?: unknown; quote?: unknown; stripeTestFixture?: unknown };
   const requestId = typeof body.requestId === "string" ? body.requestId.trim() : "";
   if (!requestId) return NextResponse.json({ ok: false, error: "missing_request_id" }, { status: 400 });
 
@@ -46,10 +46,24 @@ export async function POST(request: Request) {
     ? account.commercial_scope_inputs as Record<string, unknown>
     : {};
   const recommendation = recommendCommercialScope(inputs);
+  const testFixture = stripeTestFixtureConfig();
+  if (body.stripeTestFixture === true && !testFixture) {
+    return NextResponse.json({ ok: false, error: "stripe_test_fixture_not_configured" }, { status: 409 });
+  }
   const quoteSource = body.quote && typeof body.quote === "object" && !Array.isArray(body.quote) ? body.quote as Record<string, unknown> : {};
   const lineItems = quoteLineItems(quoteSource.lineItems);
   if (lineItems === null) return NextResponse.json({ ok: false, error: "invalid_commercial_quote_line_items" }, { status: 400 });
-  const quote = {
+  const quote = testFixture ? {
+    currency: "usd",
+    setupUsd: testFixture.setupCents / 100,
+    monthlyUsd: testFixture.monthlyCents / 100,
+    lineItems: [],
+    providerCreditsIncluded: false,
+    testFixture: true,
+    initialTotalCents: testFixture.initialTotalCents,
+    approvedBy: typeof body.approvedBy === "string" ? body.approvedBy.trim().slice(0, 160) || "operator" : "operator",
+    approvedAt: new Date().toISOString(),
+  } : {
     currency: "usd",
     setupUsd: quoteAmount(quoteSource.setupUsd, 2_500) ?? recommendation.setupRangeUsd.min,
     monthlyUsd: quoteAmount(quoteSource.monthlyUsd, 1_250) ?? recommendation.monthlyRangeUsd.min,

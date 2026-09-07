@@ -29,9 +29,10 @@ them silently.
 | Stripe Test checkout | `$1` test allocation settled into Veloce wallet | End-to-end in Test mode | Live-mode keys, webhook, refund, dispute, monitoring |
 | Provider execution | Cost routing and budget ledger contracts | Managed route disabled | Provider-specific adapter, health, reserve, execute, settle, refund |
 | Tenant isolation | Tenant-scoped RPCs and runtime policy | Partial | Two-tenant read/write/spend/delete evidence |
-| Provisioner | Approved manifest and bearer-auth contract | Partial | Disposable tenant Cloud Run provisioning and rollback |
+| Provisioner | IAM/OIDC public-to-private boundary, immutable public/adapter images, Cloud Tasks queue with one attempt/concurrency, adapter callback ownership, and live health bridge | Durable safe-mode end-to-end current | Run one disposable tenant provisioning and rollback with apply enabled only for the canary window |
 | Quotas and alerts | Partial runtime budget controls | Partial | Per-provider quota, alert, suspension, and support evidence |
 | Open-source replacements | Cataloged or gated candidates | Evaluation only | Shadow benchmarks before replacing Supabase, Vercel, Resend, or Stripe |
+| OpenReply Instagram delivery | Secret-free isolated deployment blueprint, verifier, and reviewed blocked upstream candidate | Staged; disabled; upstream candidate blocked by production advisories | Patched upstream commit with zero critical/high production advisories, separate Railway/Vercel deployment, Meta tester setup, healthy worker, private test DM, rollback evidence |
 
 ## Billing truth model
 

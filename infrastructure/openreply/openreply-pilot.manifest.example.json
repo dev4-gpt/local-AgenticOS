@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "integration": "openreply",
+  "state": "disabled",
+  "source": {
+    "repository": "https://github.com/diwenne/openreply",
+    "candidateCommit": "d97e293834fdb76054e5cabfca61225476571267",
+    "reviewedCommit": null,
+    "review": {
+      "reviewedAt": "2026-08-31",
+      "decision": "blocked",
+      "tests": {
+        "result": "passed",
+        "count": 168
+      },
+      "typecheck": "passed",
+      "productionAudit": {
+        "critical": 3,
+        "high": 10,
+        "moderate": 3,
+        "low": 0,
+        "total": 16
+      },
+      "blockers": [
+        "Production dependency audit contains critical and high severity advisories"
+      ]
+    }
+  },
+  "deployment": {
+    "deployedUrl": null,
+    "web": {
+      "provider": "vercel",
+      "healthPath": "/api/health",
+      "oauthCallbackPath": "/api/instagram/callback",
+      "webhookPath": "/api/webhook"
+    },
+    "worker": {
+      "provider": "railway",
+      "buildCommand": "npm run db:generate",
+      "startCommand": "npm run worker"
+    },
+    "data": {
+      "provider": "railway",
+      "postgresql": true,
+      "redis": true,
+      "separateProject": true
+    }
+  },
+  "webhookFields": ["comments", "messages"],
+  "sharedSecretNames": ["DATABASE_URL", "REDIS_URL", "ENCRYPTION_KEY"],
+  "safety": {
+    "humanApprovalRequired": true,
+    "automaticPublishingEnabled": false,
+    "directVeloceRuntimeConnection": false,
+    "copySensitiveDataToVeloce": false
+  },
+  "acceptance": {
+    "metaTesterAccepted": false,
+    "workerHealthy": false,
+    "privateTestDmSent": false,
+    "sentLogObserved": false,
+    "rollbackProven": false
+  }
+}

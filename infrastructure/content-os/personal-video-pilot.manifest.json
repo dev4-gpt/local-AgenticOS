@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "capability": "personal-video-content-os",
+  "state": "manual-pilot",
+  "sourcePlan": {
+    "title": "AI Video Generation Strategy Blueprint",
+    "url": "https://share.gemini.google/VGI8JH19QeFI",
+    "publishedAt": "2026-09-01T11:20:00.000Z"
+  },
+  "placement": ["pipeline", "infrastructure", "backend", "content-factory"],
+  "workflow": {
+    "contentType": "video",
+    "stages": ["brief", "research", "plan", "draft", "assets", "quality", "approval", "publish"],
+    "manualPilot": {
+      "minimumVideos": 3,
+      "maximumVideos": 5,
+      "durationSeconds": { "minimum": 30, "maximum": 60 },
+      "verticalFirst": true,
+      "requiredSections": ["hook", "architecture", "demo", "call_to_action"],
+      "captionRequired": true,
+      "portfolioSourceVerificationRequired": true
+    },
+    "approval": {
+      "humanApprovalRequired": true,
+      "accuracyAndDisclosureReviewRequired": true,
+      "automaticPublishingEnabled": false,
+      "deliveryMode": "record-only-after-approval"
+    }
+  },
+  "assetProviders": {
+    "geminiFlowVeo": { "state": "disabled", "purpose": "script prompts and cinematic b-roll" },
+    "heygen": { "state": "disabled", "purpose": "owner-approved digital twin presentation" },
+    "elevenlabs": { "state": "disabled", "purpose": "owner-approved narration" }
+  },
+  "distribution": {
+    "state": "manual-only",
+    "destinations": ["linkedin", "youtube-shorts", "instagram-reels", "tiktok"],
+    "nativePostRequired": true,
+    "automaticSchedulingEnabled": false,
+    "automaticPublishingEnabled": false
+  },
+  "dataBoundary": {
+    "approvedInputs": ["owner-provided portfolio links", "approved public source URLs", "approved scripts"],
+    "prohibitedInputs": ["third-party likenesses", "third-party voice samples", "provider credentials in briefs"],
+    "retainedOutputs": ["approved briefs", "citations", "approval records", "delivery records", "owner-approved performance summaries"],
+    "rawProviderCredentialsStored": false,
+    "platformAnalyticsImportEnabled": false
+  },
+  "consentAndDisclosure": {
+    "ownerLikenessConsentRequired": true,
+    "ownerVoiceConsentRequired": true,
+    "thirdPartyCloningProhibited": true,
+    "syntheticMediaDisclosureReviewed": true
+  },
+  "activationEvidence": [
+    "Three to five manually assembled portfolio videos reviewed by the owner",
+    "Approved prompt, visual, caption, and disclosure templates",
+    "Provider-specific terms, cost caps, credentials, and deletion controls approved separately",
+    "One human-reviewed native delivery record for each enabled destination"
+  ],
+  "rollback": "Keep provider and distribution states disabled, cancel unapproved asset requests, revoke any future provider connection, and retain only the workflow audit records required by policy.",
+  "acceptance": {
+    "manualPilotComplete": false,
+    "ownerLikenessAndVoiceConsentRecorded": false,
+    "providerTermsAndCostControlsApproved": false,
+    "assetDisclosureReviewPassed": false,
+    "nativePublishingWorkflowTested": false,
+    "retentionAndDeletionWorkflowTested": false,
+    "rollbackProven": false
+  }
+}

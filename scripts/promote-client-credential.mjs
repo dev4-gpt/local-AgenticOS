@@ -12,6 +12,8 @@ const version = valueAfter("--version") || "latest";
 const apply = args.includes("--apply");
 const disablePrevious = args.includes("--disable-previous");
 const disableSourceVersion = args.includes("--disable-source-version");
+const supabaseUrl = process.env.SUPABASE_URL?.trim().replace(/\/$/, "");
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
 if (!project || !clientSlug || !providerKey || !inboxSecret || !targetSecret) {
   fail("Usage: npm run promote:client-credential -- --project PROJECT --client-slug SLUG --provider PROVIDER_KEY --inbox-secret SECRET --target-secret SECRET [--version latest|N] [--apply] [--disable-previous] [--disable-source-version]");
@@ -23,6 +25,7 @@ if (!inboxSecret.startsWith(`veloce-${clientSlug}-`)) fail("Source inbox secret 
 if (!targetSecret.startsWith(`veloce-${clientSlug}-`)) fail("Target secret must be inside the client namespace");
 if (targetSecret === inboxSecret || targetSecret.includes("credential-inbox")) fail("Target secret must be a provider secret, not the credential inbox");
 if ((disablePrevious || disableSourceVersion) && !apply) fail("Secret version disabling requires --apply so the new target version is written first");
+if (apply && (!supabaseUrl || !serviceKey)) fail("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required in the operator shell to record the promotion");
 
 const source = run("gcloud", ["secrets", "versions", "access", version, "--secret", inboxSecret, "--project", project]);
 const sourceVersion = disableSourceVersion && apply ? (version === "latest" ? latestEnabledVersion() : version) : null;
@@ -60,9 +63,30 @@ if (apply) {
     if (disabled.status !== 0) process.exit(disabled.status ?? 1);
     console.log(`Source inbox version disabled: ${inboxSecret}:${sourceVersion}`);
   }
+  await recordPromotion();
+  console.log("Connection record updated to connected.");
   console.log("Promotion complete. The next approved Cloud Run revision can consume the new target version as latest.");
 } else {
   console.log("Dry run only. Add --apply to write the target secret version.");
+}
+
+async function recordPromotion() {
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/client_provider_connections?tenant_slug=eq.${encodeURIComponent(clientSlug)}&provider_key=eq.${encodeURIComponent(providerKey)}`,
+    {
+      method: "PATCH",
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({
+        status: "connected",
+        secret_resource: `projects/${project}/secrets/${targetSecret}`,
+        last_validated_at: new Date().toISOString(),
+        revoked_at: null,
+        updated_at: new Date().toISOString(),
+      }),
+      cache: "no-store",
+    },
+  ).catch(() => null);
+  if (!response?.ok) fail(`Secret promoted, but the connection record could not be updated (${response?.status ?? "no response"}) -- reconcile client_provider_connections manually`);
 }
 
 function enabledTargetVersions() {

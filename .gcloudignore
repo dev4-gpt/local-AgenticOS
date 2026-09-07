@@ -20,3 +20,13 @@ docs/
 tests/
 *.log
 .DS_Store
+
+# Never upload workstation configuration or credentials to Cloud Build.
+.env
+.env.*
+**/.env
+**/.env.*
+*.pem
+*.key
+*.p12
+*.pfx

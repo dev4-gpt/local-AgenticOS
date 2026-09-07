@@ -5,6 +5,9 @@
   "approvalOwner": "Aryaman",
   "acknowledgeClientSafeRuntime": true,
   "providerCallsEnabled": false,
+  "provisioning": {
+    "phase": "prepare"
+  },
   "gcp": {
     "projectId": "veloce-agenticos-2026",
     "region": "asia-south1",

@@ -36,11 +36,18 @@ jobs:
       - run: npm run verify:security
       - run: npm run verify:capability-traits
       - run: npm audit --audit-level=high
-      # POLICY_GATE_EXTENSION_POINT: a future license/egress/provider-budget
-      # policy-as-code job becomes a `needs:` dependency inserted here, before
-      # any image is built or pushed. verify:secrets and npm audit above
-      # already cover two of that future gate's dimensions — extend, don't
-      # duplicate them.
+
+      # POLICY_GATE: license compliance, provider budget/egress, and tenant-
+      # boundary static checks (scripts/verify-license-compliance.mjs,
+      # scripts/verify-provider-egress-budget.mjs,
+      # scripts/verify-client-runtime-tenant-boundary.mjs). verify:secrets and
+      # npm audit above already cover secret-exposure and dependency-advisory;
+      # connector risk classification and customer-facing spend approval are
+      # deferred to later roadmap phases. Inline steps, not a separate
+      # `needs:` job -- no isolation benefit for read-only checks, and a
+      # second job would duplicate checkout/npm ci for a purely sequential
+      # dependency.
+      - run: npm run verify:policy-gates
 
       - id: auth
         uses: google-github-actions/auth@v2
@@ -50,23 +57,63 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
       - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
+      # POLICY_GATE: infrastructure-drift pre-flight. Refuses to build a new
+      # image on top of a staging environment that has already silently
+      # drifted, instead of only discovering that after build/push/sign work
+      # is wasted. Reuses the identical verify-control-plane-cloud.mjs check
+      # and staging flags as the existing post-deploy "Verify staging
+      # configuration" step below -- that step proves the *new* revision is
+      # correct; this one proves the environment was already correct before
+      # we touched it.
+      - name: Verify staging configuration has not drifted (pre-build gate)
+        run: |
+          npm run verify:control-plane-cloud -- \
+            --public-service veloce-public-provisioner-staging \
+            --adapter-service veloce-gcp-provisioner-staging \
+            --task-queue veloce-control-plane-provisioning-staging \
+            --public-identity veloce-pub-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com \
+            --adapter-identity veloce-gcp-prov-stg-run@veloce-agenticos-2026.iam.gserviceaccount.com \
+            --operator-secret-name control-plane-operator-secret-staging \
+            --worker-secret-name control-plane-worker-token-staging
+
       - name: Build worker images (tagged by commit SHA, not "latest")
+        # Build context matches cloudbuild.control-plane.yaml: gcp-provisioner's
+        # Dockerfile also copies shared scripts/ files, so it needs the repo
+        # root as context; the other two only copy their own worker.mjs, so
+        # their own directory is the context.
         run: |
           set -euo pipefail
-          for worker in public-provisioner gcp-provisioner managed-openrouter; do
-            docker build -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${worker}:${GITHUB_SHA}" \
-              -f "workers/${worker}/Dockerfile" .
-          done
+          docker build -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/public-provisioner:${GITHUB_SHA}" \
+            -f workers/public-provisioner/Dockerfile workers/public-provisioner
+          docker build -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/gcp-provisioner:${GITHUB_SHA}" \
+            -f workers/gcp-provisioner/Dockerfile .
+          docker build -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/managed-openrouter:${GITHUB_SHA}" \
+            -f workers/managed-openrouter/Dockerfile workers/managed-openrouter
+
+      - name: Stage application files for SBOM scanning
+        # These workers have no package.json/node_modules -- scanning the
+        # built image would mostly catalog the base image's own OS/SDK
+        # packages (confirmed live: a full-image scan of gcp-provisioner
+        # produced a 32MB SBOM, too large for Rekor's attestation API,
+        # because its base is google-cloud-cli:slim; the app layer itself
+        # is 3 dependency-free .mjs files). Scan exactly what Veloce ships
+        # instead -- the base image is Google's own published, independently
+        # verifiable supply chain, not something to re-catalog here.
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/sbom-src/gcp-provisioner /tmp/sbom-src/public-provisioner
+          cp workers/gcp-provisioner/worker.mjs scripts/provision-gcp-client.mjs scripts/client-provider-policy.mjs /tmp/sbom-src/gcp-provisioner/
+          cp workers/public-provisioner/worker.mjs /tmp/sbom-src/public-provisioner/
 
       - name: Generate SBOM per image
         uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/gcp-provisioner:${{ github.sha }}
+          path: /tmp/sbom-src/gcp-provisioner
           format: spdx-json
           output-file: sbom-gcp-provisioner.spdx.json
       - uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/public-provisioner:${{ github.sha }}
+          path: /tmp/sbom-src/public-provisioner
           format: spdx-json
           output-file: sbom-public-provisioner.spdx.json
 
@@ -100,21 +147,24 @@ jobs:
 
       - name: Start deploy run
         id: start
-        env:
-          VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
-          set -euo pipefail
+          set +e -uo pipefail
+          # No -e: a failing node script's JSON diagnostic must still print
+          # before this step exits, or the real cause is silently swallowed
+          # (caught live: a 404 from the callback route produced zero log
+          # output because `result=$(...)` failing under `set -e` aborted
+          # the step before the following `echo "$result"` ever ran).
           result=$(node scripts/ci-deploy-staging.mjs --action start \
             --workflow control-plane-image-deploy \
             --git-commit "${GITHUB_SHA}" \
             --idempotency-key "${{ steps.digests.outputs.gcp_image }}" \
             --triggered-by ci-auto --apply)
+          rc=$?
           echo "$result"
+          if [ $rc -ne 0 ]; then exit 1; fi
           echo "run_id=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).runId||"")')" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to staging
-        env:
-          VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
           set -euo pipefail
           node scripts/ci-deploy-staging.mjs --action deploy --service veloce-gcp-provisioner-staging --image "${{ steps.digests.outputs.gcp_image }}" --apply
@@ -133,8 +183,6 @@ jobs:
 
       - name: Record result
         if: always()
-        env:
-          VELOCE_CI_DEPLOYER_STAGING: veloce-ci-deployer-staging@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
           node scripts/ci-deploy-staging.mjs --action record-result \
             --run-id "${{ steps.start.outputs.run_id }}" \
@@ -161,35 +209,41 @@ jobs:
           workload_identity_provider: projects/1075094991117/locations/global/workloadIdentityPools/github-actions/providers/github-actions
           service_account: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
       - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      # POLICY_GATE: infrastructure-drift pre-flight for production, mirroring
+      # the staging job's pre-build gate. Confirms production hasn't silently
+      # drifted before this promotion deploys on top of it.
+      - name: Verify production configuration has not drifted (pre-deploy gate)
+        run: npm run verify:control-plane-cloud -- --probe
+
       - uses: sigstore/cosign-installer@v3
 
       - name: Verify the staging digest's signature before touching production
         id: verify
-        env:
-          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
-          set -euo pipefail
+          set +e -uo pipefail
           result=$(node scripts/ci-promote-production.mjs --action verify --staging-run-id "${{ github.event.inputs.promote_staging_run_id }}" --apply)
+          rc=$?
           echo "$result"
+          if [ $rc -ne 0 ]; then exit 1; fi
           echo "image=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).imageDigest||"")')" >> "$GITHUB_OUTPUT"
           echo "commit=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).gitCommit||"")')" >> "$GITHUB_OUTPUT"
 
       - name: Start promotion run
         id: start
-        env:
-          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
-          set -euo pipefail
+          set +e -uo pipefail
           result=$(node scripts/ci-promote-production.mjs --action start \
             --staging-run-id "${{ github.event.inputs.promote_staging_run_id }}" \
             --git-commit "${{ steps.verify.outputs.commit }}" \
             --idempotency-key "${{ steps.verify.outputs.image }}" --apply)
+          rc=$?
           echo "$result"
+          if [ $rc -ne 0 ]; then exit 1; fi
           echo "run_id=$(echo "$result" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0,"utf8")).runId||"")')" >> "$GITHUB_OUTPUT"
 
       - name: Deploy the identical digest to production
-        env:
-          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
           node scripts/ci-promote-production.mjs --action deploy --service veloce-gcp-provisioner --image "${{ steps.verify.outputs.image }}" --apply
 
@@ -198,8 +252,6 @@ jobs:
 
       - name: Record result
         if: always()
-        env:
-          VELOCE_CI_DEPLOYER_PRODUCTION: veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com
         run: |
           node scripts/ci-promote-production.mjs --action record-result \
             --run-id "${{ steps.start.outputs.run_id }}" \

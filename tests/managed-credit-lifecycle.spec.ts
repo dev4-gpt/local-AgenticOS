@@ -74,6 +74,8 @@ class LifecycleHarness {
 
 const migrationPath = resolve(process.cwd(), "product-experience/supabase-v33-managed-credit-lifecycle.sql");
 const webhookPath = resolve(process.cwd(), "product-experience/src/app/api/billing/webhook/route.ts");
+const executionClaimsPath = resolve(process.cwd(), "product-experience/supabase-v34-managed-credit-execution-claims.sql");
+const reserveRepairPath = resolve(process.cwd(), "product-experience/supabase-v35-reserve-client-credit-fix.sql");
 
 test("reservation succeeds and duplicate reservation is idempotent", () => {
   const ledger = new LifecycleHarness(1_000_000);
@@ -131,8 +133,20 @@ test("tracked SQL contains the lifecycle tables, gates, and server functions", (
     "and provider_key = plan_allocation.provider_key;\n\n    update public.client_credit_purchase_plan_allocations",
     "greatest(0, p_amount_micros - plan_row.refunded_micros)",
     "revoke all on public.client_credit_purchase_plan_allocations",
+    "new_reservation_id uuid",
+    "return new_reservation_id",
   ]) {
     expect(sql).toContain(fragment);
+  }
+});
+
+test("reservation-event writes use an unambiguous reservation variable in fresh and repaired schemas", () => {
+  for (const path of [migrationPath, reserveRepairPath]) {
+    const sql = readFileSync(path, "utf8");
+    expect(sql).toContain("new_reservation_id uuid");
+    expect(sql).toMatch(/reservation_id,\s+tenant_slug,\s+event_type/);
+    expect(sql).toMatch(/new_reservation_id,\s+p_tenant_slug,\s+'reserved'/);
+    expect(sql).not.toMatch(/\breservation_id uuid;/);
   }
 });
 
@@ -165,4 +179,24 @@ test("failed PaymentIntent preserves a pending purchase for Checkout retry", () 
 
 test("OpenRouter managed execution remains disabled", () => {
   expect(OPENROUTER_MANAGED_ROUTE.enabled).toBe(false);
+});
+
+test("provider spend requires one atomic tenant-matched reservation claim", () => {
+  const sql = readFileSync(executionClaimsPath, "utf8");
+
+  for (const fragment of [
+    "client_credit_execution_claims",
+    "claim_client_credit_reservation",
+    "reservation_row.status <> 'reserved'",
+    "reservation_row.expires_at <= now()",
+    "reservation_row.tenant_slug <> p_tenant_slug",
+    "reservation_row.catalog_id <> p_catalog_id",
+    "reservation_row.provider_key <> p_provider_key",
+    "reservation_row.reserved_amount_micros <> p_reserved_amount_micros",
+    "reservation_row.pricing_snapshot_id is null",
+    "reservation_row.pricing_snapshot_id <> p_pricing_snapshot_id",
+    "references public.client_pricing_snapshots(id)",
+    "on conflict do nothing",
+    "from public, anon, authenticated",
+  ]) expect(sql).toContain(fragment);
 });

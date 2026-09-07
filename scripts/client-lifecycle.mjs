@@ -21,6 +21,15 @@ const confirmRestore = args.includes("--confirm-restore");
 const destroySecrets = args.includes("--destroy-secrets");
 const notificationChannel = valueAfter("--notification-channel");
 const deleteNotificationChannel = args.includes("--delete-notification-channel");
+// The fully-automated provisioning pipeline (provision-gcp-client.mjs) never
+// creates a per-tenant Monitoring notification channel -- that's a separate,
+// currently-manual setup step some tenants (e.g. veloce-cloud-test-b) have
+// had done for them and others (e.g. every tenant onboarded through the
+// disposable-acceptance pipeline) never have. Requiring --delete-notification-channel
+// unconditionally wrongly assumed every tenant has one. --no-notification-channel
+// is the explicit, auditable acknowledgement that none exists for this
+// tenant -- it does not silently skip a channel that IS there.
+const noNotificationChannel = args.includes("--no-notification-channel");
 const deleteService = args.includes("--delete-service");
 const deleteBucket = args.includes("--delete-bucket");
 const deleteQueue = args.includes("--delete-queue");
@@ -32,7 +41,7 @@ if ((mode === "offboard" || mode === "restore") && !process.env.SUPABASE_SERVICE
 if (mode === "offboard" && apply && !args.includes("--confirm-offboard")) fail("Refusing offboard apply without --confirm-offboard");
 if (mode === "offboard" && apply && !destroySecrets) fail("Refusing offboard apply without --destroy-secrets");
 if (mode === "offboard" && apply && !deleteQueue) fail("Refusing offboard apply without --delete-queue");
-if (mode === "offboard" && apply && !deleteNotificationChannel) fail("Refusing offboard apply without --delete-notification-channel");
+if (mode === "offboard" && apply && deleteNotificationChannel === noNotificationChannel) fail("Refusing offboard apply: pass exactly one of --delete-notification-channel or --no-notification-channel");
 if (mode === "offboard" && apply && deleteNotificationChannel && !notificationChannel) fail("--notification-channel is required when deleting the client alert channel");
 if (mode === "offboard" && apply && !project) fail("--project is required for offboard apply");
 if (mode === "restore" && apply && !confirmRestore) fail("Refusing restore apply without --confirm-restore");

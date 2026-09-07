@@ -12,6 +12,11 @@ const allowedRegion = process.env.GCP_ALLOWED_REGION?.trim() || "";
 const allowedRepository = process.env.GCP_ALLOWED_ARTIFACT_REPOSITORY?.trim() || "veloce";
 const allowApply = process.env.GCP_PROVISIONER_ALLOW_APPLY?.trim() === "1";
 const provisionScript = process.env.GCP_PROVISIONER_SCRIPT?.trim() || "/app/scripts/provision-gcp-client.mjs";
+const callbackUrl = process.env.CONTROL_PLANE_CALLBACK_URL?.trim() || "";
+const callbackSecret = process.env.CONTROL_PLANE_OPERATOR_SECRET?.trim() || "";
+// Reserved so a tenant slug can never be indistinguishable from a bare
+// platform-environment resource name (e.g. veloce-staging-*).
+const reservedSlugs = new Set(["staging", "production", "env", "platform", "ci"]);
 
 function json(response, status, body) {
   response.writeHead(status, { "content-type": "application/json", "cache-control": "no-store" });
@@ -19,7 +24,14 @@ function json(response, status, body) {
 }
 
 function authorized(request) {
-  const value = request.headers.authorization?.replace(/^Bearer\s+/i, "").trim() || "";
+  // Cloud Run consumes the Google ID token in Authorization. Keep the
+  // control-plane's independent application token in its own header so this
+  // check remains meaningful after Cloud Run has authenticated the request.
+  // Fall back to Authorization during the rolling deployment from the legacy
+  // header layout, then remove that compatibility path in a later migration.
+  const value = request.headers["x-control-plane-worker-token"]?.trim()
+    || request.headers.authorization?.replace(/^Bearer\s+/i, "").trim()
+    || "";
   if (!workerToken || !value) return false;
   try { return timingSafeEqual(Buffer.from(workerToken), Buffer.from(value)); } catch { return false; }
 }
@@ -43,7 +55,7 @@ function validate(input) {
   if (!input?.runId || !input?.requestId || !input?.onboardingId) return "missing_identifiers";
   if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) return "manifest_missing";
   if (manifest.approved !== true || manifest.acknowledgeClientSafeRuntime !== true) return "manifest_not_approved";
-  if (typeof manifest.clientSlug !== "string" || !/^[a-z][a-z0-9-]{2,40}$/.test(manifest.clientSlug)) return "client_slug_not_approved";
+  if (typeof manifest.clientSlug !== "string" || !/^[a-z][a-z0-9-]{2,40}$/.test(manifest.clientSlug) || reservedSlugs.has(manifest.clientSlug)) return "client_slug_not_approved";
   const gcp = manifest.gcp;
   if (!gcp || typeof gcp !== "object" || Array.isArray(gcp)) return "gcp_manifest_missing";
   if (gcp.projectId !== allowedProject || gcp.region !== allowedRegion) return "gcp_scope_not_allowed";
@@ -87,14 +99,30 @@ async function runProvisioning(manifest) {
     await writeFile(configPath, JSON.stringify(manifest), { encoding: "utf8", mode: 0o600 });
     const args = [provisionScript, "--config", configPath, "--phase", phase, "--apply"];
     const output = await run("node", args, 15 * 60_000);
-    if (output.code !== 0) throw new Error("gcp_provisioning_command_failed");
+    if (output.code !== 0) {
+      const error = new Error("gcp_provisioning_command_failed");
+      error.failureOutput = redactOutput(`${output.stdout}\n${output.stderr}`).slice(-12_000);
+      throw error;
+    }
+    const resourceManifest = provisionedResourceManifest(manifest, phase, output.stdout);
+    const smoke = phase === "deploy" ? await smokeRuntime(resourceManifest.runtimeUrl) : null;
+    if (phase === "deploy" && !smoke?.ok) {
+      const error = new Error("runtime_smoke_failed");
+      error.failureOutput = redactOutput(`runtime smoke failed: ${smoke?.error || "unknown"}`).slice(-12_000);
+      throw error;
+    }
     return {
-      completedSteps: phase === "prepare" ? ["validated_manifest", "gcp_prepare"] : ["validated_manifest", "gcp_deploy"],
-      resourceManifest: redactManifest(manifest),
+      completedSteps: phase === "prepare" ? ["validated_manifest", "gcp_prepare"] : ["validated_manifest", "gcp_deploy", "runtime_smoke"],
+      // The callback must describe the actual resource names that the
+      // provisioner derived, not merely echo the request. This makes a later
+      // rollback auditable and avoids treating a redacted request as evidence
+      // of cleanup.
+      resourceManifest,
       evidenceBundle: {
         phase,
         command: "provision-gcp-client",
         output: redactOutput(output.stdout).slice(-12_000),
+        ...(smoke ? { smoke } : {}),
       },
       imageDigest: imageDigest(manifest.gcp.image),
     };
@@ -126,10 +154,81 @@ function imageDigest(image) {
   return match?.[1] || null;
 }
 
-function redactManifest(manifest) {
-  const copy = structuredClone(manifest);
-  if (copy.secretEnv) copy.secretEnv = Object.fromEntries(Object.keys(copy.secretEnv).map((name) => [name, "Secret Manager reference"]));
-  return copy;
+function provisionedResourceManifest(manifest, phase, output = "") {
+  const slug = manifest.clientSlug;
+  const gcp = manifest.gcp || {};
+  const projectId = gcp.projectId;
+  const region = gcp.region;
+  const serviceName = cleanName(gcp.serviceName || `veloce-${slug}`, 63);
+  const serviceAccount = cleanName(gcp.runtimeServiceAccount || `veloce-${shorten(slug, 14)}-run`, 30);
+  const bucket = cleanBucket(gcp.storageBucket || `${projectId}-veloce-${slug}`);
+  const secretEnv = manifest.secretEnv && typeof manifest.secretEnv === "object" && !Array.isArray(manifest.secretEnv)
+    ? Object.values(manifest.secretEnv)
+    : [];
+  const inboxRaw = manifest.runtimeEnv?.CLIENT_CREDENTIAL_INBOX_SECRET || "client-credential-inbox";
+  const requestInboxRaw = manifest.runtimeEnv?.CLIENT_REQUEST_INBOX_SECRET || inboxRaw;
+  const secretNames = [...new Set([
+    ...secretEnv.map((value) => secretName(slug, String(value))),
+    secretName(slug, String(inboxRaw)),
+    secretName(slug, String(requestInboxRaw)),
+  ])].sort();
+  return {
+    schemaVersion: 1,
+    phase,
+    clientSlug: slug,
+    clientName: typeof manifest.clientName === "string" ? manifest.clientName.slice(0, 240) : slug,
+    retentionDays: Number.isSafeInteger(manifest.retention?.days) ? manifest.retention.days : 30,
+    runtimeUrl: phase === "deploy" ? runtimeUrlFromOutput(output) : null,
+    projectId,
+    region,
+    createdResources: {
+      serviceAccount: `${serviceAccount}@${projectId}.iam.gserviceaccount.com`,
+      storageBucket: bucket,
+      taskQueue: `veloce-${slug}`,
+      secrets: secretNames,
+      cloudRunService: phase === "deploy" ? serviceName : null,
+      cloudRunJobs: phase === "deploy" ? [
+        cleanName(gcp.workspaceJobName || `${serviceName}-workspace`, 63),
+        ...(Array.isArray(manifest.enabledCapabilities) && manifest.enabledCapabilities.includes("visual-qa")
+          ? [cleanName(gcp.visualQaJobName || `${serviceName}-visual-qa`, 63)]
+          : []),
+      ] : [],
+    },
+  };
+}
+
+function runtimeUrlFromOutput(output) {
+  const match = String(output).match(/^VELOCE_RUNTIME_URL=(https:\/\/[^\s/]+(?:\/[^\s]*)?)$/m);
+  const value = match?.[1]?.replace(/\/$/, "") || "";
+  if (!/^https:\/\/[^\s/]+\.run\.app(?:\/|$)/i.test(value)) return null;
+  return value;
+}
+
+async function smokeRuntime(runtimeUrl) {
+  if (!runtimeUrl) return { ok: false, error: "runtime_url_missing" };
+  const checkedAt = new Date().toISOString();
+  const response = await fetch(runtimeUrl, { redirect: "manual", signal: AbortSignal.timeout(15_000) }).catch(() => null);
+  const status = response?.status ?? 0;
+  if (status < 200 || status >= 400) return { ok: false, url: runtimeUrl, status, checkedAt, error: "unexpected_status" };
+  return { ok: true, url: runtimeUrl, status, checkedAt };
+}
+
+function cleanName(value, max) {
+  return String(value).toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, max).replace(/-$/g, "");
+}
+
+function cleanBucket(value) {
+  return String(value).toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+}
+
+function shorten(value, max) {
+  return String(value).length <= max ? String(value) : String(value).slice(0, max).replace(/-$/g, "");
+}
+
+function secretName(slug, value) {
+  const clean = String(value).toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  const prefix = `veloce-${slug}-`;
+  return clean.startsWith(prefix) ? clean : `${prefix}${clean}`;
 }
 
 function redactOutput(value) {
@@ -138,22 +237,62 @@ function redactOutput(value) {
     .replace(/(api[_-]?key|token|secret|password)\s*[=:]\s*[^\s,]+/gi, "$1=[REDACTED]");
 }
 
+async function callback(input, result) {
+  if (!callbackUrl || !callbackSecret || !input?.runId) return false;
+  const response = await fetch(callbackUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-control-plane-secret": callbackSecret },
+    body: JSON.stringify({ runId: input.runId, ...result }),
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => null);
+  return response?.ok === true;
+}
+
+function callbackConfigured() {
+  return /^https:\/\//i.test(callbackUrl) && callbackSecret.length > 0;
+}
+
 const server = http.createServer(async (request, response) => {
-  if (request.method === "GET" && request.url === "/healthz") {
+  if (request.method === "GET" && (request.url === "/readyz" || request.url === "/healthz")) {
     return json(response, 200, { ok: true, worker: "gcp-provisioner", applyEnabled: allowApply });
+  }
+  if (request.method === "POST" && request.url === "/queue-authz") {
+    if (!authorized(request)) {
+      console.warn(JSON.stringify({
+        event: "gcp_adapter_queue_authz_denied",
+        workerTokenConfigured: workerToken.length > 0,
+        workerTokenHeaderPresent: typeof request.headers["x-control-plane-worker-token"] === "string",
+        authorizationHeaderPresent: typeof request.headers.authorization === "string",
+      }));
+      return json(response, 401, { ok: false, error: "not_authorized" });
+    }
+    return json(response, 200, { ok: true, worker: "gcp-provisioner", queueAuthz: true, applyEnabled: allowApply });
   }
   if (request.method !== "POST" || request.url !== "/provision") return json(response, 404, { ok: false, error: "not_found" });
   if (!authorized(request)) return json(response, 401, { ok: false, error: "not_authorized" });
   let input;
   try { input = await readBody(request); } catch (error) { return json(response, 400, { ok: false, error: error.message }); }
+  if (!callbackConfigured()) return json(response, 503, { ok: false, runId: input?.runId || null, error: "control_plane_callback_not_configured" });
   const invalid = validate(input);
-  if (invalid) return json(response, 400, { ok: false, error: invalid });
+  if (invalid) {
+    const callbackDelivered = await callback(input, { status: "failed", errorCode: invalid, errorMessage: "Provisioning manifest was rejected before mutation." });
+    return json(response, 400, { ok: false, runId: input?.runId || null, error: invalid, callbackDelivered });
+  }
   try {
     const result = await runProvisioning(input.manifest);
-    return json(response, 200, { ok: true, runId: input.runId, ...result });
+    const callbackDelivered = await callback(input, { status: "succeeded", ...result });
+    if (!callbackDelivered) return json(response, 502, { ok: false, runId: input.runId, error: "control_plane_callback_failed" });
+    return json(response, 200, { ok: true, runId: input.runId, ...result, callbackDelivered });
   } catch (error) {
     const message = error instanceof Error ? error.message : "gcp_provisioning_failed";
-    return json(response, message === "gcp_apply_disabled" ? 409 : 502, { ok: false, runId: input.runId, error: message });
+    const failureOutput = error instanceof Error && typeof error.failureOutput === "string" ? error.failureOutput : "";
+    const callbackDelivered = await callback(input, {
+      status: "failed",
+      errorCode: message,
+      errorMessage: "Provisioning adapter failed; inspect the redacted command evidence.",
+      ...(failureOutput ? { evidenceBundle: { phase: input.manifest?.provisioning?.phase || "unknown", command: "provision-gcp-client", failureOutput } } : {}),
+    });
+    return json(response, message === "gcp_apply_disabled" ? 409 : 502, { ok: false, runId: input.runId, error: message, callbackDelivered });
   }
 });
 

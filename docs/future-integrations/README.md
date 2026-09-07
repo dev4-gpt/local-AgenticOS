@@ -36,7 +36,10 @@ audit, and next implementation item are preserved in the
 | LMCache | Inference-time KV-cache reuse | Research and defer | [lmcache.md](./lmcache.md) |
 | Viktor | External AI employee / cross-tool operator | Pilot externally; do not make a core dependency | [viktor-ai-employee.md](./viktor-ai-employee.md) |
 | Workplace integrations | Slack, Teams, WhatsApp, Drive, Gmail, Calendar, CRM, and business tools | Future capability; staged read-first rollout | [workplace-integrations.md](./workplace-integrations.md) |
-| [OpenReply](https://github.com/diwenne/openreply) | Self-hosted Instagram comment-to-DM campaigns | Future, isolated marketing pilot | [OpenReply integration runway](./openreply.md) |
+| [OpenReply](https://github.com/diwenne/openreply) | Self-hosted Instagram comment-to-DM campaigns | Staged, disabled, isolated pilot blueprint | [OpenReply integration runway](./openreply.md) |
+| [Scout](https://github.com/kiryano/Scout) | Public-profile lead research and contact enrichment | Staged, disabled: manual aggregate campaign briefs only; no scraping runtime, cookies, proxies, lead import, or automatic outreach | [Scout integration runway](./scout.md) |
+| [VoxCPM](https://github.com/OpenBMB/VoxCPM) | Multilingual TTS, synthetic voice design, and consent-gated cloning | Staged, disabled, isolated private GPU worker | [VoxCPM integration runway](./voxcpm.md) |
+| Ponytail / Headroom / OpenReply / VoxCPM / Scout | Native efficiency traits and staged external candidates | Governed registry is visible to pipeline planning and the integration backend; it carries state, data boundary, activation evidence, and rollback without adding upstream runtimes | [`integration-control-plane.manifest.json`](../../infrastructure/integration-control-plane.manifest.json) |
 | Open WebUI | Private model workspace | Reuse existing VPS; do not embed | [V2 candidate register](../../V2-INTEGRATION-CANDIDATES.md) |
 | Vane | Cited research and search | Evaluate later on a private VPS | [V2 candidate register](../../V2-INTEGRATION-CANDIDATES.md) |
 | Cline | Coding lane | Optional local integration | [V2 candidate register](../../V2-INTEGRATION-CANDIDATES.md) |

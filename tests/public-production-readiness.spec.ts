@@ -15,20 +15,27 @@ test("release verifier records the current revision without secrets", () => {
 test("production readiness source keeps live gates explicit", () => {
   const verifier = readFileSync(resolve(process.cwd(), "scripts/verify-production-readiness.mjs"), "utf8");
   const runbook = readFileSync(resolve(process.cwd(), "docs/public-launch-runbook.md"), "utf8");
+  const checklist = readFileSync(resolve(process.cwd(), "docs/production-release-acceptance-checklist.md"), "utf8");
   const supportRoute = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/support/route.ts"), "utf8");
-  expect(verifier).toContain("migrationResult");
+  expect(verifier).toContain("migrationApplied");
   expect(verifier).toContain("rollbackTarget");
   expect(verifier).toContain("configurationHash");
   expect(verifier).toContain("tenantIsolationResult");
   expect(verifier).toContain("managedOpenRouterResult");
   expect(verifier).toContain("OPENROUTER_MANAGED_SECRET_RESOURCE");
   expect(verifier).toContain("OPENROUTER_MANAGED_PRICING_SNAPSHOT_ID");
+  expect(verifier).toContain("verify-content-os-video-pilot.mjs");
+  expect(verifier).toContain("manual-pilot");
   expect(verifier).toContain("TURNSTILE_SECRET_KEY");
   expect(verifier).toContain("LEAD_NOTIFICATION_TO");
   expect(supportRoute).toContain("notifyLead");
   expect(supportRoute).toContain("teamNotification");
   expect(runbook).toContain("Do not point the public domain at a tenant runtime directly");
   expect(runbook).toContain("before live mode");
+  expect(checklist).toContain("configure a $4");
+  expect(checklist).toContain("lifetime cap");
+  expect(checklist).toContain("verify:production-readiness -- --strict");
+  expect(checklist).toContain("Personal video Content OS");
 });
 
 test("public onboarding wires Turnstile only through public site-key and server secret paths", () => {
@@ -56,6 +63,7 @@ test("commercial scope remains separate from runtime manifest and billing", () =
   const approval = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/scope/approve/route.ts"), "utf8");
   const manifestApproval = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/approve/route.ts"), "utf8");
   const checkout = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/billing/checkout/route.ts"), "utf8");
+  const operatorTool = readFileSync(resolve(process.cwd(), "scripts/approve-stripe-test-fixture.mjs"), "utf8");
   expect(migration).toContain("commercial_scope_recommendation");
   expect(migration).toContain("commercial_scope_quote");
   expect(intake).toContain("recommendCommercialScope");
@@ -65,6 +73,54 @@ test("commercial scope remains separate from runtime manifest and billing", () =
   expect(checkout).toContain("commercial_scope_pending");
   expect(checkout).toContain("metadata[commercial_scope]");
   expect(approval).toContain("providerCreditsIncluded: false");
+});
+
+test("the disposable Stripe fixture can only run under an explicit test key", () => {
+  const launch = readFileSync(resolve(process.cwd(), "product-experience/src/lib/publicLaunch.ts"), "utf8");
+  const approval = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/scope/approve/route.ts"), "utf8");
+  const checkout = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/billing/checkout/route.ts"), "utf8");
+  const operatorTool = readFileSync(resolve(process.cwd(), "scripts/approve-stripe-test-fixture.mjs"), "utf8");
+
+  expect(launch).toContain("function stripeTestFixtureConfig()");
+  expect(launch).toContain('process.env.STRIPE_MODE?.trim() !== "test"');
+  expect(launch).toContain('secret.startsWith("sk_test_")');
+  expect(launch).toContain("STRIPE_TEST_FIXTURE_ENABLED");
+  expect(approval).toContain("const testFixture = stripeTestFixtureConfig()");
+  expect(approval).toContain("body.stripeTestFixture === true && !testFixture");
+  expect(approval).toContain('error: "stripe_test_fixture_not_configured"');
+  expect(approval).toContain("testFixture: true");
+  expect(checkout).toContain("stripe_test_fixture_not_configured");
+  expect(checkout).toContain('"metadata[test_fixture]": "true"');
+  expect(checkout).toContain('"managed_payments[enabled]": "false"');
+  expect(operatorTool).toContain("CONTROL_PLANE_OPERATOR_SECRET");
+  expect(operatorTool).toContain("export CONTROL_PLANE_OPERATOR_SECRET");
+  expect(operatorTool).toContain("stripeTestFixture: true");
+  expect(operatorTool).toContain("quote?.testFixture !== true");
+  expect(operatorTool).toContain("initialTotalCents !== 100");
+});
+
+test("tenant activation is bound to a deployed runtime smoke and the verified owner membership", () => {
+  const deploy = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/deploy/route.ts"), "utf8");
+  const provisionResult = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/provision-result/route.ts"), "utf8");
+  const activate = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/activate/route.ts"), "utf8");
+  const setup = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/setup/route.ts"), "utf8");
+  const adapter = readFileSync(resolve(process.cwd(), "workers/gcp-provisioner/worker.mjs"), "utf8");
+
+  expect(adapter).toContain("VELOCE_RUNTIME_URL");
+  expect(adapter).toContain("async function smokeRuntime(runtimeUrl)");
+  expect(adapter).toContain('"runtime_smoke"');
+  expect(deploy).toContain('current_step: "eq.prepared"');
+  expect(deploy).toContain('phase: "deploy"');
+  expect(deploy).toContain('const initialDeployKey = `deploy:${requestId}`');
+  expect(deploy).toContain("function isSafePreMutationFailure");
+  expect(deploy).toContain("retry_of_run_id");
+  expect(provisionResult).toContain("provisioning_callback_manifest_mismatch");
+  expect(provisionResult).toContain('supabaseServiceUpsert("client_tenants"');
+  expect(provisionResult).toContain("activationReady: true");
+  expect(activate).toContain("runtime_smoke_required");
+  expect(activate).not.toContain('["smoke_testing", "provisioning"]');
+  expect(setup).toContain('supabaseServiceUpsert("client_memberships"');
+  expect(setup).toContain('role: "owner"');
 });
 
 test("team support notification is server-side and contains no credential field", async () => {

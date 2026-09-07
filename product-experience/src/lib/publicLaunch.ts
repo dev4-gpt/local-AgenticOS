@@ -54,6 +54,20 @@ export async function supabaseServiceInsert(table: string, record: Record<string
   return { ok: response?.ok === true, status: response?.status ?? 503, rows: Array.isArray(rows) ? rows : [] };
 }
 
+export async function supabaseServiceUpsert(table: string, record: Record<string, unknown>, onConflict: string) {
+  const config = publicLaunchConfig();
+  if (!config) return { ok: false, status: 503, rows: [] as Record<string, unknown>[] };
+  const query = new URLSearchParams({ on_conflict: onConflict });
+  const response = await fetch(`${config.url}/rest/v1/${table}?${query.toString()}`, {
+    method: "POST",
+    headers: { ...serviceHeaders(config), Prefer: "resolution=merge-duplicates,return=representation" },
+    body: JSON.stringify(record),
+    cache: "no-store",
+  }).catch(() => null);
+  const rows = await response?.json().catch(() => []) as Record<string, unknown>[];
+  return { ok: response?.ok === true, status: response?.status ?? 503, rows: Array.isArray(rows) ? rows : [] };
+}
+
 export async function supabaseServiceUpdate(table: string, filters: Record<string, string>, record: Record<string, unknown>) {
   const config = publicLaunchConfig();
   if (!config) return { ok: false, status: 503, rows: [] as Record<string, unknown>[] };
@@ -87,6 +101,23 @@ export function stripeConfigured() {
 
 export function stripeSecretConfigured() {
   return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
+}
+
+// This is deliberately separate from the public production price settings.
+// It can only be enabled with a Stripe test secret key and is capped to a
+// small, disposable acceptance fixture. A live key always disables it.
+export function stripeTestFixtureConfig() {
+  const secret = process.env.STRIPE_SECRET_KEY?.trim() || "";
+  if (process.env.STRIPE_MODE?.trim() !== "test" || process.env.STRIPE_TEST_FIXTURE_ENABLED?.trim() !== "1" || !secret.startsWith("sk_test_")) return null;
+  const setupCents = fixtureCents(process.env.STRIPE_TEST_FIXTURE_SETUP_CENTS, 50);
+  const monthlyCents = fixtureCents(process.env.STRIPE_TEST_FIXTURE_MONTHLY_CENTS, 50);
+  if (setupCents === null || monthlyCents === null) return null;
+  return { setupCents, monthlyCents, initialTotalCents: setupCents + monthlyCents };
+}
+
+function fixtureCents(value: string | undefined, fallback: number) {
+  const cents = value == null || value.trim() === "" ? fallback : Number(value);
+  return Number.isSafeInteger(cents) && cents >= 50 && cents <= 500 ? cents : null;
 }
 
 export async function stripeRequest(path: string, body: Record<string, string | number | string[]>) {
@@ -144,5 +175,19 @@ export async function sendSupportAcknowledgement(email: string, supportId: strin
   const from = process.env.PUBLIC_EMAIL_FROM?.trim() || process.env.LEAD_NOTIFICATION_FROM?.trim();
   if (!apiKey || !from) return "not_configured" as const;
   const response = await fetch("https://api.resend.com/emails", { method: "POST", signal: AbortSignal.timeout(5_000), headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ from, to: [email], subject: `Veloce support request ${supportId.slice(0, 8)}`, text: `Your Veloce support request ${supportId} was received. Please keep this ID for follow-up. Do not reply with passwords or API keys.` }) }).catch(() => null);
+  return response?.ok ? "sent" as const : "failed" as const;
+}
+
+export async function sendManagedCreditSpendAlertEmail(input: { email: string; tenantSlug: string; currentSpendMicros: number; thresholdMicros: number }) {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.PUBLIC_EMAIL_FROM?.trim() || process.env.LEAD_NOTIFICATION_FROM?.trim();
+  if (!apiKey || !from) return "not_configured" as const;
+  const currentSpend = (input.currentSpendMicros / 1_000_000).toFixed(2);
+  const threshold = (input.thresholdMicros / 1_000_000).toFixed(2);
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST", signal: AbortSignal.timeout(5_000),
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from, to: [input.email], subject: `Veloce managed-credit spend alert for ${input.tenantSlug}`, text: `Your Veloce AgenticOS tenant "${input.tenantSlug}" has spent $${currentSpend} in managed credit this month, crossing your configured alert threshold of $${threshold}. This is informational only; no action is required. No provider credentials or account secrets are included in this email.` }),
+  }).catch(() => null);
   return response?.ok ? "sent" as const : "failed" as const;
 }

@@ -1,0 +1,6 @@
+# Vercel project: product-experience. Root-level Next.js source and build
+# caches belong to a separate application and must never enter this upload.
+/src
+/.next
+/.next-client
+/.next-v0

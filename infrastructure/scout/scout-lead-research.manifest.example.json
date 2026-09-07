@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "integration": "scout-lead-research",
+  "state": "disabled",
+  "source": {
+    "repository": "https://github.com/kiryano/Scout",
+    "license": "MIT",
+    "candidateCommit": null,
+    "reviewedCommit": null,
+    "review": {
+      "decision": "blocked",
+      "blockers": [
+        "Scout is an early-access scraping CLI; pin and audit an exact upstream commit before any pilot",
+        "Its LinkedIn session-cookie, proxy rotation, and contact-enrichment features are outside Veloce's hosted data boundary",
+        "Approve a lawful-basis, consent, retention, deletion, and outreach policy for each proposed campaign"
+      ]
+    }
+  },
+  "deployment": {
+    "runtime": "external-manual-only",
+    "separateProject": true,
+    "publicIngress": false,
+    "directVeloceRuntimeConnection": false
+  },
+  "dataBoundary": {
+    "approvedInput": "human-approved-public-profile-urls-only",
+    "allowedVeloceOutput": "human-reviewed-aggregate-campaign-brief-only",
+    "rawLeadImportEnabled": false,
+    "rawProfileStorageEnabled": false,
+    "emailOrPhoneStorageEnabled": false,
+    "browserCookieUseEnabled": false,
+    "proxyUseEnabled": false,
+    "automaticOutreachEnabled": false
+  },
+  "openreplyHandoff": {
+    "enabled": false,
+    "mode": "manual-aggregate-only",
+    "requiresCampaignApproval": true,
+    "allowsRawLeadData": false
+  },
+  "acceptance": {
+    "pinnedSourceReviewed": false,
+    "termsAndPrivacyReviewPassed": false,
+    "campaignLawfulBasisRecorded": false,
+    "retentionAndDeletionTested": false,
+    "humanReviewWorkflowTested": false,
+    "rollbackProven": false
+  }
+}

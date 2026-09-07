@@ -41,6 +41,13 @@ create table if not exists public.client_onboarding_accounts (
   updated_at timestamptz not null default now()
 );
 
+-- `create table if not exists` does not evolve tables created by older
+-- releases, so keep approval persistence columns forward-compatible.
+alter table public.client_onboarding_accounts
+  add column if not exists manifest_version text,
+  add column if not exists manifest_hash text,
+  add column if not exists approved_manifest jsonb;
+
 create index if not exists client_onboarding_status_idx
   on public.client_onboarding_accounts (status, created_at desc);
 

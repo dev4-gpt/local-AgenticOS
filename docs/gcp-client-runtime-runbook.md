@@ -406,6 +406,105 @@ provider Secret Manager slots and the reviewed `text-agents` capability. A
 model allowed for one provider cannot be selected through a different provider
 alias.
 
+## Revoking and deleting a provider credential (Phase 3d)
+
+Before this stage, `client_provider_connections.status` could only ever be
+`submitted` -- the table's schema already allowed `connected`/`revoked`/
+`rotating`/`rejected`, but nothing ever set them, and `promote-client-credential.mjs`
+only ever touched Secret Manager, never this table. That meant Supabase could
+silently drift from reality after every real promotion, and there was no way
+to revoke or delete a single BYOK credential short of destroying the entire
+tenant.
+
+`npm run promote:client-credential -- --apply` now also PATCHes the matching
+`client_provider_connections` row to `status: 'connected'`, points
+`secret_resource` at the real target secret (not the inbox), and stamps
+`last_validated_at`. This requires `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`
+in the operator's shell in addition to `gcloud` credentials; a service-role
+key bypasses RLS for this direct table write, so no new SQL function was
+needed for this half.
+
+**Revoke** is tenant self-service: an authenticated, active member can
+disconnect their own provider from inside the client runtime by calling
+`POST /api/client-runtime/credentials/revoke` with `{ "providerKey": "..." }`.
+This calls the new `revoke_client_provider_connection(p_tenant_slug,
+p_provider_key)` Supabase function
+(`product-experience/supabase-v38-managed-credential-lifecycle.sql`), the one
+piece of this stage that genuinely needed new SQL: it is security definer and
+gated on `auth.uid()` plus an active `client_memberships` row, mirroring
+`record_client_provider_connection` exactly, since this table blocks direct
+authenticated access entirely. Revoking sets `status = 'revoked'` and
+`revoked_at`; it does not touch Secret Manager -- the credential material is
+left in place until an operator deletes it. Revoking an already-revoked or
+never-submitted connection is a safe no-op, not an error.
+
+**Delete** is operator-only, since only the operator's own `gcloud` identity
+can destroy a per-provider target secret (the tenant's own Cloud Run identity
+can only write to the shared inbox secret, confirmed by reading
+`credential-submissions/route.ts`):
+
+```bash
+npm run delete:client-credential -- \
+  --project veloce-agenticos-2026 \
+  --client-slug veloce-cloud-test \
+  --provider ANTHROPIC_API_KEY \
+  --target-secret veloce-veloce-cloud-test-anthropic-api-key
+```
+
+Dry run by default; add `--apply --confirm-delete` to actually destroy the
+target secret (`gcloud secrets delete ... --quiet`) and remove the connection
+row. It refuses to run if the connection's recorded `secret_resource` does not
+match `--target-secret`, and refuses to touch the shared credential-inbox
+secret under any name.
+
+**Verification**: `product-experience/supabase-v38-managed-credential-lifecycle-canary.sql`
+/ `-cleanup.sql` prove the revoke function's authorization gate against a
+disposable tenant, using a real (disposable) `auth.users` row plus
+`set_config('request.jwt.claim.sub', ...)` to simulate an authenticated
+session inside the SQL Editor -- direct table access is fully revoked for
+`authenticated`/`anon`/`public` on `client_provider_connections`, so this is
+the only way to exercise the function's real auth path in SQL rather than
+just its update logic. Four assertions: an unauthenticated call is refused
+and leaves the row untouched; the tenant's own active member revokes
+successfully; revoking again is a harmless no-op; revoking a provider with no
+connection at all is refused. The "mark connected" and "delete" paths are
+plain service-role table writes (PATCH/DELETE), not new SQL functions, so
+there is no auth-gate logic to verify for them in SQL -- their correctness is
+proven by actually running the two scripts above.
+
+**Result (2026-09-06): passed.** The database owner applied the migration,
+then the canary. All four assertions passed with no exception raised inside
+the `do $$ ... $$` block -- a failed `assert` aborts the transaction with a
+hard error in the SQL Editor, and none occurred -- including the disposable
+`auth.users` insert succeeding on the first attempt against this project's
+real Auth schema. The cleanup query returned `fixture_removed`,
+`connection_removed`, `membership_removed`, and `fixture_user_removed` all
+`true`. The revoke function's real authorization gate is proven live.
+
+**Live drill (2026-09-06): passed.** The promote and delete scripts were run
+for real, end-to-end, against disposable fixtures (`byok-drill-20260907`
+tenant, `veloce-byok-drill-20260907-inbox`/`-fixture-key` secrets, fake
+placeholder value, never a real provider key), with independent verification
+after each step rather than trusting the scripts' own success messages:
+- `promote-client-credential.mjs --apply`: dry run first, then applied.
+  Independently confirmed with `gcloud secrets versions access latest` that
+  the target secret's actual value matched the fixture's inbox envelope
+  (proving the value genuinely moved, not just an HTTP 200), and confirmed
+  via a direct Supabase read that the connection row flipped to
+  `status: connected` with `secret_resource` pointing at the target secret
+  and `last_validated_at` set.
+- `delete-client-credential.mjs --apply --confirm-delete`: dry run first
+  (correctly reported the real pre-deletion status), then applied.
+  Independently confirmed with `gcloud secrets describe` (`NOT_FOUND`) and a
+  direct Supabase read (`[]`) that both the secret and the connection row
+  were actually gone, not just that the script exited 0.
+- All fixtures (inbox secret, fixture tenant row) were cleaned up
+  afterward, with a final independent check confirming zero residue.
+
+Both scripts are now proven live end-to-end, in addition to the CI build
+verification (`gh run 34076562302`) already confirming they compile/typecheck
+correctly.
+
 ## Worker identity and long jobs
 
 The controls migration adds idempotent job enqueue, claim, completion, retry,

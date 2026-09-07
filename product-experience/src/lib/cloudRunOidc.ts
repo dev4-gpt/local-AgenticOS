@@ -27,7 +27,13 @@ export function controlPlaneOidcConfigured() {
 
 export async function cloudRunIdTokenFromVercel(request: Request, target: string): Promise<Result> {
   const settings = config();
-  const subjectToken = request.headers.get("x-vercel-oidc-token")?.trim() || "";
+  // In a live Function, Vercel provides the invocation token on the Request.
+  // Prefer it over the build-time environment token, which can otherwise be
+  // inlined into a bundle and become stale. The environment value is only a
+  // local/prebuilt fallback.
+  const subjectToken = request.headers.get("x-vercel-oidc-token")?.trim()
+    || process.env.VERCEL_OIDC_TOKEN?.trim()
+    || "";
   let audience: string;
   try {
     const parsed = new URL(target);
@@ -57,18 +63,13 @@ export async function cloudRunIdTokenFromVercel(request: Request, target: string
   if (!exchanged?.ok || typeof exchangeBody?.access_token !== "string") return { ok: false, error: "gcp_token_exchange_failed" };
 
   const accountPath = encodeURIComponent(settings.serviceAccount);
-  const impersonated = await fetch(`https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${accountPath}:generateAccessToken`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${exchangeBody.access_token}`, "content-type": "application/json" },
-    body: JSON.stringify({ scope: [GOOGLE_CLOUD_SCOPE], lifetime: "900s" }),
-    cache: "no-store",
-  }).catch(() => null);
-  const impersonatedBody = await impersonated?.json().catch(() => null) as { accessToken?: unknown } | null;
-  if (!impersonated?.ok || typeof impersonatedBody?.accessToken !== "string") return { ok: false, error: "gcp_service_account_impersonation_failed" };
-
+  // The federated principal has the narrowly scoped Workload Identity User
+  // permission on this service account. Mint the Cloud Run ID token directly
+  // with that credential rather than creating a second service-account access
+  // token, which would require an unnecessary self-impersonation grant.
   const minted = await fetch(`https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${accountPath}:generateIdToken`, {
     method: "POST",
-    headers: { authorization: `Bearer ${impersonatedBody.accessToken}`, "content-type": "application/json" },
+    headers: { authorization: `Bearer ${exchangeBody.access_token}`, "content-type": "application/json" },
     body: JSON.stringify({ audience, includeEmail: true }),
     cache: "no-store",
   }).catch(() => null);
