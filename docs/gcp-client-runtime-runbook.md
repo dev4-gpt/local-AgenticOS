@@ -406,6 +406,72 @@ provider Secret Manager slots and the reviewed `text-agents` capability. A
 model allowed for one provider cannot be selected through a different provider
 alias.
 
+## Revoking and deleting a provider credential (Phase 3d)
+
+Before this stage, `client_provider_connections.status` could only ever be
+`submitted` -- the table's schema already allowed `connected`/`revoked`/
+`rotating`/`rejected`, but nothing ever set them, and `promote-client-credential.mjs`
+only ever touched Secret Manager, never this table. That meant Supabase could
+silently drift from reality after every real promotion, and there was no way
+to revoke or delete a single BYOK credential short of destroying the entire
+tenant.
+
+`npm run promote:client-credential -- --apply` now also PATCHes the matching
+`client_provider_connections` row to `status: 'connected'`, points
+`secret_resource` at the real target secret (not the inbox), and stamps
+`last_validated_at`. This requires `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`
+in the operator's shell in addition to `gcloud` credentials; a service-role
+key bypasses RLS for this direct table write, so no new SQL function was
+needed for this half.
+
+**Revoke** is tenant self-service: an authenticated, active member can
+disconnect their own provider from inside the client runtime by calling
+`POST /api/client-runtime/credentials/revoke` with `{ "providerKey": "..." }`.
+This calls the new `revoke_client_provider_connection(p_tenant_slug,
+p_provider_key)` Supabase function
+(`product-experience/supabase-v38-managed-credential-lifecycle.sql`), the one
+piece of this stage that genuinely needed new SQL: it is security definer and
+gated on `auth.uid()` plus an active `client_memberships` row, mirroring
+`record_client_provider_connection` exactly, since this table blocks direct
+authenticated access entirely. Revoking sets `status = 'revoked'` and
+`revoked_at`; it does not touch Secret Manager -- the credential material is
+left in place until an operator deletes it. Revoking an already-revoked or
+never-submitted connection is a safe no-op, not an error.
+
+**Delete** is operator-only, since only the operator's own `gcloud` identity
+can destroy a per-provider target secret (the tenant's own Cloud Run identity
+can only write to the shared inbox secret, confirmed by reading
+`credential-submissions/route.ts`):
+
+```bash
+npm run delete:client-credential -- \
+  --project veloce-agenticos-2026 \
+  --client-slug veloce-cloud-test \
+  --provider ANTHROPIC_API_KEY \
+  --target-secret veloce-veloce-cloud-test-anthropic-api-key
+```
+
+Dry run by default; add `--apply --confirm-delete` to actually destroy the
+target secret (`gcloud secrets delete ... --quiet`) and remove the connection
+row. It refuses to run if the connection's recorded `secret_resource` does not
+match `--target-secret`, and refuses to touch the shared credential-inbox
+secret under any name.
+
+**Verification**: `product-experience/supabase-v38-managed-credential-lifecycle-canary.sql`
+/ `-cleanup.sql` prove the revoke function's authorization gate against a
+disposable tenant, using a real (disposable) `auth.users` row plus
+`set_config('request.jwt.claim.sub', ...)` to simulate an authenticated
+session inside the SQL Editor -- direct table access is fully revoked for
+`authenticated`/`anon`/`public` on `client_provider_connections`, so this is
+the only way to exercise the function's real auth path in SQL rather than
+just its update logic. Four assertions: an unauthenticated call is refused
+and leaves the row untouched; the tenant's own active member revokes
+successfully; revoking again is a harmless no-op; revoking a provider with no
+connection at all is refused. The "mark connected" and "delete" paths are
+plain service-role table writes (PATCH/DELETE), not new SQL functions, so
+there is no auth-gate logic to verify for them in SQL -- their correctness is
+proven by actually running the two scripts above.
+
 ## Worker identity and long jobs
 
 The controls migration adds idempotent job enqueue, claim, completion, retry,
