@@ -5,6 +5,19 @@ actual data flows in the Veloce AgenticOS platform as implemented, not
 generic boilerplate -- but it has not been reviewed by a lawyer, and
 should be before it is published as the live policy at any public URL.
 
+*Completeness pass (2026-09-07):* this draft was checked section-by-section
+against the disclosure elements GDPR Art. 13/14 and CCPA/CPRA require a
+privacy notice to cover (legal basis for processing, international
+transfer disclosure, supervisory-authority complaint rights, sale/share
+opt-out status, children's privacy, automated decision-making), and the
+gaps found are now filled in below with what is actually true of this
+platform. This closes *completeness* gaps against a known checklist -- it
+is not, and cannot be, a substitute for a licensed attorney's review of
+enforceability, liability language, and jurisdiction-specific accuracy.
+That requirement does not go away no matter how thorough the checklist;
+see the note on tooling researched for this pass at the bottom of this
+document.
+
 ## What we collect
 
 - **Account and contact information**: name, email address, and company
@@ -32,6 +45,37 @@ should be before it is published as the live policy at any public URL.
   row-level security and independently verified through live testing
   (two genuinely separate tenants, each unable to read or act on the
   other's data even with a valid authenticated session).
+
+## Legal basis for processing (GDPR)
+
+For users in the UK/EEA, we process personal data under these legal bases:
+
+- **Contract necessity**: account/contact information, billing information,
+  and tenant workspace data are processed because they are required to
+  provide the service you signed up for.
+- **Legitimate interests**: operational logs (authentication events, API
+  request metadata, audit-trail entries) are processed for platform
+  security, abuse prevention, and support -- a legitimate interest that
+  does not override your own rights, since this data is scoped to your
+  own tenant only.
+- **Legal obligation**: billing and transaction records are retained as
+  required by applicable tax and accounting law.
+
+We do not rely on consent as a legal basis for any of the above -- none of
+it is optional to using the service. Where a future feature does rely on
+consent (for example, an optional marketing email), that consent will be
+requested separately and can be withdrawn at any time.
+
+## International data transfers
+
+Our infrastructure vendors (Stripe, Supabase, Google Cloud Platform,
+Vercel, Resend, OpenRouter) may process data in the United States or other
+countries outside your own. Each of these vendors provides its own
+data-transfer safeguards (such as EU Standard Contractual Clauses) as part
+of their respective terms of service. [This section should be confirmed
+against the actual signed data-processing terms with each vendor before
+publication -- it currently reflects each vendor's publicly documented
+practice, not a signed agreement reviewed by counsel.]
 
 ## Your own provider credentials ("BYOK")
 
@@ -83,6 +127,39 @@ correct, export, or delete your personal data, and to object to certain
 processing. Contact us using the support channel in your workspace to
 exercise any of these rights.
 
+**If you are in the UK/EEA**, you also have the right to lodge a
+complaint with your local data protection supervisory authority if you
+believe we have not handled your data lawfully.
+
+**If you are a California resident**, under the CCPA/CPRA you have the
+right to know what personal information we collect, to delete it, to
+correct it, and to non-discrimination for exercising these rights. We do
+not sell or share (as those terms are defined by the CCPA/CPRA) your
+personal information, so there is no opt-out link to provide. You may
+submit a rights request yourself or through an authorized agent using the
+support channel in your workspace; we may need to verify your identity
+before acting on the request.
+
+## Children's privacy
+
+Veloce AgenticOS is a business-to-business platform intended for use by
+adults acting on behalf of a company. It is not directed at, and we do
+not knowingly collect personal data from, children under 16.
+
+## Automated decision-making
+
+The platform executes AI-generated actions within your own workspace at
+your direction and under your configured approval settings -- it does not
+use your personal data to make any automated decision that produces
+legal effects concerning you or similarly significantly affects you
+(such as a decision about employment, credit, or benefits eligibility).
+
+## Data processing agreements
+
+If your organization requires a signed Data Processing Agreement to use
+this service (common for GDPR-covered business customers), contact us
+using the support channel in your workspace.
+
 ## Security
 
 See our security practices summary (`docs/soc2-readiness-self-assessment.md`)
@@ -97,4 +174,25 @@ tenants of material changes before they take effect.
 
 ## Contact
 
-[Insert your support/legal contact email before publishing.]
+[Insert: legal entity name, registered jurisdiction/address, and
+support/legal contact email before publishing. At the current
+solo-founder stage (see `docs/organizational-structure.md`) this should
+name whatever legal entity (sole proprietorship or otherwise) actually
+holds the customer contracts, not a placeholder.]
+
+## Note on how this draft was prepared
+
+This document reflects the platform's actual data flows as implemented
+(see `docs/soc2-readiness-self-assessment.md` for the underlying
+evidence). The 2026-09-07 completeness pass was checked against GDPR
+Art. 13/14 and CCPA/CPRA's own published disclosure requirements directly,
+not generated from a third-party template. Several actively-maintained
+open-source "ai-legal" tools were researched for this pass
+(`github.com/topics/ai-legal`, `LegalQuants/lq-ai`, and similar) -- none
+were used, because on inspection each either had no static, citable
+compliance checklist to draw from (only descriptions of skills that
+dynamically prompt an LLM at review time, which adds no rigor beyond
+doing the same analysis directly) or was a marketing funnel for a paid
+community rather than a genuine reference resource. No tool found,
+free or paid, changes the underlying fact: only a licensed attorney's
+review satisfies "reviewed by a lawyer" for this document.
