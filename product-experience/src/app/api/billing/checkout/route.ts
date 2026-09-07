@@ -37,10 +37,14 @@ export async function POST(request: Request) {
     "metadata[product]": "veloce-public-launch",
     "metadata[commercial_scope]": account?.commercial_scope_status === "approved" ? "approved" : "legacy",
     ...(testFixture ? { "metadata[stripe_mode]": "test", "metadata[test_fixture]": "true", "metadata[test_fixture_initial_total_cents]": String(testFixture.initialTotalCents) } : {}),
-    // Stripe Managed Payments requires tax-coded catalog products. The disposable
-    // test fixture intentionally creates inline 50¢ products, so opt out only
-    // for that bounded sandbox path rather than changing the account default.
-    ...(testFixture ? { "managed_payments[enabled]": "false" } : {}),
+    // Stripe Managed Payments requires tax-coded catalog products. Every
+    // customQuote path (the disposable test fixture, and any real negotiated
+    // enterprise deal) builds its line items from ad-hoc price_data, which
+    // can never carry a registered tax code -- Managed Payments rejects
+    // those with "product tax code is missing" regardless of test/live mode.
+    // Confirmed live: this failed for a real custom quote in live mode
+    // before this fix, not just the test fixture.
+    ...(customQuote ? { "managed_payments[enabled]": "false" } : {}),
   };
   if (customQuote) {
     const allItems = [
