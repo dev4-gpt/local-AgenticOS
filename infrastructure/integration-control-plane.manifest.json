@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "purpose": "Read-only governed registry for pipeline planning, backend status, and infrastructure review.",
   "integrations": [
     {
@@ -7,55 +7,70 @@
       "name": "Ponytail restraint guard",
       "repository": "https://github.com/DietrichGebert/ponytail",
       "state": "native-enabled",
+      "riskTier": "low",
       "placements": ["pipeline", "infrastructure", "stack", "backend", "engineering-controls"],
       "runtime": "veloce-owned-dependency-free-trait",
       "dataBoundary": "No upstream runtime, tenant data, credentials, or prompt contents are sent to the repository.",
       "activationEvidence": ["loop restraint contract", "cost-ledger evidence"],
-      "rollback": "Remove the restraint trait from the affected Veloce loop contract."
+      "rollback": "Remove the restraint trait from the affected Veloce loop contract.",
+      "sbomReference": null,
+      "provenanceReference": "veloce-owned, no external runtime dependency to attest"
     },
     {
       "id": "headroom",
       "name": "Headroom context compression",
       "repository": "https://github.com/headroomlabs-ai/headroom",
       "state": "native-enabled",
+      "riskTier": "low",
       "placements": ["pipeline", "infrastructure", "stack", "backend", "engineering-controls"],
       "runtime": "veloce-owned-dependency-free-context-compression-trait",
       "dataBoundary": "No upstream runtime or proxy may receive production tenant data.",
       "activationEvidence": ["compression contract", "provider cost trace", "authenticated provider smoke"],
-      "rollback": "Remove context-compression from CLIENT_ENABLED_TRAITS."
+      "rollback": "Remove context-compression from CLIENT_ENABLED_TRAITS.",
+      "sbomReference": null,
+      "provenanceReference": "veloce-owned, no external runtime dependency to attest"
     },
     {
       "id": "openreply",
       "name": "OpenReply Instagram pilot",
       "repository": "https://github.com/diwenne/openreply",
       "state": "disabled",
+      "riskTier": "high",
       "placements": ["pipeline", "infrastructure", "stack", "backend"],
       "runtime": "separate-web-worker-and-data-project",
       "dataBoundary": "No direct Veloce connection or sensitive-data copy; human-approved campaign records only.",
       "activationEvidence": ["reviewed upstream commit with no critical/high advisories", "consented Meta pilot", "healthy isolated worker", "private DM and rollback evidence"],
-      "rollback": "Disable campaign, pause the isolated worker, revoke Meta permissions, and rotate OpenReply-only secrets."
+      "rollback": "Disable campaign, pause the isolated worker, revoke Meta permissions, and rotate OpenReply-only secrets.",
+      "sbomReference": "pending: generate on next reviewed upstream commit before activation",
+      "provenanceReference": "pending: pin reviewed upstream commit SHA before activation"
     },
     {
       "id": "voxcpm",
       "name": "VoxCPM private voice pilot",
       "repository": "https://github.com/OpenBMB/VoxCPM",
       "state": "disabled",
+      "riskTier": "high",
       "placements": ["pipeline", "infrastructure", "stack", "backend"],
       "runtime": "separate-private-gpu-worker",
       "dataBoundary": "No public ingress, third-party voice cloning, tenant data bridge, or automatic delivery.",
       "activationEvidence": ["license review", "GPU cost and performance evidence", "voice-consent workflow", "private-worker rollback test"],
-      "rollback": "Disable worker ingress, revoke worker-only credentials, and delete pilot audio artifacts under retention policy."
+      "rollback": "Disable worker ingress, revoke worker-only credentials, and delete pilot audio artifacts under retention policy.",
+      "sbomReference": "pending: generate on next reviewed upstream commit before activation",
+      "provenanceReference": "pending: pin reviewed upstream commit SHA before activation"
     },
     {
       "id": "scout",
       "name": "Scout lead-research candidate",
       "repository": "https://github.com/kiryano/Scout",
       "state": "disabled",
+      "riskTier": "medium",
       "placements": ["pipeline", "infrastructure", "stack", "backend"],
       "runtime": "external-manual-only",
       "dataBoundary": "Human-approved public profile URLs only; no cookies, proxies, raw-lead import, contact storage, or automatic outreach.",
       "activationEvidence": ["reviewed upstream commit", "privacy and compliance approval", "aggregate-only handoff review"],
-      "rollback": "Disable the manual research workflow and remove any approved aggregate brief from the campaign review queue."
+      "rollback": "Disable the manual research workflow and remove any approved aggregate brief from the campaign review queue.",
+      "sbomReference": "pending: generate on next reviewed upstream commit before activation",
+      "provenanceReference": "pending: pin reviewed upstream commit SHA before activation"
     }
   ]
 }
