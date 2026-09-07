@@ -12,7 +12,7 @@ const required = new Map([
   ["scout", "disabled"],
 ]);
 
-expect(manifest.schemaVersion === 1, "integration governance manifest must use schemaVersion 1");
+expect(manifest.schemaVersion === 2, "integration governance manifest must use schemaVersion 2");
 expect(Array.isArray(manifest.integrations), "integration governance entries are required");
 for (const [id, state] of required) {
   const entry = manifest.integrations?.find((candidate) => candidate?.id === id);
