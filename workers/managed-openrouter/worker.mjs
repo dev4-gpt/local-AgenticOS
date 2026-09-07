@@ -53,6 +53,10 @@ function validInput(value) {
   }
   if (allowedCalls.get(`${method}:${path}`)) return { path, method, body: value.body };
   if (method === "GET" && /^\/videos\/[A-Za-z0-9_-]{1,128}$/.test(path)) return { path, method, body: undefined };
+  // Reconciliation looks up OpenRouter's own authoritative billed cost for a
+  // past generation -- a read-only audit call, safe to allow unconditionally
+  // like /credits and /models above.
+  if (method === "GET" && /^\/generation\?id=[A-Za-z0-9_-]{1,128}$/.test(path)) return { path, method, body: undefined };
   if (method !== "POST" || path !== "/videos") return null;
   const body = normalizedVideoInput(value.body);
   return body ? { path, method, body, requiresVideoGeneration: true } : null;

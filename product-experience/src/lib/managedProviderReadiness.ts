@@ -1,6 +1,6 @@
 export type ManagedProviderOperation =
   | "quote" | "healthCheck" | "reserve" | "execute" | "settle" | "refund"
-  | "balance" | "disable" | "restore" | "videoModels" | "videoStatus"
+  | "balance" | "disable" | "restore" | "reconcile" | "videoModels" | "videoStatus"
   | "videoQuote" | "videoReserve" | "videoExecute";
 
 export type ManagedProviderReadinessRow = {
@@ -28,7 +28,7 @@ export function evaluateManagedProviderReadiness(
   const execution = ["quote", "reserve", "execute", "videoQuote", "videoReserve", "videoExecute"].includes(operation);
   const requiresConnection = execution || ["healthCheck", "balance", "restore", "videoModels", "videoStatus"].includes(operation);
   if (execution && row.managedRouteEnabled !== true) return { ok: false as const, status: 409, error: "managed_provider_not_enabled" };
-  if (operation !== "disable" && row.status === "suspended") return { ok: false as const, status: 409, error: "managed_provider_suspended" };
+  if (operation !== "disable" && operation !== "reconcile" && row.status === "suspended") return { ok: false as const, status: 409, error: "managed_provider_suspended" };
   if ((execution || operation === "restore") && !row.manifestVersion) return { ok: false as const, status: 409, error: "managed_provider_manifest_not_approved" };
   if (execution && row.healthStatus !== "passed") return { ok: false as const, status: 409, error: "managed_provider_health_not_passed" };
   if (execution || operation === "restore") {
@@ -39,7 +39,7 @@ export function evaluateManagedProviderReadiness(
       return { ok: false as const, status: 409, error: "managed_provider_reconciliation_not_matched" };
     }
   }
-  if (operation !== "disable" && operation !== "settle" && operation !== "refund" && !row.credentialReference) {
+  if (operation !== "disable" && operation !== "settle" && operation !== "refund" && operation !== "reconcile" && !row.credentialReference) {
     return { ok: false as const, status: 409, error: "managed_provider_credential_missing" };
   }
   if (requiresConnection) {

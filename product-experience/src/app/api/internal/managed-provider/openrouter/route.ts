@@ -33,15 +33,15 @@ export async function POST(request: Request) {
   const tenantSlug = typeof body.tenantSlug === "string" ? body.tenantSlug.trim() : "";
   const requestId = typeof body.requestId === "string" ? body.requestId.trim() : null;
   const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : null;
-  if (!tenantSlug || !/^[-a-z0-9]{2,120}$/.test(tenantSlug) || !["quote", "healthCheck", "reserve", "execute", "settle", "refund", "balance", "disable", "restore", "videoModels", "videoStatus", "videoQuote", "videoReserve", "videoExecute"].includes(operation)) {
+  if (!tenantSlug || !/^[-a-z0-9]{2,120}$/.test(tenantSlug) || !["quote", "healthCheck", "reserve", "execute", "settle", "refund", "balance", "disable", "restore", "reconcile", "videoModels", "videoStatus", "videoQuote", "videoReserve", "videoExecute"].includes(operation)) {
     return NextResponse.json({ ok: false, error: "managed_provider_payload_invalid" }, { status: 400 });
   }
-  if (!["quote", "healthCheck", "balance", "disable", "restore", "videoModels", "videoStatus", "videoQuote"].includes(operation) && !idempotencyKey) return NextResponse.json({ ok: false, error: "idempotency_required" }, { status: 400 });
+  if (!["quote", "healthCheck", "balance", "disable", "restore", "reconcile", "videoModels", "videoStatus", "videoQuote"].includes(operation) && !idempotencyKey) return NextResponse.json({ ok: false, error: "idempotency_required" }, { status: 400 });
 
   const configuredPricing = parseManagedTextPricing(process.env.OPENROUTER_MANAGED_PRICING_JSON);
   const readiness = await managedReadiness(tenantSlug, operation as ManagedProviderOperation, configuredPricing);
   if (!readiness.ok) return NextResponse.json({ ok: false, error: readiness.error }, { status: readiness.status });
-  const requiresGateway = ["healthCheck", "balance", "reserve", "execute", "videoModels", "videoStatus", "videoExecute"].includes(operation);
+  const requiresGateway = ["healthCheck", "balance", "reserve", "execute", "reconcile", "videoModels", "videoStatus", "videoExecute"].includes(operation);
   if (requiresGateway && readiness.credentialReference !== secretResource) {
     return NextResponse.json({ ok: false, error: "managed_provider_credential_reference_invalid" }, { status: 409 });
   }
@@ -146,14 +146,59 @@ export async function POST(request: Request) {
     if (operation === "balance") return NextResponse.json({ ok: true, balance: await adapter.balance(context) });
     if (operation === "disable") {
       await adapter.disable(context, typeof body.reason === "string" ? body.reason : "operator_disabled");
-      const updated = await supabaseServiceUpdate("client_credit_budgets", { tenant_slug: `eq.${tenantSlug}`, catalog_id: `eq.${CATALOG_ID}`, provider_key: `eq.${PROVIDER_KEY}` }, {
-        managed_route_enabled: false,
-        funding_status: "provider_not_enabled",
-        health_status: "disabled",
-        updated_at: new Date().toISOString(),
-      });
+      const updated = await persistManagedRouteDisabled(tenantSlug);
       if (!updated.ok) return NextResponse.json({ ok: false, error: "managed_provider_disable_persist_failed" }, { status: 502 });
       return NextResponse.json({ ok: true, status: "disabled" });
+    }
+    if (operation === "reconcile") {
+      const reservationId = typeof body.reservationId === "string" ? body.reservationId.trim() : "";
+      if (!/^[0-9a-f-]{36}$/i.test(reservationId)) return NextResponse.json({ ok: false, error: "reservation_id_invalid" }, { status: 400 });
+      const reservationLookup = await supabaseServiceSelect("client_credit_reservations", {
+        id: `eq.${reservationId}`,
+        tenant_slug: `eq.${tenantSlug}`,
+        catalog_id: `eq.${CATALOG_ID}`,
+        provider_key: `eq.${PROVIDER_KEY}`,
+        select: "id,status,actual_amount_micros,provider_request_id",
+      });
+      const reservationRow = reservationLookup.rows[0];
+      if (!reservationLookup.ok || !reservationRow) return NextResponse.json({ ok: false, error: "reservation_not_found" }, { status: 404 });
+      if (reservationRow.status !== "settled") return NextResponse.json({ ok: false, error: "reservation_not_settled" }, { status: 409 });
+      const providerRequestId = typeof reservationRow.provider_request_id === "string" ? reservationRow.provider_request_id.trim() : "";
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(providerRequestId)) return NextResponse.json({ ok: false, error: "provider_request_id_missing" }, { status: 409 });
+
+      const generationResponse = await managedGatewayJson(gatewayUrl, gatewayIdentity?.token, operatorSecret, `/generation?id=${encodeURIComponent(providerRequestId)}`);
+      const generationBody = await generationResponse.json().catch(() => null) as { ok?: boolean; data?: Record<string, unknown> } | null;
+      if (!generationResponse.ok || !generationBody?.ok) return NextResponse.json({ ok: false, error: "managed_provider_generation_lookup_failed" }, { status: 502 });
+      const generationPayload: Record<string, unknown> = generationBody.data && typeof generationBody.data === "object" ? generationBody.data : {};
+      const generationInner: Record<string, unknown> = generationPayload.data && typeof generationPayload.data === "object"
+        ? generationPayload.data as Record<string, unknown>
+        : generationPayload;
+      const totalCost = Number(generationInner.total_cost);
+      if (!Number.isFinite(totalCost) || totalCost < 0) return NextResponse.json({ ok: false, error: "managed_provider_generation_cost_invalid" }, { status: 502 });
+
+      const recordedMicros = Number(reservationRow.actual_amount_micros) || 0;
+      const providerMicros = Math.round(totalCost * 1_000_000);
+      // A tiny absolute tolerance, since these amounts can be single-digit
+      // micros where a percentage tolerance would round to zero.
+      const toleranceMicros = Math.max(1, Math.round(recordedMicros * 0.01));
+      const drift = Math.abs(providerMicros - recordedMicros) > toleranceMicros;
+      const checkedAt = new Date().toISOString();
+
+      await supabaseServiceUpdate("client_credit_reservations", { id: `eq.${reservationId}` }, {
+        reconciliation_status: drift ? "drift" : "matched",
+        reconciliation_metadata: { checkedAt, recordedMicros, providerMicros, toleranceMicros, providerRequestId },
+        updated_at: checkedAt,
+      });
+
+      if (!drift) return NextResponse.json({ ok: true, status: "matched", recordedMicros, providerMicros, toleranceMicros });
+
+      await supabaseServiceUpdate("client_credit_budgets", { tenant_slug: `eq.${tenantSlug}`, catalog_id: `eq.${CATALOG_ID}`, provider_key: `eq.${PROVIDER_KEY}` }, {
+        reconciliation_status: "drift",
+        updated_at: checkedAt,
+      });
+      await adapter.disable(context, "reconciliation_drift");
+      const disablePersisted = await persistManagedRouteDisabled(tenantSlug);
+      return NextResponse.json({ ok: true, status: "drift", disabled: disablePersisted.ok, recordedMicros, providerMicros, toleranceMicros });
     }
     if (operation === "restore") {
       const updated = await supabaseServiceUpdate("client_credit_budgets", { tenant_slug: `eq.${tenantSlug}`, catalog_id: `eq.${CATALOG_ID}`, provider_key: `eq.${PROVIDER_KEY}` }, {
@@ -221,6 +266,15 @@ async function notifySpendAlertIfCrossed(ledger: ReturnType<typeof createSupabas
   const email = typeof onboarding.rows[0]?.email === "string" ? onboarding.rows[0].email : null;
   if (!onboarding.ok || !email) return;
   await sendManagedCreditSpendAlertEmail({ email, tenantSlug, currentSpendMicros: alert.currentSpendMicros, thresholdMicros: alert.thresholdMicros });
+}
+
+async function persistManagedRouteDisabled(tenantSlug: string) {
+  return supabaseServiceUpdate("client_credit_budgets", { tenant_slug: `eq.${tenantSlug}`, catalog_id: `eq.${CATALOG_ID}`, provider_key: `eq.${PROVIDER_KEY}` }, {
+    managed_route_enabled: false,
+    funding_status: "provider_not_enabled",
+    health_status: "disabled",
+    updated_at: new Date().toISOString(),
+  });
 }
 
 async function managedGatewayJson(gatewayUrl: string, identityToken: string | undefined, operatorSecret: string, path: string) {

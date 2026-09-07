@@ -77,6 +77,7 @@
     "validate:client-manifest": "node scripts/validate-client-manifest.mjs",
     "promote:client-credential": "node scripts/promote-client-credential.mjs",
     "delete:client-credential": "node scripts/delete-client-credential.mjs",
+    "reconcile:managed-openrouter": "node scripts/reconcile-managed-openrouter.mjs",
     "provision:client-worker-token": "node scripts/provision-client-worker-token.mjs",
     "approve:client-delivery": "node scripts/approve-client-delivery.mjs",
     "verify:experience": "npm --prefix product-experience run build && npx playwright test tests/product-experience.spec.ts --reporter=line",
