@@ -159,9 +159,23 @@ stated as a gap, not implied to be covered.
   complete, independently-verified data deletion (Phase 3b and the
   two-tenant strict-mode drill). `docs/privacy-policy.md` now documents
   what is collected, why, the specific third parties involved, and user
-  rights. **Remaining gap**: it is drafted from the actual system
-  behavior, not lawyer-reviewed -- it says so explicitly and should not be
-  published at a public URL until it has been.
+  rights, and was checked section-by-section against GDPR Art. 13/14 and
+  CCPA/CPRA's disclosure requirements (legal basis for processing,
+  international transfer disclosure, supervisory-authority complaint
+  right, sale/share opt-out status, children's privacy, automated
+  decision-making) -- each gap found was filled in with what is actually
+  true of this platform, not boilerplate.
+- **Remaining gap, and it is a hard one**: this is a completeness pass
+  against a checklist, not a legal review. It closes what engineering can
+  close; it cannot close what only a licensed attorney's judgment can
+  (enforceability, liability exposure, jurisdiction-specific accuracy).
+  Several open-source "ai-legal" GitHub projects were researched
+  specifically to see if any offered a real shortcut here -- none did: each
+  either had no static reference checklist (only descriptions of skills
+  that call an LLM at review time, no more rigorous than doing the
+  analysis directly) or was a marketing funnel for a paid community. The
+  document says so explicitly and should not be published at a public URL
+  until an actual lawyer has reviewed it.
 
 ## Honest summary
 
