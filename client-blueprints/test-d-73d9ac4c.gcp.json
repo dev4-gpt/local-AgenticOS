@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Disposable live-mode strict-checklist tenant B. Provision, smoke-test, verify isolation against tenant A, then offboard.",
+  "clientSlug": "test-d-73d9ac4c",
+  "clientName": "Veloce Disposable Test D",
+  "approved": true,
+  "approvalOwner": "Aryaman",
+  "acknowledgeClientSafeRuntime": true,
+  "providerCallsEnabled": false,
+  "intentRoutingEnabled": false,
+  "provisioning": { "phase": "prepare" },
+  "gcp": {
+    "projectId": "veloce-agenticos-2026",
+    "region": "asia-south1",
+    "serviceName": "veloce-test-d-73d9ac4c",
+    "runtimeServiceAccount": "veloce-test-d-73d9-run",
+    "workspaceJobName": "veloce-test-d-73d9-workspace",
+    "visualQaJobName": "veloce-test-d-73d9-visualqa",
+    "storageBucket": "veloce-agenticos-2026-veloce-test-d-73d9ac4c",
+    "artifactRegistryRepository": "veloce",
+    "image": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v3-3-9a540fc",
+    "minInstances": 0,
+    "maxInstances": 1,
+    "cpu": "1",
+    "memory": "1Gi",
+    "concurrency": 1,
+    "timeout": "900s"
+  },
+  "access": {
+    "mode": "app-auth",
+    "allowedUserEmails": ["aryamans.devv@gmail.com"]
+  },
+  "runtimeEnv": {
+    "VELOCE_CLIENT_EDITION": "1",
+    "AGENTIC_OS_DISABLE_LOCAL_CLI": "1",
+    "AGENTIC_OS_DISABLE_LOCAL_FILES": "1",
+    "AGENTIC_OS_REQUIRE_APPROVALS": "1",
+    "CLIENT_RUNTIME_ENFORCE_AUTH": "1",
+    "CLIENT_RUNTIME_WORKER_ENABLED": "0",
+    "SUPABASE_URL": "https://ppmoqjtmjtfxadsnejqc.supabase.co",
+    "CLIENT_RUNTIME_DATA_MODE": "supabase"
+  },
+  "enabledCapabilities": ["tenant-data", "artifacts", "orchestration", "quality"],
+  "enabledTraits": [],
+  "providerAllowlist": ["SUPABASE_ANON_KEY"],
+  "modelAllowlist": [],
+  "budget": { "monthlyCap": "1", "warningThreshold": "0.5" },
+  "approvalPolicy": "approve_external_actions",
+  "storage": { "namespace": "test-d-73d9ac4c", "corsOrigins": ["https://app.veloceos.cloud"] },
+  "retention": { "days": 1 },
+  "secretEnv": { "SUPABASE_ANON_KEY": "supabase-anon-key" },
+  "notes": "No provider credentials or calls. Strict-mode-checklist drill tenant B: two-tenant isolation counterpart to test-c. Offboard after acceptance."
+}
