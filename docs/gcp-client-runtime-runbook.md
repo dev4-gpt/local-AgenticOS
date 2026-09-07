@@ -472,6 +472,29 @@ plain service-role table writes (PATCH/DELETE), not new SQL functions, so
 there is no auth-gate logic to verify for them in SQL -- their correctness is
 proven by actually running the two scripts above.
 
+**Result (2026-09-06): passed.** The database owner applied the migration,
+then the canary. All four assertions passed with no exception raised inside
+the `do $$ ... $$` block -- a failed `assert` aborts the transaction with a
+hard error in the SQL Editor, and none occurred -- including the disposable
+`auth.users` insert succeeding on the first attempt against this project's
+real Auth schema. The cleanup query returned `fixture_removed`,
+`connection_removed`, `membership_removed`, and `fixture_user_removed` all
+`true`. The revoke function's real authorization gate is proven live.
+
+The "mark connected" PATCH in `promote-client-credential.mjs` and the DELETE
+in `delete-client-credential.mjs` are not yet exercised live in this
+session -- doing so needs a real Secret Manager secret and
+`SUPABASE_SERVICE_ROLE_KEY` in an operator shell, neither available to the
+automated session at the time this stage closed. Both reuse REST call shapes
+already proven live elsewhere in this codebase (`approve-client-delivery.mjs`'s
+direct PATCH; `client-lifecycle.mjs`'s `gcloud secrets delete`), and both
+passed `node --check` plus a full `npm run build` in CI
+(`gh run 34076562302`, workflow-dispatched against this branch, all steps
+green including the build). They have not been run end-to-end against a real
+secret and connection row; that will happen the first time an operator
+actually promotes or deletes a real tenant credential, or on request as a
+follow-up live drill.
+
 ## Worker identity and long jobs
 
 The controls migration adds idempotent job enqueue, claim, completion, retry,
