@@ -20,12 +20,16 @@ stated as a gap, not implied to be covered.
 ## Security (Common Criteria) -- mandatory for every SOC2 report
 
 ### CC1 -- Control environment
-- **Gap.** No formal, written organizational policies exist (code of
-  conduct, acceptable use, background-check policy, org chart, board
-  oversight). This is organizational work, not code -- a template set
-  (many free ones exist, e.g. via GitHub search for "SOC2 policy
-  templates") plus an afternoon of adapting them to this company is
-  realistically how this gets closed, not more engineering.
+- **Covered.** `docs/information-security-policy.md` now provides the
+  formal, written policies (access control, change management, risk
+  assessment, data classification/retention, encryption, vendor risk,
+  business continuity, acceptable use/code of conduct), each citing the
+  real technical control that already enforces it. **Remaining gap**:
+  background-check policy, org chart, and board oversight are genuinely
+  organizational facts about the company (not the codebase) that no
+  document drafted from here can substitute for -- these need the
+  business owner's own input once there is more than one person to
+  govern.
 
 ### CC2 -- Communication and information
 - **Covered.** Extensive real runbooks document objectives, roles, and
@@ -45,10 +49,11 @@ stated as a gap, not implied to be covered.
   `npm run verify:policy-gates` (`.github/workflows/control-plane-image-deploy.yml`,
   `.github/workflows/security-release.yml`). Provider integrations carry an
   explicit `riskTier` (Phase 4, `infrastructure/integration-control-plane.manifest.json`).
-- **Partial gap.** No formal, written risk-assessment *process document*
-  (who reviews, how often, sign-off). The automated gates are real risk
-  controls; the paperwork describing the process around them isn't
-  written yet.
+- **Covered.** `docs/information-security-policy.md` §4 documents the
+  risk-assessment process and cadence. **Remaining gap**: the review
+  cadence itself is a commitment, not a fact yet -- an auditor will want
+  evidence the quarterly review actually happened, which only accrues
+  by actually doing it and logging it going forward.
 
 ### CC4 -- Monitoring activities
 - **Covered.** CI runs `verify:secrets`, `verify:security`,
@@ -103,13 +108,14 @@ stated as a gap, not implied to be covered.
   3e) is a real anomaly-detection control for one specific risk (billing
   drift). No general-purpose application-level anomaly/intrusion
   monitoring exists.
-- **CC7.3/7.4 (security event evaluation and response): partial.** Real
-  incidents were found and handled live during this engagement (a Stripe
-  webhook signing-secret drift, a missing IAM permission, a stale
-  provisioner allowlist) -- each investigated, root-caused, and fixed with
-  documented evidence. **Gap**: none of this followed a *written* incident
-  response plan, because none exists yet. The muscle memory is real; the
-  document isn't.
+- **CC7.3/7.4 (security event evaluation and response): covered.**
+  `docs/incident-response-plan.md` now documents the formal process
+  (NIST SP 800-61 structure), with roles, detection sources, and
+  containment playbooks for the specific real incident classes already
+  encountered in this engagement (credential compromise, billing-
+  reconciliation drift, tenant isolation failure, payment-processing
+  incidents) -- not generic scenarios, but the actual ones this system has
+  already faced and fixed.
 - **CC7.5 (recovery from incidents): covered.** A real backup/restore
   drill (Phase 3f) proved actual recovery mechanics with measured timing,
   well inside a 4-hour RTO target. A real tenant-level rollback mechanism
@@ -146,19 +152,26 @@ stated as a gap, not implied to be covered.
   documented under CC6.7 above.
 
 ## Privacy (optional category, relevant given customer PII)
-- **Partial.** Tenant data retention is explicit and configurable
+- **Covered.** Tenant data retention is explicit and configurable
   (`retention.days` per manifest), and tenant offboarding proved real,
   complete, independently-verified data deletion (Phase 3b and the
-  two-tenant strict-mode drill). **Gap**: no published privacy policy or
-  documented lawful basis for data processing exists yet (organizational,
-  not technical, work).
+  two-tenant strict-mode drill). `docs/privacy-policy.md` now documents
+  what is collected, why, the specific third parties involved, and user
+  rights. **Remaining gap**: it is drafted from the actual system
+  behavior, not lawyer-reviewed -- it says so explicitly and should not be
+  published at a public URL until it has been.
 
 ## Honest summary
 
-Roughly three-quarters of what SOC2's Security criteria actually check for
-is already built, and -- unlike a lot of compliance theater -- genuinely
-*proven with live evidence* rather than just designed on paper. The real
-remaining gaps are almost entirely organizational documents (written
-policies, a formal incident-response plan, a privacy policy) rather than
-missing engineering. That is a meaningfully shorter, cheaper path to an
-actual paid audit than starting from zero.
+Almost every Security criterion now has both a real, live-proven technical
+control and a written policy describing it
+(`docs/information-security-policy.md`, `docs/incident-response-plan.md`,
+`docs/privacy-policy.md`). What's built with free, open-source references
+(`docs/soc2-readiness-self-assessment.md`'s own research: Probo, Comply,
+JupiterOne's policy templates, a NIST-SP-800-61-based incident-response
+template, and open privacy-policy generators) covers the organizational
+side that pure engineering never could. What genuinely remains outside
+any session's ability to produce: a lawyer's review of the privacy
+policy, an actual paid CPA attestation, and organizational facts (org
+chart, background-check policy, board oversight) that only exist once the
+business itself has them to document.
