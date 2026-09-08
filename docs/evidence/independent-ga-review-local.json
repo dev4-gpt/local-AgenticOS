@@ -1,0 +1,145 @@
+{
+  "reviewDate": "2026-09-07",
+  "baseline": "07f17b954a535947dfbd0e1c13b3be3f2f840155",
+  "scope": "Local checks only; not GitHub CI, a production deployment, or live migration acceptance. Historical log tails and hashes recorded after completion.",
+  "focusedTests": {
+    "baseline": 158,
+    "final": 174,
+    "durationSeconds": 26.2
+  },
+  "checks": [
+    {
+      "command": "npm run test:focused",
+      "result": "passed",
+      "logSha256": "7f834aa53404f4b737131eeaab8a45ed9ad33d16edfcca8e972a200508e18e01",
+      "logBytes": 23672,
+      "outputTail": "[166/174] tests/visual-qa-worker.spec.ts:34:5 \u203a native Visual QA adapter enforces artifact-only input and preserves review status\n[167/174] tests/visual-qa-worker.spec.ts:58:5 \u203a native Visual QA adapter returns review for known fixture findings\n[168/174] tests/public-production-readiness.spec.ts:15:5 \u203a production readiness source keeps live gates explicit\n[169/174] tests/public-production-readiness.spec.ts:41:5 \u203a public onboarding wires Turnstile only through public site-key and server secret paths\n[170/174] tests/public-production-readiness.spec.ts:52:5 \u203a public launch migration fails closed for control-plane privileges\n[171/174] tests/public-production-readiness.spec.ts:60:5 \u203a commercial scope remains separate from runtime manifest and billing\n[172/174] tests/public-production-readiness.spec.ts:78:5 \u203a the disposable Stripe fixture can only run under an explicit test key\n[173/174] tests/public-production-readiness.spec.ts:102:5 \u203a tenant activation is bound to a deployed runtime smoke and the verified owner membership\n[174/174] tests/public-production-readiness.spec.ts:126:5 \u203a team support notification is server-side and contains no credential field\n  174 passed (26.2s)"
+    },
+    {
+      "command": "npm run typecheck",
+      "result": "passed",
+      "logSha256": "e38a3b9405b8dca0fb52a3f872af87cf2241309f3b9bab4c3bc7d703fd695425",
+      "logBytes": 46,
+      "outputTail": "\n> agentic-os@0.1.0 typecheck\n> tsc --noEmit\n"
+    },
+    {
+      "command": "npm run lint",
+      "result": "passed",
+      "logSha256": "69b0e31ea3e99264599287f951897c4d699d941f5628deafc57839933f6fa9c7",
+      "logBytes": 1925,
+      "outputTail": "\n> agentic-os@0.1.0 lint\n> eslint next.config.ts src/app/api/client-runtime/research/route.ts src/app/api/client-runtime/visual-qa/route.ts src/app/api/client-runtime/intent/route.ts src/app/api/internal/client-runtime/jobs/route.ts src/app/api/internal/client-runtime/visual-qa-dispatch/route.ts src/app/api/speech/transcribe/route.ts src/app/api/openclaw/studio/stt/route.ts src/components/VoiceButton.tsx src/components/ClientIntentPlanCard.tsx src/lib/cloudTasks.ts src/lib/braveSearchAdapter.ts src/lib/clientSeoAdapter.ts src/lib/researchProviderRouter.ts src/lib/researchWorkerAdapters.ts src/lib/capabilities.ts src/lib/capabilityTraits.ts src/lib/clientRuntimePolicy.ts src/lib/clientRuntimeTunnelPolicy.ts src/lib/clientPlaybooks.ts src/lib/nativeSpecialistPlaybooks.ts src/lib/nativeIndustryPlaybooks.ts src/lib/harnessAudit.ts src/lib/instructionBudget.ts src/lib/laneParity.ts src/lib/clientLoopAdapter.ts src/lib/clientLoopRegistry.ts src/lib/loopCostLedger.ts src/lib/clientIntentRouter.ts src/lib/clientVisualQaAdapter.ts src/lib/clientCloudRunJobs.ts src/lib/contextCompression.ts src/lib/clientProviderAdapter.ts src/lib/groqSpeech.ts src/lib/v96RepositoryCatalog.ts src/lib/v96StarredPortfolio.ts tests/brave-search-adapter.spec.ts tests/research-provider-router.spec.ts tests/research-worker-adapters.spec.ts tests/research-jina-worker.spec.ts tests/capability-traits.spec.ts tests/client-intent-router.spec.ts tests/lane-parity.spec.ts tests/loop-registry.spec.ts tests/loop-adapter.spec.ts tests/harness-audit.spec.ts tests/instruction-budget.spec.ts tests/context-compression.spec.ts tests/visual-qa-worker.spec.ts tests/groq-speech.spec.ts scripts/verify-client-runtime-worker.mjs scripts/verify-client-runtime-authenticated.mjs scripts/run-client-runtime-local.mjs scripts/provision-gcp-client.mjs scripts/run-client-visual-qa-job.mjs scripts/verify-client-runtime-local-tunnel.mjs --max-warnings=0\n"
+    },
+    {
+      "command": "changed-runtime-file eslint",
+      "result": "passed",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "logBytes": 0,
+      "outputTail": ""
+    },
+    {
+      "command": "npm run verify:security",
+      "result": "passed",
+      "logSha256": "1a49c3d746b735405a5aba30787ae09b2fa92cfa2626a412e56f54618bd88469",
+      "logBytes": 1552,
+      "outputTail": "{\n  \"ok\": true,\n  \"path\": \"infrastructure/integration-control-plane.manifest.json\",\n  \"failures\": []\n}\n{\n  \"ok\": true,\n  \"path\": \"infrastructure/engineering-controls/agent-efficiency.manifest.json\",\n  \"failures\": []\n}"
+    },
+    {
+      "command": "npm run verify:policy-gates",
+      "result": "passed",
+      "logSha256": "6393d1ab21f315649d8a3c8e12149eec602a5efe3ab1e5dbfa584027d23c2b07",
+      "logBytes": 889,
+      "outputTail": "{\n  \"ok\": true,\n  \"routesChecked\": 44,\n  \"failures\": []\n}\n\n> agentic-os@0.1.0 verify:integration-catalog-contract\n> node scripts/verify-integration-catalog-contract.mjs\n\nIntegration catalog contract verification passed (5 integrations, schemaVersion 2)."
+    },
+    {
+      "command": "npm run verify:secrets",
+      "result": "passed",
+      "logSha256": "40ef98f7309c991203f77666a6ff1006d3b986f00d7f992312bbfa0097b0c861",
+      "logBytes": 112,
+      "outputTail": "\n> agentic-os@0.1.0 verify:secrets\n> node scripts/verify-repository-secrets.mjs\n\nRepository secret scan passed."
+    },
+    {
+      "command": "npm run build",
+      "result": "passed",
+      "logSha256": "dd1647b32e22148b13e16ca2c05d4cb49b68775aa496c9f350136bb3d56faad3",
+      "logBytes": 11763,
+      "outputTail": "\u251c \u25cb /thumbnails\n\u251c \u25cb /video\n\u2514 \u25cb /web-studio\n\n\n\u0192 Proxy (Middleware)\n\n\u25cb  (Static)   prerendered as static content\n\u0192  (Dynamic)  server-rendered on demand\n"
+    },
+    {
+      "command": "npm --prefix product-experience run check",
+      "result": "passed",
+      "logSha256": "a6171183a6f5ccaae7c91320d25d9d71b8873f0e5583dded49d5055afd4c7348",
+      "logBytes": 2076,
+      "outputTail": "\u251c \u25cb /setup\n\u251c \u25cb /start\n\u251c \u25cb /support\n\u251c \u25cb /terms\n\u2514 \u25cb /verify\n\n\n\u25cb  (Static)   prerendered as static content\n\u0192  (Dynamic)  server-rendered on demand\n"
+    },
+    {
+      "command": "npm --prefix public-site run verify:public",
+      "result": "passed",
+      "logSha256": "449fd4b1934b7f55158bf36a5f51d3255698b4ad377ef491f583053fb0ad3efe",
+      "logBytes": 1279,
+      "outputTail": "dist/assets/index-B0K1HtLe.css               14.40 kB \u2502 gzip:   3.99 kB\ndist/assets/index-DXMguln2.js               335.61 kB \u2502 gzip: 107.37 kB\ndist/assets/DepthScene-CJZugIBf.js          519.95 kB \u2502 gzip: 130.97 kB\n\n\u2713 built in 4.59s\n[plugin builtin:vite-reporter] \n(!) Some chunks are larger than 500 kB after minification. Consider:\n- Using dynamic import() to code-split the application\n- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit."
+    },
+    {
+      "command": "npm install --ignore-scripts (PostCSS patch)",
+      "result": "passed",
+      "logSha256": "12f9aba87d06e7691827b3caa4c99972652c7b58dc80f87ed952f6a59c0f0534",
+      "logBytes": 378,
+      "outputTail": "npm warn EBADENGINE   required: { node: '>=22 <26' },\nnpm warn EBADENGINE   current: { node: 'v26.4.0', npm: '11.17.0' }\nnpm warn EBADENGINE }\n\nchanged 1 package, and audited 616 packages in 6s\n\n254 packages are looking for funding\n  run `npm fund` for details\n\nfound 0 vulnerabilities"
+    },
+    {
+      "command": "product-experience npm audit --omit=dev --json",
+      "result": "passed",
+      "logSha256": "b16020c7618652cd62bb41eb695eb97bfce19516fee436a6dd651cfb654b56cf",
+      "logBytes": 365,
+      "outputTail": "    \"dependencies\": {\n      \"prod\": 319,\n      \"dev\": 288,\n      \"optional\": 90,\n      \"peer\": 0,\n      \"peerOptional\": 0,\n      \"total\": 644\n    }\n  }\n}"
+    },
+    {
+      "command": "public-site npm audit --omit=dev",
+      "result": "passed",
+      "logSha256": "6d8c5c8f3d7684adb070417bd608d01ae90aa3dc26a65af03ffda4955f38d9a3",
+      "logBytes": 24,
+      "outputTail": "found 0 vulnerabilities"
+    }
+  ],
+  "reviewedSourceSha256": {
+    ".github/workflows/control-plane-image-deploy.yml": "1e95d6eee319edf1b5ba965a1e0f0295eb82c975f7b1a9d51c0d8301273d03d7",
+    ".github/workflows/product-experience-deploy.yml": "985fa843d52f959d440594139f300c96e3828a16addaa77b08e61f5d13a4af37",
+    ".github/workflows/security-release.yml": "4797f46b2edcc6eae312458eb9f0e4c02a427e18d7f390d9482f4efd9f9f869a",
+    "package-lock.json": "4b28bde1d7f7d48f7e99e2bd8df70951d2e97cb00cc56899d0d9da6bbf282bf3",
+    "package.json": "8c6d4cd9b2716980c6e6d80913238a436d557d9dc0cf604ca3d40f50cde58add",
+    "product-experience/src/app/api/billing/checkout/route.ts": "19b7abb6c3b460ad7f69199f75f19848c7ede63db8c44662fd67abd53b290e19",
+    "product-experience/src/app/api/billing/webhook/route.ts": "cd2c638ad8b6381c8ff6e71b9d0f54f5bf5d5a858fef86d9c99fd335ddf595e8",
+    "product-experience/src/app/api/internal/managed-provider/openrouter/route.ts": "9928fcaea10bb1a418c6c271c6f75a4861cbdaf88941091df7f98b5d19df1625",
+    "product-experience/src/app/api/onboarding/provision-result/route.ts": "21a6ca91ea1cfa8cf4db01f78c1efe2ff982a83f5f14d3f9f7f92145b160c33f",
+    "product-experience/src/lib/integrationCatalogBroker.ts": "5180fb2f2efe80055bc75e0e87d0e850342c5833e47d30903465535d42b170ae",
+    "product-experience/supabase-v40-credential-execution-gate.sql": "4bd557ccce8ebcffaa904791e60c72bf75d3148b621b7caf8ab157ea4493a7d8",
+    "product-experience/supabase-v41-monthly-credit-refunds.sql": "f8cfcb2291828e4520cb69f0045956f611ec828c41bc7a0189e17632b81cefbf",
+    "product-experience/supabase-v42-suspended-tenant-access.sql": "4d15bb65abb602128a52bb9adeb4273eb018953d8ceede69300b7cf3dbd87601",
+    "scripts/ci-promote-production.mjs": "b0849f365d82b71b64b457b43db99df97c9d6f104a7b19c67dd719694ea1d5c2",
+    "scripts/client-lifecycle.mjs": "8262aeec2c018877f5787faf003163364cebd80da4a1626126449379b4885678",
+    "scripts/lib/client-export-pages.mjs": "9a887c3b602d91eb0164dda75448ac0de9663297f3afd28b774edef60cbcae3d",
+    "scripts/rollback-client-manifest.mjs": "084038ded5d6c0ac820f910058acaa4a3d8fea1b7ff4c90810d8684a3c4e4bef",
+    "scripts/verify-integration-catalog-contract.mjs": "4a9b1acfdaed216c8b4cf3171a5b28930430bfea26df74309a1e1f0d31b5f860",
+    "scripts/verify-production-readiness.mjs": "9c06bb586726ce7612f31f778a17edf0b9256ad7e1037f1090e5c8c9d4640a36",
+    "src/app/api/client-runtime/credential-submissions/route.ts": "f800b37397743be5094255434e68560c131bc3afd3d20cbc4bff6bb3da0db095",
+    "src/app/api/client-runtime/credentials/revoke/route.ts": "0e1a4cb9f4219a91ee60895d67f1e64ad47a2d825a7742157a4d37250c592b92",
+    "src/app/api/client-runtime/credentials/route.ts": "6d9a91ca9e026e9542c2a2b356d82bc4c358fab90bf76b99c075f2e5244d6180",
+    "src/app/api/client-runtime/research/route.ts": "caf12dfd4b36045c7893cd399e140e203db0e74d4aeb961673cc7e77bbe7a28e",
+    "src/lib/clientAuth.ts": "540632e0e0b31edcefc375145394d02921bde37221a5fa5100a5a204a3ebdc2e",
+    "src/lib/clientDeliveryAdapter.ts": "7ab47bc193f3262f5fa50dddccf9ebde02b02b61a29f85ecf6ddbf05af799aee",
+    "src/lib/clientExecutionCredential.ts": "b5892ae54062b01a784274561dc440fd02a27a060d684cbb1c9f62251d0fb7a3",
+    "src/lib/clientMediaAdapter.ts": "4a3d999e50a0cd5883fbe025df6d8bd0b7fde1c719ae38db735e288a76f89cfd",
+    "src/lib/clientProviderAdapter.ts": "3d16523b9f876f0f4f48a9654177e30557d1a13230306769b18e4a7006978c38",
+    "src/lib/clientSeoAdapter.ts": "909bcf42e3332aa87f3f500eee96efd115fdba9a81a0dcbd8337e8dc977c3b64",
+    "src/lib/groqSpeech.ts": "4dcb0a64cfcf9931ca51b321fdd1e97b51edf413765eaa0444f3afbd85636904",
+    "tests/ga-release-regressions.spec.ts": "1abeac0e2d2e62178e2d25ebaab0b4a4d8ff795f354083fb054746e627224846",
+    "tests/ga-security-regressions.spec.ts": "a4ea1669938527f176369af1808e6abe800fa8d3178e64f88715d6bf7207917d",
+    "tests/ga-sql-regressions.spec.ts": "3decff25198eab0c93123638048361293bb243d421afe3dd33ad852b6f7617ef",
+    "tests/helpers/load-review-module.ts": "36408efb494bf6e2548b95ed0b2879c8cc6d246fb93655920bfa9de7f0a10a8e"
+  },
+  "pending": [
+    "Required GitHub checks and merge",
+    "Live v40-v42 migrations and deployed acceptance",
+    "Backup scope and product-wide role/action matrix",
+    "Professional deliverables in needs-human/"
+  ]
+}

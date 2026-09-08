@@ -20,6 +20,7 @@ async function storeWebhookEvent(eventId: string, eventType: string, payload: st
     error_code: errorCode,
   };
   const prior = await supabaseServiceSelect("stripe_webhook_events", { event_id: "eq." + eventId });
+  if (!prior.ok) return { ok: false };
   if (prior.rows.length > 0) return supabaseServiceUpdate("stripe_webhook_events", { event_id: "eq." + eventId }, record);
   return supabaseServiceInsert("stripe_webhook_events", record);
 }
@@ -41,10 +42,17 @@ export async function POST(request: Request) {
   }
   if (!event.id || !event.type) return NextResponse.json({ ok: false, error: "invalid_event" }, { status: 400 });
   const prior = await supabaseServiceSelect("stripe_webhook_events", { event_id: `eq.${event.id}` });
+  if (!prior.ok) return NextResponse.json({ ok: false, error: "event_lookup_failed" }, { status: 502 });
   const object = event.data?.object ?? {};
   const metadata = (object.metadata ?? {}) as Record<string, unknown>;
   if (prior.rows.some((row) => row.status === "processed")) return NextResponse.json({ ok: true, duplicate: true });
-  if (event.type === "checkout.session.completed" && metadata.product === "veloce-managed-credits-plan" && typeof metadata.credit_plan_id === "string") {
+  const checkoutPaidEvent = event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded";
+  if (checkoutPaidEvent && object.payment_status !== "paid") {
+    const stored = await storeWebhookEvent(event.id, event.type, payload, "processed");
+    if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
+    return NextResponse.json({ ok: true, eventId: event.id, status: "awaiting_payment" });
+  }
+  if (checkoutPaidEvent && metadata.product === "veloce-managed-credits-plan" && typeof metadata.credit_plan_id === "string") {
     const amountTotal = typeof object.amount_total === "number" ? object.amount_total : 0;
     const settled = await supabaseServiceRpc("settle_client_credit_purchase_plan", {
       p_plan_id: metadata.credit_plan_id,
@@ -114,22 +122,40 @@ export async function POST(request: Request) {
   }
 
   const requestId = typeof metadata.request_id === "string" ? metadata.request_id : null;
-  const eventRecord = await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "processed" });
-  if (!eventRecord.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
-  if (requestId && event.type === "checkout.session.completed") {
+  // Record processed only after all required effects succeed. A failed write
+  // must return non-2xx so Stripe retries the event instead of losing it.
+  const effectFailed = () => NextResponse.json({ ok: false, error: "billing_effect_failed" }, { status: 502 });
+  if (requestId && checkoutPaidEvent) {
     const customerId = typeof object.customer === "string" ? object.customer : null;
     const subscriptionId = typeof object.subscription === "string" ? object.subscription : null;
-    await supabaseServiceUpdate("deployment_requests", { id: `eq.${requestId}` }, { billing_status: "succeeded", stripe_customer_id: customerId, stripe_checkout_session_id: typeof object.id === "string" ? object.id : null });
+    const requestUpdate = await supabaseServiceUpdate("deployment_requests", { id: `eq.${requestId}` }, { billing_status: "succeeded", stripe_customer_id: customerId, stripe_checkout_session_id: typeof object.id === "string" ? object.id : null });
+    if (!requestUpdate.ok || !requestUpdate.rows.length) return effectFailed();
     const onboarding = await supabaseServiceSelect("client_onboarding_accounts", { request_id: `eq.${requestId}` });
-    if (onboarding.rows[0]?.id) {
-      await supabaseServiceUpdate("client_onboarding_accounts", { id: `eq.${onboarding.rows[0].id}` }, { status: "manifest_review", stripe_customer_id: customerId, stripe_subscription_id: subscriptionId, setup_payment_id: typeof object.payment_intent === "string" ? object.payment_intent : null, updated_at: new Date().toISOString() });
+    if (!onboarding.ok || !onboarding.rows[0]?.id) return effectFailed();
+    // Retried/out-of-order checkout delivery must not move an activated or
+    // suspended account back into the onboarding funnel.
+    const onboardingUpdate = await supabaseServiceUpdate("client_onboarding_accounts", { id: `eq.${onboarding.rows[0].id}`, status: "in.(requested,email_verified,payment_pending,payment_succeeded,manifest_review)" }, { status: "manifest_review", stripe_customer_id: customerId, stripe_subscription_id: subscriptionId, setup_payment_id: typeof object.payment_intent === "string" ? object.payment_intent : null, updated_at: new Date().toISOString() });
+    if (!onboardingUpdate.ok) return effectFailed();
+  }
+  if (checkoutPaidEvent && metadata.product === "veloce-managed-credits" && typeof metadata.tenant_slug === "string") {
+    const amountTotal = typeof object.amount_total === "number" ? object.amount_total : 0;
+    const credited = await supabaseServiceRpc("credit_client_managed_wallet", { p_tenant_slug: metadata.tenant_slug, p_amount_micros: Math.round(amountTotal * 10_000), p_stripe_event_id: event.id, p_metadata: { source: "stripe", sessionId: object.id ?? null, stripeMode: metadata.stripe_mode === "live" ? "live" : "test", paymentIntentId: typeof object.payment_intent === "string" ? object.payment_intent : null } });
+    if (!credited.ok || credited.value !== true) return effectFailed();
+  }
+  if (requestId && event.type === "invoice.payment_failed") {
+    const updated = await supabaseServiceUpdate("deployment_requests", { id: `eq.${requestId}` }, { billing_status: "failed" });
+    if (!updated.ok || !updated.rows.length) return effectFailed();
+  }
+  if (event.type === "customer.subscription.deleted" && typeof object.customer === "string" && typeof object.id === "string") {
+    const updated = await supabaseServiceUpdate("client_onboarding_accounts", { stripe_customer_id: `eq.${object.customer}`, stripe_subscription_id: `eq.${object.id}` }, { status: "suspended", suspended_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+    if (!updated.ok) return effectFailed();
+    for (const account of updated.rows) {
+      if (typeof account.tenant_slug !== "string") continue;
+      const suspended = await supabaseServiceUpdate("client_tenants", { slug: `eq.${account.tenant_slug}` }, { status: "suspended", updated_at: new Date().toISOString() });
+      if (!suspended.ok) return effectFailed();
     }
   }
-  if (event.type === "checkout.session.completed" && metadata.product === "veloce-managed-credits" && typeof metadata.tenant_slug === "string") {
-    const amountTotal = typeof object.amount_total === "number" ? object.amount_total : 0;
-    await supabaseServiceRpc("credit_client_managed_wallet", { p_tenant_slug: metadata.tenant_slug, p_amount_micros: Math.round(amountTotal * 10_000), p_stripe_event_id: event.id, p_metadata: { source: "stripe", sessionId: object.id ?? null, stripeMode: metadata.stripe_mode === "live" ? "live" : "test", paymentIntentId: typeof object.payment_intent === "string" ? object.payment_intent : null } });
-  }
-  if (requestId && event.type === "invoice.payment_failed") await supabaseServiceUpdate("deployment_requests", { id: `eq.${requestId}` }, { billing_status: "failed" });
-  if (event.type === "customer.subscription.deleted" && typeof object.customer === "string") await supabaseServiceUpdate("client_onboarding_accounts", { stripe_customer_id: `eq.${object.customer}` }, { status: "suspended", suspended_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+  const stored = await storeWebhookEvent(event.id, event.type, payload, "processed");
+  if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
   return NextResponse.json({ ok: true, eventId: event.id, status: "processed" });
 }

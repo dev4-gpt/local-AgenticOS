@@ -1,3 +1,4 @@
+import { clientExecutionCredential } from "@/lib/clientExecutionCredential";
 import { providerEnvKey } from "@/lib/providerKeys";
 
 export const GROQ_STT_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions";
@@ -28,7 +29,7 @@ export async function transcribeWithGroq(input: {
   if (input.audio.length < 1 || input.audio.length > GROQ_STT_MAX_BYTES) {
     throw new Error("groq_audio_size_invalid");
   }
-  const key = providerEnvKey("GROQ_API_KEY");
+  const key = await clientExecutionCredential("GROQ_API_KEY");
   if (!key) throw new Error("groq_not_configured");
 
   const form = new FormData();

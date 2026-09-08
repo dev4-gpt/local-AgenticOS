@@ -1,5 +1,5 @@
+import { clientExecutionCredential } from "@/lib/clientExecutionCredential";
 import { Buffer } from "node:buffer";
-import { providerEnvKey } from "@/lib/providerKeys";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { isPrivateAddress, readBoundedResponseBytes } from "@/lib/clientNetworkSafety";
@@ -71,7 +71,7 @@ export async function runClientSpeechAdapter(input: {
   if (text.length < 1 || text.length > MAX_TEXT) return { ok: false, status: 400, error: "media_text_invalid" };
   if (!clientProviderEnabled("ELEVENLABS_API_KEY")) return { ok: false, status: 403, error: "provider_not_allowlisted" };
 
-  const key = providerEnvKey("ELEVENLABS_API_KEY");
+  const key = await clientExecutionCredential("ELEVENLABS_API_KEY");
   if (!key) return { ok: false, status: 503, error: "provider_not_configured" };
   const voiceId = /^[A-Za-z0-9]{16,}$/.test(input.voiceId?.trim() ?? "")
     ? input.voiceId!.trim()
@@ -140,7 +140,7 @@ export async function runClientImageAdapter(input: {
   const prompt = input.prompt.trim();
   if (prompt.length < 1 || prompt.length > 4_000 || containsClientSecretLike(prompt)) return { ok: false, status: 400, error: prompt.length > 4_000 ? "image_prompt_invalid" : "secret_like_input_rejected" };
   if (!clientProviderEnabled("OPENAI_API_KEY")) return { ok: false, status: 403, error: "provider_not_allowlisted" };
-  const key = providerEnvKey("OPENAI_API_KEY");
+  const key = await clientExecutionCredential("OPENAI_API_KEY");
   if (!key) return { ok: false, status: 503, error: "provider_not_configured" };
 
   const size = allowedImageSize(input.size);
@@ -179,7 +179,7 @@ export async function runClientHeyGenAdapter(input: {
   providerJobId?: string;
 }): Promise<ClientVideoResult | ClientMediaFailure> {
   if (!clientProviderEnabled("HEYGEN_API_KEY")) return { ok: false, status: 403, error: "provider_not_allowlisted" };
-  const key = providerEnvKey("HEYGEN_API_KEY");
+  const key = await clientExecutionCredential("HEYGEN_API_KEY");
   if (!key) return { ok: false, status: 503, error: "provider_not_configured" };
 
   if (input.providerJobId) {
@@ -233,7 +233,7 @@ export async function runClientElevenLabsMusicAdapter(input: {
   const prompt = input.text.trim();
   if (prompt.length < 1 || prompt.length > 3_000) return { ok: false, status: 400, error: "music_input_invalid" };
   if (!clientProviderEnabled("ELEVENLABS_MUSIC_API_KEY")) return { ok: false, status: 403, error: "provider_not_allowlisted" };
-  const key = providerEnvKey("ELEVENLABS_MUSIC_API_KEY");
+  const key = await clientExecutionCredential("ELEVENLABS_MUSIC_API_KEY");
   if (!key) return { ok: false, status: 503, error: "provider_not_configured" };
 
   // The API accepts 3s to 10 minutes. Default to 30s: long enough to judge a
@@ -284,7 +284,7 @@ export async function runClientMusicAdapter(input: {
   providerJobId?: string;
 }): Promise<ClientMusicResult | ClientMediaFailure> {
   if (!clientProviderEnabled("SUNO_API_KEY")) return { ok: false, status: 403, error: "provider_not_allowlisted" };
-  const key = providerEnvKey("SUNO_API_KEY");
+  const key = await clientExecutionCredential("SUNO_API_KEY");
   if (!key) return { ok: false, status: 503, error: "provider_not_configured" };
   const base = (process.env.CLIENT_SUNO_API_BASE?.trim() || "https://api.sunoapi.org").replace(/\/$/, "");
 

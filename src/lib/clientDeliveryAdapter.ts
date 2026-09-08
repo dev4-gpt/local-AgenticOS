@@ -16,6 +16,7 @@ export async function runClientDeliveryAdapter(input: {
     method: "POST",
     headers: { "content-type": "application/json", "x-veloce-delivery": "approved" },
     body: JSON.stringify({ type: "veloce_delivery", action: input.action, requestId: input.requestId ?? null, artifactIds: input.artifactIds.slice(0, 20) }),
+    redirect: "error",
     cache: "no-store",
     signal: AbortSignal.timeout(30_000),
   }).catch(() => null);

@@ -44,7 +44,7 @@ export function integrationCatalogEntry(id: string): IntegrationCatalogEntry | n
 }
 
 export function isIntegrationActive(id: string): boolean {
-  return integrationCatalogEntry(id)?.state === "native-enabled";
+  return isIntegrationActivatable(id).ok;
 }
 
 // Governance rule enforced here (not just by the CI verifier): a high or
@@ -57,8 +57,8 @@ export function isIntegrationActivatable(id: string): { ok: boolean; reason?: st
   if (!entry) return { ok: false, reason: "unknown_integration" };
   if (entry.state !== "native-enabled") return { ok: false, reason: "not_enabled" };
   if ((entry.riskTier === "high" || entry.riskTier === "critical")) {
-    if (!entry.sbomReference || entry.sbomReference.startsWith("pending")) return { ok: false, reason: "sbom_pending" };
-    if (!entry.provenanceReference || entry.provenanceReference.startsWith("pending")) return { ok: false, reason: "provenance_pending" };
+    if (!entry.sbomReference?.trim() || /^pending/i.test(entry.sbomReference.trim())) return { ok: false, reason: "sbom_pending" };
+    if (!entry.provenanceReference?.trim() || /^pending/i.test(entry.provenanceReference.trim())) return { ok: false, reason: "provenance_pending" };
   }
   return { ok: true };
 }

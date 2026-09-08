@@ -76,6 +76,22 @@ export async function currentClientMember() {
   return response?.ok === true && (await response.json().catch(() => false)) === true;
 }
 
+export async function currentClientCredentialManager() {
+  const user = await currentClientUser();
+  const config = supabaseConfig();
+  const token = await currentClientAccessToken();
+  const tenantSlug = process.env.CLIENT_SLUG?.trim();
+  if (!user || !config || !token || !tenantSlug) return false;
+  const query = new URLSearchParams({ select: "role", tenant_slug: `eq.${tenantSlug}`, user_id: `eq.${user.id}`, status: "eq.active", role: "in.(owner,admin)", limit: "1" });
+  const response = await fetch(`${config.url}/rest/v1/client_memberships?${query}`, {
+    headers: { apikey: config.key, Authorization: `Bearer ${token}` },
+    cache: "no-store", signal: AbortSignal.timeout(10_000),
+  }).catch(() => null);
+  if (!response?.ok) return false;
+  const rows: unknown = await response.json().catch(() => null);
+  return Array.isArray(rows) && rows.length === 1 && ["owner", "admin"].includes(rows[0]?.role);
+}
+
 export function authCookieNames() {
   return { access: ACCESS_COOKIE, refresh: REFRESH_COOKIE };
 }

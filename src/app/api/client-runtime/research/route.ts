@@ -4,7 +4,7 @@ import { checkClientRuntimeRateLimit, clientRpc, enqueueClientRuntimeJob, record
 import { deterministicCapabilityIdempotencyKey } from "@/lib/capabilityContracts";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
-import { providerEnvKey } from "@/lib/providerKeys";
+import { clientExecutionCredential } from "@/lib/clientExecutionCredential";
 import { clientCapabilityEnabled, clientCapabilityProviderEnabled, clientProviderCallsEnabled, clientResearchProvider, clientResearchRoutingEnabled } from "@/lib/clientRuntimePolicy";
 import { selectResearchProvider } from "@/lib/researchProviderRouter";
 import { configuredResearchWorkerStates, selectResearchWorker, type ResearchWorkerContentType } from "@/lib/researchWorkerAdapters";
@@ -93,8 +93,8 @@ export async function POST(request: Request) {
   const scrapeRequested = input.scrapeResults === true;
   const contentType = normalizeContentType(input.contentType);
   const workerSelection = selectResearchWorker({ operation: "extract", contentType, workers: configuredResearchWorkerStates() });
-  const firecrawlKey = providerEnvKey("FIRECRAWL_API_KEY");
-  const braveKey = providerEnvKey("BRAVE_API_KEY");
+  const firecrawlKey = await clientExecutionCredential("FIRECRAWL_API_KEY");
+  const braveKey = await clientExecutionCredential("BRAVE_API_KEY");
   const firecrawlAllowed = clientCapabilityProviderEnabled("seo-research", "firecrawl", "FIRECRAWL_API_KEY");
   const braveAllowed = clientCapabilityProviderEnabled("seo-research", "brave", "BRAVE_API_KEY");
   const selection = selectResearchProvider({

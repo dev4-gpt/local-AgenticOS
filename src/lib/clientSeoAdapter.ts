@@ -1,6 +1,6 @@
+import { clientExecutionCredential } from "@/lib/clientExecutionCredential";
 import { randomUUID } from "node:crypto";
 import { V96_CONTRACT_VERSION, type V96StructuredResearchRecord } from "@/lib/v96Contracts";
-import { providerEnvKey } from "@/lib/providerKeys";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { isPrivateAddress, readBoundedResponseBytes, resolvesToPublicAddresses } from "@/lib/clientNetworkSafety";
 import { searchBraveWeb, type BraveSearchResult } from "@/lib/braveSearchAdapter";
@@ -14,7 +14,7 @@ type FirecrawlResponse = {
 
 export async function runClientSeoAdapter(input: { url: string; focus?: string }) {
   if (!clientProviderEnabled("FIRECRAWL_API_KEY")) return { ok: false as const, status: 403, error: "provider_not_allowlisted" };
-  const key = providerEnvKey("FIRECRAWL_API_KEY");
+  const key = await clientExecutionCredential("FIRECRAWL_API_KEY");
   if (!key) return { ok: false as const, status: 503, error: "provider_not_configured" };
   const url = await resolveSafePublicUrl(input.url);
   if (!url) return { ok: false as const, status: 400, error: "seo_url_not_allowed" };
@@ -114,7 +114,7 @@ export async function runClientMarketSearch(input: { query: string; limit?: numb
   const provider = input.provider === "brave" ? "brave" : "firecrawl";
   const providerKey = provider === "brave" ? "BRAVE_API_KEY" : "FIRECRAWL_API_KEY";
   if (!clientProviderEnabled(providerKey)) return { ok: false as const, status: 403, error: "provider_not_allowlisted" };
-  const key = providerEnvKey(providerKey);
+  const key = await clientExecutionCredential(providerKey);
   if (!key) return { ok: false as const, status: 503, error: "provider_not_configured" };
   const query = input.query.trim().slice(0, 400);
   if (!query) return { ok: false as const, status: 400, error: "research_query_required" };
