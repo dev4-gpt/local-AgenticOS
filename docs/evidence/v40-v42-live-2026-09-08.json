@@ -1,0 +1,195 @@
+{
+  "projectRef": "ppmoqjtmjtfxadsnejqc",
+  "sourceCommit": "ce71e19652dc47be486979163888f8e33db19bf0",
+  "startedAt": "2026-09-08T04:16:11.166Z",
+  "fixtures": {
+    "tenants": [
+      "ga-v4042-1c7b4e9c8934-a",
+      "ga-v4042-1c7b4e9c8934-b"
+    ],
+    "userId": "e7f1dfa2-abd5-494c-b448-cb772f822a71",
+    "priorReservation": "dd517e76-b580-4837-a32e-8c459ace31ed",
+    "boundaryReservation": "97d54ead-0c9a-49d5-ba85-6f65a376d644"
+  },
+  "checks": [
+    {
+      "name": "v40 valid worker",
+      "passed": true
+    },
+    {
+      "name": "v40 foreign worker",
+      "passed": true
+    },
+    {
+      "name": "v40 missing token",
+      "passed": true
+    },
+    {
+      "name": "v40 short token",
+      "passed": true
+    },
+    {
+      "name": "v40 missing connection",
+      "passed": true
+    },
+    {
+      "name": "v40 authenticated member",
+      "passed": true
+    },
+    {
+      "name": "v40 foreign member",
+      "passed": true
+    },
+    {
+      "name": "v42 active membership",
+      "passed": true
+    },
+    {
+      "name": "v42 foreign membership",
+      "passed": true
+    },
+    {
+      "name": "v42 active RLS request visible",
+      "passed": true
+    },
+    {
+      "name": "v40 owner revoke",
+      "passed": true
+    },
+    {
+      "name": "v40 revoked worker denied",
+      "passed": true
+    },
+    {
+      "name": "v40 revoked member denied",
+      "passed": true
+    },
+    {
+      "name": "v40 revoked_at dominates connected",
+      "passed": true
+    },
+    {
+      "name": "v40 submitted denied",
+      "passed": true
+    },
+    {
+      "name": "v42 suspended membership",
+      "passed": true
+    },
+    {
+      "name": "v42 suspended RLS request hidden",
+      "passed": true
+    },
+    {
+      "name": "v40 suspended worker denied",
+      "passed": true
+    },
+    {
+      "name": "v40 suspended member denied",
+      "passed": true
+    },
+    {
+      "name": "v41 prior settlement",
+      "passed": true
+    },
+    {
+      "name": "v41 prior refund",
+      "passed": true
+    },
+    {
+      "name": "v41 prior refund does not create negative spend",
+      "passed": true
+    },
+    {
+      "name": "v41 two dollars refused against one-dollar cap",
+      "passed": true
+    },
+    {
+      "name": "v41 exact cap accepted",
+      "passed": true
+    },
+    {
+      "name": "v41 one micro over reserved cap refused",
+      "passed": true
+    },
+    {
+      "name": "v41 current settlement",
+      "passed": true
+    },
+    {
+      "name": "v41 current spend",
+      "passed": true
+    },
+    {
+      "name": "v41 foreign tenant spend",
+      "passed": true
+    },
+    {
+      "name": "v41 current refund",
+      "passed": true
+    },
+    {
+      "name": "v41 refund retry",
+      "passed": true
+    },
+    {
+      "name": "v41 refund counted once",
+      "passed": true
+    },
+    {
+      "name": "v41 anon permission denied",
+      "passed": true
+    },
+    {
+      "name": "v41 anon SQL permission code",
+      "passed": true
+    },
+    {
+      "name": "v41 authenticated permission denied",
+      "passed": true
+    },
+    {
+      "name": "v41 authenticated SQL permission code",
+      "passed": true
+    },
+    {
+      "name": "v42 anon permission denied",
+      "passed": true
+    },
+    {
+      "name": "v42 anon SQL permission code",
+      "passed": true
+    },
+    {
+      "name": "v40 deleted connection denied",
+      "passed": true
+    }
+  ],
+  "cleanup": {
+    "client_tenants": true,
+    "client_memberships": true,
+    "client_provider_connections": true,
+    "client_runtime_requests": true,
+    "client_runtime_audit_events": true,
+    "client_credit_accounts": true,
+    "client_credit_budgets": true,
+    "client_credit_transactions": true,
+    "client_credit_reservations": true,
+    "client_credit_reservation_events": true,
+    "auth_user": true,
+    "errors": []
+  },
+  "migrations": {
+    "supabase-v40-credential-execution-gate.sql": "4bd557ccce8ebcffaa904791e60c72bf75d3148b621b7caf8ab157ea4493a7d8",
+    "supabase-v41-monthly-credit-refunds.sql": "f8cfcb2291828e4520cb69f0045956f611ec828c41bc7a0189e17632b81cefbf",
+    "supabase-v42-suspended-tenant-access.sql": "4d15bb65abb602128a52bb9adeb4273eb018953d8ceede69300b7cf3dbd87601"
+  },
+  "preflight": {
+    "connections": {},
+    "tenantStatuses": {
+      "active": 3
+    }
+  },
+  "passed": true,
+  "finishedAt": "2026-09-08T04:16:22.868Z"
+}

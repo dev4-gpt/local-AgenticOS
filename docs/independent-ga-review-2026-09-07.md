@@ -2,6 +2,11 @@
 
 **Baseline:** `07f17b9` (`origin/main`, PRs #2–#11 merged).
 **Review branch:** `review/ga-independent-hardening`.
+**Follow-up, 2026-09-08:** PR #12 merged as `ce71e19` after all required checks
+passed. v40–v42 are now applied to production, with 38 live checks and complete
+fixture cleanup; see [the rollout evidence](v40-v42-live-rollout-2026-09-08.md).
+Application/runtime deployment remains outstanding. The original review's
+source-only verification statements below describe that earlier pass.
 **Disposition:** the historical strict attestation for `3e3c518` is not a
 current, whole-product GA approval. Confirmed engineering defects existed
 at the handoff baseline. Fixes below are source changes, not live deployment
@@ -79,7 +84,8 @@ every third-party integration, or a live cloud configuration.
 - `git diff --check`: passed. These are local results, not GitHub CI results.
 - Log hashes and command evidence are retained in
   `docs/evidence/independent-ga-review-local.json`.
-- Required PR checks and merge remain pending. The initial review commit uses
+- Required PR checks and merge were initially pending (subsequently completed
+  in PR #12). The initial review commit uses
   `[skip ci]` and a draft PR to avoid triggering private Actions usage before
   the account allowance/spending constraint is confirmed.
 
@@ -93,9 +99,9 @@ pinned to 0.5.8; no hosted database or paid service is required.
 
 ## Deployment and acceptance still required
 
-1. Review and apply v40, v41 and v42 in the normal migration sequence. **None
-   were applied to live Supabase by this review.** Verify grants and function
-   behavior on the target schema before redeploying runtimes.
+1. **Completed 2026-09-08:** v40, v41 and v42 applied to live Supabase and
+   verified through 38 live API checks, including actual anonymous/authenticated
+   permissions and RLS visibility. See [the rollout evidence](v40-v42-live-rollout-2026-09-08.md).
 2. Inventory BYOK connections. v40 intentionally denies missing, submitted,
    revoked or deleted rows; do not bulk mark them connected. Only an approved
    promotion may create connected state. Client runtimes need their existing
