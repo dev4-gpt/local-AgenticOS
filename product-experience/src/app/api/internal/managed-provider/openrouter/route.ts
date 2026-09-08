@@ -173,32 +173,40 @@ export async function POST(request: Request) {
       const generationInner: Record<string, unknown> = generationPayload.data && typeof generationPayload.data === "object"
         ? generationPayload.data as Record<string, unknown>
         : generationPayload;
-      const totalCost = Number(generationInner.total_cost);
+      const totalCost = typeof generationInner.total_cost === "number" ? generationInner.total_cost : NaN;
       if (!Number.isFinite(totalCost) || totalCost < 0) return NextResponse.json({ ok: false, error: "managed_provider_generation_cost_invalid" }, { status: 502 });
 
-      const recordedMicros = Number(reservationRow.actual_amount_micros) || 0;
+      const recordedMicros = Number(reservationRow.actual_amount_micros);
       const providerMicros = Math.round(totalCost * 1_000_000);
+      if (!Number.isSafeInteger(recordedMicros) || recordedMicros < 0 || !Number.isSafeInteger(providerMicros)) {
+        return NextResponse.json({ ok: false, error: "managed_provider_generation_cost_invalid" }, { status: 502 });
+      }
       // A tiny absolute tolerance, since these amounts can be single-digit
       // micros where a percentage tolerance would round to zero.
       const toleranceMicros = Math.max(1, Math.round(recordedMicros * 0.01));
       const drift = Math.abs(providerMicros - recordedMicros) > toleranceMicros;
       const checkedAt = new Date().toISOString();
 
-      await supabaseServiceUpdate("client_credit_reservations", { id: `eq.${reservationId}` }, {
+      const recorded = await supabaseServiceUpdate("client_credit_reservations", { id: `eq.${reservationId}` }, {
         reconciliation_status: drift ? "drift" : "matched",
         reconciliation_metadata: { checkedAt, recordedMicros, providerMicros, toleranceMicros, providerRequestId },
         updated_at: checkedAt,
       });
 
-      if (!drift) return NextResponse.json({ ok: true, status: "matched", recordedMicros, providerMicros, toleranceMicros });
+      if (!drift) {
+        if (!recorded.ok) return NextResponse.json({ ok: false, error: "reconciliation_record_failed" }, { status: 502 });
+        return NextResponse.json({ ok: true, status: "matched", recordedMicros, providerMicros, toleranceMicros });
+      }
 
-      await supabaseServiceUpdate("client_credit_budgets", { tenant_slug: `eq.${tenantSlug}`, catalog_id: `eq.${CATALOG_ID}`, provider_key: `eq.${PROVIDER_KEY}` }, {
+      const budgetRecorded = await supabaseServiceUpdate("client_credit_budgets", { tenant_slug: `eq.${tenantSlug}`, catalog_id: `eq.${CATALOG_ID}`, provider_key: `eq.${PROVIDER_KEY}` }, {
         reconciliation_status: "drift",
         updated_at: checkedAt,
       });
-      await adapter.disable(context, "reconciliation_drift");
+      await adapter.disable(context, "reconciliation_drift").catch(() => undefined);
       const disablePersisted = await persistManagedRouteDisabled(tenantSlug);
-      return NextResponse.json({ ok: true, status: "drift", disabled: disablePersisted.ok, recordedMicros, providerMicros, toleranceMicros });
+      const persisted = recorded.ok && budgetRecorded.ok && disablePersisted.ok;
+      return NextResponse.json({ ok: persisted, status: "drift", disabled: disablePersisted.ok,
+        ...(persisted ? {} : { error: "reconciliation_persist_failed" }), recordedMicros, providerMicros, toleranceMicros }, { status: persisted ? 200 : 502 });
     }
     if (operation === "restore") {
       const updated = await supabaseServiceUpdate("client_credit_budgets", { tenant_slug: `eq.${tenantSlug}`, catalog_id: `eq.${CATALOG_ID}`, provider_key: `eq.${PROVIDER_KEY}` }, {

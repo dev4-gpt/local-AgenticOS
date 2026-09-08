@@ -120,7 +120,7 @@ console.log(JSON.stringify({
   runId, succeeded, fromRevision: currentRevision, toRevision: targetRevision,
   confirmedRevision, restoredAccountStatus: resultBody?.accountStatus ?? null,
 }, null, 2));
-if (!succeeded) process.exit(1);
+if (!succeeded || !resultResponse?.ok || resultBody?.ok !== true) process.exit(1);
 
 function sanitizeSlug(value) {
   const slug = value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");

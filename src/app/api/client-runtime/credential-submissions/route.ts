@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
-import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
+import { currentClientCredentialManager, currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { clientCredentialOption } from "@/lib/clientCredentialCatalog";
 import { checkClientRuntimeRateLimit, clientRpc, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientCredentialSubmissionEnabled } from "@/lib/clientRuntimePolicy";
@@ -17,6 +17,8 @@ export async function POST(request: Request) {
   const user = await currentClientUser();
   if (!user) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+
+  if (!(await currentClientCredentialManager())) return NextResponse.json({ ok: false, error: "credential_admin_required" }, { status: 403 });
 
   const rateLimit = await checkClientRuntimeRateLimit("credential-submissions", 5, 3600);
   if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });

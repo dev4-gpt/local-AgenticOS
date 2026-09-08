@@ -5,8 +5,11 @@ attorney or a CPA firm) acting outside of any coding session. Nothing here
 can be closed by more engineering, more research, or better AI tooling --
 that was checked, not assumed (see each item's "already tried" note).
 
-Everything else in the 100-day Veloce AgenticOS GA roadmap is complete
-and evidenced in `docs/` -- see `docs/v3.3-current-release-audit.md` for
+This folder tracks professional deliverables only. Independent review found
+additional engineering defects and acceptance gaps; see
+[`docs/independent-ga-review-2026-09-07.md`](../docs/independent-ga-review-2026-09-07.md).
+The original engagement evidence remains in `docs/` -- see
+`docs/v3.3-current-release-audit.md` for
 the full trail (live-Stripe cutover, two-tenant infrastructure drill,
 RBAC, backup/restore, integration catalog, release-ledger attestation)
 and `docs/soc2-readiness-self-assessment.md` for how every AICPA Trust

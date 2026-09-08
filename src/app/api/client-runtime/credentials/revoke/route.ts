@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { currentClientMember } from "@/lib/clientAuth";
+import { currentClientCredentialManager, currentClientMember } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientCredentialOption } from "@/lib/clientCredentialCatalog";
 
@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
+
+  if (!(await currentClientCredentialManager())) return NextResponse.json({ ok: false, error: "credential_admin_required" }, { status: 403 });
 
   const rateLimit = await checkClientRuntimeRateLimit("credentials-revoke", 20, 3600);
   if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });

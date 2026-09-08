@@ -14,7 +14,7 @@ const impersonate = valueAfter("--impersonate-service-account") || process.env.V
 const callbackUrl = valueAfter("--callback-url") || "https://app.veloceos.cloud/api/internal/platform-deploy";
 const operatorSecretName = valueAfter("--operator-secret-name") || "control-plane-operator-secret";
 const workflowIdentityRegexp = valueAfter("--certificate-identity-regexp")
-  || "^https://github.com/dev4-gpt/local-AgenticOS/\\.github/workflows/control-plane-image-deploy\\.yml@refs/heads/.+$";
+  || "^https://github.com/dev4-gpt/local-AgenticOS/\\.github/workflows/control-plane-image-deploy\\.yml@refs/heads/main$";
 
 if (!["verify", "start", "deploy", "record-result"].includes(action)) fail("--action must be verify, start, deploy, or record-result");
 

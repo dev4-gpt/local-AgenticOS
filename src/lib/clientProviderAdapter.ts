@@ -1,3 +1,4 @@
+import { clientExecutionCredential } from "@/lib/clientExecutionCredential";
 import { clientContextCompressionEnabled, clientProviderCallsEnabled, clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { providerEnvKey, openRouterKey } from "@/lib/providerKeys";
 import { reserveClientRuntimeBudget } from "@/lib/clientDataPlane";
@@ -96,7 +97,7 @@ export async function runClientTextAdapter(input: {
   if (input.prompt.length < 1 || input.prompt.length > contract.maxPromptChars) return { ok: false as const, status: 400, error: "prompt_invalid" };
   if (containsClientSecretLike(input.prompt, input.history)) return { ok: false as const, status: 400, error: "secret_like_input_rejected" };
 
-  const key = spec.key === "OPENROUTER_API_KEY" ? openRouterKey() : providerEnvKey(spec.key);
+  const key = await clientExecutionCredential(spec.key);
   if (!key) return { ok: false as const, status: 503, error: "provider_not_configured" };
   const rawMessages: Message[] = [
     ...(input.history ?? []).slice(-contract.maxHistoryMessages).filter((item) => item && typeof item.content === "string"),

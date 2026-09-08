@@ -39,9 +39,10 @@ export async function POST(request: Request) {
     ...(testFixture ? { "metadata[stripe_mode]": "test", "metadata[test_fixture]": "true", "metadata[test_fixture_initial_total_cents]": String(testFixture.initialTotalCents) } : {}),
     // Stripe Managed Payments requires tax-coded catalog products. Every
     // customQuote path (the disposable test fixture, and any real negotiated
-    // enterprise deal) builds its line items from ad-hoc price_data, which
-    // can never carry a registered tax code -- Managed Payments rejects
-    // those with "product tax code is missing" regardless of test/live mode.
+    // enterprise deal) builds its line items from ad-hoc price_data without
+    // a reviewed tax code. Stripe supports product_data.tax_code for inline
+    // products; the current opt-out remains until that commercial/tax policy
+    // is explicitly reviewed. Do not infer tax compliance from this override.
     // Confirmed live: this failed for a real custom quote in live mode
     // before this fix, not just the test fixture.
     ...(customQuote ? { "managed_payments[enabled]": "false" } : {}),

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readClientExportPages } from "./lib/client-export-pages.mjs";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -315,10 +316,7 @@ async function writeSnapshot(snapshot, filePath) {
 
 async function supabaseSelect(table, filter, columns) {
   if (!columns) fail(`No export column allowlist for ${table}`);
-  const response = await supabaseRequest(`${table}?${filter}&select=${encodeURIComponent(columns)}`);
-  if (!response.ok) fail(`Export failed for ${table} (${response.status})`);
-  const data = await response.json();
-  return Array.isArray(data) ? data : [];
+  return readClientExportPages({ table, filter, columns, request: supabaseRequest });
 }
 
 async function supabaseInsert(table, rows) {

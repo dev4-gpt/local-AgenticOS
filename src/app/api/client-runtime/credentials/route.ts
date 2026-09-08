@@ -24,7 +24,7 @@ export async function GET() {
     return {
       key: item.key,
       label: item.label,
-      connected: Boolean(value),
+      connected: Boolean(value) && connection?.status === "connected",
       secret: item.secret,
       connectionStatus: typeof connection?.status === "string" ? connection.status : null,
       credentialMode: typeof connection?.credential_mode === "string" ? connection.credential_mode : "byok",

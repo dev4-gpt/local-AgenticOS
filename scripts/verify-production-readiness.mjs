@@ -181,6 +181,20 @@ if (!publishLedger) {
     if (!ledgerRecord.rollbackTarget?.cloudRunRevision && !ledgerRecord.rollbackTarget?.vercelDeploymentId) releaseGateFailures.push("rollback_target");
   }
 }
+if (publishLedger) {
+  for (const key of ["vercelDeployment", "cloudRunRevision", "imageDigest"]) {
+    if (!deployment[key]) releaseGateFailures.push(key);
+  }
+  if (!migrationApplied.length || migrationApplied.some((item) => !item.sha256)) releaseGateFailures.push("migration_evidence_attached");
+  if (!Object.keys(testResults).length) releaseGateFailures.push("test_results_attached");
+  for (const key of ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"]) {
+    if (!["approved", "passed"].includes(deployment[key])) releaseGateFailures.push(`${key}_approved`);
+  }
+  if (!rollbackTarget.cloudRunRevision && !rollbackTarget.vercelDeploymentId) releaseGateFailures.push("rollback_target");
+}
+const evidenceEnvironment = publishLedger ? deployment.environment : ledgerRecord?.deployment?.environment;
+if (strict && !["production", "staging"].includes(evidenceEnvironment)) releaseGateFailures.push("release_environment");
+if (strict && !publishLedger && deployment.environment !== "unknown" && evidenceEnvironment !== deployment.environment) releaseGateFailures.push("release_environment_mismatch");
 if (strict) for (const gate of releaseGateFailures) failures.push(`Strict release evidence missing or failed: ${gate}`);
 
 const configurationShape = {
@@ -204,7 +218,7 @@ const configurationShape = {
   publicSecretNames: Object.keys(process.env).filter((key) => /^NEXT_PUBLIC_.*(SECRET|PASSWORD|PRIVATE_KEY|ACCESS_TOKEN|API_KEY)$/i.test(key) && key !== "NEXT_PUBLIC_TURNSTILE_SITE_KEY"),
 };
 if (configurationShape.publicSecretNames.length) failures.push("Secret-like NEXT_PUBLIC_* variables are present in the release environment");
-if (strict && deployment.environment === "production" && configurationShape.nonSecretModes.stripeMode !== "live") failures.push("Production release requires STRIPE_MODE=live");
+if (strict && evidenceEnvironment === "production" && configurationShape.nonSecretModes.stripeMode !== "live") failures.push("Production release requires STRIPE_MODE=live");
 const configurationHash = valueAfter("--config-hash") || process.env.VELOCE_CONFIGURATION_HASH || sha256(JSON.stringify(configurationShape));
 if (!/^[0-9a-f]{64}$/i.test(configurationHash)) failures.push("Configuration hash must be 64 hexadecimal characters");
 
@@ -230,7 +244,9 @@ const evidence = {
 };
 assertNoSecretLikeValues(evidence);
 
-if (publishLedger) publishToLedger(evidence);
+if (publishLedger && (!strict || evidence.releaseReady)) publishToLedger(evidence);
+// A storage failure is part of the result, not a successful release.
+evidence.releaseReady = failures.length === 0 && releaseGateFailures.length === 0;
 
 const outputPath = valueAfter("--out");
 if (outputPath) {

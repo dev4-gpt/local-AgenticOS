@@ -42,8 +42,12 @@ for (const entry of manifest.integrations ?? []) {
   // A native-enabled, higher-risk integration without a real SBOM/provenance
   // reference (still "pending: ...") would be a governance gap worth
   // catching automatically before it ever reaches production traffic.
-  if (entry?.state === "native-enabled" && (entry?.riskTier === "high" || entry?.riskTier === "critical") && typeof entry?.sbomReference === "string" && entry.sbomReference.startsWith("pending")) {
-    failures.push(`${label}: native-enabled with riskTier=${entry.riskTier} cannot have a pending sbomReference`);
+  if (entry?.state === "native-enabled" && (entry?.riskTier === "high" || entry?.riskTier === "critical")) {
+    for (const field of ["sbomReference", "provenanceReference"]) {
+      if (typeof entry[field] !== "string" || !entry[field].trim() || /^pending/i.test(entry[field].trim())) {
+        failures.push(`${label}: native-enabled with riskTier=${entry.riskTier} requires a non-pending ${field}`);
+      }
+    }
   }
 }
 

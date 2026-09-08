@@ -20,7 +20,7 @@ env:
 
 jobs:
   build-audit-sign-stage:
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.promote_staging_run_id == '')
+    if: (github.event_name == 'push' && vars.VELOCE_AUTOMATIC_CLOUD_DEPLOYS == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.promote_staging_run_id == '')
     runs-on: ubuntu-latest
     environment: staging
     permissions:
