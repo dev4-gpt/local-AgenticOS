@@ -5,8 +5,11 @@
 **Follow-up, 2026-09-08:** PR #12 merged as `ce71e19` after all required checks
 passed. v40–v42 are now applied to production, with 38 live checks and complete
 fixture cleanup; see [the rollout evidence](v40-v42-live-rollout-2026-09-08.md).
-Application/runtime deployment remains outstanding. The original review's
-source-only verification statements below describe that earlier pass.
+**Follow-up, 2026-09-09:** application and both deployed tenant runtimes now
+run the merged fixes. See [deployment and remaining acceptance evidence](ga-production-deployment-2026-09-09.md).
+The new retained release record deliberately reports `releaseReady: false`;
+deployment smoke tests do not replace the outstanding acceptance journeys.
+The original review's source-only statements below describe that earlier pass.
 **Disposition:** the historical strict attestation for `3e3c518` is not a
 current, whole-product GA approval. Confirmed engineering defects existed
 at the handoff baseline. Fixes below are source changes, not live deployment
@@ -102,16 +105,20 @@ pinned to 0.5.8; no hosted database or paid service is required.
 1. **Completed 2026-09-08:** v40, v41 and v42 applied to live Supabase and
    verified through 38 live API checks, including actual anonymous/authenticated
    permissions and RLS visibility. See [the rollout evidence](v40-v42-live-rollout-2026-09-08.md).
-2. Inventory BYOK connections. v40 intentionally denies missing, submitted,
+2. **Inventoried 2026-09-09:** zero provider connection rows across three active
+   tenant records; no suspended onboarding/active tenant mismatch. v40 intentionally denies missing, submitted,
    revoked or deleted rows; do not bulk mark them connected. Only an approved
    promotion may create connected state. Client runtimes need their existing
    worker token, or an authenticated user session for synchronous requests.
-3. Build an immutable client-runtime image from the merged fix commit and
-   deploy through the existing approval workflow. An old running image does
+3. **Deployed 2026-09-09:** both existing tenant services run the immutable
+   `e72140e` image after staged and production authentication smoke checks.
+   The old public readiness tag was removed; rollback revisions were retained.
+   An old running image does
    not gain the new credential gate from a SQL migration alone. New admission
    checks cannot recall requests already sent to a provider. Rotation still
    needs a new runtime revision to load its new environment secret.
-4. Deploy the product webhook/callback fixes. Confirm Stripe endpoint delivery
+4. **Product fixes deployed 2026-09-09:** production aliases resolve to
+   `dpl_ARp5SburJYcEXvt1GuS8nfXyXSbz`. Still confirm live Stripe endpoint delivery
    includes `checkout.session.async_payment_succeeded`; replay previously failed
    effects only after reconciling durable Stripe/session/ledger state. Existing
    incorrectly processed events will not repair themselves. Inspect previously
@@ -120,9 +127,10 @@ pinned to 0.5.8; no hosted database or paid service is required.
    transitions, monthly alert concurrency/idempotency, payment event ordering
    and managed-credit refund/reconciliation under concurrent operations.
    Existing single-thread happy-path canaries do not establish those properties.
-6. Retain a new release ledger for the exact deployed source and migration
-   hashes, with actual journey/rollback evidence and owner approvals. The old
-   ledger at `3e3c518` does not attest these changes.
+6. **New incomplete ledger retained 2026-09-09:** exact deployed source,
+   migration hashes, smoke evidence and rollback targets are recorded with
+   `releaseReady: false`. Fresh journey/rollback evidence and full owner
+   sign-offs remain outstanding. The old ledger at `3e3c518` does not attest these changes.
 7. Complete the three professional deliverables already in `needs-human/`.
 
 ## Cost boundary
