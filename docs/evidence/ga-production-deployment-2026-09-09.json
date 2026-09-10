@@ -1,0 +1,715 @@
+{
+  "observedAt": "2026-09-09T02:10:16.523Z",
+  "sourceCommit": "e72140ef6c89807cda1c93e4f8e5d11aa03a62fa",
+  "buildMethod": "Clean git archive; local linux/amd64 Docker build with source revision label; local Vercel production-target prebuilt output.",
+  "imageDigest": "sha256:0cecf46509d3825abbd2c61d45c9e0274f1a033b70867087014bb5c94d104ba8",
+  "runtimes": [
+    {
+      "service": "veloce-cloud-test",
+      "url": "https://veloce-cloud-test-mquo4bf7aq-el.a.run.app",
+      "image": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:0cecf46509d3825abbd2c61d45c9e0274f1a033b70867087014bb5c94d104ba8",
+      "revision": "veloce-cloud-test-00207-sal",
+      "traffic": [
+        {
+          "percent": 100,
+          "revisionName": "veloce-cloud-test-00207-sal",
+          "tag": "ga-e72140e",
+          "url": "https://ga-e72140e---veloce-cloud-test-mquo4bf7aq-el.a.run.app"
+        }
+      ],
+      "rollbackRevision": "veloce-cloud-test-00204-bil",
+      "rollbackImage": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime:v3-3-295bdd3b5efe@sha256:8498b6fa61645b9168db74b1454738c6ffb1d33155303d52fd8f6a90dfe39765",
+      "containerConfigurationPreserved": true,
+      "serviceAccountPreserved": true,
+      "maximumInstances": "1",
+      "minimumInstances": "0",
+      "stagedSmoke": {
+        "observedAt": "2026-09-09T01:59:16.394Z",
+        "kind": "runtime",
+        "base": "https://ga-e72140e---veloce-cloud-test-mquo4bf7aq-el.a.run.app",
+        "results": [
+          {
+            "method": "GET",
+            "path": "/",
+            "expected": 307,
+            "status": 307,
+            "location": "/login?next=%2F",
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/login",
+            "expected": 200,
+            "status": 200,
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/credentials",
+            "expected": 307,
+            "status": 307,
+            "location": "/login?next=%2Fcredentials",
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/claude",
+            "expected": 307,
+            "status": 307,
+            "location": "/login?next=%2Fclaude",
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/claude/status",
+            "expected": 403,
+            "status": 403,
+            "error": "client_route_not_enabled",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/client-runtime/credentials",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/client-runtime/hosted-jobs",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/client-runtime/delivery",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "POST",
+            "path": "/api/client-runtime/credentials/revoke",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "POST",
+            "path": "/api/client-runtime/credential-submissions",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "POST",
+            "path": "/api/speech/transcribe",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "productionSmoke": {
+        "observedAt": "2026-09-09T02:03:08.508Z",
+        "kind": "runtime",
+        "base": "https://veloce-cloud-test-mquo4bf7aq-el.a.run.app",
+        "results": [
+          {
+            "method": "GET",
+            "path": "/",
+            "expected": 307,
+            "status": 307,
+            "location": "/login?next=%2F",
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/login",
+            "expected": 200,
+            "status": 200,
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/credentials",
+            "expected": 307,
+            "status": 307,
+            "location": "/login?next=%2Fcredentials",
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/claude",
+            "expected": 307,
+            "status": 307,
+            "location": "/login?next=%2Fclaude",
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/claude/status",
+            "expected": 403,
+            "status": 403,
+            "error": "client_route_not_enabled",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/client-runtime/credentials",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/client-runtime/hosted-jobs",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/client-runtime/delivery",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "POST",
+            "path": "/api/client-runtime/credentials/revoke",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "POST",
+            "path": "/api/client-runtime/credential-submissions",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "POST",
+            "path": "/api/speech/transcribe",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    },
+    {
+      "service": "veloce-dofgfood",
+      "url": "https://veloce-dofgfood-mquo4bf7aq-el.a.run.app",
+      "image": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:0cecf46509d3825abbd2c61d45c9e0274f1a033b70867087014bb5c94d104ba8",
+      "revision": "veloce-dofgfood-00003-tav",
+      "traffic": [
+        {
+          "percent": 100,
+          "revisionName": "veloce-dofgfood-00003-tav",
+          "tag": "ga-e72140e",
+          "url": "https://ga-e72140e---veloce-dofgfood-mquo4bf7aq-el.a.run.app"
+        }
+      ],
+      "rollbackRevision": "veloce-dofgfood-00002-tcl",
+      "rollbackImage": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:aa733e1348ee9a08c25eedf02fac41fda7606c47d41d560786ad9d14f29e324b",
+      "containerConfigurationPreserved": true,
+      "serviceAccountPreserved": true,
+      "maximumInstances": "1",
+      "minimumInstances": "0",
+      "stagedSmoke": {
+        "observedAt": "2026-09-09T02:00:40.670Z",
+        "kind": "runtime",
+        "base": "https://ga-e72140e---veloce-dofgfood-mquo4bf7aq-el.a.run.app",
+        "results": [
+          {
+            "method": "GET",
+            "path": "/",
+            "expected": 307,
+            "status": 307,
+            "location": "/login?next=%2F",
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/login",
+            "expected": 200,
+            "status": 200,
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/credentials",
+            "expected": 307,
+            "status": 307,
+            "location": "/login?next=%2Fcredentials",
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/claude",
+            "expected": 307,
+            "status": 307,
+            "location": "/login?next=%2Fclaude",
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/claude/status",
+            "expected": 403,
+            "status": 403,
+            "error": "client_route_not_enabled",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/client-runtime/credentials",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/client-runtime/hosted-jobs",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/client-runtime/delivery",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "POST",
+            "path": "/api/client-runtime/credentials/revoke",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "POST",
+            "path": "/api/client-runtime/credential-submissions",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "POST",
+            "path": "/api/speech/transcribe",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          }
+        ],
+        "passed": true
+      },
+      "productionSmoke": {
+        "observedAt": "2026-09-09T02:03:13.407Z",
+        "kind": "runtime",
+        "base": "https://veloce-dofgfood-mquo4bf7aq-el.a.run.app",
+        "results": [
+          {
+            "method": "GET",
+            "path": "/",
+            "expected": 307,
+            "status": 307,
+            "location": "/login?next=%2F",
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/login",
+            "expected": 200,
+            "status": 200,
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/credentials",
+            "expected": 307,
+            "status": 307,
+            "location": "/login?next=%2Fcredentials",
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/claude",
+            "expected": 307,
+            "status": 307,
+            "location": "/login?next=%2Fclaude",
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/claude/status",
+            "expected": 403,
+            "status": 403,
+            "error": "client_route_not_enabled",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/client-runtime/credentials",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/client-runtime/hosted-jobs",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "GET",
+            "path": "/api/client-runtime/delivery",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "POST",
+            "path": "/api/client-runtime/credentials/revoke",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "POST",
+            "path": "/api/client-runtime/credential-submissions",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          },
+          {
+            "method": "POST",
+            "path": "/api/speech/transcribe",
+            "expected": 401,
+            "status": 401,
+            "error": "not_authenticated",
+            "location": null,
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    }
+  ],
+  "application": {
+    "deploymentId": "dpl_ARp5SburJYcEXvt1GuS8nfXyXSbz",
+    "url": "product-experience-7xck8r7kn-veloce-agentic-os.vercel.app",
+    "sourceCommit": "e72140ef6c89807cda1c93e4f8e5d11aa03a62fa",
+    "readyState": "READY",
+    "domains": [
+      {
+        "domain": "app.veloceos.cloud",
+        "deploymentId": "dpl_ARp5SburJYcEXvt1GuS8nfXyXSbz"
+      },
+      {
+        "domain": "product-experience-five.vercel.app",
+        "deploymentId": "dpl_ARp5SburJYcEXvt1GuS8nfXyXSbz"
+      }
+    ],
+    "rollbackDeploymentId": "dpl_DzU8B8djXTq2WDZiRin828UoDbb8",
+    "productionSmoke": {
+      "observedAt": "2026-09-09T02:04:16.681Z",
+      "kind": "product",
+      "base": "https://app.veloceos.cloud",
+      "results": [
+        {
+          "method": "GET",
+          "path": "/",
+          "expected": 200,
+          "status": 200,
+          "location": null,
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/start",
+          "expected": 200,
+          "status": 200,
+          "location": null,
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/provider-catalog",
+          "expected": 200,
+          "status": 200,
+          "location": null,
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/credits",
+          "expected": 200,
+          "status": 200,
+          "location": null,
+          "passed": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/billing/webhook",
+          "expected": 400,
+          "status": 400,
+          "error": "invalid_signature",
+          "location": null,
+          "passed": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/onboarding/provision-result",
+          "expected": 401,
+          "status": 401,
+          "error": "not_authorized",
+          "location": null,
+          "passed": true
+        }
+      ],
+      "passed": true
+    },
+    "productionEnvironment": {
+      "ok": true,
+      "projectDir": "product-experience",
+      "productionVariableCount": 38,
+      "present": {
+        "SUPABASE_URL": true,
+        "SUPABASE_SERVICE_ROLE_KEY": true,
+        "RESEND_API_KEY": true,
+        "PUBLIC_EMAIL_FROM": true,
+        "PUBLIC_APP_URL": true,
+        "PUBLIC_SITE_URL": true,
+        "STRIPE_SECRET_KEY": true,
+        "STRIPE_WEBHOOK_SECRET": true,
+        "STRIPE_SETUP_PRICE_ID": true,
+        "STRIPE_PLATFORM_PRICE_ID": true,
+        "STRIPE_CREDIT_PRICE_ID": true,
+        "STRIPE_MODE": true,
+        "CONTROL_PLANE_OPERATOR_SECRET": true,
+        "CONTROL_PLANE_WORKER_TOKEN": true,
+        "CONTROL_PLANE_PROVISIONER_URL": true,
+        "CONTROL_PLANE_CALLBACK_URL": true,
+        "GCP_PROVISIONER_URL": true,
+        "GCP_ALLOWED_PROJECT": true,
+        "GCP_ALLOWED_REGION": true,
+        "GCP_PROJECT_NUMBER": true,
+        "GCP_WORKLOAD_IDENTITY_POOL_ID": true,
+        "GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID": true,
+        "GCP_CONTROL_PLANE_INVOKER_SERVICE_ACCOUNT": true,
+        "LEAD_NOTIFICATION_FROM": true,
+        "LEAD_NOTIFICATION_TO": true,
+        "TURNSTILE_SECRET_KEY": true,
+        "NEXT_PUBLIC_TURNSTILE_SITE_KEY": true,
+        "OPENROUTER_MANAGED_SECRET_RESOURCE": true,
+        "OPENROUTER_MANAGED_GATEWAY_URL": true,
+        "OPENROUTER_MANAGED_PRICING_SNAPSHOT_ID": true,
+        "OPENROUTER_MANAGED_PRICING_JSON": true
+      },
+      "sensitiveTypes": {
+        "SUPABASE_SERVICE_ROLE_KEY": "sensitive",
+        "RESEND_API_KEY": "sensitive",
+        "STRIPE_SECRET_KEY": "sensitive",
+        "STRIPE_WEBHOOK_SECRET": "sensitive",
+        "CONTROL_PLANE_OPERATOR_SECRET": "sensitive",
+        "CONTROL_PLANE_WORKER_TOKEN": "sensitive",
+        "TURNSTILE_SECRET_KEY": "sensitive"
+      },
+      "failures": [],
+      "warnings": []
+    }
+  },
+  "sourceCi": [
+    {
+      "link": "https://github.com/dev4-gpt/local-AgenticOS/actions/runs/34186571144/job/101936007261",
+      "name": "verify",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/dev4-gpt/local-AgenticOS/actions/runs/34186571117/job/101936007125",
+      "name": "product-experience",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/dev4-gpt/local-AgenticOS/actions/runs/34186571106/job/101936006924",
+      "name": "public-site",
+      "state": "SUCCESS"
+    }
+  ],
+  "inventory": {
+    "observedAt": "2026-09-09T02:09:09.031Z",
+    "tenants": [
+      {
+        "slug": "dofgfood",
+        "status": "active"
+      },
+      {
+        "slug": "veloce-cloud-test",
+        "status": "active"
+      },
+      {
+        "slug": "veloce-cloud-test-b",
+        "status": "active"
+      }
+    ],
+    "connections": [],
+    "staleSuspensions": [],
+    "onboardingCount": 8,
+    "webhookEventStatusCounts": {
+      "processed": 23,
+      "failed": 3
+    },
+    "unprocessedEvents": [
+      {
+        "event_id": "evt_1U7kfsEQWtozPK4Zrsopxig9",
+        "event_type": "checkout.session.completed",
+        "status": "failed",
+        "error_code": "credit_plan_settlement_failed"
+      },
+      {
+        "event_id": "evt_3UCihUEQWtozPK4Z0gHsMYjg",
+        "event_type": "payment_intent.payment_failed",
+        "status": "failed",
+        "error_code": "credit_plan_metadata_missing"
+      },
+      {
+        "event_id": "evt_3UCvq62UC1bGDyMo1nKzGG7L",
+        "event_type": "charge.refunded",
+        "status": "failed",
+        "error_code": "credit_plan_metadata_missing"
+      }
+    ],
+    "liveStripeEndpointCheck": {
+      "status": "blocked",
+      "reason": "Existing GCP credential addresses test mode; Vercel sensitive exports are placeholders; Stripe CLI live login expired. Requested dashboard sign-in."
+    }
+  },
+  "durableDeploymentRecord": {
+    "recordedAt": "2026-09-09T02:06:27.172Z",
+    "runId": "b5c81004-25d9-4b2b-9c4e-3c38c731ac3b",
+    "result": {
+      "ok": true,
+      "runId": "b5c81004-25d9-4b2b-9c4e-3c38c731ac3b",
+      "status": "succeeded"
+    },
+    "readback": {
+      "status": "succeeded",
+      "environment": "production",
+      "gitCommit": "e72140ef6c89807cda1c93e4f8e5d11aa03a62fa",
+      "vercelDeploymentId": "dpl_ARp5SburJYcEXvt1GuS8nfXyXSbz"
+    }
+  },
+  "costAuthorization": {
+    "gcpTrialCreditUsd": 297.3,
+    "trialDaysRemainingAsReported": 43,
+    "source": "User-provided billing status; no account upgrade performed",
+    "vercelPlan": "hobby",
+    "localBuilds": true
+  },
+  "limitations": [
+    "No new paid Stripe transaction or external provider inference was performed.",
+    "No full authenticated runtime BYOK lifecycle or rollback traffic drill was performed for this image.",
+    "Zero BYOK connection rows: approved promotion is required before execution.",
+    "Live Stripe delayed-payment subscription still requires authenticated account access.",
+    "Existing active veloce-cloud-test-b DB tenant has no matching deployed service in the inventory; no destructive cleanup performed.",
+    "Historical fixture manifests/canary image references are not a recommendation for new client provisioning; use this approved digest."
+  ]
+}
