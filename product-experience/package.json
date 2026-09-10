@@ -20,7 +20,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.6.0",
-    "next": "^16.2.12",
+    "next": "^16.3.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "shadcn": "^4.15.0",
@@ -33,20 +33,17 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "^16.2.12",
+    "eslint-config-next": "^16.3.4",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
   "overrides": {
     "@hono/node-server": "^2.0.12",
-    "minimatch@3.1.5": {
-      "brace-expansion": "1.1.12"
-    },
     "fast-uri": "^3.1.5",
-    "hono": "^4.12.34",
-    "js-yaml": "^4.3.1",
+    "hono": "^4.13.7",
+    "js-yaml": "^4.3.2",
     "nanoid": "^3.3.18",
     "postcss": "^8.5.23",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.4"
   }
 }
