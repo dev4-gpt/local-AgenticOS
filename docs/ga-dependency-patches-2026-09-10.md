@@ -32,8 +32,8 @@ Google Fonts inputs; it passed with the required network access.
 Both lockfiles were regenerated. No audit exclusions, severity reductions,
 forced major-version audit fixes, or CI bypasses were introduced.
 
-Production deployment of these dependency patches must be recorded separately
-after the required PR checks pass and the source is merged. The September 9
-deployment evidence remains historical evidence for `e72140e`; it does not
-attest this patched dependency tree. Remaining live Stripe authentication and
-whole-product acceptance/sign-off gaps still apply.
+**Deployment completed:** all required PR checks passed, PR #14 merged as
+`9ba8d46`, and the patched application and both tenant services were deployed.
+See [the deployment evidence](ga-production-deployment-2026-09-10.md).
+The September 9 evidence remains historical for `e72140e`. Remaining live
+Stripe authentication and whole-product acceptance/sign-off gaps still apply.
