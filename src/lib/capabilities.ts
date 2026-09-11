@@ -18,6 +18,11 @@ export interface Capability {
 // product contract, not an unrestricted ability for a client to run arbitrary tools.
 export const CAPABILITIES: Capability[] = [
   {
+    id: "ecc-workflows", name: "Skills & Specialists", kind: "skill", audience: "built-in", status: "reviewed", destination: "/orchestrate",
+    description: "Pinned ECC catalog and bounded departmental plans, review checklists, handoffs and deterministic evaluations.",
+    dataScope: "Supplied tenant context and evidence summaries only.", actionBoundary: "Requires explicit tenant enablement. No external inference, automatic hooks, shell execution or permission expansion; all artifacts require review.",
+  },
+  {
     id: "tenant-data", name: "Tenant Memory and Records", kind: "skill", audience: "built-in", status: "reviewed", destination: "/context",
     description: "Tenant-scoped memory, journal, goals, and notebook records backed by Supabase RLS and retention controls.",
     dataScope: "The current tenant's records and explicitly uploaded artifacts only.", actionBoundary: "No local vault, filesystem, operator history, or cross-tenant enumeration; destructive actions remain user-scoped and auditable.",
