@@ -1,0 +1,30 @@
+{
+  "observedAt": "2026-09-11T04:10:25Z",
+  "timestampScope": "approximate time of dashboard inspection, not Stripe mutation timestamp",
+  "source": "authenticated live Stripe dashboard, inspected through browser accessibility state",
+  "deployedSourceCommit": "9ba8d460da4f1440ba51769df2deb7a4dcfc5a9c",
+  "account": { "name": "Veloce AgenticOS", "id": "acct_1U7KNI2UC1bGDyMo", "mode": "live" },
+  "destination": {
+    "id": "we_1U8QPk2UC1bGDyMoG7ah8GsH",
+    "url": "https://app.veloceos.cloud/api/billing/webhook",
+    "status": "active",
+    "apiVersion": "2026-07-29.dahlia",
+    "payloadStyle": "snapshot",
+    "eventsFrom": "your account",
+    "before": ["charge.dispute.created", "charge.refunded", "checkout.session.completed", "checkout.session.expired", "customer.subscription.deleted", "invoice.payment_failed", "payment_intent.payment_failed"],
+    "after": ["charge.dispute.created", "charge.refunded", "checkout.session.async_payment_succeeded", "checkout.session.completed", "checkout.session.expired", "customer.subscription.deleted", "invoice.payment_failed", "payment_intent.payment_failed"],
+    "saveVerified": true,
+    "verification": "Returned Overview showed 8 events; expanded persisted list included async_payment_succeeded and all seven original events"
+  },
+  "historicalDeliveries": [
+    { "eventId": "evt_1UCvqA2UC1bGDyMo1LRtT2f7", "type": "checkout.session.completed", "livemode": true, "httpStatus": 200, "responseStatus": "processed", "attemptId": "wc_1UCvqD2UC1bGDyMoDE9DP7cj", "attemptAt": "2026-09-07T02:15:41-04:00" },
+    { "eventId": "evt_1UCvs02UC1bGDyMoIftmJS2f", "type": "customer.subscription.deleted", "livemode": true, "httpStatus": 200, "responseStatus": "processed", "attemptId": "wc_1UCvs12UC1bGDyMo3s8wDMgA", "attemptAt": "2026-09-07T02:17:33-04:00" },
+    { "eventId": "evt_3UCvq62UC1bGDyMo1nKzGG7L", "type": "charge.refunded", "livemode": true, "httpStatus": 422, "error": "credit_plan_metadata_missing", "failedAttemptsObserved": 7, "latestAttemptAt": "2026-09-09T21:55:36-04:00", "charge": { "id": "ch_3UCvq62UC1bGDyMo1NEZqvSn", "customer": "cus_VDMZCHDl4nnNie", "currency": "usd", "amount": 200, "amountCaptured": 200, "amountRefunded": 200, "description": "Subscription creation", "metadata": {} } }
+  ],
+  "newFinancialTransactions": 0,
+  "eventReplays": 0,
+  "databaseMutations": 0,
+  "newDelayedPaymentJourneyTested": false,
+  "nonCreditRefundClassificationResolved": false,
+  "releaseReady": false
+}
