@@ -31,6 +31,7 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/client-runtime/notebook-sources",
   "/api/client-runtime/budget",
   "/api/client-runtime/skills",
+  "/api/client-runtime/learning",
   "/api/client-runtime/workflows",
   "/api/client-runtime/paperclip",
   "/api/client-runtime/room",

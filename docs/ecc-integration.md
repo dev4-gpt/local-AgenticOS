@@ -51,3 +51,19 @@ ECC evidence does not change the GA release ledger. The existing refund-notifica
 `tests/ecc-adapters.spec.ts` exercises every registration, all six departments, repeatable artifact hashes, missing/unverified evidence, context overflow, unavailable adapters, unauthorized roles, permission-field injection and secret-bearing input. A network tripwire observes zero calls. The focused suite passes 180 tests, and TypeScript checking passes. CI checks the component pin, adapter evidence paths, permitted runtime imports and zero-egress configuration.
 
 This stage provides library adapters and catalog contracts. Authenticated job dispatch, SQL authorization, learning storage and product controls follow in the remaining PRs; no deployed tenant capability is enabled by this source change.
+
+## Learning stage — 2026-09-11
+
+`product-experience/supabase-v43-ecc-learning.sql` introduces tenant policy, learning items and immutable reviewed skill revisions. Authenticated clients have SELECT grants and tenant RLS only; mutation RPCs derive the actor from `auth.uid()`. Members can propose and edit their own lessons; owner/admin roles review, revoke and enable policy. Viewers cannot mutate. Approval requires the exact current PostgreSQL content hash and locks the item against competing reviews. Editing revokes prior revisions and returns the item to proposed status. Confidence never authorizes activation.
+
+Content reads remain authenticated. Worker admission checks the actual job requester, active tenant, policy and worker-token hash. Its lesson validator returns only a boolean and requires exact approved content/hash/revision, active retention and no revocation. It rejects cross-tenant, duplicate, changed and stale snapshots. No public RPC returns lesson content. Prompt-injection fixtures stay untrusted, known secret patterns are rejected, and lesson fields cannot introduce tools or permissions.
+
+For enabled tenants, a terminal-job trigger proposes a fixed structured summary of job identity, capability and status. It never copies prompts, transcripts, unrestricted output or credentials. Source edits invalidate approvals; source deletion cascades through dependent lessons and revisions. Automatic outcomes remain proposed at confidence zero. Developer-global promotion has no product endpoint and requires a separately reviewed, sanitized artifact.
+
+`/api/client-runtime/learning` supports authenticated list/create plus edit/review/revoke actions. `?active=1` returns currently approved, unexpired revisions. The API derives tenant identity from the authenticated runtime and rejects tenant/permission fields in requests. Request bodies are bounded before JSON parsing.
+
+The existing lifecycle exporter/restorer includes all three new tables with explicit column lists. Restore disables ECC policy, retains old revisions as revoked evidence, and requires fresh approval. `node scripts/client-lifecycle.mjs --mode retention --slug <tenant>` previews expired ECC lesson removal; `--apply` deletes those items and their dependent revisions. Expired instructions are ineligible even before cleanup runs. Offboarding cascades from the tenant record.
+
+Validation: `tests/ecc-learning-sql.spec.ts` executes the migration in PostgreSQL (PGlite) and exercises roles, RLS, hash races, retries/conflicts, immutable revisions, source deletion/invalidation, expiry, restore/offboarding and worker validation. `tests/ecc-learning-api.spec.ts` checks authenticated tenant derivation, role enforcement and bounded inputs. The focused suite passes **186 tests**. The competing-review test uses PGlite's serialized connection; multi-connection live concurrency remains a deployment acceptance check, not a claim of this local test.
+
+This migration has not yet been applied to the live database. Deployment and enabled-tenant acceptance remain the final stage.
