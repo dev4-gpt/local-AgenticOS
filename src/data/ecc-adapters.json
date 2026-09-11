@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "adapters": [
+    {
+      "id": "ecc-engineering-handoff",
+      "label": "Engineering handoff",
+      "department": "engineering",
+      "componentId": "ecc:skill:skills/verification-loop/SKILL.md",
+      "artifactKind": "implementation-handoff",
+      "steps": [
+        "Confirm the requested outcome and constraints",
+        "Attach implementation and test evidence",
+        "Name the reviewer and rollback decision"
+      ],
+      "requiredCapability": "ecc-workflows",
+      "environment": "node-server",
+      "tools": [],
+      "externalInference": false,
+      "cost": "zero-provider-cost",
+      "verification": "tests/ecc-adapters.spec.ts"
+    },
+    {
+      "id": "ecc-security-review",
+      "label": "Security review checklist",
+      "department": "security-quality",
+      "componentId": "ecc:skill:skills/security-review/SKILL.md",
+      "artifactKind": "security-review-matrix",
+      "steps": [
+        "Inspect trust boundaries and authorization",
+        "Verify credential and input handling",
+        "Record unresolved risks for human review"
+      ],
+      "requiredCapability": "ecc-workflows",
+      "environment": "node-server",
+      "tools": [],
+      "externalInference": false,
+      "cost": "zero-provider-cost",
+      "verification": "tests/ecc-adapters.spec.ts"
+    },
+    {
+      "id": "ecc-research-plan",
+      "label": "Research-first plan",
+      "department": "research",
+      "componentId": "ecc:skill:skills/search-first/SKILL.md",
+      "artifactKind": "research-plan",
+      "steps": [
+        "Search existing project evidence before proposing changes",
+        "Compare primary sources and alternatives",
+        "Record unresolved questions and source limitations"
+      ],
+      "requiredCapability": "ecc-workflows",
+      "environment": "node-server",
+      "tools": [],
+      "externalInference": false,
+      "cost": "zero-provider-cost",
+      "verification": "tests/ecc-adapters.spec.ts"
+    },
+    {
+      "id": "ecc-content-brief",
+      "label": "Editorial brief",
+      "department": "content-growth",
+      "componentId": "ecc:skill:skills/content-engine/SKILL.md",
+      "artifactKind": "editorial-brief",
+      "steps": [
+        "Identify audience, purpose and channel",
+        "Separate supported claims from proposed copy",
+        "Review rights and approve publication separately"
+      ],
+      "requiredCapability": "ecc-workflows",
+      "environment": "node-server",
+      "tools": [],
+      "externalInference": false,
+      "cost": "zero-provider-cost",
+      "verification": "tests/ecc-adapters.spec.ts"
+    },
+    {
+      "id": "ecc-operations-handoff",
+      "label": "Operations handoff",
+      "department": "business-operations",
+      "componentId": "ecc:skill:skills/strategic-compact/SKILL.md",
+      "artifactKind": "operations-handoff",
+      "steps": [
+        "Record the current state and owner",
+        "List decisions, dependencies and next actions",
+        "Confirm recipient review before external delivery"
+      ],
+      "requiredCapability": "ecc-workflows",
+      "environment": "node-server",
+      "tools": [],
+      "externalInference": false,
+      "cost": "zero-provider-cost",
+      "verification": "tests/ecc-adapters.spec.ts"
+    },
+    {
+      "id": "ecc-context-budget",
+      "label": "Context budget report",
+      "department": "data-infrastructure",
+      "componentId": "ecc:skill:skills/context-budget/SKILL.md",
+      "artifactKind": "context-budget-report",
+      "steps": [
+        "Inventory the supplied context and sources",
+        "Compare UTF-8 bytes against the selected budget",
+        "Retain evidence references and prioritize missing context"
+      ],
+      "requiredCapability": "ecc-workflows",
+      "environment": "node-server",
+      "tools": [],
+      "externalInference": false,
+      "cost": "zero-provider-cost",
+      "verification": "tests/ecc-adapters.spec.ts"
+    },
+    {
+      "id": "ecc-evaluation-report",
+      "label": "Deterministic verification report",
+      "department": "security-quality",
+      "componentId": "ecc:skill:skills/eval-harness/SKILL.md",
+      "artifactKind": "evaluation-report",
+      "steps": [
+        "Validate the artifact structure and input bounds",
+        "Check evidence reference completeness",
+        "Keep semantic correctness and deployment acceptance separate"
+      ],
+      "requiredCapability": "ecc-workflows",
+      "environment": "node-server",
+      "tools": [],
+      "externalInference": false,
+      "cost": "zero-provider-cost",
+      "verification": "tests/ecc-adapters.spec.ts"
+    }
+  ]
+}

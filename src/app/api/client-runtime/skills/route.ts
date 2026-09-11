@@ -3,8 +3,9 @@ import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit } from "@/lib/clientDataPlane";
 import { V96_AGENCY_AGENTS_REVISION, V96_CURATED_SKILL_PACK } from "@/lib/v96SkillPack";
 import { validateV96SkillManifest } from "@/lib/v96Contracts";
-import { clientConfiguredList } from "@/lib/clientRuntimePolicy";
+import { clientCapabilityEnabled, clientConfiguredList } from "@/lib/clientRuntimePolicy";
 import { clientReadyPlaybooks } from "@/lib/clientPlaybooks";
+import { eccCatalog, ECC_ADAPTERS, ECC_DEPARTMENTS, ECC_REVISION } from "@/lib/eccCatalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +28,7 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
+    ecc: { revision: ECC_REVISION, components: eccCatalog(clientCapabilityEnabled("ecc-workflows")), adapters: ECC_ADAPTERS, departments: ECC_DEPARTMENTS },
     // Pinned upstream revision, so a role's provenance is checkable rather than
     // asserted.
     sourceRevision: V96_AGENCY_AGENTS_REVISION,

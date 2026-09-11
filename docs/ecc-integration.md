@@ -41,3 +41,13 @@ Discovery proves registration and parsing, not behavioral compliance by every up
 Separate PRs implement adapters/evaluations, tenant learning and lifecycle, product sections/workflows, then deployment acceptance. Product components remain awaiting adaptation/configuration until a registered adapter, exact evidence and tenant policy admit execution. Catalog visibility grants no permission. Unsupported and paid integrations remain gated under the no-new-cost policy.
 
 ECC evidence does not change the GA release ledger. The existing refund-notification defect and outstanding GA acceptance gates remain open; see `ga-live-stripe-verification-2026-09-11.md`.
+
+## Adapter stage — 2026-09-11
+
+`src/data/ecc-adapters.json` is the versioned activation overlay over the unchanged upstream inventory. Seven registered adapters map to six departmental collections and the existing playbook/capability systems. They implement bounded Veloce adaptations, not the entire upstream skill runtime. The authenticated skills API adds `ecc` catalog/availability metadata without changing existing response fields.
+
+`src/lib/eccAdapter.ts` creates hashed artifacts from validated brief/evidence inputs. It measures UTF-8 context bytes, retains source references, identifies missing evidence and instruction-like text, and leaves checklist actions awaiting review. Supplied source hashes are explicitly unverified. Provider calls, external actions and semantic/deployment verification are never claimed. Provider cost is zero; unmeasured infrastructure cost stays null. Tenant enablement and an authorized role are required, and unknown adapters, extra tool/provider/tenant fields and secret-bearing inputs fail closed.
+
+`tests/ecc-adapters.spec.ts` exercises every registration, all six departments, repeatable artifact hashes, missing/unverified evidence, context overflow, unavailable adapters, unauthorized roles, permission-field injection and secret-bearing input. A network tripwire observes zero calls. The focused suite passes 180 tests, and TypeScript checking passes. CI checks the component pin, adapter evidence paths, permitted runtime imports and zero-egress configuration.
+
+This stage provides library adapters and catalog contracts. Authenticated job dispatch, SQL authorization, learning storage and product controls follow in the remaining PRs; no deployed tenant capability is enabled by this source change.
