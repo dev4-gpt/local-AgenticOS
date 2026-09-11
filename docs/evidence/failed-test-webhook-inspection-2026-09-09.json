@@ -1,0 +1,33 @@
+{
+  "observedAt": "2026-09-09T02:16:18.957Z",
+  "mode": "test",
+  "results": [
+    {
+      "eventId": "evt_1U7kfsEQWtozPK4Zrsopxig9",
+      "httpStatus": 200,
+      "availableInTestAccount": true,
+      "livemode": false,
+      "type": "checkout.session.completed",
+      "objectType": "checkout.session",
+      "product": "veloce-managed-credits-plan",
+      "creditPlanId": "2e29ff7d-014a-4344-abba-a4dbbd718cfc",
+      "paymentStatus": "paid",
+      "note": "Read only; no replay or status mutation."
+    },
+    {
+      "eventId": "evt_3UCihUEQWtozPK4Z0gHsMYjg",
+      "httpStatus": 200,
+      "availableInTestAccount": true,
+      "livemode": false,
+      "type": "payment_intent.payment_failed",
+      "objectType": "payment_intent",
+      "note": "Read only; no replay or status mutation."
+    },
+    {
+      "eventId": "evt_3UCvq62UC1bGDyMo1nKzGG7L",
+      "httpStatus": 404,
+      "availableInTestAccount": false,
+      "note": "Unavailable in this test account; no inference about live account."
+    }
+  ]
+}

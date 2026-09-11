@@ -10,6 +10,9 @@ run the merged fixes. See [deployment and remaining acceptance evidence](ga-prod
 The new retained release record deliberately reports `releaseReady: false`;
 deployment smoke tests do not replace the outstanding acceptance journeys.
 The original review's source-only statements below describe that earlier pass.
+**Follow-up, 2026-09-10:** newly reported dependency vulnerabilities were
+patched in PR #14, merged after all required checks passed, and deployed to
+the application and both tenant services. [Evidence and remaining gates](ga-production-deployment-2026-09-10.md).
 **Disposition:** the historical strict attestation for `3e3c518` is not a
 current, whole-product GA approval. Confirmed engineering defects existed
 at the handoff baseline. Fixes below are source changes, not live deployment
