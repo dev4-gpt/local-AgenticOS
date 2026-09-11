@@ -13,6 +13,11 @@ The original review's source-only statements below describe that earlier pass.
 **Follow-up, 2026-09-10:** newly reported dependency vulnerabilities were
 patched in PR #14, merged after all required checks passed, and deployed to
 the application and both tenant services. [Evidence and remaining gates](ga-production-deployment-2026-09-10.md).
+**Follow-up, 2026-09-11:** authenticated live Stripe inspection found and
+repaired a missing delayed-payment success subscription. Stripe confirms the
+original $2 refund, but its app notification failed seven times because a
+non-credit refund entered credit-plan resolution. [Evidence and unresolved
+classification policy](ga-live-stripe-verification-2026-09-11.md).
 **Disposition:** the historical strict attestation for `3e3c518` is not a
 current, whole-product GA approval. Confirmed engineering defects existed
 at the handoff baseline. Fixes below are source changes, not live deployment

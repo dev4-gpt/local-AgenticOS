@@ -24,6 +24,31 @@ catalog, BYOK lifecycle, two-tenant isolation, managed-OpenRouter, operations,
 and legal acceptance results. A release is not ready when any of those fields
 is missing or not owner-approved.
 
+## Stripe destination verification
+
+For the shared billing endpoint, verify the selected account and mode in
+Stripe Workbench, then confirm these eight event subscriptions:
+
+    charge.dispute.created
+    charge.refunded
+    checkout.session.async_payment_succeeded
+    checkout.session.completed
+    checkout.session.expired
+    customer.subscription.deleted
+    invoice.payment_failed
+    payment_intent.payment_failed
+
+An unpaid checkout completion does not fulfill a purchase. Its later paid
+event must reach the application, so a handler-only test is insufficient:
+verify the destination's saved event list too. Distinguish failed delivery
+attempts from distinct failed payments, and inspect each event's `livemode`.
+Do not mark a missing-plan refund processed merely to clear retries.
+
+[September 11 live verification](ga-live-stripe-verification-2026-09-11.md)
+records the repaired delayed-payment subscription and the still-open
+classification gap for a public-launch refund. Existing seven-event
+configuration snapshots are historical, not the current requirement.
+
 ## Phase 3f — platform RBAC and backup/restore drill (2026-09-07)
 
 **Tenant RBAC: complete, proven live.** `client_memberships.role`
