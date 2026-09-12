@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "3671d70b5be322985cd41ea2799e130c3580a942",
+  "sourceTree": "9847d00ec65a46f680dcf8e09c4f09d54e1b0ae4",
+  "imageDigest": "sha256:0fa07713ef814ce0423874fec16f47bee41145b4feaab4a44f1127e2f6d14bdd",
+  "localContainerChecks": {
+    "/api/client-runtime/ecc": 401,
+    "/api/client-runtime/learning": 401,
+    "/api/client-runtime/skills": 401,
+    "/api/client-runtime/credentials": 401,
+    "/api/client-runtime/artifacts": 401
+  },
+  "migration": {
+    "file": "product-experience/supabase-v43-ecc-learning.sql",
+    "sha256": "95a3f8f2982501c2436f4b41ce7a293b18515207335a45a4fb13853281d0c2c3",
+    "dashboardProject": "ppmoqjtmjtfxadsnejqc",
+    "result": "Success. No rows returned",
+    "readbackTimestamp": "2026-09-12 04:37:04.703508+00",
+    "rlsTables": 3,
+    "authenticatedWriteGrants": 0,
+    "functions": 14,
+    "anonLearningRead": false,
+    "enabledTenantsBeforeRollout": 0
+  },
+  "stage4Checks": {
+    "product-experience": "https://github.com/dev4-gpt/local-AgenticOS/actions/runs/34672985303/job/103497749374",
+    "public-site": "https://github.com/dev4-gpt/local-AgenticOS/actions/runs/34672985330/job/103497749385",
+    "verify": "https://github.com/dev4-gpt/local-AgenticOS/actions/runs/34672985400/job/103497749673"
+  },
+  "deployed": false,
+  "phase": "staged-awaiting-authenticated-acceptance",
+  "productionPromoted": false,
+  "liveSqlCanary": {
+    "file": "product-experience/supabase-v43-ecc-learning-canary.sql",
+    "sha256": "90003e97f2e4b3b9e877acca74fddcd975d37421043eb46328c8d05c6e169066",
+    "checksPassed": 31,
+    "allPassed": true,
+    "databaseVerifiedAt": "2026-09-12 15:27:29.154186+00",
+    "transaction": "ROLLBACK",
+    "independentCleanupReadback": {
+      "remainingTenants": 0,
+      "remainingUsers": 0,
+      "remainingLessons": 0
+    },
+    "dashboardQuery": "https://supabase.com/dashboard/project/ppmoqjtmjtfxadsnejqc/sql/b7f71f13-b77a-49ef-9dea-99beaf024283"
+  },
+  "stagedHttpChecks": {
+    "checkedAt": "2026-09-12T15:31:04.564Z",
+    "checks": [
+      {
+        "tenant": "veloce-cloud-test",
+        "path": "/api/client-runtime/ecc",
+        "status": 401
+      },
+      {
+        "tenant": "veloce-cloud-test",
+        "path": "/api/client-runtime/learning",
+        "status": 401
+      },
+      {
+        "tenant": "veloce-cloud-test",
+        "path": "/api/client-runtime/skills",
+        "status": 401
+      },
+      {
+        "tenant": "veloce-cloud-test",
+        "path": "/api/client-runtime/credentials",
+        "status": 401
+      },
+      {
+        "tenant": "veloce-cloud-test",
+        "path": "/api/client-runtime/artifacts",
+        "status": 401
+      },
+      {
+        "tenant": "veloce-dofgfood",
+        "path": "/api/client-runtime/ecc",
+        "status": 401
+      },
+      {
+        "tenant": "veloce-dofgfood",
+        "path": "/api/client-runtime/learning",
+        "status": 401
+      },
+      {
+        "tenant": "veloce-dofgfood",
+        "path": "/api/client-runtime/skills",
+        "status": 401
+      },
+      {
+        "tenant": "veloce-dofgfood",
+        "path": "/api/client-runtime/credentials",
+        "status": 401
+      },
+      {
+        "tenant": "veloce-dofgfood",
+        "path": "/api/client-runtime/artifacts",
+        "status": 401
+      }
+    ]
+  },
+  "targets": [
+    {
+      "service": "veloce-cloud-test",
+      "stagedRevision": "veloce-cloud-test-ecc3671",
+      "image": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:0fa07713ef814ce0423874fec16f47bee41145b4feaab4a44f1127e2f6d14bdd",
+      "productionRevision": "veloce-cloud-test-00210-pez",
+      "productionTrafficPercent": 100,
+      "stagedTrafficPercent": 0,
+      "otherContainerConfigurationPreserved": true,
+      "serviceAccountPreserved": true
+    },
+    {
+      "service": "veloce-dofgfood",
+      "stagedRevision": "veloce-dofgfood-ecc3671",
+      "image": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:0fa07713ef814ce0423874fec16f47bee41145b4feaab4a44f1127e2f6d14bdd",
+      "productionRevision": "veloce-dofgfood-00005-vec",
+      "productionTrafficPercent": 100,
+      "stagedTrafficPercent": 0,
+      "otherContainerConfigurationPreserved": true,
+      "serviceAccountPreserved": true
+    }
+  ],
+  "pending": [
+    "Temporary acceptance-user approval and creation",
+    "Authenticated departmental artifact execution on both tenants",
+    "Concurrent HTTP review verification",
+    "Fixture cleanup and allowlist restoration",
+    "Production traffic promotion and final running-revision acceptance",
+    "Stage 5 PR and three passing CI checks"
+  ],
+  "gaReleaseReady": false,
+  "costPolicy": {
+    "localImageBuild": true,
+    "newPaidInferenceCalls": 0,
+    "newSubscriptions": 0,
+    "existingGcpTrialCreditsAuthorized": true,
+    "infrastructureCostMeasured": false
+  }
+}

@@ -79,3 +79,23 @@ The Learning controls support proposal, editing, exact-hash approval, rejection 
 Validation on Node 24.19.0: **189 focused tests passed** (15.8 seconds), including job admission, stale/altered lesson rejection, API role/policy controls, dispatch retries and idempotency conflicts. The browser acceptance test passed (13.7 seconds), exercising all four existing sections and an artifact download with explicit API fixtures. Policy gates, security verification and secret scanning passed. A production webpack build passed, including TypeScript and all 61 static pages. The local Turbopack build could not bind its compiler port under the desktop sandbox; CI retains the standard production build and now runs the browser acceptance test in the existing `verify` job. Browser fixtures and local SQL tests are not live deployment evidence.
 
 Live database migration, enabled test-tenant jobs, multi-connection review races and running-image revision evidence remain the deployment stage. No new paid inference or service was introduced by this stage.
+
+## Deployment stage in progress — 2026-09-12
+
+Stages 1–4 are merged through [PR #20](https://github.com/dev4-gpt/local-AgenticOS/pull/20), source `3671d70b5be322985cd41ea2799e130c3580a942`. All three required checks passed before merge. [Staged deployment evidence](evidence/ecc-staged-deployment-2026-09-12.json) records the actual image, database checks and zero-traffic revisions.
+
+The exact v43 migration (SHA-256 `95a3f8f2982501c2436f4b41ce7a293b18515207335a45a4fb13853281d0c2c3`) was applied in Supabase project `ppmoqjtmjtfxadsnejqc`. Independent readback found three RLS-enabled tables, fourteen functions, zero direct authenticated write grants, no anonymous learning-content read permission and zero enabled tenant policies. The rollback-only live canary passed **31 checks** against real authenticated/anonymous PostgreSQL roles. A separate query confirmed zero remaining fixture tenants, users and learning items after rollback. This live test does not claim multi-connection concurrency coverage.
+
+The local linux/amd64 image build succeeded with the standard Turbopack build. Its merged-commit label matches the identical tested source tree. Registry digest: `sha256:0fa07713ef814ce0423874fec16f47bee41145b4feaab4a44f1127e2f6d14bdd`. The staged revisions are `veloce-cloud-test-ecc3671` and `veloce-dofgfood-ecc3671`. Five protected endpoints returned 401 on the local container, and all ten corresponding staged endpoint checks returned 401. Other container configuration and service accounts were compared and preserved.
+
+**This is not production promotion or completed acceptance.** Original revisions `veloce-cloud-test-00210-pez` and `veloce-dofgfood-00005-vec` retain 100% production traffic. The staged runtime permits the ECC capability, but tenant database policy remains disabled. Authenticated two-tenant artifacts, concurrent review, fixture cleanup and final running-revision verification remain pending. The live verifier `scripts/verify-ecc-runtime.mjs` requires explicit private owner/member/viewer cookie files for each test tenant; it never substitutes fixtures for a passing live result. Its cleanup records exact test identifiers for independent database cleanup.
+
+| State | Evidence / boundary |
+| --- | --- |
+| Installed globally | 291 namespaced skills, 68 role entrypoints and the workflow; two-project discovery evidence in foundation receipt |
+| Implemented and source-verified | 872 catalog dispositions; seven bounded adapters, learning APIs/lifecycle and four existing product sections; PRs #17–20 |
+| Live database-verified | v43, 31 rollback-only role/RLS/lifecycle checks and independent cleanup |
+| Staged | Two running zero-traffic revisions with the new digest and protected-route checks |
+| Still gated | Tenant activation, authenticated deployed artifacts, multi-connection acceptance and final production rollout; unsupported upstream runtimes/hooks/MCPs and paid functionality |
+
+The local HTTP smoke test initially met a temporary automatic-approval usage limit and succeeded when review became available again. Automatic approval separately rejected creating six temporary owner/member/viewer users in the existing test tenants and persisting a production service key. Specific user approval was requested for the test accounts and temporary login allowlists; the proposed implementation keeps the service key in memory. No such accounts were created by that rejected action. The rollback-only SQL canary used isolated fixtures in one rolled-back transaction.
