@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { executeEccJob } from "@/lib/eccJob";
 import { reserveClientRuntimeBudgetWorker, settleClientRuntimeBudgetWorker, workerRpc } from "@/lib/clientDataPlane";
 import { clientProviderDefaultModel, clientTextMaxOutputTokens, clientTextUsageCostMicros, estimateClientTextCostMicros, prepareClientProviderMessages, runClientTextAdapter, safeClientProviderMetadata, safeClientProviderOutput } from "@/lib/clientProviderAdapter";
 import { clientProviderCallsEnabled, type ClientResearchProvider } from "@/lib/clientRuntimePolicy";
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
     await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, "provider_calls_require_approval");
     return NextResponse.json({ ok: true, status: "failed" });
   }
+  if (job.capability === "ecc-workflows") return processEccJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "orchestration") return processOrchestrationJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "workspace-execution") return processWorkspaceExecutionJob(jobId, tenantSlug, workerToken, job);
   if (job.capability === "room-round") return processRoomRoundJob(jobId, tenantSlug, workerToken, job);
@@ -102,6 +104,23 @@ export async function POST(request: Request) {
   await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, providerFailure: 1 });
   await completeJob(tenantSlug, jobId, workerToken, "failed", { workflowId: workflowIdFrom(job.input_metadata) }, result.error);
   return NextResponse.json({ ok: true, status: "failed" });
+}
+
+async function processEccJob(jobId: string, tenantSlug: string, workerToken: string, job: { input_metadata?: Record<string, unknown> | null }) {
+  const input = job.input_metadata ?? {};
+  const result = await executeEccJob(tenantSlug, jobId, workerToken, input);
+  if (!result.ok) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, result.error);
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const artifactId = await storeArtifact(tenantSlug, jobId, workerToken, `${result.artifact.adapterId}.json`, "application/json", Buffer.from(JSON.stringify(result.artifact, null, 2), "utf8"));
+  const stillAuthorized = artifactId && await workerRpc("client_ecc_job_lessons_allowed", { p_tenant_slug: tenantSlug, p_job_id: jobId, p_worker_token: workerToken, p_requested: input.reviewedLessons });
+  if (!artifactId || !stillAuthorized || !stillAuthorized.ok || stillAuthorized.value !== true) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, artifactId ? "ecc_lesson_not_active" : "ecc_artifact_store_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { ...result, artifactId, adapter: "ecc-deterministic", mode: "deterministic-free" });
+  return NextResponse.json({ ok: true, status: "succeeded" });
 }
 
 async function processOrchestrationJob(jobId: string, tenantSlug: string, workerToken: string, job: { input_metadata?: Record<string, unknown> | null }) {

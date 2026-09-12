@@ -23,7 +23,7 @@ export function eccCatalog(capabilityEnabled: boolean) {
       implementationScope: adapter ? `Bounded ${adapter.artifactKind}; upstream automation is not enabled.` : component.intendedOutcome,
       activationEvidence: adapter ? [adapter.verification] : component.activationEvidence,
       availability: adapter && capabilityEnabled ? "available" : adapter ? "requires-configuration" : component.state,
-      unavailableReason: adapter ? (capabilityEnabled ? null : "Tenant capability ecc-workflows is not enabled.") : "No verified Veloce adapter. Upstream prerequisites and costs require review.",
+      unavailableReason: adapter ? (capabilityEnabled ? null : "ECC workflow/artifact capabilities and tenant policy must be enabled.") : "No verified Veloce adapter. Upstream prerequisites and costs require review.",
       cost: adapter?.cost ?? component.cost,
     };
   });

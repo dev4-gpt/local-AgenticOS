@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import EccLearningPanel from "@/components/EccLearningPanel";
+import EccWorkflowsPanel from "@/components/EccWorkflowsPanel";
 import { useState, type FormEvent } from "react";
 import { ArrowUpRight, CheckCircle2, ClipboardList, FileText, GitBranch, KeyRound, MessageSquareText, PackageCheck, Send, ShieldCheck, Sparkles } from "lucide-react";
 
@@ -147,6 +149,8 @@ export default function ClientWorkspaceView({ surface }: { surface: Surface }) {
           </div>
         </section>
 
+        {surface === "context" && <EccLearningPanel />}
+        {surface === "orchestrate" && <EccWorkflowsPanel />}
         {surface === "command" && (
           <section className="mt-4 grid gap-3 md:grid-cols-3">
             {SURFACE_LINKS.map((item) => {
