@@ -10,6 +10,7 @@
 export const CAPABILITY_CONTRACT_VERSION = "v96" as const;
 
 export const GOVERNED_CAPABILITIES = [
+  "ecc-workflows",
   "notebook",
   "research",
   "seo",

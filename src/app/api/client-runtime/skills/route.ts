@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { checkClientRuntimeRateLimit } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, selectClientRecords } from "@/lib/clientDataPlane";
 import { V96_AGENCY_AGENTS_REVISION, V96_CURATED_SKILL_PACK } from "@/lib/v96SkillPack";
 import { validateV96SkillManifest } from "@/lib/v96Contracts";
 import { clientCapabilityEnabled, clientConfiguredList } from "@/lib/clientRuntimePolicy";
@@ -25,10 +25,12 @@ export async function GET() {
   const rate = await checkClientRuntimeRateLimit("skills-read", 60, 900);
   if (!rate.ok) return fail("runtime_limit_unavailable", 503);
   if (!rate.allowed) return fail("runtime_rate_limited", 429);
+  const eccPolicy = await selectClientRecords("client_ecc_policy", { tenant_slug: `eq.${process.env.CLIENT_SLUG ?? ""}`, limit: "1" });
+  const eccAvailable = clientCapabilityEnabled("ecc-workflows") && clientCapabilityEnabled("artifacts") && eccPolicy.ok && eccPolicy.records[0]?.enabled === true;
 
   return NextResponse.json({
     ok: true,
-    ecc: { revision: ECC_REVISION, components: eccCatalog(clientCapabilityEnabled("ecc-workflows")), adapters: ECC_ADAPTERS, departments: ECC_DEPARTMENTS },
+    ecc: { revision: ECC_REVISION, components: eccCatalog(eccAvailable), adapters: ECC_ADAPTERS, departments: ECC_DEPARTMENTS },
     // Pinned upstream revision, so a role's provenance is checkable rather than
     // asserted.
     sourceRevision: V96_AGENCY_AGENTS_REVISION,

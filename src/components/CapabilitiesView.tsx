@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import EccCatalogPanel from "@/components/EccCatalogPanel";
+import EccWorkflowsPanel from "@/components/EccWorkflowsPanel";
 import { useEffect, useMemo, useState } from "react";
 import { Blocks, BrainCircuit, ExternalLink, KeyRound, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { CAPABILITIES, type Capability } from "@/lib/capabilities";
@@ -19,6 +21,7 @@ export default function CapabilitiesView() {
   const [capabilities, setCapabilities] = useState<Capability[]>(CAPABILITIES);
   const [filter, setFilter] = useState<Filter>("all");
   const [notice, setNotice] = useState("");
+  const [section, setSection] = useState("capabilities");
 
   useEffect(() => {
     Promise.all([fetch("/api/capabilities"), fetch("/api/client-runtime/credentials", { cache: "no-store" })])
@@ -41,7 +44,10 @@ export default function CapabilitiesView() {
       </div>
     </section>
 
-    <section className="grid xl:grid-cols-[1fr_310px] gap-4">
+    <nav aria-label="Govern sections" className="flex gap-2 flex-wrap">{[["capabilities", "Capabilities"], ["skills", "Skills & Specialists"], ["evaluations", "Evaluations"]].map(([value, label]) => <button key={value} aria-pressed={section === value} onClick={() => setSection(value)} className="rounded border border-[var(--line)] px-4 py-2 text-sm" style={{ color: section === value ? "#fbbf24" : "var(--cream-dim)" }}>{label}</button>)}</nav>
+    {section === "skills" && <EccCatalogPanel />}
+    {section === "evaluations" && <EccWorkflowsPanel evaluationsOnly />}
+    {section === "capabilities" && <section className="grid xl:grid-cols-[1fr_310px] gap-4">
       <div className="grid md:grid-cols-2 gap-3">
         {!capabilities.length && !notice && <div className="panel p-5 text-[12px]" style={{ color: "var(--cream-mute)" }}><Loader2 size={14} className="inline mr-2 animate-spin" />Loading reviewed capabilities.</div>}
         {shown.map((capability) => {
@@ -54,7 +60,7 @@ export default function CapabilitiesView() {
         })}
       </div>
       <aside className="panel p-4 h-fit"><div className="flex items-center gap-2"><Sparkles size={14} color="#fbbf24" /><h2 className="text-[12.5px] font-semibold" style={{ color: "var(--cream)" }}>How chat uses this</h2></div><ol className="mt-4 space-y-3 text-[11px] leading-relaxed" style={{ color: "var(--cream-dim)" }}><li><span style={{ color: "#fbbf24" }}>01</span> Identify the request: research, website, asset, knowledge, or delivery.</li><li><span style={{ color: "#fbbf24" }}>02</span> Load only the relevant approved skill guidance and project-scoped context.</li><li><span style={{ color: "#fbbf24" }}>03</span> Use only allowed tools at the selected client scope.</li><li><span style={{ color: "#fbbf24" }}>04</span> Require human approval before publishing, outreach, deployment, or spend overage.</li></ol><div className="mt-5 p-3 rounded-md text-[10.5px] leading-relaxed" style={{ background: "rgba(251,191,36,0.07)", border: "1px solid rgba(251,191,36,0.18)", color: "var(--cream-dim)" }}>Admin additions need source review, a private smoke test, a cost rule, a scope declaration, and an emergency disable path before they become client-ready.</div></aside>
-    </section>
+    </section>}
     {notice && <p className="text-[11px]" style={{ color: "#fda4af" }}>{notice}</p>}
   </div>;
 }

@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     return result.ok ? json({ ok: true, role: session.role, revisions: result.value }) : fail("learning_read_failed", 503);
   }
   const items = await selectClientRecords("client_learning_items", { tenant_slug: `eq.${session.tenantSlug}`, order: "created_at.desc", limit: "100" });
-  return items.ok ? json({ ok: true, role: session.role, items: items.records }) : fail("learning_read_failed", 503);
+  return items.ok ? json({ ok: true, role: session.role, userId: session.userId, items: items.records }) : fail("learning_read_failed", 503);
 }
 
 export async function POST(request: Request) {

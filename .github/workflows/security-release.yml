@@ -26,3 +26,5 @@ jobs:
       - run: npm run test:focused
       - run: npm audit --audit-level=high
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ecc-ui
