@@ -3,6 +3,7 @@
 // Cookies stay in private files; the report contains identifiers and hashes only.
 import { readFile, writeFile } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
+import { verifyEccArtifactBytes } from './lib/ecc-artifact-evidence.mjs';
 
 const configPath = process.argv[2];
 if (!configPath) throw new Error('Usage: node scripts/verify-ecc-runtime.mjs PRIVATE_CONFIG.json');
@@ -58,8 +59,20 @@ async function runJob(target, adapter, lessons = [], repeat = false) {
   const job = await waitJob(target, queued.body.jobId);
   check(`${target.tenantSlug}: ${adapter.id} completed`, job.status === 'succeeded', { jobId: job.id, errorCode: job.error_code });
   const out = job.output_metadata;
-  check(`${target.tenantSlug}: artifact contract and hash`, out?.artifact?.adapterId === adapter.id && out.artifactHash === hash(JSON.stringify(out.artifact)) && out.artifactId);
+  check(`${target.tenantSlug}: artifact contract`, out?.artifact?.adapterId === adapter.id && out.artifactId);
   report.artifacts.push({ tenantSlug: target.tenantSlug, jobId: job.id, artifactId: out.artifactId, artifactHash: out.artifactHash, adapterId: adapter.id }); await persist();
+  const download = await api(target, 'member', `/api/client-runtime/artifacts?id=${out.artifactId}`);
+  check(`${target.tenantSlug}: artifact download authorized`, download.status === 200 && typeof download.body?.downloadUrl === 'string');
+  const downloadUrl = new URL(download.body.downloadUrl);
+  check(`${target.tenantSlug}: artifact storage origin`, downloadUrl.protocol === 'https:' && downloadUrl.hostname === 'storage.googleapis.com' && !downloadUrl.username && !downloadUrl.password);
+  // No tenant cookies are sent to storage and signed URLs are never recorded.
+  const stored = await fetch(downloadUrl, { redirect: 'manual', signal: AbortSignal.timeout(30000) });
+  check(`${target.tenantSlug}: stored artifact readable`, stored.status === 200);
+  const chunks = []; let size = 0;
+  for await (const chunk of stored.body) { size += chunk.length; if (size > 262144) throw new Error('Artifact exceeds acceptance size limit'); chunks.push(chunk); }
+  const verified = verifyEccArtifactBytes(Buffer.concat(chunks), out);
+  check(`${target.tenantSlug}: stored bytes match artifact hash and job metadata`, verified !== null);
+  Object.assign(report.artifacts.at(-1), verified); await persist();
   check(`${target.tenantSlug}: zero inference, missing evidence retained`, out.evaluation.inferenceCalls === 0 && out.evaluation.providerCostMicros === 0 && out.evaluation.infrastructureCostMicros === null && out.evaluation.releaseReady === false && out.evaluation.checks.some(row => row.id === 'source-evidence' && row.status === 'missing'));
   check(`${target.tenantSlug}: exact reviewed lessons used`, out.evaluation.reviewedLessonCount === lessons.length && lessons.every(item => out.artifact.reviewedLessons.some(row => row.id === item.id && row.contentHash === item.contentHash)));
   return job;
