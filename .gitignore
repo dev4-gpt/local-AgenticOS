@@ -95,3 +95,8 @@ public-site/src/assets/*.png
 # runtime on 3939. Rebuild it rather than committing it. The rest of
 # launch-system/ is tracked source and stays tracked.
 launch-system/pitch-deck-local-product/
+
+# Ad-hoc knowledge-graph/diagram tooling output (graphify, archify). Regenerate
+# on demand rather than committing — these are exploration aids, not source.
+graphify-out/
+docs/architecture/diagrams/
