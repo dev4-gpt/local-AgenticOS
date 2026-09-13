@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readClientExportPages } from "./lib/client-export-pages.mjs";
+import { eccLifecycleColumns, eccRestoreRow } from "./lib/ecc-lifecycle.mjs";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -35,7 +36,7 @@ const deleteService = args.includes("--delete-service");
 const deleteBucket = args.includes("--delete-bucket");
 const deleteQueue = args.includes("--delete-queue");
 
-if (!["export", "restore", "offboard"].includes(mode)) fail("--mode must be export, restore, or offboard");
+if (!["export", "restore", "offboard", "retention"].includes(mode)) fail("--mode must be export, restore, offboard, or retention");
 if (mode === "restore" && !inputPath) fail("--input is required for restore");
 if (mode !== "restore" && (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)) fail("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for export/offboard");
 if ((mode === "offboard" || mode === "restore") && !process.env.SUPABASE_SERVICE_ROLE_KEY) fail("SUPABASE_SERVICE_ROLE_KEY is required for operator lifecycle actions");
@@ -101,12 +102,14 @@ const tables = [
   "client_hermes_content_factory_deliveries",
   "client_ruflo_swarms",
   "client_ruflo_agents",
+  ...Object.keys(eccLifecycleColumns),
 ];
 
 // Lifecycle exports are portable backups, not credential backups. Keep this
 // list explicit so a newly-added sensitive column cannot silently enter an
 // export through a wildcard query.
 const exportColumns = Object.freeze({
+  ...eccLifecycleColumns,
   client_tenants: "slug,name,status,retention_days,created_at,updated_at",
   client_memberships: "tenant_slug,user_id,role,status,created_at",
   client_runtime_requests: "id,tenant_slug,submitted_by,request_type,title,details,fields,status,created_at,updated_at",
@@ -173,6 +176,14 @@ if (mode === "export") {
   process.exit(0);
 }
 
+if (mode === "retention") {
+  const filter = `tenant_slug=eq.${encodeURIComponent(slug)}&retention_expires_at=lte.${encodeURIComponent(new Date().toISOString())}`;
+  const expired = await supabaseSelect("client_learning_items", filter, "id");
+  if (apply) await supabaseDelete("client_learning_items", filter);
+  console.log(JSON.stringify({ tenant: slug, expiredItems: expired.length, applied: apply, revisionsCascade: true }));
+  process.exit(0);
+}
+
 if (mode === "restore") {
   const snapshot = JSON.parse(await readFile(path.resolve(process.cwd(), inputPath), "utf8"));
   validateSnapshot(snapshot);
@@ -226,14 +237,15 @@ async function exportSnapshot() {
 }
 
 async function restoreSnapshot(snapshot) {
-  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_notebooks", "client_notebook_sources", "client_notebook_chunks", "client_runtime_records", "client_research_runs", "client_research_records", "client_research_citations", "client_visual_qa_reports", "client_visual_qa_findings", "client_runtime_memory_graph_nodes", "client_runtime_memory_graph_edges", "client_runtime_budget_ledger", "client_runtime_delivery_actions", "client_paperclip_companies", "client_paperclip_projects", "client_paperclip_agents", "client_paperclip_issues", "client_paperclip_comments", "client_paperclip_runs", "client_room_conversations", "client_room_messages", "client_room_rounds", "client_pipeline_items", "client_board_tasks", "client_board_comments", "client_board_events", "client_loop_runs", "client_loop_rounds", "client_ruflo_swarms", "client_ruflo_agents"];
+  const ordered = ["client_tenants", "client_memberships", "client_runtime_requests", "client_runtime_audit_events", "client_runtime_jobs", "client_runtime_artifacts", "client_notebooks", "client_notebook_sources", "client_notebook_chunks", "client_runtime_records", "client_research_runs", "client_research_records", "client_research_citations", "client_visual_qa_reports", "client_visual_qa_findings", "client_runtime_memory_graph_nodes", "client_runtime_memory_graph_edges", "client_runtime_budget_ledger", "client_runtime_delivery_actions", "client_paperclip_companies", "client_paperclip_projects", "client_paperclip_agents", "client_paperclip_issues", "client_paperclip_comments", "client_paperclip_runs", "client_room_conversations", "client_room_messages", "client_room_rounds", "client_pipeline_items", "client_board_tasks", "client_board_comments", "client_board_events", "client_loop_runs", "client_loop_rounds", "client_ruflo_swarms", "client_ruflo_agents", ...Object.keys(eccLifecycleColumns)];
   for (const table of ordered) {
     const rows = Array.isArray(snapshot.tables[table]) ? snapshot.tables[table] : [];
     if (!rows.length) continue;
     const tenantRows = rows.filter((row) => table === "client_tenants" ? row.slug === slug : row.tenant_slug === slug);
     if (tenantRows.length !== rows.length) fail(`Restore contains rows outside requested tenant: ${table}`);
     assertSnapshotSafe(table, tenantRows);
-    await supabaseInsert(table, orderForRestore(table, tenantRows).map((row) => pickExportColumns(table, row)));
+    const restoredRows = orderForRestore(table, tenantRows).map((row) => eccRestoreRow(table, row));
+    await supabaseInsert(table, restoredRows.map((row) => pickExportColumns(table, row)));
   }
 }
 
