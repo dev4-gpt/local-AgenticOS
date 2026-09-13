@@ -3,6 +3,31 @@ import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 
+test("real PostgreSQL: Stripe dispositions survive retries and reject browser writes, mutation and truncation", async () => {
+  const db = new PGlite();
+  try {
+    await db.exec("create role anon; create role authenticated; create role service_role bypassrls; create table stripe_webhook_events(event_id text primary key);");
+    const sql = readFileSync("product-experience/supabase-v44-stripe-financial-event-dispositions.sql", "utf8");
+    await db.exec(sql);
+    await db.exec(sql);
+    const insert = "insert into stripe_financial_event_dispositions(event_id,event_type,payload_hash,financial_scope,disposition,recorded_by,reason) values ('evt-test','charge.refunded',repeat('a',64),'public_launch','review_required','stripe-webhook','Matched durable payment reference')";
+    await db.exec("set role anon");
+    await expect(db.exec(insert)).rejects.toThrow(/permission denied/);
+    await db.exec("reset role; set role authenticated");
+    await expect(db.exec("select * from stripe_financial_event_dispositions")).rejects.toThrow(/permission denied/);
+    await db.exec("reset role; set role service_role");
+    await db.exec(insert);
+    await expect(db.exec(insert)).rejects.toThrow(/duplicate key/);
+    await expect(db.exec("update stripe_financial_event_dispositions set reason='changed'")).rejects.toThrow(/permission denied/);
+    await expect(db.exec("truncate stripe_financial_event_dispositions")).rejects.toThrow(/permission denied/);
+    await db.exec("reset role");
+    await expect(db.exec("update stripe_financial_event_dispositions set reason='changed'")).rejects.toThrow(/append-only/);
+    await expect(db.exec("delete from stripe_financial_event_dispositions")).rejects.toThrow(/append-only/);
+    await expect(db.exec("truncate stripe_financial_event_dispositions")).rejects.toThrow(/append-only/);
+    expect((await db.query("select * from stripe_financial_event_dispositions")).rows).toHaveLength(1);
+  } finally { await db.close(); }
+});
+
 test("real PostgreSQL: role, worker-token, revocation and cross-month cap regressions", async () => {
   const db = new PGlite({ extensions: { pgcrypto } });
   const migration = async (name: string) => db.exec(readFileSync(`product-experience/${name}.sql`, "utf8"));

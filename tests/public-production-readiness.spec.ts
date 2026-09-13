@@ -17,6 +17,8 @@ test("production readiness source keeps live gates explicit", () => {
   const runbook = readFileSync(resolve(process.cwd(), "docs/public-launch-runbook.md"), "utf8");
   const checklist = readFileSync(resolve(process.cwd(), "docs/production-release-acceptance-checklist.md"), "utf8");
   const supportRoute = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/support/route.ts"), "utf8");
+  const stripeDisposition = readFileSync(resolve(process.cwd(), "product-experience/supabase-v44-stripe-financial-event-dispositions.sql"), "utf8");
+  const webhookReview = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/internal/billing/webhook-review/route.ts"), "utf8");
   expect(verifier).toContain("migrationApplied");
   expect(verifier).toContain("rollbackTarget");
   expect(verifier).toContain("configurationHash");
@@ -36,6 +38,12 @@ test("production readiness source keeps live gates explicit", () => {
   expect(checklist).toContain("lifetime cap");
   expect(checklist).toContain("verify:production-readiness -- --strict");
   expect(checklist).toContain("Personal video Content OS");
+  expect(stripeDisposition).toContain("stripe_financial_event_dispositions");
+  expect(stripeDisposition).toContain("revoke all");
+  expect(stripeDisposition).toContain("append-only");
+  expect(stripeDisposition).toContain("before update or delete");
+  expect(webhookReview).toContain("x-control-plane-secret");
+  expect(webhookReview).toContain("webhook_event_not_reviewable");
 });
 
 test("public onboarding wires Turnstile only through public site-key and server secret paths", () => {

@@ -162,6 +162,9 @@ test("Stripe lifecycle events remain signature-verified and idempotent", () => {
     "payment_intent.payment_failed",
     "charge.refunded",
     "charge.dispute.created",
+    "stripe_financial_event_dispositions",
+    "public_launch_review_required",
+    "financial_scope",
     "failure_reason",
     "event_store_failed",
   ]) {

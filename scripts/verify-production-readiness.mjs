@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const args = process.argv.slice(2);
-const strict = args.includes("--strict");
+const strict = args.includes("--strict") || args.includes("--publish-ledger");
 const allowDirty = args.includes("--allow-dirty");
 const publishLedger = args.includes("--publish-ledger");
 const ledgerBucket = valueAfter("--ledger-bucket") || process.env.VELOCE_RELEASE_LEDGER_BUCKET || "veloce-agenticos-2026-veloce-release-ledger";
@@ -48,6 +48,7 @@ const requiredFiles = [
   "product-experience/supabase-v32-managed-credit-readiness.sql",
   "product-experience/supabase-v33-managed-credit-lifecycle.sql",
   "product-experience/supabase-v34-managed-credit-execution-claims.sql",
+  "product-experience/supabase-v44-stripe-financial-event-dispositions.sql",
   "product-experience/supabase-public-launch-control-plane.sql",
   "docs/public-launch-runbook.md",
   "docs/production-operations.md",
@@ -80,6 +81,9 @@ const sourceChecks = [
   ["managed credit settlement RPC", "product-experience/supabase-v33-managed-credit-lifecycle.sql", "settle_client_credit"],
   ["managed credit refund RPC", "product-experience/supabase-v33-managed-credit-lifecycle.sql", "refund_client_credit"],
   ["managed credit execution claim", "product-experience/supabase-v34-managed-credit-execution-claims.sql", "claim_client_credit_reservation"],
+  ["public-launch Stripe refund disposition", "product-experience/supabase-v44-stripe-financial-event-dispositions.sql", "stripe_financial_event_dispositions"],
+  ["public-launch refund classification", "product-experience/src/app/api/billing/webhook/route.ts", "public_launch_review_required"],
+  ["operator refund review boundary", "product-experience/src/app/api/internal/billing/webhook-review/route.ts", "public_launch_refund_reviewed"],
   ["Stripe signature verification", "product-experience/src/app/api/billing/webhook/route.ts", "verifyStripeSignature"],
   ["public provisioner scope checks", "workers/public-provisioner/worker.mjs", "allowedProject"],
   ["private GCP provisioner", "workers/gcp-provisioner/worker.mjs", "GCP_PROVISIONER_ALLOW_APPLY"],
@@ -244,7 +248,7 @@ const evidence = {
 };
 assertNoSecretLikeValues(evidence);
 
-if (publishLedger && (!strict || evidence.releaseReady)) publishToLedger(evidence);
+if (publishLedger && evidence.releaseReady) publishToLedger(evidence);
 // A storage failure is part of the result, not a successful release.
 evidence.releaseReady = failures.length === 0 && releaseGateFailures.length === 0;
 

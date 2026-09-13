@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "projectRef": "ppmoqjtmjtfxadsnejqc",
+  "migrationFile": "product-experience/supabase-v44-stripe-financial-event-dispositions.sql",
+  "migrationSha256": "c9cdffa90f269fd52bf0255f493022f564a6746696c9e89d9c94e76ebc4c293b",
+  "method": "Authenticated Supabase SQL Editor; equivalent DDL wrapped in a transaction, followed by permission introspection",
+  "verifiedAt": "2026-09-13T22:13:17.666999Z",
+  "baseline": { "dispositionTablePresent": false, "failedWebhookCount": 3 },
+  "checks": {
+    "rlsEnabled": true,
+    "serviceInsertAllowed": true,
+    "anonymousReadAllowed": false,
+    "serviceUpdateDeleteTruncateAllowed": false,
+    "immutableTriggerCount": 2
+  },
+  "paymentOrWalletMutationPerformed": false,
+  "releaseReady": false
+}

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { createHash } from "node:crypto";
 import { loadReviewModule } from "./helpers/load-review-module";
 import { clientExecutionCredential } from "../src/lib/clientExecutionCredential";
 import { runClientTextAdapter } from "../src/lib/clientProviderAdapter";
@@ -162,6 +163,148 @@ test("Stripe retries failed effects and processes paid async events only after w
   processed = false; operations.length = 0;
   expect((await mod.POST(request("paid", "checkout.session.async_payment_succeeded"))).status).toBe(200);
   expect(operations).toEqual(["credit", "processed"]);
+});
+
+test("a durable public-launch payment reference classifies a refund without touching managed credits", async () => {
+  process.env.STRIPE_SECRET_KEY = "test-stripe-key";
+  const inserts: Array<{ table: string; record: Record<string, unknown> }> = [];
+  const mod = loadReviewModule("product-experience/src/app/api/billing/webhook/route.ts", {
+    "@/lib/publicLaunch": {
+      verifyStripeSignature: () => true,
+      supabaseServiceSelect: async (table: string) => {
+        if (table === "client_credit_purchase_plans") return { ok: true, rows: [] };
+        if (table === "client_onboarding_accounts") return { ok: true, rows: [{ id: "onboarding-a", request_id: "request-a", setup_payment_id: "pi-public" }] };
+        return { ok: true, rows: [] };
+      },
+      supabaseServiceInsert: async (table: string, record: Record<string, unknown>) => { inserts.push({ table, record }); return { ok: true, rows: [] }; },
+      supabaseServiceUpdate: async () => ({ ok: true, rows: [] }),
+      supabaseServiceRpc: async () => { throw new Error("public launch refund must not invoke a managed-credit RPC"); },
+    },
+  });
+  const result = await mod.POST(new Request("https://control.invalid", {
+    method: "POST",
+    body: JSON.stringify({ id: "evt-public-refund", type: "charge.refunded", data: { object: { payment_intent: "pi-public", amount_refunded: 200, metadata: {} } } }),
+  }));
+  expect(result.status).toBe(422);
+  expect(await result.json()).toMatchObject({ error: "public_launch_review_required" });
+  expect(inserts).toContainEqual(expect.objectContaining({
+    table: "stripe_financial_event_dispositions",
+    record: expect.objectContaining({ financial_scope: "public_launch", disposition: "review_required" }),
+  }));
+  expect(inserts).toContainEqual(expect.objectContaining({
+    table: "stripe_webhook_events",
+    record: expect.objectContaining({ financial_scope: "public_launch", status: "failed", error_code: "public_launch_review_required" }),
+  }));
+});
+
+test("an unclassified refund stays failed closed and cannot mutate managed credits", async () => {
+  process.env.STRIPE_SECRET_KEY = "test-stripe-key";
+  const inserts: Array<{ table: string; record: Record<string, unknown> }> = [];
+  const mod = loadReviewModule("product-experience/src/app/api/billing/webhook/route.ts", {
+    "@/lib/publicLaunch": {
+      verifyStripeSignature: () => true,
+      supabaseServiceSelect: async () => ({ ok: true, rows: [] }),
+      supabaseServiceInsert: async (table: string, record: Record<string, unknown>) => { inserts.push({ table, record }); return { ok: true, rows: [] }; },
+      supabaseServiceUpdate: async () => ({ ok: true, rows: [] }),
+      supabaseServiceRpc: async () => { throw new Error("unknown refund must not invoke a managed-credit RPC"); },
+    },
+  });
+  const result = await mod.POST(new Request("https://control.invalid", {
+    method: "POST",
+    body: JSON.stringify({ id: "evt-unknown-refund", type: "charge.refunded", data: { object: { payment_intent: "pi-unknown", amount_refunded: 200, metadata: {} } } }),
+  }));
+  expect(result.status).toBe(422);
+  expect(inserts).toContainEqual(expect.objectContaining({
+    table: "stripe_webhook_events",
+    record: expect.objectContaining({ financial_scope: "unknown", status: "failed", error_code: "credit_plan_metadata_missing" }),
+  }));
+});
+
+test("ambiguous Stripe scopes and event identity conflicts have zero financial effects", async () => {
+  process.env.STRIPE_SECRET_KEY = "test-stripe-key";
+  for (const scenario of ["multiple-plans", "both-scopes", "mixed-checkout", "missing-plan", "changed-payload"]) {
+    const mod = loadReviewModule("product-experience/src/app/api/billing/webhook/route.ts", {
+      "@/lib/publicLaunch": {
+        verifyStripeSignature: () => true,
+        supabaseServiceSelect: async (table: string) => ({ ok: true, rows:
+          table === "stripe_webhook_events" && scenario === "changed-payload" ? [{ status: "processed", payload_hash: "b".repeat(64) }]
+          : table === "client_credit_purchase_plans" ? (scenario === "multiple-plans" ? [{ id: "plan-a" }, { id: "plan-b" }] : scenario === "both-scopes" ? [{ id: "plan-a" }] : [])
+          : table === "client_onboarding_accounts" && scenario === "both-scopes" ? [{ id: "onboarding-a" }] : [] }),
+        supabaseServiceInsert: async (table: string) => { expect(table).toBe("stripe_webhook_events"); return { ok: true, rows: [] }; },
+        supabaseServiceUpdate: async () => { throw new Error("no mutation permitted"); },
+        supabaseServiceRpc: async () => { throw new Error("no financial RPC permitted"); },
+      },
+    });
+    const checkout = scenario === "mixed-checkout" || scenario === "missing-plan";
+    const response = await mod.POST(new Request("https://control.invalid", { method: "POST", body: JSON.stringify({
+      id: "evt-ambiguous", type: checkout ? "checkout.session.completed" : "charge.refunded",
+      data: { object: { payment_intent: "pi-conflict", payment_status: "paid", metadata: checkout ? { product: "veloce-managed-credits-plan", ...(scenario === "mixed-checkout" ? { credit_plan_id: "plan-a", request_id: "request-a" } : {}) } : {} } },
+    }) }));
+    expect(response.status, scenario).toBe(422);
+  }
+});
+
+test("operator review rejects null, oversized identity fields and managed-credit failures", async () => {
+  process.env.CONTROL_PLANE_OPERATOR_SECRET = "operator-test";
+  const mod = loadReviewModule("product-experience/src/app/api/internal/billing/webhook-review/route.ts", {
+    "@/lib/publicLaunch": {
+      supabaseServiceSelect: async () => ({ ok: true, rows: [{ event_type: "charge.refunded", payload_hash: "a".repeat(64), status: "failed", financial_scope: "managed_credit" }] }),
+      supabaseServiceInsert: async () => { throw new Error("must not create a review"); },
+    },
+  });
+  const valid = { eventId: "evt-test", eventType: "charge.refunded", payloadHash: "a".repeat(64), reviewedBy: "owner", reason: "fixture" };
+  for (const body of [null, [], { ...valid, payloadHash: "a".repeat(65) }, { ...valid, eventId: "x".repeat(256) }]) {
+    expect((await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test" }, body: JSON.stringify(body) }))).status).toBe(400);
+  }
+  expect((await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test" }, body: JSON.stringify(valid) }))).status).toBe(409);
+});
+
+test("a reviewed historical public-launch refund can be redelivered without a credit-plan effect", async () => {
+  process.env.STRIPE_SECRET_KEY = "test-stripe-key";
+  const inserts: Array<{ table: string; record: Record<string, unknown> }> = [];
+  const payload = JSON.stringify({ id: "evt-reviewed-refund", type: "charge.refunded", data: { object: { payment_intent: "pi-deleted-fixture", amount_refunded: 200, metadata: {} } } });
+  const hash = createHash("sha256").update(payload).digest("hex");
+  const mod = loadReviewModule("product-experience/src/app/api/billing/webhook/route.ts", {
+    "@/lib/publicLaunch": {
+      verifyStripeSignature: () => true,
+      supabaseServiceSelect: async (table: string) => {
+        if (table === "stripe_financial_event_dispositions") return { ok: true, rows: [{ event_type: "charge.refunded", payload_hash: hash, financial_scope: "public_launch", disposition: "public_launch_refund_reviewed" }] };
+        return { ok: true, rows: [] };
+      },
+      supabaseServiceInsert: async (table: string, record: Record<string, unknown>) => { inserts.push({ table, record }); return { ok: true, rows: [] }; },
+      supabaseServiceUpdate: async () => ({ ok: true, rows: [] }),
+      supabaseServiceRpc: async () => { throw new Error("reviewed public launch refund must not invoke a managed-credit RPC"); },
+    },
+  });
+  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", body: payload }));
+  expect(result.status).toBe(200);
+  expect(await result.json()).toMatchObject({ status: "public_launch_refund_reviewed" });
+  expect(inserts).toEqual([expect.objectContaining({
+    table: "stripe_webhook_events",
+    record: expect.objectContaining({ financial_scope: "public_launch", status: "processed" }),
+  })]);
+});
+
+test("only the operator can create an immutable reviewed disposition for a failed refund", async () => {
+  process.env.CONTROL_PLANE_OPERATOR_SECRET = "operator-test";
+  const records: Record<string, unknown>[] = [];
+  const mod = loadReviewModule("product-experience/src/app/api/internal/billing/webhook-review/route.ts", {
+    "@/lib/publicLaunch": {
+      supabaseServiceSelect: async (table: string) => {
+        if (table === "stripe_webhook_events") return { ok: true, rows: [{ event_id: "evt-refund", event_type: "charge.refunded", payload_hash: "a".repeat(64), status: "failed" }] };
+        return { ok: true, rows: [] };
+      },
+      supabaseServiceInsert: async (_table: string, record: Record<string, unknown>) => { records.push(record); return { ok: true, rows: [] }; },
+    },
+  });
+  const body = JSON.stringify({ eventId: "evt-refund", eventType: "charge.refunded", payloadHash: "a".repeat(64), reviewedBy: "billing-owner", reason: "Confirmed public-launch fixture refund." });
+  expect((await mod.POST(new Request("https://control.invalid", { method: "POST", body }))).status).toBe(401);
+  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test" }, body }));
+  expect(result.status).toBe(200);
+  expect(records).toEqual([expect.objectContaining({
+    financial_scope: "public_launch",
+    disposition: "public_launch_refund_reviewed",
+  })]);
 });
 
 test("Stripe cancellation targets the exact subscription and retries failed account writes", async () => {

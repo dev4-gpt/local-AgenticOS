@@ -130,6 +130,21 @@ Veloce-owned routing trait. It is measured for token savings, quality
 preservation, budget traceability, and deterministic fallback. It does not
 bundle Headroom or expose a user-facing skill selector.
 
+## Commercial completion and promotion order
+
+V3.3 commercial GA is the prerequisite for broad capability promotion. The
+catalog is complete as a governed index, not as a promise that every reference
+is executable. Until the GA ledger is current and strict, Veloce keeps all
+non-core rows in their present `contract-active`, `reference-only`,
+`operator-only`, or `externally-gated` state.
+
+After GA, promote one customer-demanded capability per release. Its promotion
+packet must attach provenance/license, tenant and secret/IAM boundaries,
+budget/rate limits, consent and approval policy, focused tests, authenticated
+cloud smoke, deletion lineage, and a rollback action. GPU/media, security
+execution, autonomous worktrees, external communications, OpenReply, VoxCPM,
+and publishing stay disabled until a separate packet passes.
+
 ## Activation semantics
 
 The register is a governed architectural index, not an installer. A

@@ -11,13 +11,16 @@ const MANAGED_CREDIT_LIFECYCLE_EVENTS = new Set([
   "charge.dispute.created",
 ]);
 
-async function storeWebhookEvent(eventId: string, eventType: string, payload: string, status: "processed" | "failed", errorCode: string | null = null) {
+type FinancialScope = "managed_credit" | "public_launch" | "unknown";
+
+async function storeWebhookEvent(eventId: string, eventType: string, payload: string, status: "processed" | "failed", errorCode: string | null = null, financialScope: FinancialScope | null = null) {
   const record = {
     event_id: eventId,
     event_type: eventType,
     payload_hash: createHash("sha256").update(payload).digest("hex"),
     status,
     error_code: errorCode,
+    financial_scope: financialScope,
   };
   const prior = await supabaseServiceSelect("stripe_webhook_events", { event_id: "eq." + eventId });
   if (!prior.ok) return { ok: false };
@@ -27,6 +30,42 @@ async function storeWebhookEvent(eventId: string, eventType: string, payload: st
 
 function stringValue(value: unknown) {
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+function payloadHash(payload: string) {
+  return createHash("sha256").update(payload).digest("hex");
+}
+
+async function reviewedPublicLaunchDisposition(eventId: string, eventType: string, hash: string) {
+  const dispositions = await supabaseServiceSelect("stripe_financial_event_dispositions", { event_id: `eq.${eventId}` });
+  if (!dispositions.ok) return { ok: false as const, reviewed: false };
+  const reviewed = dispositions.rows.some((row) => row.event_type === eventType
+    && row.payload_hash === hash
+    && row.financial_scope === "public_launch"
+    && row.disposition === "public_launch_refund_reviewed");
+  return { ok: true as const, reviewed };
+}
+
+async function ensurePublicLaunchReviewItem(input: { eventId: string; eventType: string; hash: string }) {
+  const prior = await supabaseServiceSelect("stripe_financial_event_dispositions", {
+    event_id: `eq.${input.eventId}`,
+    disposition: "eq.review_required",
+  });
+  if (!prior.ok) return false;
+  if (prior.rows.length) {
+    const row = prior.rows[0];
+    return row.event_type === input.eventType && row.payload_hash === input.hash && row.financial_scope === "public_launch";
+  }
+  const inserted = await supabaseServiceInsert("stripe_financial_event_dispositions", {
+    event_id: input.eventId,
+    event_type: input.eventType,
+    payload_hash: input.hash,
+    financial_scope: "public_launch",
+    disposition: "review_required",
+    recorded_by: "stripe-webhook",
+    reason: "Validated public-launch financial event requires operator reconciliation review.",
+  });
+  return inserted.ok;
 }
 
 export async function POST(request: Request) {
@@ -40,15 +79,38 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: "invalid_event" }, { status: 400 });
   }
-  if (!event.id || !event.type) return NextResponse.json({ ok: false, error: "invalid_event" }, { status: 400 });
+  if (!event || typeof event.id !== "string" || !event.id || typeof event.type !== "string" || !event.type || !event.data?.object || typeof event.data.object !== "object" || Array.isArray(event.data.object)) return NextResponse.json({ ok: false, error: "invalid_event" }, { status: 400 });
   const prior = await supabaseServiceSelect("stripe_webhook_events", { event_id: `eq.${event.id}` });
   if (!prior.ok) return NextResponse.json({ ok: false, error: "event_lookup_failed" }, { status: 502 });
   const object = event.data?.object ?? {};
   const metadata = (object.metadata ?? {}) as Record<string, unknown>;
+  const hash = payloadHash(payload);
+  if (prior.rows.some((row) => (row.payload_hash && row.payload_hash !== hash) || (row.event_type && row.event_type !== event.type))) {
+    return NextResponse.json({ ok: false, error: "event_identity_conflict" }, { status: 422 });
+  }
   if (prior.rows.some((row) => row.status === "processed")) return NextResponse.json({ ok: true, duplicate: true });
   const checkoutPaidEvent = event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded";
+  const rejectFinancialEvent = async (error: string) => {
+    const stored = await storeWebhookEvent(event.id!, event.type!, payload, "failed", error, "unknown");
+    return NextResponse.json({ ok: false, error: stored.ok ? error : "event_store_failed" }, { status: stored.ok ? 422 : 502 });
+  };
+  if (checkoutPaidEvent) {
+    const managedPlan = metadata.product === "veloce-managed-credits-plan";
+    const managedWallet = metadata.product === "veloce-managed-credits";
+    const publicLaunch = metadata.product === "veloce-public-launch";
+    if ((!managedPlan && !managedWallet && !publicLaunch)
+      || (managedPlan && !stringValue(metadata.credit_plan_id))
+      || (managedWallet && !stringValue(metadata.tenant_slug))
+      || (publicLaunch && (!stringValue(metadata.request_id) || stringValue(metadata.credit_plan_id)))
+      || ((managedPlan || managedWallet) && stringValue(metadata.request_id))) {
+      return rejectFinancialEvent("financial_scope_ambiguous");
+    }
+  }
   if (checkoutPaidEvent && object.payment_status !== "paid") {
-    const stored = await storeWebhookEvent(event.id, event.type, payload, "processed");
+    const scope = metadata.product === "veloce-managed-credits-plan" || metadata.product === "veloce-managed-credits"
+      ? "managed_credit"
+      : metadata.product === "veloce-public-launch" ? "public_launch" : null;
+    const stored = await storeWebhookEvent(event.id, event.type, payload, "processed", null, scope);
     if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
     return NextResponse.json({ ok: true, eventId: event.id, status: "awaiting_payment" });
   }
@@ -62,8 +124,8 @@ export async function POST(request: Request) {
       p_metadata: { source: "stripe", product: "veloce-managed-credits-plan", stripeMode: metadata.stripe_mode === "live" ? "live" : "test", paymentIntentId: typeof object.payment_intent === "string" ? object.payment_intent : null },
     });
     if (!settled.ok || settled.value !== true) {
-      if (prior.rows.length > 0) await supabaseServiceUpdate("stripe_webhook_events", { event_id: `eq.${event.id}` }, { status: "failed", error_code: "credit_plan_settlement_failed" });
-      else await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "failed", error_code: "credit_plan_settlement_failed" });
+      if (prior.rows.length > 0) await supabaseServiceUpdate("stripe_webhook_events", { event_id: `eq.${event.id}` }, { status: "failed", error_code: "credit_plan_settlement_failed", financial_scope: "managed_credit" });
+      else await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "failed", error_code: "credit_plan_settlement_failed", financial_scope: "managed_credit" });
       return NextResponse.json({ ok: false, error: "credit_plan_settlement_failed" }, { status: 502 });
     }
     const planUpdate = await supabaseServiceUpdate("client_credit_purchase_plans", { id: `eq.${metadata.credit_plan_id}` }, {
@@ -73,11 +135,11 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     });
     if (!planUpdate.ok || planUpdate.rows.length === 0) {
-      if (prior.rows.length > 0) await supabaseServiceUpdate("stripe_webhook_events", { event_id: `eq.${event.id}` }, { status: "failed", error_code: "credit_plan_metadata_update_failed" });
-      else await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "failed", error_code: "credit_plan_metadata_update_failed" });
+      if (prior.rows.length > 0) await supabaseServiceUpdate("stripe_webhook_events", { event_id: `eq.${event.id}` }, { status: "failed", error_code: "credit_plan_metadata_update_failed", financial_scope: "managed_credit" });
+      else await supabaseServiceInsert("stripe_webhook_events", { event_id: event.id, event_type: event.type, payload_hash: createHash("sha256").update(payload).digest("hex"), status: "failed", error_code: "credit_plan_metadata_update_failed", financial_scope: "managed_credit" });
       return NextResponse.json({ ok: false, error: "credit_plan_metadata_update_failed" }, { status: 502 });
     }
-    const stored = await storeWebhookEvent(event.id, event.type, payload, "processed");
+    const stored = await storeWebhookEvent(event.id, event.type, payload, "processed", null, "managed_credit");
     if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
     return NextResponse.json({ ok: true, eventId: event.id, status: "processed" });
   }
@@ -87,10 +149,50 @@ export async function POST(request: Request) {
     let creditPlanId = stringValue(metadata.credit_plan_id);
     if (!creditPlanId && paymentIntentId) {
       const matchingPlan = await supabaseServiceSelect("client_credit_purchase_plans", { stripe_payment_intent_id: "eq." + paymentIntentId });
+      if (!matchingPlan.ok) return NextResponse.json({ ok: false, error: "credit_plan_lookup_failed" }, { status: 502 });
+      if (matchingPlan.rows.length > 1) return rejectFinancialEvent("financial_scope_ambiguous");
       creditPlanId = stringValue(matchingPlan.rows[0]?.id);
     }
+    if (creditPlanId && metadata.product === "veloce-public-launch") return rejectFinancialEvent("financial_scope_ambiguous");
+    if (creditPlanId && event.type === "charge.refunded") {
+      const reviewed = await reviewedPublicLaunchDisposition(event.id, event.type, hash);
+      if (!reviewed.ok) return NextResponse.json({ ok: false, error: "review_disposition_lookup_failed" }, { status: 502 });
+      const onboarding = paymentIntentId ? await supabaseServiceSelect("client_onboarding_accounts", { setup_payment_id: `eq.${paymentIntentId}`, select: "id" }) : { ok: true, rows: [] };
+      if (!onboarding.ok) return NextResponse.json({ ok: false, error: "public_launch_reference_lookup_failed" }, { status: 502 });
+      if (reviewed.reviewed || onboarding.rows.length) return rejectFinancialEvent("financial_scope_ambiguous");
+    }
     if (!creditPlanId) {
-      const stored = await storeWebhookEvent(event.id, event.type, payload, "failed", "credit_plan_metadata_missing");
+      // A charge.refunded event may belong to the public setup/subscription
+      // product instead of a managed-credit plan. Only a durable onboarding
+      // payment reference or an operator-reviewed matching payload can make
+      // that classification; customer, description, and amount are not proof.
+      if (event.type === "charge.refunded") {
+        const reviewed = await reviewedPublicLaunchDisposition(event.id, event.type, hash);
+        if (!reviewed.ok) return NextResponse.json({ ok: false, error: "review_disposition_lookup_failed" }, { status: 502 });
+        let publicLaunch = reviewed.reviewed;
+        if (!publicLaunch && paymentIntentId) {
+          const onboarding = await supabaseServiceSelect("client_onboarding_accounts", {
+            setup_payment_id: `eq.${paymentIntentId}`,
+            select: "id,request_id,setup_payment_id",
+          });
+          if (!onboarding.ok) return NextResponse.json({ ok: false, error: "public_launch_reference_lookup_failed" }, { status: 502 });
+          publicLaunch = onboarding.rows.length === 1;
+        }
+        if (publicLaunch) {
+          if (!reviewed.reviewed && !(await ensurePublicLaunchReviewItem({ eventId: event.id, eventType: event.type, hash }))) {
+            return NextResponse.json({ ok: false, error: "public_launch_review_record_failed" }, { status: 502 });
+          }
+          if (!reviewed.reviewed) {
+            const stored = await storeWebhookEvent(event.id, event.type, payload, "failed", "public_launch_review_required", "public_launch");
+            if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
+            return NextResponse.json({ ok: false, eventId: event.id, error: "public_launch_review_required" }, { status: 422 });
+          }
+          const stored = await storeWebhookEvent(event.id, event.type, payload, "processed", null, "public_launch");
+          if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
+          return NextResponse.json({ ok: true, eventId: event.id, status: "public_launch_refund_reviewed" });
+        }
+      }
+      const stored = await storeWebhookEvent(event.id, event.type, payload, "failed", "credit_plan_metadata_missing", "unknown");
       if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
       return NextResponse.json({ ok: false, error: "credit_plan_metadata_missing" }, { status: 422 });
     }
@@ -112,11 +214,11 @@ export async function POST(request: Request) {
       },
     });
     if (!lifecycle.ok || lifecycle.value !== true) {
-      const stored = await storeWebhookEvent(event.id, event.type, payload, "failed", "credit_plan_lifecycle_failed");
+      const stored = await storeWebhookEvent(event.id, event.type, payload, "failed", "credit_plan_lifecycle_failed", "managed_credit");
       if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
       return NextResponse.json({ ok: false, error: "credit_plan_lifecycle_failed" }, { status: 502 });
     }
-    const stored = await storeWebhookEvent(event.id, event.type, payload, "processed");
+    const stored = await storeWebhookEvent(event.id, event.type, payload, "processed", null, "managed_credit");
     if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
     return NextResponse.json({ ok: true, eventId: event.id, status: "processed" });
   }
@@ -155,7 +257,10 @@ export async function POST(request: Request) {
       if (!suspended.ok) return effectFailed();
     }
   }
-  const stored = await storeWebhookEvent(event.id, event.type, payload, "processed");
+  const scope = metadata.product === "veloce-managed-credits"
+    ? "managed_credit"
+    : metadata.product === "veloce-public-launch" || requestId ? "public_launch" : null;
+  const stored = await storeWebhookEvent(event.id, event.type, payload, "processed", null, scope);
   if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
   return NextResponse.json({ ok: true, eventId: event.id, status: "processed" });
 }

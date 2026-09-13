@@ -50,9 +50,13 @@ bill a customer, or publish a campaign.
    the migration and connection preflight in one result. The connection refers
    only to the existing Secret Manager resource; it must not contain an API key
    value.
-5. Enable only `openai/gpt-4o-mini` on the private Cloud Run gateway. Keep
+5. Apply `product-experience/supabase-v44-stripe-financial-event-dispositions.sql`
+   with the application deployment that reads it. It adds the append-only,
+   service-role-only public-launch financial-event review trail. Do not apply
+   the route before the migration.
+6. Enable only `openai/gpt-4o-mini` on the private Cloud Run gateway. Keep
    video generation disabled.
-6. Run the non-spending managed-provider health check first. Its only allowed
+7. Run the non-spending managed-provider health check first. Its only allowed
    fixture is `managed-openrouter-hc-20260831`, and it must remain disabled
    with zero credit. Run
    `product-experience/supabase-v34-managed-openrouter-health-canary-cleanup.sql`
@@ -75,6 +79,18 @@ Run the disposable test fixture before any live billing action. It requires
 monthly ($1 initial total per tenant). It never authorizes a live charge.
 A separate billing-owner approval with a real total cap is still required for
 the later live-mode Stripe smoke.
+
+Before the live $2 setup/subscription fixture is replayed or refunded, the
+operator must confirm that V44 is live. A `charge.refunded` event is classified
+as managed credit only by a managed-credit plan reference. A refund with an
+exact persisted public-launch setup payment reference is recorded as
+`public_launch` plus a `review_required` disposition, returns `422`, and never
+changes a wallet. An event without either proof also remains `422` and must
+not be broadly acknowledged. The billing owner records one matching,
+hash-bound review disposition through the operator-only webhook-review route;
+Stripe must then redeliver the original signed event. Only that redelivery is
+recorded as processed. Record only IDs, hashes, disposition, reviewer,
+timestamp, and reconciliation outcome.
 
 After deployment, the owner can generate a single test checkout link without
 placing a secret in the command line by loading the operator secret into the

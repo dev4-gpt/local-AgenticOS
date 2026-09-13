@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
-test("strict publish refuses incomplete evidence before invoking cloud storage", () => {
+for (const flags of [["--strict"], []]) test(`publish refuses incomplete evidence before invoking cloud storage (${flags.length ? "explicit" : "implicit"} strict)`, () => {
   // PATH deliberately contains no gcloud: no cloud command is possible.
-  const result = spawnSync(process.execPath, ["scripts/verify-production-readiness.mjs", "--strict", "--publish-ledger", "--allow-dirty", "--environment", "production"], { encoding: "utf8", env: { PATH: "/usr/bin:/bin", STRIPE_MODE: "live" } });
+  const result = spawnSync(process.execPath, ["scripts/verify-production-readiness.mjs", ...flags, "--publish-ledger", "--allow-dirty", "--environment", "production"], { encoding: "utf8", env: { PATH: "/usr/bin:/bin", STRIPE_MODE: "live" } });
   expect(result.status).toBe(1);
   const output = JSON.parse(result.stdout);
   expect(output.releaseReady).toBe(false);
