@@ -66,7 +66,7 @@ The existing lifecycle exporter/restorer includes all three new tables with expl
 
 Validation: `tests/ecc-learning-sql.spec.ts` executes the migration in PostgreSQL (PGlite) and exercises roles, RLS, hash races, retries/conflicts, immutable revisions, source deletion/invalidation, expiry, restore/offboarding and worker validation. `tests/ecc-learning-api.spec.ts` checks authenticated tenant derivation, role enforcement and bounded inputs. The focused suite passes **186 tests**. The competing-review test uses PGlite's serialized connection; multi-connection live concurrency remains a deployment acceptance check, not a claim of this local test.
 
-This migration has not yet been applied to the live database. Deployment and enabled-tenant acceptance remain the final stage.
+At the end of the learning stage, the migration was not yet applied. The deployment sections below record its subsequent live application and acceptance.
 
 ## Product stage — 2026-09-12
 
@@ -80,7 +80,9 @@ Validation on Node 24.19.0: **189 focused tests passed** (15.8 seconds), includi
 
 Live database migration, enabled test-tenant jobs, multi-connection review races and running-image revision evidence remain the deployment stage. No new paid inference or service was introduced by this stage.
 
-## Deployment stage in progress — 2026-09-12
+## Deployment stage history — 2026-09-12
+
+This dated snapshot is superseded by the September 13 deployment acceptance below.
 
 Stages 1–4 are merged through [PR #20](https://github.com/dev4-gpt/local-AgenticOS/pull/20), source `3671d70b5be322985cd41ea2799e130c3580a942`. All three required checks passed before merge. [Staged deployment evidence](evidence/ecc-staged-deployment-2026-09-12.json) records the actual image, database checks and zero-traffic revisions.
 
@@ -101,3 +103,49 @@ The local linux/amd64 image build succeeded with the standard Turbopack build. I
 The local HTTP smoke test initially met a temporary automatic-approval usage limit and succeeded when review became available again. Automatic approval separately rejected creating six temporary owner/member/viewer users in the existing test tenants and persisting a production service key. Specific user approval was requested for the test accounts and temporary login allowlists; the proposed implementation keeps the service key in memory. No such accounts were created by that rejected action. The rollback-only SQL canary used isolated fixtures in one rolled-back transaction.
 
 The live verifier now downloads each artifact from its authenticated signed GCS URL and checks the stored content/hash against the job record. This avoids a false failure from PostgreSQL JSONB reordering object keys. The focused regression uses an actual PostgreSQL JSONB round trip and also rejects changed artifact content, changed metadata and mismatched evaluation hashes (1 test passed, 2.7 seconds). Signed URLs and session cookies are excluded from evidence.
+
+## Deployment acceptance — 2026-09-13
+
+[Production deployment evidence](evidence/ecc-production-deployment-2026-09-13.json) records completed acceptance on the two existing test tenants. The runtime source remains `3671d70b5be322985cd41ea2799e130c3580a942`, tree `9847d00ec65a46f680dcf8e09c4f09d54e1b0ae4`, image digest `sha256:0fa07713ef814ce0423874fec16f47bee41145b4feaab4a44f1127e2f6d14bdd`. Later Stage 5 commits change verification and evidence, not this deployed application code. No separate Vercel application deployment was needed for these tenant-runtime features.
+
+| Tenant | Final Cloud Run revision | Traffic | Retained rollback revision |
+| --- | --- | --- | --- |
+| `veloce-cloud-test` | `veloce-cloud-test-ecc-ga0913` | 100% | `veloce-cloud-test-00210-pez` |
+| `dofgfood` | `veloce-dofgfood-ecc-ga0913` | 100% | `veloce-dofgfood-00005-vec` |
+
+The user explicitly approved six temporary accounts (owner, member and viewer per tenant) and temporary login allowlists. No invitation emails were sent. The production service key was loaded only into the fixture process environment; private session cookies were removed after account deletion. The approval-review usage limit temporarily interrupted cleanup; it resumed after the reset and finished with independent readback.
+
+The authenticated suite ran from `2026-09-13T04:50:47.438Z` to `04:55:39.947Z`: **183 checks passed**, with all seven adapters producing a real artifact in each tenant (**14 artifacts**). The suite used authenticated application endpoints and existing Cloud Tasks workers. Each artifact was downloaded from private storage and verified against its expected content hash and database metadata. Exact IDs and hashes are in the receipt. Missing source evidence stayed missing, `releaseReady` stayed false, and no external inference was used.
+
+Real concurrent HTTP review requests produced one successful approval and one conflict per tenant. Viewer writes and member review attempts failed; cross-tenant sessions failed; confidence did not activate a proposal. Retry keys returned the same job, changed submissions conflicted, and dispatch using a revoked lesson failed. Automatic outcomes remained proposed at confidence zero without copying input briefs.
+
+After restoring the original login allowlists and normal Cloud Tasks base URLs, the final revisions were promoted. **14 additional worker checks passed** from `05:01:51.725Z` to `05:02:29.829Z`. These checks used authenticated member database admission and the existing OIDC-authenticated production task queue to create one fresh job per final revision. Both workers completed and their stored artifact bytes matched. Temporary fixture login was correctly denied on the restored application allowlist. This additional probe verifies the final production worker path; it is not presented as a second complete browser suite.
+
+Cleanup passed **28 checks**: six Auth users and memberships, 18 learning items, two dependent reviewed revisions, 16 jobs, 14 fixture audit events, 20 fixture rate-limit rows, and the last two artifact metadata rows were removed. The original 14 artifacts had already been deleted through the authenticated artifact API; the two final worker objects were also deleted. Readbacks found no fixture users, memberships, lessons, revisions, jobs, artifact metadata, audit/rate rows, storage objects or queued tasks. The fixture jobs created no financial ledger entries. Six local cookie files were deleted. Only the two intended tenant ECC policies remain enabled.
+
+Final configuration readback at `2026-09-13T14:58:19.370Z` passed **14 checks**: the proven revisions retain 100% traffic and the immutable digest, original environment and service accounts match, temporary routing tags and OIDC audiences are removed, and anonymous access still returns 401. Both services retain their existing maximum of one instance; no new always-on infrastructure was introduced. Provider inference cost was zero. Infrastructure cost is unmeasured and remains null; existing GCP trial credits were authorized, so this is not a claim that all cloud execution is inherently free.
+
+### Acceptance scope and evidence
+
+| Plan requirement | Evidence and actual scope |
+| --- | --- |
+| Full pinned inventory and licensing | `ecc-upstream.lock.json`, `ecc-components.json`, `verify-ecc.mjs`: 3,700 files, 872 component dispositions, MIT provenance, dependency/configuration gates |
+| Global native installation and isolation | Foundation receipt: 360 namespaced entrypoints in two isolated and two global project contexts; repeat install/uninstall; 10,374 unrelated files unchanged; no inference turns |
+| Reviewed packaging and compatibility | Native plugin 2.2.1-veloce.2 on CLI 0.143.0; preserved originals and checksums; hooks/MCP defaults empty; no unverified 0.146 hook behavior claimed |
+| Department artifacts and unavailable features | Seven deterministic adapters, six departments; 14 authenticated deployed artifacts plus two final worker artifacts; unsupported adapters and provider/tool fields fail closed in adapter/API tests |
+| Tenant, role and exact-hash controls | v43 real PostgreSQL canary: 31 checks; deployed role/cross-tenant/concurrent-review tests; `ecc-learning-sql.spec.ts` covers altered, expired and revoked revisions and immutable review records |
+| Learning safety and lifecycle | SQL/API tests cover injection, secret-bearing proposals, source edits/deletion, duplicate proposals, export/restore, retention and offboarding; live canary confirms role/RLS and rollback cleanup. Export/restore is locally tested, not a claim of a live production restore |
+| Product integration | Existing Context, Capabilities, Govern and Orchestrate sections; browser acceptance with explicit fixtures; deployed authenticated APIs, job workers and artifact storage verified separately |
+| Cost and evaluation discipline | Deterministic test network tripwire, zero-inference adapter contract, real output metrics; missing evidence never becomes a pass; no paid model judges |
+| Deployment and rollback | Actual revision/digest/traffic readback, final worker artifacts, restored login settings, fixture cleanup; prior revisions retained |
+| Delivery workflow | Separate PRs #17–20 merged with all three required checks; Stage 5 PR #21 contains the final verification and receipt and must meet the same checks before merge |
+
+### Eligible client rollout and rollback
+
+The two existing test tenants are enabled. Other tenants remain gated until their existing approved runtime configuration includes both `ecc-workflows` and `artifacts`, their deployed image contains these routes/worker adapters, and an authenticated owner/admin enables ECC through the existing Orchestrate controls (`PATCH /api/client-runtime/ecc`, body `{"enabled":true}`). Apply the existing manifest approval/deployment workflow and repeat tenant-specific acceptance before enabling a client. Catalog visibility alone is never permission, and these receipts do not certify untested client configuration.
+
+For an ECC-only rollback, an owner/admin disables the tenant policy with the same endpoint and `{"enabled":false}`; workers recheck this gate. For an image rollback, use `gcloud run services update-traffic <service> --to-revisions <retained-revision>=100 --project veloce-agenticos-2026 --region asia-south1` with the exact retained revision above. Preserve the v43 tables and learning evidence; an image rollback does not require deleting tenant data. Re-enabling requires current configuration and acceptance evidence.
+
+**Installed:** all 291 namespaced guidance skills, 68 role entrypoints and the global workflow. **Activated and deployment-verified:** seven bounded departmental adapters and governed learning on the two test tenants. **Still gated:** automatic hooks, observer/injection, bundled MCP startup, unadapted specialists and paid/unconfigured integrations. A role definition does not grant tools or start an agent. Global learning promotion remains a separately reviewed, sanitized artifact.
+
+ECC deployment acceptance does not close the refund-notification defect, replace GA journey/sign-off evidence, or produce legal review or SOC2 attestation. The separate GA release ledger remains `releaseReady: false`.

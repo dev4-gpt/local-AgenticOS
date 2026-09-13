@@ -1,0 +1,1523 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "3671d70b5be322985cd41ea2799e130c3580a942",
+  "sourceTree": "9847d00ec65a46f680dcf8e09c4f09d54e1b0ae4",
+  "upstreamRevision": "c9148d0bb239ed01a95724a5928b98cdf9c30658",
+  "imageDigest": "sha256:0fa07713ef814ce0423874fec16f47bee41145b4feaab4a44f1127e2f6d14bdd",
+  "previousEvidence": "ecc-staged-deployment-2026-09-12.json",
+  "productionPromoted": true,
+  "deploymentAcceptanceComplete": true,
+  "authenticatedAcceptance": {
+    "schemaVersion": 1,
+    "startedAt": "2026-09-13T04:50:47.438Z",
+    "runId": "cb5136e8-7e63-41b7-b110-aee9767dc790",
+    "sourceRevision": "3671d70b5be322985cd41ea2799e130c3580a942",
+    "checks": [
+      {
+        "name": "veloce-cloud-test: anonymous access denied",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: owner identity",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: member identity",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: viewer identity",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: cross-tenant session denied",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: deployed capability enabled",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: viewer cannot activate",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: viewer cannot propose",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: member proposal",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: proposal retry",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: confidence is not approval",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: member cannot review",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: wrong hash rejected",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: concurrent HTTP review has exactly one winner",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: immutable revision created",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-engineering-handoff accepted",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: duplicate job retains identity",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: duplicate key with changed input rejected",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: job status readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-engineering-handoff completed",
+        "passed": true,
+        "jobId": "c004d0bc-9a58-4a0f-8a18-4776ae7c5e60",
+        "errorCode": null
+      },
+      {
+        "name": "veloce-cloud-test: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-security-review accepted",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: job status readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-security-review completed",
+        "passed": true,
+        "jobId": "5b1dbab0-02e9-4786-8fa9-f09acd26a43b",
+        "errorCode": null
+      },
+      {
+        "name": "veloce-cloud-test: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-research-plan accepted",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: job status readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-research-plan completed",
+        "passed": true,
+        "jobId": "969a1ab1-0d58-42ae-baa0-6514cf6e4fdd",
+        "errorCode": null
+      },
+      {
+        "name": "veloce-cloud-test: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-content-brief accepted",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: job status readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: job status readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-content-brief completed",
+        "passed": true,
+        "jobId": "4f821586-27a1-4b8f-864a-166e2299ad88",
+        "errorCode": null
+      },
+      {
+        "name": "veloce-cloud-test: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-operations-handoff accepted",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: job status readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-operations-handoff completed",
+        "passed": true,
+        "jobId": "2043af9a-c264-466b-817f-04015e5488e4",
+        "errorCode": null
+      },
+      {
+        "name": "veloce-cloud-test: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-context-budget accepted",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: job status readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: job status readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-context-budget completed",
+        "passed": true,
+        "jobId": "c8445932-b346-45a8-ae94-5cc86a38433d",
+        "errorCode": null
+      },
+      {
+        "name": "veloce-cloud-test: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-evaluation-report accepted",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: job status readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: ecc-evaluation-report completed",
+        "passed": true,
+        "jobId": "e8ee973a-0d74-4b99-bf47-3011363d8637",
+        "errorCode": null
+      },
+      {
+        "name": "veloce-cloud-test: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: lesson revoked",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: revoked lesson cannot dispatch",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: structured outcomes remain proposed",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: anonymous access denied",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: owner identity",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: member identity",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: viewer identity",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: cross-tenant session denied",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: deployed capability enabled",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: viewer cannot activate",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: viewer cannot propose",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: member proposal",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: proposal retry",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: confidence is not approval",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: member cannot review",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: wrong hash rejected",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: concurrent HTTP review has exactly one winner",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: immutable revision created",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-engineering-handoff accepted",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: duplicate job retains identity",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: duplicate key with changed input rejected",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: job status readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-engineering-handoff completed",
+        "passed": true,
+        "jobId": "e218ec21-d09f-4a2c-b0c8-11d48e9a22b2",
+        "errorCode": null
+      },
+      {
+        "name": "dofgfood: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-security-review accepted",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: job status readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-security-review completed",
+        "passed": true,
+        "jobId": "aca6573c-b7df-4584-89b6-980c0721bac3",
+        "errorCode": null
+      },
+      {
+        "name": "dofgfood: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-research-plan accepted",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: job status readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-research-plan completed",
+        "passed": true,
+        "jobId": "4ad593fb-266d-4e1d-9bcd-d00a7344ac4c",
+        "errorCode": null
+      },
+      {
+        "name": "dofgfood: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-content-brief accepted",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: job status readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: job status readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-content-brief completed",
+        "passed": true,
+        "jobId": "1f10ecfb-b05a-42cf-9ae3-3a588202be55",
+        "errorCode": null
+      },
+      {
+        "name": "dofgfood: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-operations-handoff accepted",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: job status readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-operations-handoff completed",
+        "passed": true,
+        "jobId": "00aadc0c-50e4-479f-83c6-f6b137c6769c",
+        "errorCode": null
+      },
+      {
+        "name": "dofgfood: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-context-budget accepted",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: job status readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-context-budget completed",
+        "passed": true,
+        "jobId": "ab8f4e91-3383-4fbd-ab2d-8cf6d407891a",
+        "errorCode": null
+      },
+      {
+        "name": "dofgfood: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-evaluation-report accepted",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: job status readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: ecc-evaluation-report completed",
+        "passed": true,
+        "jobId": "c11e065a-833b-4541-8e31-ea3c0bc9cde0",
+        "errorCode": null
+      },
+      {
+        "name": "dofgfood: artifact contract",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact download authorized",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact storage origin",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored artifact readable",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: stored bytes match artifact hash and job metadata",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: zero inference, missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: exact reviewed lessons used",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: lesson revoked",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: revoked lesson cannot dispatch",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: structured outcomes remain proposed",
+        "passed": true
+      }
+    ],
+    "artifacts": [
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "c004d0bc-9a58-4a0f-8a18-4776ae7c5e60",
+        "artifactId": "e2fc5bbf-db20-444f-b869-ebe29958ff6a",
+        "artifactHash": "d1dfb78ae63463125c303d78d18e34dbffe4ecb88382d7e9833d9f49f101c357",
+        "adapterId": "ecc-engineering-handoff",
+        "storedBytesSha256": "f602af320226ce0d4b5a3c3a4f4c648d5fb849d82a7b96ae63faebf5708dac1b",
+        "storedBytes": 1839,
+        "cleaned": true
+      },
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "5b1dbab0-02e9-4786-8fa9-f09acd26a43b",
+        "artifactId": "b7a72eab-d3ea-49f2-953b-2f9b1c333fe0",
+        "artifactHash": "b074c46b21f15f07520eaf5017b77898fd0676549301c17d73d26ead546d51c3",
+        "adapterId": "ecc-security-review",
+        "storedBytesSha256": "0a39c73fb2e9a9087fe08bdced4974b9c74b0fcb98d668b9d0ed0df24eb0cd66",
+        "storedBytes": 1324,
+        "cleaned": true
+      },
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "969a1ab1-0d58-42ae-baa0-6514cf6e4fdd",
+        "artifactId": "d216ac6d-5987-4c96-8423-4ed4c64fb7d0",
+        "artifactHash": "0fb253027ca44eff3f8976414d17db604c2754240debc01813780c277a3ab430",
+        "adapterId": "ecc-research-plan",
+        "storedBytesSha256": "3ab183c5d4cebb4a18d3b3d42c3da3adbefe9f8bac122c8ae627b795d22bc8ba",
+        "storedBytes": 1325,
+        "cleaned": true
+      },
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "4f821586-27a1-4b8f-864a-166e2299ad88",
+        "artifactId": "f1df6e0f-5ff9-4028-a988-95bfdf255e72",
+        "artifactHash": "6630b680703d92a2b90e8562a62ca80bc2be8062289797e1020bdd5eb8d763a6",
+        "adapterId": "ecc-content-brief",
+        "storedBytesSha256": "8494607fa3a2600c14d6078024b0db8b9cdda105d02949e021abc0a745513c51",
+        "storedBytes": 1318,
+        "cleaned": true
+      },
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "2043af9a-c264-466b-817f-04015e5488e4",
+        "artifactId": "bb102464-a6d7-445f-b51f-e612023d10e4",
+        "artifactHash": "3dd0201ed820915d12e194c1e256921c4d33b009b24e7ade588ecfb8243497dc",
+        "adapterId": "ecc-operations-handoff",
+        "storedBytesSha256": "b9fa3f49708b1a23d1970675c8968793a11c27074c1f37c5ca0b12000a2434d3",
+        "storedBytes": 1347,
+        "cleaned": true
+      },
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "c8445932-b346-45a8-ae94-5cc86a38433d",
+        "artifactId": "7cf6bcc3-c06c-4e42-a92d-63834f7e72fd",
+        "artifactHash": "c08552540cdc45fa73e4081d7c0d226d0c3419840519f98c82f196636f406b57",
+        "adapterId": "ecc-context-budget",
+        "storedBytesSha256": "033eabfe41519132f072cb4dacd21d04d32fa55abf994a91c46b0fc4f6d56535",
+        "storedBytes": 1349,
+        "cleaned": true
+      },
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "e8ee973a-0d74-4b99-bf47-3011363d8637",
+        "artifactId": "b88fe730-b2fb-4bcf-9aa6-7bc35362ec32",
+        "artifactHash": "c34522a42fb55bb4343552b5602982d58bf6c44db21c210e8af6c281728dc771",
+        "adapterId": "ecc-evaluation-report",
+        "storedBytesSha256": "fa05ecf92c126567f4a2f3517f17d137f7ce357c7a03a58150d31fa40a76e150",
+        "storedBytes": 1351,
+        "cleaned": true
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "e218ec21-d09f-4a2c-b0c8-11d48e9a22b2",
+        "artifactId": "96a4ad90-2219-467a-9ee0-1289498b38d8",
+        "artifactHash": "41acc2880ae50ee824ed6c738bc0e950d66ce169591abd74fee30d7abe392fde",
+        "adapterId": "ecc-engineering-handoff",
+        "storedBytesSha256": "463cd56deb0f2af6cd0e38782aaf1bfeca175b5ba5eaae4261fa3c6cdd9a4ae8",
+        "storedBytes": 1839,
+        "cleaned": true
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "aca6573c-b7df-4584-89b6-980c0721bac3",
+        "artifactId": "e2726b8f-633e-477c-acb9-5164264db3a6",
+        "artifactHash": "b074c46b21f15f07520eaf5017b77898fd0676549301c17d73d26ead546d51c3",
+        "adapterId": "ecc-security-review",
+        "storedBytesSha256": "0a39c73fb2e9a9087fe08bdced4974b9c74b0fcb98d668b9d0ed0df24eb0cd66",
+        "storedBytes": 1324,
+        "cleaned": true
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "4ad593fb-266d-4e1d-9bcd-d00a7344ac4c",
+        "artifactId": "7b4a2e3a-31eb-4923-910d-a75861acf5ab",
+        "artifactHash": "0fb253027ca44eff3f8976414d17db604c2754240debc01813780c277a3ab430",
+        "adapterId": "ecc-research-plan",
+        "storedBytesSha256": "3ab183c5d4cebb4a18d3b3d42c3da3adbefe9f8bac122c8ae627b795d22bc8ba",
+        "storedBytes": 1325,
+        "cleaned": true
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "1f10ecfb-b05a-42cf-9ae3-3a588202be55",
+        "artifactId": "60b544bf-6e74-460c-9bc0-a7c16711937e",
+        "artifactHash": "6630b680703d92a2b90e8562a62ca80bc2be8062289797e1020bdd5eb8d763a6",
+        "adapterId": "ecc-content-brief",
+        "storedBytesSha256": "8494607fa3a2600c14d6078024b0db8b9cdda105d02949e021abc0a745513c51",
+        "storedBytes": 1318,
+        "cleaned": true
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "00aadc0c-50e4-479f-83c6-f6b137c6769c",
+        "artifactId": "88bb8eb0-f53a-42a8-9b26-67f07793e28d",
+        "artifactHash": "3dd0201ed820915d12e194c1e256921c4d33b009b24e7ade588ecfb8243497dc",
+        "adapterId": "ecc-operations-handoff",
+        "storedBytesSha256": "b9fa3f49708b1a23d1970675c8968793a11c27074c1f37c5ca0b12000a2434d3",
+        "storedBytes": 1347,
+        "cleaned": true
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "ab8f4e91-3383-4fbd-ab2d-8cf6d407891a",
+        "artifactId": "bcbbfede-c99c-4bbb-8959-144ad4758459",
+        "artifactHash": "c08552540cdc45fa73e4081d7c0d226d0c3419840519f98c82f196636f406b57",
+        "adapterId": "ecc-context-budget",
+        "storedBytesSha256": "033eabfe41519132f072cb4dacd21d04d32fa55abf994a91c46b0fc4f6d56535",
+        "storedBytes": 1349,
+        "cleaned": true
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "c11e065a-833b-4541-8e31-ea3c0bc9cde0",
+        "artifactId": "28c6597f-818f-48c9-b981-5f66ddb5f433",
+        "artifactHash": "c34522a42fb55bb4343552b5602982d58bf6c44db21c210e8af6c281728dc771",
+        "adapterId": "ecc-evaluation-report",
+        "storedBytesSha256": "fa05ecf92c126567f4a2f3517f17d137f7ce357c7a03a58150d31fa40a76e150",
+        "storedBytes": 1351,
+        "cleaned": true
+      }
+    ],
+    "fixtures": [
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "learningItemId": "2fbf9e9e-1812-4db6-9b53-c98679642693"
+      },
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "c004d0bc-9a58-4a0f-8a18-4776ae7c5e60"
+      },
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "5b1dbab0-02e9-4786-8fa9-f09acd26a43b"
+      },
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "969a1ab1-0d58-42ae-baa0-6514cf6e4fdd"
+      },
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "4f821586-27a1-4b8f-864a-166e2299ad88"
+      },
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "2043af9a-c264-466b-817f-04015e5488e4"
+      },
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "c8445932-b346-45a8-ae94-5cc86a38433d"
+      },
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "e8ee973a-0d74-4b99-bf47-3011363d8637"
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "learningItemId": "8bb5b3e9-e798-4a70-be28-c96ec051597d"
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "e218ec21-d09f-4a2c-b0c8-11d48e9a22b2"
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "aca6573c-b7df-4584-89b6-980c0721bac3"
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "4ad593fb-266d-4e1d-9bcd-d00a7344ac4c"
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "1f10ecfb-b05a-42cf-9ae3-3a588202be55"
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "00aadc0c-50e4-479f-83c6-f6b137c6769c"
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "ab8f4e91-3383-4fbd-ab2d-8cf6d407891a"
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "c11e065a-833b-4541-8e31-ea3c0bc9cde0"
+      }
+    ],
+    "completed": true,
+    "finishedAt": "2026-09-13T04:55:39.947Z"
+  },
+  "finalProductionWorkerAcceptance": {
+    "startedAt": "2026-09-13T05:01:51.725Z",
+    "checks": [
+      {
+        "name": "veloce-cloud-test: final revision serves all traffic",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: temporary email removed from production login",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: authenticated fixture enqueued under RLS",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: final production worker succeeded",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: artifact belongs to final job",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: final stored artifact verified",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: zero inference and missing evidence retained",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: final revision serves all traffic",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: temporary email removed from production login",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: authenticated fixture enqueued under RLS",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: final production worker succeeded",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: artifact belongs to final job",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: final stored artifact verified",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: zero inference and missing evidence retained",
+        "passed": true
+      }
+    ],
+    "jobs": [
+      {
+        "tenantSlug": "veloce-cloud-test",
+        "jobId": "a5728299-47d3-4cfb-a421-88d61684b039",
+        "revision": "veloce-cloud-test-ecc-ga0913",
+        "taskId": "ecc-final-a5728299-47d3-4cfb-a421-88d61684b039",
+        "artifactId": "c0b1dbdf-63cd-489b-96e0-b332722883fe",
+        "artifactHash": "e10efd3d53e94c8d24d032dbf15e97c017619a539eb74fc43e1684a24daa8d8f",
+        "storedBytesSha256": "59da1802c9d897143f4be05077a04d6b28a0d4fd139fb1ba9beca48b479b4741",
+        "storedBytes": 1342,
+        "bucket": "veloce-agenticos-2026-veloce-cloud-test",
+        "objectKey": "veloce-cloud-test/jobs/a5728299-47d3-4cfb-a421-88d61684b039/ecc-engineering-handoff.json",
+        "status": "succeeded"
+      },
+      {
+        "tenantSlug": "dofgfood",
+        "jobId": "a576a164-740f-4a2e-a1e6-9b5d34db767a",
+        "revision": "veloce-dofgfood-ecc-ga0913",
+        "taskId": "ecc-final-a576a164-740f-4a2e-a1e6-9b5d34db767a",
+        "artifactId": "7ad0c0b7-dc34-4d5b-abd0-59487f0cc3fd",
+        "artifactHash": "e10efd3d53e94c8d24d032dbf15e97c017619a539eb74fc43e1684a24daa8d8f",
+        "storedBytesSha256": "59da1802c9d897143f4be05077a04d6b28a0d4fd139fb1ba9beca48b479b4741",
+        "storedBytes": 1342,
+        "bucket": "veloce-agenticos-2026-veloce-dofgfood",
+        "objectKey": "dofgfood/jobs/a576a164-740f-4a2e-a1e6-9b5d34db767a/ecc-engineering-handoff.json",
+        "status": "succeeded"
+      }
+    ],
+    "completed": true,
+    "finishedAt": "2026-09-13T05:02:29.829Z"
+  },
+  "fixtureCleanup": {
+    "startedAt": "2026-09-13T14:56:56.122Z",
+    "checks": [
+      {
+        "name": "fixture identity f4a7dc36-937b-4717-876a-c50666f6dbaa",
+        "passed": true
+      },
+      {
+        "name": "fixture identity c1e1c979-7873-4ad9-970b-7a6bbbd60292",
+        "passed": true
+      },
+      {
+        "name": "fixture identity 3ee04d61-d60b-4eac-9481-53aeb08aa7b7",
+        "passed": true
+      },
+      {
+        "name": "fixture identity 91658fae-d7b6-4919-a81d-0ef0f0696782",
+        "passed": true
+      },
+      {
+        "name": "fixture identity e9c99417-434c-466f-89e3-64745f202d1f",
+        "passed": true
+      },
+      {
+        "name": "fixture identity 00281ee8-79bd-4a0b-9be8-d29ecdbcf3e8",
+        "passed": true
+      },
+      {
+        "name": "exactly sixteen known terminal fixture jobs",
+        "passed": true
+      },
+      {
+        "name": "no fixture financial ledger entries",
+        "passed": true
+      },
+      {
+        "name": "bounded fixture storage key a5728299-47d3-4cfb-a421-88d61684b039",
+        "passed": true
+      },
+      {
+        "name": "bounded fixture storage key a576a164-740f-4a2e-a1e6-9b5d34db767a",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: no fixture storage objects remain",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: no remaining fixture tasks",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: no fixture storage objects remain",
+        "passed": true
+      },
+      {
+        "name": "dofgfood: no remaining fixture tasks",
+        "passed": true
+      },
+      {
+        "name": "auth fixture deleted f4a7dc36-937b-4717-876a-c50666f6dbaa",
+        "passed": true
+      },
+      {
+        "name": "auth fixture deleted c1e1c979-7873-4ad9-970b-7a6bbbd60292",
+        "passed": true
+      },
+      {
+        "name": "auth fixture deleted 3ee04d61-d60b-4eac-9481-53aeb08aa7b7",
+        "passed": true
+      },
+      {
+        "name": "auth fixture deleted 91658fae-d7b6-4919-a81d-0ef0f0696782",
+        "passed": true
+      },
+      {
+        "name": "auth fixture deleted e9c99417-434c-466f-89e3-64745f202d1f",
+        "passed": true
+      },
+      {
+        "name": "auth fixture deleted 00281ee8-79bd-4a0b-9be8-d29ecdbcf3e8",
+        "passed": true
+      },
+      {
+        "name": "client_runtime_artifacts: fixture readback empty",
+        "passed": true
+      },
+      {
+        "name": "client_runtime_jobs: fixture readback empty",
+        "passed": true
+      },
+      {
+        "name": "client_learning_items: fixture readback empty",
+        "passed": true
+      },
+      {
+        "name": "client_ecc_skill_revisions: fixture readback empty",
+        "passed": true
+      },
+      {
+        "name": "client_runtime_audit_events: fixture readback empty",
+        "passed": true
+      },
+      {
+        "name": "client_memberships: fixture readback empty",
+        "passed": true
+      },
+      {
+        "name": "client_runtime_rate_limits: fixture readback empty",
+        "passed": true
+      },
+      {
+        "name": "only intended test policies remain enabled",
+        "passed": true
+      }
+    ],
+    "removed": {
+      "artifacts": [
+        "c0b1dbdf-63cd-489b-96e0-b332722883fe",
+        "7ad0c0b7-dc34-4d5b-abd0-59487f0cc3fd"
+      ],
+      "revisions": [
+        "469efe17-e6e4-46e3-8dcc-162b70b6008a",
+        "5408ae81-2815-41ae-8e63-de4cebe42880"
+      ],
+      "learning": [
+        "8bb5b3e9-e798-4a70-be28-c96ec051597d",
+        "d632bd41-2871-4226-8d9b-6bc126b2711c",
+        "79b029e2-90e8-4a13-85ea-be4057518076",
+        "c1f99e0b-2d7c-4a25-88c3-e7a419f56de1",
+        "ff54cc01-ae70-4488-bda4-13e18aff4e62",
+        "4a3b529d-1a6d-4256-8bc1-07fa045ed7af",
+        "fd457b21-675b-4a61-8582-91825dd09bda",
+        "39244ac8-e267-46e0-b294-fcb40c04c867",
+        "d105b289-ce06-445a-937e-cbfad7b3f534",
+        "2fbf9e9e-1812-4db6-9b53-c98679642693",
+        "0bca9f40-eb82-4c73-b1a9-f89b374eb676",
+        "e02f54a1-fd1a-4f17-9596-b2d459b765a1",
+        "33c91ad0-073f-470b-ae63-e465c72ada5d",
+        "19a4a7c6-a057-487c-aea2-4f1aaab919bd",
+        "197299d1-d03e-4c39-9c7e-252ca66bedb0",
+        "701e26ad-528e-48b3-9b3b-a2b84b6b0353",
+        "0b7f5ae8-7e42-462a-8b83-c94ec6759805",
+        "57f3fe9a-a642-47b8-82a2-cdfdae4d5cbd"
+      ],
+      "jobs": [
+        "00aadc0c-50e4-479f-83c6-f6b137c6769c",
+        "1f10ecfb-b05a-42cf-9ae3-3a588202be55",
+        "4ad593fb-266d-4e1d-9bcd-d00a7344ac4c",
+        "a576a164-740f-4a2e-a1e6-9b5d34db767a",
+        "ab8f4e91-3383-4fbd-ab2d-8cf6d407891a",
+        "aca6573c-b7df-4584-89b6-980c0721bac3",
+        "c11e065a-833b-4541-8e31-ea3c0bc9cde0",
+        "e218ec21-d09f-4a2c-b0c8-11d48e9a22b2",
+        "2043af9a-c264-466b-817f-04015e5488e4",
+        "4f821586-27a1-4b8f-864a-166e2299ad88",
+        "5b1dbab0-02e9-4786-8fa9-f09acd26a43b",
+        "969a1ab1-0d58-42ae-baa0-6514cf6e4fdd",
+        "a5728299-47d3-4cfb-a421-88d61684b039",
+        "c004d0bc-9a58-4a0f-8a18-4776ae7c5e60",
+        "c8445932-b346-45a8-ae94-5cc86a38433d",
+        "e8ee973a-0d74-4b99-bf47-3011363d8637"
+      ],
+      "audit": [
+        736,
+        737,
+        738,
+        739,
+        740,
+        741,
+        742,
+        743,
+        744,
+        745,
+        746,
+        747,
+        748,
+        749
+      ],
+      "rateLimits": 20,
+      "memberships": 6,
+      "users": [
+        "f4a7dc36-937b-4717-876a-c50666f6dbaa",
+        "c1e1c979-7873-4ad9-970b-7a6bbbd60292",
+        "3ee04d61-d60b-4eac-9481-53aeb08aa7b7",
+        "91658fae-d7b6-4919-a81d-0ef0f0696782",
+        "e9c99417-434c-466f-89e3-64745f202d1f",
+        "00281ee8-79bd-4a0b-9be8-d29ecdbcf3e8"
+      ]
+    },
+    "completed": true,
+    "jobIds": [
+      "c004d0bc-9a58-4a0f-8a18-4776ae7c5e60",
+      "5b1dbab0-02e9-4786-8fa9-f09acd26a43b",
+      "969a1ab1-0d58-42ae-baa0-6514cf6e4fdd",
+      "4f821586-27a1-4b8f-864a-166e2299ad88",
+      "2043af9a-c264-466b-817f-04015e5488e4",
+      "c8445932-b346-45a8-ae94-5cc86a38433d",
+      "e8ee973a-0d74-4b99-bf47-3011363d8637",
+      "e218ec21-d09f-4a2c-b0c8-11d48e9a22b2",
+      "aca6573c-b7df-4584-89b6-980c0721bac3",
+      "4ad593fb-266d-4e1d-9bcd-d00a7344ac4c",
+      "1f10ecfb-b05a-42cf-9ae3-3a588202be55",
+      "00aadc0c-50e4-479f-83c6-f6b137c6769c",
+      "ab8f4e91-3383-4fbd-ab2d-8cf6d407891a",
+      "c11e065a-833b-4541-8e31-ea3c0bc9cde0",
+      "a5728299-47d3-4cfb-a421-88d61684b039",
+      "a576a164-740f-4a2e-a1e6-9b5d34db767a"
+    ],
+    "learningIds": [
+      "8bb5b3e9-e798-4a70-be28-c96ec051597d",
+      "d632bd41-2871-4226-8d9b-6bc126b2711c",
+      "79b029e2-90e8-4a13-85ea-be4057518076",
+      "c1f99e0b-2d7c-4a25-88c3-e7a419f56de1",
+      "ff54cc01-ae70-4488-bda4-13e18aff4e62",
+      "4a3b529d-1a6d-4256-8bc1-07fa045ed7af",
+      "fd457b21-675b-4a61-8582-91825dd09bda",
+      "39244ac8-e267-46e0-b294-fcb40c04c867",
+      "d105b289-ce06-445a-937e-cbfad7b3f534",
+      "2fbf9e9e-1812-4db6-9b53-c98679642693",
+      "0bca9f40-eb82-4c73-b1a9-f89b374eb676",
+      "e02f54a1-fd1a-4f17-9596-b2d459b765a1",
+      "33c91ad0-073f-470b-ae63-e465c72ada5d",
+      "19a4a7c6-a057-487c-aea2-4f1aaab919bd",
+      "197299d1-d03e-4c39-9c7e-252ca66bedb0",
+      "701e26ad-528e-48b3-9b3b-a2b84b6b0353",
+      "0b7f5ae8-7e42-462a-8b83-c94ec6759805",
+      "57f3fe9a-a642-47b8-82a2-cdfdae4d5cbd"
+    ],
+    "policies": [
+      {
+        "tenant_slug": "veloce-cloud-test",
+        "enabled": true
+      },
+      {
+        "tenant_slug": "dofgfood",
+        "enabled": true
+      }
+    ],
+    "cookiesRemoved": 6,
+    "finishedAt": "2026-09-13T14:57:24.522Z"
+  },
+  "finalConfiguration": {
+    "checkedAt": "2026-09-13T14:58:19.370Z",
+    "checks": [
+      {
+        "name": "veloce-cloud-test: proven final revision at 100%",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: exact original environment restored",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: original service account",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: temporary routing tags absent",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: original OIDC audience metadata restored",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: proven immutable image",
+        "passed": true
+      },
+      {
+        "name": "veloce-cloud-test: unauthenticated access still denied",
+        "passed": true
+      },
+      {
+        "name": "veloce-dofgfood: proven final revision at 100%",
+        "passed": true
+      },
+      {
+        "name": "veloce-dofgfood: exact original environment restored",
+        "passed": true
+      },
+      {
+        "name": "veloce-dofgfood: original service account",
+        "passed": true
+      },
+      {
+        "name": "veloce-dofgfood: temporary routing tags absent",
+        "passed": true
+      },
+      {
+        "name": "veloce-dofgfood: original OIDC audience metadata restored",
+        "passed": true
+      },
+      {
+        "name": "veloce-dofgfood: proven immutable image",
+        "passed": true
+      },
+      {
+        "name": "veloce-dofgfood: unauthenticated access still denied",
+        "passed": true
+      }
+    ],
+    "services": [
+      {
+        "name": "veloce-cloud-test",
+        "revision": "veloce-cloud-test-ecc-ga0913",
+        "image": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:0fa07713ef814ce0423874fec16f47bee41145b4feaab4a44f1127e2f6d14bdd",
+        "traffic": [
+          {
+            "revision": "veloce-cloud-test-00210-pez",
+            "percent": 0,
+            "tag": "ga-9ba8d46"
+          },
+          {
+            "revision": "veloce-cloud-test-ecc-ga0913",
+            "percent": 100
+          }
+        ],
+        "runtimeUrl": "https://veloce-cloud-test-mquo4bf7aq-el.a.run.app",
+        "originalEnvironmentRestored": true,
+        "serviceAccountPreserved": true,
+        "temporaryTagsRemoved": true,
+        "customAudienceRestored": true,
+        "scaling": {
+          "autoscaling.knative.dev/maxScale": "1",
+          "run.googleapis.com/client-name": "gcloud",
+          "run.googleapis.com/client-version": "581.0.0",
+          "run.googleapis.com/startup-cpu-boost": "true"
+        },
+        "anonymousEccStatus": 401
+      },
+      {
+        "name": "veloce-dofgfood",
+        "revision": "veloce-dofgfood-ecc-ga0913",
+        "image": "asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:0fa07713ef814ce0423874fec16f47bee41145b4feaab4a44f1127e2f6d14bdd",
+        "traffic": [
+          {
+            "revision": "veloce-dofgfood-00005-vec",
+            "percent": 0,
+            "tag": "ga-9ba8d46"
+          },
+          {
+            "revision": "veloce-dofgfood-ecc-ga0913",
+            "percent": 100
+          }
+        ],
+        "runtimeUrl": "https://veloce-dofgfood-mquo4bf7aq-el.a.run.app",
+        "originalEnvironmentRestored": true,
+        "serviceAccountPreserved": true,
+        "temporaryTagsRemoved": true,
+        "customAudienceRestored": true,
+        "scaling": {
+          "autoscaling.knative.dev/maxScale": "1",
+          "run.googleapis.com/client-name": "gcloud",
+          "run.googleapis.com/client-version": "581.0.0",
+          "run.googleapis.com/startup-cpu-boost": "true"
+        },
+        "anonymousEccStatus": 401
+      }
+    ],
+    "completed": true
+  },
+  "restoredLoginChecks": [
+    {
+      "service": "veloce-cloud-test",
+      "path": "/api/client-runtime/ecc",
+      "status": 401,
+      "temporaryFixtureDenied": true
+    },
+    {
+      "service": "veloce-cloud-test",
+      "path": "/api/client-runtime/learning",
+      "status": 401,
+      "temporaryFixtureDenied": true
+    },
+    {
+      "service": "veloce-cloud-test",
+      "path": "/api/client-runtime/skills",
+      "status": 401,
+      "temporaryFixtureDenied": true
+    },
+    {
+      "service": "veloce-dofgfood",
+      "path": "/api/client-runtime/ecc",
+      "status": 401,
+      "temporaryFixtureDenied": true
+    },
+    {
+      "service": "veloce-dofgfood",
+      "path": "/api/client-runtime/learning",
+      "status": 401,
+      "temporaryFixtureDenied": true
+    },
+    {
+      "service": "veloce-dofgfood",
+      "path": "/api/client-runtime/skills",
+      "status": 401,
+      "temporaryFixtureDenied": true
+    }
+  ],
+  "policyActivation": [
+    {
+      "tenantSlug": "veloce-cloud-test",
+      "previousPolicyEnabled": false,
+      "enabled": true,
+      "role": "owner",
+      "checkedAt": "2026-09-13T04:50:34.581Z"
+    },
+    {
+      "tenantSlug": "dofgfood",
+      "previousPolicyEnabled": false,
+      "enabled": true,
+      "role": "owner",
+      "checkedAt": "2026-09-13T04:50:47.362Z"
+    }
+  ],
+  "costPolicy": {
+    "externalInferenceCalls": 0,
+    "providerCostMicros": 0,
+    "infrastructureCostMicros": null,
+    "existingGcpTrialCreditsAuthorized": true,
+    "newSubscriptions": 0,
+    "newAlwaysOnInfrastructure": false
+  },
+  "gaReleaseReady": false,
+  "stillGated": [
+    "Unadapted upstream components and specialist prerequisites",
+    "Automatic hooks, MCP startup, observer and confidence-based injection",
+    "Paid integrations and unavailable provider capacity",
+    "Unapproved, expired, altered or revoked learning",
+    "Other client tenants until independently configured and owner/admin enabled",
+    "Separate GA acceptance, refund-notification defect and professional legal/SOC2 work"
+  ],
+  "evidenceScripts": {
+    "scripts/verify-ecc-runtime.mjs": "e504ed71e445992d888f69c76abd0ae3f2979c45eb1b700c019986277815f52a",
+    "scripts/lib/ecc-artifact-evidence.mjs": "0652747e436a7778e43bada2c695c9017fc9ceffa166c51d5add52dbe9b2f431",
+    "product-experience/supabase-v43-ecc-learning-canary.sql": "90003e97f2e4b3b9e877acca74fddcd975d37421043eb46328c8d05c6e169066"
+  },
+  "privateOperationalScriptHashes": {
+    "create-fixtures.mjs": "cbb0c94743efcccec85d0b0a09baeafa92ba9ac204c500ba356be528e0b4ff94",
+    "probe-final-worker.mjs": "25fb59a1289b565172b34587f47a9073cb3e792ddf6987aadcf39c2de8b0333f",
+    "cleanup-fixtures.mjs": "496853b83f3f0df69175e4ff821ef760e809cbec5a7fffbd3caa3f976427c1d1",
+    "capture-final.mjs": "69b6210cfb17067f632b2820338d5ec92d50c709040064c7065276d4ca6c25ab"
+  }
+}
