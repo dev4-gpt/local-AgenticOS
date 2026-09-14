@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-14T16:11:07Z",
+  "candidate": {
+    "sourceCommit": "71a95f085720372c488618867075f40a9d9ba28a",
+    "deployedApplicationCommit": "d658ad6b79f39723f41ed28cd5c738da8772b523",
+    "vercelDeployment": "dpl_6mAHzPBw9rEhx3fAipLCXfGSrEgH",
+    "vercelUrl": "https://app.veloceos.cloud",
+    "controlPlanePublicRevision": "veloce-public-provisioner-00022-9mz",
+    "controlPlaneAdapterRevision": "veloce-gcp-provisioner-00038-wjj",
+    "controlPlaneAdapterImage": "sha256:5723869b59eb9d66a2d69ac0d236c4d766308f8ebfde932f829494f7ccb2d81d",
+    "managedOpenRouterRevision": "veloce-managed-openrouter-00005-zkf",
+    "managedOpenRouterImage": "sha256:4574d50ecae881d2107f16c47c4335a2870ec6e1fa6cdbe0117c2e53a1dd2f6a",
+    "migration": {
+      "file": "product-experience/supabase-v44-stripe-financial-event-dispositions.sql",
+      "sha256": "c9cdffa90f269fd52bf0255f493022f564a6746696c9e89d9c94e76ebc4c293b",
+      "productionEvidence": "docs/evidence/v44-production-migration-2026-09-13.json"
+    }
+  },
+  "checks": {
+    "focusedTests": { "status": "passed", "count": 198 },
+    "typecheck": "passed",
+    "securityAndPolicy": "passed",
+    "productExperienceCheck": "passed",
+    "vercelProductionEnvironment": "passed",
+    "publicSiteSmoke": "passed",
+    "controlPlaneBoundaryAndHealthBridge": "passed",
+    "disposableCanaryInventoryAndPreflight": "passed",
+    "stripeRefundClassificationAndReplay": "passed",
+    "managedOpenRouterBoundary": "passed",
+    "managedOpenRouterReadyz": "not_rerun_from_deployer_identity",
+    "managedOpenRouterCapOwnershipProof": "pending",
+    "twoTenantCurrentRevisionJourney": "pending",
+    "byokCurrentRevisionLifecycle": "pending",
+    "tenantIsolationCurrentRevision": "pending",
+    "operationsApproval": "pending_owner",
+    "legalApproval": "pending_owner"
+  },
+  "stripe": {
+    "eventId": "evt_3UCvq62UC1bGDyMo1nKzGG7L",
+    "eventType": "charge.refunded",
+    "financialScope": "public_launch",
+    "payloadHash": "825186a31fa70d1870159bce8d277d702465fe31110c39817215d36d11119618",
+    "disposition": "public_launch_refund_reviewed",
+    "signedReplay": "processed",
+    "duplicateReplay": "processed_idempotent",
+    "managedCreditMutation": "none"
+  },
+  "releaseReady": false,
+  "releaseReadyReason": "The strict ledger remains intentionally unpublished until the current two-tenant public journey, current BYOK lifecycle/isolation evidence, managed-cap ownership proof, and named operations/legal approvals are attached."
+}
