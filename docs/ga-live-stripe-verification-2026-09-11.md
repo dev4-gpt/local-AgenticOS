@@ -74,3 +74,34 @@ No new payment, refund, provider call or paid service was used. The deployed
 application/runtime source remains `9ba8d46`; this repair changes Stripe
 configuration and documentation only. The existing release ledger remains
 `releaseReady: false`; the other acceptance journeys and approvals remain open.
+
+## 2026-09-14 repair and replay
+
+Source commit `17f1498d551b880519c8b7cf7ecf5234175163a6` added explicit
+Stripe financial scopes, the append-only reviewed-disposition table, an
+owner-only review endpoint, and regression coverage for public-launch refunds,
+ambiguous events, malformed metadata, duplicate delivery, and strict ledger
+publication.
+
+The candidate was deployed to Vercel deployment
+`dpl_JADE5haEFp3XUyrp61VFg57kMcCH` and promoted to
+`https://app.veloceos.cloud`. The Supabase V44 migration was applied to
+project `ppmoqjtmjtfxadsnejqc`.
+
+The historical live refund event
+`evt_3UCvq62UC1bGDyMo1nKzGG7L` was reconciled through the new hash-bound
+review path using payload hash
+`825186a31fa70d1870159bce8d277d702465fe31110c39817215d36d11119618`.
+Stripe dashboard signed redelivery then returned HTTP 200 with application
+status `public_launch_refund_reviewed`; a second manual redelivery returned
+HTTP 200 with `duplicate: true`.
+
+Supabase verification after replay showed the webhook row as
+`status: processed`, `financial_scope: public_launch`, and `error_code: null`.
+The immutable reviewed disposition exists with disposition
+`public_launch_refund_reviewed`. Managed-credit tables were only captured as
+aggregate row counts/fingerprints in evidence; no raw Stripe payload or
+credential data was copied into the repo.
+
+The evidence packet is
+[`docs/evidence/ga-live-stripe-reconciliation-2026-09-14.json`](evidence/ga-live-stripe-reconciliation-2026-09-14.json).

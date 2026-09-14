@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-09-14T05:35:39Z",
+  "sourceCommit": "17f1498d551b880519c8b7cf7ecf5234175163a6",
+  "productionDeployment": {
+    "provider": "vercel",
+    "deploymentId": "dpl_JADE5haEFp3XUyrp61VFg57kMcCH",
+    "candidateUrl": "https://product-experience-hf0ttv7ej-veloce-agentic-os.vercel.app",
+    "productionUrl": "https://app.veloceos.cloud"
+  },
+  "stripe": {
+    "accountId": "acct_1U7KNI2UC1bGDyMo",
+    "webhookEndpointId": "we_1U8QPk2UC1bGDyMoG7ah8GsH",
+    "endpointUrl": "https://app.veloceos.cloud/api/billing/webhook",
+    "apiVersion": "2026-07-29.dahlia",
+    "eventId": "evt_3UCvq62UC1bGDyMo1nKzGG7L",
+    "eventType": "charge.refunded",
+    "payloadHashSha256": "825186a31fa70d1870159bce8d277d702465fe31110c39817215d36d11119618",
+    "fixture": {
+      "amountCents": 200,
+      "currency": "usd",
+      "chargeId": "ch_3UCvq62UC1bGDyMo1NEZqvSn",
+      "customerId": "cus_VDMZCHDl4nnNie",
+      "classification": "public_launch",
+      "rawPayloadStoredInEvidence": false
+    }
+  },
+  "operatorReview": {
+    "api": "POST /api/internal/billing/webhook-review",
+    "statusCode": 200,
+    "result": {
+      "ok": true,
+      "existing": false,
+      "disposition": "public_launch_refund_reviewed"
+    },
+    "reviewedBy": "codex-owner-authorized-completion",
+    "reasonLength": 360,
+    "scope": "public_launch",
+    "walletEffectsAuthorized": false
+  },
+  "liveReplay": {
+    "method": "Stripe dashboard signed resend; CLI live auth was expired",
+    "firstManualRedelivery": {
+      "observedAt": "2026-09-14T05:34:46Z",
+      "stripeUiStatus": "200 OK",
+      "deliveryStatus": "Delivered / Recovered",
+      "response": {
+        "ok": true,
+        "eventId": "evt_3UCvq62UC1bGDyMo1nKzGG7L",
+        "status": "public_launch_refund_reviewed"
+      },
+      "pendingWebhooks": 0
+    },
+    "duplicateManualRedelivery": {
+      "observedAt": "2026-09-14T05:35:21Z",
+      "stripeUiStatus": "200 OK",
+      "deliveryStatus": "Delivered / Recovered",
+      "response": {
+        "ok": true,
+        "duplicate": true
+      },
+      "pendingWebhooks": 0
+    }
+  },
+  "databaseVerification": {
+    "projectRef": "ppmoqjtmjtfxadsnejqc",
+    "method": "Authenticated Supabase SQL Editor read-only query",
+    "stripeWebhookEvent": {
+      "eventId": "evt_3UCvq62UC1bGDyMo1nKzGG7L",
+      "eventType": "charge.refunded",
+      "payloadHashSha256": "825186a31fa70d1870159bce8d277d702465fe31110c39817215d36d11119618",
+      "status": "processed",
+      "financialScope": "public_launch",
+      "errorCode": null
+    },
+    "stripeFinancialEventDisposition": {
+      "eventId": "evt_3UCvq62UC1bGDyMo1nKzGG7L",
+      "eventType": "charge.refunded",
+      "payloadHashSha256": "825186a31fa70d1870159bce8d277d702465fe31110c39817215d36d11119618",
+      "financialScope": "public_launch",
+      "disposition": "public_launch_refund_reviewed",
+      "recordedBy": "codex-owner-authorized-completion",
+      "recordedAtPresent": true
+    },
+    "managedCreditFingerprintsAfterReplay": {
+      "client_credit_accounts": {
+        "rows": 1,
+        "md5": "0d7a21f416289a2a5afcc20fb1e9a16e"
+      },
+      "client_credit_transactions": {
+        "rows": 15,
+        "md5": "31fce44a094b6276a18fc2edbb924c0a"
+      },
+      "client_credit_purchase_plans": {
+        "rows": 13,
+        "md5": "120f2f11fea6cc43d7b738f06dff83b8"
+      },
+      "client_credit_budgets": {
+        "rows": 5,
+        "md5": "041cafd09dedfb3fb9023659c7065490"
+      }
+    }
+  },
+  "acceptance": {
+    "publicLaunchRefundClassifiedWithoutWalletEffect": true,
+    "unknownOrAmbiguousEventsRemainFailClosed": true,
+    "duplicateDeliveryIdempotent": true,
+    "rawStripePayloadIncluded": false,
+    "releaseReady": false
+  },
+  "notes": [
+    "This reconciles the historical live USD 2 public-launch refund that was left open in docs/ga-live-stripe-verification-2026-09-11.md.",
+    "The two other pre-existing failed Stripe webhook rows remain failed and require separate review or fixture-specific evidence before any reconciliation."
+  ]
+}
