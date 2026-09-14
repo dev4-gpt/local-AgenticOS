@@ -110,6 +110,7 @@
   },
   "notes": [
     "This reconciles the historical live USD 2 public-launch refund that was left open in docs/ga-live-stripe-verification-2026-09-11.md.",
+    "After this replay, evidence-only commit d658ad6b79f39723f41ed28cd5c738da8772b523 was built and promoted as Vercel deployment dpl_6mAHzPBw9rEhx3fAipLCXfGSrEgH so the current production deployment points at the repo commit that contains this evidence.",
     "The two other pre-existing failed Stripe webhook rows remain failed and require separate review or fixture-specific evidence before any reconciliation."
   ]
 }

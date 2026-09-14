@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-14T05:41:16.465Z",
+  "source": {
+    "commit": "d658ad6b79f39723f41ed28cd5c738da8772b523",
+    "branch": "main",
+    "previousCodeCommit": "17f1498d551b880519c8b7cf7ecf5234175163a6",
+    "changeClass": "evidence-only after Stripe reconciliation"
+  },
+  "database": {
+    "projectRef": "ppmoqjtmjtfxadsnejqc",
+    "appliedMigrationEvidence": "docs/evidence/v44-production-migration-2026-09-13.json",
+    "appliedMigrationSha256": "c9cdffa90f269fd52bf0255f493022f564a6746696c9e89d9c94e76ebc4c293b"
+  },
+  "vercel": {
+    "project": "product-experience",
+    "deploymentId": "dpl_6mAHzPBw9rEhx3fAipLCXfGSrEgH",
+    "candidateUrl": "https://product-experience-efoosiid9-veloce-agentic-os.vercel.app",
+    "productionUrl": "https://app.veloceos.cloud",
+    "previousProductionDeploymentId": "dpl_JADE5haEFp3XUyrp61VFg57kMcCH",
+    "rollbackDeploymentId": "dpl_JADE5haEFp3XUyrp61VFg57kMcCH",
+    "readyState": "READY",
+    "nodeRuntime": "nodejs24.x"
+  },
+  "runtime": {
+    "cloudRunRebuilt": false,
+    "latestKnownRuntimeSource": "3671d70b5be322985cd41ea2799e130c3580a942",
+    "latestKnownRuntimeDigest": "sha256:0fa07713ef814ce0423874fec16f47bee41145b4feaab4a44f1127e2f6d14bdd",
+    "note": "The 2026-09-14 pass changed the product-experience app and evidence docs only; existing Cloud Run revisions were not rebuilt or moved."
+  },
+  "build": {
+    "command": "vercel build --prod",
+    "status": "passed",
+    "npmAudit": "0 vulnerabilities",
+    "nextVersion": "16.3.4"
+  },
+  "stagedSmoke": {
+    "target": "https://product-experience-efoosiid9-veloce-agentic-os.vercel.app",
+    "observedAt": "2026-09-14T05:40:43.604Z",
+    "checks": [
+      { "method": "GET", "path": "/", "status": 200, "expected": 200, "passed": true },
+      { "method": "GET", "path": "/start", "status": 200, "expected": 200, "passed": true },
+      { "method": "POST", "path": "/api/billing/webhook", "status": 400, "expected": 400, "passed": true },
+      { "method": "POST", "path": "/api/internal/billing/webhook-review", "status": 401, "expected": 401, "passed": true },
+      { "method": "POST", "path": "/api/onboarding/activate", "status": 401, "expected": 401, "passed": true },
+      { "method": "POST", "path": "/api/internal/managed-provider/openrouter", "status": 401, "expected": 401, "passed": true }
+    ],
+    "passed": true
+  },
+  "productionSmoke": {
+    "target": "https://app.veloceos.cloud",
+    "observedAt": "2026-09-14T05:41:16.465Z",
+    "checks": [
+      { "method": "GET", "path": "/", "status": 200, "expected": 200, "passed": true },
+      { "method": "GET", "path": "/start", "status": 200, "expected": 200, "passed": true },
+      { "method": "POST", "path": "/api/billing/webhook", "status": 400, "expected": 400, "passed": true },
+      { "method": "POST", "path": "/api/internal/billing/webhook-review", "status": 401, "expected": 401, "passed": true },
+      { "method": "POST", "path": "/api/onboarding/activate", "status": 401, "expected": 401, "passed": true },
+      { "method": "POST", "path": "/api/internal/managed-provider/openrouter", "status": 401, "expected": 401, "passed": true }
+    ],
+    "passed": true
+  },
+  "stripeReconciliationEvidence": "docs/evidence/ga-live-stripe-reconciliation-2026-09-14.json",
+  "acceptance": {
+    "sourceCommitAlignedWithProductionDeployment": true,
+    "newTenantOrProviderActivationPerformed": false,
+    "releaseReady": false
+  }
+}
