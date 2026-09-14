@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-14T16:11:07Z",
+  "generatedAt": "2026-09-14T16:12:47Z",
   "candidate": {
     "sourceCommit": "71a95f085720372c488618867075f40a9d9ba28a",
     "deployedApplicationCommit": "d658ad6b79f39723f41ed28cd5c738da8772b523",
     "vercelDeployment": "dpl_6mAHzPBw9rEhx3fAipLCXfGSrEgH",
     "vercelUrl": "https://app.veloceos.cloud",
     "controlPlanePublicRevision": "veloce-public-provisioner-00022-9mz",
-    "controlPlaneAdapterRevision": "veloce-gcp-provisioner-00038-wjj",
+    "controlPlaneAdapterRevision": "veloce-gcp-provisioner-00039-x9q",
     "controlPlaneAdapterImage": "sha256:5723869b59eb9d66a2d69ac0d236c4d766308f8ebfde932f829494f7ccb2d81d",
     "managedOpenRouterRevision": "veloce-managed-openrouter-00005-zkf",
     "managedOpenRouterImage": "sha256:4574d50ecae881d2107f16c47c4335a2870ec6e1fa6cdbe0117c2e53a1dd2f6a",
