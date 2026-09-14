@@ -29,7 +29,7 @@
     "stripeRefundClassificationAndReplay": "passed",
     "managedOpenRouterBoundary": "passed",
     "managedOpenRouterReadyz": "not_rerun_from_deployer_identity",
-    "managedOpenRouterCapOwnershipProof": "pending",
+    "managedOpenRouterCapOwnershipProof": "partial_redacted_key_metadata",
     "twoTenantCurrentRevisionJourney": "pending",
     "byokCurrentRevisionLifecycle": "pending",
     "tenantIsolationCurrentRevision": "pending",
@@ -45,6 +45,15 @@
     "signedReplay": "processed",
     "duplicateReplay": "processed_idempotent",
     "managedCreditMutation": "none"
+  },
+  "managedOpenRouter": {
+    "keyMetadataObservedAt": "2026-09-14T16:14:39Z",
+    "lifetimeLimitUsd": 4,
+    "remainingUsd": 3.99998845,
+    "usageUsd": 0.00001155,
+    "limitReset": null,
+    "autoTopUpProof": "pending_owner_dashboard",
+    "paidCanary": "historical_owner_authenticated_evidence_only"
   },
   "releaseReady": false,
   "releaseReadyReason": "The strict ledger remains intentionally unpublished until the current two-tenant public journey, current BYOK lifecycle/isolation evidence, managed-cap ownership proof, and named operations/legal approvals are attached."
