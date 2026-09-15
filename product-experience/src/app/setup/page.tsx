@@ -15,7 +15,8 @@ export default function SetupPage() {
       const response = await fetch("/api/onboarding/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
       const body = await response.json().catch(() => null);
       if (response.ok && typeof body?.actionLink === "string") { window.location.assign(body.actionLink); return; }
-      setMessage("This setup link is invalid, expired, or already used. Contact support for a new one.");
+      const code = typeof body?.error === "string" && /^[a-z_]{3,80}$/.test(body.error) ? ` (${body.error})` : "";
+      setMessage(`This setup link could not be completed${code}. Contact support if it persists.`);
     } catch {
       setMessage("Could not open the setup link. Contact support.");
     } finally {

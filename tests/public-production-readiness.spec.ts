@@ -131,6 +131,7 @@ test("tenant activation is bound to a deployed runtime smoke and the verified ow
   expect(setup).toContain('role: "owner"');
   const setupPage = readFileSync(resolve(process.cwd(), "product-experience/src/app/setup/page.tsx"), "utf8");
   expect(setupPage).toContain("Continue securely");
+  expect(setupPage).toContain("body?.error");
   expect(setupPage).not.toContain("useEffect");
 });
 
