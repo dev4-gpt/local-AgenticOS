@@ -160,7 +160,12 @@ export async function sendSetupEmail(input: { email: string; name: string; token
   const appUrl = (process.env.PUBLIC_APP_URL?.trim() || "https://app.veloceos.cloud").replace(/\/$/, "");
   if (!apiKey || !from) return "not_configured" as const;
   const path = input.kind === "verify" ? "/verify" : "/setup";
-  const subject = input.kind === "verify" ? "Verify your Veloce AgenticOS request" : "Your Veloce AgenticOS setup link";
+  // A distinct subject prevents mail clients from grouping a new one-time
+  // link under an earlier, intentionally invalidated message.
+  const issuedAt = new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC";
+  const subject = input.kind === "verify"
+    ? `Verify your Veloce AgenticOS request (${issuedAt})`
+    : `Your Veloce AgenticOS setup link (${issuedAt})`;
   const link = `${appUrl}${path}?token=${encodeURIComponent(input.token)}`;
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST", signal: AbortSignal.timeout(5_000),

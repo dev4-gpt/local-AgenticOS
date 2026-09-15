@@ -129,6 +129,9 @@ test("tenant activation is bound to a deployed runtime smoke and the verified ow
   expect(activate).not.toContain('["smoke_testing", "provisioning"]');
   expect(setup).toContain('supabaseServiceUpsert("client_memberships"');
   expect(setup).toContain('role: "owner"');
+  const setupPage = readFileSync(resolve(process.cwd(), "product-experience/src/app/setup/page.tsx"), "utf8");
+  expect(setupPage).toContain("Continue securely");
+  expect(setupPage).not.toContain("useEffect");
 });
 
 test("team support notification is server-side and contains no credential field", async () => {
