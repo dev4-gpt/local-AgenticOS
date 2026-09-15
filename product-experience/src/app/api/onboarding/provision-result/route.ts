@@ -52,10 +52,20 @@ export async function POST(request: Request) {
   const manifestBudget = approvedManifest.budget && typeof approvedManifest.budget === "object" && !Array.isArray(approvedManifest.budget)
     ? approvedManifest.budget as Record<string, unknown>
     : {};
-  const monthlyCapDollars = Number(manifestBudget.monthlyCap);
+  const monthlyCapValue = manifestBudget.monthlyCap;
+  const monthlyCapDollars = Number(monthlyCapValue);
   const warningThresholdDollars = Number(manifestBudget.warningThreshold);
   if (Object.hasOwn(manifestBudget, "monthlyCap")) {
-    if (typeof manifestBudget.monthlyCap !== "number" || !Number.isSafeInteger(Math.round(monthlyCapDollars * 1_000_000)) || monthlyCapDollars < 0) {
+    // The manifest validator accepts JSON number strings so operators can use
+    // exact decimal notation in reviewed manifests. The callback must accept
+    // that same contract; otherwise a successful runtime smoke can never
+    // transition the onboarding account to activation-ready.
+    const decimalString = typeof monthlyCapValue === "string" && /^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(monthlyCapValue.trim());
+    const numericValue = typeof monthlyCapValue === "number" || decimalString;
+    if (!numericValue || !Number.isFinite(monthlyCapDollars) || !Number.isSafeInteger(Math.round(monthlyCapDollars * 1_000_000)) || monthlyCapDollars < 0) {
+      return NextResponse.json({ ok: false, error: "managed_credit_cap_invalid" }, { status: 409 });
+    }
+    if (Number.isFinite(warningThresholdDollars) && warningThresholdDollars > monthlyCapDollars) {
       return NextResponse.json({ ok: false, error: "managed_credit_cap_invalid" }, { status: 409 });
     }
     const creditAccountFields: Record<string, unknown> = {

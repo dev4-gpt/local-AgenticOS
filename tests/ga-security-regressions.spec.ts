@@ -124,6 +124,23 @@ test("provisioning refuses activation when its approved monthly cap cannot persi
   expect(writes.some((w) => w.table === "client_onboarding_accounts")).toBe(false);
 });
 
+test("provisioning accepts a validated decimal-string monthly cap and persists it in micros", async () => {
+  process.env.CONTROL_PLANE_OPERATOR_SECRET = "operator-test";
+  const writes: Array<{ table: string; record: Record<string, unknown> }> = [];
+  const mod = loadReviewModule("product-experience/src/app/api/onboarding/provision-result/route.ts", {
+    "@/lib/publicLaunch": {
+      supabaseServiceSelect: async (table: string) => ({ ok: true, rows: table === "client_provisioning_runs" ? [{ onboarding_id: "onboarding-a" }] : [{ approved_manifest: { clientSlug: "tenant-a", budget: { monthlyCap: "0.25", warningThreshold: "0.20" } } }] }),
+      supabaseServiceUpdate: async (table: string, _filters: unknown, record: Record<string, unknown>) => { writes.push({ table, record }); return { ok: true }; },
+      supabaseServiceUpsert: async (table: string, record: Record<string, unknown>) => { writes.push({ table, record }); return { ok: true }; },
+    },
+  });
+  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test", "Content-Type": "application/json" }, body: JSON.stringify({ runId: "run-a", status: "succeeded", resourceManifest: { phase: "deploy", runtimeUrl: "https://tenant-a.run.app", clientSlug: "tenant-a", clientName: "Tenant A", retentionDays: 30 }, evidenceBundle: { smoke: { ok: true, url: "https://tenant-a.run.app" } } }) }));
+  expect(result.status).toBe(200);
+  expect(await result.json()).toMatchObject({ ok: true, activationReady: true });
+  expect(writes.find((w) => w.table === "client_credit_accounts")?.record).toMatchObject({ tenant_slug: "tenant-a", monthly_cap_micros: 250000, warning_threshold_micros: 200000 });
+  expect(writes.find((w) => w.table === "client_onboarding_accounts")?.record).toMatchObject({ status: "smoke_testing", tenant_slug: "tenant-a", runtime_url: "https://tenant-a.run.app" });
+});
+
 test("integration runtime rejects missing, blank and pending provenance for enabled high-risk entries", () => {
   for (const field of ["sbomReference", "provenanceReference"]) {
     for (const missing of [null, "", "  ", " pending:review", "Pending:review"]) {
