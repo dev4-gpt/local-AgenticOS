@@ -33,6 +33,13 @@ export async function POST(request: Request) {
   const token = await supabaseServiceInsert("client_onboarding_tokens", { onboarding_id: onboardingId, token_hash: hashSetupToken(rawToken), purpose: "setup", expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() });
   if (!token.ok) return NextResponse.json({ ok: false, error: "setup_token_failed" }, { status: 502 });
   const delivery = await sendSetupEmail({ email: account.email, name, token: rawToken, kind: "setup" });
-  await supabaseServiceUpdate("client_onboarding_accounts", { id: `eq.${onboardingId}` }, { status: "active", activated_at: new Date().toISOString(), setup_link_sent_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+  // A setup token is useful only if its delivery was accepted. Never mark a
+  // tenant active on an unconfigured or failed mail send: that would leave
+  // the owner unable to establish their membership while reporting success.
+  if (delivery !== "sent") {
+    return NextResponse.json({ ok: false, error: "setup_email_delivery_failed", delivery }, { status: 502 });
+  }
+  const activated = await supabaseServiceUpdate("client_onboarding_accounts", { id: `eq.${onboardingId}` }, { status: "active", activated_at: new Date().toISOString(), setup_link_sent_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+  if (!activated.ok) return NextResponse.json({ ok: false, error: "onboarding_activation_update_failed" }, { status: 502 });
   return NextResponse.json({ ok: true, onboardingId, status: "active", delivery });
 }

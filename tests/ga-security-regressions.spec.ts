@@ -141,6 +141,31 @@ test("provisioning accepts a validated decimal-string monthly cap and persists i
   expect(writes.find((w) => w.table === "client_onboarding_accounts")?.record).toMatchObject({ status: "smoke_testing", tenant_slug: "tenant-a", runtime_url: "https://tenant-a.run.app" });
 });
 
+test("activation fails closed when its setup email is not accepted", async () => {
+  process.env.CONTROL_PLANE_OPERATOR_SECRET = "operator-test";
+  const updates: Array<{ table: string; record: Record<string, unknown> }> = [];
+  const mod = loadReviewModule("product-experience/src/app/api/onboarding/activate/route.ts", {
+    "@/lib/publicLaunch": {
+      hashSetupToken: () => "hashed-token",
+      sendSetupEmail: async () => "failed",
+      supabaseServiceInsert: async () => ({ ok: true, rows: [{ id: "token-a" }] }),
+      supabaseServiceSelect: async (table: string) => ({
+        ok: true,
+        rows: table === "client_onboarding_accounts"
+          ? [{ request_id: "request-a", email: "owner@example.com", status: "smoke_testing", tenant_slug: "tenant-a", runtime_url: "https://tenant-a.run.app" }]
+          : table === "client_provisioning_runs"
+            ? [{ evidence_bundle: { smoke: { ok: true, url: "https://tenant-a.run.app" } } }]
+            : [{ name: "Tenant A" }],
+      }),
+      supabaseServiceUpdate: async (table: string, _filters: unknown, record: Record<string, unknown>) => { updates.push({ table, record }); return { ok: true }; },
+    },
+  });
+  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test", "Content-Type": "application/json" }, body: JSON.stringify({ onboardingId: "onboarding-a" }) }));
+  expect(result.status).toBe(502);
+  expect(await result.json()).toMatchObject({ error: "setup_email_delivery_failed", delivery: "failed" });
+  expect(updates).toEqual([]);
+});
+
 test("integration runtime rejects missing, blank and pending provenance for enabled high-risk entries", () => {
   for (const field of ["sbomReference", "provenanceReference"]) {
     for (const missing of [null, "", "  ", " pending:review", "Pending:review"]) {
