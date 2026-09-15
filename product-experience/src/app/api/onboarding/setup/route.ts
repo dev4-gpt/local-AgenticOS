@@ -17,12 +17,16 @@ export async function POST(request: Request) {
   const config = publicLaunchConfig();
   if (!email || !tenantSlug || onboarding?.status !== "active" || !config) return NextResponse.json({ ok: false, error: "setup_unavailable" }, { status: 503 });
   const invite = await fetch(`${config.url}/auth/v1/admin/generate_link`, { method: "POST", headers: { apikey: config.serviceKey, Authorization: `Bearer ${config.serviceKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ type: "magiclink", email, redirect_to: process.env.PUBLIC_APP_URL || "https://app.veloceos.cloud" }), cache: "no-store" }).catch(() => null);
-  const inviteBody = await invite?.json().catch(() => null) as { action_link?: unknown; user?: { id?: unknown } } | null;
+  const inviteBody = await invite?.json().catch(() => null) as { action_link?: unknown; id?: unknown; user?: { id?: unknown } } | null;
   if (!invite?.ok || typeof inviteBody?.action_link !== "string") return NextResponse.json({ ok: false, error: "auth_link_failed" }, { status: 502 });
-  if (typeof inviteBody.user?.id !== "string") return NextResponse.json({ ok: false, error: "auth_user_missing" }, { status: 502 });
-  const membership = await supabaseServiceUpsert("client_memberships", { tenant_slug: tenantSlug, user_id: inviteBody.user.id, role: "owner", status: "active" }, "tenant_slug,user_id");
+  // GoTrue's Admin generate_link response exposes the created user's fields
+  // at the top level. Older client wrappers nested them under user, so accept
+  // both trusted-server response shapes.
+  const authUserId = typeof inviteBody.id === "string" ? inviteBody.id : typeof inviteBody.user?.id === "string" ? inviteBody.user.id : null;
+  if (!authUserId) return NextResponse.json({ ok: false, error: "auth_user_missing" }, { status: 502 });
+  const membership = await supabaseServiceUpsert("client_memberships", { tenant_slug: tenantSlug, user_id: authUserId, role: "owner", status: "active" }, "tenant_slug,user_id");
   if (!membership.ok) return NextResponse.json({ ok: false, error: "membership_bind_failed" }, { status: 502 });
   await supabaseServiceUpdate("client_onboarding_tokens", { id: `eq.${record.id}` }, { consumed_at: new Date().toISOString() });
-  await supabaseServiceUpdate("client_onboarding_accounts", { id: `eq.${record.onboarding_id}` }, { auth_user_id: inviteBody.user.id, updated_at: new Date().toISOString() });
+  await supabaseServiceUpdate("client_onboarding_accounts", { id: `eq.${record.onboarding_id}` }, { auth_user_id: authUserId, updated_at: new Date().toISOString() });
   return NextResponse.json({ ok: true, actionLink: inviteBody.action_link });
 }

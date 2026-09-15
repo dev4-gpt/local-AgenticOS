@@ -166,6 +166,34 @@ test("activation fails closed when its setup email is not accepted", async () =>
   expect(updates).toEqual([]);
 });
 
+test("setup accepts the current top-level Supabase generate-link user id", async () => {
+  const updates: Array<{ table: string; record: Record<string, unknown> }> = [];
+  const upserts: Array<{ table: string; record: Record<string, unknown> }> = [];
+  globalThis.fetch = async (url) => {
+    expect(String(url)).toBe("https://db.invalid/auth/v1/admin/generate_link");
+    return Response.json({ action_link: "https://auth.invalid/magic", id: "user-a" });
+  };
+  const mod = loadReviewModule("product-experience/src/app/api/onboarding/setup/route.ts", {
+    "@/lib/publicLaunch": {
+      hashSetupToken: () => "hashed-token",
+      publicLaunchConfig: () => ({ url: "https://db.invalid", serviceKey: "service-key" }),
+      supabaseServiceSelect: async (table: string) => ({
+        ok: true,
+        rows: table === "client_onboarding_tokens"
+          ? [{ id: "token-a", onboarding_id: "onboarding-a", expires_at: new Date(Date.now() + 60_000).toISOString() }]
+          : [{ email: "owner@example.com", tenant_slug: "tenant-a", status: "active" }],
+      }),
+      supabaseServiceUpdate: async (table: string, _filters: unknown, record: Record<string, unknown>) => { updates.push({ table, record }); return { ok: true }; },
+      supabaseServiceUpsert: async (table: string, record: Record<string, unknown>) => { upserts.push({ table, record }); return { ok: true }; },
+    },
+  });
+  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: "token-a" }) }));
+  expect(result.status).toBe(200);
+  expect(await result.json()).toMatchObject({ ok: true, actionLink: "https://auth.invalid/magic" });
+  expect(upserts).toEqual([{ table: "client_memberships", record: { tenant_slug: "tenant-a", user_id: "user-a", role: "owner", status: "active" } }]);
+  expect(updates.find((entry) => entry.table === "client_onboarding_accounts")?.record).toMatchObject({ auth_user_id: "user-a" });
+});
+
 test("integration runtime rejects missing, blank and pending provenance for enabled high-risk entries", () => {
   for (const field of ["sbomReference", "provenanceReference"]) {
     for (const missing of [null, "", "  ", " pending:review", "Pending:review"]) {
