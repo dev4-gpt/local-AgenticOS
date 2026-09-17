@@ -8,6 +8,8 @@
     "dev:workspace": "env PORT=3939 node scripts/run-next-dev.mjs",
     "dev:operator-runtime": "node scripts/run-operator-runtime-local.mjs",
     "dev:client-runtime": "node scripts/run-client-runtime-local.mjs",
+    "local-worker": "node workers/local-worker/worker.mjs",
+    "verify:local-worker": "node scripts/verify-local-worker.mjs",
     "dev:landing": "npm --prefix public-site run dev",
     "dev:experience": "npm --prefix product-experience run dev",
     "build": "next build",

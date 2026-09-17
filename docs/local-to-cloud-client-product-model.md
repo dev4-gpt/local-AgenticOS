@@ -6,6 +6,13 @@
 operator OS remains the product laboratory and control plane. Each client gets
 an isolated cloud edition, not a fork and not a copy of the operator machine.
 
+> **Current product plan:** The dated [Hybrid Edition status and product
+> plan](./hybrid-edition-product-plan.md) is the current planning companion to
+> this operating model. It distinguishes the current staged GA candidate from
+> historical cloud-test milestones and defines the paired Local Worker
+> direction. Release evidence and the strict verifier remain authoritative for
+> release acceptance.
+
 ## The Master Plan
 
 The intended product model is correct, with one necessary boundary:

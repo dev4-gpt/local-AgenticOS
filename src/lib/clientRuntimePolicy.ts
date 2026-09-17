@@ -4,7 +4,7 @@ const DEFAULT_CLIENT_ROUTES = [
   "/kimi", "/glm", "/glm-code", "/grok", "/freeclaude", "/fusion", "/sakana", "/local", "/engine",
   "/agent-kanban", "/loop", "/ruflo", "/goals", "/journal", "/seo", "/opendesign", "/web-studio",
   "/flow-lab", "/integrations", "/video", "/studio", "/openmontage", "/music", "/games", "/thumbnails",
-  "/notebook", "/kanban", "/memory", "/leads", "/radar", "/guide", "/seo-guide",
+  "/notebook", "/kanban", "/memory", "/leads", "/radar", "/guide", "/seo-guide", "/hybrid",
 ];
 const DEFAULT_CLIENT_API_ROUTES = [
   "/api/capabilities",

@@ -4,7 +4,7 @@ import Link from "next/link";
 import EccLearningPanel from "@/components/EccLearningPanel";
 import EccWorkflowsPanel from "@/components/EccWorkflowsPanel";
 import { useState, type FormEvent } from "react";
-import { ArrowUpRight, CheckCircle2, ClipboardList, FileText, GitBranch, KeyRound, MessageSquareText, PackageCheck, Send, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, ClipboardList, FileText, GitBranch, KeyRound, Link2, MessageSquareText, PackageCheck, Send, ShieldCheck, Sparkles } from "lucide-react";
 
 type Surface = "command" | "context" | "orchestrate" | "create" | "deliver";
 
@@ -106,6 +106,7 @@ const SURFACE_LINKS: Array<{ href: string; label: string; description: string; i
   { href: "/orchestrate", label: "Orchestrate", description: "Shape the next workflow", icon: GitBranch, accent: "#5ab896" },
   { href: "/create", label: "Create", description: "Prepare a production brief", icon: Sparkles, accent: "#f0a868" },
   { href: "/capabilities", label: "Govern", description: "Review enabled boundaries", icon: ShieldCheck, accent: "#a3e635" },
+  { href: "/hybrid", label: "Hybrid", description: "Choose cloud and local execution", icon: Link2, accent: "#5eead4" },
   { href: "/deliver", label: "Deliver", description: "Review the next handoff", icon: PackageCheck, accent: "#c084fc" },
   { href: "/credentials", label: "Credentials", description: "Manage provider access", icon: KeyRound, accent: "#60a5fa" },
 ];
