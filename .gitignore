@@ -28,6 +28,7 @@
 # Standalone product-experience app
 /product-experience/node_modules/
 /product-experience/.next/
+/product-experience/test-results/
 
 /test-results/
 /tmp/
