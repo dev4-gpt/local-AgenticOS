@@ -1,4 +1,6 @@
 .git
+.vercel
+**/.vercel
 .next
 .next-v0
 .next-client-test

@@ -27,6 +27,12 @@ const PROVIDERS: Record<string, ProviderSpec> = {
   hermes: { key: "OPENROUTER_API_KEY", protocol: "openai", endpoint: "https://openrouter.ai/api/v1/chat/completions", defaultModel: "nousresearch/hermes-4-70b" },
   freeclaude: { key: "OPENROUTER_API_KEY", protocol: "openai", endpoint: "https://openrouter.ai/api/v1/chat/completions", defaultModel: "qwen/qwen3-coder:free" },
   fusion: { key: "OPENROUTER_API_KEY", protocol: "openai", endpoint: "https://openrouter.ai/api/v1/chat/completions", defaultModel: "openai/gpt-4o-mini" },
+  // Direct, OpenAI-compatible BYOK lane. It remains unusable until the tenant
+  // explicitly supplies GROQ_API_KEY, allowlists the provider/model, enables
+  // calls, and supplies a per-model pricing entry. No browser-selected
+  // endpoint is ever accepted. GPT-OSS 120B is Groq's current production
+  // successor to the deprecated Llama 3.3 70B free/developer lane.
+  groq: { key: "GROQ_API_KEY", protocol: "openai", endpoint: "https://api.groq.com/openai/v1/chat/completions", defaultModel: "openai/gpt-oss-120b" },
   moonshot: { key: "MOONSHOT_API_KEY", protocol: "openai", endpoint: "https://api.moonshot.ai/v1/chat/completions", defaultModel: "moonshot-v1-8k" },
   kimi: { key: "MOONSHOT_API_KEY", protocol: "openai", endpoint: "https://api.moonshot.ai/v1/chat/completions", defaultModel: "moonshot-v1-8k" },
   glm: { key: "GLM_API_KEY", protocol: "openai", endpoint: "https://api.z.ai/api/coding/paas/v4/chat/completions", defaultModel: "glm-5.2" },

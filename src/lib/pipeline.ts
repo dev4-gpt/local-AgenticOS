@@ -13,6 +13,7 @@ import yaml from "js-yaml";
 import { AGENTIC_DIR, VAULT_AVAILABLE } from "@/lib/vaultWriter";
 import { FCC_SCRATCH_ROOT, ensureProject } from "@/lib/freeClaudeWorkspace";
 import { resolveModel, localChat } from "@/lib/localOllama";
+import { mirofishGtmFallbackPlan, mirofishGtmMethodology, shouldRunMirofishGtmTest } from "@/lib/mirofishGtm";
 
 export const BUILD_PROJECT = "free-claude-code"; // shared with the Agent Factory gallery
 
@@ -236,8 +237,10 @@ export async function classifyIdea(idea: string, signal?: AbortSignal): Promise<
 
 export async function draftPlan(idea: string, title: string, tags: string[], signal?: AbortSignal): Promise<string> {
   const sys = `You are a senior project planner. Given an idea, write a tight PROPOSED PLAN in markdown with EXACTLY these sections:\n**What it is** — 1–2 sentences.\n**Approach** — 3–5 bullets.\n**First milestones** — 3–5 markdown checkboxes (- [ ] ...).\n**Who builds it** — the subagents/roles needed (e.g. researcher, designer, coder, copywriter, deployer).\nBe concrete and concise. Output markdown only — no preamble.`;
-  const out = await reason(sys, `Idea: ${idea.slice(0, 1500)}\nWorking title: ${title}\nTags: ${tags.join(", ")}`, 700, signal);
+  const gtmMethod = shouldRunMirofishGtmTest({ idea, title }) ? mirofishGtmMethodology("local") : "";
+  const out = await reason([sys, gtmMethod].filter(Boolean).join("\n\n"), `Idea: ${idea.slice(0, 1500)}\nWorking title: ${title}\nTags: ${tags.join(", ")}`, gtmMethod ? 900 : 700, signal);
   if (out) return out;
+  if (gtmMethod) return mirofishGtmFallbackPlan(title);
   // fallback template if the local model returned nothing
   return `**What it is** — ${title}.\n\n**Approach**\n- Clarify the goal and success criteria\n- Research what already exists\n- Build the smallest shippable version first\n- Review, then expand\n\n**First milestones**\n- [ ] Define scope\n- [ ] Produce a first draft / prototype\n- [ ] Review and ship v1\n\n**Who builds it** — researcher, builder, reviewer (coordinated by a project manager).\n\n_(Auto-drafted fallback — the local model was busy. Re-run "Shape it" for a richer plan.)_`;
 }

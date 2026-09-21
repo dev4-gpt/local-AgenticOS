@@ -13,6 +13,7 @@ export async function POST(req: Request) {
   const approve = body.approve !== false;
   const item = await readItem(slug);
   if (!item) return NextResponse.json({ ok: false, error: "Item not found." }, { status: 404 });
+  if (item.stage !== "review") return NextResponse.json({ ok: false, error: "Only an item awaiting review can be approved or rejected." }, { status: 409 });
 
   if (!approve) {
     item.stage = "rejected";

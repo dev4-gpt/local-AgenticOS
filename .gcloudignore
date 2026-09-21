@@ -1,6 +1,8 @@
 # Cloud Build receives the source tree, not the local build cache. Keep the
 # upload limited to files that Dockerfile.client can actually compile.
 .git/
+.vercel/
+**/.vercel/
 .next/
 .next-*/
 **/.next/

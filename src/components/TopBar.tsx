@@ -83,11 +83,10 @@ const TITLES: Record<string, PageMeta> = {
   "/seo-guide":   { numeral: "XXIV.", label: "Govern · SEO Guide", title: "SEO Guide",              sub: "Reference the setup, publishing boundaries, and verification steps behind the SEO workflow." },
 };
 
-export default function TopBar() {
+export default function TopBar({ clientEdition = false }: { clientEdition?: boolean }) {
   const pathname = usePathname();
   const base = TITLES[pathname] ?? TITLES["/"];
   const [time, setTime] = useState<string>("");
-  const [clientEdition, setClientEdition] = useState(false);
   // Swap in hosted-accurate copy, so a client is never told their work lives in
   // a vault this runtime does not have.
   const t = clientEdition && CLIENT_SUBS[pathname] ? { ...base, sub: CLIENT_SUBS[pathname] } : base;
@@ -98,12 +97,6 @@ export default function TopBar() {
     set();
     const i = setInterval(set, 1000 * 15);
     return () => clearInterval(i);
-  }, []);
-  useEffect(() => {
-    fetch("/api/client-runtime/credentials", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => setClientEdition(data?.mode?.clientEdition === true))
-      .catch(() => undefined);
   }, []);
 
   return (

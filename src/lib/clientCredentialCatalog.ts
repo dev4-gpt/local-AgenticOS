@@ -15,7 +15,7 @@ export const CLIENT_CREDENTIAL_OPTIONS: readonly ClientCredentialOption[] = [
   { key: "GLM_API_KEY", label: "GLM / Z.ai", category: "Models", secret: true, submitAllowed: true },
   { key: "XAI_API_KEY", label: "xAI / Grok", category: "Models", secret: true, submitAllowed: true },
   { key: "SAKANA_API_KEY", label: "Sakana Fugu", category: "Models", secret: true, submitAllowed: true },
-  { key: "GROQ_API_KEY", label: "Groq Speech-to-Text", category: "Audio", secret: true, submitAllowed: true },
+  { key: "GROQ_API_KEY", label: "Groq Text and Speech", category: "AI", secret: true, submitAllowed: true },
   { key: "ELEVENLABS_API_KEY", label: "ElevenLabs", category: "Audio", secret: true, submitAllowed: true },
   { key: "ELEVENLABS_MUSIC_API_KEY", label: "ElevenLabs Music", category: "Audio", secret: true, submitAllowed: true },
   { key: "HEYGEN_API_KEY", label: "HeyGen", category: "Video", secret: true, submitAllowed: true },

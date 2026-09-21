@@ -11,6 +11,7 @@ export async function POST(req: Request) {
   const slug = String(body.slug || "");
   const item = await readItem(slug);
   if (!item) return NextResponse.json({ ok: false, error: "Item not found." }, { status: 404 });
+  if (item.stage !== "inbox" && item.stage !== "review") return NextResponse.json({ ok: false, error: "This item cannot be shaped in its current stage." }, { status: 409 });
 
   try {
     const cls = await classifyIdea(item.idea, req.signal);
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
     } else {
       const filed = cls.route === "action" ? "a GTD action" : cls.route === "idea" ? "a parked idea" : "reference";
       item.classification = `Routed to **${cls.route}** · confidence ${pct} · filed as ${filed}.`;
-      item.stage = "shipped";
+      item.stage = "review";
     }
     await writeItem(item);
     return NextResponse.json({ ok: true, item });

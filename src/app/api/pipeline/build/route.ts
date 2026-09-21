@@ -12,6 +12,7 @@ export async function POST(req: Request) {
   const slug = String(body.slug || "");
   const item = await readItem(slug);
   if (!item) return NextResponse.json({ ok: false, error: "Item not found." }, { status: 404 });
+  if (item.stage !== "building") return NextResponse.json({ ok: false, error: "Approve the plan before building." }, { status: 409 });
 
   try {
     const file = await buildArtifact(item, req.signal);

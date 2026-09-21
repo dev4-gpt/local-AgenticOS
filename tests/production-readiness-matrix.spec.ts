@@ -29,6 +29,12 @@ test("the portfolio contains the complete 101-repository snapshot", () => {
   expect(V96_REPOSITORY_CATALOG.length).toBeGreaterThan(40);
 });
 
+test("repository identity matches catalog casing without removing license gates", () => {
+  expect(V96_STARRED_PORTFOLIO.find((entry) => entry.fullName === "unclecode/crawl4ai")?.activation).toBe("contract-active");
+  expect(V96_STARRED_PORTFOLIO.find((entry) => entry.fullName === "Anil-matcha/Open-Generative-AI")?.activation).toBe("externally-gated");
+  expect(V96_STARRED_PORTFOLIO.find((entry) => entry.fullName === "SkyworkAI/SkyReels-V2")?.activation).toBe("reference-only");
+});
+
 test("every repository from the attached prompt is represented in the portfolio", () => {
   const portfolioUrls = new Set(V96_STARRED_PORTFOLIO.map((entry) => entry.sourceUrl));
   expect(ATTACHED_REPOSITORIES).toHaveLength(53);

@@ -102,7 +102,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
         <span className="workspace-shell__signal workspace-shell__signal--b" />
       </div>
       <div className="relative z-10 h-screen flex overflow-hidden">
-        <Sidebar />
+        <Sidebar clientEdition={clientEdition} />
         <main className="workspace-shell__main flex-auto w-full min-w-0 overflow-y-auto pb-20 md:pb-0" data-scroll-root>
           <motion.div
             key={pathname}
@@ -111,12 +111,12 @@ export default function Shell({ children, clientEdition = false }: { children: R
             transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
             className={isHome ? "min-h-full w-full" : "workspace-shell__page max-w-[1500px] mx-auto px-5 md:px-10 py-7 md:py-9"}
           >
-            {!isHome && <TopBar />}
+            {!isHome && <TopBar clientEdition={clientEdition} />}
             {agentWorkspace ? <ClientAgentConsole agent={agentWorkspace} /> : hostedProviderRoute ? <ClientCapabilityGate pathname={pathname} /> : paperclipWorkspace ? <ClientPaperclipWorkspace /> : roomWorkspace ? <ClientRoomWorkspace /> : pipelineWorkspace ? <ClientPipelineWorkspace /> : boardWorkspace ? <ClientBoardWorkspace board={boardWorkspace} /> : loopWorkspace ? <ClientLoopWorkspace /> : rufloWorkspace ? <ClientRufloWorkspace /> : seoWorkspace ? <ClientSeoWorkspace /> : radarWorkspace ? <ClientRadarWorkspace /> : videoWorkspace ? <ClientVideoWorkspace /> : integrationsWorkspace ? <ClientIntegrationsWorkspace /> : deepWorkspace ? <ClientDeepWorkspace surfaceKey={deepWorkspace} /> : orchestrationWorkspace ? <ClientOrchestrationWorkspace surface={orchestrationWorkspace} /> : executionWorkspace && isStudioSurface(executionWorkspace) ? <ClientStudioWorkspace surface={executionWorkspace} /> : executionWorkspace ? <ClientExecutionWorkspace surface={executionWorkspace} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
           </motion.div>
         </main>
       </div>
-      <MobileNav />
+      <MobileNav clientEdition={clientEdition} />
     </div>
   );
 }

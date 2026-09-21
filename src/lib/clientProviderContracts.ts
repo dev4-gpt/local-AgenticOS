@@ -61,6 +61,7 @@ const CONTRACTS: Record<string, ClientProviderContract> = {
   hermes: { protocol: "openai", workspace: "tenant-workflow", toolMode: "reviewed-plan", maxPromptChars: 14000, maxHistoryMessages: 8, maxOutputTokens: 3072, attribution: "openrouter" },
   freeclaude: { protocol: "openai", workspace: "tenant-records", toolMode: "none", maxPromptChars: 12000, maxHistoryMessages: 8, maxOutputTokens: 2048, attribution: "openrouter" },
   fusion: { protocol: "openai", workspace: "tenant-workflow", toolMode: "reviewed-plan", maxPromptChars: 16000, maxHistoryMessages: 10, maxOutputTokens: 3072, attribution: "openrouter" },
+  groq: { protocol: "openai", workspace: "tenant-workflow", toolMode: "none", maxPromptChars: 16000, maxHistoryMessages: 12, maxOutputTokens: 3072, attribution: "none" },
   moonshot: { protocol: "openai", workspace: "tenant-code-plan", toolMode: "reviewed-plan", maxPromptChars: 16000, maxHistoryMessages: 12, maxOutputTokens: 4096, attribution: "none" },
   kimi: { protocol: "openai", workspace: "tenant-code-plan", toolMode: "reviewed-plan", maxPromptChars: 16000, maxHistoryMessages: 12, maxOutputTokens: 4096, attribution: "none" },
   glm: { protocol: "openai", workspace: "tenant-code-plan", toolMode: "reviewed-plan", maxPromptChars: 16000, maxHistoryMessages: 12, maxOutputTokens: 4096, attribution: "none" },

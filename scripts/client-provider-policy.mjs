@@ -14,6 +14,7 @@ export const PROVIDER_SECRET_KEYS = Object.freeze({
   xai: "XAI_API_KEY",
   grok: "XAI_API_KEY",
   sakana: "SAKANA_API_KEY",
+  groq: "GROQ_API_KEY",
   gemini: "GEMINI_API_KEY",
   antigravity: "GEMINI_API_KEY",
 });

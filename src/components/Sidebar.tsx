@@ -104,7 +104,7 @@ const SECTION_META: Record<(typeof SECTION_ORDER)[number], { numeral: string; de
   Deliver: { numeral: "VI", description: "Growth and outcomes" },
 };
 
-export default function Sidebar() {
+export default function Sidebar({ clientEdition = false }: { clientEdition?: boolean }) {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [order, setOrder] = useState<string[]>(DEFAULT_ORDER);
@@ -112,7 +112,6 @@ export default function Sidebar() {
   const [customize, setCustomize] = useState(false);
   const [dragHref, setDragHref] = useState<string | null>(null);
   const [overHref, setOverHref] = useState<string | null>(null);
-  const [clientEdition, setClientEdition] = useState(false);
   const currentSection = sectionOf(pathname);
   const [openSection, setOpenSection] = useState(currentSection);
   const [homeChapter, setHomeChapter] = useState("Command");
@@ -149,12 +148,6 @@ export default function Sidebar() {
     sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
   }, [pathname]);
-  useEffect(() => {
-    fetch("/api/client-runtime/credentials", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => setClientEdition(data?.mode?.clientEdition === true))
-      .catch(() => undefined);
-  }, []);
 
   // saved order + any NAV items not yet in it (e.g. new pages added later) appended in default position
   const fullOrder = [
@@ -194,8 +187,8 @@ export default function Sidebar() {
       </div>
 
       <div className="workspace-nav__edition">
-        <span>Private operating edition</span>
-        <span className="workspace-nav__live"><i /> {clientEdition ? "client" : "local"}</span>
+        <span>{clientEdition ? "Managed Cloud" : "Private Local"}</span>
+        <span className="workspace-nav__live"><i /> runtime</span>
       </div>
 
       {customize && (
@@ -300,22 +293,15 @@ export default function Sidebar() {
 
       <div className="workspace-nav__footer">
         <span>Runtime</span>
-        <strong>Agents · Vault · Approval</strong>
+        <strong>Agents · Workspace · Approval</strong>
       </div>
     </aside>
   );
 }
 
-export function MobileNav() {
+export function MobileNav({ clientEdition = false }: { clientEdition?: boolean }) {
   const pathname = usePathname();
-  const [clientEdition, setClientEdition] = useState(false);
   const mobileRoutes = new Set(["/", "/memory", "/pipeline", "/flow-lab", "/integrations", "/agent-kanban"]);
-  useEffect(() => {
-    fetch("/api/client-runtime/credentials", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => setClientEdition(data?.mode?.clientEdition === true))
-      .catch(() => undefined);
-  }, []);
   const items = clientEdition
     ? NAV.filter((item) => CLIENT_NAV_ROUTES.has(item.href))
     : NAV.filter((item) => mobileRoutes.has(item.href));

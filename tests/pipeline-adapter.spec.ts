@@ -136,6 +136,14 @@ test("prompts carry the item and ask for the right output, with no local paths",
   }
 });
 
+test("GTM items receive the bounded scenario-test methodology", () => {
+  const gtm = pipelineShapePrompt({ title: "Launch Veloce for agencies", idea: "Create a GTM plan for technical agencies." });
+  const ordinary = pipelineShapePrompt({ title: "Ship the status board", idea: "Build an internal status page." });
+  expect(gtm).toContain("mirofish-inspired-gtm-v1");
+  expect(gtm).toContain("hypotheses, not customer facts or forecasts");
+  expect(ordinary).not.toContain("mirofish-inspired-gtm-v1");
+});
+
 test("normalizes unknown stages and routes to safe values", () => {
   const normalized = normalizePipelineItem({ id: "x", stage: "wat", route: "banana", confidence: "0.4", tags: ["a", 3], pinned: "yes" });
   expect(normalized.stage).toBe("inbox");

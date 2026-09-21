@@ -2,6 +2,7 @@
 
 import { governedPipelineGuardrails } from "@/lib/integrationGovernance";
 import { contentOsVideoPilotGuardrails } from "@/lib/contentOsVideoPilot";
+import { mirofishGtmMethodology, shouldRunMirofishGtmTest } from "@/lib/mirofishGtm";
 //
 // The local pipeline stores each item as a Markdown file with YAML frontmatter
 // in an Obsidian vault, and runs three separate provider calls to classify,
@@ -22,7 +23,7 @@ export const PIPELINE_COLUMNS: Array<{ key: PipelineStage; label: string; blurb:
   { key: "inbox", label: "Capture", blurb: "Raw input — no structure required" },
   { key: "shaping", label: "Classify & Route", blurb: "Agents decide what it is" },
   { key: "review", label: "Human Gate", blurb: "The one checkpoint — approve or reject" },
-  { key: "building", label: "Execute", blurb: "The hosted runner builds it" },
+  { key: "building", label: "Execute", blurb: "Build the approved plan" },
   { key: "shipped", label: "Shipped", blurb: "Done" },
 ];
 
@@ -121,6 +122,7 @@ export function normalizePipelineItem(row: Record<string, unknown>): PipelineIte
  */
 export function pipelineShapePrompt(input: { idea: string; title: string }) {
   const governance = governedPipelineGuardrails(`${input.title}\n${input.idea}`);
+  const gtmMethodology = shouldRunMirofishGtmTest(input) ? mirofishGtmMethodology() : "";
   // Deliberately line-oriented rather than JSON. The plan and tasks are
   // Markdown with real newlines; asking for those inside JSON string values
   // makes models emit unescaped newlines and the parse fails.
@@ -147,6 +149,7 @@ export function pipelineShapePrompt(input: { idea: string; title: string }) {
     "Route meanings: project = multi-step build worth its own workstream; action = a single concrete task;",
     "idea = worth keeping but not yet actionable; reference = information to file; escalate = needs a human decision first.",
     "Do not invent facts about the business. Do not include credentials.",
+    gtmMethodology,
     governance,
     contentOsVideoPilotGuardrails(`${input.title}\n${input.idea}`),
   ].join("\n").slice(0, 20_000);

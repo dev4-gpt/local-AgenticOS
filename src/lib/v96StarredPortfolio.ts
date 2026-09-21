@@ -134,7 +134,8 @@ const STARRED_ROWS: readonly StarredRow[] = [
   ["huggingface/agents-course", "agents-course", "https://github.com/huggingface/agents-course", "8c0832eae634ebb34541c65265caa6da4c5d2c57", "Apache-2.0"],
 ] as const;
 
-const existingByUrl = new Map(V96_REPOSITORY_CATALOG.map((reference) => [reference.sourceUrl, reference]));
+const repositoryKey = (url: string) => url.replace(/\/+$/, "").replace(/\.git$/i, "").toLowerCase();
+const existingByUrl = new Map(V96_REPOSITORY_CATALOG.map((reference) => [repositoryKey(reference.sourceUrl), reference]));
 
 const GROUPS: Record<V96PortfolioCategory, {
   behavior: string;
@@ -179,7 +180,7 @@ function idFor(fullName: string) {
 
 function entryFor(row: StarredRow): V96StarredPortfolioEntry {
   const [fullName, name, sourceUrl, sourceCommit, rawLicense] = row;
-  const existing = existingByUrl.get(sourceUrl);
+  const existing = existingByUrl.get(repositoryKey(sourceUrl));
   const category = categoryFor(fullName);
   const group = GROUPS[category];
   const licenseStatus = licenseStatusFor(rawLicense);
@@ -236,7 +237,7 @@ export function validateV96StarredPortfolio(entries: readonly V96StarredPortfoli
     if (!entry.targetCapabilities.length || !entry.executionPermissions.length) errors.push(`${entry.fullName}: capability/permission mapping is missing`);
     if (!entry.placement.trim() || !entry.evidenceGate.trim() || !entry.rollbackRule.trim()) errors.push(`${entry.fullName}: placement/evidence/rollback is missing`);
     if (entry.licenseStatus !== "confirmed" && entry.activation !== "reference-only") errors.push(`${entry.fullName}: unresolved license cannot activate`);
-    if (entry.activation === "native-enabled" && !existingByUrl.has(entry.sourceUrl)) errors.push(`${entry.fullName}: native activation lacks a Veloce implementation mapping`);
+    if (entry.activation === "native-enabled" && !existingByUrl.has(repositoryKey(entry.sourceUrl))) errors.push(`${entry.fullName}: native activation lacks a Veloce implementation mapping`);
     if (entry.executionPermissions.includes("execute-shell") || entry.executionPermissions.includes("arbitrary-network")) errors.push(`${entry.fullName}: unsafe permission expansion`);
   }
   return errors;

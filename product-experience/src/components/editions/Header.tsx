@@ -13,13 +13,28 @@ type SearchResult = {
 };
 
 const DEFAULT_CLIENT_RUNTIME_URL = "https://veloce-cloud-test-1075094991117.asia-south1.run.app/login?next=%2F";
+const CLIENT_RUNTIME_ENV_PREFIX = "NEXT_PUBLIC_CLIENT_RUNTIME_URL=";
+
+function clientRuntimeUrlFrom(value: string | undefined) {
+  const configuredValue = value?.trim();
+  const candidate = configuredValue?.startsWith(CLIENT_RUNTIME_ENV_PREFIX)
+    ? configuredValue.slice(CLIENT_RUNTIME_ENV_PREFIX.length).trim()
+    : configuredValue || DEFAULT_CLIENT_RUNTIME_URL;
+
+  try {
+    const url = new URL(candidate);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : DEFAULT_CLIENT_RUNTIME_URL;
+  } catch {
+    return DEFAULT_CLIENT_RUNTIME_URL;
+  }
+}
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [accessOpen, setAccessOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const configuredRuntimeUrl = process.env.NEXT_PUBLIC_CLIENT_RUNTIME_URL?.trim() || DEFAULT_CLIENT_RUNTIME_URL;
+  const configuredRuntimeUrl = clientRuntimeUrlFrom(process.env.NEXT_PUBLIC_CLIENT_RUNTIME_URL);
   const allowLocalRuntimeLink = process.env.NEXT_PUBLIC_ALLOW_LOCAL_CLIENT_RUNTIME_LINK === "1";
   const clientRuntimeUrl = process.env.NODE_ENV === "production" && /https?:\/\/(localhost|127\.0\.0\.1)/i.test(configuredRuntimeUrl) && !allowLocalRuntimeLink
     ? ""
