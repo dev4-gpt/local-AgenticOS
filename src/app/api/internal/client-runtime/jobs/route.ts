@@ -286,11 +286,13 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   const safeOutput = safeClientProviderOutput(result.output);
   const artifact = artifactFromWorkspaceOutput({ surface, title, artifactIntent, output: safeOutput });
   if (!artifact) {
-    await settleTerminalBudget(jobId, workerToken, 0, { actualAmountMicros: 0, artifactValidationFailure: 1 });
+    const actualAmountMicros = result.usage ? clientTextUsageCostMicros(model, result.usage) ?? estimate : estimate;
+    const artifactDiagnostics = { artifactIntent, outputChars: safeOutput.length, finishReason: result.finishReason, hasHtmlFence: /```html\s*\n/i.test(safeOutput), hasMarkdownFence: /```(?:markdown|md)\s*\n/i.test(safeOutput), outputWithheld: safeOutput.startsWith("[Provider output withheld") };
+    if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros, usageMetadata: { ...result.usage, artifactValidationFailure: 1 } }, { artifactDiagnostics }))) return NextResponse.json({ ok: true, status: "failed" });
     if (paperclipRun) await settlePaperclipRun(tenantSlug, workerToken, jobId, "failed", { errorCode: "workspace_artifact_invalid" });
     if (pipelineItem) await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "workspace_artifact_invalid" });
     if (boardTask) await settleBoardTask(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "workspace_artifact_invalid" });
-    await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", "The approved provider did not return a usable tenant artifact.")] }, "workspace_artifact_invalid");
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { artifactDiagnostics, terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", "The approved provider did not return a usable tenant artifact.")] }, "workspace_artifact_invalid");
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const artifactId = await storeArtifact(tenantSlug, jobId, workerToken, artifact.fileName, artifact.contentType, artifact.bytes);

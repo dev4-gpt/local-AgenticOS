@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import ClientRuntimeNotice from "@/components/ClientRuntimeNotice";
+import EccWorkflowsPanel from "@/components/EccWorkflowsPanel";
 
 export type ClientOrchestrationSurface = "orchestrate" | "paperclip" | "room" | "pipeline" | "agent-kanban" | "kanban" | "loop" | "ruflo";
 
@@ -176,6 +177,7 @@ export default function ClientOrchestrationWorkspace({ surface }: { surface: Cli
       </div>
       <WorkflowDetail workflow={selected} onStep={(step) => void updateWorkflow(selected?.id ?? "", { stepId: step.id, stepStatus: nextStepStatus(step.status) })} onArchive={() => selected && void updateWorkflow(selected.id, { status: "archived" })} />
     </section>
+    {surface === "orchestrate" && <EccWorkflowsPanel />}
     {error && <ClientRuntimeNotice code={error} />}
   </div>;
 }

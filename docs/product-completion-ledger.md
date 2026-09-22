@@ -18,6 +18,7 @@ Status: executing. Execution gate: allowed by the user's explicit approval of th
 | 7 Expansion | Each promoted repository/method passes use-mode review and a defined functional/quality/resource acceptance test | Pending; not a promise to install all repositories |
 
 ## Current evidence
+- Latest acceptance and deployment details: [22 September receipt](release-acceptance-2026-09-22.md). Credential-status release is deployed; real Pipeline build failed and is under investigation. Jina direct extraction passed.
 - Original deployed source: `94f793e`; see deployment receipt dated 2026-09-21.
 - Existing authenticated Chrome session showed Managed Cloud Runtime, required approvals and Groq connected. Fresh login remains unverified.
 - Removed obsolete route overrides from the example GCP manifest; the provisioner remains authoritative for isolation routes.

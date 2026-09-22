@@ -126,7 +126,7 @@ export async function runClientTextAdapter(input: {
       ? await callGemini(spec, key, model, messages, maxOutputTokens, toolPayload)
       : await callOpenAiCompatible(spec, key, model, messages, maxOutputTokens, clientProviderAttributionHeaders(provider), toolPayload);
   if (!response.ok) return { ok: false as const, status: response.status, error: providerFailureCode(response.status), instructionBudget: prepared.instructionBudget };
-  return { ok: true as const, provider, model, output: response.output, usage: response.usage, instructionBudget: prepared.instructionBudget, ...(prepared.compression ? { compression: prepared.compression } : {}) };
+  return { ok: true as const, provider, model, output: response.output, usage: response.usage, finishReason: "finishReason" in response ? response.finishReason : null, instructionBudget: prepared.instructionBudget, ...(prepared.compression ? { compression: prepared.compression } : {}) };
 }
 
 function providerFailureCode(status: number) {
@@ -222,7 +222,7 @@ async function callOpenAiCompatible(spec: ProviderSpec, key: string, model: stri
     signal: providerAbortSignal(),
   }).catch(() => null);
   if (!response?.ok) return { ok: false as const, status: response?.status ?? 503, output: "" };
-  const data = await responseJson(response) as { choices?: Array<{ message?: { content?: unknown; tool_calls?: Array<{ function?: { name?: unknown; arguments?: unknown } }> } }>; usage?: { prompt_tokens?: unknown; completion_tokens?: unknown } } | null;
+  const data = await responseJson(response) as { choices?: Array<{ finish_reason?: unknown; message?: { content?: unknown; tool_calls?: Array<{ function?: { name?: unknown; arguments?: unknown } }> } }>; usage?: { prompt_tokens?: unknown; completion_tokens?: unknown } } | null;
   const message = data?.choices?.[0]?.message;
   const toolCall = message?.tool_calls?.find((call) => call.function?.name === "propose_reviewed_plan");
   if (toolCall) {
@@ -232,7 +232,9 @@ async function callOpenAiCompatible(spec: ProviderSpec, key: string, model: stri
     return output ? { ok: true as const, status: 200, output, usage: normalizeUsage(data?.usage?.prompt_tokens, data?.usage?.completion_tokens) } : { ok: false as const, status: 502, output: "" };
   }
   const output = message?.content;
-  return typeof output === "string" ? { ok: true as const, status: 200, output, usage: normalizeUsage(data?.usage?.prompt_tokens, data?.usage?.completion_tokens) } : { ok: false as const, status: 502, output: "" };
+  const reason = data?.choices?.[0]?.finish_reason;
+  const finishReason = typeof reason === "string" && ["stop", "length", "content_filter", "tool_calls"].includes(reason) ? reason : null;
+  return typeof output === "string" ? { ok: true as const, status: 200, output, finishReason, usage: normalizeUsage(data?.usage?.prompt_tokens, data?.usage?.completion_tokens) } : { ok: false as const, status: 502, output: "" };
 }
 
 async function callAnthropic(spec: ProviderSpec, key: string, model: string, messages: Message[], maxTokens: number, toolPayload: Record<string, unknown> = {}) {
