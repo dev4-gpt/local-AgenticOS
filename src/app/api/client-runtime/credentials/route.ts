@@ -6,6 +6,7 @@ import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { CLIENT_CREDENTIAL_OPTIONS } from "@/lib/clientCredentialCatalog";
 import { publicCatalogCredentialOptions, publicCatalogProviderOptions } from "@/lib/publicProviderCatalog";
 import { pricingSnapshotForCredential } from "@/lib/providerPricingCatalog";
+import { clientCredentialReadiness } from "@/lib/clientCredentialReadiness";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,6 +18,10 @@ export async function GET() {
   if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
   const credentialOptions = publicCatalogCredentialOptions();
   const connectionResult = await clientRpc("list_client_provider_connections", { p_tenant_slug: process.env.CLIENT_SLUG || "" });
+  if (!connectionResult.ok || !Array.isArray(connectionResult.value)) return NextResponse.json(
+    { ok: false, error: "credential_status_unavailable" },
+    { status: 503, headers: { "cache-control": "no-store" } },
+  );
   const connections = Array.isArray(connectionResult.value) ? connectionResult.value as Array<Record<string, unknown>> : [];
   const credentials = CLIENT_CREDENTIAL_OPTIONS.filter((item) => clientProviderEnabled(item.key)).map((item) => {
     const value = item.key === "OPENROUTER_API_KEY" ? openRouterKey() : providerEnvKey(item.key);
@@ -29,6 +34,13 @@ export async function GET() {
       connectionStatus: typeof connection?.status === "string" ? connection.status : null,
       credentialMode: typeof connection?.credential_mode === "string" ? connection.credential_mode : "byok",
       lastValidatedAt: typeof connection?.last_validated_at === "string" ? connection.last_validated_at : null,
+      readiness: clientCredentialReadiness({
+        configured: Boolean(value),
+        connectionStatus: typeof connection?.status === "string" ? connection.status : null,
+        credentialMode: typeof connection?.credential_mode === "string" ? connection.credential_mode : "byok",
+        callsEnabled: process.env.CLIENT_PROVIDER_CALLS_ENABLED === "1",
+        runtimeConfiguration: item.key === "SUPABASE_URL" || item.key === "SUPABASE_ANON_KEY",
+      }),
     };
   });
 

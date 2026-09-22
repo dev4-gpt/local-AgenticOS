@@ -1,6 +1,6 @@
 # Implementation and verification — 21 September 2026
 
-Status: verified source increment; not deployed; full product completion remains outstanding.
+Status: source increment `94f793e` deployed to `veloce-cloud-test`; full product completion remains outstanding. See [deployment receipt](deployment-receipt-2026-09-21.md) for current live configuration and verification limits. Provider-readiness UI changes are a separate, not-yet-deployed increment.
 
 ## Implemented
 
@@ -21,7 +21,7 @@ Status: verified source increment; not deployed; full product completion remains
 - Isolated production-server acceptance: capture, pin, persisted reload, and rejection of unreviewed approval/build requests passed. No model calls. The test created and removed only its own item; removal was verified. Reusable verifier: `scripts/verify-local-pipeline.mjs` (run against a loopback server with an isolated `AGENTIC_OS_VAULT`).
 - Live login endpoint returned HTTP 200. Chrome already had an authenticated client session; credentials page loaded successfully. This is not a fresh-login/password-reset certification.
 
-## Observed cloud blockers and remaining work
+## Pre-deployment observations (superseded where noted in the deployment receipt)
 
 - Current cloud traffic remains on `veloce-cloud-test-00197-fwx`. None of this increment was deployed.
 - Groq secret binding and model/provider allowlists exist; provider calls are enabled at runtime. The credentials page nevertheless reports provider connections unconnected. Tenant connection activation must be reconciled and actual generation verified before describing Groq as production-ready.

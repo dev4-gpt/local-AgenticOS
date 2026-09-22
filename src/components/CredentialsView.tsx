@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, KeyRound, LockKeyhole, LogOut, RefreshCw, Send, ShieldCheck, XCircle, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ClientCredentialOption } from "@/lib/clientCredentialCatalog";
+import type { CredentialReadiness } from "@/lib/clientCredentialReadiness";
 import { publicCatalogCredentialOptions, publicCatalogEntryForCredential } from "@/lib/publicProviderCatalog";
 
 interface Credential {
@@ -14,6 +15,7 @@ interface Credential {
   connectionStatus?: string | null;
   credentialMode?: string;
   lastValidatedAt?: string | null;
+  readiness?: CredentialReadiness;
 }
 
 interface Status {
@@ -88,7 +90,7 @@ export default function CredentialsView() {
       const credentialData = await credentialResponse.json().catch(() => null);
       if (!credentialResponse.ok || !credentialData?.ok) {
         setStatus(null);
-        setNotice(credentialResponse.status === 401 ? "Sign in to view runtime credentials." : "Could not load runtime status.");
+        setNotice(credentialResponse.status === 401 ? "Sign in to view runtime credentials." : credentialData?.error === "credential_status_unavailable" ? "Connection status could not be verified. Refresh to retry; your keys have not been changed." : "Could not load runtime status.");
       } else {
         setStatus(credentialData);
         setNotice("");
@@ -272,10 +274,11 @@ export default function CredentialsView() {
             <div>
               <div className="text-[12px] text-[var(--fg)]">{credential.label}</div>
               <div className="text-[10px] text-[var(--fg-dimmer)]">{credential.secret ? "Secret-backed" : "Runtime configuration"}</div>
+              {credential.readiness && <p className="mt-1 max-w-xl text-[11px] leading-relaxed text-[var(--fg-dim)]">{credential.readiness.detail}</p>}
             </div>
             <div className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider ${credential.connected ? "text-emerald-300" : "text-[var(--fg-dimmer)]"}`}>
               {credential.connected ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
-              {credential.connectionStatus === "submitted" ? "Pending review" : credential.connected ? "Connected" : "Not connected"}
+              {credential.readiness?.label ?? (credential.connectionStatus === "submitted" ? "Pending review" : credential.connected ? "Connected" : "Not connected")}
             </div>
           </div>
         ))}

@@ -213,6 +213,8 @@ const prepareCommands = [
   ["gcloud", ["tasks", "queues", "create", `veloce-${slug}`, "--location", region, "--project", projectId, "--max-concurrent-dispatches", "1", "--max-attempts", "10"]],
   ["gcloud", ["tasks", "queues", "add-iam-policy-binding", `veloce-${slug}`, "--location", region, "--project", projectId, "--member", `serviceAccount:${serviceAccountEmail}`, "--role", "roles/cloudtasks.enqueuer"]],
   ...Object.values(secretEnv).flatMap((secretRef) => {
+    // Existing bindings are externally managed: never create or broaden IAM.
+    if (typeof secretRef === "object") return [];
     const secretName = secretNameFor(slug, secretRef);
     return [
       ["gcloud", ["secrets", "create", secretName, "--project", projectId, "--replication-policy", "automatic"]],
@@ -321,8 +323,9 @@ function resourceExists(cmd, cmdArgs) {
 function verifySecretVersions() {
   for (const secretRef of Object.values(secretEnv)) {
     const secretName = secretNameFor(slug, secretRef);
-    const result = spawnSync("gcloud", ["secrets", "versions", "list", secretName, "--project", projectId, "--filter=state=ENABLED", "--limit=1", "--format=value(name)"], { encoding: "utf8" });
-    if (result.status !== 0 || !result.stdout.trim()) fail(`Missing enabled secret version for ${secretName}. Add it before deploy.`);
+    const version = typeof secretRef === "object" ? secretRef.version : "latest";
+    const result = spawnSync("gcloud", ["secrets", "versions", "describe", version, "--secret", secretName, "--project", projectId, "--format=value(state)"], { encoding: "utf8" });
+    if (result.status !== 0 || result.stdout.trim() !== "ENABLED") fail(`Missing enabled secret version for ${secretName}:${version}. Add it before deploy.`);
   }
 }
 
@@ -502,7 +505,17 @@ function normalizeSecretEnv(value) {
     if (["SUPABASE_SERVICE_ROLE_KEY", "GOOGLE_APPLICATION_CREDENTIALS", "AWS_SECRET_ACCESS_KEY", "CLAUDE_CODE_SESSION", "CODEX_SESSION"].includes(cleanEnv)) {
       fail(`Operator-only secret cannot be placed in a client manifest: ${cleanEnv}`);
     }
-    out[cleanEnv] = sanitizeSecret(String(secretRef));
+    if (secretRef && typeof secretRef === "object" && !Array.isArray(secretRef)) {
+      if (Object.keys(secretRef).some((key) => !["existingSecret", "version"].includes(key)) ||
+          typeof secretRef.existingSecret !== "string" ||
+          !/^[a-zA-Z][a-zA-Z0-9_-]{1,254}$/.test(secretRef.existingSecret) ||
+          !/^(latest|[1-9][0-9]*)$/.test(String(secretRef.version ?? "latest"))) {
+        fail(`Invalid existing secret binding: ${cleanEnv}`);
+      }
+      out[cleanEnv] = { existingSecret: secretRef.existingSecret, version: String(secretRef.version ?? "latest") };
+    } else {
+      out[cleanEnv] = sanitizeSecret(String(secretRef));
+    }
   }
   return out;
 }
@@ -536,6 +549,7 @@ function shorten(value, max) {
 }
 
 function secretNameFor(clientSlug, secretRef) {
+  if (typeof secretRef === "object") return secretRef.existingSecret;
   return `veloce-${clientSlug}-${secretRef}`;
 }
 
@@ -553,7 +567,7 @@ function envString(values) {
 
 function secretString(clientSlug, values) {
   return Object.entries(values)
-    .map(([envName, secretRef]) => `${envName}=${secretNameFor(clientSlug, secretRef)}:latest`)
+    .map(([envName, secretRef]) => `${envName}=${secretNameFor(clientSlug, secretRef)}:${typeof secretRef === "object" ? secretRef.version : "latest"}`)
     .join(",");
 }
 

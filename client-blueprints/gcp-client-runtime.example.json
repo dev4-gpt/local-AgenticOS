@@ -41,8 +41,6 @@
     "AGENTIC_OS_DISABLE_LOCAL_FILES": "1",
     "AGENTIC_OS_REQUIRE_APPROVALS": "1",
     "CLIENT_RUNTIME_ENFORCE_AUTH": "1",
-    "CLIENT_ALLOWED_ROUTES": "/,/context,/orchestrate,/create,/credentials,/capabilities,/deliver,/paperclip,/room,/pipeline,/claude,/openclaw,/hermes,/antigravity,/codex,/kimi,/glm,/glm-code,/grok,/freeclaude,/fusion,/sakana,/local,/engine,/agent-kanban,/loop,/ruflo,/goals,/journal,/seo,/opendesign,/web-studio,/flow-lab,/integrations,/video,/studio,/openmontage,/music,/games,/thumbnails,/notebook,/kanban,/memory,/leads,/radar,/guide",
-    "CLIENT_ALLOWED_API_ROUTES": "/api/capabilities,/api/speech/transcribe,/api/client-runtime/credentials,/api/client-runtime/credits,/api/client-runtime/credits/checkout,/api/client-runtime/manifest-proposals,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-runtime/artifacts,/api/client-runtime/visual-qa,/api/client-runtime/hosted-jobs,/api/client-runtime/delivery,/api/client-runtime/intent,/api/client-runtime/records,/api/client-runtime/skills,/api/client-runtime/learning,/api/client-runtime/ecc,/api/client-runtime/workflows,/api/client-runtime/jobs,/api/internal/client-runtime/jobs,/api/internal/client-runtime/visual-qa-dispatch,/api/internal/client-runtime/delivery,/api/client-auth/session",
     "CLIENT_RUNTIME_WORKER_ENABLED": "0",
     "CLIENT_VISUAL_QA_RUN_JOB": "veloce-example-client-visual-qa",
     "CLIENT_PROVIDER_CALLS_ENABLED": "0",
