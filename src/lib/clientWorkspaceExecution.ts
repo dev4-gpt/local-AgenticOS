@@ -90,7 +90,7 @@ export function workspacePrompt(input: { surface: ClientWorkspaceSurface; title:
   ].join("\n").slice(0, 20_000);
 }
 
-export function artifactFromWorkspaceOutput(input: { surface: ClientWorkspaceSurface; title: string; artifactIntent: WorkspaceArtifactIntent; output: string }): WorkspaceArtifact | null {
+export function artifactFromWorkspaceOutput(input: { surface: ClientWorkspaceSurface; title: string; artifactIntent: WorkspaceArtifactIntent; output: string; finishReason?: string | null }): WorkspaceArtifact | null {
   const safeBase = input.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || input.surface;
 
   // Providers whose contract sets toolMode "reviewed-plan" are given a FORCED
@@ -115,7 +115,18 @@ export function artifactFromWorkspaceOutput(input: { surface: ClientWorkspaceSur
     };
   }
 
-  const extracted = extractFence(input.output, input.artifactIntent === "preview" ? "html" : "markdown");
+  let extracted = extractFence(input.output, input.artifactIntent === "preview" ? "html" : "markdown");
+  // Some text providers omit the terminal Markdown fence despite a normal
+  // stop. Accept only an otherwise complete single Markdown block. A length
+  // stop must never turn truncated output into a shipped artifact.
+  if (!extracted && input.artifactIntent !== "preview" && input.finishReason === "stop") {
+    const opening = /```(?:markdown|md)\s*\n/i.exec(input.output);
+    if (opening) {
+      const prefix = input.output.slice(0, opening.index);
+      const body = input.output.slice(opening.index + opening[0].length);
+      if (prefix.length <= 1_000 && !prefix.includes("```") && body.trim() && !body.includes("```")) extracted = body;
+    }
+  }
   if (!extracted) return null;
   if (input.artifactIntent === "preview") {
     const html = extracted.trim();
@@ -129,7 +140,7 @@ export function artifactFromWorkspaceOutput(input: { surface: ClientWorkspaceSur
 
 function extractFence(output: string, language: "html" | "markdown") {
   const matcher = language === "html"
-    ? /```(?:html)?\s*\n([\s\S]*?)```/i
-    : /```(?:markdown|md)?\s*\n([\s\S]*?)```/i;
+    ? /^```(?:html)?[ \t]*\r?\n([\s\S]*?)\r?\n```[ \t]*(?:\r?\n|$)/im
+    : /^```(?:markdown|md)?[ \t]*\r?\n([\s\S]*?)\r?\n```[ \t]*(?:\r?\n|$)/im;
   return output.match(matcher)?.[1] ?? null;
 }

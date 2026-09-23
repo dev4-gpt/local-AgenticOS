@@ -43,6 +43,15 @@ test("copy produces a markdown artifact, not html", () => {
   expect(artifact?.fileName.endsWith(".md")).toBe(true);
 });
 
+test("normal-stop Markdown without a terminal fence is usable, but truncation fails closed", () => {
+  const input = { surface: "pipeline" as const, title: "Checklist", artifactIntent: "copy" as const, output: "Here is the draft:\n```markdown\n# Checklist\n- [ ] Review assumptions" };
+  const complete = artifactFromWorkspaceOutput({ ...input, finishReason: "stop" });
+  expect(complete?.bytes.toString("utf8")).toBe("# Checklist\n- [ ] Review assumptions");
+  expect(artifactFromWorkspaceOutput({ ...input, finishReason: "length" })).toBeNull();
+  expect(artifactFromWorkspaceOutput({ ...input, finishReason: null })).toBeNull();
+  expect(artifactFromWorkspaceOutput({ ...input, output: "```markdown\n# A\n```html\nwrong", finishReason: "stop" })).toBeNull();
+});
+
 test("a reviewed plan becomes a markdown artifact instead of failing the job", () => {
   // Providers with toolMode "reviewed-plan" get a FORCED tool choice, so the
   // model cannot return prose and its output carries no fenced block. Before

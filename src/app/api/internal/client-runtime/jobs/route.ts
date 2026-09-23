@@ -284,7 +284,8 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const safeOutput = safeClientProviderOutput(result.output);
-  const artifact = artifactFromWorkspaceOutput({ surface, title, artifactIntent, output: safeOutput });
+  const finishReason = typeof result.finishReason === "string" ? result.finishReason : null;
+  const artifact = artifactFromWorkspaceOutput({ surface, title, artifactIntent, output: safeOutput, finishReason });
   if (!artifact) {
     const actualAmountMicros = result.usage ? clientTextUsageCostMicros(model, result.usage) ?? estimate : estimate;
     const artifactDiagnostics = { artifactIntent, outputChars: safeOutput.length, finishReason: result.finishReason, hasHtmlFence: /```html\s*\n/i.test(safeOutput), hasMarkdownFence: /```(?:markdown|md)\s*\n/i.test(safeOutput), outputWithheld: safeOutput.startsWith("[Provider output withheld") };
