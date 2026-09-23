@@ -24,6 +24,13 @@ test("existing secret bindings retain exact names and versions", () => {
   expect(result.stdout).not.toMatch(/JINA_WORKER_TOKEN=veloce-/);
 });
 
+test("deploy sets the service-wide and revision instance caps from the manifest", () => {
+  const result = dryRun({ existingSecret: "jina-worker-token" });
+  expect(result.status, result.stderr).toBe(0);
+  expect(result.stdout).toMatch(/--max 1(?:\s|$)/);
+  expect(result.stdout).toMatch(/--max-instances 1(?:\s|$)/);
+});
+
 test("prepare never creates or grants access to existing secrets", () => {
   const result = dryRun({ existingSecret: "jina-worker-token" }, "prepare");
   expect(result.status, result.stderr).toBe(0);

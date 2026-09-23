@@ -236,6 +236,9 @@ const deployCommands = [
     "--service-account", serviceAccountEmail,
     accessMode === "app-auth" ? "--allow-unauthenticated" : "--no-allow-unauthenticated",
     "--min-instances", String(gcp.minInstances ?? 0),
+    // --max caps the service across revisions; --max-instances caps each
+    // revision. Both must follow the manifest's low-cost instance limit.
+    "--max", String(gcp.maxInstances ?? 1),
     "--max-instances", String(gcp.maxInstances ?? 1),
     "--cpu", String(gcp.cpu ?? "1"),
     "--memory", String(gcp.memory ?? "1Gi"),
