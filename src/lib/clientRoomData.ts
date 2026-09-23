@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, deleteClientRecord, insertClientRecord, selectClientRecords, updateClientRecord } from "@/lib/clientDataPlane";
 import { clientProviderRequestAllowed } from "@/lib/clientProviderAdapter";
+import { clientExecutionCredential } from "@/lib/clientExecutionCredential";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import {
   ROOM_PERSONAS,
@@ -66,13 +67,25 @@ export function roomWriteLimit() {
  * allowlisted comes back disabled with the real reason instead of being
  * silently dropped, so the UI can explain the blocked prerequisite.
  */
-export function roomRoster() {
+export async function roomRoster() {
   const fallback = process.env.CLIENT_WORKSPACE_PROVIDER?.trim().toLowerCase() || "openrouter";
+  const providerKeys = new Set<string>();
+  for (const persona of ROOM_PERSONAS) {
+    for (const provider of [persona.provider, fallback]) {
+      for (const model of [persona.preferredModel, null]) {
+        const policy = clientProviderRequestAllowed(provider, model);
+        if (policy.ok) providerKeys.add(policy.key);
+      }
+    }
+  }
+  const readyKeys = new Set((await Promise.all([...providerKeys].map(async (key) =>
+    (await clientExecutionCredential(key)) ? key : null,
+  ))).filter((key): key is string => key !== null));
   return resolveRoomRoster(ROOM_PERSONAS, (provider, model) => {
     const policy = clientProviderRequestAllowed(provider, model);
-    return policy.ok
-      ? { ok: true as const, provider: policy.provider, model: policy.model }
-      : { ok: false as const, error: policy.error };
+    if (!policy.ok) return { ok: false as const, error: policy.error };
+    if (!readyKeys.has(policy.key)) return { ok: false as const, error: "provider_not_configured" };
+    return { ok: true as const, provider: policy.provider, model: policy.model };
   }, fallback);
 }
 

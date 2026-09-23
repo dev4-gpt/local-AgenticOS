@@ -128,7 +128,7 @@ export default function ClientRoomWorkspace() {
       <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border" style={{ borderColor: "rgba(168,85,247,0.4)", background: "rgba(168,85,247,0.12)", color: PURPLE }}><Users size={20} /></div>
       <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-medium tracking-tight" style={{ color: "var(--cream)" }}>AI Agent <span style={{ color: PURPLE }}>Mastermind</span></h1>
-        <div className="text-[12.5px]" style={{ color: "var(--cream-dim)" }}>Talk to all your agents at once — each on its own approved model. Tag one with <span className="font-mono">@claude</span> to ask just them.</div>
+        <div className="text-[12.5px]" style={{ color: "var(--cream-dim)" }}>Talk to available agents at once. An agent may use the tenant’s approved fallback provider when its preferred provider is unavailable. Tag one with <span className="font-mono">@claude</span> to ask just them.</div>
       </div>
       <div className="relative flex shrink-0 items-center gap-1.5">
         <button type="button" onClick={() => void newChat()} className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[12px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Plus size={13} />New chat</button>

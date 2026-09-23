@@ -50,6 +50,15 @@ test("an unavailable persona falls back to the tenant workspace provider when on
   expect(gemini?.model).toBe("fallback-model");
 });
 
+test("a missing primary execution credential forces an approved fallback", () => {
+  const roster = resolveRoomRoster(ROOM_PERSONAS, (provider) =>
+    provider === "groq"
+      ? { ok: true, provider: "groq", model: "openai/gpt-oss-120b" }
+      : { ok: false, error: "provider_not_configured" }, "groq");
+  const hermes = roster.find((entry) => entry.id === "hermes");
+  expect(hermes).toMatchObject({ available: true, resolvedProvider: "groq", model: "openai/gpt-oss-120b" });
+});
+
 test("a persona gets its preferred model when the tenant allowlists it", () => {
   const allowed = new Set(["nousresearch/hermes-4-70b", "google/gemini-3.1-flash-lite"]);
   const roster = resolveRoomRoster(ROOM_PERSONAS, (provider, model) => {

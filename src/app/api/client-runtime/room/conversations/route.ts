@@ -28,10 +28,10 @@ export async function GET() {
   const conversations = await readRoomConversations(session.tenantSlug);
   if (!conversations.ok) {
     return conversations.schemaMissing
-      ? roomJson({ configured: false, reason: "room_schema_missing", conversations: [], roster: roomRoster() })
+      ? roomJson({ configured: false, reason: "room_schema_missing", conversations: [], roster: await roomRoster() })
       : roomError("room_read_failed", 502);
   }
-  return roomJson({ configured: true, conversations: conversations.rows, roster: roomRoster() });
+  return roomJson({ configured: true, conversations: conversations.rows, roster: await roomRoster() });
 }
 
 export async function POST(request: Request) {
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
   // Default the room to every persona the tenant can actually call, so a new
   // chat is usable without first configuring a roster.
-  const available = roomRoster().filter((entry) => entry.available).map((entry) => entry.id);
+  const available = (await roomRoster()).filter((entry) => entry.available).map((entry) => entry.id);
   const requested = Array.isArray(body.presentAgents)
     ? body.presentAgents.filter((value): value is string => typeof value === "string" && available.includes(value))
     : available;
@@ -81,7 +81,7 @@ export async function PATCH(request: Request) {
   }
   if (body.status === "active" || body.status === "archived") patch.status = body.status;
   if (Array.isArray(body.presentAgents)) {
-    const available = roomRoster().filter((entry) => entry.available).map((entry) => entry.id);
+    const available = (await roomRoster()).filter((entry) => entry.available).map((entry) => entry.id);
     // A persona whose provider is not approved cannot be added to the room; the
     // roster chip stays visible but disabled rather than silently accepted.
     patch.present_agents = body.presentAgents

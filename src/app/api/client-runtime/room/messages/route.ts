@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     return roomError("room_round_already_active", 409);
   }
 
-  const roster = roomRoster();
+  const roster = await roomRoster();
   const availableIds = roster.filter((entry) => entry.available).map((entry) => entry.id);
   const present = conversation.presentAgents.filter((id) => availableIds.includes(id));
   if (!present.length) return roomError("room_no_available_agents", 409);
