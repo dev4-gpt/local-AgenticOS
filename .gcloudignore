@@ -9,8 +9,13 @@
 node_modules/
 **/node_modules/
 public-site/
+public-site 2/
 product-experience/.next/
 product-experience/public/
+product-experience 2/
+public 2/
+src 2/
+graphify-out/
 **/dist/
 test-results/
 tmp/
