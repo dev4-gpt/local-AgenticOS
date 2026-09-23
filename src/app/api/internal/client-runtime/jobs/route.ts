@@ -1265,6 +1265,10 @@ async function storeArtifact(tenantSlug: string, jobId: string, workerToken: str
   const config = clientStorageConfig();
   const token = await clientGcpAccessToken();
   if (!config || !token) return null;
+  // Cloud Storage serves text/markdown without a charset as Latin-1 in some
+  // browsers, corrupting otherwise valid UTF-8 punctuation in tenant output.
+  const storedContentType = /^(?:text\/markdown|text\/plain|text\/html)$/i.test(contentType)
+    ? `${contentType}; charset=utf-8` : contentType;
   const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
   const objectKey = `${config.namespace}/jobs/${jobId}/${safeName}`;
   const artifact = await workerRpc("create_client_runtime_artifact_worker", {
@@ -1274,13 +1278,13 @@ async function storeArtifact(tenantSlug: string, jobId: string, workerToken: str
     p_namespace: config.namespace,
     p_object_key: objectKey,
     p_original_name: fileName,
-    p_content_type: contentType,
+    p_content_type: storedContentType,
     p_byte_size: bytes.length,
     p_retention_expires_at: new Date(Date.now() + Number(process.env.CLIENT_RETENTION_DAYS ?? 30) * 86400000).toISOString(),
   });
   const artifactId = typeof artifact.value === "string" ? artifact.value : "";
-  if (!artifact.ok || !artifactId || !(await uploadClientStorageObject({ bucket: config.bucket, objectKey, contentType, bytes, token }))) return null;
-  const confirmed = await workerRpc("confirm_client_runtime_artifact_worker", { p_tenant_slug: tenantSlug, p_artifact_id: artifactId, p_worker_token: workerToken, p_byte_size: bytes.length, p_content_type: contentType });
+  if (!artifact.ok || !artifactId || !(await uploadClientStorageObject({ bucket: config.bucket, objectKey, contentType: storedContentType, bytes, token }))) return null;
+  const confirmed = await workerRpc("confirm_client_runtime_artifact_worker", { p_tenant_slug: tenantSlug, p_artifact_id: artifactId, p_worker_token: workerToken, p_byte_size: bytes.length, p_content_type: storedContentType });
   return confirmed.ok && confirmed.value === true ? artifactId : null;
 }
 

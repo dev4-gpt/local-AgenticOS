@@ -9,7 +9,7 @@ Status: executing. Execution gate: allowed by the user's explicit approval of th
 ## Acceptance criteria
 | Phase | Required evidence | State |
 | --- | --- | --- |
-| 1 Release | Deployed credential-status update; reproducible configuration; fresh login; authenticated Pipeline/Groq artifact and budget settlement; Jina extraction; ECC output | In progress |
+| 1 Release | Deployed credential-status update; reproducible configuration; fresh login; authenticated Pipeline/Groq artifact and budget settlement; Jina extraction; ECC output | Functional smoke passed for login, Pipeline/Groq, budget, direct Jina extraction and ECC; tenant research journey, full drift comparison, content quality and text display remain open |
 | 2 Providers | Each enabled provider completes a bounded request with policy, failure and accounting checks; managed-credit activation separately validated | Pending |
 | 3 Workflows | Orchestration, media, memory, research, artifacts and delivery have current-release persistence, output, retry and approval evidence | Pending |
 | 4 Edition parity | Shared screens/actions for remaining workspaces, with explicit backend capability differences and matching journey tests | Pending |
@@ -18,12 +18,12 @@ Status: executing. Execution gate: allowed by the user's explicit approval of th
 | 7 Expansion | Each promoted repository/method passes use-mode review and a defined functional/quality/resource acceptance test | Pending; not a promise to install all repositories |
 
 ## Current evidence
-- Latest acceptance and deployment details: [22 September receipt](release-acceptance-2026-09-22.md). Credential-status release is deployed; real Pipeline build failed and is under investigation. Jina direct extraction passed.
+- Latest acceptance and deployment details: [22 September receipt](release-acceptance-2026-09-22.md). Credential readiness and Pipeline format correction are deployed. The approved Groq build shipped a Markdown artifact with settled usage; ECC output and direct Jina extraction passed. The generated checklist still needs human review for unsupported factual details.
 - Original deployed source: `94f793e`; see deployment receipt dated 2026-09-21.
-- Existing authenticated Chrome session showed Managed Cloud Runtime, required approvals and Groq connected. Fresh login remains unverified.
+- A fresh sign-in was completed by the user in an isolated browser, and the authenticated managed-cloud pages loaded. Session expiry and two-tenant isolation remain unverified.
 - Removed obsolete route overrides from the example GCP manifest; the provisioner remains authoritative for isolation routes.
 - Fresh focused run: 31 tests passed, including explicit existing-secret binding, no IAM creation for existing secrets, malformed binding rejection, credential readiness and security regressions.
 - The private test manifest now represents the restored Jina configuration using an explicit existing-secret binding. No secret value was copied and no IAM grant was added. Full-manifest live equivalence remains to be checked.
 
 ## Open risks and dependencies
-Provider quotas and enabled billing must not be inferred from stored keys. Fresh login may need the user's participation. Historical receipts do not certify current jobs. Local installer distribution may require owner-controlled signing credentials. External approvals must be requested only at their concrete action boundary.
+Provider quotas and enabled billing must not be inferred from stored keys. The tenant SEO journey is disabled without an approved search provider even though direct Jina extraction works. Historical receipts do not certify current jobs. Local installer distribution may require owner-controlled signing credentials. External approvals must be requested only at their concrete action boundary.

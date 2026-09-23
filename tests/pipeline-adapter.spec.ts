@@ -141,6 +141,8 @@ test("text deliverables use Markdown while page builds retain HTML", () => {
   expect(pipelineArtifactIntent(checklist)).toBe("copy");
   expect(pipelineBuildPrompt(checklist)).toContain("```markdown");
   expect(pipelineBuildPrompt(checklist)).not.toContain("```html");
+  expect(pipelineBuildPrompt(checklist)).toContain("never invent a launch date, price, feature, or result and call it supplied");
+  expect(pipelineBuildPrompt(checklist)).toContain("separate human approval gate");
   const page = item({ id: "page", title: "Launch page", idea: "Build a responsive landing page." });
   expect(pipelineArtifactIntent(page)).toBe("preview");
   expect(pipelineBuildPrompt(page)).toContain("```html");

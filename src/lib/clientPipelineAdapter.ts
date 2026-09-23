@@ -235,6 +235,7 @@ export function pipelineBuildPrompt(item: Pick<PipelineItem, "title" | "idea" | 
     item.plan ? `Approved plan:\n${item.plan}` : "",
     item.tasks ? `Tasks:\n${item.tasks}` : "",
     "",
+    "Treat the original idea as the only source of supplied facts. The approved plan and tasks are instructions or hypotheses, not evidence that research or external actions occurred. Label missing product details as unknown or explicit assumptions; never invent a launch date, price, feature, or result and call it supplied. If the idea prohibits external actions, keep every proposed action behind a separate human approval gate.",
     format === "copy"
       ? "Return the finished requested deliverable in a single ```markdown code fence. Keep it concise and complete; close the fence. Do not include credentials, invented evidence, or claims of external actions."
       : "Return one complete, self-contained HTML document in a single ```html code fence. Use inline CSS only. Do not include scripts, remote assets, credentials, or placeholders for work you did not perform.",
