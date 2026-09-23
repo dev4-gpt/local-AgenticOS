@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
-  normalizePipelineItem, parsePipelineShape, pipelineBuildPrompt, pipelineCanBuild, pipelineCanShape,
+  normalizePipelineItem, parsePipelineShape, pipelineArtifactIntent, pipelineBuildPrompt, pipelineCanBuild, pipelineCanShape,
   pipelineColumnItems, pipelineCounts, pipelineSchemaMissing, pipelineShapePrompt, pipelineSlugify,
   pipelineStageAfterShaping, pipelineStatusLabel, pipelineUniqueSlug, type PipelineItem,
 } from "../src/lib/clientPipelineAdapter";
@@ -134,6 +134,16 @@ test("prompts carry the item and ask for the right output, with no local paths",
     expect(prompt).not.toMatch(/localhost|127\.0\.0\.1|Obsidian|\/Users\//);
     expect(prompt.length).toBeLessThanOrEqual(20_000);
   }
+});
+
+test("text deliverables use Markdown while page builds retain HTML", () => {
+  const checklist = item({ id: "text", title: "Internal GTM checklist", idea: "Create a short internal Markdown GTM checklist for a fictional launch." });
+  expect(pipelineArtifactIntent(checklist)).toBe("copy");
+  expect(pipelineBuildPrompt(checklist)).toContain("```markdown");
+  expect(pipelineBuildPrompt(checklist)).not.toContain("```html");
+  const page = item({ id: "page", title: "Launch page", idea: "Build a responsive landing page." });
+  expect(pipelineArtifactIntent(page)).toBe("preview");
+  expect(pipelineBuildPrompt(page)).toContain("```html");
 });
 
 test("GTM items receive the bounded scenario-test methodology", () => {

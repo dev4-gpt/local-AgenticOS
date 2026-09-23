@@ -15,11 +15,21 @@ Status: executing; not accepted. Scope is the approved seven-phase completion le
 - Approved build job `516f9eba-d5aa-4322-811d-93a339e273b7` failed with `workspace_artifact_invalid`. The original failed response shape is not persisted, so its exact cause remains unproven. The synthetic item remains in Execute for retry; no customer records were deleted.
 - Direct authenticated Jina worker extraction of `https://example.com` returned HTTP 200, complete status, title Example Domain and 149 Markdown characters containing the expected documentation text. This verifies the worker, not the full tenant research/queue/accounting journey. The first probe incorrectly expected the title inside Markdown; the corrected probe checked the separate title field and content.
 
-## Additional defects found; local fixes pending deployment
+## Additional defects found and fixes deployed
 - Artifact validation failure previously settled incurred provider usage to zero. Changed to required usage-based settlement (estimated cost only if usage absent), preserving failed job status.
 - Added content-free output diagnostics: intent, character count, bounded finish reason, fence-presence booleans and withholding flag. No raw output or prompt is added to failure records.
 - Cloud Orchestrate renders ClientOrchestrationWorkspace, which omitted the ECC creation panel present in the replaced ClientWorkspaceView. Restored the existing panel, retaining server authorization and policy checks.
 - 28 focused tests and TypeScript passed for these changes. Two new checks are source-contract tests; they are not live acceptance proof.
+- Production webpack build passed. Cloud Build `7062e635-c292-4110-a3eb-3fc93234fa80` succeeded for source `c7638b3`, image `sha256:a02f68daa1bc153851e1664283a3e5087b8de80c0764e505a864be74d6f8e29b`.
+- Revision `veloce-cloud-test-acceptance-c7638b3` passed staged status/login 200 and credentials/Pipeline/ECC 401 checks, then was promoted to 100% traffic. Prior revisions remain at zero traffic for rollback.
+- The earlier credential-status release was verified in authenticated Chrome: Groq Connection recorded, other loaded keys Activation required, Supabase settings Configured.
+- Secret bindings, provider/capability allowlists and research worker configuration matched the private manifest. Image and release references have been updated to the latest promoted revision. This is not a blanket assertion that every manifest field was compared.
+
+## Authenticated acceptance after fresh sign-in
+- The user completed a fresh sign-in in the isolated browser. The `/claude`, `/orchestrate` and `/pipeline` pages displayed the authenticated managed-cloud runtime, rather than redirecting to login. Session expiry and two-tenant isolation remain untested.
+- ECC Engineering handoff job `a7d24631-81f8-4d56-86ca-825a4d78244d` succeeded. Artifact `91785439-990e-4079-bcf7-438680c36fd6` and evaluation hash `deecb797c8ea650ee7b45f6fda30d21b28807c472a176e50f961c6184f70fe91` were recorded. Evaluation passed artifact contract, context budget and instruction boundary; source evidence was missing, so `releaseReady=false` and human review remains required. Zero model calls and zero provider cost were recorded. This verifies the deterministic ECC output, not the underlying fictional work.
+- Retrying the approved synthetic Pipeline item produced job `87e404ef-e175-4a5c-9323-7e4164eb3707`, again failed `workspace_artifact_invalid`. Content-free diagnostics proved `finishReason=length`, `outputChars=6344`, `hasHtmlFence=true`, `artifactIntent=preview`, `outputWithheld=false`. The item requested a Markdown checklist, but the Pipeline forced an HTML document. This is the specific format/length mismatch behind the failure; it was not a Groq connectivity failure.
+- Source now chooses Markdown `copy` for explicitly textual deliverables while retaining HTML `preview` for page builds. Focused tests: 28 passed; TypeScript and production Webpack build passed. Live deployment and rerun of this correction are pending.
 
 ## Remaining
-Fresh login needs user participation. Pipeline artifact generation remains failed until diagnosed and rerun. ECC output needs the restored UI deployed and exercised. Full manifest equivalence and remaining phases are open; no broader production certification is claimed.
+Pipeline artifact generation must pass after the format correction is deployed and the same approved item is rerun. Jina still needs a full tenant research journey. Full manifest equivalence and remaining phases are open; no broader production certification is claimed.

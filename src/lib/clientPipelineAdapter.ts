@@ -218,8 +218,15 @@ export function parsePipelineShape(output: string): PipelineShapeResult | null {
   };
 }
 
+/** Preserve the requested deliverable format instead of forcing every item into HTML. */
+export function pipelineArtifactIntent(item: Pick<PipelineItem, "title" | "idea">): "preview" | "copy" {
+  const request = `${item.title}\n${item.idea}`;
+  return /\b(?:markdown|\.md|checklist|memo|report|playbook|outline|post|script)\b/i.test(request) ? "copy" : "preview";
+}
+
 /** The Execute-stage prompt. Reuses the artifact lane Paperclip already proved. */
 export function pipelineBuildPrompt(item: Pick<PipelineItem, "title" | "idea" | "plan" | "tasks">) {
+  const format = pipelineArtifactIntent(item);
   return [
     "You are the Veloce pipeline execution agent. Build the approved item into one reviewable deliverable.",
     `Item: ${item.title}`,
@@ -228,7 +235,9 @@ export function pipelineBuildPrompt(item: Pick<PipelineItem, "title" | "idea" | 
     item.plan ? `Approved plan:\n${item.plan}` : "",
     item.tasks ? `Tasks:\n${item.tasks}` : "",
     "",
-    "Return one complete, self-contained HTML document in a single ```html code fence. Use inline CSS only. Do not include scripts, remote assets, credentials, or placeholders for work you did not perform.",
+    format === "copy"
+      ? "Return the finished requested deliverable in a single ```markdown code fence. Keep it concise and complete; close the fence. Do not include credentials, invented evidence, or claims of external actions."
+      : "Return one complete, self-contained HTML document in a single ```html code fence. Use inline CSS only. Do not include scripts, remote assets, credentials, or placeholders for work you did not perform.",
     "The document becomes this tenant's deliverable and must stand on its own.",
   ].filter(Boolean).join("\n").slice(0, 20_000);
 }

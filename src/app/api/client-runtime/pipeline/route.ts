@@ -11,7 +11,7 @@ import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clien
 import { clientWorkspaceJobConfigured } from "@/lib/clientCloudRunJobs";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import {
-  PIPELINE_STAGES, normalizePipelineItem, pipelineBuildPrompt, pipelineCanBuild, pipelineCanShape,
+  PIPELINE_STAGES, normalizePipelineItem, pipelineArtifactIntent, pipelineBuildPrompt, pipelineCanBuild, pipelineCanShape,
   pipelineSchemaMissing, pipelineShapePrompt, pipelineUniqueSlug, type PipelineItem,
 } from "@/lib/clientPipelineAdapter";
 
@@ -135,7 +135,7 @@ async function dispatch(user: { userId: string; tenantSlug: string }, body: Reco
         surface: "pipeline",
         title: item.title,
         goal: item.idea,
-        artifactIntent: "preview",
+        artifactIntent: pipelineArtifactIntent(item),
         promptOverride: pipelineBuildPrompt(item),
         pipelineItemId: id,
       },
