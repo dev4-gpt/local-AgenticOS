@@ -15,7 +15,7 @@ interface PageMeta { numeral: string; label: string; title: string; sub: string;
 // laptop-only dependency.
 const CLIENT_SUBS: Record<string, string> = {
   "/provider-matrix": "Select approved tools, compare current pricing snapshots, and submit a tenant-scoped manifest proposal before any provider is activated.",
-  "/room": "A live group chat with your agents — each on its own approved model. They read this workspace's memory, reply in turn, and can save notes or start pipeline items. Tag one with @claude.",
+  "/room": "A live group chat with available agents on approved models. In cloud, an agent may use the tenant's approved fallback provider. They read this workspace's memory and reply in turn. Tag one with @claude.",
   "/pipeline": "Capture an idea → the shaping agent classifies and plans it → you approve once at the human gate → the hosted runner builds it. Items are tenant records.",
   "/kanban": "A tenant work board with real stages, assignees, priorities, comments, and an event trail.",
   "/agent-kanban": "Cards an agent builds. Each build runs through the approved hosted lane and ships a tenant artifact.",
