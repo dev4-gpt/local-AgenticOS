@@ -55,6 +55,18 @@ export async function POST(request: Request) {
   if (!tenantSlug) return jsonError("tenant_not_configured", 503);
   const metadata = kind === "goal" && category ? { category } : {};
   const notebookId = typeof body.notebookId === "string" && /^[0-9a-f-]{36}$/i.test(body.notebookId.trim()) ? body.notebookId.trim() : null;
+  if (body.notebookId != null && !notebookId) return jsonError("notebook_id_invalid", 400);
+  if (notebookId && kind !== "notebook") return jsonError("notebook_id_invalid", 400);
+  if (notebookId) {
+    const notebook = await selectClientRecords("client_notebooks", {
+      id: `eq.${notebookId}`,
+      tenant_slug: `eq.${tenantSlug}`,
+      status: "eq.active",
+      limit: "1",
+    });
+    if (!notebook.ok) return jsonError("notebook_read_failed", 502);
+    if (notebook.records.length !== 1) return jsonError("notebook_not_found", 404);
+  }
   const stored = await insertClientRecord("client_runtime_records", { id: randomUUID(), tenant_slug: tenantSlug, created_by: user.id, kind, title, content, metadata, notebook_id: kind === "notebook" ? notebookId : null });
   if (!stored.ok) return jsonError("record_write_failed", 502);
   await recordClientAudit("tenant.record.created", { kind });
