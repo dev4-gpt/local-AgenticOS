@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Disposable internal beta runtime acceptance. Provider execution stays disabled.",
+  "clientSlug": "internal-beta",
+  "clientName": "AgentOS Internal Beta",
+  "approved": true,
+  "approvalOwner": "Aryaman",
+  "acknowledgeClientSafeRuntime": true,
+  "providerCallsEnabled": false,
+  "intentRoutingEnabled": false,
+  "provisioning": { "phase": "prepare" },
+  "gcp": {
+    "projectId": "agentos-mvp",
+    "region": "europe-west1",
+    "serviceName": "agentos-internal-beta",
+    "runtimeServiceAccount": "agentos-internal-beta-run",
+    "workspaceJobName": "agentos-internal-beta-workspace",
+    "visualQaJobName": "agentos-internal-beta-visual-qa",
+    "storageBucket": "agentos-mvp-veloce-internal-beta",
+    "artifactRegistryRepository": "veloce-client-runtime",
+    "image": "europe-west1-docker.pkg.dev/agentos-mvp/veloce-client-runtime/client-runtime@sha256:1c7ce74c9df18d3e92ad315fe9f21955071bee70f3b21072f8424fe9f5b9992f",
+    "minInstances": 0,
+    "maxInstances": 1,
+    "cpu": "1",
+    "memory": "1Gi",
+    "concurrency": 1,
+    "timeout": "900s"
+  },
+  "access": {
+    "mode": "app-auth",
+    "allowedUserEmails": ["aryamandev777@gmail.com"]
+  },
+  "runtimeEnv": {
+    "VELOCE_CLIENT_EDITION": "1",
+    "AGENTIC_OS_DISABLE_LOCAL_CLI": "1",
+    "AGENTIC_OS_DISABLE_LOCAL_FILES": "1",
+    "AGENTIC_OS_REQUIRE_APPROVALS": "1",
+    "CLIENT_RUNTIME_ENFORCE_AUTH": "1",
+    "CLIENT_RUNTIME_WORKER_ENABLED": "0",
+    "SUPABASE_URL": "https://ppmoqjtmjtfxadsnejqc.supabase.co",
+    "CLIENT_RUNTIME_DATA_MODE": "supabase",
+    "CLIENT_RUNTIME_BASE_URL": "https://agentos-internal-beta-1028728465669.europe-west1.run.app"
+  },
+  "enabledCapabilities": ["tenant-data", "artifacts", "orchestration", "quality"],
+  "enabledTraits": [],
+  "providerAllowlist": ["SUPABASE_ANON_KEY"],
+  "modelAllowlist": [],
+  "budget": { "monthlyCap": "1", "warningThreshold": "0.5" },
+  "approvalPolicy": "approve_external_actions",
+  "storage": {
+    "namespace": "internal-beta",
+    "corsOrigins": ["https://agentos-internal-beta-1028728465669.europe-west1.run.app"]
+  },
+  "retention": { "days": 1 },
+  "secretEnv": { "SUPABASE_ANON_KEY": "supabase-anon-key" },
+  "notes": "Internal only. No providers, public customer activation, managed spending, or external actions. Offboard after acceptance."
+}
