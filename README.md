@@ -71,6 +71,8 @@ owner-controlled commercial, provisioning, provider, tenant, and approval
 evidence is complete. The current topology distinguishes the canonical Vercel
 application from a constrained legacy Cloud Run service; see the
 [canonical production topology](./docs/production-topology-2026-09-25.md).
+The current source-level beta security audit is in
+[beta security readiness](./docs/beta-security-readiness-2026-09-25.md).
 
 The two billing modes are deliberately separate:
 
