@@ -218,134 +218,105 @@ git add package.json scripts/verify-client-runtime-magic-link.mjs
 git commit -m "test: verify client magic link acceptance"
 ```
 
-### Task 3: Make the Client Container Trace Boundary Verifiable
+### Task 3: Make the Client Runtime Artifact Boundary Verifiable
 
 **Files:**
+- Create: `scripts/lib/client-runtime-artifact-surface.mjs`
+- Create: `scripts/prune-client-runtime-artifact.mjs`
 - Create: `scripts/verify-client-runtime-build-trace.mjs`
-- Create: `tests/client-runtime-build-trace.spec.ts`
-- Modify: `next.config.ts`
+- Create: `tests/client-runtime-artifact-boundary.spec.ts`
 - Modify: `Dockerfile.client`
 - Modify: `package.json`
 
 **Interfaces:**
-- Consumes: `.next/standalone` and `.next/**/*.nft.json` after `VELOCE_CONTAINER_BUILD=1 npm run build`.
-- Produces: `verify:client-build-trace` fails when a trace contains a home-directory path, a repository `.env` file, or a disabled local-operator path; it prints only count and normalized path category.
+- Consumes: `.next/standalone/.next/server/app-paths-manifest.json` and `functions-config-manifest.json` after the client build.
+- Produces: an image artifact containing only client, auth, system-health, and client-runtime route entrypoints; `verify:client-build-trace` rejects any remaining operator route manifest, missing retained entrypoint, or traced local credential root.
 
-- [ ] **Step 1: Write failing verifier tests**
+- [ ] **Step 1: Write a fixture test with allowed and operator routes**
 
 ```ts
-import { expect, test } from "@playwright/test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-
-const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
-
-test("client tracing excludes local operator filesystem roots only for container builds", () => {
-  const config = read("next.config.ts");
-  expect(config).toContain('process.env.VELOCE_CLIENT_EDITION === "1"');
-  expect(config).toContain("outputFileTracingExcludes");
-  expect(config).toContain(".claude/**");
-  expect(config).toContain(".agentic-os/**");
-});
-
-test("trace verifier rejects unbounded local paths without printing them", () => {
-  const verifier = read("scripts/verify-client-runtime-build-trace.mjs");
-  expect(verifier).toContain("forbidden trace category");
-  expect(verifier).toContain("process.exitCode = 1");
-  expect(verifier).not.toContain("console.log(file)");
+await writeRoute(server, "app/api/claude/chat/route.js");
+await writeRoute(server, "app/api/client-auth/magic-link/route.js");
+await writeRoute(server, "app/context/page.js");
+await writeRoute(server, "app/demo-history/page.js");
+execFileSync("node", ["scripts/prune-client-runtime-artifact.mjs", "--standalone-root", root]);
+expect(manifest).toEqual({
+  "/api/client-auth/magic-link/route": "app/api/client-auth/magic-link/route.js",
+  "/context/page": "app/context/page.js",
 });
 ```
 
-- [ ] **Step 2: Implement a client-only output tracing exclusion policy**
-
-```ts
-const clientContainerBuild = process.env.VELOCE_CONTAINER_BUILD === "1" && process.env.VELOCE_CLIENT_EDITION === "1";
-const clientTraceExcludes = clientContainerBuild
-  ? {
-      "/*": [
-        ".claude/**", ".codex/**", ".agentic-os/**", ".config/**",
-        ".env", ".env.*", "private/**", "scripts/local-*/**",
-      ],
-    }
-  : undefined;
-
-const nextConfig: NextConfig = {
-  // existing headers and distDir stay unchanged
-  output: process.env.VELOCE_CONTAINER_BUILD === "1" ? "standalone" : undefined,
-  outputFileTracingExcludes: clientTraceExcludes,
-};
-```
-
-Do not exclude application source or required package files. The policy is for local credential/workspace roots only; route authorization remains enforced by `src/middleware.ts` and server-side authorization.
-
-- [ ] **Step 3: Implement the trace inspector**
+- [ ] **Step 2: Define the build surface independently of runtime authorization**
 
 ```js
-#!/usr/bin/env node
-import { readdir, readFile } from "node:fs/promises";
-
-async function findTraceFiles(directory) {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const nested = await Promise.all(entries.map(async (entry) => {
-    const path = `${directory}/${entry.name}`;
-    if (entry.isDirectory()) return findTraceFiles(path);
-    return entry.name.endsWith(".nft.json") ? [path] : [];
-  }));
-  return nested.flat();
-}
-
-const traceFiles = await findTraceFiles(".next");
-const forbidden = [
-  { category: "home-directory", expression: /(?:^|\\/)Users(?:\\/|$)|(?:^|\\/)home(?:\\/|$)/ },
-  { category: "environment-file", expression: /(?:^|\\/)\.env(?:\.|$)/ },
-  { category: "local-operator-root", expression: /(?:^|\\/)\.(?:claude|codex|agentic-os)(?:\\/|$)/ },
-];
-let violations = 0;
-for (const traceFile of traceFiles) {
-  const trace = JSON.parse(await readFile(traceFile, "utf8"));
-  for (const file of trace.files ?? []) {
-    const match = forbidden.find(({ expression }) => expression.test(String(file).replaceAll("\\\\", "/")));
-    if (match) { violations += 1; console.error(`forbidden trace category: ${match.category}`); }
-  }
-}
-if (violations) process.exitCode = 1;
-else console.log(`client build trace passed (${traceFiles.length} trace files)`);
+export const clientRuntimePageRoutes = ["/", "/context", "/orchestrate", "/credentials", "/capabilities", "/deliver"];
+const systemRoutes = ["/_not-found", "/_global-error", "/favicon.ico", "/healthz", "/status", "/login", "/auth/callback", "/client-unavailable"];
+const clientApiPrefixes = ["/api/capabilities", "/api/speech/transcribe", "/api/client-runtime", "/api/internal/client-runtime", "/api/client-auth"];
 ```
 
-Use only `node:fs/promises`; do not add a dependency for this release verifier.
+Keep the complete client page list synchronized with `DEFAULT_CLIENT_ROUTES`. The build surface is intentionally a superset of manifest-specific runtime authorization; it must never add an operator API.
 
-- [ ] **Step 4: Wire it into the client image build**
+- [ ] **Step 3: Prune non-client entrypoints and their registrations**
+
+```js
+for (const [entryKey, entryFile] of Object.entries(appPaths)) {
+  if (clientRuntimeArtifactRouteAllowed(routePath(entryKey))) continue;
+  await removeEntrypointFiles(path.join(serverRoot, entryFile));
+  delete appPaths[entryKey];
+}
+await writeJson(appPathsFile, appPaths);
+await pruneFunctionConfig(path.join(serverRoot, "functions-config-manifest.json"));
+```
+
+Only prune `.next/standalone/.next/server`: the source build remains intact for Vercel and operator development. Remove all `page.*`, `page_*`, `route.*`, and `route_*` files associated with a disabled manifest entry.
+
+- [ ] **Step 4: Verify manifests, retained files, and trace paths without printing raw paths**
+
+```js
+if (!clientRuntimeArtifactRouteAllowed(route)) failures.push("disallowed_route_manifested");
+if (typeof entryFile !== "string" || !(await exists(path.join(serverRoot, entryFile)))) failures.push("manifested_route_file_missing");
+if (forbiddenTracePath(String(entry))) failures.push("forbidden_trace_category");
+```
+
+The verifier must use generic categories only and fail nonzero on any violation.
+
+- [ ] **Step 5: Wire the prune-and-verify sequence into the Docker build**
 
 ```dockerfile
 RUN npm run build
+RUN node scripts/prune-client-runtime-artifact.mjs
 RUN node scripts/verify-client-runtime-build-trace.mjs
 ```
 
-Set `VELOCE_CLIENT_EDITION=1` in the builder stage as it already is. Add `"verify:client-build-trace": "node scripts/verify-client-runtime-build-trace.mjs"` to `package.json` and use that command in the Dockerfile once the script exists.
+Add `"verify:client-build-trace": "node scripts/verify-client-runtime-build-trace.mjs"` to `package.json`.
 
-- [ ] **Step 5: Run focused tests and the controlled container build**
+- [ ] **Step 6: Run focused, artifact, and runtime smoke tests**
 
-Run: `npx playwright test tests/client-runtime-build-trace.spec.ts --config=playwright.unit.config.ts --reporter=line`
+Run: `npx playwright test tests/client-runtime-artifact-boundary.spec.ts --config=playwright.unit.config.ts --reporter=line`
 
-Expected: `2 passed`.
+Expected: `1 passed`.
 
-Run: `VELOCE_CONTAINER_BUILD=1 VELOCE_CLIENT_EDITION=1 npm run build`
+Run: `VELOCE_CONTAINER_BUILD=1 VELOCE_CLIENT_EDITION=1 npm run build -- --webpack`
 
-Expected: client container build completes.
+Expected: standalone output is generated.
+
+Run: `node scripts/prune-client-runtime-artifact.mjs`
+
+Expected: disabled route entries are removed.
 
 Run: `npm run verify:client-build-trace`
 
-Expected: build completes with no dynamic-filesystem tracing warnings for excluded local roots and reports `client build trace passed`.
+Expected: artifact verifier passes without printing a local path.
 
-Run: `docker build -f Dockerfile.client -t veloce-client-runtime:release-gate .`
+Run: launch `.next/standalone/server.js` with `CLIENT_RUNTIME_ENFORCE_AUTH=1`; request `/context`, `/api/claude/chat`, `/api/client-auth/session`, and `/api/client-runtime/records`.
 
-Expected: image build exits `0`; do not push this temporary tag.
+Expected: `307`, `403`, `200`, and `401`, respectively.
 
-- [ ] **Step 6: Commit the trace gate**
+- [ ] **Step 7: Commit the artifact gate**
 
 ```bash
-git add next.config.ts Dockerfile.client package.json scripts/verify-client-runtime-build-trace.mjs tests/client-runtime-build-trace.spec.ts
-git commit -m "build: verify client runtime trace boundary"
+git add Dockerfile.client package.json scripts/lib/client-runtime-artifact-surface.mjs scripts/prune-client-runtime-artifact.mjs scripts/verify-client-runtime-build-trace.mjs tests/client-runtime-artifact-boundary.spec.ts
+git commit -m "build: prune client runtime artifact"
 ```
 
 ### Task 4: Record Named Interim Operating Ownership

@@ -16,6 +16,8 @@ ENV AGENTIC_OS_DISABLE_LOCAL_CLI=1
 ENV AGENTIC_OS_DISABLE_LOCAL_FILES=1
 ENV AGENTIC_OS_REQUIRE_APPROVALS=1
 RUN npm run build
+RUN node scripts/prune-client-runtime-artifact.mjs
+RUN node scripts/verify-client-runtime-build-trace.mjs
 
 FROM node:${NODE_VERSION} AS runner
 WORKDIR /app

@@ -36,6 +36,7 @@
     "verify:client-runtime": "node scripts/verify-client-runtime.mjs",
     "verify:client-authenticated": "node scripts/verify-client-runtime-authenticated.mjs",
     "verify:client-magic-link": "node scripts/verify-client-runtime-magic-link.mjs",
+    "verify:client-build-trace": "node scripts/verify-client-runtime-build-trace.mjs",
     "verify:client-worker": "node scripts/verify-client-runtime-worker.mjs",
     "verify:control-plane-iam": "node scripts/verify-gcp-provisioner-role.mjs",
     "verify:control-plane-cloud": "node scripts/verify-control-plane-cloud.mjs",
