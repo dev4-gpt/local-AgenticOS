@@ -24,6 +24,15 @@ catalog, BYOK lifecycle, two-tenant isolation, managed-OpenRouter, operations,
 and legal acceptance results. A release is not ready when any of those fields
 is missing or not owner-approved.
 
+## Controlled-beta ownership
+
+Aryaman is the accountable owner for the controlled internal beta's incident
+response, billing/reconciliation, access revocation, and customer-data
+deletion. The assignment and its runbook references are maintained in
+`docs/organizational-structure.md#interim-controlled-beta-operating-ownership`.
+It is a release-evidence requirement, not authorization to open public
+traffic, paid operations, or managed-provider execution.
+
 ## Stripe destination verification
 
 For the shared billing endpoint, verify the selected account and mode in

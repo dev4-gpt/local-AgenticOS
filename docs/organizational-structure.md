@@ -7,10 +7,10 @@ person holds all of them today, and (b) as the team grows, each function
 below has an obvious place to hand off to a dedicated hire without
 restructuring anything.
 
-No names are recorded here by design -- roles and functions only. This is
-an accurate, not aspirational, org chart: it does not claim a team that
-doesn't exist, and an auditor reviewing it at solo-founder stage should
-see exactly that.
+Roles and functions remain the primary org chart. The interim controlled-beta
+ownership section records the sole accountable operator by first name because
+the release contract requires a named owner; it does not imply that a larger
+team exists.
 
 ## Functional departments
 
@@ -53,11 +53,25 @@ basis for data processing and any required breach notifications.
 
 | Department | Current holder | Note |
 |---|---|---|
-| Engineering & Platform | Founder | |
-| Security & Compliance | Founder | |
-| Finance & Billing Operations | Founder | |
-| Product & Customer Operations | Founder | |
-| Legal & Data Protection | Founder (with external counsel as needed) | Privacy policy explicitly requires outside legal review before publication -- this is the one department where the founder should not be the sole reviewer even at solo stage. |
+| Engineering & Platform | Aryaman (Founder) | |
+| Security & Compliance | Aryaman (Founder) | |
+| Finance & Billing Operations | Aryaman (Founder) | |
+| Product & Customer Operations | Aryaman (Founder) | |
+| Legal & Data Protection | Aryaman (Founder, with external counsel as needed) | Privacy policy explicitly requires outside legal review before publication -- this is the one department where the founder should not be the sole reviewer even at solo stage. |
+
+## Interim controlled-beta operating ownership
+
+Until a documented delegate receives production access, Aryaman is accountable
+for the controlled internal beta. This assignment is reviewed for every
+customer activation and does not authorize public traffic, provider execution,
+or paid operations.
+
+| Release obligation | Accountable owner | Evidence / runbook |
+|---|---|---|
+| Incident classification, containment, and customer communication | Aryaman | `docs/incident-response-plan.md` |
+| Billing, refund review, and reconciliation | Aryaman | `docs/v3.3-managed-credit-lifecycle-runbook.md` |
+| Access revocation and tenant suspension | Aryaman | `docs/production-operations.md` |
+| Customer-data export, deletion, and offboarding | Aryaman | `docs/v3.3-managed-credit-lifecycle-runbook.md` |
 
 ## Board oversight
 

@@ -88,5 +88,7 @@ persona simulation is a later messaging stress test, not product validation.
 - Approve the intended apex and `www` marketing-domain mapping.
 - Select and provision a current client-runtime backend before live tenant
   acceptance testing.
-- Name the beta operational owners and decide the initial commercial payment
-  and support policy.
+- The controlled-beta operational owner is Aryaman; the incident, billing,
+  revocation, and deletion accountabilities are recorded in
+  `docs/organizational-structure.md#interim-controlled-beta-operating-ownership`.
+  Decide the initial commercial payment and support policy before activation.

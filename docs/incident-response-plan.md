@@ -28,6 +28,11 @@ naming them separately is that every incident must have someone
 explicitly *deciding*, not just multiple people investigating in
 parallel with no owner.
 
+For the controlled internal beta, Aryaman is the incident commander,
+technical responder, and communications lead. This interim assignment is
+superseded only by a documented delegate in
+`docs/organizational-structure.md`.
+
 ## 3. Preparation (controls already in place before any incident)
 
 - **Credential hygiene**: every credential-handling path in this system
