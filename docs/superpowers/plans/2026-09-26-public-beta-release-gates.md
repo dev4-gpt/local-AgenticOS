@@ -15,6 +15,7 @@
 - Never log, commit, return, or place a Supabase access token, refresh token, service-role key, provider key, or password in a test artifact.
 - Use a unique disposable email and tenant only; delete its auth user, membership, tenant rows, and client records in a `finally` cleanup path.
 - Restore `CLIENT_ALLOWED_USER_EMAILS` to `aryamandev777@gmail.com` immediately after the live callback verification.
+- Restore `CLIENT_SLUG` to `internal-beta` immediately after the live callback verification.
 - Treat the `$5` Google Cloud monthly budget alert as an alert, not a cost cap; do not add resources or increase autoscaling.
 - Do not point `veloceos.cloud` or `www.veloceos.cloud` at a tenant runtime, enable paid traffic, enable managed providers, or authorize public activation in this work.
 
@@ -40,6 +41,7 @@
 - Create: `tests/client-auth-callback.spec.ts`
 - Modify: `src/app/auth/callback/page.tsx`
 - Modify: `src/app/api/client-auth/magic-link/route.ts`
+- Modify: `src/components/Shell.tsx` - bypass the workspace/capability shell on `/auth/callback` so the callback client can read the fragment and exchange the session.
 
 **Interfaces:**
 - Consumes: Supabase implicit-flow fragments `access_token` and `refresh_token`; `clientUserEmailAllowed(email: string | undefined): boolean`; RPC `client_member(p_tenant_slug text): boolean`.
@@ -60,6 +62,11 @@ test("callback clears fragment before posting only the tokens to the same-origin
   expect(page).toContain('fetch("/api/client-auth/magic-link"');
   expect(page).toContain('credentials: "same-origin"');
   expect(page).not.toContain("window.location.href");
+});
+
+test("callback bypasses the client workspace shell gate", () => {
+  const shell = read("src/components/Shell.tsx");
+  expect(shell).toContain('pathname === "/auth/callback"');
 });
 
 test("magic-link acceptance refreshes, validates membership, and sets protected cookies", () => {
@@ -89,7 +96,7 @@ type MagicLinkPayload = { accessToken?: unknown; refreshToken?: unknown };
 
 const body = await request.json().catch(() => ({})) as MagicLinkPayload;
 const refreshToken = typeof body.refreshToken === "string" ? body.refreshToken.trim() : "";
-if (!config || !tenantSlug || refreshToken.length < 20 || refreshToken.length > 4096) {
+if (!config || !tenantSlug || !refreshToken || refreshToken.length > 4096) {
   return fail("invalid_magic_link");
 }
 ```
@@ -98,7 +105,7 @@ if (!config || !tenantSlug || refreshToken.length < 20 || refreshToken.length > 
 
 Run: `npx playwright test tests/client-auth-callback.spec.ts --config=playwright.unit.config.ts --reporter=line`
 
-Expected: `2 passed`.
+Expected: `5 passed`.
 
 Run: `npm run verify:client-authenticated`
 
@@ -118,14 +125,13 @@ git commit -m "test: lock down client magic link callback"
 - Modify: `package.json`
 
 **Interfaces:**
-- Consumes: `VELOCE_RUNTIME_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `VELOCE_MAGIC_LINK_TEST_EMAIL` from process environment; all values are local process inputs and are never written to disk.
+- Consumes: `VELOCE_RUNTIME_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `VELOCE_MAGIC_LINK_TEST_EMAIL`, and `VELOCE_MAGIC_LINK_TEST_TENANT_SLUG` from process environment; all values are local process inputs and are never written to disk.
 - Produces: exit `0` and `magic-link acceptance passed` after redirect, cookie, protected-read, logout, and cleanup; nonzero exit with a redacted reason otherwise.
 
 - [x] **Step 1: Write the verifier with redacted request helpers and guaranteed cleanup**
 
 ```js
 #!/usr/bin/env node
-import { randomUUID } from "node:crypto";
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -136,7 +142,7 @@ const runtimeUrl = required("VELOCE_RUNTIME_URL").replace(/\/$/, "");
 const supabaseUrl = required("SUPABASE_URL").replace(/\/$/, "");
 const serviceKey = required("SUPABASE_SERVICE_ROLE_KEY");
 const email = required("VELOCE_MAGIC_LINK_TEST_EMAIL").toLowerCase();
-const tenantSlug = `magic-link-${randomUUID().replaceAll("-", "").slice(0, 18)}`;
+const tenantSlug = required("VELOCE_MAGIC_LINK_TEST_TENANT_SLUG");
 let userId = "";
 
 const admin = (path, init = {}) => fetch(`${supabaseUrl}${path}`, {
@@ -208,13 +214,13 @@ Run: `env -u VELOCE_RUNTIME_URL npm run verify:client-magic-link`
 
 Expected: nonzero exit containing `missing_VELOCE_RUNTIME_URL`, with no credentials in output.
 
-- [ ] **Step 4: Run the live acceptance sequence with a temporary allowlist entry**
+- [x] **Step 4: Run the live acceptance sequence with a temporary allowlist entry**
 
 Precondition: in Supabase Auth **URL Configuration**, the exact redirect URL `https://agentos-internal-beta-vbimnfseva-ew.a.run.app/auth/callback` is now allowlisted. The existing Site URL is unchanged.
 
-Run: set the internal-beta service allowlist to `aryamandev777@gmail.com,<unique-disposable-email>`, wait for the new Cloud Run revision to become ready, run `npm run verify:client-magic-link`, then restore the allowlist to exactly `aryamandev777@gmail.com` and verify the restored revision is ready.
+Run: generate a unique `magic-link-<18 hex characters>` slug and disposable email. Set the internal-beta service's `CLIENT_SLUG` to that slug and its allowlist to `aryamandev777@gmail.com,<unique-disposable-email>`, wait for the new Cloud Run revision to become ready, then run `npm run verify:client-magic-link` with `VELOCE_MAGIC_LINK_TEST_TENANT_SLUG` set to the same slug. Restore `CLIENT_SLUG=internal-beta` and the allowlist to exactly `aryamandev777@gmail.com`, then verify the restored revision is ready.
 
-Expected: one `magic-link acceptance passed` line; all disposable records removed; no token, link, email, or key retained in the terminal transcript or repository.
+Expected: one `magic-link acceptance passed` line; all disposable records removed; no token, link, disposable email, or key retained in the terminal transcript or repository.
 
 - [x] **Step 5: Commit the reusable verifier**
 
@@ -428,7 +434,7 @@ The provisioner resolves the tag to a digest before deployment. Retain the dedic
 
 Expected: a ready revision of `agentos-internal-beta` receives 100% of that service's traffic; legacy `agentos` is unchanged.
 
-- [ ] **Step 4: Run no-credential, authenticated, and magic-link live acceptance**
+- [x] **Step 4: Run no-credential, authenticated, and magic-link live acceptance**
 
 Run: `CLIENT_RUNTIME_URL="$VELOCE_RUNTIME_URL" npm run verify:client-runtime`
 
@@ -449,7 +455,7 @@ Expected: magic-link callback acceptance passes after the Supabase redirect URL 
 | --- | --- |
 | Client build trace | Passed; no forbidden local root appeared in output traces. |
 | Password session | Passed with disposable fixture cleanup. |
-| Magic-link callback | Pending: Supabase resolves to the exact beta callback, but the browser did not issue `POST /api/client-auth/magic-link`; session acceptance is unproven. Disposable data was cleaned and the owner-only app allowlist restored on revision `agentos-internal-beta-00020-vm6`. |
+| Magic-link callback | Passed on the disposable browser journey: session POST, protected page, logout, and fixture cleanup. The owner-only allowlist and `internal-beta` tenant slug were restored on revision `agentos-internal-beta-00034-v69`. |
 | Operational owners | Founder accepted interim controlled-beta accountability on 2026-09-26. |
 
 **Decision:** `agentos-internal-beta` remains an allowlisted controlled
@@ -457,9 +463,9 @@ internal beta. Public customer activation, public-domain routing, managed
 providers, and paid traffic remain closed pending their separate approvals.
 ```
 
-The only outstanding release-plan steps are Task 2 Step 4 and Task 5 Step 4.
-The callback URL allowlist prerequisite is satisfied without changing the Site
-URL. The remaining blocker is the browser callback not issuing its session POST.
+All release-plan steps are complete for the controlled internal beta. The
+callback URL allowlist prerequisite was satisfied without changing the Site
+URL. Public customer activation remains outside this plan.
 
 - [x] **Step 6: Commit, push, and inspect the immutable production record**
 
@@ -489,4 +495,5 @@ Expected: `main` is synchronized with `origin/main` and contains no uncommitted 
 - Task 5 deployment and release evidence are committed in `d65b644`; its no-credential and password-session checks passed. The magic-link acceptance subcheck remains pending because the browser callback does not issue the session POST, despite the exact callback URL now being allowlisted. The test's temporary app allowlist was restored; the latest revision is recorded below.
 - Follow-up verifier cleanup correction: each disposable membership, tenant, and auth-user deletion is now attempted independently; `tests/client-runtime-magic-link-verifier.spec.ts` passes.
 - Follow-up live redirect probe confirmed the same Supabase Site URL fallback after `876bad0`; its disposable auth user was deleted successfully. The Cloud Run allowlist was not changed by this probe.
-- The exact Supabase redirect URL was added without changing the Site URL. Disposable verifier runs cleaned their user/tenant fixtures and restored the owner-only allowlist; the latest browser run observed no session POST. Revision `agentos-internal-beta-00020-vm6` serves the pinned image at 100% traffic with the owner-only allowlist. Magic-link acceptance remains open.
+- The exact Supabase redirect URL was added without changing the Site URL. The first browser run exposed a shell route gate; after it was fixed, the server rejected Supabase's valid 12-character refresh token because of a 20-character minimum. The route now delegates opaque-token validity to Supabase. A mismatched disposable tenant in the verifier was also corrected by setting the same temporary `CLIENT_SLUG` on the test revision.
+- Cloud Build `e53232d7-620b-4783-b720-903486ae2ae2` succeeded for image `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`. Focused tests passed 7/7; typecheck, public-beta contract, security, provider-policy, egress-budget, and client build-trace checks passed. The live browser magic-link journey passed with protected-page access and logout rejection. All disposable tenant records were removed. Revision `agentos-internal-beta-00034-v69` is ready at 100% internal-beta traffic with exact owner-only access and `CLIENT_SLUG=internal-beta`. The unauthenticated runtime verifier and `/status` passed after restoration. Code is committed as `ed822d7`.

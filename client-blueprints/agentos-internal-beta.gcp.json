@@ -18,7 +18,7 @@
     "visualQaJobName": "agentos-internal-beta-visual-qa",
     "storageBucket": "agentos-mvp-veloce-internal-beta",
     "artifactRegistryRepository": "veloce-client-runtime",
-    "image": "europe-west1-docker.pkg.dev/agentos-mvp/veloce-client-runtime/client-runtime@sha256:66ba7063e1ef673de3e746ba79d4f9513d2c452883cffaf6d992bed9a0275f98",
+    "image": "europe-west1-docker.pkg.dev/agentos-mvp/veloce-client-runtime/client-runtime@sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57",
     "minInstances": 0,
     "maxInstances": 1,
     "cpu": "1",

@@ -16,7 +16,7 @@ the existing `agentos` service.
 | Cloud Run | `agentos` and `agentos-internal-beta` | The new beta service is isolated from the legacy workload. |
 | Legacy service | Public `agentos-00013-q7f` from 2026-05-27 | It remains constrained to min 0 / max 1 and is not a current repository deployment. |
 | Artifact Registry | `veloce-client-runtime` Docker repository created in `europe-west1` | Holds the pinned image consumed only by the internal beta service. |
-| Cloud Build | Client-safe build `7728f333-deda-4e6b-ab1c-2e17c8f7ccee` succeeded | Its pruned, immutable image is deployed below. |
+| Cloud Build | Client-safe build `e53232d7-620b-4783-b720-903486ae2ae2` succeeded | Its pruned, immutable image is deployed below. |
 | Cloud Tasks | Enabled | The client provisioner can create its isolated queue after manifest approval. |
 | Secret Manager | Internal beta has `veloce-internal-beta-supabase-anon-key`, version 1 enabled | The runtime has a tenant-scoped publishable-key reference; no service-role or provider key is bound. |
 | Runtime service accounts | `agentos-internal-beta-run` exists | It owns only the internal beta runtime resources. |
@@ -29,7 +29,7 @@ Use `agentos-mvp` only for a **new**, client-safe service built from
 Secret Manager bindings, and tenant slug. Keep the public product front end on
 `https://app.veloceos.cloud`.
 
-`agentos-internal-beta-00010-d68` serves
+`agentos-internal-beta-00034-v69` serves
 `https://agentos-internal-beta-vbimnfseva-ew.a.run.app` with min instances zero,
 max instances one, and one concurrent request. It uses the pinned image, a
 dedicated service account, bucket, queue, and workspace job. Only
@@ -42,12 +42,12 @@ credential value, or a provider credential.
 
 ## Verified Build Evidence
 
-- Source: local `main` at commit `caf30a0`.
-- Build: `7728f333-deda-4e6b-ab1c-2e17c8f7ccee`, completed successfully on
+- Source: uploaded worktree source now committed as `ed822d7`.
+- Build: `e53232d7-620b-4783-b720-903486ae2ae2`, completed successfully on
   2026-09-26 with the client Dockerfile's route-pruning and artifact-verifier
   stages.
 - Image:
-  `europe-west1-docker.pkg.dev/agentos-mvp/veloce-client-runtime/client-runtime@sha256:66ba7063e1ef673de3e746ba79d4f9513d2c452883cffaf6d992bed9a0275f98`.
+  `europe-west1-docker.pkg.dev/agentos-mvp/veloce-client-runtime/client-runtime@sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`.
 - Build context excluded local environment files, credentials, documentation,
   test results, and local caches through `.gcloudignore`.
 
@@ -72,29 +72,32 @@ pruned artifact gate passed locally and in the successful Cloud Build.
    one-dollar budget, one user, and provider-disabled policy.
 6. Complete: the isolated service and workspace job are deployed without
    replacing or routing traffic through the legacy service.
-7. Complete for password authentication: a disposable user passed runtime
-   login, HTTP-only session issuance, tenant-scoped API access, logout, and
-   cleanup. Email-callback acceptance remains a separate public-beta gate.
+7. Complete: password authentication previously passed with a disposable user,
+   tenant-scoped API access, logout, and cleanup. The separate live email-link
+   browser acceptance now also passes with HTTP-only cookies, protected-page
+   access, logout rejection, and disposable fixture cleanup.
 8. Complete: the client artifact now has a post-build allowlisted route
    boundary; the live internal-beta smoke passed after deployment of the
    pruned image.
 9. Complete: Aryaman is recorded as the controlled-beta incident, billing,
    access-revocation, and data-deletion owner.
 
-## Remaining Acceptance Gate
+## Internal Beta Acceptance
 
 The exact internal-beta `/auth/callback` URL is now in Supabase Auth Redirect
 URLs; the configured Site URL was left unchanged. The live disposable link
-resolved to that callback, but the browser did not issue
-`POST /api/client-auth/magic-link`, leaving session acceptance unproven.
-Disposable records were cleaned and the service's owner-only allowlist was
-restored on revision `agentos-internal-beta-00020-vm6`, which receives 100% of
-service traffic. Diagnose the client callback and rerun the verifier before
-any public or paid activation.
+resolved to that callback, and the browser completed session exchange,
+protected-page access, and logout. Supabase's issued refresh token was 12
+characters, so the runtime now lets Supabase validate the opaque token rather
+than rejecting it by an unsupported minimum length. Disposable records were
+cleaned and the service's owner-only allowlist and `internal-beta` tenant slug
+were restored on revision `agentos-internal-beta-00034-v69`, which receives
+100% of service traffic. The unauthenticated runtime check and `/status` also
+passed after restoration.
 
 ## Decision
 
 `agentos-mvp` now hosts a tightly constrained **internal beta** runtime. It is
 not approved for public customer activation, paid traffic, provider execution,
-or general availability. The remaining gates are the live email-callback
-journey and the public-domain/commercial activation decisions.
+or general availability. Public-domain, provider, and commercial activation
+remain separate decisions.

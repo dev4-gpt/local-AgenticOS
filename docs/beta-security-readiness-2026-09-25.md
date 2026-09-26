@@ -37,24 +37,23 @@ It is not a GA security certification.
 | Platform environment isolation | Passed live against `ppmoqjtmjtfxadsnejqc.supabase.co`; two synthetic service-role rows were removed after staging and production filtering proved isolated. |
 | Two-tenant isolation | Passed live with two disposable users, tenants, and short-lived sessions across every scoped-table probe; all fixtures were removed. |
 | Internal runtime smoke | Passed on `agentos-internal-beta`: protected-route redirect, password login, HTTP-only session cookies, tenant-scoped API read, logout, and fixture cleanup. |
+| Live email callback | Passed on image `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`: the disposable browser link reached `/auth/callback`, issued the session POST, received HTTP-only secure cookies, reached `/context`, and was denied after logout. The disposable auth user, membership, and tenant were removed. |
 | Client artifact boundary | Passed locally and in Cloud Build: the standalone client image prunes disabled route entries and verifies its remaining route manifests and trace paths. |
 | Operational ownership | Passed: Aryaman is recorded as the interim incident, billing, revocation, and deletion owner. |
 
-## Evidence still required before beta acceptance
+## Internal Beta Acceptance
 
-1. **Email callback journey:** the exact internal-beta callback is now present
-   in Supabase Auth Redirect URLs; the existing Site URL is unchanged. The
-   disposable verifier resolved a link to `/auth/callback`, but its browser
-   never issued `POST /api/client-auth/magic-link`, so session acceptance is
-   still unproven. Disposable records were cleaned and the app allowlist was
-   restored to the owner only on revision `agentos-internal-beta-00020-vm6`
-   (100% traffic). Diagnose the client callback before any public or paid
-   activation.
+The exact internal-beta callback remains in Supabase Auth Redirect URLs; the
+existing Site URL was not changed. The live browser acceptance passed on
+2026-09-26. Revision `agentos-internal-beta-00034-v69` is ready, serves 100%
+of internal-beta traffic, and has `CLIENT_SLUG=internal-beta` with only
+`aryamandev777@gmail.com` allowlisted. The no-credential runtime verifier and
+`/status` check also passed on this image.
 
 ## Decision
 
 No beta-critical source vulnerability was identified in this pass. The product
 is accepted for a **controlled internal beta runtime**, not a multi-tenant
 public beta or GA. The legacy `agentos-mvp/agentos` Cloud Run service remains
-an unacceptable test or customer-runtime target until the live email callback
-evidence and separate public activation decisions exist.
+an unacceptable test or customer-runtime target. Public-domain, provider, and
+commercial activation require separate decisions and evidence.
