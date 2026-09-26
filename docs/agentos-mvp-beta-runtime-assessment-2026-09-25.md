@@ -1,8 +1,8 @@
 # AgentOS MVP Beta Runtime Assessment
 
-**Date:** 2026-09-25  
-**Status:** bootstrap and client-safe image complete; no beta runtime has been
-provisioned.
+**Date:** 2026-09-25, updated 2026-09-26
+**Status:** controlled internal beta runtime deployed; public customer
+activation remains closed.
 
 This is the current, read-only assessment of `agentos-mvp` as a possible host
 for a new Veloce client-safe Cloud Run runtime. It does not authorize reuse of
@@ -13,26 +13,32 @@ the existing `agentos` service.
 | Item | Result | Consequence |
 | --- | --- | --- |
 | Region | `europe-west1` | Use this region consistently for any new runtime resources. |
-| Cloud Run | `agentos` is the only service | Reserve a new service name; do not replace or route traffic through the legacy service. |
+| Cloud Run | `agentos` and `agentos-internal-beta` | The new beta service is isolated from the legacy workload. |
 | Legacy service | Public `agentos-00013-q7f` from 2026-05-27 | It remains constrained to min 0 / max 1 and is not a current repository deployment. |
-| Artifact Registry | `veloce-client-runtime` Docker repository created in `europe-west1` | Dedicated location for client-safe images; no service consumes it yet. |
-| Cloud Build | Client-safe build `c626934e-ccff-4397-8e67-5dd9ce245c6a` succeeded | Verified image is pinned below; no deployment followed the build. |
+| Artifact Registry | `veloce-client-runtime` Docker repository created in `europe-west1` | Holds the pinned image consumed only by the internal beta service. |
+| Cloud Build | Client-safe build `c626934e-ccff-4397-8e67-5dd9ce245c6a` succeeded | Its immutable image is deployed below. |
 | Cloud Tasks | Enabled | The client provisioner can create its isolated queue after manifest approval. |
-| Secret Manager | Enabled; only `GROQ_API_KEY` exists | Do not reuse this key. A client runtime needs a separately named Supabase anon-key secret version. |
-| Runtime service accounts | No dedicated client-runtime account | The provisioner will create one after bootstrap and manifest approval. |
+| Secret Manager | Internal beta has `veloce-internal-beta-supabase-anon-key`, version 1 enabled | The runtime has a tenant-scoped publishable-key reference; no service-role or provider key is bound. |
+| Runtime service accounts | `agentos-internal-beta-run` exists | It owns only the internal beta runtime resources. |
 | Cost control | `$5` monthly alert and legacy max scale 1 | An alert is not a spend cap; the new runtime must keep min instances 0 and max instances 1. |
 
-## Candidate Architecture
+## Deployed Architecture
 
 Use `agentos-mvp` only for a **new**, client-safe service built from
 `Dockerfile.client`, with its own service account, Cloud Tasks queue, bucket,
 Secret Manager bindings, and tenant slug. Keep the public product front end on
 `https://app.veloceos.cloud`.
 
-The first runtime must be provider-disabled and scoped to a disposable internal
-tenant. It needs only the Supabase publishable/anon key at runtime. It must not
-receive a service-role key, the existing Groq key, any Vercel credential value,
-or a provider credential.
+`agentos-internal-beta-00004-vbd` serves
+`https://agentos-internal-beta-vbimnfseva-ew.a.run.app` with min instances zero,
+max instances one, and one concurrent request. It uses the pinned image, a
+dedicated service account, bucket, queue, and workspace job. Only
+`aryamandev777@gmail.com` is allowlisted. Provider calls, local files, local
+CLI access, worker execution, and intent routing are disabled.
+
+The service receives only the tenant-scoped Supabase publishable key at runtime.
+It does not receive a service-role key, the existing Groq key, a Vercel
+credential value, or a provider credential.
 
 ## Verified Build Evidence
 
@@ -45,8 +51,8 @@ or a provider credential.
   test results, and local caches through `.gcloudignore`.
 
 The Next.js build completed successfully but emitted dynamic-filesystem tracing
-warnings for legacy operator routes. The client runtime has not been deployed;
-resolve or explicitly accept that warning set during the pre-GA hardening pass.
+warnings for legacy operator routes. Those warnings remain a pre-GA hardening
+item; they did not prevent the controlled internal beta deployment.
 
 ## Required Sequence
 
@@ -54,24 +60,22 @@ resolve or explicitly accept that warning set during the pre-GA hardening pass.
    Artifact Registry repository exists in `europe-west1`.
 2. Complete: the current client-safe image is built and pinned to the immutable
    digest recorded above.
-3. Confirm the intended current Supabase project, apply the client control-plane
-   migrations there, and create two disposable internal users and tenants.
-4. Add only the current Supabase anon-key value to a new tenant-scoped Secret
-   Manager secret. Do not copy values into a manifest or shell history.
-5. Review an unapproved manifest with `minInstances: 0`, `maxInstances: 1`,
-   provider calls disabled, a one-dollar internal tenant cap, and a named
-   allowed user.
-6. Apply preparation, then deploy the new service only after the image and
-   secret-version checks pass. Keep the legacy service unchanged.
-7. Run live auth, two-tenant isolation, and platform isolation evidence against
-   the selected current backend. Roll back or tear down the disposable runtime
-   when those tests complete.
+3. Complete: the current Supabase project was confirmed, platform environment
+   isolation passed, and two disposable users and tenants passed the full
+   cross-tenant read probe with cleanup.
+4. Complete: version 1 of the tenant-scoped publishable-key secret is enabled.
+5. Complete: the reviewed internal manifest pins the image, zero-to-one scale,
+   one-dollar budget, one user, and provider-disabled policy.
+6. Complete: the isolated service and workspace job are deployed without
+   replacing or routing traffic through the legacy service.
+7. Complete for password authentication: a disposable user passed runtime
+   login, HTTP-only session issuance, tenant-scoped API access, logout, and
+   cleanup. Email-callback acceptance remains a separate public-beta gate.
 
 ## Decision
 
-`agentos-mvp` is a tightly constrained **candidate** project with its required
-project bootstrap and a pinned client-safe image. It is not yet ready to host a
-beta runtime. The immediate blockers are a current Supabase target, a dedicated
-anon-key secret, client runtime preparation, and live tenant evidence. No
-runtime, secret version, user access, or traffic change was made during this
-assessment.
+`agentos-mvp` now hosts a tightly constrained **internal beta** runtime. It is
+not approved for public customer activation, paid traffic, provider execution,
+or general availability. The remaining gates are the email-callback journey,
+named operational owners, public-domain decision, and pre-GA hardening of the
+legacy dynamic-filesystem warning set.
