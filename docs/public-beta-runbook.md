@@ -1,5 +1,12 @@
 # Public provider catalog and governed AI-OS beta
 
+> **Historical execution guidance.** This runbook retains prior provider and
+> evidence details, but its hard-coded Cloud Run deployment instructions are
+> not a current authorization. Use the
+> [public beta operating contract](./public-beta-operating-contract-2026-09-25.md)
+> and [canonical production topology](./production-topology-2026-09-25.md)
+> before selecting a runtime or running a cloud command.
+
 This is the release contract for the invite-only beta. The public boundary may
 describe every catalog entry, but the executable client manifest contains only
 Veloce-owned contracts and isolated workers with a closed evidence bundle.

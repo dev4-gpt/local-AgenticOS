@@ -73,6 +73,8 @@ application from a constrained legacy Cloud Run service; see the
 [canonical production topology](./docs/production-topology-2026-09-25.md).
 The current source-level beta security audit is in
 [beta security readiness](./docs/beta-security-readiness-2026-09-25.md).
+The controlled customer offer and activation boundary are defined in the
+[public beta operating contract](./docs/public-beta-operating-contract-2026-09-25.md).
 
 The two billing modes are deliberately separate:
 
