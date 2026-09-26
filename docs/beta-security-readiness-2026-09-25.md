@@ -42,13 +42,14 @@ It is not a GA security certification.
 
 ## Evidence still required before beta acceptance
 
-1. **Email callback journey:** a live disposable-user attempt reached Supabase
-   link generation, but Supabase redirected to its configured Site URL instead
-   of the internal-beta callback. The verifier cleaned its disposable records,
-   restored the app allowlist to the owner only, and was hardened to reject
-   redirects to any other host. Add the exact internal-beta callback URL to
-   Supabase Auth URL Configuration without changing the Site URL, then rerun
-   the live verifier before opening paid or unmanaged traffic.
+1. **Email callback journey:** the exact internal-beta callback is now present
+   in Supabase Auth Redirect URLs; the existing Site URL is unchanged. The
+   disposable verifier resolved a link to `/auth/callback`, but its browser
+   never issued `POST /api/client-auth/magic-link`, so session acceptance is
+   still unproven. Disposable records were cleaned and the app allowlist was
+   restored to the owner only on revision `agentos-internal-beta-00020-vm6`
+   (100% traffic). Diagnose the client callback before any public or paid
+   activation.
 
 ## Decision
 

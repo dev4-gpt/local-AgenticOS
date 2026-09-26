@@ -42,12 +42,26 @@ try {
   const actionLink = stringValue(generated?.action_link);
   if (!actionLink) throw new Error("generate_link_invalid_response");
   const callbackUrl = await resolveCallbackUrl(actionLink);
+  assert(new URLSearchParams(new URL(callbackUrl).hash.slice(1)).has("access_token"), "callback_access_token_missing");
 
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
+  let magicLinkResponseStatus = 0;
+  let pageErrorCount = 0;
+  page.on("pageerror", () => { pageErrorCount += 1; });
+  page.on("response", (response) => {
+    if (new URL(response.url()).pathname === "/api/client-auth/magic-link") magicLinkResponseStatus = response.status();
+  });
   await page.goto(callbackUrl, { waitUntil: "domcontentloaded" });
-  await page.waitForURL(`${runtimeOrigin}/`, { timeout: 20_000 });
+  await page.waitForFunction(() => window.location.pathname !== "/auth/callback", { timeout: 5_000 }).catch(() => {});
+  if (!magicLinkResponseStatus) {
+    const message = await page.locator("main").innerText().catch(() => "");
+    const callbackState = message.includes("invalid or expired") ? "invalid_link" : message.includes("could not be accepted") ? "exchange_error" : "no_client_transition";
+    throw new Error(`magic_link_request_missing_${callbackState}_pageerror_${pageErrorCount}`);
+  }
+  assert(magicLinkResponseStatus === 200, `magic_link_http_${magicLinkResponseStatus || "missing"}`);
+  assert(new URL(page.url()).pathname === "/", "authenticated_home_redirected_to_login");
   const cookies = await context.cookies(runtimeOrigin);
   assert(cookies.some((cookie) => cookie.name === "veloce_access_token" && cookie.httpOnly && cookie.secure), "access_cookie_missing");
   assert(cookies.some((cookie) => cookie.name === "veloce_refresh_token" && cookie.httpOnly && cookie.secure), "refresh_cookie_missing");

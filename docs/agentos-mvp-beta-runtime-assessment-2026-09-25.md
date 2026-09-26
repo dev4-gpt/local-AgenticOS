@@ -83,13 +83,14 @@ pruned artifact gate passed locally and in the successful Cloud Build.
 
 ## Remaining Acceptance Gate
 
-The live magic-link attempt generated a Supabase action link, but Auth fell
-back to the project's configured Site URL instead of redirecting to the
-internal-beta `/auth/callback`. Disposable records were removed and the
-service's owner-only allowlist was restored on revision
-`agentos-internal-beta-00010-d68`, which receives 100% of service traffic. Add
-the exact callback URL to Supabase Auth URL Configuration while keeping the
-Site URL unchanged, then rerun the disposable verifier.
+The exact internal-beta `/auth/callback` URL is now in Supabase Auth Redirect
+URLs; the configured Site URL was left unchanged. The live disposable link
+resolved to that callback, but the browser did not issue
+`POST /api/client-auth/magic-link`, leaving session acceptance unproven.
+Disposable records were cleaned and the service's owner-only allowlist was
+restored on revision `agentos-internal-beta-00020-vm6`, which receives 100% of
+service traffic. Diagnose the client callback and rerun the verifier before
+any public or paid activation.
 
 ## Decision
 

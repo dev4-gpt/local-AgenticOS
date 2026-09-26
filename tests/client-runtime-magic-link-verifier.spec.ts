@@ -7,7 +7,8 @@ const source = () => readFileSync(resolve(process.cwd(), "scripts/verify-client-
 test("magic-link verifier drives the browser callback and only reports redacted outcomes", () => {
   const script = source();
   expect(script).toContain('page.goto(callbackUrl');
-  expect(script).toContain('page.waitForURL(`${runtimeOrigin}/`');
+  expect(script).toContain('magic_link_http_${magicLinkResponseStatus || "missing"}');
+  expect(script).toContain('"authenticated_home_redirected_to_login"');
   expect(script).toContain('fetch("/api/client-auth/logout"');
   expect(script).toContain("magic-link acceptance passed");
   expect(script).toContain('throw new Error("redirect_target_rejected")');
