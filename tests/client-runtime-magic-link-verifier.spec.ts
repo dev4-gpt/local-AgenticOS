@@ -10,6 +10,8 @@ test("magic-link verifier drives the browser callback and only reports redacted 
   expect(script).toContain('page.waitForURL(`${runtimeOrigin}/`');
   expect(script).toContain('fetch("/api/client-auth/logout"');
   expect(script).toContain("magic-link acceptance passed");
+  expect(script).toContain('throw new Error("redirect_target_rejected")');
+  expect(script).toContain('const supabaseOrigin = new URL(supabaseUrl).origin');
   expect(script).not.toContain("console.log(actionLink)");
   expect(script).not.toContain("console.log(callbackUrl)");
 });

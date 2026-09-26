@@ -210,6 +210,8 @@ Expected: nonzero exit containing `missing_VELOCE_RUNTIME_URL`, with no credenti
 
 - [ ] **Step 4: Run the live acceptance sequence with a temporary allowlist entry**
 
+Precondition: in Supabase Auth **URL Configuration**, add the exact redirect URL `https://agentos-internal-beta-vbimnfseva-ew.a.run.app/auth/callback`. Keep the existing Site URL unchanged. The project currently falls back to its existing Site URL when this beta callback is not allowlisted.
+
 Run: set the internal-beta service allowlist to `aryamandev777@gmail.com,<unique-disposable-email>`, wait for the new Cloud Run revision to become ready, run `npm run verify:client-magic-link`, then restore the allowlist to exactly `aryamandev777@gmail.com` and verify the restored revision is ready.
 
 Expected: one `magic-link acceptance passed` line; all disposable records removed; no token, link, email, or key retained in the terminal transcript or repository.
@@ -438,7 +440,7 @@ Expected: password-session protected read and logout pass for disposable data.
 
 Run: `npm run verify:client-magic-link`
 
-Expected: magic-link callback acceptance passes after the temporary allowlist expansion; exact one-address allowlist is restored after cleanup.
+Expected: magic-link callback acceptance passes after the Supabase redirect URL and temporary app allowlist are configured; exact one-address allowlist is restored after cleanup. Supabase's Site URL is unchanged.
 
 - [ ] **Step 5: Record only non-secret evidence and maintain the honest release decision**
 
@@ -477,8 +479,8 @@ Expected: `main` is synchronized with `origin/main` and contains no uncommitted 
 **Updated:** 2026-09-26
 
 - Task 1 completed and committed as `1e7a73a`; four callback contract tests pass.
-- Task 2 implementation and deterministic failure test completed in `a3ddda4`; verifier cleanup was hardened afterward. Its live disposable-user run remains pending because the Supabase dashboard requires owner reauthentication.
+- Task 2 implementation and deterministic failure test completed in `a3ddda4`; verifier cleanup was hardened afterward. A live disposable-user attempt created and cleaned its fixtures but exposed a Supabase Auth redirect configuration gap: the beta callback is not allowlisted, so Supabase fell back to the existing Site URL. The verifier now rejects redirects to any non-Supabase origin except the exact beta callback.
 - Task 3 completed and committed as `236621b`; local artifact pruning removed 234 routes, the artifact verifier passed, local route smoke passed, and Cloud Build `7728f333-deda-4e6b-ab1c-2e17c8f7ccee` succeeded.
 - Task 4 completed and committed as `caf30a0`; the public beta contract verifier and ownership test passed.
-- Task 5 completed through deployment and evidence publication in `d65b644`; the live magic-link acceptance subcheck remains pending. Revision `agentos-internal-beta-00008-c4t` serves the pinned image with the owner-only allowlist restored.
+- Task 5 completed through deployment and evidence publication in `d65b644`; the live magic-link acceptance subcheck remains pending until the exact callback URL is added to Supabase Auth URL Configuration. The test's temporary app allowlist was restored; revision `agentos-internal-beta-00010-d68` serves the pinned image at 100% traffic with the owner-only allowlist.
 - Follow-up verifier cleanup correction: each disposable membership, tenant, and auth-user deletion is now attempted independently; `tests/client-runtime-magic-link-verifier.spec.ts` passes.

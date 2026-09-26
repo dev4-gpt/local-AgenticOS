@@ -78,12 +78,14 @@ try {
 
 async function resolveCallbackUrl(actionLink) {
   let current = actionLink;
+  const supabaseOrigin = new URL(supabaseUrl).origin;
   for (let redirect = 0; redirect < 4; redirect += 1) {
     const response = await fetch(current, { redirect: "manual", cache: "no-store" });
     const location = response.headers.get("location");
     if (![301, 302, 303, 307, 308].includes(response.status) || !location) throw new Error(`confirm_link_${response.status}`);
     const target = new URL(location, current);
     if (target.origin === runtimeOrigin && target.pathname === "/auth/callback" && target.hash.includes("refresh_token=")) return target.href;
+    if (target.origin !== supabaseOrigin) throw new Error("redirect_target_rejected");
     current = target.href;
   }
   throw new Error("callback_redirect_not_received");
