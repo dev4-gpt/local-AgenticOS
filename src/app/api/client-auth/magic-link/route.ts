@@ -4,10 +4,12 @@ import { authCookieNames, clientUserEmailAllowed, supabaseAuthConfig } from "@/l
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type MagicLinkPayload = { accessToken?: unknown; refreshToken?: unknown };
+
 export async function POST(request: Request) {
   const config = supabaseAuthConfig();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
-  const body = await request.json().catch(() => ({})) as { accessToken?: unknown; refreshToken?: unknown };
+  const body = await request.json().catch(() => ({})) as MagicLinkPayload;
   const refreshToken = typeof body.refreshToken === "string" ? body.refreshToken.trim() : "";
   if (!config || !tenantSlug || refreshToken.length < 20 || refreshToken.length > 4096) return fail("invalid_magic_link");
 
