@@ -16,7 +16,7 @@ target.
 | Apex domain | `https://veloceos.cloud` | Older Git-connected Vercel deployment from `d658ad6` | Existing public route; not the current application revision |
 | `www` domain | `https://www.veloceos.cloud` | Separate `veloce-agenticos-public` Vercel deployment | Existing public marketing route |
 | Legacy Cloud Run | `agentos-mvp`, service `agentos`, `europe-west1` | Revision `agentos-00013-q7f`, image `agentos:4a347ad3fc308086fdb1b38b7ac56fb3e55251ae`, deployed 2026-05-27 | Legacy service; not associated with this repository's current commit |
-| Internal beta Cloud Run | `agentos-mvp`, service `agentos-internal-beta`, `europe-west1` | Revision `agentos-internal-beta-00004-vbd`, pinned client-safe image, provider calls disabled | Controlled internal beta runtime; not public customer activation |
+| Internal beta Cloud Run | `agentos-mvp`, service `agentos-internal-beta`, `europe-west1` | Revision `agentos-internal-beta-00008-c4t`, image `sha256:66ba7063e1ef673de3e746ba79d4f9513d2c452883cffaf6d992bed9a0275f98`, provider calls disabled | Controlled internal beta runtime; not public customer activation |
 
 The legacy Cloud Run service is publicly reachable but its `/`, `/healthz`, and
 documented `/status` routes returned `404` during this verification. Its source
@@ -60,8 +60,9 @@ design and acceptance run.
 
 - A Vercel deployment alone proves only the public application surface.
 - The existing release-ledger workflow cannot be used as proof for a public or
-  GA launch until operational owner approvals, email-callback evidence,
-  provider evidence, and remaining hardening controls exist.
+  GA launch until live email-callback, provider, domain, and commercial
+  activation evidence exists. The controlled-beta owner and client artifact
+  boundary are now recorded separately.
 - Future release commands must receive their cloud project, region, service,
   image digest, and ledger bucket explicitly. Do not infer them from older
   documentation.
@@ -70,7 +71,7 @@ design and acceptance run.
 
 1. Review the apex and `www` marketing deployments, then approve or reject the
    proposed domain topology.
-2. Complete email-callback and operational-owner acceptance before opening any
-   public customer or paid flow.
-3. Resolve the client-image dynamic-filesystem warnings before GA or enabling
-   provider execution.
+2. Reauthenticate the Supabase owner session and run the disposable live
+   email-callback verifier before opening any public customer or paid flow.
+3. Review provider, domain, and commercial activation decisions separately;
+   do not infer them from the internal-beta deployment.

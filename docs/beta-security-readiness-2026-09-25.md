@@ -37,21 +37,21 @@ It is not a GA security certification.
 | Platform environment isolation | Passed live against `ppmoqjtmjtfxadsnejqc.supabase.co`; two synthetic service-role rows were removed after staging and production filtering proved isolated. |
 | Two-tenant isolation | Passed live with two disposable users, tenants, and short-lived sessions across every scoped-table probe; all fixtures were removed. |
 | Internal runtime smoke | Passed on `agentos-internal-beta`: protected-route redirect, password login, HTTP-only session cookies, tenant-scoped API read, logout, and fixture cleanup. |
+| Client artifact boundary | Passed locally and in Cloud Build: the standalone client image prunes disabled route entries and verifies its remaining route manifests and trace paths. |
+| Operational ownership | Passed: Aryaman is recorded as the interim incident, billing, revocation, and deletion owner. |
 
 ## Evidence still required before beta acceptance
 
-1. **Email callback journey:** verify a disposable user through the actual
-   email-callback path, session establishment, protected-route rejection,
-   tenant membership, and logout against the canonical product stack. The
-   password-authenticated internal runtime path is already evidenced.
-2. **Operational ownership:** name the incident, billing, access-revocation,
-   and customer-data deletion owners before opening paid or unmanaged traffic.
-3. **Pre-GA hardening:** resolve or explicitly accept the client-image
-   dynamic-filesystem tracing warnings for legacy operator routes.
+1. **Email callback journey:** the repository now has a browser-level,
+   disposable verifier that creates and cleans its tenant fixtures, but it has
+   not yet run live because the Supabase owner dashboard session expired before
+   the short-lived service-role capability could be supplied. Reauthenticate
+   and run the verifier before opening paid or unmanaged traffic.
 
 ## Decision
 
 No beta-critical source vulnerability was identified in this pass. The product
 is accepted for a **controlled internal beta runtime**, not a multi-tenant
 public beta or GA. The legacy `agentos-mvp/agentos` Cloud Run service remains
-an unacceptable test or customer-runtime target.
+an unacceptable test or customer-runtime target until the live email callback
+evidence and separate public activation decisions exist.
