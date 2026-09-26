@@ -19,7 +19,12 @@ test("callback removes implicit-flow credentials from browser history before pos
   expect(page).not.toContain("window.location.href");
 });
 
-test("magic-link route refreshes and accepts only an allowlisted tenant member", async () => {
+test("callback bypasses the client workspace shell gate", () => {
+  const shell = readFileSync(resolve(process.cwd(), "src/components/Shell.tsx"), "utf8");
+  expect(shell).toContain('pathname === "/auth/callback"');
+});
+
+test("magic-link route accepts Supabase's 12-character refresh token for an allowlisted tenant member", async () => {
   process.env.SUPABASE_URL = "https://db.invalid";
   process.env.SUPABASE_ANON_KEY = "anon-key";
   process.env.CLIENT_SLUG = "tenant-a";
@@ -42,7 +47,7 @@ test("magic-link route refreshes and accepts only an allowlisted tenant member",
 
   const response = await mod.POST(new Request("https://runtime.invalid/api/client-auth/magic-link", {
     method: "POST",
-    body: JSON.stringify({ accessToken: "browser-token", refreshToken: "a".repeat(24) }),
+    body: JSON.stringify({ accessToken: "browser-token", refreshToken: "a".repeat(12) }),
   }));
 
   expect(response.status).toBe(200);

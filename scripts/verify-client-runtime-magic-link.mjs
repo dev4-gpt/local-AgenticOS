@@ -7,10 +7,11 @@ const runtimeOrigin = new URL(runtimeUrl).origin;
 const supabaseUrl = required("SUPABASE_URL").replace(/\/$/, "");
 const serviceKey = required("SUPABASE_SERVICE_ROLE_KEY");
 const email = required("VELOCE_MAGIC_LINK_TEST_EMAIL").toLowerCase();
-const tenantSlug = `magic-link-${crypto.randomUUID().replaceAll("-", "").slice(0, 18)}`;
+const tenantSlug = required("VELOCE_MAGIC_LINK_TEST_TENANT_SLUG");
 
 if (!/^https:\/\//i.test(runtimeUrl)) fail("VELOCE_RUNTIME_URL must use HTTPS");
 if (!/^\S+@\S+\.\S+$/.test(email)) fail("VELOCE_MAGIC_LINK_TEST_EMAIL must be an email address");
+if (!/^magic-link-[a-f0-9]{18}$/.test(tenantSlug)) fail("invalid_disposable_tenant_slug");
 
 let userId = "";
 let browser;
@@ -44,36 +45,13 @@ try {
   const callbackUrl = await resolveCallbackUrl(actionLink);
   assert(new URLSearchParams(new URL(callbackUrl).hash.slice(1)).has("access_token"), "callback_access_token_missing");
 
-  browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  let magicLinkResponseStatus = 0;
-  let pageErrorCount = 0;
-  page.on("pageerror", () => { pageErrorCount += 1; });
-  page.on("response", (response) => {
-    if (new URL(response.url()).pathname === "/api/client-auth/magic-link") magicLinkResponseStatus = response.status();
-  });
-  await page.goto(callbackUrl, { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => window.location.pathname !== "/auth/callback", { timeout: 5_000 }).catch(() => {});
-  if (!magicLinkResponseStatus) {
-    const message = await page.locator("main").innerText().catch(() => "");
-    const callbackState = message.includes("invalid or expired") ? "invalid_link" : message.includes("could not be accepted") ? "exchange_error" : "no_client_transition";
-    throw new Error(`magic_link_request_missing_${callbackState}_pageerror_${pageErrorCount}`);
+  if (process.argv.includes("--diagnose-direct")) {
+    await diagnoseDirect(callbackUrl);
+  } else {
+    await verifyBrowser(callbackUrl);
   }
-  assert(magicLinkResponseStatus === 200, `magic_link_http_${magicLinkResponseStatus || "missing"}`);
-  assert(new URL(page.url()).pathname === "/", "authenticated_home_redirected_to_login");
-  const cookies = await context.cookies(runtimeOrigin);
-  assert(cookies.some((cookie) => cookie.name === "veloce_access_token" && cookie.httpOnly && cookie.secure), "access_cookie_missing");
-  assert(cookies.some((cookie) => cookie.name === "veloce_refresh_token" && cookie.httpOnly && cookie.secure), "refresh_cookie_missing");
-
-  await page.goto(`${runtimeUrl}/context`, { waitUntil: "domcontentloaded" });
-  assert(page.url().startsWith(`${runtimeOrigin}/context`), "protected_route_not_accepted");
-  await page.evaluate(() => fetch("/api/client-auth/logout", { method: "POST", credentials: "same-origin" }));
-  await page.goto(`${runtimeUrl}/context`, { waitUntil: "domcontentloaded" });
-  assert(page.url().startsWith(`${runtimeOrigin}/login`), "logout_did_not_reject_protected_route");
-  console.log("magic-link acceptance passed");
 } catch (error) {
-  const code = error instanceof Error ? error.message.replace(/[^a-z0-9_-]/gi, "_").slice(0, 100) : "unknown_failure";
+  const code = error instanceof Error && /^[a-z0-9_-]{1,100}$/i.test(error.message) ? error.message : "unexpected_failure";
   console.error(`magic-link acceptance failed: ${code}`);
   process.exitCode = 1;
 } finally {
@@ -90,11 +68,73 @@ try {
   }
 }
 
+async function diagnoseDirect(callbackUrl) {
+  const refreshToken = new URLSearchParams(new URL(callbackUrl).hash.slice(1)).get("refresh_token");
+  assert(refreshToken, "callback_refresh_token_missing");
+  const response = await fetch(`${runtimeUrl}/api/client-auth/magic-link`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+  });
+  const code = await safeResponseError(response.json().catch(() => null));
+  if (!response.ok) throw new Error(`direct_magic_link_http_${response.status}_${code}`);
+  console.log("direct magic-link acceptance passed");
+}
+
+async function verifyBrowser(callbackUrl) {
+  browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  let magicLinkResponseStatus = 0;
+  let magicLinkResponseError = Promise.resolve("unknown");
+  let pageErrorCount = 0;
+  page.on("pageerror", () => { pageErrorCount += 1; });
+  page.on("response", (response) => {
+    if (new URL(response.url()).pathname === "/api/client-auth/magic-link") {
+      magicLinkResponseStatus = response.status();
+      magicLinkResponseError = safeResponseError(response.json().catch(() => null));
+    }
+  });
+  await page.goto(callbackUrl, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => window.location.pathname !== "/auth/callback", { timeout: 5_000 }).catch(() => {});
+  if (!magicLinkResponseStatus) {
+    const message = await page.locator("main").innerText().catch(() => "");
+    const callbackState = message.includes("invalid or expired") ? "invalid_link" : message.includes("could not be accepted") ? "exchange_error" : "no_client_transition";
+    throw new Error(`magic_link_request_missing_${callbackState}_pageerror_${pageErrorCount}`);
+  }
+  if (magicLinkResponseStatus !== 200) {
+    const errorCode = await Promise.race([
+      magicLinkResponseError,
+      new Promise((resolve) => setTimeout(() => resolve("unknown"), 5_000)),
+    ]);
+    throw new Error(`magic_link_http_${magicLinkResponseStatus}_${errorCode}`);
+  }
+  assert(new URL(page.url()).pathname === "/", "authenticated_home_redirected_to_login");
+  const cookies = await context.cookies(runtimeOrigin);
+  assert(cookies.some((cookie) => cookie.name === "veloce_access_token" && cookie.httpOnly && cookie.secure), "access_cookie_missing");
+  assert(cookies.some((cookie) => cookie.name === "veloce_refresh_token" && cookie.httpOnly && cookie.secure), "refresh_cookie_missing");
+
+  await page.goto(`${runtimeUrl}/context`, { waitUntil: "domcontentloaded" });
+  assert(page.url().startsWith(`${runtimeOrigin}/context`), "protected_route_not_accepted");
+  await page.evaluate(() => fetch("/api/client-auth/logout", { method: "POST", credentials: "same-origin" }));
+  await page.goto(`${runtimeUrl}/context`, { waitUntil: "domcontentloaded" });
+  assert(page.url().startsWith(`${runtimeOrigin}/login`), "logout_did_not_reject_protected_route");
+  console.log("magic-link acceptance passed");
+}
+
+async function safeResponseError(bodyPromise) {
+  const body = await bodyPromise;
+  const code = stringValue(body?.error);
+  return ["invalid_magic_link", "session_rejected", "tenant_membership_required"].includes(code) ? code : "unknown";
+}
+
 async function resolveCallbackUrl(actionLink) {
   let current = actionLink;
   const supabaseOrigin = new URL(supabaseUrl).origin;
   for (let redirect = 0; redirect < 4; redirect += 1) {
-    const response = await fetch(current, { redirect: "manual", cache: "no-store" });
+    const response = await fetch(current, { redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(10_000) });
     const location = response.headers.get("location");
     if (![301, 302, 303, 307, 308].includes(response.status) || !location) throw new Error(`confirm_link_${response.status}`);
     const target = new URL(location, current);
@@ -110,6 +150,7 @@ async function adminJson(path, init, label) {
     ...init,
     headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "content-type": "application/json", ...(init.headers ?? {}) },
     cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error(`${label}_${response.status}`);
   return response.json().catch(() => null);
@@ -120,6 +161,7 @@ async function adminStatus(path, init) {
     ...init,
     headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, ...(init.headers ?? {}) },
     cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
   }).catch(() => null);
   return response?.ok === true;
 }

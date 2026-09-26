@@ -68,7 +68,7 @@ const CLIENT_HOSTED_PROVIDER_ROUTES: Record<string, { provider: "openrouter" }> 
 export default function Shell({ children, clientEdition = false }: { children: ReactNode; clientEdition?: boolean }) {
   const pathname = usePathname();
   const reduceMotion = useReducedMotion();
-  if (pathname === "/login" || pathname === "/provider-catalog" || pathname === "/credits" || pathname === "/client-unavailable") return <>{children}</>;
+  if (pathname === "/login" || pathname === "/auth/callback" || pathname === "/provider-catalog" || pathname === "/credits" || pathname === "/client-unavailable") return <>{children}</>;
   const isHome = pathname === "/";
   const lens = lensFor(pathname);
   const gatedClientRoute = clientEdition && !CLIENT_SURFACE_ROUTES.has(pathname);

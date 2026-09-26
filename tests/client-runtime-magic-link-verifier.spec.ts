@@ -7,7 +7,9 @@ const source = () => readFileSync(resolve(process.cwd(), "scripts/verify-client-
 test("magic-link verifier drives the browser callback and only reports redacted outcomes", () => {
   const script = source();
   expect(script).toContain('page.goto(callbackUrl');
-  expect(script).toContain('magic_link_http_${magicLinkResponseStatus || "missing"}');
+  expect(script).toContain('magic_link_http_${magicLinkResponseStatus}_${errorCode}');
+  expect(script).toContain('required("VELOCE_MAGIC_LINK_TEST_TENANT_SLUG")');
+  expect(script).toContain('invalid_disposable_tenant_slug');
   expect(script).toContain('"authenticated_home_redirected_to_login"');
   expect(script).toContain('fetch("/api/client-auth/logout"');
   expect(script).toContain("magic-link acceptance passed");

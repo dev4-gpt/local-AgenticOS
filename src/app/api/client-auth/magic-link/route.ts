@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   const body = await request.json().catch(() => ({})) as MagicLinkPayload;
   const refreshToken = typeof body.refreshToken === "string" ? body.refreshToken.trim() : "";
-  if (!config || !tenantSlug || refreshToken.length < 20 || refreshToken.length > 4096) return fail("invalid_magic_link");
+  if (!config || !tenantSlug || !refreshToken || refreshToken.length > 4096) return fail("invalid_magic_link");
 
   // Refresh once rather than trusting a browser-supplied access token. This
   // proves possession of the session, rotates the credential, and lets us
