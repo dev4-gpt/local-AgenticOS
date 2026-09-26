@@ -1,5 +1,11 @@
 # GCP Client Runtime Runbook
 
+> **Historical runtime evidence:** the deployment details in this document
+> refer to `veloce-agenticos-2026`, which is not a verified current target.
+> Do not reuse its project, service, image, URL, or secret names. For the
+> connected `agentos-mvp` project, see
+> [the beta runtime assessment](./agentos-mvp-beta-runtime-assessment-2026-09-25.md).
+
 This runbook provisions an approved, isolated client runtime on GCP. It is for
 the 3939-style client edition, not for exposing the private local operator OS.
 
@@ -11,7 +17,7 @@ the 3939-style client edition, not for exposing the private local operator OS.
 - Client credentials live in Secret Manager, never in source, browser bundles,
   chat, terminal logs, screenshots, or client blueprints.
 
-## Current Internal Test Status
+## Historical Internal Test Status
 
 As of 2026-07-29, the first client-safe Cloud Run test is live and verified.
 
@@ -105,7 +111,10 @@ client clones and reruns.
 
 - `gcloud` installed and authenticated.
 - A GCP project selected for Veloce client runtimes.
-- Artifact Registry image already built from `Dockerfile.client`.
+- Cloud Tasks, Secret Manager, Cloud Run, Cloud Build, and Artifact Registry
+  APIs are enabled by a project administrator.
+- An Artifact Registry repository exists in the target region and a client-safe
+  image has been built into it from `Dockerfile.client`.
 - The client manifest has `approved: true`.
 - The client manifest has `acknowledgeClientSafeRuntime: true`.
 
@@ -157,14 +166,15 @@ npm run provision:gcp-client -- \
 
 The prepare phase is idempotent and creates or updates:
 
-- required GCP APIs
-- Artifact Registry repository
 - runtime service account
 - client storage bucket
 - Secret Manager secret containers
 - least-privilege IAM grants
 
-It does not deploy Cloud Run.
+It does not enable project APIs, create an Artifact Registry repository, add
+secret values, or deploy Cloud Run. Those bootstrap operations require a
+separate project-administrator decision so a tenant provisioner cannot broaden
+project-level capability on its own.
 
 ## Add Secret Values
 

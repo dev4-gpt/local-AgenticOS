@@ -60,6 +60,8 @@ Historical public links and Cloud Run references are retained for evidence but
 are not a current deployment authorization. See the
 [canonical production topology](./docs/production-topology-2026-09-25.md) for
 the verified domain, Vercel, legacy-cloud, and cost-control state.
+The current candidate-cloud prerequisites are recorded in the
+[AgentOS MVP beta runtime assessment](./docs/agentos-mvp-beta-runtime-assessment-2026-09-25.md).
 
 For the local-only Classroom and Social Research capabilities, session handling,
 and connector setup, see [docs/local-research-setup.md](./docs/local-research-setup.md).

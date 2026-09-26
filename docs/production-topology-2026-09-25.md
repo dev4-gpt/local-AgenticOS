@@ -44,6 +44,9 @@ design and acceptance run.
 3. `agentos-mvp/agentos` is a legacy workload. Keep it constrained and do not
    duplicate the Vercel application into it. Its eventual disposition is an
    explicit retirement or a minimal redirect/migration service.
+   A separate client-safe service in the same project may be evaluated only
+   under the prerequisites recorded in
+   [the beta runtime assessment](./agentos-mvp-beta-runtime-assessment-2026-09-25.md).
 4. References to `veloce-agenticos-2026` are historical configuration, not a
    verified active cloud target. No command may use it by default until its
    ownership, billing, and deployed services are freshly verified.
