@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { LayoutGrid, Brain, Sparkles as SparklesIcon, TrendingUp, Columns3, NotebookText, Film, Building2, Workflow, MessagesSquare, Image as ImageIcon, Gamepad2, Music2, Network, Clapperboard, Repeat, Cpu, LayoutDashboard, Palette, GripVertical, Eye, EyeOff, SlidersHorizontal, Check, SquareTerminal, Globe2, PlugZap, Orbit, Blocks, Target, BookOpenText, RadioTower, ContactRound, GitBranch, Mic2, ChevronDown, KeyRound, ListChecks, Link2 } from "lucide-react";
+import { LayoutGrid, Brain, Sparkles as SparklesIcon, TrendingUp, Columns3, NotebookText, Film, Building2, Workflow, MessagesSquare, Image as ImageIcon, Gamepad2, Music2, Network, Clapperboard, Repeat, Cpu, LayoutDashboard, Palette, GripVertical, Eye, EyeOff, SlidersHorizontal, Check, SquareTerminal, Globe2, PlugZap, Orbit, Blocks, Target, BookOpenText, RadioTower, ContactRound, GitBranch, Mic2, ChevronDown, KeyRound, ListChecks, Link2, Search } from "lucide-react";
 import { useState, useEffect, type ReactNode } from "react";
 import AgentAvatar from "./AgentAvatar";
 
@@ -62,6 +62,8 @@ const NAV: NavItem[] = [
   { href: "/games",    label: "Game Studio", icon: <Gamepad2 size={16} />, accent: "#39ff8e", dim: "rgba(57,255,142,0.16)" },
   { href: "/thumbnails", label: "Thumbnails", icon: <ImageIcon size={16} />, accent: "#fb7185", dim: "rgba(251,113,133,0.16)" },
   { href: "/notebook", label: "Notebook", icon: <NotebookText size={16} />, accent: "#fde047", dim: "rgba(253,224,71,0.16)" },
+  { href: "/classroom-research", label: "Classroom Research", icon: <BookOpenText size={16} />, accent: "#5eead4", dim: "rgba(94,234,212,0.16)" },
+  { href: "/social-research", label: "Social Research", icon: <Search size={16} />, accent: "#60a5fa", dim: "rgba(96,165,250,0.16)" },
   { href: "/kanban",   label: "Kanban",   icon: <Columns3 size={16} />,  accent: "#14b8a6", dim: "rgba(20,184,166,0.16)" },
   { href: "/memory",   label: "Memory",   icon: <Brain size={16} />,     accent: "#22d3ee", dim: "rgba(34,211,238,0.16)" },
   { href: "/leads",    label: "Leads",    icon: <ContactRound size={16} />, accent: "#34d399", dim: "rgba(52,211,153,0.16)" },
@@ -78,7 +80,7 @@ const LS_HIDDEN = "agentos.sidebar.hidden";
 // The six Veloce operating lenses preserve every direct route, but make the
 // expanding tool set navigable as a system rather than an unstructured list.
 const ORCHESTRATION_ROUTES = new Set(["/paperclip", "/room", "/pipeline", "/agent-kanban", "/loop", "/kanban", "/ruflo"]);
-const CONTEXT_ROUTES = new Set(["/memory", "/notebook", "/goals", "/journal"]);
+const CONTEXT_ROUTES = new Set(["/memory", "/notebook", "/classroom-research", "/social-research", "/goals", "/journal"]);
 const CLIENT_ONLY_ROUTES = new Set(["/context", "/orchestrate", "/create", "/deliver"]);
 const CLIENT_NAV_ROUTES = new Set(["/", ...CLIENT_ONLY_ROUTES, "/capabilities", "/hybrid", "/credentials", "/provider-matrix"]);
 const CREATE_ROUTES = new Set(["/create", "/opendesign", "/web-studio", "/flow-lab", "/video", "/studio", "/openmontage", "/music", "/games", "/thumbnails"]);

@@ -67,6 +67,8 @@ const TITLES: Record<string, PageMeta> = {
   "/studio":      { numeral: "XI.",   label: "Self · Studio",      title: "Studio",                  sub: "Generate images, videos and speech with Hermes. Voice in, preview inline, save to vault." },
   "/thumbnails":  { numeral: "XI.",   label: "Self · Thumbnails",  title: "Thumbnail Studio",        sub: "Upload a thumbnail + say what to improve → gpt-image-2 makes better versions. Every round is logged to your vault so it learns your style." },
   "/notebook":    { numeral: "XII.",  label: "Self · Notebook",    title: "Notebook",                sub: "Your NotebookLM notebooks, audio overviews and chats — all in one place, synced to Obsidian." },
+  "/classroom-research": { numeral: "XII.", label: "Context · Research", title: "Classroom Research", sub: "Collect your approved classroom sources locally, then query them with citations you can open and verify." },
+  "/social-research": { numeral: "XII.", label: "Context · Research", title: "Social Research", sub: "Research public social sources, official account data, and your own exports with a linkable evidence trail." },
   "/kanban":      { numeral: "XIII.", label: "Self · Kanban",      title: "Kanban",                  sub: "Hermes Agent multi-agent board. Drop a prompt into triage, watch the orchestrator decompose + assign." },
   "/journal":     { numeral: "XIV.",  label: "Self · Journal",     title: "Journal",                 sub: "Daily entries with voice or text. One markdown file per day." },
   "/memory":      { numeral: "XV.",   label: "Self · Memory",      title: "Memory",                  sub: "Search your Obsidian vault, Graphify knowledge map, and optional Omi-compatible memory file." },

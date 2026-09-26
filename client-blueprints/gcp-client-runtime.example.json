@@ -118,5 +118,5 @@
     "GOOGLE_OAUTH_CLIENT": "google-oauth-client"
     ,"CLIENT_WORKER_TOKEN": "worker-token"
   },
-  "notes": "Do not put secret values in this file. Create secret versions through Secret Manager only."
+  "notes": "Do not put secret values in this file. Create secret versions through Secret Manager only. The derived client route allowlist includes /api/client-runtime/skills, /api/client-runtime/learning, and /api/client-runtime/ecc."
 }

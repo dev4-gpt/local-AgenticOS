@@ -77,6 +77,9 @@ see [DEPLOYMENT-LINKS.md](./DEPLOYMENT-LINKS.md) and
 local-versus-client capability boundary is in
 [docs/runtime-capability-matrix.md](./docs/runtime-capability-matrix.md).
 
+For the local-only Classroom and Social Research capabilities, session handling,
+and connector setup, see [docs/local-research-setup.md](./docs/local-research-setup.md).
+
 ## Public Production Readiness
 
 The current application revision is deployed to Vercel and Cloud Run, but the
