@@ -42,11 +42,13 @@ It is not a GA security certification.
 
 ## Evidence still required before beta acceptance
 
-1. **Email callback journey:** the repository now has a browser-level,
-   disposable verifier that creates and cleans its tenant fixtures, but it has
-   not yet run live because the Supabase owner dashboard session expired before
-   the short-lived service-role capability could be supplied. Reauthenticate
-   and run the verifier before opening paid or unmanaged traffic.
+1. **Email callback journey:** a live disposable-user attempt reached Supabase
+   link generation, but Supabase redirected to its configured Site URL instead
+   of the internal-beta callback. The verifier cleaned its disposable records,
+   restored the app allowlist to the owner only, and was hardened to reject
+   redirects to any other host. Add the exact internal-beta callback URL to
+   Supabase Auth URL Configuration without changing the Site URL, then rerun
+   the live verifier before opening paid or unmanaged traffic.
 
 ## Decision
 

@@ -29,7 +29,7 @@ Use `agentos-mvp` only for a **new**, client-safe service built from
 Secret Manager bindings, and tenant slug. Keep the public product front end on
 `https://app.veloceos.cloud`.
 
-`agentos-internal-beta-00008-c4t` serves
+`agentos-internal-beta-00010-d68` serves
 `https://agentos-internal-beta-vbimnfseva-ew.a.run.app` with min instances zero,
 max instances one, and one concurrent request. It uses the pinned image, a
 dedicated service account, bucket, queue, and workspace job. Only
@@ -80,6 +80,16 @@ pruned artifact gate passed locally and in the successful Cloud Build.
    pruned image.
 9. Complete: Aryaman is recorded as the controlled-beta incident, billing,
    access-revocation, and data-deletion owner.
+
+## Remaining Acceptance Gate
+
+The live magic-link attempt generated a Supabase action link, but Auth fell
+back to the project's configured Site URL instead of redirecting to the
+internal-beta `/auth/callback`. Disposable records were removed and the
+service's owner-only allowlist was restored on revision
+`agentos-internal-beta-00010-d68`, which receives 100% of service traffic. Add
+the exact callback URL to Supabase Auth URL Configuration while keeping the
+Site URL unchanged, then rerun the disposable verifier.
 
 ## Decision
 

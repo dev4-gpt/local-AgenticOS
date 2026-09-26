@@ -30,7 +30,7 @@
 - Modify: `package.json` - add focused verification commands.
 - Modify: `docs/organizational-structure.md` - record the founder's interim beta operating ownership without inventing staff.
 - Modify: `docs/production-operations.md` - map release gates to named owners and verifiable evidence.
-- Modify: `docs/beta-security-readiness-2026-09-25.md` and `docs/agentos-mvp-beta-runtime-assessment-2026-09-25.md` - replace pending gates with dated evidence, keeping public activation closed unless every acceptance check passes.
+- Modify: `docs/beta-security-readiness-2026-09-25.md`, `docs/agentos-mvp-beta-runtime-assessment-2026-09-25.md`, and `docs/production-topology-2026-09-25.md` - record verified evidence and unresolved gates accurately, keeping public activation closed until every acceptance check passes.
 
 ---
 
@@ -45,7 +45,7 @@
 - Consumes: Supabase implicit-flow fragments `access_token` and `refresh_token`; `clientUserEmailAllowed(email: string | undefined): boolean`; RPC `client_member(p_tenant_slug text): boolean`.
 - Produces: `POST /api/client-auth/magic-link` returns `{ ok: true }` only after refresh, email allowlist, and tenant-membership validation; it emits two HTTP-only, `SameSite=Lax` cookies.
 
-- [ ] **Step 1: Write failing source-regression tests**
+- [x] **Step 1: Write failing source-regression tests**
 
 ```ts
 import { expect, test } from "@playwright/test";
@@ -74,13 +74,13 @@ test("magic-link acceptance refreshes, validates membership, and sets protected 
 });
 ```
 
-- [ ] **Step 2: Run the test to confirm the current code satisfies the intended contract or exposes a mismatch**
+- [x] **Step 2: Run the test to confirm the current code satisfies the intended contract or exposes a mismatch**
 
 Run: `npx playwright test tests/client-auth-callback.spec.ts --config=playwright.unit.config.ts --reporter=line`
 
 Expected: the assertions pass; if one fails, record the exact missing contract before editing code.
 
-- [ ] **Step 3: Make the callback's untrusted input contract explicit**
+- [x] **Step 3: Make the callback's untrusted input contract explicit**
 
 Keep the browser page as the only fragment reader and retain the server-side refresh as the source of truth. The request type must intentionally accept the unused access token only to keep the browser payload shape clear; never authorize with it.
 
@@ -94,7 +94,7 @@ if (!config || !tenantSlug || refreshToken.length < 20 || refreshToken.length > 
 }
 ```
 
-- [ ] **Step 4: Re-run the focused test and the existing authenticated runtime verifier**
+- [x] **Step 4: Re-run the focused test and the existing authenticated runtime verifier**
 
 Run: `npx playwright test tests/client-auth-callback.spec.ts --config=playwright.unit.config.ts --reporter=line`
 
@@ -104,7 +104,7 @@ Run: `npm run verify:client-authenticated`
 
 Expected: existing password-session verifier passes without printing a token or secret.
 
-- [ ] **Step 5: Commit the callback contract**
+- [x] **Step 5: Commit the callback contract**
 
 ```bash
 git add src/app/auth/callback/page.tsx src/app/api/client-auth/magic-link/route.ts tests/client-auth-callback.spec.ts
@@ -121,7 +121,7 @@ git commit -m "test: lock down client magic link callback"
 - Consumes: `VELOCE_RUNTIME_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `VELOCE_MAGIC_LINK_TEST_EMAIL` from process environment; all values are local process inputs and are never written to disk.
 - Produces: exit `0` and `magic-link acceptance passed` after redirect, cookie, protected-read, logout, and cleanup; nonzero exit with a redacted reason otherwise.
 
-- [ ] **Step 1: Write the verifier with redacted request helpers and guaranteed cleanup**
+- [x] **Step 1: Write the verifier with redacted request helpers and guaranteed cleanup**
 
 ```js
 #!/usr/bin/env node
@@ -194,7 +194,7 @@ try {
 }
 ```
 
-- [ ] **Step 2: Add the constrained package command**
+- [x] **Step 2: Add the constrained package command**
 
 ```json
 "verify:client-magic-link": "node scripts/verify-client-runtime-magic-link.mjs"
@@ -202,7 +202,7 @@ try {
 
 Place it beside `verify:client-authenticated` in `package.json`; do not add its secret-bearing environment variables to `.env.example`, committed configuration, CI logs, or shell history.
 
-- [ ] **Step 3: Test the verifier against deterministic failure input**
+- [x] **Step 3: Test the verifier against deterministic failure input**
 
 Run: `env -u VELOCE_RUNTIME_URL npm run verify:client-magic-link`
 
@@ -216,7 +216,7 @@ Run: set the internal-beta service allowlist to `aryamandev777@gmail.com,<unique
 
 Expected: one `magic-link acceptance passed` line; all disposable records removed; no token, link, email, or key retained in the terminal transcript or repository.
 
-- [ ] **Step 5: Commit the reusable verifier**
+- [x] **Step 5: Commit the reusable verifier**
 
 ```bash
 git add package.json scripts/verify-client-runtime-magic-link.mjs
@@ -237,7 +237,7 @@ git commit -m "test: verify client magic link acceptance"
 - Consumes: `.next/standalone/.next/server/app-paths-manifest.json` and `functions-config-manifest.json` after the client build.
 - Produces: an image artifact containing only client, auth, system-health, and client-runtime route entrypoints; `verify:client-build-trace` rejects any remaining operator route manifest, missing retained entrypoint, or traced local credential root.
 
-- [ ] **Step 1: Write a fixture test with allowed and operator routes**
+- [x] **Step 1: Write a fixture test with allowed and operator routes**
 
 ```ts
 await writeRoute(server, "app/api/claude/chat/route.js");
@@ -251,7 +251,7 @@ expect(manifest).toEqual({
 });
 ```
 
-- [ ] **Step 2: Define the build surface independently of runtime authorization**
+- [x] **Step 2: Define the build surface independently of runtime authorization**
 
 ```js
 export const clientRuntimePageRoutes = ["/", "/context", "/orchestrate", "/credentials", "/capabilities", "/deliver"];
@@ -261,7 +261,7 @@ const clientApiPrefixes = ["/api/capabilities", "/api/speech/transcribe", "/api/
 
 Keep the complete client page list synchronized with `DEFAULT_CLIENT_ROUTES`. The build surface is intentionally a superset of manifest-specific runtime authorization; it must never add an operator API.
 
-- [ ] **Step 3: Prune non-client entrypoints and their registrations**
+- [x] **Step 3: Prune non-client entrypoints and their registrations**
 
 ```js
 for (const [entryKey, entryFile] of Object.entries(appPaths)) {
@@ -275,7 +275,7 @@ await pruneFunctionConfig(path.join(serverRoot, "functions-config-manifest.json"
 
 Only prune `.next/standalone/.next/server`: the source build remains intact for Vercel and operator development. Remove all `page.*`, `page_*`, `route.*`, and `route_*` files associated with a disabled manifest entry.
 
-- [ ] **Step 4: Verify manifests, retained files, and trace paths without printing raw paths**
+- [x] **Step 4: Verify manifests, retained files, and trace paths without printing raw paths**
 
 ```js
 if (!clientRuntimeArtifactRouteAllowed(route)) failures.push("disallowed_route_manifested");
@@ -285,7 +285,7 @@ if (forbiddenTracePath(String(entry))) failures.push("forbidden_trace_category")
 
 The verifier must use generic categories only and fail nonzero on any violation.
 
-- [ ] **Step 5: Wire the prune-and-verify sequence into the Docker build**
+- [x] **Step 5: Wire the prune-and-verify sequence into the Docker build**
 
 ```dockerfile
 RUN npm run build
@@ -295,7 +295,7 @@ RUN node scripts/verify-client-runtime-build-trace.mjs
 
 Add `"verify:client-build-trace": "node scripts/verify-client-runtime-build-trace.mjs"` to `package.json`.
 
-- [ ] **Step 6: Run focused, artifact, and runtime smoke tests**
+- [x] **Step 6: Run focused, artifact, and runtime smoke tests**
 
 Run: `npx playwright test tests/client-runtime-artifact-boundary.spec.ts --config=playwright.unit.config.ts --reporter=line`
 
@@ -317,7 +317,7 @@ Run: launch `.next/standalone/server.js` with `CLIENT_RUNTIME_ENFORCE_AUTH=1`; r
 
 Expected: `307`, `403`, `200`, and `401`, respectively.
 
-- [ ] **Step 7: Commit the artifact gate**
+- [x] **Step 7: Commit the artifact gate**
 
 ```bash
 git add Dockerfile.client package.json scripts/lib/client-runtime-artifact-surface.mjs scripts/prune-client-runtime-artifact.mjs scripts/verify-client-runtime-build-trace.mjs tests/client-runtime-artifact-boundary.spec.ts
@@ -335,7 +335,7 @@ git commit -m "build: prune client runtime artifact"
 - Consumes: current solo-founder operating model and the contract's four mandatory ownership domains.
 - Produces: an auditable ownership matrix assigning incident response, billing, access revocation, and customer-data deletion to the Founder until a named delegate is documented.
 
-- [ ] **Step 1: Add an interim beta ownership table beneath Current staffing**
+- [x] **Step 1: Add an interim beta ownership table beneath Current staffing**
 
 ```markdown
 ## Interim beta operating ownership
@@ -352,7 +352,7 @@ the applicable runbook are updated.
 | Customer-data export and deletion | Founder | `docs/client-lifecycle-runbook.md` |
 ```
 
-- [ ] **Step 2: Add the release-evidence ownership requirement to operations**
+- [x] **Step 2: Add the release-evidence ownership requirement to operations**
 
 ```markdown
 For controlled beta release evidence, the Founder records the dated acceptance
@@ -361,7 +361,7 @@ responsibilities. The record identifies the runbook revision used; it never
 contains customer data, passwords, tokens, or secret values.
 ```
 
-- [ ] **Step 3: Replace the operating-contract owner decision with a reference to the matrix**
+- [x] **Step 3: Replace the operating-contract owner decision with a reference to the matrix**
 
 ```markdown
 The initial controlled-beta owners are recorded in
@@ -370,13 +370,13 @@ assignment is not public-activation approval and must be replaced when a
 delegate receives production access.
 ```
 
-- [ ] **Step 4: Verify the public-beta contract still passes**
+- [x] **Step 4: Verify the public-beta contract still passes**
 
 Run: `npm run verify:public-beta`
 
 Expected: command exits `0` and reports the contract validation passed.
 
-- [ ] **Step 5: Commit the operating record**
+- [x] **Step 5: Commit the operating record**
 
 ```bash
 git add docs/organizational-structure.md docs/production-operations.md docs/public-beta-operating-contract-2026-09-25.md
@@ -394,7 +394,7 @@ git commit -m "docs: name interim beta operating owners"
 - Consumes: a new immutable Artifact Registry digest, a ready `agentos-internal-beta` revision, focused test output, magic-link verifier output, and exact restored allowlist.
 - Produces: dated evidence for the controlled internal beta only; it does not alter the Vercel public app domain or state that public customer activation is open.
 
-- [ ] **Step 1: Run source and policy gates before deploying**
+- [x] **Step 1: Run source and policy gates before deploying**
 
 Run: `npm run verify:client-provider-policy`
 
@@ -408,13 +408,13 @@ Run: `npm run verify:security`
 
 Expected: all security release verifiers pass.
 
-- [ ] **Step 2: Build and push a new immutable client image**
+- [x] **Step 2: Build and push a new immutable client image**
 
 Run: `gcloud builds submit --project=agentos-mvp --region=europe-west1 --tag=europe-west1-docker.pkg.dev/agentos-mvp/veloce-client-runtime/client-runtime:release-gate-20260926 .`
 
 Expected: Cloud Build succeeds; record the returned immutable digest, not the mutable tag, in the deployment manifest and evidence.
 
-- [ ] **Step 3: Deploy only the internal beta service and retain constraining configuration**
+- [x] **Step 3: Deploy only the internal beta service and retain constraining configuration**
 
 First update the existing manifest image reference with the immutable release tag, then run:
 
@@ -442,14 +442,14 @@ Run: `npm run verify:client-magic-link`
 
 Expected: magic-link callback acceptance passes after the Supabase redirect URL and temporary app allowlist are configured; exact one-address allowlist is restored after cleanup. Supabase's Site URL is unchanged.
 
-- [ ] **Step 5: Record only non-secret evidence and maintain the honest release decision**
+- [x] **Step 5: Record only non-secret evidence and maintain the honest release decision**
 
 ```markdown
 | Check | Result |
 | --- | --- |
 | Client build trace | Passed; no forbidden local root appeared in output traces. |
 | Password session | Passed with disposable fixture cleanup. |
-| Magic-link callback | Passed with disposable fixture cleanup and restored allowlist. |
+| Magic-link callback | Pending: Supabase currently falls back to its Site URL; exact beta callback redirect is not allowlisted. Disposable data was cleaned and the owner-only app allowlist restored. |
 | Operational owners | Founder accepted interim controlled-beta accountability on 2026-09-26. |
 
 **Decision:** `agentos-internal-beta` remains an allowlisted controlled
@@ -457,7 +457,11 @@ internal beta. Public customer activation, public-domain routing, managed
 providers, and paid traffic remain closed pending their separate approvals.
 ```
 
-- [ ] **Step 6: Commit, push, and inspect the immutable production record**
+The only outstanding release-plan steps are Task 2 Step 4 and Task 5 Step 4.
+Both require the exact internal-beta callback URL to be allowlisted in Supabase
+Auth URL Configuration; the existing Site URL must remain unchanged.
+
+- [x] **Step 6: Commit, push, and inspect the immutable production record**
 
 ```bash
 git add docs/beta-security-readiness-2026-09-25.md docs/agentos-mvp-beta-runtime-assessment-2026-09-25.md docs/production-topology-2026-09-25.md
@@ -479,8 +483,8 @@ Expected: `main` is synchronized with `origin/main` and contains no uncommitted 
 **Updated:** 2026-09-26
 
 - Task 1 completed and committed as `1e7a73a`; four callback contract tests pass.
-- Task 2 implementation and deterministic failure test completed in `a3ddda4`; verifier cleanup was hardened afterward. A live disposable-user attempt created and cleaned its fixtures but exposed a Supabase Auth redirect configuration gap: the beta callback is not allowlisted, so Supabase fell back to the existing Site URL. The verifier now rejects redirects to any non-Supabase origin except the exact beta callback.
+- Task 2 implementation and deterministic failure test completed in `a3ddda4`; cleanup hardening landed in `0981681`, and fallback-redirect rejection landed in `41053d3`. A live disposable-user attempt created and cleaned its fixtures but exposed a Supabase Auth redirect configuration gap: the beta callback is not allowlisted, so Supabase fell back to the existing Site URL.
 - Task 3 completed and committed as `236621b`; local artifact pruning removed 234 routes, the artifact verifier passed, local route smoke passed, and Cloud Build `7728f333-deda-4e6b-ab1c-2e17c8f7ccee` succeeded.
 - Task 4 completed and committed as `caf30a0`; the public beta contract verifier and ownership test passed.
-- Task 5 completed through deployment and evidence publication in `d65b644`; the live magic-link acceptance subcheck remains pending until the exact callback URL is added to Supabase Auth URL Configuration. The test's temporary app allowlist was restored; revision `agentos-internal-beta-00010-d68` serves the pinned image at 100% traffic with the owner-only allowlist.
+- Task 5 deployment and release evidence are committed in `d65b644`; its no-credential and password-session checks passed. The magic-link acceptance subcheck remains pending until the exact callback URL is added to Supabase Auth URL Configuration. The test's temporary app allowlist was restored; revision `agentos-internal-beta-00010-d68` serves the pinned image at 100% traffic with the owner-only allowlist.
 - Follow-up verifier cleanup correction: each disposable membership, tenant, and auth-user deletion is now attempted independently; `tests/client-runtime-magic-link-verifier.spec.ts` passes.

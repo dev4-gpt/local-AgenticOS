@@ -16,7 +16,7 @@ target.
 | Apex domain | `https://veloceos.cloud` | Older Git-connected Vercel deployment from `d658ad6` | Existing public route; not the current application revision |
 | `www` domain | `https://www.veloceos.cloud` | Separate `veloce-agenticos-public` Vercel deployment | Existing public marketing route |
 | Legacy Cloud Run | `agentos-mvp`, service `agentos`, `europe-west1` | Revision `agentos-00013-q7f`, image `agentos:4a347ad3fc308086fdb1b38b7ac56fb3e55251ae`, deployed 2026-05-27 | Legacy service; not associated with this repository's current commit |
-| Internal beta Cloud Run | `agentos-mvp`, service `agentos-internal-beta`, `europe-west1` | Revision `agentos-internal-beta-00008-c4t`, image `sha256:66ba7063e1ef673de3e746ba79d4f9513d2c452883cffaf6d992bed9a0275f98`, provider calls disabled | Controlled internal beta runtime; not public customer activation |
+| Internal beta Cloud Run | `agentos-mvp`, service `agentos-internal-beta`, `europe-west1` | Revision `agentos-internal-beta-00010-d68`, image `sha256:66ba7063e1ef673de3e746ba79d4f9513d2c452883cffaf6d992bed9a0275f98`, 100% service traffic, owner-only allowlist, provider calls disabled | Controlled internal beta runtime; not public customer activation |
 
 The legacy Cloud Run service is publicly reachable but its `/`, `/healthz`, and
 documented `/status` routes returned `404` during this verification. Its source
@@ -71,7 +71,9 @@ design and acceptance run.
 
 1. Review the apex and `www` marketing deployments, then approve or reject the
    proposed domain topology.
-2. Reauthenticate the Supabase owner session and run the disposable live
-   email-callback verifier before opening any public customer or paid flow.
+2. Add `https://agentos-internal-beta-vbimnfseva-ew.a.run.app/auth/callback`
+   to Supabase Auth URL Configuration without changing the Site URL, then run
+   the disposable live email-callback verifier before opening any public
+   customer or paid flow.
 3. Review provider, domain, and commercial activation decisions separately;
    do not infer them from the internal-beta deployment.
