@@ -2,6 +2,11 @@
 
 Last checked: 2026-07-29
 
+> **Historical snapshot.** This file preserves prior delivery evidence and
+> links. It is not a current infrastructure inventory or deployment
+> authorization. Use the [canonical production topology](./docs/production-topology-2026-09-25.md)
+> before sharing a URL, changing a domain, or running a cloud command.
+
 ## Shareable Pages
 
 - Landing page: <https://veloce-agenticos-public.vercel.app>

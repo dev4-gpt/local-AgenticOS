@@ -1,5 +1,10 @@
 # Veloce AgenticOS Public Production Readiness — Current Status
 
+> **Historical snapshot.** This 2026-08-25 report is retained as release
+> evidence, not as the current infrastructure inventory. For the verified
+> 2026-09-25 production topology and active deployment boundaries, see
+> [canonical production topology](./production-topology-2026-09-25.md).
+
 **Snapshot:** 2026-08-25
 **Current branch:** `v3.3-managed-credit-lifecycle`  
 **Application source commit:** `9a540fc004f9edad10f91cece0fdf03a9e0351b7`  

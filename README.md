@@ -55,47 +55,22 @@ For the final four-week publishing order, twelve paste-ready LinkedIn captions, 
 
 For the separate public-safe Veloce AgenticOS marketing site, pricing structure, and Cloud Run deployment instructions, see [public-site/README.md](./public-site/README.md). This public site is intentionally separate from the private local dashboard.
 
-Public beta: <https://veloce-agenticos-site-mquo4bf7aq-ew.a.run.app>
-
-The Cloud Run beta engagement form uses the verified server-side public intake
-endpoint and stores leads in Supabase without exposing a database credential.
-The shared Vercel intake also sends a Resend notification to the configured
-operator inbox; no email credential is present in the browser or Cloud Run.
-
-Current public/front-door links:
-
-- Landing page: <https://veloce-agenticos-public.vercel.app>
-- Product experience: <https://product-experience-five.vercel.app>
-- Runtime intake: <https://product-experience-five.vercel.app/start>
-- Internal cloud client-runtime test:
-  <https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2F>
-
-The cloud runtime test is a client-safe GCP Cloud Run deployment, not the
-private local operator runtime. For deployment boundaries and current links,
-see [DEPLOYMENT-LINKS.md](./DEPLOYMENT-LINKS.md) and
-[CLIENT-RELEASE-STRATEGY.md](./CLIENT-RELEASE-STRATEGY.md). The detailed
-local-versus-client capability boundary is in
-[docs/runtime-capability-matrix.md](./docs/runtime-capability-matrix.md).
+The verified public product application is <https://app.veloceos.cloud>.
+Historical public links and Cloud Run references are retained for evidence but
+are not a current deployment authorization. See the
+[canonical production topology](./docs/production-topology-2026-09-25.md) for
+the verified domain, Vercel, legacy-cloud, and cost-control state.
 
 For the local-only Classroom and Social Research capabilities, session handling,
 and connector setup, see [docs/local-research-setup.md](./docs/local-research-setup.md).
 
 ## Public Production Readiness
 
-The current application revision is deployed to Vercel and Cloud Run, but the
-public-production gate is intentionally still closed until the owner-controlled
-commercial, provisioning, provider, tenant, and approval evidence is complete.
-
-Current verified deployment snapshot:
-
-- Application source: `9a540fc`
-- Cloud Run revision: `veloce-cloud-test-00204-bil` at 100% traffic
-- Cloud Run rollback target: `veloce-cloud-test-00186-kff`
-- Client-runtime image digest: `sha256:be8b315511a4004d84004f30fabd8acca4ad47f396b75cb5ca08a86a556cc827`
-- Public-provisioner image is built but not deployed until its private GCP
-  adapter and control-plane secrets are configured.
-- Vercel production domains are attached, but Cloudflare still needs the
-  required CNAME records and verification.
+The public-production gate is intentionally still closed until the
+owner-controlled commercial, provisioning, provider, tenant, and approval
+evidence is complete. The current topology distinguishes the canonical Vercel
+application from a constrained legacy Cloud Run service; see the
+[canonical production topology](./docs/production-topology-2026-09-25.md).
 
 The two billing modes are deliberately separate:
 
