@@ -22,9 +22,10 @@
 
 - Create: `scripts/verify-client-runtime-magic-link.mjs` - redacted, disposable live verifier for the Supabase action-link and runtime callback journey.
 - Create: `tests/client-auth-callback.spec.ts` - source-level regression tests for fragment removal, refresh-token exchange, membership enforcement, and cookie attributes.
-- Create: `scripts/verify-client-runtime-build-trace.mjs` - CI-safe inspector for client build output and trace metadata.
-- Create: `tests/client-runtime-build-trace.spec.ts` - regression tests for the verifier and client tracing configuration.
-- Modify: `next.config.ts` - narrow trace exclusions for explicitly disabled, local-only operator paths during the client container build only.
+- Create: `scripts/lib/client-runtime-artifact-surface.mjs` - canonical client image route surface.
+- Create: `scripts/prune-client-runtime-artifact.mjs` - remove disabled server entrypoints and manifest registrations from standalone output.
+- Create: `scripts/verify-client-runtime-build-trace.mjs` - inspect the client artifact manifests and trace metadata.
+- Create: `tests/client-runtime-artifact-boundary.spec.ts` - regression tests for route pruning and retained entrypoints.
 - Modify: `Dockerfile.client` - run the artifact-boundary verifier after the standalone build and before copying runtime output.
 - Modify: `package.json` - add focused verification commands.
 - Modify: `docs/organizational-structure.md` - record the founder's interim beta operating ownership without inventing staff.
@@ -117,7 +118,7 @@ git commit -m "test: lock down client magic link callback"
 - Modify: `package.json`
 
 **Interfaces:**
-- Consumes: `VELOCE_RUNTIME_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `VELOCE_MAGIC_LINK_TEST_EMAIL` from process environment; all values are local process inputs and are never written to disk.
+- Consumes: `VELOCE_RUNTIME_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `VELOCE_MAGIC_LINK_TEST_EMAIL` from process environment; all values are local process inputs and are never written to disk.
 - Produces: exit `0` and `magic-link acceptance passed` after redirect, cookie, protected-read, logout, and cleanup; nonzero exit with a redacted reason otherwise.
 
 - [ ] **Step 1: Write the verifier with redacted request helpers and guaranteed cleanup**
@@ -133,7 +134,6 @@ const required = (name) => {
 };
 const runtimeUrl = required("VELOCE_RUNTIME_URL").replace(/\/$/, "");
 const supabaseUrl = required("SUPABASE_URL").replace(/\/$/, "");
-const anonKey = required("SUPABASE_ANON_KEY");
 const serviceKey = required("SUPABASE_SERVICE_ROLE_KEY");
 const email = required("VELOCE_MAGIC_LINK_TEST_EMAIL").toLowerCase();
 const tenantSlug = `magic-link-${randomUUID().replaceAll("-", "").slice(0, 18)}`;
@@ -185,9 +185,12 @@ try {
   if (!cookies.some((value) => value.includes("veloce_refresh_token=") && value.includes("HttpOnly"))) throw new Error("refresh_cookie_missing");
   console.log("magic-link acceptance passed");
 } finally {
-  if (userId) await admin(`/auth/v1/admin/users/${userId}`, { method: "DELETE" }).catch(() => undefined);
-  await admin(`/rest/v1/client_memberships?tenant_slug=eq.${encodeURIComponent(tenantSlug)}`, { method: "DELETE" }).catch(() => undefined);
-  await admin(`/rest/v1/client_tenants?slug=eq.${encodeURIComponent(tenantSlug)}`, { method: "DELETE" }).catch(() => undefined);
+  if (userId) {
+    const membershipRemoved = await adminStatus(`/rest/v1/client_memberships?tenant_slug=eq.${encodeURIComponent(tenantSlug)}&user_id=eq.${encodeURIComponent(userId)}`, { method: "DELETE" });
+    const tenantRemoved = await adminStatus(`/rest/v1/client_tenants?slug=eq.${encodeURIComponent(tenantSlug)}`, { method: "DELETE" });
+    const userRemoved = await adminStatus(`/auth/v1/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+    if (!membershipRemoved || !tenantRemoved || !userRemoved) throw new Error("fixture_cleanup_failed");
+  }
 }
 ```
 
@@ -468,3 +471,14 @@ Expected: `main` is synchronized with `origin/main` and contains no uncommitted 
 - Spec coverage: callback journey is Task 1 and Task 2; named operations ownership is Task 4; client-image warning/trace hardening is Task 3; deployment, evidence, and rollback-safe scope are Task 5. Public activation and cost expansion are explicitly prohibited.
 - Placeholder scan: no task contains a deferred implementation marker; mutable data is generated at runtime and dates/tags are supplied by the actual release command rather than invented.
 - Type consistency: `clientUserEmailAllowed`, `client_member`, `VELOCE_RUNTIME_URL`, and the `POST /api/client-auth/magic-link` contract use the same names and payloads throughout.
+
+## Execution Record
+
+**Updated:** 2026-09-26
+
+- Task 1 completed and committed as `1e7a73a`; four callback contract tests pass.
+- Task 2 implementation and deterministic failure test completed in `a3ddda4`; verifier cleanup was hardened afterward. Its live disposable-user run remains pending because the Supabase dashboard requires owner reauthentication.
+- Task 3 completed and committed as `236621b`; local artifact pruning removed 234 routes, the artifact verifier passed, local route smoke passed, and Cloud Build `7728f333-deda-4e6b-ab1c-2e17c8f7ccee` succeeded.
+- Task 4 completed and committed as `caf30a0`; the public beta contract verifier and ownership test passed.
+- Task 5 completed through deployment and evidence publication in `d65b644`; the live magic-link acceptance subcheck remains pending. Revision `agentos-internal-beta-00008-c4t` serves the pinned image with the owner-only allowlist restored.
+- Follow-up verifier cleanup correction: each disposable membership, tenant, and auth-user deletion is now attempted independently; `tests/client-runtime-magic-link-verifier.spec.ts` passes.

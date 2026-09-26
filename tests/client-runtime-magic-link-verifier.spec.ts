@@ -22,4 +22,9 @@ test("magic-link verifier creates and removes only disposable fixtures", () => {
   expect(script).toContain('client_tenants?slug=eq.');
   expect(script).toContain('/auth/v1/admin/users/${encodeURIComponent(userId)}');
   expect(script).toContain("finally");
+  expect(script).not.toContain("SUPABASE_ANON_KEY");
+  expect(script).not.toContain("cleanupFailed ||=");
+  expect(script).toContain("const membershipRemoved = await adminStatus");
+  expect(script).toContain("const tenantRemoved = await adminStatus");
+  expect(script).toContain("const userRemoved = await adminStatus");
 });

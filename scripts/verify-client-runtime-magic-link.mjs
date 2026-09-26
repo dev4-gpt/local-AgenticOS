@@ -5,7 +5,6 @@ import process from "node:process";
 const runtimeUrl = required("VELOCE_RUNTIME_URL").replace(/\/$/, "");
 const runtimeOrigin = new URL(runtimeUrl).origin;
 const supabaseUrl = required("SUPABASE_URL").replace(/\/$/, "");
-const anonKey = required("SUPABASE_ANON_KEY");
 const serviceKey = required("SUPABASE_SERVICE_ROLE_KEY");
 const email = required("VELOCE_MAGIC_LINK_TEST_EMAIL").toLowerCase();
 const tenantSlug = `magic-link-${crypto.randomUUID().replaceAll("-", "").slice(0, 18)}`;
@@ -66,9 +65,10 @@ try {
 } finally {
   if (browser) await browser.close().catch(() => { cleanupFailed = true; });
   if (userId) {
-    cleanupFailed ||= !(await adminStatus(`/rest/v1/client_memberships?tenant_slug=eq.${encodeURIComponent(tenantSlug)}&user_id=eq.${encodeURIComponent(userId)}`, { method: "DELETE" }));
-    cleanupFailed ||= !(await adminStatus(`/rest/v1/client_tenants?slug=eq.${encodeURIComponent(tenantSlug)}`, { method: "DELETE" }));
-    cleanupFailed ||= !(await adminStatus(`/auth/v1/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE" }));
+    const membershipRemoved = await adminStatus(`/rest/v1/client_memberships?tenant_slug=eq.${encodeURIComponent(tenantSlug)}&user_id=eq.${encodeURIComponent(userId)}`, { method: "DELETE" });
+    const tenantRemoved = await adminStatus(`/rest/v1/client_tenants?slug=eq.${encodeURIComponent(tenantSlug)}`, { method: "DELETE" });
+    const userRemoved = await adminStatus(`/auth/v1/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+    cleanupFailed = cleanupFailed || !membershipRemoved || !tenantRemoved || !userRemoved;
   }
   if (cleanupFailed) {
     console.error("magic-link acceptance cleanup failed");
