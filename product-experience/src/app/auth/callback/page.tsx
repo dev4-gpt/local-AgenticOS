@@ -17,7 +17,10 @@ export default function OnboardingAuthCallback() {
       .then(async (response) => {
         const body = await response.json().catch(() => null);
         if (!response.ok || typeof body?.runtimeUrl !== "string") throw new Error("destination_unavailable");
-        const target = new URL("/auth/callback", body.runtimeUrl);
+        const runtime = new URL(body.runtimeUrl);
+        if (runtime.protocol !== "https:" || !/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.run\.app$/.test(runtime.hostname)
+          || runtime.username || runtime.password || runtime.port || runtime.pathname !== "/" || runtime.search || runtime.hash) throw new Error("destination_unavailable");
+        const target = new URL("/auth/callback", runtime.origin);
         target.hash = new URLSearchParams({ access_token: accessToken, refresh_token: refreshToken }).toString();
         window.location.replace(target.toString());
       }).catch(() => setMessage("Your tenant runtime is not available for this sign-in link."));

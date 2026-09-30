@@ -10,6 +10,7 @@ import { clientGcpAccessToken, clientStorageConfig, uploadClientStorageObject } 
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { validClientTaskIdentity } from "@/lib/clientTaskAuth";
 import { logClientRuntimeEvent } from "@/lib/clientRuntimeObservability";
+import { clientJobTraceSnapshot, traceClientJobStage, withClientJobTrace } from "@/lib/clientJobTrace";
 import { runClientWorkflowRunner } from "@/lib/clientWorkflowRunner";
 import { artifactFromWorkspaceOutput, isClientWorkspaceSurface, isWorkspaceArtifactIntent, workspacePrompt, workspaceTerminalEvents } from "@/lib/clientWorkspaceExecution";
 import { paperclipRunSummary } from "@/lib/clientPaperclipAdapter";
@@ -41,7 +42,10 @@ export async function POST(request: Request) {
   const jobId = typeof body.jobId === "string" ? body.jobId : "";
   const requestedTenant = typeof body.tenantSlug === "string" ? body.tenantSlug : "";
   if (!/^[0-9a-f-]{36}$/i.test(jobId) || requestedTenant !== tenantSlug) return NextResponse.json({ ok: false, error: "worker_payload_invalid" }, { status: 400 });
+  return withClientJobTrace(jobId, () => processClaimedClientJob(jobId, tenantSlug, workerToken));
+}
 
+async function processClaimedClientJob(jobId: string, tenantSlug: string, workerToken: string) {
   const claim = await workerRpc("claim_client_runtime_job", { p_tenant_slug: tenantSlug, p_job_id: jobId, p_worker_token: workerToken });
   if (!claim.ok) return NextResponse.json({ ok: false, error: "job_claim_failed" }, { status: 503 });
   const job = claim.value as { id?: string; capability?: string; provider?: string; model?: string; idempotency_key?: string; input_metadata?: Record<string, unknown> | null } | null;
@@ -1284,7 +1288,7 @@ async function storeArtifact(tenantSlug: string, jobId: string, workerToken: str
     p_retention_expires_at: new Date(Date.now() + Number(process.env.CLIENT_RETENTION_DAYS ?? 30) * 86400000).toISOString(),
   });
   const artifactId = typeof artifact.value === "string" ? artifact.value : "";
-  if (!artifact.ok || !artifactId || !(await uploadClientStorageObject({ bucket: config.bucket, objectKey, contentType: storedContentType, bytes, token }))) return null;
+  if (!artifact.ok || !artifactId || !(await traceClientJobStage("artifact_upload", () => uploadClientStorageObject({ bucket: config.bucket, objectKey, contentType: storedContentType, bytes, token }), Boolean))) return null;
   const confirmed = await workerRpc("confirm_client_runtime_artifact_worker", { p_tenant_slug: tenantSlug, p_artifact_id: artifactId, p_worker_token: workerToken, p_byte_size: bytes.length, p_content_type: storedContentType });
   return confirmed.ok && confirmed.value === true ? artifactId : null;
 }
@@ -1533,7 +1537,9 @@ async function processMarketResearchJob(jobId: string, tenantSlug: string, worke
 }
 
 async function completeJob(tenantSlug: string, jobId: string, workerToken: string, status: string, outputMetadata: Record<string, unknown>, errorCode?: string) {
-  const completed = await workerRpc("complete_client_runtime_job", { p_tenant_slug: tenantSlug, p_job_id: jobId, p_worker_token: workerToken, p_status: status, p_output_metadata: outputMetadata, p_error_code: errorCode ?? null });
+  const trace = clientJobTraceSnapshot(jobId);
+  const persistedMetadata = trace ? { ...outputMetadata, __veloceExecutionTrace: trace } : outputMetadata;
+  const completed = await workerRpc("complete_client_runtime_job", { p_tenant_slug: tenantSlug, p_job_id: jobId, p_worker_token: workerToken, p_status: status, p_output_metadata: persistedMetadata, p_error_code: errorCode ?? null });
   if (!completed.ok || completed.value !== true) {
     logClientRuntimeEvent("runtime.job_completion_failed", { tenant: tenantSlug, jobId, status: 503 });
     throw new Error("job_completion_failed");

@@ -1,0 +1,24 @@
+import { expect, test } from "@playwright/test";
+
+test.use({ baseURL: process.env.PRODUCT_EXPERIENCE_URL || "http://127.0.0.1:3565" });
+
+for (const runtimeUrl of [
+  "https://evil.example?.run.app",
+  "https://user@tenant-a.run.app",
+  "https://tenant-a.run.app/redirect",
+]) {
+  test(`public callback refuses an untrusted runtime URL: ${runtimeUrl}`, async ({ page }) => {
+    await page.route("**/api/onboarding/runtime-destination", (route) => route.fulfill({ json: { runtimeUrl } }));
+    await page.goto("/auth/callback#access_token=browser-test-access&refresh_token=browser-test-refresh");
+    await expect(page.getByText("Your tenant runtime is not available for this sign-in link.")).toBeVisible();
+    await expect(page).toHaveURL(/\/auth\/callback$/);
+  });
+}
+
+test("public callback transfers a test session only to a validated runtime origin", async ({ page }) => {
+  await page.route("**/api/onboarding/runtime-destination", (route) => route.fulfill({ json: { runtimeUrl: "https://tenant-a.run.app" } }));
+  await page.route("https://tenant-a.run.app/auth/callback", (route) => route.fulfill({ status: 200, body: "<main>Tenant callback reached</main>", contentType: "text/html" }));
+  await page.goto("/auth/callback#access_token=browser-test-access&refresh_token=browser-test-refresh");
+  await expect(page.getByText("Tenant callback reached")).toBeVisible();
+  await expect(page).toHaveURL(/^https:\/\/tenant-a\.run\.app\/auth\/callback#access_token=browser-test-access&refresh_token=browser-test-refresh$/);
+});

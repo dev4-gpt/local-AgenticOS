@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function SetupPage() {
   const [message, setMessage] = useState("Confirm to continue your secure account setup.");
   const [submitting, setSubmitting] = useState(false);
+  const tokenRef = useRef<string | null>(null);
+  useEffect(() => {
+    tokenRef.current = new URLSearchParams(window.location.search).get("token");
+    window.history.replaceState(null, "", "/setup");
+    if (!tokenRef.current) setMessage("This setup link is invalid or expired.");
+  }, []);
 
   async function continueSetup() {
     if (submitting) return;
+    const token = tokenRef.current;
+    if (!token) { setMessage("This setup link is invalid or expired."); return; }
     setSubmitting(true);
     setMessage("Preparing your secure sign-in…");
-    const token = new URLSearchParams(window.location.search).get("token");
     try {
       const response = await fetch("/api/onboarding/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
       const body = await response.json().catch(() => null);

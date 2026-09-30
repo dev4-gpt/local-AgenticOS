@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { checkClientRuntimeRateLimit, selectClientRecords } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, countClientRecords, selectClientRecords } from "@/lib/clientDataPlane";
+import { safeClientJobTrace } from "@/lib/clientJobTrace";
+import { containsClientSecretLike } from "@/lib/clientInputSafety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const WINDOW_HOURS = 24;
+const SAMPLE_LIMIT = 250;
+const LEDGER_PAGE_SIZE = 1000;
+const LEDGER_MAX_ROWS = 10000;
 
 export async function GET() {
   const user = await currentClientUser();
@@ -26,31 +31,23 @@ export async function GET() {
       created_at: `gte.${since}`,
       event_type: "like.client_runtime_*",
       order: "created_at.desc",
-      limit: "250",
+      limit: String(SAMPLE_LIMIT),
     }),
     selectClientRecords("client_runtime_jobs", {
       tenant_slug: `eq.${tenantSlug}`,
       created_at: `gte.${since}`,
       order: "created_at.desc",
-      limit: "250",
+      limit: String(SAMPLE_LIMIT),
     }),
-    selectClientRecords("client_runtime_budget_ledger", {
-      tenant_slug: `eq.${tenantSlug}`,
-      created_at: `gte.${monthStart.toISOString()}`,
-      order: "created_at.desc",
-      limit: "1000",
-    }),
-    selectClientRecords("client_runtime_artifacts", {
-      tenant_slug: `eq.${tenantSlug}`,
-      order: "created_at.desc",
-      limit: "1",
-    }),
+    readMonthlyLedger(tenantSlug, monthStart.toISOString()),
+    countClientRecords("client_runtime_artifacts", { tenant_slug: `eq.${tenantSlug}` }),
   ]);
 
   if (!audit.ok || !jobs.ok || !budget.ok || !artifacts.ok) return jsonError("observability_read_failed", 502);
+  if (![...audit.records, ...jobs.records, ...budget.records].every((record) => record.tenant_slug === tenantSlug)) return jsonError("observability_scope_mismatch", 502);
 
   const events = audit.records.map((record) => ({
-    event: typeof record.event_type === "string" ? record.event_type : "runtime.event",
+    event: typeof record.event_type === "string" && /^client_runtime_[a-z0-9_]{1,72}$/.test(record.event_type) ? record.event_type : "runtime.event",
     createdAt: typeof record.created_at === "string" ? record.created_at : null,
     metadata: safeMetadata(record.metadata),
   }));
@@ -62,7 +59,8 @@ export async function GET() {
     createdAt: typeof record.created_at === "string" ? record.created_at : null,
     startedAt: typeof record.started_at === "string" ? record.started_at : null,
     finishedAt: typeof record.finished_at === "string" ? record.finished_at : null,
-    errorCode: safeCode(record.error_code),
+    errorCode: safeErrorCode(record.error_code),
+    trace: safeClientJobTrace(record.output_metadata && typeof record.output_metadata === "object" && !Array.isArray(record.output_metadata) ? (record.output_metadata as Record<string, unknown>).__veloceExecutionTrace : null, safeId(record.id) ?? ""),
   }));
   const counts = countEvents(events.map((event) => event.event));
   const providerCounts = countJobs(jobRecords);
@@ -72,13 +70,36 @@ export async function GET() {
     ok: true,
     windowHours: WINDOW_HOURS,
     posthogConfigured: Boolean(process.env.POSTHOG_API_KEY?.trim()),
+    sample: { eventsLimited: audit.records.length === SAMPLE_LIMIT, jobsLimited: jobs.records.length === SAMPLE_LIMIT, limit: SAMPLE_LIMIT },
     counts,
     providerCounts,
     monthlyUsage,
-    artifacts: { total: artifacts.records.length },
+    artifacts: { total: artifacts.count },
     recentEvents: events.slice(0, 12),
     recentJobs: jobRecords.slice(0, 12),
   }, { headers: { "cache-control": "private, no-store" } });
+}
+
+async function readMonthlyLedger(tenantSlug: string, monthStart: string) {
+  const records: Record<string, unknown>[] = [];
+  let beforeId: string | null = null;
+  for (let page = 0; page <= LEDGER_MAX_ROWS / LEDGER_PAGE_SIZE; page++) {
+    const result = await selectClientRecords("client_runtime_budget_ledger", {
+      tenant_slug: `eq.${tenantSlug}`,
+      created_at: `gte.${monthStart}`,
+      order: "id.desc",
+      limit: String(LEDGER_PAGE_SIZE),
+      ...(beforeId ? { id: `lt.${beforeId}` } : {}),
+    });
+    if (!result.ok) return { ok: false, records: [] as Record<string, unknown>[] };
+    if (records.length + result.records.length > LEDGER_MAX_ROWS) return { ok: false, records: [] as Record<string, unknown>[] };
+    records.push(...result.records);
+    if (result.records.length < LEDGER_PAGE_SIZE) return { ok: true, records };
+    const lastId = result.records.at(-1)?.id;
+    if (!/^[1-9]\d*$/.test(String(lastId)) || String(lastId) === beforeId) return { ok: false, records: [] as Record<string, unknown>[] };
+    beforeId = String(lastId);
+  }
+  return { ok: false, records: [] as Record<string, unknown>[] };
 }
 
 function countEvents(events: string[]) {
@@ -132,11 +153,20 @@ function summarizeBudget(records: Record<string, unknown>[]) {
 
 function safeMetadata(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return Object.fromEntries(Object.entries(value).filter(([key]) => ["provider", "route", "result", "source", "messageCount"].includes(key)).map(([key, item]) => [key, typeof item === "string" || typeof item === "number" ? item : undefined]).filter(([, item]) => item !== undefined));
+  return Object.fromEntries(Object.entries(value).flatMap(([key, item]) => {
+    if (!["provider", "route", "result", "source", "messageCount"].includes(key)) return [];
+    if (key === "messageCount") return Number.isSafeInteger(item) && (item as number) >= 0 && (item as number) <= 999 ? [[key, item]] : [];
+    const code = safeCode(item);
+    return code ? [[key, code]] : [];
+  }));
 }
 
 function safeCode(value: unknown) {
-  return typeof value === "string" && /^[a-z0-9_.:-]{1,96}$/i.test(value.trim()) ? value.trim() : null;
+  return typeof value === "string" && /^[a-z0-9_.:-]{1,96}$/i.test(value.trim()) && !containsClientSecretLike(value) ? value.trim() : null;
+}
+
+function safeErrorCode(value: unknown) {
+  return typeof value === "string" && /^[a-z][a-z0-9_]{0,95}$/.test(value) && !containsClientSecretLike(value) ? value : null;
 }
 
 function safeId(value: unknown) {

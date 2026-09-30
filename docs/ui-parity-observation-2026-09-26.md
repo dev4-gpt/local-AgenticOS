@@ -1,0 +1,113 @@
+# Local and Cloud UI Parity Observation
+
+**Observed:** 2026-09-26. This is a routing diagnosis, not acceptance of a
+production customer journey.
+
+| Surface | Evidence | Role |
+| --- | --- | --- |
+| Root repo local Next.js UI | `src/app/page.tsx` and client runtime components | Operator and tenant workspace code under development |
+| `https://app.veloceos.cloud/` | Live page title `Veloce AgenticOS | Private Operator Edition`; matches `product-experience/src/app/layout.tsx` and edition components | Editorial front door, not an authenticated workspace |
+| Live `Runtime access` > `Client login` | Link to `https://veloce-cloud-test-1075094991117.asia-south1.run.app/login?next=%2F` | Separate approved test runtime |
+
+On the local production build at `http://127.0.0.1:3941/`, the home page
+identified itself as `Private Local runtime`; `Connect Memory` navigated to
+`/memory`, where the operator view showed an unconnected Obsidian vault and
+Graphify status. The client edition takes the other branch in `src/components/Shell.tsx`
+and renders `ClientDataWorkspace` for that route. This is a source-level branch
+observation, not a successful authenticated client-edition browser test.
+
+| Shared customer action | Local operator | Client edition source | Authenticated cloud evidence |
+| --- | --- | --- | --- |
+| Open memory | Obsidian/Graphify route opened in browser | `ClientDataWorkspace` route branch exists | Existing Cloud Run session opened tenant Memory on Sep 28; candidate parity unverified |
+| Import authorized source pack | Not an operator-memory control | Review/import component mounted in tenant memory | Control absent from observed older Cloud Run UI; migration state unverified |
+| Inspect source and outbound links | Local research source-pack viewer exists | Record and graph UI render link references | Missing |
+| Navigate from public page to workspace | Not applicable | Cloud Run login is a separate target | Login link verified; post-login journey missing |
+
+The visual mismatch is primarily a deployment/surface mismatch, not proof that
+the root workspace UI compiled differently in cloud. The editorial page's
+feature-card `Open` links currently lead to its contact section; they do not
+open workspace tools. Do not count those links as customer workflow evidence.
+
+Before claiming parity, capture the exact Cloud Run service, revision, image
+digest, tenant identity, and source commit; then compare the authenticated
+tenant workspace with a local build from the same commit at desktop and mobile
+sizes. Record screenshots and complete the customer-journey matrix. A public
+domain switch or shared-portal release must pass the separate release gates.
+
+**Follow-up, 2026-09-28:** The Chrome tab at `app.veloceos.cloud` still shows
+the editorial front door; its feature-card `Open` links point to `#developer`.
+The separate Cloud Run URL above loaded the client-runtime sign-in form, not
+an authenticated workspace. This confirms the two surfaces remain distinct,
+but it does not prove parity or a defect inside the tenant workspace. Await a
+user-authenticated tenant session before capturing route/action and responsive
+evidence; no credentials should be copied into release artifacts.
+
+**Authenticated follow-up, 2026-09-28:** An existing Chrome client session on
+the Cloud Run test runtime opened `/` and `/memory` without a login redirect.
+The landing route is the client-edition Mission Control, not the Vercel front
+door. Memory loaded tenant records and a tag graph, with Markdown import/export,
+Recent/Search/Graph/Galaxy controls, and ordinary record actions. Its visible
+controls did **not** include the local candidate's reviewed community source-pack
+import. This is evidence of a cloud deployment/version gap, not evidence that
+the new migration or import flow works in cloud. The exact service revision,
+image digest, and source SHA were not captured, so no parity or current-candidate
+acceptance is claimed. No tenant content or credentials were copied into this
+observation. Re-test after a reviewed candidate deployment and migration.
+
+**Local build follow-up, 2026-09-28:** Both editions built from this checkout
+with webpack. The operator edition served at `http://127.0.0.1:3946/`, with
+the optional member-pack World Studio at `/worlds` using a separate loopback
+file server on port 3945. Browser checks loaded all three 3D scenes; the tea
+scene rendered at 1440x900 and 390x844, with a nonblank mobile canvas (347
+sampled colors), frame diagnostics, and no page errors. The client edition
+served at `http://127.0.0.1:3947/`; its home and Memory views rendered in
+desktop/mobile checks. This is a visual preview only: no local Supabase URL,
+publishable key, tenant slug, allowed email, or model allowlist was configured.
+The client preview's record API returned 401, and provider calls were disabled.
+It is not authenticated tenant parity, a live cloud deployment, or a production
+customer-journey receipt.
+
+**Read-only cloud check, 2026-09-29:** `agentos-mvp/europe-west1/agentos-internal-beta`
+still serves revision `agentos-internal-beta-00034-v69` at 100% traffic, using
+image digest `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`.
+Its revision is Ready, but the revision labels do not identify the source SHA.
+The documented signed-in test workspace URL contains project number
+`1075094991117`; the active GCP account lacks permission to describe that
+project. These are distinct targets, so the internal-beta digest cannot stand
+in for the test workspace's deployment evidence. Authenticated cloud parity
+remains unverified until the owning project and release revision are accessible.
+
+**Signed-in browser observation, 2026-09-29:** An existing Chrome tab opened
+`https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/` as the client-edition
+Mission Control without a login redirect. The visible page included tenant-scoped
+usage, agent health, activity, and links to Memory, Pipeline, credentials, and
+other workspace routes. The tab changed externally before Memory or responsive
+actions could be inspected. This alias and session prove neither the owning
+project/revision nor parity with the current local source. No tenant content or
+credentials were copied into this observation.
+
+**Local/cloud follow-up, 2026-09-29:** The current client-edition checkout was
+started on `http://127.0.0.1:3947/` and opened in Chrome. With no local
+`SUPABASE_ANON_KEY`, tenant slug, allowed user email, or model allowlist, `/`
+redirected to `/login?next=%2F`; the login form rendered. This proves the
+current local route is served, not that a tenant can authenticate locally.
+In a separate existing signed-in Chrome session, the Cloud Run alias above
+opened Mission Control and `/memory`. The cloud Memory route showed zero tenant
+records and the Markdown import/export, note, and Recent/Search/Graph/Galaxy
+controls, but not the reviewed community source-pack import mounted in this
+checkout. No import or write was attempted. This remains a candidate-versus-
+deployed-version gap until the owning revision and migration state are verified;
+the two browser states are not comparable signed-in parity evidence.
+
+**Read-only follow-up, 2026-09-29:** The signed-in Chrome tab at
+`https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/memory` again rendered the
+client-edition Memory UI. It showed Markdown import/export, note creation,
+Recent/Search/Graph/Galaxy, and graph refresh, but still no reviewed source-pack
+import control. The page showed 24 tenant memories; their contents were not
+copied into this record. A separate local Chrome tab at
+`http://127.0.0.1:3947/login?next=%2F` displayed "Client authentication is not
+configured yet," so it cannot serve as a signed-in same-release comparator.
+Read-only `gcloud projects describe 1075094991117` was denied for both
+configured accounts (`aryamandev777@gmail.com` and `aryamans.dev96@gmail.com`).
+The Cloud Run revision, image digest, and source SHA remain unknown; do not
+promote this observation into a parity pass.

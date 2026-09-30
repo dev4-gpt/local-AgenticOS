@@ -120,7 +120,7 @@ function fixtureCents(value: string | undefined, fallback: number) {
   return Number.isSafeInteger(cents) && cents >= 50 && cents <= 500 ? cents : null;
 }
 
-export async function stripeRequest(path: string, body: Record<string, string | number | string[]>) {
+export async function stripeRequest(path: string, body: Record<string, string | number | string[]>, idempotencyKey?: string) {
   const secret = process.env.STRIPE_SECRET_KEY?.trim();
   if (!secret) return { ok: false, status: 503, value: null as Record<string, unknown> | null };
   const params = new URLSearchParams();
@@ -129,7 +129,16 @@ export async function stripeRequest(path: string, body: Record<string, string | 
     else params.set(key, String(value));
   }
   const response = await fetch(`https://api.stripe.com/v1/${path}`, {
-    method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/x-www-form-urlencoded" }, body: params, cache: "no-store",
+    method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/x-www-form-urlencoded", ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}) }, body: params, cache: "no-store",
+  }).catch(() => null);
+  return { ok: response?.ok === true, status: response?.status ?? 503, value: await response?.json().catch(() => null) as Record<string, unknown> | null };
+}
+
+export async function stripeGet(path: string) {
+  const secret = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!secret) return { ok: false, status: 503, value: null as Record<string, unknown> | null };
+  const response = await fetch(`https://api.stripe.com/v1/${path}`, {
+    method: "GET", headers: { Authorization: `Bearer ${secret}` }, cache: "no-store",
   }).catch(() => null);
   return { ok: response?.ok === true, status: response?.status ?? 503, value: await response?.json().catch(() => null) as Record<string, unknown> | null };
 }

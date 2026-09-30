@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "suite": "ai-release-local-v1",
+  "mode": "deterministic-local",
+  "cases": [
+    {
+      "id": "provider-routing",
+      "behavior": "Automatic routing prefers approved low-cost paths and denies unavailable routes",
+      "failureLabel": "provider_routing_regression",
+      "spec": "provider-matrix-policy.spec.ts",
+      "title": "cost routing prefers native and free routes and fails closed",
+      "evidenceScope": "policy unit test"
+    },
+    {
+      "id": "credential-revocation",
+      "behavior": "Revoked provider credentials cannot make upstream calls",
+      "failureLabel": "policy_bypass",
+      "spec": "ga-security-regressions.spec.ts",
+      "title": "revoked text and speech credentials produce zero upstream calls despite loaded env keys",
+      "evidenceScope": "mocked route test"
+    },
+    {
+      "id": "tenant-budget-cap",
+      "behavior": "Tenant worker authorization and monthly reservation cap fail closed",
+      "failureLabel": "budget_or_tenant_isolation_regression",
+      "spec": "ga-sql-regressions.spec.ts",
+      "title": "real PostgreSQL: role, worker-token, revocation and cross-month cap regressions",
+      "evidenceScope": "embedded PostgreSQL migration test"
+    },
+    {
+      "id": "budget-settlement",
+      "behavior": "Settlement refuses usage above the reserved quote",
+      "failureLabel": "budget_settlement_regression",
+      "spec": "managed-credit-lifecycle.spec.ts",
+      "title": "settlement records actual usage and rejects an overrun",
+      "evidenceScope": "local lifecycle harness, not a hosted ledger receipt"
+    },
+    {
+      "id": "artifact-integrity",
+      "behavior": "Import commits only the exact reviewed artifact bytes with permission",
+      "failureLabel": "artifact_integrity_regression",
+      "spec": "client-source-pack.spec.ts",
+      "title": "source import commits only the exact artifact bytes reviewed with permission",
+      "evidenceScope": "mocked storage and route test"
+    },
+    {
+      "id": "grounding-boundary",
+      "behavior": "Notebook answers cannot cite material outside explicit source scope",
+      "failureLabel": "ungrounded_answer_admitted",
+      "spec": "notebook-contracts.spec.ts",
+      "title": "Notebook retrieval and answers cannot widen the explicit source scope",
+      "evidenceScope": "answer-contract unit test, not model output quality"
+    },
+    {
+      "id": "source-graph-isolation",
+      "behavior": "Imported source and link graph remains tenant-scoped and idempotent",
+      "failureLabel": "source_graph_isolation_regression",
+      "spec": "client-source-pack.spec.ts",
+      "title": "source pack SQL imports idempotently and builds tenant-scoped source/link graph",
+      "evidenceScope": "embedded PostgreSQL migration test"
+    },
+    {
+      "id": "trace-redaction",
+      "behavior": "Job traces retain stage outcomes without prompt, output, or credentials",
+      "failureLabel": "trace_content_leak",
+      "spec": "client-job-trace.spec.ts",
+      "title": "job trace records bounded stages without prompt, output, or credential data",
+      "evidenceScope": "local trace unit test"
+    },
+    {
+      "id": "observability-completeness",
+      "behavior": "Observability refuses an incomplete monthly budget ledger",
+      "failureLabel": "incomplete_usage_report",
+      "spec": "client-observability-accuracy.spec.ts",
+      "title": "observability refuses an incomplete monthly ledger",
+      "evidenceScope": "mocked route test"
+    }
+  ]
+}

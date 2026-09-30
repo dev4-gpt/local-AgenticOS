@@ -87,10 +87,20 @@ async function start(request: Request, manifest: unknown) {
   const onboardingId = typeof onboarding.rows[0]?.id === "string" ? onboarding.rows[0].id : "";
   if (!onboarding.ok || !onboardingId) return NextResponse.json({ ok: false, error: "canary_onboarding_create_failed", requestId }, { status: 502 });
   const secret = process.env.CONTROL_PLANE_OPERATOR_SECRET?.trim() || "";
+  const review = await fetch(new URL("/api/onboarding/approve", request.url), {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-control-plane-secret": secret },
+    body: JSON.stringify({ action: "preview", requestId, manifestVersion: "control-plane-disposable-canary-v1", manifest }),
+    signal: AbortSignal.timeout(30_000),
+  }).catch(() => null);
+  const reviewed = await review?.json().catch(() => null) as Record<string, unknown> | null;
+  if (review?.status !== 200 || reviewed?.ok !== true || typeof reviewed?.manifestHash !== "string") {
+    return NextResponse.json({ ok: false, error: "canary_manifest_review_failed", requestId, onboardingId }, { status: 502 });
+  }
   const approval = await fetch(new URL("/api/onboarding/approve", request.url), {
     method: "POST",
     headers: { "content-type": "application/json", "x-control-plane-secret": secret },
-    body: JSON.stringify({ requestId, manifestVersion: "control-plane-disposable-canary-v1", manifest }),
+    body: JSON.stringify({ action: "approve", requestId, manifestVersion: "control-plane-disposable-canary-v1", manifestHash: reviewed.manifestHash, manifest }),
     signal: AbortSignal.timeout(30_000),
   }).catch(() => null);
   const approved = await approval?.json().catch(() => null) as Record<string, unknown> | null;

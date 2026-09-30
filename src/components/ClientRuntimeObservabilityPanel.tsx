@@ -9,9 +9,11 @@ type JobSummary = { total: number; succeeded: number; failed: number; active: nu
 type RuntimeData = {
   windowHours: number;
   posthogConfigured: boolean;
+  sample: { eventsLimited: boolean; jobsLimited: boolean; limit: number };
   counts: Record<string, number>;
   providerCounts: Record<string, JobSummary>;
   recentEvents: Array<{ event: string; createdAt: string | null; metadata: Record<string, string | number> }>;
+  recentJobs: Array<{ id: string | null; provider: string | null; status: string | null; trace: { totalDurationMs: number; truncated: boolean; spans: Array<{ stage: string; durationMs: number; outcome: "ok" | "error" }> } | null }>;
 };
 
 const EVENT_LABELS: Array<[string, string]> = [
@@ -40,7 +42,12 @@ export default function ClientRuntimeObservabilityPanel() {
   usePollWhileVisible(() => { void load(); }, 15000);
 
   const providers = useMemo(() => Object.entries(data?.providerCounts ?? {}).sort(([, a], [, b]) => b.total - a.total).slice(0, 4), [data]);
-  if (state === "unavailable") return null;
+  if (state === "unavailable") return <section className="panel p-5 md:p-6" aria-live="polite">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-2 text-[12px]" style={{ color: "var(--cream-dim)" }}><XCircle size={16} color="#fda4af" /><span>Runtime telemetry is unavailable.</span></div>
+      <button type="button" onClick={() => void load()} title="Retry telemetry" aria-label="Retry telemetry" className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><RefreshCw size={13} /></button>
+    </div>
+  </section>;
 
   return (
     <section className="panel p-5 md:p-6">
@@ -50,7 +57,7 @@ export default function ClientRuntimeObservabilityPanel() {
           <div>
             <p className="eyebrow">Runtime telemetry</p>
             <h2 className="mt-2 text-[21px]" style={{ color: "var(--cream)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>Provider activity at a glance</h2>
-            <p className="mt-1 text-[11px]" style={{ color: "var(--cream-mute)" }}>Redacted tenant events · last {data?.windowHours ?? 24} hours</p>
+            <p className="mt-1 text-[11px]" style={{ color: "var(--cream-mute)" }}>Redacted tenant events · last {data?.windowHours ?? 24} hours{data?.sample?.eventsLimited ? ` · latest ${data.sample.limit} events` : ""}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -62,17 +69,27 @@ export default function ClientRuntimeObservabilityPanel() {
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4">
-        {EVENT_LABELS.map(([event, label]) => <div key={event} className="rounded-md border p-3" style={{ borderColor: "var(--line-soft)", background: "rgba(255,255,255,0.035)" }}><p className="text-[10px]" style={{ color: "var(--cream-mute)" }}>{label}</p><strong className="mt-1 block text-[22px]" style={{ color: "var(--cream)" }}>{data?.counts[event] ?? (state === "loading" ? "·" : 0)}</strong></div>)}
+        {EVENT_LABELS.map(([event, label]) => <div key={event} className="rounded-md border p-3" style={{ borderColor: "var(--line-soft)", background: "rgba(255,255,255,0.035)" }}><p className="text-[10px]" style={{ color: "var(--cream-mute)" }}>{label}{data?.sample?.eventsLimited ? " (sample)" : ""}</p><strong className="mt-1 block text-[22px]" style={{ color: "var(--cream)" }}>{data?.counts[event] ?? (state === "loading" ? "·" : 0)}</strong></div>)}
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div>
-          <div className="flex items-center gap-2"><Clock3 size={14} color="#60a5fa" /><h3 className="text-[11px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--cream-dim)" }}>Provider jobs</h3></div>
+          <div className="flex items-center gap-2"><Clock3 size={14} color="#60a5fa" /><h3 className="text-[11px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--cream-dim)" }}>Provider jobs{data?.sample?.jobsLimited ? " (recent sample)" : ""}</h3></div>
           <div className="mt-3 space-y-2">{providers.length === 0 && <p className="text-[11px]" style={{ color: "var(--cream-mute)" }}>No provider jobs recorded yet.</p>}{providers.map(([provider, summary]) => <div key={provider} className="flex items-center justify-between gap-3 text-[11px]"><span style={{ color: "var(--cream-dim)" }}>{provider}</span><span style={{ color: "var(--cream-mute)" }}>{summary.succeeded} ok · {summary.failed} failed · {summary.active} active</span></div>)}</div>
         </div>
         <div>
           <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><Activity size={14} color="#34d399" /><h3 className="text-[11px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--cream-dim)" }}>Recent signal</h3></div><Link href="/capabilities" className="inline-flex items-center gap-1 text-[10px]" style={{ color: "#047857" }}>Capabilities <ExternalLink size={11} /></Link></div>
           <div className="mt-3 space-y-2">{(data?.recentEvents ?? []).slice(0, 4).map((event, index) => <div key={`${event.event}-${event.createdAt}-${index}`} className="flex items-center justify-between gap-3 text-[11px]"><span className="truncate" style={{ color: "var(--cream-dim)" }}>{event.event.replace(/^client_runtime_/, "")}</span><time className="shrink-0" style={{ color: "var(--cream-mute)" }}>{formatTime(event.createdAt)}</time></div>)}{data?.recentEvents.length === 0 && <p className="text-[11px]" style={{ color: "var(--cream-mute)" }}>Telemetry will appear after the next client interaction.</p>}</div>
+        </div>
+      </div>
+      <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--line-soft)" }}>
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--cream-dim)" }}>Recent job traces</h3>
+        <div className="mt-3 space-y-2">
+          {(data?.recentJobs ?? []).slice(0, 3).map((job, index) => <details key={job.id ?? index} className="rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)" }}>
+            <summary className="flex cursor-pointer items-center justify-between gap-3" style={{ color: "var(--cream-dim)" }}><span className="min-w-0 truncate">{job.provider ?? "Runtime"} · {job.status ?? "pending"}</span><span className="shrink-0" style={{ color: "var(--cream-mute)" }}>{job.trace ? `${job.trace.totalDurationMs} ms` : "No trace"}</span></summary>
+            <div className="mt-2 space-y-1 border-t pt-2" style={{ borderColor: "var(--line-soft)" }}>{job.trace?.spans.map((span, spanIndex) => <div key={`${span.stage}-${spanIndex}`} className="flex justify-between gap-3"><span style={{ color: span.outcome === "error" ? "#fda4af" : "var(--cream-mute)" }}>{span.stage.replaceAll("_", " ")}</span><span className="shrink-0" style={{ color: "var(--cream-mute)" }}>{span.durationMs} ms</span></div>)}{!job.trace && <p style={{ color: "var(--cream-mute)" }}>No stage trace was recorded for this job.</p>}{job.trace?.truncated && <p style={{ color: "var(--cream-mute)" }}>Additional stages were omitted.</p>}</div>
+          </details>)}
+          {data?.recentJobs.length === 0 && <p className="text-[11px]" style={{ color: "var(--cream-mute)" }}>No recent jobs.</p>}
         </div>
       </div>
     </section>

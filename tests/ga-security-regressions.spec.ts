@@ -167,11 +167,12 @@ test("activation fails closed when its setup email is not accepted", async () =>
 });
 
 test("setup accepts the current top-level Supabase generate-link user id", async () => {
-  const updates: Array<{ table: string; record: Record<string, unknown> }> = [];
-  const upserts: Array<{ table: string; record: Record<string, unknown> }> = [];
-  globalThis.fetch = async (url) => {
+  const calls: Array<{ name: string; body: Record<string, unknown> }> = [];
+  const actionLink = "https://db.invalid/auth/v1/verify?token=fake-magic-token&type=magiclink&redirect_to=https%3A%2F%2Fapp.veloceos.cloud%2Fauth%2Fcallback";
+  globalThis.fetch = async (url, init) => {
     expect(String(url)).toBe("https://db.invalid/auth/v1/admin/generate_link");
-    return Response.json({ action_link: "https://auth.invalid/magic", id: "user-a" });
+    expect(JSON.parse(String(init?.body))).toMatchObject({ type: "magiclink", email: "owner@example.com", redirect_to: "https://app.veloceos.cloud/auth/callback" });
+    return Response.json({ action_link: actionLink, id: "user-a" });
   };
   const mod = loadReviewModule("product-experience/src/app/api/onboarding/setup/route.ts", {
     "@/lib/publicLaunch": {
@@ -183,15 +184,13 @@ test("setup accepts the current top-level Supabase generate-link user id", async
           ? [{ id: "token-a", onboarding_id: "onboarding-a", expires_at: new Date(Date.now() + 60_000).toISOString() }]
           : [{ email: "owner@example.com", tenant_slug: "tenant-a", status: "active" }],
       }),
-      supabaseServiceUpdate: async (table: string, _filters: unknown, record: Record<string, unknown>) => { updates.push({ table, record }); return { ok: true }; },
-      supabaseServiceUpsert: async (table: string, record: Record<string, unknown>) => { upserts.push({ table, record }); return { ok: true }; },
+      supabaseServiceRpc: async (name: string, body: Record<string, unknown>) => { calls.push({ name, body }); return { ok: true, value: { status: "ready" } }; },
     },
   });
   const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: "token-a" }) }));
   expect(result.status).toBe(200);
-  expect(await result.json()).toMatchObject({ ok: true, actionLink: "https://auth.invalid/magic" });
-  expect(upserts).toEqual([{ table: "client_memberships", record: { tenant_slug: "tenant-a", user_id: "user-a", role: "owner", status: "active" } }]);
-  expect(updates.find((entry) => entry.table === "client_onboarding_accounts")?.record).toMatchObject({ auth_user_id: "user-a" });
+  expect(await result.json()).toMatchObject({ ok: true, actionLink });
+  expect(calls).toEqual([{ name: "consume_client_onboarding_setup_token", body: { p_token_hash: "hashed-token", p_auth_user_id: "user-a" } }]);
 });
 
 test("integration runtime rejects missing, blank and pending provenance for enabled high-risk entries", () => {

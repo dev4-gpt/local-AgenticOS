@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Archive, BookOpenText, CalendarDays, Check, ChevronLeft, ChevronRight, Download, FileText, LockKeyhole, Network, Plus, RefreshCw, Save, Tag, Target, Trash2, Upload } from "lucide-react";
+import { Archive, BookOpenText, CalendarDays, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileText, LockKeyhole, Network, Plus, RefreshCw, Save, Tag, Target, Trash2, Upload } from "lucide-react";
+import ClientCommunitySourceImport from "@/components/ClientCommunitySourceImport";
 import ClientMemoryGraph3D, { type ClientGraphEdge, type ClientGraphNode } from "@/components/ClientMemoryGraph3D";
 import ClientNotebookWorkspace from "@/components/ClientNotebookWorkspace";
 import VoiceButton from "@/components/VoiceButton";
@@ -18,6 +19,8 @@ const COPY: Record<Surface, { title: string; eyebrow: string; kind: string; plac
 export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   const copy = COPY[surface];
   const [records, setRecords] = useState<RecordItem[]>([]);
+  const [hasMoreRecords, setHasMoreRecords] = useState(false);
+  const [loadingMoreRecords, setLoadingMoreRecords] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("");
@@ -26,15 +29,23 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   const [notebookTab, setNotebookTab] = useState<"library" | "research" | "chat" | "studio" | "assets">("library");
   const [memoryView, setMemoryView] = useState<"recent" | "search" | "graph" | "galaxy">("recent");
   const [memoryQuery, setMemoryQuery] = useState("");
+  const [searchResult, setSearchResult] = useState<{ query: string; records: RecordItem[]; hasMore: boolean; nextOffset: number }>({ query: "", records: [], hasMore: false, nextOffset: 0 });
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [searchMoreBusy, setSearchMoreBusy] = useState(false);
+  const [searchError, setSearchError] = useState<{ query: string; message: string } | null>(null);
+  const [searchRevision, setSearchRevision] = useState(0);
   const [notebooks, setNotebooks] = useState<Array<{ id: string; title: string; summary: string; status: string }>>([]);
   const [activeNotebook, setActiveNotebook] = useState<string>("all");
   const [newNotebook, setNewNotebook] = useState("");
   const [busy, setBusy] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [graphNodes, setGraphNodes] = useState<ClientGraphNode[]>([]);
   const [graphEdges, setGraphEdges] = useState<ClientGraphEdge[]>([]);
+  const [graphPreviewLimited, setGraphPreviewLimited] = useState(false);
   const [graphBusy, setGraphBusy] = useState(false);
   const [selectedGraphNodeId, setSelectedGraphNodeId] = useState<string | null>(null);
+  const [selectedGraphRecord, setSelectedGraphRecord] = useState<RecordItem | null>(null);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -45,9 +56,23 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     const response = await fetch(`/api/client-runtime/records?kind=${copy.kind}${scope}`, { cache: "no-store" }).catch(() => null);
     const data = await response?.json().catch(() => null);
     setRecords(Array.isArray(data?.records) ? data.records : []);
+    setHasMoreRecords(data?.hasMore === true);
     if (!response?.ok && data?.error === "capability_not_enabled") setError("Tenant data is not enabled in this client manifest yet.");
   }
   useEffect(() => { void load(); }, [copy.kind, activeNotebook]);
+
+  async function loadMoreRecords() {
+    if (!hasMoreRecords || loadingMoreRecords) return;
+    setLoadingMoreRecords(true);
+    const scope = surface === "notebook" && activeNotebook !== "all" ? `&notebook=${encodeURIComponent(activeNotebook)}` : "";
+    const response = await fetch(`/api/client-runtime/records?kind=${copy.kind}${scope}&offset=${records.length}`, { cache: "no-store" }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    if (response?.ok && Array.isArray(data?.records)) {
+      setRecords((current) => [...current, ...data.records.filter((record: RecordItem) => !current.some((existing) => existing.id === record.id))]);
+      setHasMoreRecords(data.hasMore === true);
+    } else setError(data?.error || "More tenant records could not be loaded.");
+    setLoadingMoreRecords(false);
+  }
 
   async function loadNotebooks() {
     if (surface !== "notebook") return;
@@ -78,27 +103,66 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     if (response?.ok) {
       setGraphNodes(Array.isArray(data?.nodes) ? data.nodes : []);
       setGraphEdges(Array.isArray(data?.edges) ? data.edges : []);
+      setGraphPreviewLimited(data?.previewLimited?.nodes === true || data?.previewLimited?.edges === true);
     }
+    return response?.ok === true;
   }
   useEffect(() => { void loadGraph(); }, [surface]);
+
+  useEffect(() => {
+    const query = memoryQuery.trim();
+    if (surface !== "memory" || memoryView !== "search" || query.length < 2) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setSearchBusy(true);
+      setSearchError(null);
+      void (async () => {
+        const response = await fetch(`/api/client-runtime/records?kind=memory&q=${encodeURIComponent(query)}`, { cache: "no-store", signal: controller.signal }).catch(() => null);
+        const data = await response?.json().catch(() => null);
+        if (controller.signal.aborted) return;
+        if (!response?.ok || !Array.isArray(data?.records)) setSearchError({ query, message: "Tenant memory search is unavailable." });
+        else { setSearchResult({ query, records: data.records, hasMore: data.hasMore === true, nextOffset: Number(data.nextOffset) || data.records.length }); setSearchError(null); }
+        setSearchBusy(false);
+      })();
+    }, 250);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [surface, memoryView, memoryQuery, searchRevision]);
+
+  async function loadMoreSearch() {
+    const query = memoryQuery.trim();
+    if (query.length < 2 || searchResult.query !== query || !searchResult.hasMore || searchMoreBusy) return;
+    setSearchMoreBusy(true);
+    const response = await fetch(`/api/client-runtime/records?kind=memory&q=${encodeURIComponent(query)}&offset=${searchResult.nextOffset}`, { cache: "no-store" }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    if (!response?.ok || !Array.isArray(data?.records)) setSearchError({ query, message: "More matching memories could not be loaded." });
+    else {
+      setSearchResult((current) => current.query === query ? { query, records: [...current.records, ...data.records.filter((record: RecordItem) => !current.records.some((existing) => existing.id === record.id))], hasMore: data.hasMore === true, nextOffset: Number(data.nextOffset) || current.nextOffset + data.records.length } : current);
+      setSearchError(null);
+    }
+    setSearchMoreBusy(false);
+  }
 
   async function add() {
     if (!title.trim() || !content.trim() || busy) return;
     setBusy(true); setError("");
     const response = await fetch("/api/client-runtime/records", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: copy.kind, title, content, notebookId: surface === "notebook" && activeNotebook !== "all" && activeNotebook !== "unfiled" ? activeNotebook : null, category: surface === "goals" ? category : undefined }) }).catch(() => null);
     if (!response?.ok) setError((await response?.json().catch(() => null))?.error || "The tenant record could not be saved.");
-    else { setTitle(""); setContent(""); setCategory(""); await load(); }
+    else { setTitle(""); setContent(""); setCategory(""); await load(); if (surface === "memory") setSearchRevision((current) => current + 1); }
     setBusy(false);
   }
 
   async function update(id: string, status: RecordItem["status"]) {
-    await fetch("/api/client-runtime/records", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, status }) });
+    const response = await fetch("/api/client-runtime/records", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, status }) }).catch(() => null);
+    if (!response?.ok) { setError("The record could not be updated."); return; }
     await load();
+    if (surface === "memory") { await refreshGraph(); setSearchRevision((current) => current + 1); }
   }
 
   async function remove(id: string) {
-    await fetch(`/api/client-runtime/records?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    const response = await fetch(`/api/client-runtime/records?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => null);
+    if (!response?.ok) { setError("The record could not be deleted."); return; }
     await load();
+    if (surface === "memory") { await refreshGraph(); setSearchRevision((current) => current + 1); }
   }
 
   async function importMarkdown(file: File | undefined) {
@@ -132,7 +196,7 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
       });
       const importedData = await imported.json().catch(() => null);
       if (!imported.ok) throw new Error(importedData?.error || "The memory source could not be imported.");
-      await load(); await loadGraph();
+      await load(); await loadGraph(); setSearchRevision((current) => current + 1);
     } catch (importError) {
       setError(importError instanceof Error ? importError.message : "The memory source could not be imported.");
     } finally {
@@ -140,8 +204,30 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     }
   }
 
-  function exportMemory() {
-    window.location.assign("/api/client-runtime/memory-import?format=markdown");
+  async function exportMemory() {
+    if (exporting) return;
+    setExporting(true); setError("");
+    try {
+      const response = await fetch("/api/client-runtime/memory-import?format=markdown", { cache: "no-store" });
+      if (!response.ok) {
+        const failure = await response.json().catch(() => null);
+        setError(response.status === 401 ? "Sign in to export memory." : failure?.error === "memory_export_too_large" ? "This Markdown export exceeds 1,000 records. Request a full tenant export from support." : failure?.error === "memory_export_changed_retry" ? "Memory changed during export. Try again." : "The memory export could not be completed.");
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "veloce-memory.md";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setError("The memory export could not be completed.");
+    } finally {
+      setExporting(false);
+    }
   }
 
   async function refreshGraph() {
@@ -161,29 +247,37 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     return { total, completed, active: total - completed, progress: total ? Math.round((completed / total) * 100) : 0 };
   }, [records]);
   const selectedGraphNode = useMemo(() => graphNodes.find((node) => node.id === selectedGraphNodeId) ?? null, [graphNodes, selectedGraphNodeId]);
-  const selectedRecord = useMemo(() => selectedGraphNode?.kind === "document" ? active.find((record) => record.id === selectedGraphNode.record_id) ?? null : null, [active, selectedGraphNode]);
+  const selectedRecord = useMemo(() => selectedGraphNode?.kind === "document" ? active.find((record) => record.id === selectedGraphNode.record_id) ?? (selectedGraphRecord?.id === selectedGraphNode.record_id ? selectedGraphRecord : null) : null, [active, selectedGraphNode, selectedGraphRecord]);
+  useEffect(() => {
+    setSelectedGraphRecord(null);
+    if (selectedGraphNode?.kind !== "document" || !selectedGraphNode.record_id || active.some((record) => record.id === selectedGraphNode.record_id)) return;
+    let cancelled = false;
+    void fetch(`/api/client-runtime/records?kind=memory&id=${encodeURIComponent(selectedGraphNode.record_id)}`, { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => { if (!cancelled && Array.isArray(data?.records)) setSelectedGraphRecord(data.records[0] ?? null); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [selectedGraphNode, active]);
   const visibleRecords = useMemo(() => {
     if (!selectedGraphNode) return active;
-    if (selectedGraphNode.kind === "document") return active.filter((record) => record.id === selectedGraphNode.record_id);
+    if (selectedGraphNode.kind === "document") {
+      const loaded = active.filter((record) => record.id === selectedGraphNode.record_id);
+      return loaded.length ? loaded : selectedGraphRecord && selectedGraphRecord.id === selectedGraphNode.record_id ? [selectedGraphRecord] : [];
+    }
+    if (selectedGraphNode.kind === "url") {
+      const url = selectedGraphNode.metadata?.url;
+      return active.filter((record) => record.metadata?.source_url === url || (Array.isArray(record.metadata?.source_links) && record.metadata.source_links.some((link) => typeof link === "object" && link !== null && (link as { url?: unknown }).url === url)));
+    }
     const tag = selectedGraphNode.label.replace(/^#/, "").toLowerCase();
     return active.filter((record) => `${record.title}\n${record.content}`.toLowerCase().includes(`#${tag}`));
-  }, [active, selectedGraphNode]);
+  }, [active, selectedGraphNode, selectedGraphRecord]);
   const journalDays = useMemo(() => Array.from(new Set(active.map((record) => new Date(record.created_at).toISOString().slice(0, 10)))).sort((left, right) => right.localeCompare(left)), [active]);
   useEffect(() => { if (surface === "journal" && !journalDay && journalDays[0]) setJournalDay(journalDays[0]); }, [surface, journalDay, journalDays]);
   const journalRecords = useMemo(() => journalDay ? active.filter((record) => new Date(record.created_at).toISOString().slice(0, 10) === journalDay) : active, [active, journalDay]);
   const goalRecords = useMemo(() => goalFilter === "all" ? active : active.filter((record) => goalFilter === "done" ? record.status === "done" : record.status !== "done"), [active, goalFilter]);
-  // Memory search runs over the tenant's own records: titles, content, and the
-  // #tags already used to build the graph. It reaches nothing outside this
-  // tenant, which is why the empty state says so rather than implying more.
-  const searchedRecords = useMemo(() => {
-    const query = memoryQuery.trim().toLowerCase();
-    if (!query) return visibleRecords;
-    const terms = query.split(/\s+/).filter(Boolean);
-    return visibleRecords.filter((record) => {
-      const haystack = `${record.title}\n${record.content}`.toLowerCase();
-      return terms.every((term) => haystack.includes(term));
-    });
-  }, [visibleRecords, memoryQuery]);
+  // Search results come from the tenant-scoped server query, not the currently
+  // loaded page of records or the bounded graph preview.
+  const searchedRecords = memoryQuery.trim().length >= 2 && searchResult.query === memoryQuery.trim() ? searchResult.records : [];
   // What the notebook's chat and studio lanes are allowed to draw on.
   const notebookSources = useMemo(() => active.map((record) => ({ id: record.id, title: record.title, content: record.content })), [active]);
   function selectGraphNode(nodeId: string) {
@@ -193,7 +287,7 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   return <div className="space-y-5">
     <section className="panel p-5 md:p-6">
       <div className="flex items-start gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg" style={{ background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.28)", color: "#60a5fa" }}><LockKeyhole size={18} /></div><div><p className="eyebrow">{copy.eyebrow}</p><h1 className="mt-2 text-[26px]" style={{ color: "var(--cream)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>{copy.title}</h1><p className="mt-2 max-w-3xl text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>This client edition stores records in the current tenant namespace with Supabase RLS. It does not read the operator vault or local filesystem.</p></div></div>
-      {surface === "memory" && <><div className="mt-4 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}><span className="rounded-md px-2 py-1" style={{ background: "rgba(179,128,63,0.14)", color: "var(--gold-deep)" }}>{active.length} tenant memories</span><span>{graphNodes.length} nodes · {graphEdges.length} edges</span><span>Sources are scoped to this client tenant</span></div><div className="mt-4 flex flex-wrap gap-2"><input ref={fileInputRef} type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" className="sr-only" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void importMarkdown(file); }} /><button type="button" onClick={() => fileInputRef.current?.click()} disabled={importing} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Upload size={13} />{importing ? "Importing source" : "Import Markdown"}</button><button type="button" onClick={exportMemory} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Download size={13} />Export Markdown</button><button type="button" onClick={() => { setTitle(""); setContent(""); document.getElementById("client-memory-composer")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "rgba(179,128,63,0.42)", color: "var(--gold-deep)", background: "rgba(179,128,63,0.08)" }}><Plus size={13} />Add note</button></div></>}
+      {surface === "memory" && <><div className="mt-4 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}><span className="rounded-md px-2 py-1" style={{ background: "rgba(179,128,63,0.14)", color: "var(--gold-deep)" }}>{active.length} tenant memories</span><span>{graphNodes.length} nodes · {graphEdges.length} edges</span><span>Sources are scoped to this client tenant</span></div><div className="mt-4 flex flex-wrap gap-2"><input ref={fileInputRef} type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" className="sr-only" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void importMarkdown(file); }} /><button type="button" onClick={() => fileInputRef.current?.click()} disabled={importing} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Upload size={13} />{importing ? "Importing source" : "Import Markdown"}</button><button type="button" onClick={() => void exportMemory()} disabled={exporting} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px] disabled:opacity-50" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Download size={13} />{exporting ? "Preparing export" : "Export Markdown"}</button><button type="button" onClick={() => { setTitle(""); setContent(""); document.getElementById("client-memory-composer")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "rgba(179,128,63,0.42)", color: "var(--gold-deep)", background: "rgba(179,128,63,0.08)" }}><Plus size={13} />Add note</button></div></>}
       {surface === "notebook" && <><div className="mt-4 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}><span className="rounded-md px-2 py-1" style={{ background: "rgba(52,211,153,0.1)", color: "#34d399" }}>Tenant authenticated</span><span>{records.length} notebook records</span><span>{records.filter((record) => record.status !== "archived").length} active sources</span></div><div className="mt-5 flex flex-wrap gap-2" aria-label="Notebook workspace sections">{(["library", "research", "chat", "studio", "assets"] as const).map((item) => <button key={item} type="button" onClick={() => setNotebookTab(item)} className="rounded-md border px-3 py-2 text-[11px] capitalize" style={{ color: notebookTab === item ? "#07111d" : "var(--cream-dim)", background: notebookTab === item ? "#60a5fa" : "rgba(255,255,255,0.03)", borderColor: notebookTab === item ? "#60a5fa" : "var(--line-soft)" }}>{item}</button>)}</div>
       <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--line-soft)" }}>
         <p className="text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--cream-mute)" }}>Notebook</p>
@@ -220,33 +314,61 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
       <div className="mt-4 flex items-center gap-3"><button type="button" onClick={add} disabled={busy || !title.trim() || !content.trim()} className="inline-flex items-center gap-2 rounded-md px-4 py-2.5 text-[11px] font-semibold" style={{ background: busy ? "rgba(255,255,255,0.1)" : "#60a5fa", color: busy ? "var(--cream-mute)" : "#07111d" }}><Save size={13} />{busy ? "Saving" : "Save to tenant"}</button><span className="text-[10px]" style={{ color: "var(--cream-mute)" }}>No secrets or credentials should be entered here.</span></div>
       {error && <p className="mt-3 text-[11px]" style={{ color: "#fda4af" }}>{error}</p>}
     </section>}
+    {surface === "memory" && <ClientCommunitySourceImport onImported={async () => { await load(); if (!(await loadGraph())) throw new Error("memory_graph_read_failed"); setSearchRevision((current) => current + 1); }} />}
     {surface === "memory" && <section className="panel p-5 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2"><Network size={16} color="var(--gold-deep)" /><h2 className="text-[15px] font-semibold" style={{ color: "var(--cream)" }}>Knowledge map</h2><span className="rounded-md px-2 py-1 text-[10px] font-semibold" style={{ color: "var(--cream-soft)", background: "rgba(179,128,63,0.14)" }}>{graphEdges.length} relationships · {graphNodes.length} nodes</span></div>
         <div className="flex items-center gap-2"><button type="button" onClick={refreshGraph} disabled={graphBusy} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px] font-semibold" style={{ borderColor: "rgba(179,128,63,0.42)", color: "var(--gold-deep)", background: "rgba(179,128,63,0.08)" }}><RefreshCw size={13} className={graphBusy ? "animate-spin" : ""} />{graphBusy ? "Refreshing" : "Refresh map"}</button></div>
       </div>
+      {graphPreviewLimited && <p className="mt-3 text-xs text-amber-200">Graph preview is limited. Search reaches tenant memories beyond the visible map.</p>}
       <div className="mt-4 flex flex-wrap gap-2" aria-label="Memory views">{(["recent", "search", "graph", "galaxy"] as const).map((view) => <button key={view} type="button" onClick={() => setMemoryView(view)} className="rounded-md border px-3 py-2 text-[11px] capitalize" style={{ color: memoryView === view ? "#07111d" : "var(--cream-dim)", background: memoryView === view ? "#f0c94a" : "rgba(255,255,255,0.03)", borderColor: memoryView === view ? "#f0c94a" : "var(--line-soft)" }}>{view === "galaxy" ? "Galaxy" : view}</button>)}</div>
       {memoryView === "search" && <div className="mt-4">
-        <input value={memoryQuery} onChange={(event) => setMemoryQuery(event.target.value)} placeholder="Search titles, content, and #tags in this tenant"
+        <input value={memoryQuery} onChange={(event) => setMemoryQuery(event.target.value)} maxLength={200} placeholder="Search memories and source links in this tenant"
           className="w-full rounded-md border px-3 py-2.5 text-[12px]" style={{ color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" }} />
         <p className="mt-2 text-[10px]" style={{ color: "var(--cream-mute)" }}>
-          {memoryQuery.trim() ? `${searchedRecords.length} of ${active.length} tenant memories match` : `${active.length} tenant memories. Searches titles, content, and #tags in this tenant only.`}
+          {memoryQuery.trim().length < 2 ? "Enter at least two characters." : searchError?.query === memoryQuery.trim() ? "Search unavailable." : searchBusy || searchResult.query !== memoryQuery.trim() ? "Searching tenant memories..." : `${searchedRecords.length}${searchResult.hasMore ? "+" : ""} matching memories`}
         </p>
+        {searchError?.query === memoryQuery.trim() && <p role="alert" className="mt-2 text-xs text-rose-300">{searchError.message}</p>}
       </div>}
       {graphNodes.length > 0 && (memoryView === "graph" || memoryView === "galaxy") ? <>
         <ClientMemoryGraph3D nodes={graphNodes} edges={graphEdges} selectedNodeId={selectedGraphNodeId} onSelectNode={selectGraphNode} onClearSelection={() => setSelectedGraphNodeId(null)} />
         {selectedGraphNode && <div className="mt-4 rounded-md border p-4" style={{ borderColor: selectedGraphNode.kind === "document" ? "rgba(47,143,107,0.42)" : "rgba(176,74,104,0.42)", background: selectedGraphNode.kind === "document" ? "rgba(47,143,107,0.08)" : "rgba(176,74,104,0.08)" }}>
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase" style={{ color: selectedGraphNode.kind === "document" ? "var(--emerald-dim)" : "var(--plum)" }}>{selectedGraphNode.kind === "document" ? <FileText size={13} /> : <Tag size={13} />}{selectedGraphNode.kind === "document" ? "Selected memory" : "Selected tag"}</div>
-          {selectedRecord ? <><h3 className="mt-2 text-[15px]" style={{ color: "var(--cream)" }}>{selectedRecord.title}</h3><p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed" style={{ color: "var(--cream-soft)" }}>{selectedRecord.content}</p></> : <><h3 className="mt-2 text-[15px]" style={{ color: "var(--cream)" }}>{selectedGraphNode.label}</h3><div className="mt-3 flex flex-wrap gap-2">{visibleRecords.map((record) => <button key={record.id} type="button" onClick={() => { const documentNode = graphNodes.find((node) => node.kind === "document" && node.record_id === record.id); if (documentNode) setSelectedGraphNodeId(documentNode.id); }} className="rounded-md border px-3 py-2 text-left text-[11px] font-semibold" style={{ borderColor: "rgba(176,74,104,0.32)", color: "var(--plum)", background: "rgba(250,247,239,0.8)" }}>{record.title}</button>)}</div></>}
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase" style={{ color: selectedGraphNode.kind === "document" ? "var(--emerald-dim)" : "var(--plum)" }}>{selectedGraphNode.kind === "document" ? <FileText size={13} /> : selectedGraphNode.kind === "url" ? <ExternalLink size={13} /> : <Tag size={13} />}{selectedGraphNode.kind === "document" ? "Selected memory" : selectedGraphNode.kind === "url" ? "Selected link" : "Selected tag"}</div>
+          {selectedRecord ? <><h3 className="mt-2 text-[15px]" style={{ color: "var(--cream)" }}>{selectedRecord.title}</h3>{typeof selectedRecord.metadata?.source_url === "string" && <a href={selectedRecord.metadata.source_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 break-all text-xs text-emerald-300 hover:underline"><ExternalLink size={12} />Original source</a>}<p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed" style={{ color: "var(--cream-soft)" }}>{selectedRecord.content}</p></> : <><h3 className="mt-2 text-[15px]" style={{ color: "var(--cream)" }}>{selectedGraphNode.label}</h3>{selectedGraphNode.kind === "url" && typeof selectedGraphNode.metadata?.url === "string" && <a href={selectedGraphNode.metadata.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 break-all text-xs text-emerald-300 hover:underline"><ExternalLink size={12} />{selectedGraphNode.metadata.url}</a>}<div className="mt-3 flex flex-wrap gap-2">{visibleRecords.map((record) => <button key={record.id} type="button" onClick={() => { const documentNode = graphNodes.find((node) => node.kind === "document" && node.record_id === record.id); if (documentNode) setSelectedGraphNodeId(documentNode.id); }} className="rounded-md border px-3 py-2 text-left text-[11px] font-semibold" style={{ borderColor: "rgba(176,74,104,0.32)", color: "var(--plum)", background: "rgba(250,247,239,0.8)" }}>{record.title}</button>)}</div></>}
         </div>}
-      </> : memoryView === "graph" || memoryView === "galaxy" ? <p className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>No graph links yet. Add two related tenant memories and refresh the map.</p> : <p className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>{active.length} recent tenant memories are available below.</p>}
+      </> : memoryView === "graph" || memoryView === "galaxy" ? <p className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>No graph links yet. Add two related tenant memories and refresh the map.</p> : memoryView === "recent" ? <p className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>{active.length}{hasMoreRecords ? "+" : ""} recent tenant memories are available below.</p> : null}
     </section>}
     {surface !== "journal" && !(surface === "notebook" && notebookTab !== "library") && <section className="space-y-3">
-      {active.length === 0 && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No tenant records yet.</div>}
-      {active.length > 0 && visibleRecords.length === 0 && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No tenant records match this graph node.</div>}
-      {(surface === "goals" ? goalRecords : surface === "memory" && memoryView === "search" ? searchedRecords : visibleRecords).map((record) => <article key={record.id} className="panel p-4"><div className="flex items-start gap-3"><FileText size={15} color="#60a5fa" className="mt-0.5" /><div className="min-w-0 flex-1"><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>{record.title}</h2><p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>{record.content}</p><p className="mt-3 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}>{surface === "goals" && typeof record.metadata?.category === "string" && <span className="inline-flex items-center gap-1"><Tag size={10} />{record.metadata.category}</span>}<span>{new Date(record.created_at).toLocaleString()} · {record.status}</span></p></div><div className="flex items-center gap-1"><button type="button" title={record.status === "done" ? "Mark active" : "Mark done"} onClick={() => update(record.id, record.status === "done" ? "active" : "done")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: record.status === "done" ? "#34d399" : "var(--cream-mute)" }}><Check size={13} /></button><button type="button" title="Archive" onClick={() => update(record.id, "archived")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "var(--cream-mute)" }}><Archive size={13} /></button><button type="button" title="Delete" onClick={() => remove(record.id)} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "#fda4af" }}><Trash2 size={13} /></button></div></div></article>)}
+      {!(surface === "memory" && memoryView === "search") && active.length === 0 && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No tenant records yet.</div>}
+      {!(surface === "memory" && memoryView === "search") && active.length > 0 && visibleRecords.length === 0 && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No tenant records match this graph node.</div>}
+      {surface === "memory" && memoryView === "search" && memoryQuery.trim().length >= 2 && !searchBusy && searchResult.query === memoryQuery.trim() && searchedRecords.length === 0 && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No matching memories in this tenant.</div>}
+      {(surface === "goals" ? goalRecords : surface === "memory" && memoryView === "search" ? searchedRecords : visibleRecords).map((record) => <article key={record.id} className="panel p-4"><div className="flex items-start gap-3"><FileText size={15} color="#60a5fa" className="mt-0.5" /><div className="min-w-0 flex-1"><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>{record.title}</h2><p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>{record.content}</p><SourceLinks metadata={record.metadata} /><p className="mt-3 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}>{surface === "goals" && typeof record.metadata?.category === "string" && <span className="inline-flex items-center gap-1"><Tag size={10} />{record.metadata.category}</span>}<span>{new Date(record.created_at).toLocaleString()} · {record.status}</span></p></div><div className="flex items-center gap-1"><button type="button" title={record.status === "done" ? "Mark active" : "Mark done"} onClick={() => update(record.id, record.status === "done" ? "active" : "done")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: record.status === "done" ? "#34d399" : "var(--cream-mute)" }}><Check size={13} /></button><button type="button" title="Archive" onClick={() => update(record.id, "archived")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "var(--cream-mute)" }}><Archive size={13} /></button><button type="button" title="Delete" onClick={() => remove(record.id)} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "#fda4af" }}><Trash2 size={13} /></button></div></div></article>)}
+      {surface === "memory" && memoryView === "search" ? searchResult.query === memoryQuery.trim() && searchResult.hasMore && <button type="button" onClick={() => void loadMoreSearch()} disabled={searchMoreBusy} className="w-full rounded-md border px-4 py-2.5 text-xs font-semibold disabled:opacity-40" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}>{searchMoreBusy ? "Loading" : "Load more matches"}</button> : hasMoreRecords && <button type="button" onClick={() => void loadMoreRecords()} disabled={loadingMoreRecords} className="w-full rounded-md border px-4 py-2.5 text-xs font-semibold disabled:opacity-40" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}>{loadingMoreRecords ? "Loading" : "Load more"}</button>}
     </section>}
   </div>;
+}
+
+function SourceLinks({ metadata }: { metadata?: Record<string, unknown> }) {
+  const sourceUrl = safeSourceHref(metadata?.source_url);
+  const links = Array.isArray(metadata?.source_links) ? metadata.source_links.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const link = item as { url?: unknown; text?: unknown };
+    const url = safeSourceHref(link.url);
+    return url ? [{ url, text: typeof link.text === "string" && link.text.trim() ? link.text.trim() : url }] : [];
+  }) : [];
+  if (!sourceUrl && !links.length) return null;
+  return <div className="mt-3 text-xs" style={{ color: "var(--cream-soft)" }}>
+    {sourceUrl && <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-emerald-300 hover:underline"><ExternalLink size={12} />Original page</a>}
+    {links.length > 0 && <details className="mt-2"><summary className="cursor-pointer">{links.length} source link{links.length === 1 ? "" : "s"}</summary><ul className="mt-2 max-h-40 space-y-1 overflow-auto">{links.map((link, index) => <li key={`${link.url}-${index}`}><a href={link.url} target="_blank" rel="noopener noreferrer" className="break-all text-sky-300 hover:underline">{link.text}</a></li>)}</ul></details>}
+  </div>;
+}
+
+function safeSourceHref(value: unknown) {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password ? url.toString() : null;
+  } catch { return null; }
 }
 
 function GoalComposer({ title, content, category, busy, filter, stats, onTitle, onContent, onCategory, onFilter, onAdd }: { title: string; content: string; category: string; busy: boolean; filter: "active" | "done" | "all"; stats: { total: number; completed: number; active: number; progress: number }; onTitle: (value: string) => void; onContent: (value: string) => void; onCategory: (value: string) => void; onFilter: (value: "active" | "done" | "all") => void; onAdd: () => Promise<void> }) {

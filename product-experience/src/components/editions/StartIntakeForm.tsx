@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Script from "next/script";
+import { Copy } from "lucide-react";
 
 type FormState = "idle" | "sending" | "sent" | "fallback" | "blocked";
 
@@ -24,38 +25,7 @@ export function StartIntakeForm() {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const data = new FormData(form);
-    const payload = {
-      name: asString(data, "name"),
-      email: asString(data, "email"),
-      company: asString(data, "company"),
-      role: asString(data, "role"),
-      website: asString(data, "website"),
-      workflow: asString(data, "workflow"),
-      currentTools: asString(data, "currentTools"),
-      dataSources: asString(data, "dataSources"),
-      integrations: asString(data, "integrations"),
-      credentialModel: asString(data, "credentialModel"),
-      providerUsagePreference: asString(data, "providerUsagePreference"),
-      providerCreditBudgetUsd: asString(data, "providerCreditBudgetUsd"),
-      approvalRule: asString(data, "approvalRule"),
-      seatCount: asString(data, "seatCount"),
-      brandCount: asString(data, "brandCount"),
-      workflowCount: asString(data, "workflowCount"),
-      capabilityAreas: Array.from(form.querySelectorAll<HTMLInputElement>('input[name="capabilityAreas"]:checked')).map((input) => input.value),
-      mediaRequirement: asString(data, "mediaRequirement"),
-      externalActions: data.get("externalActions") === "on",
-      knowledgeMigration: data.get("knowledgeMigration") === "on",
-      supportLevel: asString(data, "supportLevel"),
-      managedServiceNeed: asString(data, "managedServiceNeed"),
-      retentionDays: asString(data, "retentionDays"),
-      preferredSubdomain: asString(data, "preferredSubdomain"),
-      timeline: asString(data, "timeline"),
-      notes: asString(data, "notes"),
-      termsAccepted: data.get("termsAccepted") === "on",
-      privacyAccepted: data.get("privacyAccepted") === "on",
-      captchaToken,
-    };
+    const payload = intakePayload(form, captchaToken);
 
     if (turnstileSiteKey && !captchaToken) {
       setState("blocked");
@@ -106,15 +76,34 @@ export function StartIntakeForm() {
         return;
       }
 
-      const brief = makeBrief(payload);
-      await navigator.clipboard.writeText(brief).catch(() => {});
+      if (body.error === "field_too_large" || body.error === "invalid_fields") {
+        setState("blocked");
+        setNotice("One or more answers are too long or invalid. Please review the form and try again.");
+        return;
+      }
+
+      if (body.error === "idempotency_conflict") {
+        setState("blocked");
+        setNotice("This request conflicts with an earlier submission. Please contact support before retrying.");
+        return;
+      }
+
       setState("fallback");
-      setNotice("The deployment store is not connected yet. Your request brief was copied for manual approval.");
+      setNotice("We couldn't save your request. Your answers are still here; retry or copy the brief to share with Veloce support.");
     } catch {
-      const brief = makeBrief(payload);
-      await navigator.clipboard.writeText(brief).catch(() => {});
       setState("fallback");
-      setNotice("Could not reach the server. Your request brief was copied for manual approval.");
+      setNotice("Could not reach the server. Your answers are still here; retry or copy the brief to share with Veloce support.");
+    }
+  }
+
+  async function copyFallbackBrief(event: React.MouseEvent<HTMLButtonElement>) {
+    const form = event.currentTarget.form;
+    if (!form) return;
+    try {
+      await navigator.clipboard.writeText(makeBrief(intakePayload(form, captchaToken)));
+      setNotice("Request brief copied. Share it only with Veloce support.");
+    } catch {
+      setNotice("Clipboard access is unavailable. Your answers are still in the form; please retry or contact support.");
     }
   }
 
@@ -319,16 +308,54 @@ export function StartIntakeForm() {
         <p aria-live="polite" className="max-w-xl text-sm leading-relaxed text-[var(--g5)]/62">
           {notice}
         </p>
-        <button
-          type="submit"
-          disabled={state === "sending"}
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--g5)] px-6 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-        >
-          {state === "sending" ? "Submitting..." : state === "sent" ? "Request sent" : "Start public onboarding"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {state === "fallback" && <button type="button" onClick={(event) => void copyFallbackBrief(event)} className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[var(--g5)]/25 px-5 text-sm font-semibold text-[var(--g5)] transition hover:border-[var(--g5)]/60"><Copy size={15} />Copy request brief</button>}
+          <button
+            type="submit"
+            disabled={state === "sending"}
+            className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--g5)] px-6 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+          >
+            {state === "sending" ? "Submitting..." : state === "sent" ? "Request sent" : "Start public onboarding"}
+          </button>
+        </div>
       </div>
     </form>
   );
+}
+
+function intakePayload(form: HTMLFormElement, captchaToken: string) {
+  const data = new FormData(form);
+  return {
+    name: asString(data, "name"),
+    email: asString(data, "email"),
+    company: asString(data, "company"),
+    role: asString(data, "role"),
+    website: asString(data, "website"),
+    workflow: asString(data, "workflow"),
+    currentTools: asString(data, "currentTools"),
+    dataSources: asString(data, "dataSources"),
+    integrations: asString(data, "integrations"),
+    credentialModel: asString(data, "credentialModel"),
+    providerUsagePreference: asString(data, "providerUsagePreference"),
+    providerCreditBudgetUsd: asString(data, "providerCreditBudgetUsd"),
+    approvalRule: asString(data, "approvalRule"),
+    seatCount: asString(data, "seatCount"),
+    brandCount: asString(data, "brandCount"),
+    workflowCount: asString(data, "workflowCount"),
+    capabilityAreas: Array.from(form.querySelectorAll<HTMLInputElement>('input[name="capabilityAreas"]:checked')).map((input) => input.value),
+    mediaRequirement: asString(data, "mediaRequirement"),
+    externalActions: data.get("externalActions") === "on",
+    knowledgeMigration: data.get("knowledgeMigration") === "on",
+    supportLevel: asString(data, "supportLevel"),
+    managedServiceNeed: asString(data, "managedServiceNeed"),
+    retentionDays: asString(data, "retentionDays"),
+    preferredSubdomain: asString(data, "preferredSubdomain"),
+    timeline: asString(data, "timeline"),
+    notes: asString(data, "notes"),
+    termsAccepted: data.get("termsAccepted") === "on",
+    privacyAccepted: data.get("privacyAccepted") === "on",
+    captchaToken,
+  };
 }
 
 function makeBrief(payload: Record<string, string | boolean | string[]>) {

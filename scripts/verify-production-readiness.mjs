@@ -9,9 +9,12 @@ const args = process.argv.slice(2);
 const strict = args.includes("--strict") || args.includes("--publish-ledger");
 const allowDirty = args.includes("--allow-dirty");
 const publishLedger = args.includes("--publish-ledger");
-const ledgerBucket = valueAfter("--ledger-bucket") || process.env.VELOCE_RELEASE_LEDGER_BUCKET || "veloce-agenticos-2026-veloce-release-ledger";
+const ledgerBucket = valueAfter("--ledger-bucket") || process.env.VELOCE_RELEASE_LEDGER_BUCKET?.trim() || null;
+const ledgerRecordFile = valueAfter("--ledger-record-file");
 const failures = [];
 const warnings = [];
+const ledgerBucketValid = !ledgerBucket || /^[a-z0-9][a-z0-9._-]{1,220}[a-z0-9]$/.test(ledgerBucket);
+if (!ledgerBucketValid) failures.push("Release ledger bucket must be a bucket name, not a URI or path");
 
 const commit = git(["rev-parse", "HEAD"]);
 const branch = git(["branch", "--show-current"]);
@@ -38,6 +41,8 @@ const requiredFiles = [
   "scripts/verify-voxcpm-pilot.mjs",
   "scripts/verify-content-os-video-pilot.mjs",
   "scripts/verify-engineering-controls.mjs",
+  "scripts/run-ai-release-evaluation.mjs",
+  "evaluations/ai-release-local-v1.json",
   "scripts/verify-integration-governance.mjs",
   "scripts/control-plane-disposable-canary.mjs",
   "scripts/client-lifecycle.mjs",
@@ -49,6 +54,10 @@ const requiredFiles = [
   "product-experience/supabase-v33-managed-credit-lifecycle.sql",
   "product-experience/supabase-v34-managed-credit-execution-claims.sql",
   "product-experience/supabase-v44-stripe-financial-event-dispositions.sql",
+  "product-experience/supabase-v45-onboarding-verify-token.sql",
+  "product-experience/supabase-v46-onboarding-setup-token.sql",
+  "product-experience/supabase-client-runtime-source-pack-graph.sql",
+  "src/app/api/client-runtime/source-import/route.ts",
   "product-experience/supabase-public-launch-control-plane.sql",
   "docs/public-launch-runbook.md",
   "docs/production-operations.md",
@@ -72,7 +81,7 @@ for (const file of requiredFiles) {
 }
 
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
-for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:platform-isolation", "verify:control-plane-cloud", "verify:control-plane-canary", "verify:managed-openrouter-cloud", "verify:vercel-production-env", "prepare:openrouter-pricing", "verify:openreply-pilot", "verify:voxcpm-pilot", "verify:content-os-video-pilot", "verify:integration-governance", "verify:engineering-controls", "verify:production-readiness"]) {
+for (const script of ["typecheck", "verify:managed-credit", "verify:public-launch", "verify:public-provisioner", "verify:client-isolation", "verify:platform-isolation", "verify:control-plane-cloud", "verify:control-plane-canary", "verify:managed-openrouter-cloud", "verify:vercel-production-env", "prepare:openrouter-pricing", "verify:openreply-pilot", "verify:voxcpm-pilot", "verify:content-os-video-pilot", "verify:integration-governance", "verify:engineering-controls", "verify:ai-evaluation", "verify:production-readiness"]) {
   if (typeof packageJson.scripts?.[script] !== "string") failures.push(`package.json is missing ${script}`);
 }
 
@@ -82,6 +91,10 @@ const sourceChecks = [
   ["managed credit refund RPC", "product-experience/supabase-v33-managed-credit-lifecycle.sql", "refund_client_credit"],
   ["managed credit execution claim", "product-experience/supabase-v34-managed-credit-execution-claims.sql", "claim_client_credit_reservation"],
   ["public-launch Stripe refund disposition", "product-experience/supabase-v44-stripe-financial-event-dispositions.sql", "stripe_financial_event_dispositions"],
+  ["transactional onboarding verification", "product-experience/supabase-v45-onboarding-verify-token.sql", "consume_client_onboarding_verify_token"],
+  ["transactional onboarding setup", "product-experience/supabase-v46-onboarding-setup-token.sql", "consume_client_onboarding_setup_token"],
+  ["tenant source graph import", "product-experience/supabase-client-runtime-source-pack-graph.sql", "import_client_runtime_source_pack"],
+  ["reviewed source import API", "src/app/api/client-runtime/source-import/route.ts", "permissionConfirmed"],
   ["public-launch refund classification", "product-experience/src/app/api/billing/webhook/route.ts", "public_launch_review_required"],
   ["operator refund review boundary", "product-experience/src/app/api/internal/billing/webhook-review/route.ts", "public_launch_refund_reviewed"],
   ["Stripe signature verification", "product-experience/src/app/api/billing/webhook/route.ts", "verifyStripeSignature"],
@@ -126,6 +139,17 @@ const migrationApplied = migrationFiles.map((file) => {
   const content = safeRead(file);
   return { file, sha256: content ? sha256(content) : null };
 });
+const requiredMigrations = [
+  { file: "product-experience/supabase-v45-onboarding-verify-token.sql", gate: "verification_migration_attached" },
+  { file: "product-experience/supabase-v46-onboarding-setup-token.sql", gate: "setup_migration_attached" },
+  { file: "product-experience/supabase-client-runtime-source-pack-graph.sql", gate: "source_graph_migration_attached" },
+];
+function missingMigrationGates(applied) {
+  return requiredMigrations.filter(({ file }) => {
+    const content = safeRead(file);
+    return !content || !applied.some((item) => item.file === file && item.sha256 === sha256(content));
+  }).map(({ gate }) => gate);
+}
 if (publishLedger && !migrationFiles.length) warnings.push("No --migration-file supplied; attach the applied schema file(s) before publishing");
 
 const deployment = {
@@ -138,6 +162,10 @@ const deployment = {
   providerCatalogResult: valueAfter("--provider-catalog-result") || process.env.VELOCE_PROVIDER_CATALOG_RESULT || null,
   byokLifecycleResult: valueAfter("--byok-lifecycle-result") || process.env.VELOCE_BYOK_LIFECYCLE_RESULT || null,
   tenantIsolationResult: valueAfter("--tenant-isolation-result") || process.env.VELOCE_TENANT_ISOLATION_RESULT || null,
+  sourceImportResult: valueAfter("--source-import-result") || process.env.VELOCE_SOURCE_IMPORT_RESULT || null,
+  uiParityResult: valueAfter("--ui-parity-result") || process.env.VELOCE_UI_PARITY_RESULT || null,
+  buyerSimulationResult: valueAfter("--buyer-simulation-result") || process.env.VELOCE_BUYER_SIMULATION_RESULT || null,
+  aiEngineeringResult: valueAfter("--ai-engineering-result") || process.env.VELOCE_AI_ENGINEERING_RESULT || null,
   managedOpenRouterResult: valueAfter("--managed-openrouter-result") || process.env.VELOCE_MANAGED_OPENROUTER_RESULT || null,
   operationsApproval: valueAfter("--operations-approval") || process.env.VELOCE_OPERATIONS_APPROVAL || null,
   legalApproval: valueAfter("--legal-approval") || process.env.VELOCE_LEGAL_APPROVAL || null,
@@ -157,28 +185,45 @@ if (publishLedger) {
 
 const releaseGateFailures = [];
 if (dirtyFiles.length) releaseGateFailures.push("working_tree_clean");
+if (ledgerRecordFile) releaseGateFailures.push("published_ledger_required");
+if (!strict && ledgerRecordFile) warnings.push("Local ledger record file is for inspection only; it is not published release evidence.");
+
+const aiEvaluationReportFile = valueAfter("--ai-evaluation-report") || "tmp/ai-release-local-v1-report.json";
+let aiEvaluationLocal = null;
+if (publishLedger) {
+  try { aiEvaluationLocal = JSON.parse(readFileSync(resolve(root, aiEvaluationReportFile), "utf8")); }
+  catch { warnings.push(`No readable AI evaluation report at ${aiEvaluationReportFile}.`); }
+  if (!validLocalAiEvaluation(aiEvaluationLocal, commit)) releaseGateFailures.push("ai_evaluation_local_evidence");
+}
 
 let ledgerRecord = null;
 let ledgerRecordPath = null;
 if (!publishLedger) {
   const releaseKey = valueAfter("--release-id") || commit;
-  const lookup = fetchLatestLedgerRecord(releaseKey);
-  if (!lookup) {
+  const lookup = (ledgerRecordFile || (ledgerBucket && ledgerBucketValid)) ? fetchLatestLedgerRecord(releaseKey) : null;
+  if (!ledgerRecordFile && !ledgerBucket) {
+    releaseGateFailures.push("ledger_bucket_not_configured");
+    warnings.push("Release ledger bucket is not configured; pass --ledger-bucket or set VELOCE_RELEASE_LEDGER_BUCKET after verifying the target project.");
+  } else if (!lookup) {
     releaseGateFailures.push("release_ledger_record_missing");
-    warnings.push(`No published release ledger record found for ${releaseKey} in gs://${ledgerBucket}/releases/${releaseKey}/. Run 'npm run publish:release-ledger' first.`);
+    warnings.push(ledgerRecordFile
+      ? `No valid release ledger record found in ${ledgerRecordFile}.`
+      : `No published release ledger record found for ${releaseKey} in gs://${ledgerBucket}/releases/${releaseKey}/.`);
   } else {
     ledgerRecord = lookup.record;
     ledgerRecordPath = lookup.path;
     assertNoSecretLikeValues(ledgerRecord, "ledgerRecord");
     if (ledgerRecord.schemaVersion !== 2) releaseGateFailures.push("release_ledger_schema_version");
     if (!valueAfter("--release-id") && ledgerRecord.source?.commit !== commit) releaseGateFailures.push("release_ledger_commit_mismatch");
+    if (!validLocalAiEvaluation(ledgerRecord.aiEvaluationLocal, ledgerRecord.source?.commit)) releaseGateFailures.push("ai_evaluation_local_evidence");
     for (const key of ["vercelDeployment", "cloudRunRevision", "imageDigest"]) {
       if (!ledgerRecord.deployment?.[key]) releaseGateFailures.push(key);
     }
     if (!ledgerRecord.migration?.applied?.length) releaseGateFailures.push("migration_evidence_attached");
+    releaseGateFailures.push(...missingMigrationGates(ledgerRecord.migration?.applied || []));
     if (!Object.keys(ledgerRecord.tests || {}).length) releaseGateFailures.push("test_results_attached");
     if (Object.values(ledgerRecord.tests || {}).some((result) => result !== "passed")) releaseGateFailures.push("all_tests_passed");
-    for (const key of ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"]) {
+    for (const key of ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "sourceImportResult", "uiParityResult", "buyerSimulationResult", "aiEngineeringResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"]) {
       const value = ledgerRecord.deployment?.[key];
       if (value !== "approved" && value !== "passed") releaseGateFailures.push(`${key}_approved`);
     }
@@ -186,12 +231,14 @@ if (!publishLedger) {
   }
 }
 if (publishLedger) {
+  if (!ledgerBucket) releaseGateFailures.push("ledger_bucket_not_configured");
   for (const key of ["vercelDeployment", "cloudRunRevision", "imageDigest"]) {
     if (!deployment[key]) releaseGateFailures.push(key);
   }
   if (!migrationApplied.length || migrationApplied.some((item) => !item.sha256)) releaseGateFailures.push("migration_evidence_attached");
+  releaseGateFailures.push(...missingMigrationGates(migrationApplied));
   if (!Object.keys(testResults).length) releaseGateFailures.push("test_results_attached");
-  for (const key of ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"]) {
+  for (const key of ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "sourceImportResult", "uiParityResult", "buyerSimulationResult", "aiEngineeringResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"]) {
     if (!["approved", "passed"].includes(deployment[key])) releaseGateFailures.push(`${key}_approved`);
   }
   if (!rollbackTarget.cloudRunRevision && !rollbackTarget.vercelDeploymentId) releaseGateFailures.push("rollback_target");
@@ -237,6 +284,7 @@ const evidence = {
     ? { applied: migrationApplied, appliedAt: migrationApplied.length ? generatedAt : null, appliedBy: valueAfter("--applied-by") || process.env.VELOCE_MIGRATION_APPLIED_BY || null }
     : (ledgerRecord?.migration ?? { applied: [], appliedAt: null, appliedBy: null }),
   tests: publishLedger ? testResults : (ledgerRecord?.tests ?? {}),
+  aiEvaluationLocal: publishLedger ? aiEvaluationLocal : (ledgerRecord?.aiEvaluationLocal ?? null),
   configurationHash,
   configurationShape: { requiredServerVariables: configurationShape.requiredServerVariables, present: configurationShape.present, publicSecretNames: configurationShape.publicSecretNames },
   rollbackTarget: publishLedger ? rollbackTarget : (ledgerRecord?.rollbackTarget ?? rollbackTarget),
@@ -269,6 +317,20 @@ console.log(JSON.stringify({
   warnings,
 }, null, 2));
 if (strict && failures.length) process.exit(1);
+
+function validLocalAiEvaluation(report, expectedCommit) {
+  if (!report || report.schemaVersion !== 1 || report.suite !== "ai-release-local-v1" || report.localGatePassed !== true
+    || report.productionReady !== false || report.workingTreeClean !== true || report.nodeEngineSupported !== true
+    || report.runnerExitCode !== 0 || report.sourceCommit !== expectedCommit || !/^[0-9a-f]{64}$/.test(report.fixtureSha256 ?? "")) return false;
+  const fixture = readFileSync(resolve(root, "evaluations/ai-release-local-v1.json"));
+  if (sha256(fixture) !== report.fixtureSha256 || !Array.isArray(report.cases)) return false;
+  const expectedCases = JSON.parse(fixture.toString("utf8")).cases;
+  return report.metrics?.cases === expectedCases.length && report.metrics?.passed === expectedCases.length && report.metrics?.failed === 0
+    && report.metrics?.modelSamples === 0 && expectedCases.every((expected, index) => {
+      const actual = report.cases[index];
+      return actual?.id === expected.id && actual.spec === expected.spec && actual.title === expected.title && actual.status === "passed";
+    });
+}
 
 function valuesAfter(flag) {
   const values = [];
@@ -319,7 +381,7 @@ function publishToLedger(evidenceRecord) {
 }
 
 function fetchLatestLedgerRecord(forCommit) {
-  const override = valueAfter("--ledger-record-file");
+  const override = ledgerRecordFile;
   if (override) {
     try { return { record: JSON.parse(readFileSync(resolve(override), "utf8")), path: override }; } catch { return null; }
   }

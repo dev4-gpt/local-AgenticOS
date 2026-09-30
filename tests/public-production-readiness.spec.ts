@@ -1,15 +1,98 @@
 import { expect, test } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { notifyLead } from "../product-experience/src/lib/leadNotification";
 
 test("release verifier records the current revision without secrets", () => {
   const script = resolve(process.cwd(), "scripts/verify-production-readiness.mjs");
-  const result = spawnSync(process.execPath, [script, "--allow-dirty", "--test-result", "typecheck=passed"], { cwd: process.cwd(), encoding: "utf8" });
+  const result = spawnSync(process.execPath, [script, "--allow-dirty", "--test-result", "typecheck=passed"], { cwd: process.cwd(), encoding: "utf8", env: { ...process.env, VELOCE_RELEASE_LEDGER_BUCKET: "" } });
   expect(result.status).toBe(0);
   expect(result.stdout).toContain('"releaseReady": false');
+  expect(result.stdout).toContain("release_gate:ledger_bucket_not_configured");
+  expect(result.stdout).not.toContain("veloce-agenticos-2026-veloce-release-ledger");
   expect(result.stdout).not.toMatch(/sk-[A-Za-z0-9_-]{16,}|service_role|api[_ -]?key\s*[:=]/i);
+});
+
+test("strict release acceptance does not trust an unpublished local ledger file", () => {
+  const dir = mkdtempSync(join(tmpdir(), "veloce-unpublished-ledger-"));
+  try {
+    const file = join(dir, "record.json");
+    writeFileSync(file, "{}\n");
+    const result = spawnSync(process.execPath, ["scripts/verify-production-readiness.mjs", "--strict", "--allow-dirty", "--ledger-record-file", file], {
+      cwd: process.cwd(), encoding: "utf8", env: { ...process.env, VELOCE_RELEASE_LEDGER_BUCKET: "" },
+    });
+    expect(result.status).toBe(1);
+    expect(JSON.parse(result.stdout).failures).toContain("Strict release evidence missing or failed: published_ledger_required");
+    const inspection = spawnSync(process.execPath, ["scripts/verify-production-readiness.mjs", "--allow-dirty", "--ledger-record-file", file], {
+      cwd: process.cwd(), encoding: "utf8", env: { ...process.env, VELOCE_RELEASE_LEDGER_BUCKET: "" },
+    });
+    expect(inspection.status).toBe(0);
+    expect(JSON.parse(inspection.stdout)).toMatchObject({ releaseReady: false });
+    expect(JSON.parse(inspection.stdout).failures).toContain("release_gate:published_ledger_required");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("release evidence requires the setup and source-graph migrations and new outcome gates", () => {
+  const dir = mkdtempSync(join(tmpdir(), "veloce-incomplete-ledger-"));
+  try {
+    const file = join(dir, "record.json");
+    const verifyFile = "product-experience/supabase-v45-onboarding-verify-token.sql";
+    const verifyHash = createHash("sha256").update(readFileSync(resolve(process.cwd(), verifyFile), "utf8")).digest("hex");
+    const commit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: process.cwd(), encoding: "utf8" }).stdout.trim();
+    writeFileSync(file, JSON.stringify({
+      schemaVersion: 2,
+      source: { commit },
+      migration: { applied: [{ file: verifyFile, sha256: verifyHash }] },
+      tests: { focused: "passed" },
+      deployment: { environment: "staging", vercelDeployment: "test-deploy", cloudRunRevision: "test-revision", imageDigest: `sha256:${"a".repeat(64)}` },
+      rollbackTarget: { cloudRunRevision: "prior-revision" },
+    }));
+    const result = spawnSync(process.execPath, ["scripts/verify-production-readiness.mjs", "--allow-dirty", "--ledger-record-file", file], {
+      cwd: process.cwd(), encoding: "utf8", env: { ...process.env, VELOCE_RELEASE_LEDGER_BUCKET: "" },
+    });
+    expect(result.status).toBe(0);
+    const failures = JSON.parse(result.stdout).failures as string[];
+    expect(failures).toContain("release_gate:setup_migration_attached");
+    expect(failures).toContain("release_gate:source_graph_migration_attached");
+    expect(failures).toContain("release_gate:sourceImportResult_approved");
+    expect(failures).toContain("release_gate:uiParityResult_approved");
+    expect(failures).toContain("release_gate:buyerSimulationResult_approved");
+    expect(failures).toContain("release_gate:aiEngineeringResult_approved");
+    expect(failures).toContain("release_gate:ai_evaluation_local_evidence");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("AI approval cannot substitute for a matching local evaluation receipt", () => {
+  const dir = mkdtempSync(join(tmpdir(), "veloce-ai-ledger-"));
+  try {
+    const file = join(dir, "record.json");
+    const fixture = readFileSync(resolve(process.cwd(), "evaluations/ai-release-local-v1.json"));
+    const cases = JSON.parse(fixture.toString("utf8")).cases;
+    const commit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: process.cwd(), encoding: "utf8" }).stdout.trim();
+    const receipt = {
+      schemaVersion: 1, suite: "ai-release-local-v1", localGatePassed: true, productionReady: false,
+      workingTreeClean: true, nodeEngineSupported: true, runnerExitCode: 0, sourceCommit: commit,
+      fixtureSha256: createHash("sha256").update(fixture).digest("hex"),
+      metrics: { cases: cases.length, passed: cases.length, failed: 0, modelSamples: 0 },
+      cases: cases.map(({ id, spec, title }: { id: string; spec: string; title: string }) => ({ id, spec, title, status: "passed" })),
+    };
+    const base = { schemaVersion: 2, source: { commit }, deployment: { environment: "staging", aiEngineeringResult: "passed" } };
+    const inspect = (aiEvaluationLocal: unknown) => {
+      writeFileSync(file, JSON.stringify({ ...base, aiEvaluationLocal }));
+      const result = spawnSync(process.execPath, ["scripts/verify-production-readiness.mjs", "--allow-dirty", "--ledger-record-file", file], {
+        cwd: process.cwd(), encoding: "utf8", env: { ...process.env, VELOCE_RELEASE_LEDGER_BUCKET: "" },
+      });
+      expect(result.status).toBe(0);
+      return JSON.parse(result.stdout).failures as string[];
+    };
+    expect(inspect({ ...receipt, sourceCommit: "0".repeat(40) })).toContain("release_gate:ai_evaluation_local_evidence");
+    expect(inspect({ ...receipt, workingTreeClean: false })).toContain("release_gate:ai_evaluation_local_evidence");
+    expect(inspect(receipt)).not.toContain("release_gate:ai_evaluation_local_evidence");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test("production readiness source keeps live gates explicit", () => {
@@ -24,6 +107,7 @@ test("production readiness source keeps live gates explicit", () => {
   expect(verifier).toContain("configurationHash");
   expect(verifier).toContain("tenantIsolationResult");
   expect(verifier).toContain("managedOpenRouterResult");
+  expect(verifier).toContain("aiEngineeringResult");
   expect(verifier).toContain("OPENROUTER_MANAGED_SECRET_RESOURCE");
   expect(verifier).toContain("OPENROUTER_MANAGED_PRICING_SNAPSHOT_ID");
   expect(verifier).toContain("verify-content-os-video-pilot.mjs");
@@ -71,7 +155,6 @@ test("commercial scope remains separate from runtime manifest and billing", () =
   const approval = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/scope/approve/route.ts"), "utf8");
   const manifestApproval = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/approve/route.ts"), "utf8");
   const checkout = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/billing/checkout/route.ts"), "utf8");
-  const operatorTool = readFileSync(resolve(process.cwd(), "scripts/approve-stripe-test-fixture.mjs"), "utf8");
   expect(migration).toContain("commercial_scope_recommendation");
   expect(migration).toContain("commercial_scope_quote");
   expect(intake).toContain("recommendCommercialScope");
@@ -112,6 +195,7 @@ test("tenant activation is bound to a deployed runtime smoke and the verified ow
   const provisionResult = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/provision-result/route.ts"), "utf8");
   const activate = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/activate/route.ts"), "utf8");
   const setup = readFileSync(resolve(process.cwd(), "product-experience/src/app/api/onboarding/setup/route.ts"), "utf8");
+  const setupMigration = readFileSync(resolve(process.cwd(), "product-experience/supabase-v46-onboarding-setup-token.sql"), "utf8");
   const adapter = readFileSync(resolve(process.cwd(), "workers/gcp-provisioner/worker.mjs"), "utf8");
 
   expect(adapter).toContain("VELOCE_RUNTIME_URL");
@@ -127,12 +211,14 @@ test("tenant activation is bound to a deployed runtime smoke and the verified ow
   expect(provisionResult).toContain("activationReady: true");
   expect(activate).toContain("runtime_smoke_required");
   expect(activate).not.toContain('["smoke_testing", "provisioning"]');
-  expect(setup).toContain('supabaseServiceUpsert("client_memberships"');
-  expect(setup).toContain('role: "owner"');
+  expect(setup).toContain('supabaseServiceRpc("consume_client_onboarding_setup_token"');
+  expect(setupMigration).toContain("insert into public.client_memberships");
+  expect(setupMigration).toContain("'owner', 'active'");
   const setupPage = readFileSync(resolve(process.cwd(), "product-experience/src/app/setup/page.tsx"), "utf8");
   expect(setupPage).toContain("Continue securely");
   expect(setupPage).toContain("body?.error");
-  expect(setupPage).not.toContain("useEffect");
+  expect(setupPage).toContain('window.history.replaceState(null, "", "/setup")');
+  expect(setupPage).toContain("onClick={continueSetup}");
 });
 
 test("team support notification is server-side and contains no credential field", async () => {

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject } from "react";
-import { Maximize2, RotateCcw, ZoomIn } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import SpriteText from "three-spritetext";
 import * as THREE from "three";
 import type { ForceGraphMethods, ForceGraphProps, GraphData, NodeObject } from "react-force-graph-3d";
@@ -13,13 +13,15 @@ const TypedForceGraph3D = ForceGraph3D as unknown as ComponentType<ForceGraphPro
 export type ClientGraphNode = {
   id: string;
   label: string;
-  kind: "document" | "tag";
+  kind: "document" | "tag" | "url";
   record_id?: string | null;
+  metadata?: { url?: string; source_url?: string };
 };
 
 export type ClientGraphEdge = {
   source_node_id: string;
   target_node_id: string;
+  relation: "tagged" | "source_at" | "links_to";
 };
 
 type VisualNode = ClientGraphNode & { degree: number };
@@ -35,20 +37,26 @@ type Props = {
 
 const DOCUMENT = "#63d6a0";
 const TAG = "#ff9bb7";
+const URL = "#7db8ff";
 const FLOW = "#f5c56b";
 
 function linkEndId(value: unknown) {
   return typeof value === "object" && value !== null ? String((value as { id?: string | number }).id ?? "") : String(value ?? "");
 }
 
-function nodeColor(node: NodeObject<VisualNode>) {
-  return node.kind === "document" ? DOCUMENT : TAG;
+function overviewDistance(width: number, height: number) {
+  return width < 500 ? Math.max(320, Math.ceil(255 * height / Math.max(1, width))) : 220;
 }
 
-function makeNodeObject(node: NodeObject<VisualNode>) {
+function nodeColor(node: NodeObject<VisualNode>) {
+  return node.kind === "document" ? DOCUMENT : node.kind === "url" ? URL : TAG;
+}
+
+function makeNodeObject(node: NodeObject<VisualNode>, labelScale = 1) {
   const accent = nodeColor(node);
   const radius = node.kind === "document" ? 4.8 : 6.8;
-  const displayLabel = node.label.length > 24 ? `${node.label.slice(0, 22)}…` : node.label;
+  const labelLimit = labelScale > 1 ? 16 : 24;
+  const displayLabel = node.label.length > labelLimit ? `${node.label.slice(0, labelLimit - 2)}…` : node.label;
   const group = new THREE.Group();
   const sphere = new THREE.Mesh(
     new THREE.SphereGeometry(radius, 18, 18),
@@ -58,9 +66,9 @@ function makeNodeObject(node: NodeObject<VisualNode>) {
     new THREE.SphereGeometry(radius * 1.8, 16, 16),
     new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0.09, blending: THREE.AdditiveBlending, depthWrite: false })
   );
-  const label = new SpriteText(displayLabel, node.kind === "document" ? 3.6 : 4.2, accent);
+  const label = new SpriteText(displayLabel, (node.kind === "document" ? 3.6 : 4.2) * labelScale, accent);
   label.position.set(0, radius + 5.2, 0);
-  label.backgroundColor = node.kind === "document" ? "rgba(4, 33, 31, 0.88)" : "rgba(45, 14, 29, 0.9)";
+  label.backgroundColor = node.kind === "document" ? "rgba(4, 33, 31, 0.88)" : node.kind === "url" ? "rgba(12, 30, 54, 0.9)" : "rgba(45, 14, 29, 0.9)";
   label.padding = 2.2;
   label.borderRadius = 3;
   label.strokeWidth = 0.25;
@@ -90,6 +98,8 @@ export default function ClientMemoryGraph3D({ nodes, edges, selectedNodeId, onSe
     nodes: (() => {
       const documents = nodes.filter((node) => node.kind === "document");
       const tags = nodes.filter((node) => node.kind === "tag");
+      const urls = nodes.filter((node) => node.kind === "url");
+      const layoutScale = size.width < 500 ? 0.58 : 1;
       const orbit = (index: number, count: number, radius: number, phase: number) => {
         const angle = (index / Math.max(1, count)) * Math.PI * 2 + phase;
         return {
@@ -98,10 +108,10 @@ export default function ClientMemoryGraph3D({ nodes, edges, selectedNodeId, onSe
           z: Math.sin(angle) * radius,
         };
       };
-      return [...documents.map((node, index) => ({ ...node, ...orbit(index, documents.length, 64, 0), degree: degree.get(node.id) ?? 0 })), ...tags.map((node, index) => ({ ...node, ...orbit(index, tags.length, 132, Math.PI / 10), degree: degree.get(node.id) ?? 0 }))];
+      return [...documents.map((node, index) => ({ ...node, ...orbit(index, documents.length, 64 * layoutScale, 0), degree: degree.get(node.id) ?? 0 })), ...tags.map((node, index) => ({ ...node, ...orbit(index, tags.length, 132 * layoutScale, Math.PI / 10), degree: degree.get(node.id) ?? 0 })), ...urls.map((node, index) => ({ ...node, ...orbit(index, urls.length, 98 * layoutScale, Math.PI / 4), degree: degree.get(node.id) ?? 0 }))];
     })(),
-    links: edges.map((edge) => ({ source: edge.source_node_id, target: edge.target_node_id, relation: "tagged" })),
-  }), [degree, edges, nodes]);
+    links: edges.map((edge) => ({ source: edge.source_node_id, target: edge.target_node_id, relation: edge.relation })),
+  }), [degree, edges, nodes, size.width]);
 
   const connectedToSelection = useMemo(() => {
     if (!selectedNodeId) return new Set<string>();
@@ -114,16 +124,16 @@ export default function ClientMemoryGraph3D({ nodes, edges, selectedNodeId, onSe
   }, [edges, selectedNodeId]);
 
   const resetView = useCallback(() => {
-    graphRef.current?.cameraPosition({ x: 0, y: 0, z: 220 }, { x: 0, y: 0, z: 0 }, 700);
+    graphRef.current?.cameraPosition({ x: 0, y: 0, z: overviewDistance(size.width, size.height) }, { x: 0, y: 0, z: 0 }, 700);
     onClearSelection();
-  }, [onClearSelection]);
+  }, [onClearSelection, size]);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     const measure = () => {
       const rect = host.getBoundingClientRect();
-      setSize({ width: Math.max(320, Math.round(rect.width)), height: Math.max(320, Math.round(rect.height)) });
+      setSize({ width: Math.max(1, Math.round(rect.width)), height: Math.max(320, Math.round(rect.height)) });
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -132,7 +142,7 @@ export default function ClientMemoryGraph3D({ nodes, edges, selectedNodeId, onSe
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => graphRef.current?.cameraPosition({ x: 0, y: 0, z: 220 }, { x: 0, y: 0, z: 0 }, 700), 350);
+    const timer = window.setTimeout(() => graphRef.current?.cameraPosition({ x: 0, y: 0, z: overviewDistance(size.width, size.height) }, { x: 0, y: 0, z: 0 }, 700), 350);
     return () => window.clearTimeout(timer);
   }, [graphData, size]);
 
@@ -142,23 +152,22 @@ export default function ClientMemoryGraph3D({ nodes, edges, selectedNodeId, onSe
     const x = typeof node.x === "number" ? node.x : 0;
     const y = typeof node.y === "number" ? node.y : 0;
     const z = typeof node.z === "number" ? node.z : 0;
-    graphRef.current?.cameraPosition({ x: x + 0.1, y: y + 0.1, z: z + 170 }, { x, y, z }, 900);
-  }, [onSelectNode]);
+    graphRef.current?.cameraPosition({ x: x + 0.1, y: y + 0.1, z: z + Math.max(170, overviewDistance(size.width, size.height) * 0.55) }, { x, y, z }, 900);
+  }, [onSelectNode, size]);
 
   return <div className="relative mt-5 overflow-hidden rounded-xl border" style={{ borderColor: "rgba(96,165,250,0.34)", background: "#07111d", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 18px 42px rgba(30,50,74,0.2)", minHeight: 430 }}>
     <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-4">
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "#a7f3d0" }}>Tenant knowledge space</p>
-        <p className="mt-1 max-w-[280px] text-[11px] leading-relaxed" style={{ color: "rgba(226,238,250,0.72)" }}>Documents orbit their approved tags. Moving particles show the active relationship flow.</p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         <button type="button" title="Reset graph view" aria-label="Reset graph view" onClick={resetView} className="pointer-events-auto grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "rgba(167,243,208,0.25)", color: "#a7f3d0", background: "rgba(7,17,29,0.72)" }}><RotateCcw size={14} /></button>
-        <span className="hidden items-center gap-1 rounded-md border px-2 py-1.5 text-[10px] sm:inline-flex" style={{ borderColor: "rgba(226,238,250,0.16)", color: "rgba(226,238,250,0.64)", background: "rgba(7,17,29,0.72)" }}><ZoomIn size={12} /> orbit · zoom · select</span>
       </div>
     </div>
     <div className="absolute bottom-4 left-4 z-10 flex items-center gap-3 rounded-md border px-3 py-2 text-[10px]" style={{ borderColor: "rgba(226,238,250,0.14)", color: "rgba(226,238,250,0.7)", background: "rgba(7,17,29,0.72)" }}>
       <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full" style={{ background: DOCUMENT, boxShadow: `0 0 10px ${DOCUMENT}` }} /> memories</span>
       <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full" style={{ background: TAG, boxShadow: `0 0 10px ${TAG}` }} /> tags</span>
+      <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full" style={{ background: URL, boxShadow: `0 0 10px ${URL}` }} /> links</span>
       <span className="hidden items-center gap-1.5 md:inline-flex"><i className="h-2 w-2 rounded-full" style={{ background: FLOW, boxShadow: `0 0 10px ${FLOW}` }} /> flow</span>
     </div>
     <div ref={hostRef} className="h-[430px] w-full">
@@ -172,8 +181,8 @@ export default function ClientMemoryGraph3D({ nodes, edges, selectedNodeId, onSe
         nodeRelSize={5}
         nodeVal={(node) => node.kind === "tag" ? 2.2 : Math.max(1.4, Math.min(4, 1.2 + node.degree * 0.18))}
         nodeColor={nodeColor}
-        nodeLabel={(node) => `${node.kind === "tag" ? "Tag" : "Memory"}: ${node.label}`}
-        nodeThreeObject={makeNodeObject}
+        nodeLabel={(node) => `${node.kind === "tag" ? "Tag" : node.kind === "url" ? "Link" : "Memory"}: ${node.label}`}
+        nodeThreeObject={(node) => makeNodeObject(node, size.width < 500 ? 1.6 : 1)}
         nodeThreeObjectExtend={false}
         linkColor={(link) => {
           const source = linkEndId(link.source);
@@ -209,6 +218,5 @@ export default function ClientMemoryGraph3D({ nodes, edges, selectedNodeId, onSe
         showPointerCursor
       />
     </div>
-    <div className="pointer-events-none absolute bottom-4 right-4 z-10 hidden items-center gap-1.5 rounded-md border px-2.5 py-2 text-[10px] md:flex" style={{ borderColor: "rgba(226,238,250,0.14)", color: "rgba(226,238,250,0.56)", background: "rgba(7,17,29,0.72)" }}><Maximize2 size={12} /> drag nodes to reshape</div>
   </div>;
 }

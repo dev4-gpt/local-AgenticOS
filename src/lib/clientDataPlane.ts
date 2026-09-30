@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { currentClientAccessToken, currentClientUser, supabaseAuthConfig } from "@/lib/clientAuth";
 import { logClientRuntimeEvent } from "@/lib/clientRuntimeObservability";
 import { resolveCapabilityTraits, traitBundleMetadata } from "@/lib/capabilityTraits";
+import { traceClientJobStage } from "@/lib/clientJobTrace";
 
 // PostgREST accepts an array for a bulk insert, which lets a caller write a
 // whole roster in one request instead of a row at a time.
@@ -82,6 +83,22 @@ export async function selectClientRecords(table: string, filters: Record<string,
   if (!response?.ok) return { ok: false, status: response?.status ?? 503, records: [] as Record<string, unknown>[] };
   const records = await response.json().catch(() => []) as Record<string, unknown>[];
   return { ok: true, status: response.status, records: Array.isArray(records) ? records : [] };
+}
+
+export async function countClientRecords(table: string, filters: Record<string, string>) {
+  const config = supabaseAuthConfig();
+  const token = await currentClientAccessToken();
+  if (!config || !token) return { ok: false, status: 401, count: null as number | null };
+  const query = new URLSearchParams({ select: "id", ...filters, limit: "1" });
+  const response = await fetch(`${config.url}/rest/v1/${table}?${query.toString()}`, {
+    method: "HEAD",
+    headers: { apikey: config.key, Authorization: `Bearer ${token}`, Prefer: "count=exact" },
+    cache: "no-store",
+  }).catch(() => null);
+  const match = response?.headers.get("content-range")?.match(/\/(\d+)$/);
+  const count = match ? Number(match[1]) : NaN;
+  if (!response?.ok || !Number.isSafeInteger(count)) return { ok: false, status: response?.status ?? 503, count: null };
+  return { ok: true, status: response.status, count };
 }
 
 export async function checkClientRuntimeRateLimit(bucket: string, limit: number, windowSeconds: number) {
@@ -202,15 +219,25 @@ export async function cancelClientRuntimeJob(jobId: string, errorCode: string) {
 }
 
 export async function workerRpc(functionName: string, body: Record<string, unknown>) {
-  const config = supabaseAuthConfig();
-  if (!config) return { ok: false, status: 503, value: null as unknown };
-  const response = await fetch(`${config.url}/rest/v1/rpc/${functionName}`, {
-    method: "POST",
-    headers: { apikey: config.key, Authorization: `Bearer ${config.key}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  }).catch(() => null);
-  return { ok: response?.ok === true, status: response?.status ?? 503, value: await response?.json().catch(() => null) };
+  const work = async () => {
+    const config = supabaseAuthConfig();
+    if (!config) return { ok: false, status: 503, value: null as unknown };
+    const response = await fetch(`${config.url}/rest/v1/rpc/${functionName}`, {
+      method: "POST",
+      headers: { apikey: config.key, Authorization: `Bearer ${config.key}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    }).catch(() => null);
+    return { ok: response?.ok === true, status: response?.status ?? 503, value: await response?.json().catch(() => null) };
+  };
+  const stage = {
+    claim_client_runtime_job: "claim",
+    reserve_client_runtime_budget_worker: "budget_reserve",
+    settle_client_runtime_budget_worker: "budget_settle",
+    create_client_runtime_artifact_worker: "artifact_create",
+    confirm_client_runtime_artifact_worker: "artifact_confirm",
+  }[functionName] as "claim" | "budget_reserve" | "budget_settle" | "artifact_create" | "artifact_confirm" | undefined;
+  return stage ? traceClientJobStage(stage, work, (result) => result.ok && result.value !== false && result.value !== null) : work();
 }
 
 export async function reserveClientRuntimeBudgetWorker(input: {

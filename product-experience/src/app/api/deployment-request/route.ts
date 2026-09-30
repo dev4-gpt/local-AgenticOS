@@ -61,11 +61,19 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: "bad_json" }, { status: 400 });
   }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ ok: false, error: "invalid_fields" }, { status: 400 });
 
-  const values = Object.fromEntries(fields.map((field) => [field, clean(body[field])]));
   const termsAccepted = body.termsAccepted === true;
   const privacyAccepted = body.privacyAccepted === true;
   if (!termsAccepted || !privacyAccepted) return NextResponse.json({ ok: false, error: "consent_required" }, { status: 400 });
+  if (fields.some((field) => body[field] != null && typeof body[field] !== "string")) return NextResponse.json({ ok: false, error: "invalid_fields" }, { status: 400 });
+  if (fields.some((field) => String(body[field] ?? "").trim().length > 4_000)) return NextResponse.json({ ok: false, error: "field_too_large" }, { status: 413 });
+  if (typeof body.email === "string" && body.email.trim().length > 320) return NextResponse.json({ ok: false, error: "invalid_email" }, { status: 400 });
+  if (body.capabilityAreas != null && (!Array.isArray(body.capabilityAreas) || body.capabilityAreas.length > 32 || body.capabilityAreas.some((item) => typeof item !== "string" || item.length > 120))) {
+    return NextResponse.json({ ok: false, error: "invalid_fields" }, { status: 400 });
+  }
+  if (body.idempotencyKey != null && (typeof body.idempotencyKey !== "string" || body.idempotencyKey.trim().length > 180)) return NextResponse.json({ ok: false, error: "invalid_fields" }, { status: 400 });
+  const values = Object.fromEntries(fields.map((field) => [field, clean(body[field])]));
 
   if (process.env.TURNSTILE_SECRET_KEY?.trim()) {
     const captchaToken = clean(body.captchaToken, 2_000);
@@ -85,19 +93,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_email" }, { status: 400 });
   }
 
-  if (fields.some((field) => values[field].length > 4_000)) {
-    return NextResponse.json({ ok: false, error: "field_too_large" }, { status: 413 });
-  }
-
   const combined = fields.map((field) => values[field]).join("\n");
   if (secretLikePattern.test(combined)) {
     return NextResponse.json({ ok: false, error: "secret_like_content" }, { status: 400 });
   }
 
-  const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim().slice(0, 180) : "";
+  const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
   if (idempotencyKey) {
     const prior = await supabaseServiceSelect("deployment_requests", { idempotency_key: `eq.${idempotencyKey}` });
-    if (prior.rows[0]?.id) return NextResponse.json({ ok: true, requestId: prior.rows[0].id, status: "requested", duplicate: true });
+    if (!prior.ok) return NextResponse.json({ ok: false, error: "store_failed" }, { status: 502 });
+    if (prior.rows[0]?.id) {
+      const priorRequest = prior.rows[0];
+      if (priorRequest.email !== email || priorRequest.name !== values.name || priorRequest.company !== values.company || priorRequest.workflow !== values.workflow) {
+        return NextResponse.json({ ok: false, error: "idempotency_conflict" }, { status: 409 });
+      }
+      return NextResponse.json({ ok: true, requestId: priorRequest.id, status: "requested", duplicate: true });
+    }
   }
 
   const scopeInputs = normalizeCommercialScopeInputs({

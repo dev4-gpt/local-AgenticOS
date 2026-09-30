@@ -12,11 +12,19 @@ target.
 
 | Surface | Verified target | Current state | Role |
 | --- | --- | --- | --- |
-| Product application | `https://app.veloceos.cloud` | Vercel deployment `dpl_ECwKPW7sLjQhS364gM1pEJERX6Qa`, READY | Canonical public product application |
+| Editorial front door | `https://app.veloceos.cloud` | Vercel deployment `dpl_ECwKPW7sLjQhS364gM1pEJERX6Qa`, READY; live page title is `Veloce AgenticOS | Private Operator Edition` | Public product narrative and runtime-request entry, not the authenticated workspace |
 | Apex domain | `https://veloceos.cloud` | Older Git-connected Vercel deployment from `d658ad6` | Existing public route; not the current application revision |
 | `www` domain | `https://www.veloceos.cloud` | Separate `veloce-agenticos-public` Vercel deployment | Existing public marketing route |
 | Legacy Cloud Run | `agentos-mvp`, service `agentos`, `europe-west1` | Revision `agentos-00013-q7f`, image `agentos:4a347ad3fc308086fdb1b38b7ac56fb3e55251ae`, deployed 2026-05-27 | Legacy service; not associated with this repository's current commit |
 | Internal beta Cloud Run | `agentos-mvp`, service `agentos-internal-beta`, `europe-west1` | Revision `agentos-internal-beta-00034-v69`, image `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`, 100% service traffic, owner-only allowlist, provider calls disabled | Controlled internal beta runtime; live email callback accepted, public customer activation still closed |
+
+Live browser inspection on 2026-09-26 confirmed that the `app` domain serves the
+`product-experience` editorial site. Its `Runtime access` > `Client login`
+link targets `https://veloce-cloud-test-1075094991117.asia-south1.run.app/login?next=%2F`,
+an approved test runtime, not a shared production workspace. The root repo's
+local Next.js UI and the `app` domain are therefore different applications;
+visual comparison between them is not deployment parity evidence. See
+[the UI parity observation](./ui-parity-observation-2026-09-26.md).
 
 The legacy Cloud Run service is publicly reachable but its `/`, `/healthz`, and
 documented `/status` routes returned `404` during this verification. Its source
@@ -39,13 +47,15 @@ design and acceptance run.
 
 ## Architecture decisions
 
-1. Vercel is the canonical host for the current public application. New public
-   application acceptance must use `app.veloceos.cloud` and a named Vercel
-   deployment.
-2. The desired domain topology is `veloceos.cloud` and `www.veloceos.cloud`
-   for public marketing, with `app.veloceos.cloud` for the product application.
-   The apex reassignment is deliberately pending: it changes live traffic and
-   needs a separate domain-change acceptance check.
+1. Vercel is the canonical host for the current public editorial surface. Its
+   acceptance uses `app.veloceos.cloud` and a named Vercel deployment. Tenant
+   workspace acceptance must use the exact Cloud Run service and revision under
+   test; it cannot be inferred from the Vercel page.
+2. The desired domain topology remains unresolved: `veloceos.cloud` and
+   `www.veloceos.cloud` may serve marketing, but `app.veloceos.cloud` currently
+   does too. Moving the `app` domain to a shared authenticated workspace first
+   requires that workspace, routing, and a separate domain-change acceptance.
+   No live domain reassignment is authorized by this record.
 3. `agentos-mvp/agentos` is a legacy workload. Keep it constrained and do not
    duplicate the Vercel application into it. Its eventual disposition is an
    explicit retirement or a minimal redirect/migration service.

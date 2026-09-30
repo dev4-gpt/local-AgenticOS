@@ -90,8 +90,8 @@ export async function POST(request: Request) {
   }
   if (prior.rows.some((row) => row.status === "processed")) return NextResponse.json({ ok: true, duplicate: true });
   const checkoutPaidEvent = event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded";
-  const rejectFinancialEvent = async (error: string) => {
-    const stored = await storeWebhookEvent(event.id!, event.type!, payload, "failed", error, "unknown");
+  const rejectFinancialEvent = async (error: string, scope: FinancialScope = "unknown") => {
+    const stored = await storeWebhookEvent(event.id!, event.type!, payload, "failed", error, scope);
     return NextResponse.json({ ok: false, error: stored.ok ? error : "event_store_failed" }, { status: stored.ok ? 422 : 502 });
   };
   if (checkoutPaidEvent) {
@@ -228,9 +228,16 @@ export async function POST(request: Request) {
   // must return non-2xx so Stripe retries the event instead of losing it.
   const effectFailed = () => NextResponse.json({ ok: false, error: "billing_effect_failed" }, { status: 502 });
   if (requestId && checkoutPaidEvent) {
+    const sessionId = stringValue(object.id);
+    if (!sessionId || !/^cs_(?:test|live)_[A-Za-z0-9]+$/.test(sessionId)) return rejectFinancialEvent("checkout_session_invalid", "public_launch");
+    const requestMatch = await supabaseServiceSelect("deployment_requests", { id: `eq.${requestId}`, select: "id,stripe_checkout_session_id" });
+    if (!requestMatch.ok) return effectFailed();
+    if (requestMatch.rows.length !== 1) return rejectFinancialEvent("checkout_request_not_found", "public_launch");
+    const recordedSessionId = stringValue(requestMatch.rows[0].stripe_checkout_session_id);
+    if (recordedSessionId && recordedSessionId !== sessionId) return rejectFinancialEvent("checkout_session_mismatch", "public_launch");
     const customerId = typeof object.customer === "string" ? object.customer : null;
     const subscriptionId = typeof object.subscription === "string" ? object.subscription : null;
-    const requestUpdate = await supabaseServiceUpdate("deployment_requests", { id: `eq.${requestId}` }, { billing_status: "succeeded", stripe_customer_id: customerId, stripe_checkout_session_id: typeof object.id === "string" ? object.id : null });
+    const requestUpdate = await supabaseServiceUpdate("deployment_requests", { id: `eq.${requestId}`, stripe_checkout_session_id: recordedSessionId ? `eq.${sessionId}` : "is.null" }, { billing_status: "succeeded", stripe_customer_id: customerId, stripe_checkout_session_id: sessionId });
     if (!requestUpdate.ok || !requestUpdate.rows.length) return effectFailed();
     const onboarding = await supabaseServiceSelect("client_onboarding_accounts", { request_id: `eq.${requestId}` });
     if (!onboarding.ok || !onboarding.rows[0]?.id) return effectFailed();

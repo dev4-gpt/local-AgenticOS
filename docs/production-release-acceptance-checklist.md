@@ -54,6 +54,9 @@ bill a customer, or publish a campaign.
    with the application deployment that reads it. It adds the append-only,
    service-role-only public-launch financial-event review trail. Do not apply
    the route before the migration.
+   Apply `product-experience/supabase-v45-onboarding-verify-token.sql` before
+   deploying the verification API. Attach that exact migration to the release
+   ledger; other migration evidence does not satisfy the verification gate.
 6. Enable only `openai/gpt-4o-mini` on the private Cloud Run gateway. Keep
    video generation disabled.
 7. Run the non-spending managed-provider health check first. Its only allowed
@@ -105,7 +108,7 @@ payment result or used for the strict final attestation.
 
 | Gate | Required evidence |
 | --- | --- |
-| Public journey | Consent-only intake, one-time email verification, manifest review, queued provisioning, smoke test, activation, and offboarding. |
+| Public journey | Consent-only intake, one-time email verification, human-reviewed final manifest hash matching the prepare run and deploy, queued provisioning, smoke test, activation, and offboarding. Legacy prepare runs without pinned hash evidence require manual review and a fresh authorized prepare. |
 | Stripe | Signed webhook, duplicate-event idempotency, success path, failure path, and no customer amount or card data in evidence. |
 | Provider catalog | Only reviewed/selectable providers appear; unreviewed and reference-only entries cannot execute. |
 | BYOK lifecycle | Server-side validation, rotation, revocation, deletion, and proof that the browser/evidence contains no credential value. |
@@ -134,6 +137,13 @@ payment result or used for the strict final attestation.
 
 After every preceding row has real evidence, publish it to the release
 evidence ledger, then validate the current commit against what was published.
+Run `npm run verify:ai-evaluation` on the clean, committed release candidate
+before publishing. The resulting `tmp/ai-release-local-v1-report.json` must
+match that commit and the versioned fixture; the ledger stores this receipt and
+refuses an AI approval without it. Rerun after any source change. This local
+receipt covers nine deterministic cases only: it does not replace hosted job,
+ledger, trace, model-quality, or customer-journey evidence for
+`--ai-engineering-result passed`.
 Do not use placeholder values or mark a missing test as passed — the ledger
 accepts a partial record, but `--strict` will fail loud on anything still
 missing rather than let it through. See
@@ -142,12 +152,15 @@ for the one-time bucket/IAM setup this depends on.
 
 ```bash
 npm run publish:release-ledger -- \
-  --impersonate-service-account veloce-release-ledger-writer@veloce-agenticos-2026.iam.gserviceaccount.com \
+  --ledger-bucket <reviewed-ledger-bucket> \
+  --impersonate-service-account <reviewed-ledger-writer-service-account> \
   --environment production \
   --vercel-deployment <reviewed-deployment-id> \
   --cloud-run-revision <reviewed-revision> \
   --image-digest sha256:<reviewed-image-digest> \
-  --migration-file product-experience/supabase-vNN-<applied-migration>.sql \
+  --migration-file product-experience/supabase-v45-onboarding-verify-token.sql \
+  --migration-file product-experience/supabase-v46-onboarding-setup-token.sql \
+  --migration-file product-experience/supabase-client-runtime-source-pack-graph.sql \
   --rollback-cloud-run-revision <known-good-revision> \
   --rollback-vercel-deployment <known-good-deployment-id> \
   --public-journey-result passed \
@@ -155,12 +168,16 @@ npm run publish:release-ledger -- \
   --provider-catalog-result passed \
   --byok-lifecycle-result passed \
   --tenant-isolation-result passed \
+  --source-import-result passed \
+  --ui-parity-result passed \
+  --buyer-simulation-result passed \
+  --ai-engineering-result passed \
   --managed-openrouter-result passed \
   --operations-approval approved \
   --legal-approval approved \
   --test-result focused=passed
 
-npm run verify:production-readiness -- --strict --out tmp/production-release-evidence.json
+npm run verify:production-readiness -- --strict --ledger-bucket <reviewed-ledger-bucket> --out tmp/production-release-evidence.json
 ```
 
 The only acceptable final result is `releaseReady: true` with a clean source

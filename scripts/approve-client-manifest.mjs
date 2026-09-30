@@ -9,6 +9,11 @@ const appUrl = (valueAfter("--url") || process.env.PUBLIC_APP_URL || "https://ap
 const requestId = required("--request-id");
 const manifestPath = required("--manifest");
 const secret = process.env.CONTROL_PLANE_OPERATOR_SECRET?.trim() || "";
+const review = args.includes("--review");
+const approve = args.includes("--approve");
+if (review === approve) fail("Choose exactly one of --review or --approve");
+const expectedHash = approve ? required("--expected-hash") : null;
+if (expectedHash && !/^[a-f0-9]{64}$/.test(expectedHash)) fail("--expected-hash must be the SHA-256 from --review");
 
 if (!/^https:\/\//i.test(appUrl)) fail("--url must use HTTPS");
 if (!secret) fail("CONTROL_PLANE_OPERATOR_SECRET is required. After using read, run: export CONTROL_PLANE_OPERATOR_SECRET");
@@ -31,10 +36,19 @@ if (manifest.provisioning?.phase === "deploy") fail("Use this command only for t
 const response = await fetch(`${appUrl}/api/onboarding/approve`, {
   method: "POST",
   headers: { "content-type": "application/json", "x-control-plane-secret": secret },
-  body: JSON.stringify({ requestId, manifestVersion: "disposable-tenant-v1", manifest }),
+  body: JSON.stringify({ action: review ? "preview" : "approve", requestId, manifestVersion: "disposable-tenant-v1", manifestHash: expectedHash, manifest }),
   signal: AbortSignal.timeout(15_000),
 }).catch(() => null);
 const body = await response?.json().catch(() => null);
+if (review) {
+  if (!response?.ok || !body?.ok || typeof body.manifestHash !== "string" || !body.manifest || typeof body.manifest !== "object") {
+    fail(`final manifest review failed (${response?.status || "network"})${typeof body?.error === "string" ? `: ${body.error}` : ""}`);
+  }
+  console.log(JSON.stringify(body.manifest, null, 2));
+  console.log(`Final manifest SHA-256: ${body.manifestHash}`);
+  console.log("Review this scope-adjusted manifest before running --approve with --expected-hash.");
+  process.exit(0);
+}
 if (!response?.ok || !body?.ok || typeof body.runId !== "string") {
   fail(`tenant prepare was not accepted (${response?.status || "network"})${typeof body?.error === "string" ? `: ${body.error}` : ""}`);
 }

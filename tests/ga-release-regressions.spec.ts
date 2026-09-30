@@ -10,7 +10,9 @@ for (const flags of [["--strict"], []]) test(`publish refuses incomplete evidenc
   expect(result.status).toBe(1);
   const output = JSON.parse(result.stdout);
   expect(output.releaseReady).toBe(false);
+  expect(output.failures).toContain("release_gate:ledger_bucket_not_configured");
   expect(output.failures).toContain("release_gate:migration_evidence_attached");
+  expect(output.failures).toContain("release_gate:verification_migration_attached");
   expect(output.failures).toContain("release_gate:test_results_attached");
   expect(output.failures).toContain("release_gate:rollback_target");
   expect(output.failures.some((f: string) => f.includes("Failed to publish"))).toBe(false);

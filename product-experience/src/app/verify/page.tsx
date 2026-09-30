@@ -6,13 +6,21 @@ export default function VerifyPage() {
   const [message, setMessage] = useState("Verifying your request…");
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("token");
+    window.history.replaceState(null, "", "/verify");
+    if (!token) { setMessage("This verification link is invalid or expired."); return; }
     fetch("/api/onboarding/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }).then(async (response) => {
       const body = await response.json().catch(() => null);
       if (!response.ok || !body?.ok) { setMessage("This verification link is invalid or expired."); return; }
       if (typeof body.requestId === "string") {
-        const checkout = await fetch("/api/billing/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId: body.requestId, email: body.email }) }).then((value) => value.json()).catch(() => null);
-        if (typeof checkout?.checkoutUrl === "string") { window.location.assign(checkout.checkoutUrl); return; }
-        setMessage(`Email verified. Your request is ${String(body.requestId).slice(0, 8)}…. Payment and activation remain pending review.`);
+        const checkoutResponse = await fetch("/api/billing/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId: body.requestId, email: body.email }) }).catch(() => null);
+        const checkout = await checkoutResponse?.json().catch(() => null);
+        if (checkoutResponse?.ok && typeof checkout?.checkoutUrl === "string") {
+          let target: URL | null = null;
+          try { target = new URL(checkout.checkoutUrl); } catch { /* Invalid destinations stay on this page. */ }
+          if (target?.protocol === "https:" && target.hostname === "checkout.stripe.com" && !target.username && !target.password && !target.port) { window.location.assign(target.toString()); return; }
+        }
+        if (checkout?.error === "commercial_scope_pending") setMessage(`Email verified. Your request is ${String(body.requestId).slice(0, 8)}…. Payment and activation remain pending review.`);
+        else setMessage(`Email verified, but Checkout could not be opened. Please contact support with request ${String(body.requestId).slice(0, 8)}…. Do not submit another payment request.`);
       } else setMessage("Email verified. Payment and activation remain pending review.");
     }).catch(() => setMessage("Could not verify this request. Please contact support."));
   }, []);

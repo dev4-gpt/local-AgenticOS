@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { checkClientRuntimeRateLimit, deleteClientRecord, insertClientRecord, selectClientRecords, updateClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, clientRpc, deleteClientRecord, insertClientRecord, selectClientRecords, updateClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 
 export const runtime = "nodejs";
@@ -20,6 +20,25 @@ export async function GET(request: Request) {
   if (!rateLimit.allowed) return jsonError("runtime_rate_limited", 429);
   const kind = new URL(request.url).searchParams.get("kind")?.trim().toLowerCase() ?? "";
   if (!KINDS.has(kind)) return jsonError("record_kind_invalid", 400);
+  const recordId = new URL(request.url).searchParams.get("id");
+  if (recordId !== null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recordId)) return jsonError("record_id_invalid", 400);
+  const rawOffset = new URL(request.url).searchParams.get("offset") ?? "0";
+  if (!/^(0|[1-9][0-9]{0,5})$/.test(rawOffset) || Number(rawOffset) > 100_000) return jsonError("record_offset_invalid", 400);
+  const offset = Number(rawOffset);
+  const query = new URL(request.url).searchParams.get("q");
+  if (query !== null) {
+    const search = query.trim();
+    if (kind !== "memory" || recordId !== null || new URL(request.url).searchParams.has("notebook") || search.length < 2 || search.length > 200) return jsonError("memory_search_invalid", 400);
+    const result = await clientRpc("search_client_runtime_memories", {
+      p_tenant_slug: process.env.CLIENT_SLUG?.trim() ?? "",
+      p_query: search,
+      p_offset: offset,
+      p_limit: 50,
+    });
+    const value = result.value as { records?: unknown; hasMore?: unknown } | null;
+    if (!result.ok || !value || !Array.isArray(value.records) || typeof value.hasMore !== "boolean") return jsonError("memory_search_failed", 502);
+    return NextResponse.json({ ok: true, records: value.records, hasMore: value.hasMore, nextOffset: offset + value.records.length }, { headers: { "cache-control": "private, no-store" } });
+  }
   // notebook=<uuid> scopes to one notebook; notebook=unfiled returns the records
   // that belong to none, so nothing a tenant imported can become unreachable
   // just because it predates notebooks.
@@ -30,12 +49,14 @@ export async function GET(request: Request) {
   const result = await selectClientRecords("client_runtime_records", {
     tenant_slug: `eq.${process.env.CLIENT_SLUG ?? ""}`,
     kind: `eq.${kind}`,
+    ...(recordId ? { id: `eq.${recordId}` } : {}),
     ...scope,
-    order: "created_at.desc",
-    limit: "100",
+    order: "created_at.desc,id.desc",
+    limit: recordId ? "1" : "101",
+    offset: String(offset),
   });
   if (!result.ok) return jsonError("records_read_failed", 502);
-  return NextResponse.json({ ok: true, records: result.records }, { headers: { "cache-control": "private, no-store" } });
+  return NextResponse.json({ ok: true, records: result.records.slice(0, 100), hasMore: !recordId && result.records.length > 100, nextOffset: offset + Math.min(result.records.length, 100) }, { headers: { "cache-control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {

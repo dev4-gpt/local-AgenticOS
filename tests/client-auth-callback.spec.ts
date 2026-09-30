@@ -24,6 +24,55 @@ test("callback bypasses the client workspace shell gate", () => {
   expect(shell).toContain('pathname === "/auth/callback"');
 });
 
+test("public callback strips credentials before resolving one active runtime", () => {
+  const page = readFileSync(resolve(process.cwd(), "product-experience/src/app/auth/callback/page.tsx"), "utf8");
+  expect(page).toContain('window.history.replaceState(null, "", "/auth/callback")');
+  expect(page).toContain('fetch("/api/onboarding/runtime-destination"');
+  expect(page).toContain("const runtime = new URL(body.runtimeUrl)");
+  expect(page).toContain('new URL("/auth/callback", runtime.origin)');
+  expect(page).toContain("target.hash = new URLSearchParams");
+});
+
+test("runtime destination accepts exactly one active account for the authenticated user", async () => {
+  process.env.SUPABASE_URL = "https://db.invalid";
+  const lookups: Array<Record<string, string>> = [];
+  let rows: Record<string, unknown>[] = [{ runtime_url: "https://tenant-a.run.app" }];
+  const mod = loadReviewModule("product-experience/src/app/api/onboarding/runtime-destination/route.ts", {
+    "@/lib/publicLaunch": {
+      publicLaunchConfig: () => ({ url: "https://db.invalid", serviceKey: "service-key" }),
+      supabaseServiceSelect: async (_table: string, filters: Record<string, string>) => { lookups.push(filters); return { ok: true, rows }; },
+    },
+  });
+  globalThis.fetch = async (url, init) => {
+    expect(String(url)).toBe("https://db.invalid/auth/v1/user");
+    expect(init?.headers).toMatchObject({ Authorization: `Bearer ${"a".repeat(24)}` });
+    return Response.json({ id: "user-a" });
+  };
+  const request = () => new Request("https://app.invalid/api/onboarding/runtime-destination", { method: "POST", headers: { authorization: `Bearer ${"a".repeat(24)}` } });
+  const success = await mod.POST(request());
+  expect(success.status).toBe(200);
+  expect(success.headers.get("cache-control")).toBe("no-store");
+  expect(await success.json()).toEqual({ ok: true, runtimeUrl: "https://tenant-a.run.app" });
+  expect(lookups).toEqual([{ auth_user_id: "eq.user-a", status: "eq.active", select: "runtime_url", limit: "2" }]);
+  rows = [{ runtime_url: "https://tenant-a.run.app" }, { runtime_url: "https://tenant-b.run.app" }];
+  expect((await mod.POST(request())).status).toBe(403);
+  rows = [{ runtime_url: "https://tenant-a.run.app.evil.example" }];
+  expect((await mod.POST(request())).status).toBe(403);
+  for (const runtimeUrl of [
+    "https://evil.example?.run.app",
+    "https://evil.example#.run.app",
+    "https://user@tenant-a.run.app",
+    "https://tenant-a.run.app:444",
+    "https://tenant-a.run.app/redirect",
+    "https://tenant-a.run.app?next=evil.example",
+  ]) {
+    rows = [{ runtime_url: runtimeUrl }];
+    expect((await mod.POST(request())).status, runtimeUrl).toBe(403);
+  }
+  rows = [];
+  expect((await mod.POST(request())).status).toBe(403);
+});
+
 test("magic-link route accepts Supabase's 12-character refresh token for an allowlisted tenant member", async () => {
   process.env.SUPABASE_URL = "https://db.invalid";
   process.env.SUPABASE_ANON_KEY = "anon-key";

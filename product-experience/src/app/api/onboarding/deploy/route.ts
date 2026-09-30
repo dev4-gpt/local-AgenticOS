@@ -49,6 +49,15 @@ export async function POST(request: Request) {
   if (!preparedRuns.ok || typeof preparedRuns.rows[0]?.id !== "string") {
     return NextResponse.json({ ok: false, error: "prepare_required" }, { status: 409 });
   }
+  const approved = account.approved_manifest;
+  if (!approved || typeof approved !== "object" || Array.isArray(approved)) {
+    return NextResponse.json({ ok: false, error: "approved_manifest_required" }, { status: 409 });
+  }
+  const approvedHash = createHash("sha256").update(JSON.stringify(approved)).digest("hex");
+  const preparedEvidence = preparedRuns.rows[0].evidence_bundle;
+  if (account.manifest_hash !== approvedHash || !preparedEvidence || typeof preparedEvidence !== "object" || Array.isArray(preparedEvidence) || (preparedEvidence as Record<string, unknown>).approved_manifest_sha256 !== approvedHash) {
+    return NextResponse.json({ ok: false, error: "prepared_manifest_mismatch" }, { status: 409 });
+  }
   if (account.status !== "provisioning") {
     const accountUpdate = await supabaseServiceUpdate("client_onboarding_accounts", { id: `eq.${account.id}` }, { status: "provisioning", updated_at: new Date().toISOString() });
     if (!accountUpdate.ok) return NextResponse.json({ ok: false, error: "prepare_state_update_failed" }, { status: 502 });
@@ -81,10 +90,6 @@ export async function POST(request: Request) {
   const retryAttempt = priorDeploys.length;
   if (retryAttempt > 2) return NextResponse.json({ ok: false, error: "deployment_retry_limit_reached" }, { status: 409 });
 
-  const approved = account.approved_manifest;
-  if (!approved || typeof approved !== "object" || Array.isArray(approved)) {
-    return NextResponse.json({ ok: false, error: "approved_manifest_required" }, { status: 409 });
-  }
   const priorProvisioning = (approved as Record<string, unknown>).provisioning;
   const deploymentManifest = {
     ...(approved as Record<string, unknown>),
@@ -116,6 +121,7 @@ export async function POST(request: Request) {
     resource_manifest: {},
     evidence_bundle: {
       prepared_run_id: preparedRuns.rows[0].id,
+      base_manifest_sha256: approvedHash,
       approved_manifest_sha256: createHash("sha256").update(JSON.stringify(deploymentManifest)).digest("hex"),
       ...(retryAttempt > 0 ? {
         retry_of_run_id: latestDeploy?.id,

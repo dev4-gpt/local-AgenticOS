@@ -17,11 +17,13 @@ export async function GET() {
   if (!tenantSlug) return jsonError("tenant_not_configured", 503);
 
   const [nodes, edges] = await Promise.all([
-    selectClientRecords("client_runtime_memory_graph_nodes", { tenant_slug: `eq.${tenantSlug}`, order: "kind.asc,label.asc", limit: "500" }),
-    selectClientRecords("client_runtime_memory_graph_edges", { tenant_slug: `eq.${tenantSlug}`, order: "created_at.asc", limit: "2000" }),
+    readGraphPreview("client_runtime_memory_graph_nodes", tenantSlug, "kind.asc,label.asc,id.asc", 500),
+    readGraphPreview("client_runtime_memory_graph_edges", tenantSlug, "created_at.asc,id.asc", 2000),
   ]);
   if (!nodes.ok || !edges.ok) return jsonError("memory_graph_read_failed", 502);
-  return NextResponse.json({ ok: true, nodes: nodes.records, edges: edges.records }, { headers: { "cache-control": "private, no-store" } });
+  const nodeIds = new Set(nodes.records.map((node) => node.id));
+  const visibleEdges = edges.records.filter((edge) => nodeIds.has(edge.source_node_id) && nodeIds.has(edge.target_node_id));
+  return NextResponse.json({ ok: true, nodes: nodes.records, edges: visibleEdges, previewLimited: { nodes: nodes.more, edges: edges.more || visibleEdges.length < edges.records.length } }, { headers: { "cache-control": "private, no-store" } });
 }
 
 export async function POST() {
@@ -41,4 +43,16 @@ export async function POST() {
 
 function jsonError(error: string, status: number) {
   return NextResponse.json({ ok: false, error }, { status, headers: { "cache-control": "private, no-store" } });
+}
+
+async function readGraphPreview(table: string, tenantSlug: string, order: string, cap: number) {
+  const records: Record<string, unknown>[] = [];
+  while (records.length <= cap) {
+    const batchSize = Math.min(1000, cap + 1 - records.length);
+    const page = await selectClientRecords(table, { tenant_slug: `eq.${tenantSlug}`, order, limit: String(batchSize), offset: String(records.length) });
+    if (!page.ok) return { ok: false as const, records: [], more: false };
+    if (!page.records.length) break;
+    records.push(...page.records);
+  }
+  return { ok: true as const, records: records.slice(0, cap), more: records.length > cap };
 }

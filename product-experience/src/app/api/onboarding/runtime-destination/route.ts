@@ -12,9 +12,13 @@ export async function POST(request: Request) {
   const userId = typeof user?.id === "string" ? user.id : "";
   if (!profile?.ok || !userId) return fail();
   const account = await supabaseServiceSelect("client_onboarding_accounts", { auth_user_id: `eq.${userId}`, status: "eq.active", select: "runtime_url", limit: "2" });
-  const runtimeUrl = typeof account.rows[0]?.runtime_url === "string" ? account.rows[0].runtime_url.replace(/\/$/, "") : "";
-  if (!account.ok || account.rows.length !== 1 || !/^https:\/\/[^\s/]+\.run\.app$/i.test(runtimeUrl)) return fail();
-  return NextResponse.json({ ok: true, runtimeUrl }, { headers: { "cache-control": "no-store" } });
+  if (!account.ok || account.rows.length !== 1) return fail();
+  let runtime: URL;
+  try { runtime = new URL(String(account.rows[0]?.runtime_url ?? "")); }
+  catch { return fail(); }
+  if (runtime.protocol !== "https:" || !/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.run\.app$/.test(runtime.hostname)
+    || runtime.username || runtime.password || runtime.port || runtime.pathname !== "/" || runtime.search || runtime.hash) return fail();
+  return NextResponse.json({ ok: true, runtimeUrl: runtime.origin }, { headers: { "cache-control": "no-store" } });
 }
 
 function fail() { return NextResponse.json({ ok: false, error: "runtime_destination_unavailable" }, { status: 403, headers: { "cache-control": "no-store" } }); }

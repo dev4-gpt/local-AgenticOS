@@ -133,6 +133,8 @@ async function linksOn(page: Page) {
   return raw.flatMap((item) => {
     try {
       const url = normaliseUrl(item.url);
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) return [];
       if (seen.has(url)) return [];
       seen.add(url);
       return [{ url, text: cleanText(item.text).slice(0, 300) }];
@@ -224,6 +226,13 @@ export function sourcePack(run: ClassroomRun) {
     "",
     source.text,
     "",
+    ...(source.links.length ? ["Links:", ...source.links.flatMap((link) => {
+      try {
+        const url = new URL(link.url);
+        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return [];
+        return [`- ${link.text || "Link"}: ${url.toString()}`];
+      } catch { return []; }
+    }), ""] : []),
   ])].join("\n");
 }
 

@@ -1,0 +1,15 @@
+# AgentOS buyer-scenario seed for MiroFish
+
+AgentOS is a proposed governed workspace for AI-assisted, context-heavy work. It has a local operator edition and a hosted tenant edition. The intended public journey is request with consent, email verification, reviewed payment, human manifest review, isolated tenant provisioning, activation, provider setup, a first useful action, usage controls, support, export, and offboarding. The complete current-release journey has **not** yet been certified. Do not treat any step as proven merely because it is described here.
+
+The product aims to keep tenant data separate, put execution behind provider/model allowlists and budget controls, and preserve artifacts and decisions. Customers may bring their own provider credentials; managed-provider access requires team approval and a budget decision. External publishing and outreach require human approval. Public pricing and scope are not guaranteed by this seed; commercial terms are agreed in a signed proposal.
+
+Potential buyer motivations include reducing repeated client handoffs, retaining project context, governing AI use, and making outputs auditable. Potential objections include setup time, unclear first value, data privacy, compliance, provider costs, trust in agent outputs, and uncertainty about who owns support and failures. A buyer may reject the product or choose a simpler existing tool.
+
+Simulate a prospective buyer evaluating the product, trying to understand a concrete first workflow, and deciding whether to request a scoped pilot. Include hands-on users, workflow owners, technical evaluators, security reviewers, and budget holders across agency delivery, software startups, ecommerce, local services, healthcare administration, education, nonprofit operations, finance operations, legal services, and creative media. Vary organization size, AI literacy from novice to expert, budget, privacy sensitivity, and region. Include skeptical and nonbuyer personas. Do not create medical, legal, or financial advice as a product outcome.
+
+The questions to investigate are: Which first-use workflows are legible and valuable? Where does the customer journey lose trust or momentum? What evidence would each buyer need before paying? Which labels or screens mislead low-AI-literacy users? Which privacy, governance, and cost controls are insufficient? What alternative product or manual process would they choose instead?
+
+Current product evidence for the scenario: the public front door and the authenticated tenant workspace are separate sites. A signed-in test workspace has Memory, Markdown import/export, and graph views, but did not show the newer reviewed source-pack import control visible in the local candidate. The local client preview cannot sign in without tenant authentication configuration. Do not ask simulated buyers to assume those experiences are unified or that the new import is already deployed.
+
+This document contains no customer data, secrets, real pricing, or claim of market validation. Synthetic behavior must be reported as hypotheses and compared with real interviews and measured usage.

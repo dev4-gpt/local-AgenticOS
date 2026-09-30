@@ -6,6 +6,7 @@ import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { clientProviderAttributionHeaders, clientProviderContract, clientProviderToolPayload, serializeClientReviewedPlan } from "@/lib/clientProviderContracts";
 import { compressProviderContext } from "@/lib/contextCompression";
 import { measureStandingInstructionBudget, standingInstructionSegmentsFromMessages } from "@/lib/instructionBudget";
+import { traceClientJobStage } from "@/lib/clientJobTrace";
 
 export type ClientProviderMessage = { role: "system" | "user" | "assistant"; content: string };
 type Message = ClientProviderMessage;
@@ -120,11 +121,11 @@ export async function runClientTextAdapter(input: {
   }
 
   const toolPayload = input.disableReviewedPlanTool ? {} : clientProviderToolPayload(provider);
-  const response = spec.protocol === "anthropic"
-    ? await callAnthropic(spec, key, model, messages, maxOutputTokens, toolPayload)
+  const response = await traceClientJobStage("provider_call", async () => spec.protocol === "anthropic"
+    ? callAnthropic(spec, key, model, messages, maxOutputTokens, toolPayload)
     : spec.protocol === "gemini"
-      ? await callGemini(spec, key, model, messages, maxOutputTokens, toolPayload)
-      : await callOpenAiCompatible(spec, key, model, messages, maxOutputTokens, clientProviderAttributionHeaders(provider), toolPayload);
+      ? callGemini(spec, key, model, messages, maxOutputTokens, toolPayload)
+      : callOpenAiCompatible(spec, key, model, messages, maxOutputTokens, clientProviderAttributionHeaders(provider), toolPayload), (result) => result.ok);
   if (!response.ok) return { ok: false as const, status: response.status, error: providerFailureCode(response.status), instructionBudget: prepared.instructionBudget };
   return { ok: true as const, provider, model, output: response.output, usage: response.usage, finishReason: "finishReason" in response ? response.finishReason : null, instructionBudget: prepared.instructionBudget, ...(prepared.compression ? { compression: prepared.compression } : {}) };
 }

@@ -27,6 +27,7 @@ const workerProvisioner = await readFile(join(root, "scripts/provision-client-wo
 const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
 const recordsRoute = await readFile(join(root, "src/app/api/client-runtime/records/route.ts"), "utf8");
 const memoryImportRoute = await readFile(join(root, "src/app/api/client-runtime/memory-import/route.ts"), "utf8");
+const sourceImportRoute = await readFile(join(root, "src/app/api/client-runtime/source-import/route.ts"), "utf8");
 const memoryGraphRoute = await readFile(join(root, "src/app/api/client-runtime/memory-graph/route.ts"), "utf8");
 const workflowsRoute = await readFile(join(root, "src/app/api/client-runtime/workflows/route.ts"), "utf8");
 const hermesFactoryRoute = await readFile(join(root, "src/app/api/client-runtime/hermes-content-factory/route.ts"), "utf8");
@@ -45,6 +46,7 @@ const workflowReconciliationSql = await readFile(join(root, "product-experience/
 const finalVerificationSql = await readFile(join(root, "product-experience/supabase-client-runtime-final-verification.sql"), "utf8");
 const recordsSql = await readFile(join(root, "product-experience/supabase-client-runtime-records.sql"), "utf8");
 const memoryGraphSql = await readFile(join(root, "product-experience/supabase-client-runtime-memory-graph.sql"), "utf8");
+const sourcePackGraphSql = await readFile(join(root, "product-experience/supabase-client-runtime-source-pack-graph.sql"), "utf8");
 const lifecycleScript = await readFile(join(root, "scripts/client-lifecycle.mjs"), "utf8");
 const providerAdapter = await readFile(join(root, "src/lib/clientProviderAdapter.ts"), "utf8");
 const providerContracts = await readFile(join(root, "src/lib/clientProviderContracts.ts"), "utf8");
@@ -97,6 +99,7 @@ const runtimeRateLimitedRoutes = [
   "src/app/api/client-runtime/artifacts/[id]/download/route.ts",
   "src/app/api/client-runtime/records/route.ts",
   "src/app/api/client-runtime/memory-import/route.ts",
+  "src/app/api/client-runtime/source-import/route.ts",
   "src/app/api/client-runtime/memory-graph/route.ts",
   "src/app/api/client-runtime/delivery/route.ts",
   "src/app/api/client-runtime/telemetry/route.ts",
@@ -186,6 +189,9 @@ expect(memoryImportRoute.includes("currentClientMember") && memoryImportRoute.in
 expect(memoryImportRoute.includes("containsClientSecretLike") && memoryImportRoute.includes("memory_import_source_not_verified"), "memory import must reject secret-like content and require a verified source artifact");
 expect(memoryImportRoute.includes("client_runtime_records") && memoryImportRoute.includes("tenant.memory.exported"), "memory import/export must use tenant records and write redacted audit events");
 expect(runtimePolicy.includes('"/api/client-runtime/memory-import"') && provisioner.includes("/api/client-runtime/memory-import"), "memory import must be included in the reviewed client API allowlist");
+expect(sourceImportRoute.includes("currentClientMember") && sourceImportRoute.includes("created_by: `eq.${user.id}`") && sourceImportRoute.includes("safeClientObjectKey"), "source import must verify tenant membership, artifact owner and object namespace");
+expect(sourcePackGraphSql.includes("import_client_runtime_source_pack") && sourcePackGraphSql.includes("source_import_key") && sourcePackGraphSql.includes("links_to"), "source-pack migration must preserve idempotency and outbound graph links");
+expect(runtimePolicy.includes('"/api/client-runtime/source-import"') && provisioner.includes("/api/client-runtime/source-import"), "source import must be included in the reviewed client API allowlist");
 expect(memoryGraphRoute.includes("refresh_client_runtime_memory_graph") && memoryGraphRoute.includes("currentClientMember"), "memory graph refresh must use the authenticated tenant RPC");
 expect(memoryGraphRoute.includes("runtime_limit_unavailable") && memoryGraphRoute.includes("runtime_rate_limited"), "memory graph route must distinguish a limiter outage from rate limiting");
 expect(memoryGraphSql.includes("client_runtime_memory_graph_nodes") && memoryGraphSql.includes("client_runtime_memory_graph_edges") && memoryGraphSql.includes("refresh_client_runtime_memory_graph"), "memory graph migration must define tenant graph nodes, edges, and refresh RPC");
@@ -223,7 +229,7 @@ expect(lifecycleScript.includes("SUPABASE_SERVICE_ROLE_KEY") && lifecycleScript.
 expect(lifecycleScript.includes("confirm-restore") && lifecycleScript.includes("artifact metadata; pass --objects"), "lifecycle restore must require explicit confirmation and matching objects for artifact metadata");
 expect(lifecycleScript.includes("name~veloce-${slug}-") && lifecycleScript.includes("deleteRuntimeAlerts") && lifecycleScript.includes("deleteClientNotificationChannel"), "lifecycle offboarding must enumerate all client secrets and remove client alert resources");
 expect(promotion.includes("Source inbox secret must be inside the client namespace") && promotion.includes("Target secret must be a provider secret") && promotion.includes("disable-source-version") && promotion.includes("latestEnabledVersion"), "credential promotion must enforce client-namespaced source and target secrets and support post-promotion inbox cleanup");
-expect(credentialsRoute.includes("item.submitAllowed") && credentialSubmissionRoute.includes("clientCredentialSubmissionEnabled") && credentialSubmissionRoute.includes("option.submitAllowed"), "credential intake must be available before provider activation but limited to catalogued secrets");
+expect(credentialsRoute.includes("publicCatalogCredentialOptions()") && publicCatalog.includes("option?.submitAllowed") && credentialSubmissionRoute.includes("clientCredentialSubmissionEnabled") && credentialSubmissionRoute.includes("option.submitAllowed"), "credential intake must be available before provider activation but limited to catalogued secrets");
 expect(publicCatalog.includes('"available-now"') && publicCatalog.includes('"client-key"') && publicCatalog.includes('"reference-only"') && publicCatalog.includes("V96_REPOSITORY_CATALOG") && publicCatalog.includes('reference.id === "jina-reader"'), "public provider catalog must expose activation states and repository provenance");
 expect(credentialSubmissionRoute.includes("catalogId") && credentialSubmissionRoute.includes("catalog_selection_invalid") && credentialSubmissionRoute.includes("secret_inbox_write_failed"), "BYOK intake must bind submissions to the public catalog and keep values in the server-side inbox");
 expect(budgetRoute.includes("microsToUsageCredits") && budgetRoute.includes("spentCredits") && budgetRoute.includes("byProviderCredits"), "budget responses must expose normalized credits alongside exact USD micros");

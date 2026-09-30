@@ -7,6 +7,7 @@ import { CLIENT_AGENT_CATALOG } from "@/lib/clientAgentCatalog";
 type Credential = { key: string; connected: boolean };
 type ProviderStat = { total?: number; succeeded?: number; failed?: number; active?: number; averageLatencyMs?: number | null; lastModel?: string | null };
 type RuntimeData = {
+  sample?: { jobsLimited?: boolean };
   providerCounts?: Record<string, ProviderStat>;
   monthlyUsage?: { totalCostMicros?: number; inputTokens?: number; outputTokens?: number; byProvider?: Record<string, { costMicros?: number; inputTokens?: number; outputTokens?: number; model?: string | null }> };
   recentEvents?: Array<{ event?: string; createdAt?: string | null; metadata?: Record<string, string | number> }>;
@@ -58,7 +59,7 @@ export default function ClientRuntimeDashboard() {
     </div>
 
     <section className="grid gap-3 xl:grid-cols-3">
-      <Summary icon={<WalletCards size={16} />} label="Monthly metered usage" value={formatUsd(monthly?.totalCostMicros ?? 0)} detail={monthly?.totalCostMicros ? "Settled provider ledger entries" : "No provider billing has been reported"} color="#f0c94a" />
+      <Summary icon={<WalletCards size={16} />} label="Monthly budget usage" value={formatUsd(monthly?.totalCostMicros ?? 0)} detail={monthly?.totalCostMicros ? "Reserved or settled provider ledger entries" : "No provider budget entries have been recorded"} color="#f0c94a" />
       <Summary icon={<Database size={16} />} label="Provider-reported tokens" value={formatNumber((monthly?.inputTokens ?? 0) + (monthly?.outputTokens ?? 0))} detail={`${formatNumber(monthly?.inputTokens ?? 0)} input · ${formatNumber(monthly?.outputTokens ?? 0)} output`} color="#60a5fa" />
       <Summary icon={<ShieldCheck size={16} />} label="Control mode" value="Tenant scoped" detail="Queue, budget, audit, and RLS controls are active" color="#34d399" />
     </section>
@@ -66,7 +67,7 @@ export default function ClientRuntimeDashboard() {
     <section className="panel overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4" style={{ borderColor: "var(--line-soft)" }}>
         <div className="flex items-center gap-2"><Gauge size={15} color="#60a5fa" /><h3 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Agent health</h3></div>
-        <p className="text-[10px]" style={{ color: "var(--cream-mute)" }}>Latency is calculated only from completed Cloud Tasks jobs.</p>
+        <p className="text-[10px]" style={{ color: "var(--cream-mute)" }}>Latency is calculated only from completed Cloud Tasks jobs{runtime.sample?.jobsLimited ? " in the recent sample" : ""}.</p>
       </div>
       <div className="grid divide-y md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-3" style={{ borderColor: "var(--line-soft)" }}>
         {agents.map((agent) => {

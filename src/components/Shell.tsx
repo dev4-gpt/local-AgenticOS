@@ -31,7 +31,7 @@ import type { ClientWorkspaceSurface } from "@/lib/clientWorkspaceExecution";
 const ROUTE_LENS: Array<[string[], string]> = [
   [["/context", "/memory", "/notebook", "/goals", "/journal"], "context"],
   [["/orchestrate", "/paperclip", "/room", "/pipeline", "/agent-kanban", "/kanban", "/loop", "/ruflo"], "orchestrate"],
-  [["/create", "/flow-lab", "/web-studio", "/opendesign", "/video", "/openmontage", "/music", "/games", "/thumbnails", "/studio"], "create"],
+  [["/create", "/flow-lab", "/web-studio", "/opendesign", "/worlds", "/video", "/openmontage", "/music", "/games", "/thumbnails", "/studio"], "create"],
   [["/integrations", "/capabilities", "/credentials", "/provider-matrix", "/seo", "/seo-guide", "/guide"], "govern"],
   [["/deliver", "/leads", "/radar"], "deliver"],
 ];
@@ -70,6 +70,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
   const reduceMotion = useReducedMotion();
   if (pathname === "/login" || pathname === "/auth/callback" || pathname === "/provider-catalog" || pathname === "/credits" || pathname === "/client-unavailable") return <>{children}</>;
   const isHome = pathname === "/";
+  const isWorlds = pathname === "/worlds";
   const lens = lensFor(pathname);
   const gatedClientRoute = clientEdition && !CLIENT_SURFACE_ROUTES.has(pathname);
   const agentWorkspace = clientEdition ? CLIENT_AGENT_BY_ROUTE[pathname] : null;
@@ -103,15 +104,15 @@ export default function Shell({ children, clientEdition = false }: { children: R
       </div>
       <div className="relative z-10 h-screen flex overflow-hidden">
         <Sidebar clientEdition={clientEdition} />
-        <main className="workspace-shell__main flex-auto w-full min-w-0 overflow-y-auto pb-20 md:pb-0" data-scroll-root>
+        <main className={`workspace-shell__main flex-auto w-full min-w-0 overflow-y-auto ${isWorlds ? "pb-0" : "pb-20 md:pb-0"}`} data-scroll-root>
           <motion.div
             key={pathname}
             initial={reduceMotion ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className={isHome ? "min-h-full w-full" : "workspace-shell__page max-w-[1500px] mx-auto px-5 md:px-10 py-7 md:py-9"}
+            className={isHome ? "min-h-full w-full" : isWorlds ? "h-full w-full" : "workspace-shell__page max-w-[1500px] mx-auto px-5 md:px-10 py-7 md:py-9"}
           >
-            {!isHome && <TopBar clientEdition={clientEdition} />}
+            {!isHome && !isWorlds && <TopBar clientEdition={clientEdition} />}
             {agentWorkspace ? <ClientAgentConsole agent={agentWorkspace} /> : hostedProviderRoute ? <ClientCapabilityGate pathname={pathname} /> : paperclipWorkspace ? <ClientPaperclipWorkspace /> : roomWorkspace ? <ClientRoomWorkspace /> : pipelineWorkspace ? <ClientPipelineWorkspace /> : boardWorkspace ? <ClientBoardWorkspace board={boardWorkspace} /> : loopWorkspace ? <ClientLoopWorkspace /> : rufloWorkspace ? <ClientRufloWorkspace /> : seoWorkspace ? <ClientSeoWorkspace /> : radarWorkspace ? <ClientRadarWorkspace /> : videoWorkspace ? <ClientVideoWorkspace /> : integrationsWorkspace ? <ClientIntegrationsWorkspace /> : deepWorkspace ? <ClientDeepWorkspace surfaceKey={deepWorkspace} /> : orchestrationWorkspace ? <ClientOrchestrationWorkspace surface={orchestrationWorkspace} /> : executionWorkspace && isStudioSurface(executionWorkspace) ? <ClientStudioWorkspace surface={executionWorkspace} /> : executionWorkspace ? <ClientExecutionWorkspace surface={executionWorkspace} /> : dataWorkspace ? <ClientDataWorkspace surface={dataWorkspace} /> : gatedClientRoute ? <ClientCapabilityGate pathname={pathname} /> : children}
           </motion.div>
         </main>

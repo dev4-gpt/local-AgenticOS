@@ -10,7 +10,7 @@ import type { ClientAgentDefinition } from "@/lib/clientAgentCatalog";
 type Credential = { key: string; connected: boolean };
 type Runtime = { providerCallsEnabled?: boolean; approvalsRequired?: boolean };
 type Artifact = { id: string; original_name?: string; content_type?: string; byte_size?: number; status?: string; created_at?: string };
-type Observability = { providerCounts?: Record<string, { total?: number; succeeded?: number; failed?: number; active?: number; averageLatencyMs?: number; lastModel?: string | null }>; artifacts?: { total?: number } };
+type Observability = { providerCounts?: Record<string, { total?: number; succeeded?: number; failed?: number; active?: number; averageLatencyMs?: number; lastModel?: string | null }>; artifacts?: { total?: number }; sample?: { jobsLimited?: boolean; limit?: number } };
 
 export default function ClientAgentConsole({ agent }: { agent: ClientAgentDefinition }) {
   const [tab, setTab] = useState(agent.tabs[0]?.id ?? "chat");
@@ -74,6 +74,7 @@ export default function ClientAgentConsole({ agent }: { agent: ClientAgentDefini
       </section>
 
       {chatTab ? <ClientProviderWorkspace provider={agent.provider} title={agent.title} initialPrompt={voiceDraft} compact /> : <ClientAgentTabSurface agent={agent} tab={selectedTab} connected={connected} artifacts={artifacts} providerStats={providerStats} onOpenChat={(prompt) => { if (prompt) setVoiceDraft(prompt); setTab("chat"); }} />}
+      {observability.sample?.jobsLimited ? <p className="text-[11px]" style={{ color: "var(--cream-mute)" }}>Run counts show only the latest {observability.sample.limit ?? 250} tenant jobs.</p> : null}
     </div>
   );
 }

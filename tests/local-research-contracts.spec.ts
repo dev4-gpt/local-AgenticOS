@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { answerViolations, type ClassroomSource } from "../src/lib/classroomResearch";
+import { answerViolations, sourcePack, type ClassroomSource } from "../src/lib/classroomResearch";
 import { isLocalOnlyRequest } from "../src/lib/localOnlyRequest";
 
 const sources: ClassroomSource[] = [{
@@ -23,6 +23,18 @@ test("citation answers reject unsupported claims and unknown source IDs", () => 
   expect(answerViolations("The course begins next week. [S1]", sources)).toEqual([]);
   expect(answerViolations("The course begins next week.", sources)).toEqual(["Line 1 has no citation."]);
   expect(answerViolations("The course begins next week. [S99]", sources)).toEqual(["Line 1 cites an unknown source: S99."]);
+});
+
+test("classroom source pack retains safe outbound links", () => {
+  const run = { id: "run", startUrl: "https://example.edu/course", scopePrefix: "/course", createdAt: "2026-09-25T00:00:00.000Z", skipped: [], sources: [{ ...sources[0], links: [
+    { url: "https://example.edu/lesson/1", text: "Lesson one" },
+    { url: "javascript:alert(1)", text: "Unsafe" },
+    { url: "https://user:pass@example.edu/private", text: "Credentialed" },
+  ] }] };
+  const pack = sourcePack(run);
+  expect(pack).toContain("Lesson one: https://example.edu/lesson/1");
+  expect(pack).not.toContain("Unsafe");
+  expect(pack).not.toContain("Credentialed");
 });
 
 test("research routes retain local-only and bounded collection controls", () => {

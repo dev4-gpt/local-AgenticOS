@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
         { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
       ],
-    }];
+    }, ...["/setup", "/verify"].map((source) => ({ source, headers: [{ key: "Referrer-Policy", value: "no-referrer" }] }))];
   },
   output: "standalone",
   // This repository contains a second Next.js app at its root. Pin

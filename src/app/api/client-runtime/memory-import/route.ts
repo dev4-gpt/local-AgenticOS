@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { checkClientRuntimeRateLimit, insertClientRecord, recordClientAudit, selectClientRecords } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, countClientRecords, insertClientRecord, recordClientAudit, selectClientRecords } from "@/lib/clientDataPlane";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { safeClientFileName } from "@/lib/clientStorage";
@@ -10,6 +10,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_CONTENT_CHARS = 30_000;
+const EXPORT_PAGE_SIZE = 100;
+const MAX_EXPORT_RECORDS = 1000;
 const MARKDOWN_EXTENSIONS = new Set(["md", "markdown", "txt"]);
 // The Notebook research tab imports through this same verified path, so the
 // destination record kind is a parameter. Export below stays memory-only.
@@ -26,16 +28,40 @@ export async function GET(request: Request) {
 
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!tenantSlug) return jsonError("tenant_not_configured", 503);
-  const result = await selectClientRecords("client_runtime_records", {
+  const snapshotAt = new Date().toISOString();
+  const filters = {
     tenant_slug: `eq.${tenantSlug}`,
     kind: "eq.memory",
-    order: "created_at.asc",
-    limit: "100",
-  });
-  if (!result.ok) return jsonError("memory_export_read_failed", 502);
+    created_at: `lte.${snapshotAt}`,
+  };
+  const count = await countClientRecords("client_runtime_records", filters);
+  if (!count.ok || count.count === null) return jsonError("memory_export_read_failed", 502);
+  if (count.count > MAX_EXPORT_RECORDS) return jsonError("memory_export_too_large", 413);
 
-  const content = memoryExportMarkdown(tenantSlug, result.records);
-  await recordClientAudit("tenant.memory.exported", { recordCount: result.records.length });
+  const records: Record<string, unknown>[] = [];
+  let afterId: string | null = null;
+  while (records.length < count.count) {
+    const result = await selectClientRecords("client_runtime_records", {
+      ...filters,
+      order: "id.asc",
+      limit: String(EXPORT_PAGE_SIZE),
+      ...(afterId ? { id: `gt.${afterId}` } : {}),
+    });
+    if (!result.ok) return jsonError("memory_export_read_failed", 502);
+    if (!result.records.length || records.length + result.records.length > count.count) return jsonError("memory_export_changed_retry", 409);
+    const lastId = result.records.at(-1)?.id;
+    if (typeof lastId !== "string" || !/^[0-9a-f-]{36}$/i.test(lastId) || lastId === afterId) return jsonError("memory_export_read_failed", 502);
+    records.push(...result.records);
+    afterId = lastId;
+  }
+
+  const finalCount = await countClientRecords("client_runtime_records", filters);
+  if (!finalCount.ok || finalCount.count === null) return jsonError("memory_export_read_failed", 502);
+  if (finalCount.count !== count.count) return jsonError("memory_export_changed_retry", 409);
+
+  records.sort((left, right) => String(left.created_at ?? "").localeCompare(String(right.created_at ?? "")) || String(left.id ?? "").localeCompare(String(right.id ?? "")));
+  const content = memoryExportMarkdown(tenantSlug, records);
+  await recordClientAudit("tenant.memory.exported", { recordCount: records.length });
   return new Response(content, {
     headers: {
       "cache-control": "private, no-store",
@@ -127,7 +153,7 @@ function memoryExportMarkdown(tenantSlug: string, records: Record<string, unknow
     const status = typeof record.status === "string" ? record.status : "active";
     return [`## ${title}`, "", `- Status: ${status}`, ...(createdAt ? [`- Created: ${createdAt}`] : []), "", content.trim()].join("\n");
   });
-  return ["# Veloce Tenant Memory Export", "", `Tenant: ${tenantSlug}`, `Exported: ${new Date().toISOString()}`, "", ...sections].join("\n");
+  return ["# Veloce Tenant Memory Export", "", `Tenant: ${tenantSlug}`, `Records: ${records.length}`, `Exported: ${new Date().toISOString()}`, "", ...sections].join("\n");
 }
 
 function jsonError(error: string, status: number) {

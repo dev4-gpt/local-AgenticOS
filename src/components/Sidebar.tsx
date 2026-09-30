@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { LayoutGrid, Brain, Sparkles as SparklesIcon, TrendingUp, Columns3, NotebookText, Film, Building2, Workflow, MessagesSquare, Image as ImageIcon, Gamepad2, Music2, Network, Clapperboard, Repeat, Cpu, LayoutDashboard, Palette, GripVertical, Eye, EyeOff, SlidersHorizontal, Check, SquareTerminal, Globe2, PlugZap, Orbit, Blocks, Target, BookOpenText, RadioTower, ContactRound, GitBranch, Mic2, ChevronDown, KeyRound, ListChecks, Link2, Search } from "lucide-react";
+import { LayoutGrid, Brain, Sparkles as SparklesIcon, TrendingUp, Columns3, NotebookText, Film, Building2, Workflow, MessagesSquare, Image as ImageIcon, Gamepad2, Music2, Network, Clapperboard, Repeat, Cpu, LayoutDashboard, Palette, GripVertical, Eye, EyeOff, SlidersHorizontal, Check, SquareTerminal, Globe2, PlugZap, Orbit, Mountain, Blocks, Target, BookOpenText, RadioTower, ContactRound, GitBranch, Mic2, ChevronDown, KeyRound, ListChecks, Link2, Search } from "lucide-react";
 import { useState, useEffect, type ReactNode } from "react";
 import AgentAvatar from "./AgentAvatar";
 
@@ -50,6 +50,7 @@ const NAV: NavItem[] = [
   { href: "/opendesign", label: "Open Design", icon: <Palette size={16} />, accent: "#e879f9", dim: "rgba(232,121,249,0.16)" },
   { href: "/web-studio", label: "Web Studio", icon: <Globe2 size={16} />, accent: "#38bdf8", dim: "rgba(56,189,248,0.16)" },
   { href: "/flow-lab", label: "Flow Lab", icon: <Orbit size={16} />, accent: "#fbbf24", dim: "rgba(251,191,36,0.16)" },
+  { href: "/worlds", label: "World Studio", icon: <Mountain size={16} />, accent: "#a7c79a", dim: "rgba(167,199,154,0.16)" },
   { href: "/integrations", label: "Integrations", icon: <PlugZap size={16} />, accent: "#5ab896", dim: "rgba(90,184,150,0.16)" },
   { href: "/capabilities", label: "Capabilities", icon: <Blocks size={16} />, accent: "#34d399", dim: "rgba(52,211,153,0.16)" },
   { href: "/hybrid", label: "Hybrid", icon: <Link2 size={16} />, accent: "#5eead4", dim: "rgba(94,234,212,0.16)" },
@@ -83,7 +84,7 @@ const ORCHESTRATION_ROUTES = new Set(["/paperclip", "/room", "/pipeline", "/agen
 const CONTEXT_ROUTES = new Set(["/memory", "/notebook", "/classroom-research", "/social-research", "/goals", "/journal"]);
 const CLIENT_ONLY_ROUTES = new Set(["/context", "/orchestrate", "/create", "/deliver"]);
 const CLIENT_NAV_ROUTES = new Set(["/", ...CLIENT_ONLY_ROUTES, "/capabilities", "/hybrid", "/credentials", "/provider-matrix"]);
-const CREATE_ROUTES = new Set(["/create", "/opendesign", "/web-studio", "/flow-lab", "/video", "/studio", "/openmontage", "/music", "/games", "/thumbnails"]);
+const CREATE_ROUTES = new Set(["/create", "/opendesign", "/web-studio", "/flow-lab", "/worlds", "/video", "/studio", "/openmontage", "/music", "/games", "/thumbnails"]);
 const GOVERN_ROUTES = new Set(["/integrations", "/capabilities", "/hybrid", "/credentials", "/provider-matrix", "/seo", "/guide"]);
 const DELIVERY_ROUTES = new Set(["/deliver", "/leads", "/radar"]);
 function sectionOf(href: string): string {
@@ -156,7 +157,7 @@ export default function Sidebar({ clientEdition = false }: { clientEdition?: boo
     ...order.filter((h) => BY_HREF[h]),
     ...DEFAULT_ORDER.filter((h) => !order.includes(h)),
   ];
-  const allowedOrder = clientEdition ? fullOrder : fullOrder.filter((href) => !CLIENT_ONLY_ROUTES.has(href));
+  const allowedOrder = clientEdition ? fullOrder.filter((href) => href !== "/worlds") : fullOrder.filter((href) => !CLIENT_ONLY_ROUTES.has(href));
   const visible = customize ? allowedOrder : allowedOrder.filter((h) => !hidden.includes(h));
 
   function move(from: string, to: string) {
@@ -307,6 +308,7 @@ export function MobileNav({ clientEdition = false }: { clientEdition?: boolean }
   const items = clientEdition
     ? NAV.filter((item) => CLIENT_NAV_ROUTES.has(item.href))
     : NAV.filter((item) => mobileRoutes.has(item.href));
+  if (pathname === "/worlds") return null;
   return (
     <nav aria-label="Mobile operating lenses" className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 panel panel-hot px-2 py-1.5 flex gap-1">
       {items.map((item) => {

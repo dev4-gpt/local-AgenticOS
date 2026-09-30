@@ -1,5 +1,12 @@
 # Release-evidence ledger deployment runbook
 
+**Historical configuration only.** This runbook names `veloce-agenticos-2026`,
+which is not a currently verified release target. Do not run its bucket or IAM
+commands until project ownership, billing, writer identity, and the intended
+ledger bucket have been freshly reviewed. The current verifier has no default
+bucket; pass `--ledger-bucket <reviewed-ledger-bucket>` explicitly for both
+publication and strict validation.
+
 This runbook creates the one-time, org-wide infrastructure for the release
 evidence ledger. It is a singleton, like the provisioner service accounts and
 the `veloceTenantProvisioner` role in
@@ -101,21 +108,28 @@ for the full flag list used at release time):
 
 ```bash
 npm run publish:release-ledger -- \
-  --impersonate-service-account veloce-release-ledger-writer@veloce-agenticos-2026.iam.gserviceaccount.com \
+  --ledger-bucket <reviewed-ledger-bucket> \
+  --impersonate-service-account <reviewed-ledger-writer-service-account> \
   --environment production \
   --vercel-deployment <deployment-id> \
   --cloud-run-revision <revision> \
   --image-digest sha256:<digest> \
-  --migration-file product-experience/supabase-vNN-....sql \
-  --rollback-target <known-good-revision> \
+  --migration-file product-experience/supabase-v45-onboarding-verify-token.sql \
+  --migration-file product-experience/supabase-v46-onboarding-setup-token.sql \
+  --migration-file product-experience/supabase-client-runtime-source-pack-graph.sql \
+  --rollback-cloud-run-revision <known-good-revision> \
+  --source-import-result passed \
+  --ui-parity-result passed \
+  --buyer-simulation-result passed \
+  --ai-engineering-result passed \
   --test-result focused=passed
 ```
 
 Then validate the current commit against whatever was published:
 
 ```bash
-npm run verify:production-readiness            # non-strict: reports gaps, exits 0
-npm run verify:production-readiness -- --strict # strict: fails on any gap
+npm run verify:production-readiness -- --ledger-bucket <reviewed-ledger-bucket>            # non-strict: reports gaps, exits 0
+npm run verify:production-readiness -- --strict --ledger-bucket <reviewed-ledger-bucket> # strict: fails on any gap
 ```
 
 If no ledger record exists yet for the current commit, both modes report

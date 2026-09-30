@@ -36,7 +36,7 @@ export default function StartPage() {
         </nav>
       </header>
 
-      <section className="mx-auto grid max-w-[1240px] gap-12 px-5 py-14 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-20">
+      <section className="mx-auto grid max-w-[1240px] grid-cols-1 gap-12 px-5 py-14 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-20">
         <div className="flex flex-col justify-between gap-10">
           <div>
             <p className="font-display text-base italic text-[var(--g5)]/62">Public onboarding · governed execution</p>
