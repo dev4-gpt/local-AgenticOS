@@ -26,6 +26,8 @@ As checked on 2026-09-29, [OpenAI's API spend-limit guide](https://developers.op
 
 `scripts/generate-buyer-persona-frame.mjs` produces 10,000 unique cells: 10 fields × 5 decision postures × 4 organization sizes × 5 AI-literacy levels × 5 monthly budget bands × 2 privacy postures. Region is assigned deterministically across six broad regions. The 50-person pilot selects one cell per field × literacy level using a stable seed. This frame is a **coverage target and audit reference**, not a claim that MiroFish accepted or ran those exact profiles. The upstream app generates agents from its graph; compare actual `/profiles` output to the frame before reporting coverage.
 
+For a first micro-run, `evaluations/mirofish-buyer-micro-v1.json` selects ten of those 50 cells: one per field, two per literacy level, all five decision postures, and three strict-privacy buyers. `node scripts/prepare-mirofish-buyer-seed.mjs --out=tmp/mirofish-buyer-seed-10.md` combines them with the candid product seed and specific first workflows. The generated file is synthetic input, not evidence that MiroFish created ten agents. Its current SHA-256 is `83daeb6dea9d58733ecb9fe2aa6056eb07f5c9c880cecca3972a310d9ff3c66c`; the preparer and coverage tests are in this checkout. The first real run should inspect actual profiles and reject collapsed or missing roles before proceeding.
+
 Generated local artifacts (not customer data):
 
 | Artifact | Rows | SHA-256 |

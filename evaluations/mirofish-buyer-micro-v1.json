@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "frameSeed": "agentos-buyer-v1",
+  "cohort": "mirofish-buyer-micro-v1",
+  "personas": [
+    { "id": "P00603", "firstWorkflow": "review a client handoff without exposing client files" },
+    { "id": "P01315", "firstWorkflow": "retain decisions and ownership across a software release" },
+    { "id": "P02225", "firstWorkflow": "coordinate catalog changes and customer-service context" },
+    { "id": "P03040", "firstWorkflow": "triage appointment requests while keeping customer data private" },
+    { "id": "P04949", "firstWorkflow": "audit an administrative intake handoff without clinical decision support" },
+    { "id": "P05453", "firstWorkflow": "organize course operations without grading or eligibility decisions" },
+    { "id": "P06865", "firstWorkflow": "prepare a grant-reporting evidence trail from approved records" },
+    { "id": "P07078", "firstWorkflow": "reconcile invoice exceptions without financial advice or payment execution" },
+    { "id": "P08037", "firstWorkflow": "organize matter-intake notes without legal advice" },
+    { "id": "P09494", "firstWorkflow": "review creative assets and approval history before publishing" }
+  ]
+}
