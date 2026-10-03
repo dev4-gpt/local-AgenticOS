@@ -27,7 +27,7 @@ function object(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
 
-function safeUrl(value: unknown) {
+export function safeClientSourceUrl(value: unknown) {
   if (typeof value !== "string" || value.length > 2048) throw new Error("source_pack_url_invalid");
   let url: URL;
   try { url = new URL(value); } catch { throw new Error("source_pack_url_invalid"); }
@@ -40,7 +40,7 @@ function safeUrl(value: unknown) {
 export function parseClientSourcePack(input: unknown): ClientSourcePack {
   const pack = object(input);
   if (!pack || !Array.isArray(pack.sources) || !pack.sources.length || pack.sources.length > MAX_SOURCES) throw new Error("source_pack_size_invalid");
-  const startUrl = safeUrl(pack.startUrl);
+  const startUrl = safeClientSourceUrl(pack.startUrl);
   const seen = new Set<string>();
   const sources = pack.sources.map((value) => {
     const source = object(value);
@@ -48,14 +48,14 @@ export function parseClientSourcePack(input: unknown): ClientSourcePack {
     const title = typeof source.title === "string" ? source.title.trim() : "";
     const text = typeof source.text === "string" ? source.text.replace(/\r\n?/g, "\n").trim() : "";
     const tab = typeof source.tab === "string" ? source.tab.trim() : null;
-    const sourceUrl = safeUrl(source.url);
+    const sourceUrl = safeClientSourceUrl(source.url);
     const collectedAt = typeof source.collectedAt === "string" && !Number.isNaN(Date.parse(source.collectedAt)) ? new Date(source.collectedAt).toISOString() : null;
     if (!title || title.length > 240 || !text || text.length > 30_000 || (tab && tab.length > 240) || containsClientSecretLike(title, text)) throw new Error("source_pack_item_invalid");
     if (!Array.isArray(source.links) || source.links.length > MAX_LINKS_PER_SOURCE) throw new Error("source_pack_links_invalid");
     const links = source.links.map((value) => {
       const link = object(value);
       if (!link) throw new Error("source_pack_links_invalid");
-      const url = safeUrl(link.url);
+      const url = safeClientSourceUrl(link.url);
       const text = typeof link.text === "string" ? link.text.trim() : "";
       if (text.length > 300 || containsClientSecretLike(text)) throw new Error("source_pack_links_invalid");
       return { url, text };

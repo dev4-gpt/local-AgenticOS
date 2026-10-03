@@ -6,5 +6,5 @@ export default defineConfig({
   reporter: "line",
   timeout: 45_000,
   expect: { timeout: 10_000 },
-  use: { trace: "retain-on-failure" },
+  use: { trace: "retain-on-failure", channel: process.env.PLAYWRIGHT_BROWSER_CHANNEL || undefined },
 });

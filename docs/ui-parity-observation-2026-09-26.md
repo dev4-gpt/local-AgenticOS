@@ -111,3 +111,19 @@ Read-only `gcloud projects describe 1075094991117` was denied for both
 configured accounts (`aryamandev777@gmail.com` and `aryamans.dev96@gmail.com`).
 The Cloud Run revision, image digest, and source SHA remain unknown; do not
 promote this observation into a parity pass.
+
+**Current browser and local-process check, 2026-10-02:** The user's signed-in
+Chrome window at `https://veloce-cloud-test-1075094991117.asia-south1.run.app/room`
+rendered the client-edition AI Agent Mastermind. Its visible Hermes agent
+returned a reply using the approved Groq model lane. This is a read-only
+observation of one cloud route, not a same-revision comparison or a full
+customer journey. The local service at `http://127.0.0.1:3565/setup` returned
+HTTP 200, but its listening process had `product-experience/` as its working
+directory. It is the public/setup app, **not** the root client workspace that
+serves the cloud `/room` route. Comparing those two screens as UI parity would
+be invalid. The root checkout's `.env.local` contains only a Groq key name;
+it lacks the Supabase URL/publishable key, tenant slug, allowed email, and
+model allowlist required by `scripts/run-client-runtime-local.mjs` for signed-in
+local parity. Do not disable authentication or copy production secrets to
+make a visual comparison pass. Obtain an approved staging env file and compare
+the same workspace route, identity, build revision, and responsive viewports.
