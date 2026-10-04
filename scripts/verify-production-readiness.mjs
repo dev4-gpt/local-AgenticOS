@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { chmodSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { validCustomerJourneyReport } from "./lib/customer-journey-evidence.mjs";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const args = process.argv.slice(2);
@@ -223,7 +224,7 @@ if (!publishLedger) {
     if (ledgerRecord.schemaVersion !== 2) releaseGateFailures.push("release_ledger_schema_version");
     if (!valueAfter("--release-id") && ledgerRecord.source?.commit !== commit) releaseGateFailures.push("release_ledger_commit_mismatch");
     if (!validLocalAiEvaluation(ledgerRecord.aiEvaluationLocal, ledgerRecord.source?.commit)) releaseGateFailures.push("ai_evaluation_local_evidence");
-    if (!validCustomerJourneyReport(ledgerRecord.customerJourneyReport, ledgerRecord.source?.commit, ledgerRecord.deployment)) releaseGateFailures.push("customer_journey_evidence");
+    if (!validCustomerJourneyReport(ledgerRecord.customerJourneyReport, ledgerRecord.source?.commit, ledgerRecord.deployment, evidenceBytes)) releaseGateFailures.push("customer_journey_evidence");
     for (const key of ["vercelDeployment", "cloudRunRevision", "imageDigest"]) {
       if (!ledgerRecord.deployment?.[key]) releaseGateFailures.push(key);
     }
@@ -240,7 +241,7 @@ if (!publishLedger) {
 }
 if (publishLedger) {
   if (!ledgerBucket) releaseGateFailures.push("ledger_bucket_not_configured");
-  if (!validCustomerJourneyReport(customerJourneyReport, commit, deployment)) releaseGateFailures.push("customer_journey_evidence");
+  if (!validCustomerJourneyReport(customerJourneyReport, commit, deployment, evidenceBytes)) releaseGateFailures.push("customer_journey_evidence");
   for (const key of ["vercelDeployment", "cloudRunRevision", "imageDigest"]) {
     if (!deployment[key]) releaseGateFailures.push(key);
   }
@@ -342,34 +343,7 @@ function validLocalAiEvaluation(report, expectedCommit) {
     });
 }
 
-function validCustomerJourneyReport(report, expectedCommit, deployment) {
-  if (!report || report.schemaVersion !== 1 || report.sourceCommit !== expectedCommit
-    || !/^[0-9a-f]{40}$/i.test(expectedCommit ?? "")
-    || !["staging", "production"].includes(report.environment)
-    || report.environment !== deployment?.environment
-    || report.vercelDeployment !== deployment?.vercelDeployment
-    || report.cloudRunRevision !== deployment?.cloudRunRevision
-    || report.imageDigest !== deployment?.imageDigest
-    || !/^sha256:[0-9a-f]{64}$/i.test(report.imageDigest ?? "")
-    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(report.checkedAt ?? "")
-    || !Number.isFinite(Date.parse(report.checkedAt))
-    || !Array.isArray(report.cases) || report.cases.length !== 15) return false;
-  const expectedIds = new Set(Array.from({ length: 15 }, (_, index) => `J${String(index + 1).padStart(2, "0")}`));
-  const evidenceHashes = new Map();
-  for (const item of report.cases) {
-    if (!expectedIds.delete(item?.id) || item.status !== "passed"
-      || !Array.isArray(item.evidence) || item.evidence.length === 0
-      || item.evidence.some((entry) => typeof entry?.ref !== "string"
-        || !/^(?:gs:\/\/[a-z0-9][a-z0-9._-]+\/[a-zA-Z0-9/_.-]+|docs\/evidence\/[a-zA-Z0-9/_.-]+)$/.test(entry.ref)
-        || entry.ref.includes("..") || entry.ref.includes("//", 5)
-        || !/^[0-9a-f]{64}$/i.test(entry.sha256 ?? "")
-        || evidenceHash(entry.ref, evidenceHashes) !== entry.sha256.toLowerCase())) return false;
-  }
-  return expectedIds.size === 0;
-}
-
-function evidenceHash(ref, cache) {
-  if (cache.has(ref)) return cache.get(ref);
+function evidenceBytes(ref) {
   let bytes = null;
   if (ref.startsWith("docs/evidence/")) {
     try { bytes = readFileSync(resolve(root, ref)); } catch { /* A missing receipt fails the gate. */ }
@@ -377,9 +351,7 @@ function evidenceHash(ref, cache) {
     const result = spawnSync("gcloud", ["storage", "cat", ref], { timeout: 15_000, maxBuffer: MAX_JOURNEY_EVIDENCE_BYTES });
     if (result.status === 0) bytes = result.stdout;
   }
-  const digest = bytes && bytes.length > 0 && bytes.length <= MAX_JOURNEY_EVIDENCE_BYTES ? sha256(bytes) : null;
-  cache.set(ref, digest);
-  return digest;
+  return bytes;
 }
 
 function valuesAfter(flag) {

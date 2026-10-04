@@ -150,13 +150,19 @@ That redacted JSON receipt must have `schemaVersion: 1`, the exact clean
 `imageDigest`, an ISO `checkedAt`, and exactly one passed case for each
 `J01` through `J15` in the customer-journey matrix. Each case needs at least
 one `evidence` entry with a private `gs://` or redacted `docs/evidence/` `ref`
-and its 64-hex `sha256`. The verifier checks completeness and release identity,
+and its 64-hex `sha256`. Every case must include exactly one entry with
+`kind: "case-attestation"`; other entries use `kind: "artifact"`. The attestation
+is redacted JSON with `schemaVersion: 1`, the matching `caseId`, `status:
+"passed"`, the same source/deployment identity, an ISO `checkedAt` no later
+than the report, a named `reviewedBy`, and nonempty `observations` recording
+`action`, `observed`, and `result: "passed"`. The verifier checks this structure
 and reads each referenced artifact (at most 1 MB) to verify its hash. Private
 `gs://` receipts require read access and may incur Cloud Storage request costs;
 do not run this against an unreviewed bucket or billing project. Hash validity
 does not prove that an observation satisfies its J-row: the named reviewer must
 inspect the receipts and avoid putting customer content or secrets in the
-report. A plain `--public-journey-result passed` is insufficient.
+report. The attestation is a review record, not an automated proof that the
+observation happened. A plain `--public-journey-result passed` is insufficient.
 Do not use placeholder values or mark a missing test as passed — the ledger
 accepts a partial record, but `--strict` will fail loud on anything still
 missing rather than let it through. See

@@ -34,6 +34,11 @@ and now rechecks active tenant membership before handoff. None of this source
 change is deployed or accepted; email delivery, callback path, customer
 domain, and signed-in repeat-login evidence remain release gates.
 
+Read-only live check on 2026-10-03: `https://app.veloceos.cloud/` returned 200,
+but `https://app.veloceos.cloud/login` returned 404. The older Cloud Run test
+login returned 200. This confirms the shared-login source is not live on the
+public `app` domain; do not offer that URL as a working client login yet.
+
 The legacy Cloud Run service is publicly reachable but its `/`, `/healthz`, and
 documented `/status` routes returned `404` during this verification. Its source
 image commit is not present in this repository. It must not be used as a

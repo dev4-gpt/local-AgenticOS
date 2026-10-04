@@ -84,6 +84,7 @@ test("customer journey approval requires fifteen current-deployment receipts", (
       cases: Array.from({ length: 15 }, (_, index) => ({
         id: `J${String(index + 1).padStart(2, "0")}`, status: "passed",
         evidence: [{
+          kind: "artifact",
           ref: `docs/evidence/${evidenceFiles[index]}`,
           sha256: createHash("sha256").update(readFileSync(resolve(process.cwd(), "docs/evidence", evidenceFiles[index]))).digest("hex"),
         }],
@@ -112,7 +113,7 @@ test("customer journey approval requires fifteen current-deployment receipts", (
       cwd: process.cwd(), encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin", VELOCE_RELEASE_LEDGER_BUCKET: "" },
     });
     expect(JSON.parse(offline.stdout).failures).toContain("release_gate:customer_journey_evidence");
-    expect(inspect(report)).not.toContain("release_gate:customer_journey_evidence");
+    expect(inspect(report)).toContain("release_gate:customer_journey_evidence");
 
     const reportFile = join(dir, "journey.json");
     writeFileSync(reportFile, JSON.stringify(report));
@@ -123,7 +124,7 @@ test("customer journey approval requires fifteen current-deployment receipts", (
       "--public-journey-result", "passed", "--customer-journey-report", reportFile,
     ], { cwd: process.cwd(), encoding: "utf8", env: { ...process.env, VELOCE_RELEASE_LEDGER_BUCKET: "" } });
     expect(publish.status).toBe(1);
-    expect(JSON.parse(publish.stdout).failures).not.toContain("release_gate:customer_journey_evidence");
+    expect(JSON.parse(publish.stdout).failures).toContain("release_gate:customer_journey_evidence");
     expect(JSON.parse(publish.stdout).failures).toContain("release_gate:ledger_bucket_not_configured");
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
