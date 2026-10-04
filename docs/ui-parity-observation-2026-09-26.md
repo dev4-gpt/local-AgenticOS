@@ -150,3 +150,14 @@ with `run.services.get (Missing)`. That account cannot supply the revision or
 image digest from the console. No IAM change was attempted; an authorized owner
 must provide read-only deployment identity before candidate parity can be
 certified.
+
+**Local-launch safety follow-up, 2026-10-03:** `scripts/run-client-runtime-local.mjs`
+now defaults `CLIENT_PROVIDER_CALLS_ENABLED` to `0`, so opening a local UI
+cannot silently enable provider spending. `npm run dev:client-runtime --
+--check-config` reports missing parity settings by name and exits before
+starting a server. A provider test requires an explicit `1` setting and a
+separately reviewed cost boundary. A private Supabase file exists on this
+machine, but it does not establish an approved staging tenant slug, allowed
+email, or cloud revision; it was not used for a signed-in parity claim. A
+model allowlist is required only when an explicitly approved provider test
+enables calls, not for an auth-only UI comparison.
