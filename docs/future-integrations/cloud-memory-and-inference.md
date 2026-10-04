@@ -365,6 +365,9 @@ run. All six are now in the lifecycle `tables` list, the explicit
 `scripts/verify-client-runtime-isolation.mjs` now probes all six as well, and
 its select column moved from `id` to `tenant_slug` because
 `client_paperclip_companies` is keyed by slug and has no `id`.
+The verifier also requires a readable sentinel row for each tenant in each
+probed table. A 200 response with zero own rows is inconclusive, not a pass;
+prepare disposable fixture rows before using this command as J13 evidence.
 
 `client_paperclip_issues.build_preview_html` is deliberately excluded from the
 export: it duplicates an artifact already held in Cloud Storage, and
@@ -883,6 +886,12 @@ rows and returns nothing from the other tenant. Tokens and row content were not
 printed. Sessions for both existing members were minted through the admin
 magic-link flow with the service-role key, which issues a JWT for an account
 that already exists; no tenant, service, or deployment was created.
+
+This is a historical result from the older verifier. It checked successful
+own-tenant responses but did not require a matching row in every table; an
+empty table could therefore appear isolated. The current verifier covers more
+tables and requires both tenants' own sentinels. Re-run it with disposable
+fixtures before citing J13 for a new release.
 
 **The first run failed and the failure was misleading.** Tenant A's token had
 expired, and because the script asserted `ok && rows.length === 0` as one

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
 import process from "node:process";
+import { evaluateTenantProbe } from "./lib/tenant-isolation-probe.mjs";
 
 const args = process.argv.slice(2);
 const baseUrl = required("--url").replace(/\/$/, "");
@@ -59,16 +60,7 @@ for (const [label, table] of probes) {
     select(table, tenantB, tokenB),
     select(table, tenantA, tokenB),
   ]);
-  expect(aOwn.ok, `${label}: tenant A own read failed (${aOwn.status})`);
-  expect(bOwn.ok, `${label}: tenant B own read failed (${bOwn.status})`);
-  // A failed cross-read is inconclusive, not proof of isolation, and must not
-  // be reported as a crossing. An expired token once made every table read as
-  // "crossed into tenant B", which is exactly the noise that would hide one
-  // real crossing among twenty false ones.
-  expect(aOther.ok, `${label}: tenant A cross-read failed (${aOther.status}) - inconclusive, refresh the token and re-run`);
-  expect(!aOther.ok || aOther.rows.length === 0, `${label}: tenant A token crossed into tenant B`);
-  expect(bOther.ok, `${label}: tenant B cross-read failed (${bOther.status}) - inconclusive, refresh the token and re-run`);
-  expect(!bOther.ok || bOther.rows.length === 0, `${label}: tenant B token crossed into tenant A`);
+  failures.push(...evaluateTenantProbe(label, tenantA, tenantB, { aOwn, aOther, bOwn, bOther }));
 }
 
 if (failures.length) {
@@ -114,10 +106,6 @@ function token(valueFlag, fileFlag) {
     fail(`${fileFlag} must point to a readable non-empty token file`);
   }
   fail(`${valueFlag} or ${fileFlag} is required`);
-}
-
-function expect(condition, message) {
-  if (!condition) failures.push(message);
 }
 
 function fail(message) {
