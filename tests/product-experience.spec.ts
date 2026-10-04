@@ -32,6 +32,18 @@ test("product experience header search is readable and searchable", async ({ pag
 
   await expect(page.getByRole("link", { name: /memory/i }).first()).toBeVisible();
   await expect(page.getByText(/approved reasoning/i).first()).toBeVisible();
+  await page.getByRole("link", { name: /memory/i }).first().click();
+  await expect(page).toHaveURL(/#agentic$/);
+});
+
+test("unconfigured runtime cards request access in the current tab", async ({ page }) => {
+  test.skip(Boolean(process.env.NEXT_PUBLIC_APP_URL), "Configured client runtime cards open the workspace.");
+  await page.goto("/", { waitUntil: "networkidle" });
+  const memory = page.locator("#agentic").getByRole("link", { name: "Ask about access" }).first();
+  await expect(memory).toHaveAttribute("href", "#developer");
+  await expect(memory).not.toHaveAttribute("target", "_blank");
+  await memory.click();
+  await expect(page).toHaveURL(/#developer$/);
 });
 
 test("product experience contact form is present and submittable", async ({ page }) => {

@@ -33,7 +33,7 @@ export function Header() {
         title: item.eyebrow ?? chapter.title,
         eyebrow: chapter.title,
         description: item.desc ?? "Open this operating surface.",
-        href: item.linkHref ?? `#${chapter.slug}`,
+        href: item.linkHref?.startsWith("#") ? `#${chapter.slug}` : item.linkHref ?? `#${chapter.slug}`,
       }))
     );
 

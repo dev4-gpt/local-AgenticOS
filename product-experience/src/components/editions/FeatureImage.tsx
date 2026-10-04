@@ -29,8 +29,8 @@ export function FeatureImage({ item }: { item: FeatureItem }) {
       {item.linkHref && item.linkText && (
         <a
           href={item.linkHref}
-          target="_blank"
-          rel="noreferrer"
+          target={item.linkHref.startsWith("#") ? undefined : "_blank"}
+          rel={item.linkHref.startsWith("#") ? undefined : "noreferrer"}
           className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--g5)]/20 px-4 py-2 text-xs font-medium text-[var(--g5)] no-underline hover:bg-[var(--g5)]/5"
         >
           {item.linkText}
