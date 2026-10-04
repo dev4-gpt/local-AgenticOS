@@ -1,4 +1,5 @@
--- Apply after supabase-client-runtime-memory-graph.sql and the artifact tables.
+-- Apply after supabase-client-runtime-memory-graph.sql, the artifact tables,
+-- and supabase-client-runtime-control-plane.sql (audit events).
 -- User-provided source packs become tenant memories with canonical URLs. This
 -- migration does not authorize automated collection from any platform.
 
@@ -34,6 +35,7 @@ declare
   v_existing integer;
   v_written integer;
   v_inserted integer;
+  v_link_count integer;
 begin
   if auth.uid() is null or not public.client_member(p_tenant_slug) then
     raise exception 'tenant_not_authorized';
@@ -83,6 +85,8 @@ begin
   ) then
     raise exception 'source_pack_link_invalid';
   end if;
+  select coalesce(sum(jsonb_array_length(source.value -> 'links')), 0) into v_link_count
+  from jsonb_array_elements(p_sources) as source(value);
 
   select count(*) into v_existing
   from public.client_runtime_records as record
@@ -129,6 +133,16 @@ begin
   if v_written > 0 and not public.refresh_client_runtime_memory_graph(p_tenant_slug) then
     raise exception 'source_graph_refresh_failed';
   end if;
+  insert into public.client_runtime_audit_events (tenant_slug, actor_id, event_type, metadata)
+  values (p_tenant_slug, auth.uid(), 'tenant.source_pack.imported', jsonb_build_object(
+    'artifactId', p_artifact_id,
+    'packSha256', p_pack_sha256,
+    'sourceCount', v_total,
+    'linkCount', v_link_count,
+    'imported', v_inserted,
+    'updated', v_written - v_inserted,
+    'duplicates', v_total - v_written
+  ));
   return jsonb_build_object('imported', v_inserted, 'updated', v_written - v_inserted, 'duplicates', v_total - v_written, 'graphRefreshed', v_written > 0);
 end;
 $$;

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { checkClientRuntimeRateLimit, clientRpc, recordClientAudit, selectClientRecords } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, clientRpc, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientGcpAccessToken, clientServiceAccountEmail, clientStorageConfig, safeClientObjectKey, signedClientStorageUrl } from "@/lib/clientStorage";
 import { parseClientSourcePack } from "@/lib/clientSourcePack";
@@ -87,7 +87,6 @@ export async function POST(request: Request) {
     p_sources: pack.sources,
   });
   if (!imported.ok || !imported.value || typeof imported.value !== "object") return error(imported.status === 404 ? "source_import_schema_missing" : "source_import_write_failed", 502);
-  await recordClientAudit("tenant.source_pack.imported", { artifactId, packSha256, sourceCount: pack.sources.length, linkCount: pack.linkCount });
   return NextResponse.json({ ok: true, ...summary, result: imported.value }, { status: 201, headers: { "cache-control": "private, no-store" } });
 }
 
