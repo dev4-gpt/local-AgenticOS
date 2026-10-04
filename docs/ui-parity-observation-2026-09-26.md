@@ -170,3 +170,22 @@ no service role key), the build passed, `/login` returned 200, and `/memory`
 redirected to `/login`. Provider calls remained disabled. No signed-in local
 journey or cloud revision comparison has been completed; these checks do not
 establish UI parity or production acceptance.
+
+**Signed-in same-profile comparison, 2026-10-03:** The user signed in to the
+local client preview at `http://127.0.0.1:3939/` in the Chrome work profile.
+Its `/memory` page loaded 24 tenant memories and a 29-node/57-edge graph. An
+existing signed-in tab in that profile at
+`https://veloce-cloud-test-1075094991117.asia-south1.run.app/memory` showed
+the same counts and the same first/last record titles. Only counts and control
+names, not record bodies or credentials, are retained here. Desktop visual
+inspection found the shared Memory layout and Markdown/note/search/graph
+controls closely aligned. The local candidate additionally displayed
+`Community sources` / `Review JSON source packs` and sidebar entries for
+`Classroom Research` and `Social Research`; those controls were absent from
+the cloud tab. The local candidate was source commit `83a986d`, with provider
+calls disabled. Separate browser origins have separate sessions, and matching
+data does not prove identical auth claims or tenant isolation. The cloud
+revision/image digest/source SHA and source-pack migration state remain unknown.
+No write or provider action was attempted. This is concrete deployment drift,
+not an accepted `ui-parity` result; compare again on an immutable deployed
+candidate at desktop and mobile sizes before closing that gate.
