@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { spawnSync } from "node:child_process";
 
-function check(extraEnv: Record<string, string> = {}) {
-  return spawnSync(process.execPath, ["scripts/run-client-runtime-local.mjs", "--check-config"], {
+function check(extraEnv: Record<string, string> = {}, flags: string[] = []) {
+  return spawnSync(process.execPath, ["scripts/run-client-runtime-local.mjs", "--check-config", ...flags], {
     cwd: process.cwd(), encoding: "utf8", env: {
       PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "",
       ...extraEnv,
@@ -19,6 +19,12 @@ test("local parity config check keeps provider calls off and names missing setti
   expect(result.stdout).toContain("missing CLIENT_SLUG");
   expect(result.stdout).not.toContain("missing CLIENT_MODEL_ALLOWLIST");
   expect(result.stdout).not.toContain("Starting Veloce client-runtime local test");
+});
+
+test("production build and start modes cannot be combined with a config-only check", () => {
+  const result = check({}, ["--build-production"]);
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("Choose one of --check-config, --build-production, or --production");
 });
 
 test("local provider calls require an explicit binary opt-in", () => {

@@ -161,3 +161,12 @@ machine, but it does not establish an approved staging tenant slug, allowed
 email, or cloud revision; it was not used for a signed-in parity claim. A
 model allowlist is required only when an explicitly approved provider test
 enables calls, not for an auth-only UI comparison.
+
+**Stable local preview, 2026-10-03:** The dev watcher exhausted this machine's
+file handles, so the guarded launcher now supports `--build-production` followed
+by `--production` using a separate `.next-client-prod` output directory. With a
+private, reduced env file (Supabase URL and anon key, tenant slug, allowed email;
+no service role key), the build passed, `/login` returned 200, and `/memory`
+redirected to `/login`. Provider calls remained disabled. No signed-in local
+journey or cloud revision comparison has been completed; these checks do not
+establish UI parity or production acceptance.

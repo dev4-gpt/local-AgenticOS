@@ -10,7 +10,14 @@ const port = valueAfter("--port") || "3939";
 const publicBaseUrl = valueAfter("--public-base-url");
 const gcpAuth = args.includes("--gcp-auth");
 const checkConfig = args.includes("--check-config");
+const buildProduction = args.includes("--build-production");
+const production = args.includes("--production");
 const env = { ...process.env };
+
+if ((checkConfig && (buildProduction || production)) || (buildProduction && production)) {
+  console.error("Choose one of --check-config, --build-production, or --production.");
+  process.exit(1);
+}
 
 if (envFile) {
   const absolute = path.resolve(process.cwd(), envFile);
@@ -30,7 +37,7 @@ if (envFile) {
 env.PORT = port;
 // Keep the client edition's Turbopack lock and generated route types separate
 // from the owner/operator dev server when both are opened from this checkout.
-env.VELOCE_DIST_DIR = env.VELOCE_DIST_DIR || ".next-client";
+env.VELOCE_DIST_DIR = env.VELOCE_DIST_DIR || (buildProduction || production ? ".next-client-prod" : ".next-client");
 env.VELOCE_CLIENT_EDITION = "1";
 env.AGENTIC_OS_DISABLE_LOCAL_CLI = env.AGENTIC_OS_DISABLE_LOCAL_CLI || "1";
 env.AGENTIC_OS_DISABLE_LOCAL_FILES = env.AGENTIC_OS_DISABLE_LOCAL_FILES || "1";
@@ -79,7 +86,7 @@ if (!env.CLIENT_SLUG?.trim()) parityBlockers.push("CLIENT_SLUG (non-secret, e.g.
 if (!env.CLIENT_ALLOWED_USER_EMAILS?.trim()) parityBlockers.push("CLIENT_ALLOWED_USER_EMAILS (non-secret, comma separated)");
 if (env.CLIENT_PROVIDER_CALLS_ENABLED === "1" && !env.CLIENT_MODEL_ALLOWLIST?.trim()) parityBlockers.push("CLIENT_MODEL_ALLOWLIST (non-secret; required only for provider work)");
 
-console.log(`${checkConfig ? "Checking" : "Starting"} Veloce client-runtime local test on http://127.0.0.1:${port}`);
+console.log(`${checkConfig ? "Checking" : buildProduction ? "Building" : "Starting"} Veloce client-runtime local test on http://127.0.0.1:${port}`);
 if (publicBaseUrl) console.log("Public HTTPS callback configured for Cloud Tasks parity; tunnel lifecycle remains manual.");
 if (env.CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH === "1") console.log("Local Cloud Tasks identity enabled through the explicit gcloud auth path; the access token is never printed.");
 if (publicBaseUrl && env.CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH !== "1") console.log("Full tunnel parity also needs --gcp-auth (or CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH=1) so Cloud Tasks can authenticate from this laptop.");
@@ -95,7 +102,20 @@ if (parityBlockers.length) {
 
 if (checkConfig) process.exit(0);
 
-const child = spawn(process.execPath, ["scripts/run-next-dev.mjs"], {
+const command = buildProduction
+  ? ["node_modules/next/dist/bin/next", "build", "--webpack"]
+  : production
+    ? ["node_modules/next/dist/bin/next", "start", "-p", port, "-H", "127.0.0.1"]
+    : ["scripts/run-next-dev.mjs"];
+const node24 = "/opt/homebrew/opt/node@24/bin/node";
+const nodeMajor = Number(process.versions.node.split(".")[0]);
+const supportedNode = nodeMajor >= 22 && nodeMajor < 26
+  ? process.execPath : existsSync(node24) ? node24 : null;
+if (!supportedNode) {
+  console.error(`Veloce AgenticOS requires Node 22 or 24. Current runtime: ${process.version}.`);
+  process.exit(1);
+}
+const child = spawn(buildProduction || production ? supportedNode : process.execPath, command, {
   cwd: process.cwd(),
   stdio: "inherit",
   env,
