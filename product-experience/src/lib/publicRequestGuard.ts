@@ -25,7 +25,7 @@ export function payloadTooLarge(req: Request) {
   return Number(req.headers.get("content-length") ?? 0) > MAX_BODY_BYTES;
 }
 
-export async function allowPublicRequest(req: Request, bucket: string) {
+export async function allowPublicRequest(req: Request, bucket: string, requireDurable = false) {
   const ip = forwardedClient(req);
   const hashedKey = createHash("sha256")
     .update(`${process.env.PUBLIC_RATE_LIMIT_SALT ?? "veloce-public"}:${ip}`)
@@ -57,6 +57,8 @@ export async function allowPublicRequest(req: Request, bucket: string) {
       console.warn("durable public rate limiter unreachable", { bucket });
     }
   }
+
+  if (requireDurable) return false;
 
   return memoryLimit(memoryKey);
 }

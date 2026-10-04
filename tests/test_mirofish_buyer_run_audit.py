@@ -85,6 +85,21 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.assertFalse(result["checks"]["postAgentMapping"])
         self.assertEqual(result["unknownPostAgents"], [99])
 
+    def test_completed_run_without_buyer_generated_posts_is_not_a_pilot_pass(self):
+        self.config["agent_configs"][0].update({"activity_level": 1, "active_hours": [9]})
+        self._write("simulation_config.json", self.config)
+        database = sqlite3.connect(self.simulation / "twitter_simulation.db")
+        database.execute("DELETE FROM post WHERE created_at != 0")
+        database.commit()
+        database.close()
+        self._write("run_state.json", {
+            "runner_status": "completed", "current_round": 1, "total_rounds": 1, "twitter_actions_count": 1,
+        })
+        (self.simulation / "twitter" / "actions.jsonl").write_text('{"action_type":"CREATE_POST"}\n', encoding="utf-8")
+        result = AUDITOR.audit(self.simulation, self.cohort)
+        self.assertFalse(result["checks"]["buyerActivity"])
+        self.assertFalse(result["pilotEvidencePassed"])
+
 
 if __name__ == "__main__":
     unittest.main()

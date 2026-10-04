@@ -81,6 +81,11 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
     unknown_post_agents = sorted({agent_id for _, agent_id, _, _ in posts if agent_id not in profile_by_agent})
     dynamic_post_ids = [profile_by_agent.get(agent_id, "<unknown-agent>") for _, agent_id, _, created_at in posts if str(created_at) != "0"]
     post_counts = Counter(dynamic_post_ids)
+    active_buyers = {
+        agent.get("entity_name")
+        for agent in config.get("agent_configs", [])
+        if agent.get("activity_level", 0) > 0 and agent.get("active_hours")
+    }
     action_rows = action_log_count(simulation_dir)
     log_text = (simulation_dir / "simulation.log").read_text(encoding="utf-8") if (simulation_dir / "simulation.log").exists() else ""
     loop_completed = "模拟循环完成" in log_text
@@ -94,6 +99,7 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         "initialPostAttribution": not attribution_errors and not missing_initial_posts,
         "actionTelemetry": action_rows >= len(posts) and reported_actions >= len(posts),
         "completionTelemetry": not loop_completed or (status == "completed" and run_state.get("current_round") == run_state.get("total_rounds")),
+        "buyerActivity": bool(post_counts) and all(post_counts.get(buyer, 0) > 0 for buyer in active_buyers),
     }
     return {
         "simulationId": config.get("simulation_id"),
@@ -105,6 +111,7 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         "initialPosts": len(actual_initial),
         "dynamicPosts": sum(post_counts.values()),
         "dynamicPostPersonas": dict(sorted(post_counts.items())),
+        "scheduledBuyers": sorted(active_buyers),
         "attributionErrors": attribution_errors,
         "missingInitialPostAgents": missing_initial_posts,
         "unknownPostAgents": unknown_post_agents,

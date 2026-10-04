@@ -26,6 +26,14 @@ local Next.js UI and the `app` domain are therefore different applications;
 visual comparison between them is not deployment parity evidence. See
 [the UI parity observation](./ui-parity-observation-2026-09-26.md).
 
+The current source no longer has an implicit cloud-test login fallback. Its
+public menu links to `/login`, where a disabled-by-default server route can
+request a non-signup email link for an existing active account. The existing
+`/auth/callback` resolves one active onboarding account to its tenant runtime
+and now rechecks active tenant membership before handoff. None of this source
+change is deployed or accepted; email delivery, callback path, customer
+domain, and signed-in repeat-login evidence remain release gates.
+
 The legacy Cloud Run service is publicly reachable but its `/`, `/healthz`, and
 documented `/status` routes returned `404` during this verification. Its source
 image commit is not present in this repository. It must not be used as a

@@ -144,6 +144,19 @@ refuses an AI approval without it. Rerun after any source change. This local
 receipt covers nine deterministic cases only: it does not replace hosted job,
 ledger, trace, model-quality, or customer-journey evidence for
 `--ai-engineering-result passed`.
+The public-journey gate also requires `--customer-journey-report` when publishing.
+That redacted JSON receipt must have `schemaVersion: 1`, the exact clean
+`sourceCommit`, `environment`, `vercelDeployment`, `cloudRunRevision`,
+`imageDigest`, an ISO `checkedAt`, and exactly one passed case for each
+`J01` through `J15` in the customer-journey matrix. Each case needs at least
+one `evidence` entry with a private `gs://` or redacted `docs/evidence/` `ref`
+and its 64-hex `sha256`. The verifier checks completeness and release identity,
+and reads each referenced artifact (at most 1 MB) to verify its hash. Private
+`gs://` receipts require read access and may incur Cloud Storage request costs;
+do not run this against an unreviewed bucket or billing project. Hash validity
+does not prove that an observation satisfies its J-row: the named reviewer must
+inspect the receipts and avoid putting customer content or secrets in the
+report. A plain `--public-journey-result passed` is insufficient.
 Do not use placeholder values or mark a missing test as passed — the ledger
 accepts a partial record, but `--strict` will fail loud on anything still
 missing rather than let it through. See
@@ -163,6 +176,7 @@ npm run publish:release-ledger -- \
   --migration-file product-experience/supabase-client-runtime-source-pack-graph.sql \
   --rollback-cloud-run-revision <known-good-revision> \
   --rollback-vercel-deployment <known-good-deployment-id> \
+  --customer-journey-report <reviewed-redacted-journey-report.json> \
   --public-journey-result passed \
   --stripe-smoke-result passed \
   --provider-catalog-result passed \

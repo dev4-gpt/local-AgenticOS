@@ -127,3 +127,26 @@ model allowlist required by `scripts/run-client-runtime-local.mjs` for signed-in
 local parity. Do not disable authentication or copy production secrets to
 make a visual comparison pass. Obtain an approved staging env file and compare
 the same workspace route, identity, build revision, and responsive viewports.
+
+**Signed-in Memory recheck, 2026-10-03 20:50 UTC:** The existing Chrome window
+at `https://veloce-cloud-test-1075094991117.asia-south1.run.app/room` was
+already authenticated and showed the client-edition Mastermind with an earlier
+Hermes reply; no new model request was sent. Navigating within that session to
+`/memory` showed 24 tenant memories, 29 graph nodes, 57 edges, Markdown
+import/export, note creation, graph refresh, and Recent/Search/Graph/Galaxy.
+After the page finished loading, it still did **not** show the reviewed JSON
+source-pack control mounted by the current checkout's
+`src/components/ClientDataWorkspace.tsx` and
+`src/components/ClientCommunitySourceImport.tsx`. No record was changed, and
+no tenant content or credentials were retained in this note. This confirms a
+visible cloud/current-source surface gap on the explicit `asia-south1.run.app`
+URL. It does not establish which revision is deployed, whether its source-import
+API or migration exists, or whether current local and cloud sessions can be
+compared under the same identity. Source import and UI parity remain unaccepted.
+The pinned Cloud Run console tab targeted
+`projects/veloce-agenticos-2026/locations/asia-south1/services/veloce-cloud-test`
+under `aryamans.dev96@gmail.com` and displayed "You need additional access"
+with `run.services.get (Missing)`. That account cannot supply the revision or
+image digest from the console. No IAM change was attempted; an authorized owner
+must provide read-only deployment identity before candidate parity can be
+certified.

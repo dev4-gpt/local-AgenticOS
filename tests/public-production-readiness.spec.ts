@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolve } from "node:path";
@@ -63,6 +63,68 @@ test("release evidence requires the setup and source-graph migrations and new ou
     expect(failures).toContain("release_gate:buyerSimulationResult_approved");
     expect(failures).toContain("release_gate:aiEngineeringResult_approved");
     expect(failures).toContain("release_gate:ai_evaluation_local_evidence");
+    expect(failures).toContain("release_gate:customer_journey_evidence");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("customer journey approval requires fifteen current-deployment receipts", () => {
+  const dir = mkdtempSync(join(tmpdir(), "veloce-journey-ledger-"));
+  try {
+    const file = join(dir, "record.json");
+    const commit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: process.cwd(), encoding: "utf8" }).stdout.trim();
+    const deployment = {
+      environment: "staging", vercelDeployment: "reviewed-vercel-deployment",
+      cloudRunRevision: "reviewed-cloud-run-revision", imageDigest: `sha256:${"a".repeat(64)}`,
+      publicJourneyResult: "passed",
+    };
+    const evidenceFiles = readdirSync(resolve(process.cwd(), "docs/evidence")).filter((name) => name.endsWith(".json")).sort().slice(0, 15);
+    expect(evidenceFiles).toHaveLength(15);
+    const report = {
+      schemaVersion: 1, sourceCommit: commit, ...deployment, checkedAt: "2026-10-03T20:00:00Z",
+      cases: Array.from({ length: 15 }, (_, index) => ({
+        id: `J${String(index + 1).padStart(2, "0")}`, status: "passed",
+        evidence: [{
+          ref: `docs/evidence/${evidenceFiles[index]}`,
+          sha256: createHash("sha256").update(readFileSync(resolve(process.cwd(), "docs/evidence", evidenceFiles[index]))).digest("hex"),
+        }],
+      })),
+    };
+    const inspect = (customerJourneyReport: unknown) => {
+      writeFileSync(file, JSON.stringify({ schemaVersion: 2, source: { commit }, deployment, customerJourneyReport }));
+      const result = spawnSync(process.execPath, ["scripts/verify-production-readiness.mjs", "--allow-dirty", "--ledger-record-file", file], {
+        cwd: process.cwd(), encoding: "utf8", env: { ...process.env, VELOCE_RELEASE_LEDGER_BUCKET: "" },
+      });
+      expect(result.status).toBe(0);
+      return JSON.parse(result.stdout).failures as string[];
+    };
+    expect(inspect(null)).toContain("release_gate:customer_journey_evidence");
+    expect(inspect({ ...report, sourceCommit: "0".repeat(40) })).toContain("release_gate:customer_journey_evidence");
+    expect(inspect({ ...report, cloudRunRevision: "other-revision" })).toContain("release_gate:customer_journey_evidence");
+    expect(inspect({ ...report, cases: report.cases.slice(1) })).toContain("release_gate:customer_journey_evidence");
+    expect(inspect({ ...report, cases: [report.cases[0], ...report.cases.slice(0, 14)] })).toContain("release_gate:customer_journey_evidence");
+    expect(inspect({ ...report, checkedAt: "yesterday" })).toContain("release_gate:customer_journey_evidence");
+    expect(inspect({ ...report, cases: [{ ...report.cases[0], evidence: [] }, ...report.cases.slice(1)] })).toContain("release_gate:customer_journey_evidence");
+    expect(inspect({ ...report, cases: [{ ...report.cases[0], evidence: [{ ...report.cases[0].evidence[0], sha256: "0".repeat(64) }] }, ...report.cases.slice(1)] })).toContain("release_gate:customer_journey_evidence");
+    expect(inspect({ ...report, cases: [{ ...report.cases[0], evidence: [{ ref: "docs/evidence/missing-receipt.json", sha256: "0".repeat(64) }] }, ...report.cases.slice(1)] })).toContain("release_gate:customer_journey_evidence");
+    const missingPrivateReceipt = { ...report, cases: [{ ...report.cases[0], evidence: [{ ref: "gs://reviewed-evidence/missing.json", sha256: "0".repeat(64) }] }, ...report.cases.slice(1)] };
+    writeFileSync(file, JSON.stringify({ schemaVersion: 2, source: { commit }, deployment, customerJourneyReport: missingPrivateReceipt }));
+    const offline = spawnSync(process.execPath, ["scripts/verify-production-readiness.mjs", "--allow-dirty", "--ledger-record-file", file], {
+      cwd: process.cwd(), encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin", VELOCE_RELEASE_LEDGER_BUCKET: "" },
+    });
+    expect(JSON.parse(offline.stdout).failures).toContain("release_gate:customer_journey_evidence");
+    expect(inspect(report)).not.toContain("release_gate:customer_journey_evidence");
+
+    const reportFile = join(dir, "journey.json");
+    writeFileSync(reportFile, JSON.stringify(report));
+    const publish = spawnSync(process.execPath, [
+      "scripts/verify-production-readiness.mjs", "--publish-ledger", "--allow-dirty",
+      "--environment", deployment.environment, "--vercel-deployment", deployment.vercelDeployment,
+      "--cloud-run-revision", deployment.cloudRunRevision, "--image-digest", deployment.imageDigest,
+      "--public-journey-result", "passed", "--customer-journey-report", reportFile,
+    ], { cwd: process.cwd(), encoding: "utf8", env: { ...process.env, VELOCE_RELEASE_LEDGER_BUCKET: "" } });
+    expect(publish.status).toBe(1);
+    expect(JSON.parse(publish.stdout).failures).not.toContain("release_gate:customer_journey_evidence");
+    expect(JSON.parse(publish.stdout).failures).toContain("release_gate:ledger_bucket_not_configured");
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

@@ -10,13 +10,14 @@ Current production link: <https://product-experience-five.vercel.app>
 It is not the persistent client runtime. Do not point it at the private 3939
 operator workspace in production.
 
-Current runtime dropdown:
+Last observed deployed runtime dropdown (not the current source default):
 
 - `Request runtime` -> <https://product-experience-five.vercel.app/start>
 - `Client login` -> <https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2F>
 
 The `Client login` URL is the first internal GCP Cloud Run test runtime. It is
 not the permanent shared runtime for all future clients.
+Current source instead links to `/login`; this change is not deployed.
 
 ## Gated Runtime Intake
 
@@ -120,28 +121,22 @@ Set this only after an authenticated, client-safe runtime exists:
 NEXT_PUBLIC_APP_URL=
 ```
 
-For a single approved test runtime:
+The source `Client login` menu opens `/login`, never one tenant's Cloud Run
+URL. The page requests a one-time email link only for an active, uniquely
+matched onboarding account. Supabase Auth must not create a user from this
+request. Its existing `/auth/callback` verifies the session, resolves the
+tenant, and checks active membership before handoff.
 
-```bash
-NEXT_PUBLIC_CLIENT_RUNTIME_URL=https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2F
-NEXT_PUBLIC_ALLOW_LOCAL_CLIENT_RUNTIME_LINK=0
-```
-
-For an owner-only local test, you may temporarily set both values in the
-Vercel project:
-
-```bash
-NEXT_PUBLIC_CLIENT_RUNTIME_URL=http://127.0.0.1:3940/login?next=%2F
-NEXT_PUBLIC_ALLOW_LOCAL_CLIENT_RUNTIME_LINK=1
-```
-
-That link opens the visitor's own computer, so it is useful only when you are
-testing from the same machine. Replace it with the Cloud Run URL before
-sharing the product page publicly and set the flag back to `0`.
-
-The source has a production-safe Cloud Run fallback in `Header.tsx`, but Vercel
-environment variables should still be the source of truth once multiple client
-links exist.
+Repeat login is disabled by default. To test it in a reviewed staging
+deployment, set server-side `CLIENT_LOGIN_ENABLED=1`, `SUPABASE_ANON_KEY`,
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and the exact HTTPS
+`PUBLIC_APP_URL` origin. Apply and verify the durable public request limiter;
+this login route fails closed if it is unavailable. Allowlist
+`PUBLIC_APP_URL/auth/callback` in Supabase Auth, inspect the Magic Link email
+template, and prove that its delivered link preserves that callback path.
+Run the signed-in journey, revoked-membership denial, and email-abuse tests
+before enabling on the public deployment. No credential belongs in a
+`NEXT_PUBLIC_*` variable.
 
 When `NEXT_PUBLIC_APP_URL` is unset, feature cards route to the contact section
 instead of localhost.

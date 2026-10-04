@@ -6,16 +6,28 @@ The public website is open to everyone. Activation is governed: a request is pen
 
 - `veloceos.cloud`: product, catalog, pricing, public onboarding, legal, and support.
 - `app.veloceos.cloud`: currently the editorial `product-experience` site with
-  a link to one approved test runtime. An authenticated shared portal at this
-  domain is a future topology, not the live state. Test credential and credit
-  pages against the exact tenant Cloud Run URL until shared routing is proven.
+  a live link to one approved test runtime. Current source adds a shared
+  `/login` entry, but it is not deployed or accepted. Test credential and
+  credit pages against the exact tenant Cloud Run URL until shared routing is proven.
 - Tenant Cloud Run URLs remain the initial isolation boundary. Add branded tenant subdomains only after shared-portal routing is proven.
+
+Current source sends `Client login` to `/login`, not to a globally configured
+tenant URL. The server-side request route is off unless `CLIENT_LOGIN_ENABLED=1`.
+It requires a Supabase publishable/anon key, the existing service-role lookup,
+an exact HTTPS `PUBLIC_APP_URL`, and a working durable rate limiter. Unknown,
+inactive, or ambiguous accounts receive the same generic acknowledgement and
+no Auth email; existing active accounts receive a non-signup Supabase Magic
+Link. The callback rechecks active tenant membership before handoff. Before
+live activation, inspect a delivered email for the exact allowlisted callback
+path, verify rate-limit failure behavior, run J08/J13 with an approved tenant,
+and prove revoked access cannot reach a workspace. None of this changes the
+currently deployed test-runtime link until a reviewed release.
 
 Configure both custom domains at the hosting layer and keep Cloudflare DNS records for the active hosting targets. Do not point the public domain at a tenant runtime directly.
 
 ## Required server configuration
 
-`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `PUBLIC_EMAIL_FROM`, `LEAD_NOTIFICATION_*`, `PUBLIC_APP_URL`, `PUBLIC_SITE_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_SETUP_PRICE_ID`, `STRIPE_PLATFORM_PRICE_ID`, `STRIPE_CREDIT_PRICE_ID`, `CONTROL_PLANE_OPERATOR_SECRET`, `CONTROL_PLANE_WORKER_TOKEN`, and `CONTROL_PLANE_PROVISIONER_URL` are server-side values. Add `TURNSTILE_SECRET_KEY` when abuse-challenge enforcement is enabled. Never expose these as `NEXT_PUBLIC_*` values.
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `CLIENT_LOGIN_ENABLED`, `RESEND_API_KEY`, `PUBLIC_EMAIL_FROM`, `LEAD_NOTIFICATION_*`, `PUBLIC_APP_URL`, `PUBLIC_SITE_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_SETUP_PRICE_ID`, `STRIPE_PLATFORM_PRICE_ID`, `STRIPE_CREDIT_PRICE_ID`, `CONTROL_PLANE_OPERATOR_SECRET`, `CONTROL_PLANE_WORKER_TOKEN`, and `CONTROL_PLANE_PROVISIONER_URL` are server-side values. Add `TURNSTILE_SECRET_KEY` when abuse-challenge enforcement is enabled. Never expose these as `NEXT_PUBLIC_*` values.
 
 The Vercel app authenticates to the public Cloud Run provisioner through short-lived Vercel OIDC federation. Add these non-secret Production configuration values only after the GCP Workload Identity Pool and dedicated invoker identity exist:
 
