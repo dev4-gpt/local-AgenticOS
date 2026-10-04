@@ -145,6 +145,13 @@ const requiredMigrations = [
   { file: "product-experience/supabase-v46-onboarding-setup-token.sql", gate: "setup_migration_attached" },
   { file: "product-experience/supabase-client-runtime-source-pack-graph.sql", gate: "source_graph_migration_attached" },
 ];
+const deploymentIdentityKeys = ["vercelDeployment", "cloudRunRevision", "imageDigest"];
+const releaseOutcomeKeys = ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "sourceImportResult", "uiParityResult", "buyerSimulationResult", "aiEngineeringResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"];
+const ledgerOnlyGates = [
+  "ai_evaluation_local_evidence", "customer_journey_evidence", "migration_evidence_attached",
+  ...requiredMigrations.map(({ gate }) => gate), "test_results_attached", "all_tests_passed",
+  ...deploymentIdentityKeys, ...releaseOutcomeKeys.map((key) => `${key}_approved`), "rollback_target",
+];
 const MAX_JOURNEY_EVIDENCE_BYTES = 1_000_000;
 function missingMigrationGates(applied) {
   return requiredMigrations.filter(({ file }) => {
@@ -225,14 +232,14 @@ if (!publishLedger) {
     if (!valueAfter("--release-id") && ledgerRecord.source?.commit !== commit) releaseGateFailures.push("release_ledger_commit_mismatch");
     if (!validLocalAiEvaluation(ledgerRecord.aiEvaluationLocal, ledgerRecord.source?.commit)) releaseGateFailures.push("ai_evaluation_local_evidence");
     if (!validCustomerJourneyReport(ledgerRecord.customerJourneyReport, ledgerRecord.source?.commit, ledgerRecord.deployment, evidenceBytes)) releaseGateFailures.push("customer_journey_evidence");
-    for (const key of ["vercelDeployment", "cloudRunRevision", "imageDigest"]) {
+    for (const key of deploymentIdentityKeys) {
       if (!ledgerRecord.deployment?.[key]) releaseGateFailures.push(key);
     }
     if (!ledgerRecord.migration?.applied?.length) releaseGateFailures.push("migration_evidence_attached");
     releaseGateFailures.push(...missingMigrationGates(ledgerRecord.migration?.applied || []));
     if (!Object.keys(ledgerRecord.tests || {}).length) releaseGateFailures.push("test_results_attached");
     if (Object.values(ledgerRecord.tests || {}).some((result) => result !== "passed")) releaseGateFailures.push("all_tests_passed");
-    for (const key of ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "sourceImportResult", "uiParityResult", "buyerSimulationResult", "aiEngineeringResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"]) {
+    for (const key of releaseOutcomeKeys) {
       const value = ledgerRecord.deployment?.[key];
       if (value !== "approved" && value !== "passed") releaseGateFailures.push(`${key}_approved`);
     }
@@ -242,18 +249,19 @@ if (!publishLedger) {
 if (publishLedger) {
   if (!ledgerBucket) releaseGateFailures.push("ledger_bucket_not_configured");
   if (!validCustomerJourneyReport(customerJourneyReport, commit, deployment, evidenceBytes)) releaseGateFailures.push("customer_journey_evidence");
-  for (const key of ["vercelDeployment", "cloudRunRevision", "imageDigest"]) {
+  for (const key of deploymentIdentityKeys) {
     if (!deployment[key]) releaseGateFailures.push(key);
   }
   if (!migrationApplied.length || migrationApplied.some((item) => !item.sha256)) releaseGateFailures.push("migration_evidence_attached");
   releaseGateFailures.push(...missingMigrationGates(migrationApplied));
   if (!Object.keys(testResults).length) releaseGateFailures.push("test_results_attached");
-  for (const key of ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "sourceImportResult", "uiParityResult", "buyerSimulationResult", "aiEngineeringResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"]) {
+  for (const key of releaseOutcomeKeys) {
     if (!["approved", "passed"].includes(deployment[key])) releaseGateFailures.push(`${key}_approved`);
   }
   if (!rollbackTarget.cloudRunRevision && !rollbackTarget.vercelDeploymentId) releaseGateFailures.push("rollback_target");
 }
 const evidenceEnvironment = publishLedger ? deployment.environment : ledgerRecord?.deployment?.environment;
+const notEvaluated = !publishLedger && !ledgerRecord ? ledgerOnlyGates : [];
 if (strict && !["production", "staging"].includes(evidenceEnvironment)) releaseGateFailures.push("release_environment");
 if (strict && !publishLedger && deployment.environment !== "unknown" && evidenceEnvironment !== deployment.environment) releaseGateFailures.push("release_environment_mismatch");
 if (strict) for (const gate of releaseGateFailures) failures.push(`Strict release evidence missing or failed: ${gate}`);
@@ -302,6 +310,7 @@ const evidence = {
   releaseReady: failures.length === 0 && releaseGateFailures.length === 0,
   failures,
   releaseGateFailures,
+  notEvaluated,
   warnings,
   ledgerRecordUsed: ledgerRecord ? { path: ledgerRecordPath, generatedAt: ledgerRecord.generatedAt } : null,
 };
@@ -325,6 +334,7 @@ console.log(JSON.stringify({
   branch,
   evidencePath: outputPath ? resolve(outputPath) : null,
   failures: [...failures, ...releaseGateFailures.map((gate) => `release_gate:${gate}`)],
+  notEvaluated,
   warnings,
 }, null, 2));
 if (strict && failures.length) process.exit(1);

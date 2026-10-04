@@ -135,3 +135,8 @@ npm run verify:production-readiness -- --strict --ledger-bucket <reviewed-ledger
 If no ledger record exists yet for the current commit, both modes report
 `release_ledger_record_missing` (as a warning in non-strict mode, as a hard
 failure under `--strict`) rather than silently trusting anything.
+The output also lists ledger-backed checks under `notEvaluated`; they are
+unknown, not passed, even if local source checks ran. In the ordinary
+no-bucket check, `ledger_bucket_not_configured` is the blocking failure and
+the ledger-backed checks remain unevaluated. Only a published record bound to
+the current commit can clear that uncertainty.

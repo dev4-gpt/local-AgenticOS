@@ -13,6 +13,12 @@ test("release verifier records the current revision without secrets", () => {
   expect(result.status).toBe(0);
   expect(result.stdout).toContain('"releaseReady": false');
   expect(result.stdout).toContain("release_gate:ledger_bucket_not_configured");
+  const report = JSON.parse(result.stdout);
+  expect(report.notEvaluated).toContain("customer_journey_evidence");
+  expect(report.notEvaluated).toContain("sourceImportResult_approved");
+  expect(report.notEvaluated).toContain("tenantIsolationResult_approved");
+  expect(report.notEvaluated).toContain("buyerSimulationResult_approved");
+  expect(report.notEvaluated).toContain("legalApproval_approved");
   expect(result.stdout).not.toContain("veloce-agenticos-2026-veloce-release-ledger");
   expect(result.stdout).not.toMatch(/sk-[A-Za-z0-9_-]{16,}|service_role|api[_ -]?key\s*[:=]/i);
 });
@@ -56,6 +62,7 @@ test("release evidence requires the setup and source-graph migrations and new ou
     });
     expect(result.status).toBe(0);
     const failures = JSON.parse(result.stdout).failures as string[];
+    expect(JSON.parse(result.stdout).notEvaluated).toEqual([]);
     expect(failures).toContain("release_gate:setup_migration_attached");
     expect(failures).toContain("release_gate:source_graph_migration_attached");
     expect(failures).toContain("release_gate:sourceImportResult_approved");
