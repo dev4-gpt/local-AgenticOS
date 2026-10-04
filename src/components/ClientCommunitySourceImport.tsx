@@ -59,13 +59,12 @@ export default function ClientCommunitySourceImport({ onImported }: { onImported
       const selected = await selectClientSourceBatches(files);
       setBatches(selected.batches);
       if (selected.sourceCount !== null && selected.linkCount !== null && selected.skippedCount !== null) setExpected({ sources: selected.sourceCount, links: selected.linkCount, skipped: selected.skippedCount });
-      await reviewBatch(selected.batches[0]);
     } catch (reason) { setError(selectionError(reason)); }
     finally { setBusy(false); }
   }
 
   async function retryReview() {
-    if (busy || preview || !batches[batchIndex]) return;
+    if (busy || preview || !approved || !batches[batchIndex]) return;
     setBusy(true); setError("");
     try { await reviewBatch(batches[batchIndex]); }
     catch (reason) { setError(selectionError(reason)); }
@@ -83,11 +82,7 @@ export default function ClientCommunitySourceImport({ onImported }: { onImported
       setResult(`${nextIndex}/${batches.length} batches imported · ${data.result?.imported ?? 0} added · ${data.result?.updated ?? 0} updated · ${data.result?.duplicates ?? 0} unchanged in this batch`);
       setPreview(null); setApproved(false);
       try { await onImported(); } catch { setError("The batch imported, but Memory did not refresh. Reload Memory to view it."); }
-      if (nextIndex < batches.length) {
-        setBatchIndex(nextIndex);
-        try { await reviewBatch(batches[nextIndex]); }
-        catch (reason) { setError(selectionError(reason)); }
-      }
+      if (nextIndex < batches.length) setBatchIndex(nextIndex);
     } catch (reason) { setError(selectionError(reason)); }
     finally { setBusy(false); }
   }
@@ -100,7 +95,8 @@ export default function ClientCommunitySourceImport({ onImported }: { onImported
       {result && <span className="inline-flex items-center gap-1 text-xs text-emerald-300"><Check size={13} />{result}</span>}
     </div>
     {batches.length > 0 && <p className="mt-3 text-xs" style={{ color: "var(--cream-dim)" }}>{completed}/{batches.length} batches imported · {totals.sources} sources · {totals.links} links{expected && ` of ${expected.sources} sources and ${expected.links} links in the supplied manifest`}</p>}
-    {!preview && completed < batches.length && batches[batchIndex] && !busy && <button type="button" onClick={() => void retryReview()} className="mt-3 text-xs underline" style={{ color: "var(--cream-soft)" }}>Retry review of batch {batchIndex + 1}</button>}
+    {completed < batches.length && batches[batchIndex] && <label className="mt-3 flex items-start gap-2 text-xs" style={{ color: "var(--cream-dim)" }}><input type="checkbox" checked={approved} disabled={busy} onChange={(event) => setApproved(event.target.checked)} />I have permission to upload and use this batch&apos;s content in this tenant.</label>}
+    {!preview && completed < batches.length && batches[batchIndex] && <button type="button" onClick={() => void retryReview()} disabled={!approved || busy} className="mt-3 text-xs underline disabled:opacity-40" style={{ color: "var(--cream-soft)" }}>Review batch {batchIndex + 1}</button>}
     {preview && <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--line-soft)" }}>
       <p className="text-xs break-words" style={{ color: "var(--cream-dim)" }}>Batch {batchIndex + 1}/{batches.length}: {batches[batchIndex]?.file.name} · {preview.sourceCount} sources · {preview.linkCount} links · {preview.skippedCount} skipped in export</p>
       {preview.skippedCount > 0 && <details className="mt-3 text-xs" style={{ color: "var(--cream-dim)" }}><summary className="cursor-pointer">Review skipped entries</summary><ul className="mt-2 max-h-36 list-disc overflow-auto pl-5">{preview.skipped.map((item, index) => <li key={`${index}-${item}`} className="py-0.5 break-words">{item}</li>)}</ul></details>}
@@ -115,7 +111,6 @@ export default function ClientCommunitySourceImport({ onImported }: { onImported
           </div>
         </details>)}
       </div>
-      <label className="mt-3 flex items-start gap-2 text-xs" style={{ color: "var(--cream-dim)" }}><input type="checkbox" checked={approved} onChange={(event) => setApproved(event.target.checked)} />I have permission to import and use this content.</label>
       <button type="button" onClick={() => void importPack()} disabled={!approved || busy} className="mt-3 inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold disabled:opacity-40" style={{ background: "var(--gold-deep)", color: "#111827" }}>{busy ? <LoaderCircle size={14} className="animate-spin" /> : <Upload size={14} />}Import sources</button>
     </div>}
     {error && <p role="alert" className="mt-3 text-xs text-rose-300">{error}</p>}
