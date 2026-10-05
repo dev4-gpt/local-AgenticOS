@@ -217,16 +217,20 @@ and rollback evidence. The local Delivery observation does not satisfy hosted
 production release evidence.
 
 **Local/cloud Delivery comparison, 2026-10-05:** In the existing signed-in
-Chrome Work profile, `/deliver` initially displayed zero packages in both the
-local client at `127.0.0.1:3939` and the Cloud Run test service. Refreshing
-history on each page loaded the same two successful entries: `v100 verify
-deliver` and `Delivery · Monthly package`. Selecting the verification entry
-showed the same retained `v100-verify-deliver.md` artifact detail and signed
-download control. The cloud page reported 0 of 10,000 credits used this month
-and `$0.00`. No download, write, send, or provider request occurred. This is a
-read-only visual/functional match for Delivery in the observed session; it is
-not evidence that all routes match, that both origins use identical auth
-claims, or that either page refreshes history reliably without user action.
+Chrome Work profile, `/deliver` first rendered an empty-history message while
+the client-runtime request was still pending. Refreshing history on each page
+loaded the same two successful entries: `v100 verify deliver` and
+`Delivery · Monthly package`. Selecting the verification entry showed the
+same retained `v100-verify-deliver.md` artifact detail and signed-download
+control. The cloud page reported 0 of 10,000 credits used this month and
+`$0.00`. No download, write, send, or provider request occurred. The
+`ClientStudioWorkspace` initial and manual-refresh states now distinguish
+loading from a genuinely empty history. A fresh optimized local build passed
+typecheck, scoped ESLint, and production compilation; after restart on the
+same signed-in origin, it automatically loaded the two existing entries. The
+cloud deployment was not changed. This is a read-only Delivery check, not
+evidence that all routes match, that both origins use identical auth claims,
+or that either page has production-ready end-to-end coverage.
 
 **Cloud Memory recheck, 2026-10-05:** The same Chrome Work profile opened the
 Cloud Run `/memory` route. It showed 24 tenant memories, 33 graph nodes, and 57

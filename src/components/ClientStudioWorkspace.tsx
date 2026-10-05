@@ -30,19 +30,28 @@ export default function ClientStudioWorkspace({ surface }: { surface: ClientWork
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (showLoading = false) => {
+    if (showLoading) setHistoryLoading(true);
     const response = await fetch(`/api/client-runtime/executions?surface=${encodeURIComponent(surface)}`, { cache: "no-store" }).catch(() => null);
     const data = await response?.json().catch(() => null);
-    if (!response?.ok) { setError(typeof data?.error === "string" ? data.error : "workspace_execution_read_failed"); return; }
+    if (!response?.ok) {
+      setError(typeof data?.error === "string" ? data.error : "workspace_execution_read_failed");
+      setHistoryLoading(false);
+      return;
+    }
     setError("");
     const next = Array.isArray(data?.executions) ? data.executions as Execution[] : [];
     setExecutions(next);
     setSelectedId((current) => current && next.some((item) => item.id === current) ? current : (next[0]?.id ?? null));
-  }, [surface]);
+    setHistoryLoading(false);
+  }, [setSelectedId, surface]);
 
-  useEffect(() => { setValues({}); setTab("build"); void load(); }, [surface, load]);
+  // This effect syncs the route's execution history from the server.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void load(); }, [load]);
 
   const inFlight = executions.some((item) => item.status === "queued" || item.status === "running");
   useEffect(() => {
@@ -103,7 +112,7 @@ export default function ClientStudioWorkspace({ surface }: { surface: ClientWork
         {(["build", "gallery"] as const).map((item) => <button key={item} type="button" onClick={() => setTab(item)}
           className="border-b-2 px-3 py-2 text-[11px] font-medium capitalize"
           style={{ borderColor: tab === item ? config.accent : "transparent", color: tab === item ? "var(--cream)" : "var(--cream-mute)" }}>
-          {item === "gallery" ? `${config.outputNoun} · ${shipped.length}` : config.action}
+          {item === "gallery" ? historyLoading && shipped.length === 0 ? "Loading…" : `${config.outputNoun} · ${shipped.length}` : config.action}
         </button>)}
       </div>
     </section>
@@ -146,10 +155,10 @@ export default function ClientStudioWorkspace({ surface }: { surface: ClientWork
     </section> : <section className="panel p-4 md:p-5">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-[12px] font-semibold" style={{ color: "var(--cream)" }}>Everything shipped from this surface</p>
-        <button type="button" onClick={() => void load()} title="Refresh" className="p-1.5" style={{ color: "var(--cream-mute)" }}><RotateCw size={13} /></button>
+        <button type="button" onClick={() => void load(true)} title="Refresh" className="p-1.5" style={{ color: "var(--cream-mute)" }}>{historyLoading ? <LoaderCircle size={13} className="animate-spin" /> : <RotateCw size={13} />}</button>
       </div>
       {shipped.length === 0 ? <p className="py-8 text-center text-[11.5px]" style={{ color: "var(--cream-mute)" }}>
-        No {config.outputNoun} yet. Anything you {config.action.toLowerCase()} lands here with a signed download.
+        {historyLoading ? `Loading ${config.outputNoun}…` : `No ${config.outputNoun} yet. Anything you ${config.action.toLowerCase()} lands here with a signed download.`}
       </p> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {shipped.map((item) => <motion.div key={item.id} layout className="flex flex-col overflow-hidden rounded-xl border" style={{ borderColor: "var(--line-soft)", background: "rgba(255,255,255,0.025)" }}>
           {item.previewHtml ? <button type="button" onClick={() => void download(item.artifactId!)} className="relative block aspect-[16/10] w-full overflow-hidden" style={{ background: "#05080d" }}>
@@ -171,10 +180,10 @@ export default function ClientStudioWorkspace({ surface }: { surface: ClientWork
       <div className="panel overflow-hidden">
         <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--line-soft)" }}>
           <h2 className="text-[12px] font-semibold" style={{ color: "var(--cream)" }}>Run history</h2>
-          <button type="button" onClick={() => void load()} title="Refresh history" className="p-1.5" style={{ color: "var(--cream-mute)" }}><RotateCw size={13} /></button>
+          <button type="button" onClick={() => void load(true)} title="Refresh history" className="p-1.5" style={{ color: "var(--cream-mute)" }}>{historyLoading ? <LoaderCircle size={13} className="animate-spin" /> : <RotateCw size={13} />}</button>
         </div>
         <div className="max-h-[380px] overflow-y-auto p-2">
-          {executions.length === 0 && <p className="p-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>Nothing run here yet.</p>}
+          {executions.length === 0 && <p className="p-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>{historyLoading ? "Loading run history…" : "Nothing run here yet."}</p>}
           {executions.map((item) => <button key={item.id} type="button" onClick={() => setSelectedId(item.id)}
             className="mb-2 w-full rounded-md border p-2.5 text-left"
             style={{ borderColor: item.id === selectedId ? `${config.accent}80` : "var(--line-soft)", background: item.id === selectedId ? `${config.accent}14` : "transparent" }}>

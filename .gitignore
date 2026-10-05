@@ -22,6 +22,7 @@ __pycache__/
 /.next-client-test/
 /.next-client/
 /.next-client-prod/
+/.next-client-prod-*/
 /.next-local-*/
 
 # Standalone public-site build output
