@@ -103,3 +103,25 @@ The previously used `/private/tmp/agentos-mirofish-pilot/.env` is missing; its
 location was requested from the user without requesting key values. The live
 repeat remains pending that private configuration. Historical seed hashes above
 refer to earlier preparations, not the revised brief.
+
+## Current repeat preflight, 2026-10-05
+
+The persistent research checkout remains clean on `buyer-pilot-telemetry`.
+Its private `.env` now contains the LLM key, endpoint, and model settings, but
+no `ZEP_API_KEY`; the old temporary `.env` is still absent. Only configured
+variable names were inspected, never printed values. No provider call was made.
+
+Prepared simulation `sim_3b7bfff26e22` still matches the configuration and CSV
+hashes above. Its v2 profile manifest matches both the CSV and the current
+product brief. It has no run-state file or simulation database, so it remains
+prepared, not executed. The runner's application configuration requires the
+Zep key; do not insert a placeholder or bypass validation to claim a run.
+
+Re-auditing retained run `sim_bfa570ba2a8a` with the current auditor confirms
+two dynamic posts, correct attribution, and completed telemetry, but rejects
+the run's profile-workflow coverage: seven of ten profiles lack their assigned
+first workflow. `pilotEvidencePassed` and `marketValidation` are both false.
+This is consistent with the later profile repair, not a new successful buyer
+evaluation. The next meaningful step is restoring private Zep configuration
+and executing the already-reviewed bounded repeat within the approved $0
+paid-spend limit, then reviewing the actual outputs and current audit result.
