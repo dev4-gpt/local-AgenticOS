@@ -241,6 +241,20 @@ no source-pack import control. No upload or write was attempted. This confirms
 the source-import UI is absent from the observed cloud deployment; the deployed
 revision, database migration state, and cause of the drift remain unknown.
 
+**Settled-state correction, 2026-10-05:** A later read-only Chrome comparison
+initially rendered 0/0/0 in both the local and Cloud Run Memory views while
+their requests were still loading. Refreshing the local graph and then
+returning to the Cloud Run tab showed 24 tenant memories, 33 nodes, and 57
+edges in both views. The earlier zero-count observation was a transient loading
+state, not evidence that the cloud tenant was empty. The browser did not expose
+a verifiable tenant identifier, so matching counts do not establish that both
+origins use the same tenant. The `Community sources` controls remain present
+locally and absent in the observed Cloud Run screen. Current source code mounts
+`ClientCommunitySourceImport` whenever `ClientDataWorkspace` is on the Memory
+surface; no local-only feature flag is present at that mount. The deployed
+revision and migration state remain unverified, and no source pack was
+uploaded.
+
 **Public login deployment gap, 2026-10-05:** `https://app.veloceos.cloud/login`
 still returns Vercel's 404 page; this was verified in the user's Chrome Work
 window. Read-only `vercel inspect` identifies the production alias as
