@@ -133,3 +133,19 @@ Those routes require both an authenticated user and `client_member` approval;
 the precise failed check still needs verification. Do not bypass membership or
 assume the older cloud-test login grants internal-beta access. The signed-in
 data journey therefore remains unaccepted.
+
+**Membership diagnosis and login repair, 2026-10-05:** The live session now
+explicitly reports `authenticated: true`, `workspaceAuthorized: false`, and
+`accessError: tenant_membership_required`. The membership RPC returned a valid
+negative response, not a network/configuration error. Password login now checks
+the configured tenant before issuing cookies; the session endpoint separates
+account authentication from workspace authorization. The login page redirects
+only an authorized session and distinguishes denied access from a temporarily
+unavailable membership check. No membership, IAM, or CORS settings were changed.
+
+Nineteen focused authentication checks and six intercepted browser checks
+passed, covering non-members, malformed/unavailable membership responses,
+revocation between login and session verification, authorized redirects, and
+390px/1440px login layouts. Type checking and targeted lint passed. The real
+browser stayed on login with the membership-required message; full signed-in
+acceptance is still blocked pending an approved test-tenant member account.

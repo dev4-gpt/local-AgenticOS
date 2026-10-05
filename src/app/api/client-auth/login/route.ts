@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { authCookieNames, clientUserEmailAllowed, supabaseAuthConfig } from "@/lib/clientAuth";
+import { authCookieNames, clientMembershipForToken, clientUserEmailAllowed, supabaseAuthConfig } from "@/lib/clientAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,12 +23,17 @@ export async function POST(request: Request) {
   }).catch(() => null);
   if (!response?.ok) return NextResponse.json({ ok: false, error: "invalid_login" }, { status: 401 });
 
-  const session = await response.json() as { access_token?: string; refresh_token?: string; expires_in?: number; user?: { id?: string; email?: string } };
-  if (!session.access_token || !session.refresh_token || !session.user?.id) {
+  const session = await response.json().catch(() => null) as { access_token?: string; refresh_token?: string; expires_in?: number; user?: { id?: string; email?: string } } | null;
+  if (!session?.access_token || !session.refresh_token || !session.user?.id) {
     return NextResponse.json({ ok: false, error: "invalid_session" }, { status: 401 });
   }
   if (!clientUserEmailAllowed(session.user.email ?? email)) {
     return NextResponse.json({ ok: false, error: "client_user_not_approved" }, { status: 403 });
+  }
+  if (process.env.VELOCE_CLIENT_EDITION === "1") {
+    const membership = await clientMembershipForToken(session.access_token);
+    if (!membership.ok) return NextResponse.json({ ok: false, error: membership.error }, { status: 503, headers: { "cache-control": "no-store" } });
+    if (!membership.member) return NextResponse.json({ ok: false, error: "tenant_membership_required" }, { status: 403, headers: { "cache-control": "no-store" } });
   }
 
   const result = NextResponse.json({ ok: true, user: { id: session.user.id, email: session.user.email ?? email } }, { headers: { "cache-control": "no-store" } });
