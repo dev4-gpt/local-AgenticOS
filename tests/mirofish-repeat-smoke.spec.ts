@@ -38,13 +38,17 @@ test("repeat smoke accepts only a reviewed profile file bound to the original co
   const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
   const reviewed = "canonical buyer profiles";
   const cohort = "reviewed cohort";
+  const brief = "current product evidence";
   const manifest = {
-    schemaVersion: 1, preparation: "canonical-buyer-scenarios-v1", file: "profiles.csv",
+    schemaVersion: 2, preparation: "canonical-buyer-scenarios-v2", file: "profiles.csv",
     sourceSha256: "6ef07dc0fec27cc15f30dc5afe71ad1a6b855c6fd6e6f9e90ef2075f7d0e704c",
-    reviewedSha256: sha256(reviewed), cohortSha256: sha256(cohort), profileCount: 10, providerCalls: 0,
+    reviewedSha256: sha256(reviewed), cohortSha256: sha256(cohort), productBriefSha256: sha256(brief), profileCount: 10, providerCalls: 0,
   };
-  expect(validReviewedProfileManifest(manifest, Buffer.from(reviewed), Buffer.from(cohort))).toBe(true);
-  expect(validReviewedProfileManifest({ ...manifest, file: "../secrets.csv" }, Buffer.from(reviewed), Buffer.from(cohort))).toBe(false);
-  expect(validReviewedProfileManifest({ ...manifest, profileCount: 9 }, Buffer.from(reviewed), Buffer.from(cohort))).toBe(false);
-  expect(validReviewedProfileManifest(manifest, Buffer.from("changed"), Buffer.from(cohort))).toBe(false);
+  const check = (candidate = manifest, profiles = reviewed, product = brief) => validReviewedProfileManifest(candidate, Buffer.from(profiles), Buffer.from(cohort), Buffer.from(product));
+  expect(check()).toBe(true);
+  expect(check({ ...manifest, file: "../secrets.csv" })).toBe(false);
+  expect(check({ ...manifest, profileCount: 9 })).toBe(false);
+  expect(check(manifest, "changed")).toBe(false);
+  expect(check(manifest, reviewed, "new product evidence")).toBe(false);
+  expect(check({ ...manifest, schemaVersion: 1, preparation: "canonical-buyer-scenarios-v1" })).toBe(false);
 });

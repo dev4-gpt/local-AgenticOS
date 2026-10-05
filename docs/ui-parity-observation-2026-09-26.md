@@ -189,3 +189,16 @@ revision/image digest/source SHA and source-pack migration state remain unknown.
 No write or provider action was attempted. This is concrete deployment drift,
 not an accepted `ui-parity` result; compare again on an immutable deployed
 candidate at desktop and mobile sizes before closing that gate.
+
+**Local session follow-up, 2026-10-04:** After the user's sign-in confirmation,
+the in-app browser retained a Delivery page with `workspace_execution_read_failed`.
+Nothing was listening on port 3939, and navigation failed with connection refused.
+The existing production preview was restarted with the approved reduced env file
+and provider calls disabled. In Chrome's Work profile, local Memory loaded without
+a login prompt: 24 records, initially 29 nodes and 57 edges; after refreshing the
+map it displayed 33 nodes and 57 edges. No note, import, delivery, or provider job
+was submitted. The in-app browser separately redirected to login, so its session
+must not be conflated with Chrome's authenticated session. Chrome control was
+interrupted before Delivery could be rechecked. Authentication and Memory reads
+are verified locally; the Delivery error's current status and the full customer
+journey remain unverified. The preview reused the existing build, not a new release.

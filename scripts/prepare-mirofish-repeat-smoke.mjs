@@ -8,13 +8,14 @@ const SELECTED = new Set(["P00603", "P04949"]);
 
 function sha256(bytes) { return createHash("sha256").update(bytes).digest("hex"); }
 
-export function validReviewedProfileManifest(manifest, reviewedBytes, cohortBytes) {
-  return manifest?.schemaVersion === 1
-    && manifest.preparation === "canonical-buyer-scenarios-v1"
+export function validReviewedProfileManifest(manifest, reviewedBytes, cohortBytes, productBriefBytes) {
+  return manifest?.schemaVersion === 2
+    && manifest.preparation === "canonical-buyer-scenarios-v2"
     && typeof manifest.file === "string" && /^[a-zA-Z0-9._-]+\.csv$/.test(manifest.file)
     && manifest.sourceSha256 === SOURCE_PROFILES_SHA256
     && manifest.reviewedSha256 === sha256(reviewedBytes)
     && manifest.cohortSha256 === sha256(cohortBytes)
+    && manifest.productBriefSha256 === sha256(productBriefBytes)
     && manifest.profileCount === 10 && manifest.providerCalls === 0;
 }
 
@@ -77,7 +78,8 @@ async function main() {
   if (typeof manifest.file !== "string" || !/^[a-zA-Z0-9._-]+\.csv$/.test(manifest.file)) throw new Error("reviewed_profile_manifest_invalid");
   const profileBytes = await readFile(join(dirname(profileManifestPath), manifest.file));
   const cohortBytes = await readFile(join(process.cwd(), "evaluations/mirofish-buyer-micro-v1.json"));
-  if (!validReviewedProfileManifest(manifest, profileBytes, cohortBytes)) throw new Error("reviewed_profile_manifest_invalid");
+  const productBriefBytes = await readFile(join(process.cwd(), "docs/mirofish-buyer-pilot-seed.md"));
+  if (!validReviewedProfileManifest(manifest, profileBytes, cohortBytes, productBriefBytes)) throw new Error("reviewed_profile_manifest_invalid");
   const simulationId = `sim_${randomBytes(6).toString("hex")}`;
   const outputDir = join(outputRoot, simulationId);
   const config = prepareRepeatSmoke(JSON.parse(configBytes.toString("utf8")), simulationId);
@@ -85,6 +87,7 @@ async function main() {
   await mkdir(outputDir, { mode: 0o700 });
   await writeFile(join(outputDir, "simulation_config.json"), outputBytes, { mode: 0o600 });
   await writeFile(join(outputDir, "twitter_profiles.csv"), profileBytes, { mode: 0o600 });
+  await writeFile(join(outputDir, "profile-preparation.json"), `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
   process.stdout.write(`${JSON.stringify({ simulationId, outputDir, configSha256: sha256(outputBytes), profileSha256: sha256(profileBytes), profilePreparation: manifest.preparation, selectedBuyers: [...SELECTED].sort(), rounds: 10, providerCalls: 0 })}\n`);
 }
 

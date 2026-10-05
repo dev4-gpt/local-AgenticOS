@@ -76,3 +76,30 @@ Regenerate with `node scripts/generate-buyer-persona-frame.mjs --pilot --out=tmp
 5. Stop if any provider cap is unverified, cost approaches the cap, sensitive material appears in an output, generated profiles collapse into a narrow archetype, or the test no longer adds decision value. Preserve redacted evidence and follow upstream graph/project deletion procedures after the retention window.
 
 10,000 is a scale ambition, not an automatic API call. MiroFish may not support that exact agent count or input composition without upstream changes. Do not report “10,000 personas tested” unless its actual run artifacts prove it.
+
+## Product briefing correction, 2026-10-04
+
+The Twitter runner does not pass `narrative_direction` to its agent graph.
+OASIS constructs the system prompt from the CSV `user_char` instead. Correct
+roles and workflows alone therefore did not ensure the buyers saw the product
+evidence. The v2 profile preparer now embeds the candid product brief, explicitly
+states that buyers have not used the product, and binds the brief's SHA-256 into
+the preparation manifest. Repeat preparation rejects outdated briefs and v1
+manifests and retains the reviewed manifest beside the simulation inputs.
+
+Prepared, but **not executed**: `sim_3b7bfff26e22`, ten profiles with only two
+active buyers in one active round. Config SHA-256:
+`01c9981f9025289a76d7caee45e71e68ab425dff4045c30f0078113d21dba267`;
+profile SHA-256:
+`e47a927cb0b8e83cc16993388a8ab223ac35099ef8c31bb0e41ea916b113db0d`;
+brief SHA-256:
+`a4caa95feac33b64967f4f9c3e1ae669f16a168fab35adc8bbc98c45b7331507`.
+An offline check with the installed OASIS `UserInfo.to_system_message()` confirmed
+all ten prompts contain the brief and the no-firsthand-use qualification.
+Twelve Python tests and seven focused TypeScript tests passed. These checks made
+zero provider calls and do not establish buyer fidelity or demand.
+
+The previously used `/private/tmp/agentos-mirofish-pilot/.env` is missing; its
+location was requested from the user without requesting key values. The live
+repeat remains pending that private configuration. Historical seed hashes above
+refer to earlier preparations, not the revised brief.
