@@ -196,9 +196,22 @@ Nothing was listening on port 3939, and navigation failed with connection refuse
 The existing production preview was restarted with the approved reduced env file
 and provider calls disabled. In Chrome's Work profile, local Memory loaded without
 a login prompt: 24 records, initially 29 nodes and 57 edges; after refreshing the
-map it displayed 33 nodes and 57 edges. No note, import, delivery, or provider job
-was submitted. The in-app browser separately redirected to login, so its session
-must not be conflated with Chrome's authenticated session. Chrome control was
-interrupted before Delivery could be rechecked. Authentication and Memory reads
-are verified locally; the Delivery error's current status and the full customer
-journey remain unverified. The preview reused the existing build, not a new release.
+map it displayed 33 nodes and 57 edges. Delivery initially appeared empty; using
+its Refresh history control loaded two successful existing packages, `v100 verify
+deliver` and `Delivery · Monthly package`. Selecting the first displayed its
+retained tenant artifact and signed-download control. The earlier history error
+was not reproducible after the restart. No new note, import, delivery, download,
+or provider job was submitted. The in-app browser separately redirected to login,
+so its session must not be conflated with Chrome's authenticated session. Local
+authentication, Memory reads, and existing Delivery history are verified; package
+creation and the full customer journey remain unverified. The preview reused the
+existing build, not a new release.
+
+**Release-verifier snapshot, 2026-10-04:** `node
+scripts/verify-production-readiness.mjs --allow-dirty` returned
+`releaseReady: false` on source commit `6d6c952`. The release ledger bucket is
+not configured. Twenty-four ledger-backed gates remain unevaluated, including
+current deployment identity, the J01-J15 customer journey, applied migrations,
+source import, UI parity, buyer simulation, AI engineering, operations, legal,
+and rollback evidence. The local Delivery observation does not satisfy hosted
+production release evidence.
