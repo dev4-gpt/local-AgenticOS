@@ -257,3 +257,45 @@ sign-in state plus request/support links without sending an email. The focused
 Playwright test passed 1/1 locally. Production remains broken until a reviewed
 release deploys the route and verifies its provider configuration, email
 delivery, callback, and tenant membership checks. No deployment was initiated.
+
+**Fresh local Chrome and product checks, 2026-10-05:** The 10-test
+`tests/product-experience.spec.ts` suite passed against local port 3568 in
+installed Chrome. This covers the public experience, the `/login` page's
+configured/disabled state, navigation, legal/catalog surfaces, onboarding
+inputs, and mobile horizontal overflow; it does not submit onboarding or
+authenticate. The local Product Experience env file has no Supabase URL or
+anon key, so sign-in remains intentionally unavailable there. In the user's
+Chrome Work window, the production `/login` URL still renders Vercel 404.
+
+The full local workbench was separately started on port 3738 with the supplied
+`agent-os-3d-worlds-2026-09-21` add-on served on loopback port 3945. The World
+Studio shell and viewer returned 200; the tea, glass, and snow GLBs, guide, and
+editable scene endpoint each returned 200. Installed Chrome rendered the
+interactive Three.js scene at 1440x900 and 390x844, with 155 and 167 distinct
+sampled screenshot colors respectively, no horizontal overflow, successful
+tea-to-glass switching, and detected keyboard and touch movement. Screenshots
+are local-only at `/private/tmp/agentos-world-studio-desktop.png` and
+`/private/tmp/agentos-world-studio-mobile.png`. This optional World Studio is
+explicitly hidden by the client-edition route guard; it is not a missing
+customer-facing Cloud Run feature and does not establish overall local/cloud
+parity or target-device GPU performance.
+
+**AI and release gates, 2026-10-05:** The deterministic AI release evaluation
+passed 9/9 cases with Node 24.18.0, zero model samples, and no provider calls;
+the report remains `productionReady: false`. Running the same gate with the
+host shell's unsupported Node 26.4.0 correctly failed its Node-version check,
+despite all nine test cases passing. The supported-runtime report is
+`/private/tmp/agentos-ai-release-local-v1-node24-2026-10-05.json`. The
+production-readiness verifier snapshot on source `8a16e4cd37e1e865e363556a0c108324644ca468`
+remains false: no reviewed release-ledger bucket is configured, and 24
+ledger-backed gates remain unevaluated. The focused suite last passed 275 with
+one skip on this same source commit; local UI and AI checks do not close the
+hosted J01-J15 journey, migrations, deployment identity, or approvals.
+
+**MiroFish pilot configuration, 2026-10-05:** The existing private Groq
+credential was wired into the isolated pilot's ignored, mode-600 `.env` using
+the AgentOS-configured Groq-compatible endpoint and model. No key value is
+recorded here. `ZEP_API_KEY` is still absent from the pilot environment; no
+MiroFish request or simulation was run. The pilot remains pending until its
+Zep credential is configured and the zero-paid-spend provider posture is
+confirmed for this run.
