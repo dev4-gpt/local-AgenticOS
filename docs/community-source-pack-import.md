@@ -91,3 +91,37 @@ submit that batch again. Storage setup failures show a readable explanation.
 Six isolated browser checks passed with API/storage interception, and TypeScript
 checking passed. These checks cover feedback and consent behavior, not a real
 storage upload or successful hosted source import.
+
+**Durable local configuration and identity check, 2026-10-05:** After the
+temporary local configuration disappeared, restored the existing
+`agentos-mvp` / `agentos-internal-beta` settings into ignored, mode-0600
+`.private-client-kits/internal-beta.local.env`. This is a separate tenant from
+`veloce-cloud-test`; it does not inherit that workspace's data or acceptance
+evidence. No secret values are included in this document or committed.
+
+Start this local client with:
+
+```sh
+node scripts/run-client-runtime-local.mjs --env-file .private-client-kits/internal-beta.local.env --port 3939 --gcp-auth
+```
+
+Provider calls remain disabled. Storage and background tasks now use the same
+identity helper: Cloud Run metadata first, then local Google CLI credentials
+only for client edition, `NODE_ENV=development`, and explicit `--gcp-auth`
+opt-in. Production, test, unspecified environments, and non-client mode cannot
+fall back to local credentials. Metadata requests time out after two seconds;
+CLI execution is bounded and never prints the token.
+
+The real identity probe succeeded, but IAM signing returned HTTP 403
+`IAM_PERMISSION_DENIED`: the current user lacks
+`iam.serviceAccounts.signBlob` on
+`agentos-internal-beta-run@agentos-mvp.iam.gserviceaccount.com`. The existing
+bucket CORS policy permits only
+`https://agentos-internal-beta-1028728465669.europe-west1.run.app`, not the local
+origin. Neither IAM nor CORS was modified. No source pack was uploaded and no
+import occurred. A signed-in internal-beta journey and real import remain
+unverified; granting signing permission alone would not resolve local CORS.
+
+Verification: 22 focused identity/launcher/research tests passed, targeted
+ESLint and TypeScript checks passed, and the worker static boundary verifier
+passed. These are local regression checks, not production acceptance.

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
+import { clientRuntimeAccessToken } from "./clientGcpIdentity";
 
 const METADATA_ROOT = "http://metadata.google.internal/computeMetadata/v1";
 
@@ -24,13 +25,7 @@ export function safeClientObjectKey(value: string, namespace: string) {
 }
 
 export async function clientGcpAccessToken() {
-  const response = await fetch(`${METADATA_ROOT}/instance/service-accounts/default/token`, {
-    headers: { "Metadata-Flavor": "Google" },
-    cache: "no-store",
-  }).catch(() => null);
-  if (!response?.ok) return null;
-  const data = await response.json().catch(() => null) as { access_token?: unknown } | null;
-  return typeof data?.access_token === "string" ? data.access_token : null;
+  return clientRuntimeAccessToken();
 }
 
 export async function clientServiceAccountEmail(serviceAccount?: string | null) {

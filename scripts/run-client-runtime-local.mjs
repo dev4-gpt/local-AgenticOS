@@ -88,7 +88,7 @@ if (env.CLIENT_PROVIDER_CALLS_ENABLED === "1" && !env.CLIENT_MODEL_ALLOWLIST?.tr
 
 console.log(`${checkConfig ? "Checking" : buildProduction ? "Building" : "Starting"} Veloce client-runtime local test on http://127.0.0.1:${port}`);
 if (publicBaseUrl) console.log("Public HTTPS callback configured for Cloud Tasks parity; tunnel lifecycle remains manual.");
-if (env.CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH === "1") console.log("Local Cloud Tasks identity enabled through the explicit gcloud auth path; the access token is never printed.");
+if (env.CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH === "1") console.log("Local development storage and Cloud Tasks identity enabled through the explicit gcloud auth path; the access token is never printed.");
 if (publicBaseUrl && env.CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH !== "1") console.log("Full tunnel parity also needs --gcp-auth (or CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH=1) so Cloud Tasks can authenticate from this laptop.");
 console.log("Loaded credential names only; secret values are not printed.");
 console.log(`Provider calls ${env.CLIENT_PROVIDER_CALLS_ENABLED === "1" ? "enabled by explicit configuration" : "disabled"}.`);
