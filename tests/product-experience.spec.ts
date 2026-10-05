@@ -2,6 +2,22 @@ import { expect, test } from "@playwright/test";
 
 test.use({ baseURL: process.env.PRODUCT_EXPERIENCE_URL || "http://127.0.0.1:3565" });
 
+test("client sign-in entry is reachable and exposes only its configured state", async ({ page }) => {
+  const response = await page.goto("/login", { waitUntil: "networkidle" });
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { name: "Client sign-in" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Request a workspace" })).toHaveAttribute("href", "/start");
+  await expect(page.getByRole("link", { name: "Contact support" })).toHaveAttribute("href", "/support");
+
+  const status = page.getByRole("status");
+  if (await status.isVisible()) {
+    await expect(status).toContainText("Client sign-in is not available yet");
+  } else {
+    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Email sign-in link" })).toBeVisible();
+  }
+});
+
 test("product experience opens on the Renaissance hero", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

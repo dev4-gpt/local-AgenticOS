@@ -240,3 +240,20 @@ does not. The cloud page also showed historical notes and graph controls, but
 no source-pack import control. No upload or write was attempted. This confirms
 the source-import UI is absent from the observed cloud deployment; the deployed
 revision, database migration state, and cause of the drift remain unknown.
+
+**Public login deployment gap, 2026-10-05:** `https://app.veloceos.cloud/login`
+still returns Vercel's 404 page; this was verified in the user's Chrome Work
+window. Read-only `vercel inspect` identifies the production alias as
+deployment `dpl_ECwKPW7sLjQhS364gM1pEJERX6Qa`, target
+`product-experience-9zi6qlrqg-veloce-agentic-os.vercel.app`, created
+2026-09-26 02:06 UTC and aliased to `app.veloceos.cloud`. The linked Vercel
+project's root directory is `product-experience`. The shared `/login` route was
+added later in source commit `b97d6e7623a4a7ed8815651c186c5885f4aea774` on
+2026-10-03 21:39 EDT. The deployment inspection did not expose a source SHA, so
+no exact source-to-deploy mapping is claimed; its creation time nevertheless
+predates the route commit. A fresh local production build includes `/login`,
+returns HTTP 200, and an isolated Chrome test verified the disabled-by-default
+sign-in state plus request/support links without sending an email. The focused
+Playwright test passed 1/1 locally. Production remains broken until a reviewed
+release deploys the route and verifies its provider configuration, email
+delivery, callback, and tenant membership checks. No deployment was initiated.
