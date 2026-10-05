@@ -55,3 +55,21 @@ The isolated browser regression `npm run verify:source-import-browser` covers pe
 - Tenant memories and archive-wide search results are paged in the UI. The 3D map is explicitly a bounded preview (500 nodes and 2,000 edges); large communities still require graph exploration/pagination and an import inventory before "all content" can be certified.
 - Graph imports are validated locally in PostgreSQL tests, but this migration has not yet been applied to a tenant database or proven in the authenticated cloud UI. A 2026-09-29 disposable-database run of the privately supplied bonus pack imported 2 sources with 111 outbound links, produced the expected 111 distinct source/link URL nodes, preserved every normalized text/link value, rejected another tenant, re-imported idempotently, and removed all nodes after record deletion. The pack still reports one skipped entry, and no linked resource content was fetched.
 - The single-pack review control passed a mocked-upload browser check at desktop and mobile widths on 2026-09-29. The later manifest-and-parts flow passed local manifest/hash/order tests and a webpack production build, but has not yet passed a signed-in browser import. Neither check proves a real tenant import.
+
+**User-provided bonus-index dry run, 2026-10-05:** The local Markdown copy
+`/Users/aryamandev/Downloads/AI Profit Boardroom Bonuses!.md` is a 117-line,
+14,891-byte link index, not the requested May-September classroom export. Its
+SHA-256 is `d3934f1cf50b41c5703568fc6458635d6a371acbb983eeaba12b4fd3ec245246`.
+The reviewed pack was written outside the repository at
+`/private/tmp/agentos-bonuses-prepared-2026-10-05.json` with mode `0600` and
+SHA-256 `9bf6093de3446553a6858560d3f1454f1160fc508875e270a50d85bec9db6aa6`.
+It contains 2 source sections, preserves 111 links, and reports 1 missing URL
+for an annual-member-vault entry whose Markdown target was empty. No target was
+guessed and no link was fetched. The exact pack passed the disposable PGlite
+import/graph regression (4/4), including re-import, tenant-boundary, and record
+deletion checks; the synthetic consent browser suite passed 2/2 with API and
+storage intercepted. No Supabase write or real tenant import occurred, and
+this does not capture the lesson pages or videos. Current [Skool Terms](https://www.skool.com/legal?t=terms)
+and [Platform Policy](https://help.skool.com/article/179-platform-policy)
+prohibit automated scraping; use a platform-approved export or directly
+owner-supplied material and retain its scope/coverage inventory.
