@@ -125,3 +125,11 @@ unverified; granting signing permission alone would not resolve local CORS.
 Verification: 22 focused identity/launcher/research tests passed, targeted
 ESLint and TypeScript checks passed, and the worker static boundary verifier
 passed. These are local regression checks, not production acceptance.
+
+The restored Chrome session subsequently reached local `/memory`. The session
+endpoint returned HTTP 200, but both records and memory-graph requests returned
+HTTP 401. The UI correctly displayed unavailable states, not zero records.
+Those routes require both an authenticated user and `client_member` approval;
+the precise failed check still needs verification. Do not bypass membership or
+assume the older cloud-test login grants internal-beta access. The signed-in
+data journey therefore remains unaccepted.
