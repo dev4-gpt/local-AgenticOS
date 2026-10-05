@@ -299,3 +299,19 @@ recorded here. `ZEP_API_KEY` is still absent from the pilot environment; no
 MiroFish request or simulation was run. The pilot remains pending until its
 Zep credential is configured and the zero-paid-spend provider posture is
 confirmed for this run.
+
+**Same-profile tenant Memory recheck, 2026-10-05:** The current Chrome Work
+profile's local client runtime at `http://127.0.0.1:3939/memory` loaded 24
+tenant memories, 33 graph nodes, and 57 edges, with `Community sources` and
+`Review JSON source packs` controls. Read-only process metadata confirms the
+local server's working directory is this AgentOS checkout. The Cloud Run
+`/memory` page in the same Chrome profile rendered 0 tenant memories, 0 nodes,
+and 0 edges, and did not show the source-pack controls. No records, imports,
+or provider actions were submitted. Because the Cloud page's tenant identity
+could not be established from the rendered page, the count difference is a
+current parity warning, not proof of cross-tenant isolation or proof that the
+cloud intentionally has no data. Reconfirm the approved tenant identity and
+deployed revision before treating this cloud surface as the local counterpart.
+On source commit `a295be5b3b81fc5bd0a9cedc68932bf02a931405`, the focused
+source-import, tenant-isolation, job-trace, and observability accuracy suites
+passed 18/18 locally; these deterministic tests do not certify hosted behavior.
