@@ -227,3 +227,12 @@ and `$0.00`. No download, write, send, or provider request occurred. This is a
 read-only visual/functional match for Delivery in the observed session; it is
 not evidence that all routes match, that both origins use identical auth
 claims, or that either page refreshes history reliably without user action.
+
+**Cloud Memory recheck, 2026-10-05:** The same Chrome Work profile opened the
+Cloud Run `/memory` route. It showed 24 tenant memories, 33 graph nodes, and 57
+edges, matching the refreshed local client counts. The local Memory screen has
+a `Community sources` / `Review JSON source packs` section; this cloud screen
+does not. The cloud page also showed historical notes and graph controls, but
+no source-pack import control. No upload or write was attempted. This confirms
+the source-import UI is absent from the observed cloud deployment; the deployed
+revision, database migration state, and cause of the drift remain unknown.
