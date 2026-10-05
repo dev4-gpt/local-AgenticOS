@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { prepareRepeatSmoke } from "../scripts/prepare-mirofish-repeat-smoke.mjs";
+import { createHash } from "node:crypto";
+import { prepareRepeatSmoke, validReviewedProfileManifest } from "../scripts/prepare-mirofish-repeat-smoke.mjs";
 
 const buyers = ["P00603", "P01315", "P02225", "P03040", "P04949", "P05453", "P06865", "P07078", "P08037", "P09494"];
 
@@ -31,4 +32,19 @@ test("repeat smoke refuses an incomplete or unexpected cohort", () => {
   expect(() => prepareRepeatSmoke(source, "sim_123456abcdef")).toThrow("buyer_cohort_invalid");
   expect(() => prepareRepeatSmoke({ agent_configs: buyers.map((entity_name) => ({ entity_name })), reddit_config: {} }, "sim_123456abcdef")).toThrow("buyer_cohort_invalid");
   expect(() => prepareRepeatSmoke(source, "sim_bad")).toThrow("simulation_id_invalid");
+});
+
+test("repeat smoke accepts only a reviewed profile file bound to the original cohort", () => {
+  const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
+  const reviewed = "canonical buyer profiles";
+  const cohort = "reviewed cohort";
+  const manifest = {
+    schemaVersion: 1, preparation: "canonical-buyer-scenarios-v1", file: "profiles.csv",
+    sourceSha256: "6ef07dc0fec27cc15f30dc5afe71ad1a6b855c6fd6e6f9e90ef2075f7d0e704c",
+    reviewedSha256: sha256(reviewed), cohortSha256: sha256(cohort), profileCount: 10, providerCalls: 0,
+  };
+  expect(validReviewedProfileManifest(manifest, Buffer.from(reviewed), Buffer.from(cohort))).toBe(true);
+  expect(validReviewedProfileManifest({ ...manifest, file: "../secrets.csv" }, Buffer.from(reviewed), Buffer.from(cohort))).toBe(false);
+  expect(validReviewedProfileManifest({ ...manifest, profileCount: 9 }, Buffer.from(reviewed), Buffer.from(cohort))).toBe(false);
+  expect(validReviewedProfileManifest(manifest, Buffer.from("changed"), Buffer.from(cohort))).toBe(false);
 });

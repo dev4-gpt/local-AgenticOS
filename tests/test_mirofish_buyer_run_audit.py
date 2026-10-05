@@ -23,7 +23,10 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.simulation = self.root / "sim_test"
         self.simulation.mkdir()
         self.cohort = self.root / "cohort.json"
-        self.cohort.write_text(json.dumps({"personas": [{"id": "P00001"}, {"id": "P00002"}]}), encoding="utf-8")
+        self.cohort.write_text(json.dumps({"personas": [
+            {"id": "P00001", "firstWorkflow": "review an intake handoff"},
+            {"id": "P00002", "firstWorkflow": "compare approval evidence"},
+        ]}), encoding="utf-8")
         self.config = {
             "simulation_id": "sim_test",
             "agent_configs": [{"entity_name": "P00001"}, {"entity_name": "P00002"}],
@@ -35,9 +38,12 @@ class BuyerRunAuditTest(unittest.TestCase):
         })
         (self.simulation / "simulation.log").write_text("模拟循环完成", encoding="utf-8")
         with (self.simulation / "twitter_profiles.csv").open("w", encoding="utf-8", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=["user_id", "name"])
+            writer = csv.DictWriter(handle, fieldnames=["user_id", "name", "user_char", "description"])
             writer.writeheader()
-            writer.writerows([{"user_id": 0, "name": "P00001"}, {"user_id": 1, "name": "P00002"}])
+            writer.writerows([
+                {"user_id": 0, "name": "P00001", "user_char": "review an intake handoff", "description": ""},
+                {"user_id": 1, "name": "P00002", "user_char": "compare approval evidence", "description": ""},
+            ])
         database = sqlite3.connect(self.simulation / "twitter_simulation.db")
         database.executescript(
             "CREATE TABLE user(user_id INTEGER, agent_id INTEGER);"
@@ -62,6 +68,21 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.assertTrue(result["pilotEvidencePassed"])
         self.assertFalse(result["marketValidation"])
         self.assertEqual(result["actionLogRows"], 2)
+        self.assertTrue(result["checks"]["profileWorkflowCoverage"])
+
+    def test_missing_first_workflow_fails_even_with_complete_telemetry(self):
+        profile_path = self.simulation / "twitter_profiles.csv"
+        with profile_path.open(encoding="utf-8", newline="") as handle:
+            profiles = list(csv.DictReader(handle))
+        profiles[1]["user_char"] = "generic buyer profile"
+        with profile_path.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=profiles[0].keys())
+            writer.writeheader()
+            writer.writerows(profiles)
+        result = AUDITOR.audit(self.simulation, self.cohort)
+        self.assertFalse(result["pilotEvidencePassed"])
+        self.assertEqual(result["missingWorkflowProfiles"], ["P00002"])
+        self.assertFalse(result["checks"]["profileWorkflowCoverage"])
 
     def test_misattribution_and_missing_telemetry_fail(self):
         self.config["event_config"]["initial_posts"][0]["content"] = "P00002 evaluates this tool"

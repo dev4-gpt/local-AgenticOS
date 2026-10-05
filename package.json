@@ -52,7 +52,7 @@
     "verify:managed-credit": "node scripts/verify-managed-credit-contract.mjs",
     "verify:production-readiness": "node scripts/verify-production-readiness.mjs",
     "verify:ai-evaluation": "node scripts/run-ai-release-evaluation.mjs",
-    "verify:mirofish-buyer-artifacts": "python3 -m unittest discover -s tests -p 'test_mirofish_buyer_*.py' -v",
+    "verify:mirofish-buyer-artifacts": "python3 -m unittest discover -s tests -p 'test_mirofish_*.py' -v",
     "publish:release-ledger": "node scripts/verify-production-readiness.mjs --publish-ledger",
     "approve:stripe-test-fixture": "node scripts/approve-stripe-test-fixture.mjs",
     "approve:client-manifest": "node scripts/approve-client-manifest.mjs",

@@ -16,6 +16,10 @@ def load_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def normalized_words(value: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", value.lower()))
+
+
 def action_log_count(simulation_dir: Path) -> int:
     count = 0
     for path in (simulation_dir / "twitter" / "actions.jsonl", simulation_dir / "actions.jsonl"):
@@ -31,6 +35,8 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
     expected_ids = {item["id"] for item in cohort["personas"]}
     if len(expected_ids) != len(cohort["personas"]):
         raise ValueError("cohort contains duplicate persona IDs")
+    if any(not isinstance(item.get("firstWorkflow"), str) or not item["firstWorkflow"].strip() for item in cohort["personas"]):
+        raise ValueError("cohort must specify each buyer's first workflow")
 
     config = load_json(simulation_dir / "simulation_config.json")
     run_state = load_json(simulation_dir / "run_state.json")
@@ -38,11 +44,15 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         profiles = list(csv.DictReader(handle))
 
     profile_by_agent = {}
+    profile_by_name = {}
     for profile in profiles:
         agent_id = int(profile["user_id"])
         if agent_id in profile_by_agent:
             raise ValueError("profiles contain duplicate agent IDs")
         profile_by_agent[agent_id] = profile["name"]
+        if profile["name"] in profile_by_name:
+            raise ValueError("profiles contain duplicate persona IDs")
+        profile_by_name[profile["name"]] = profile
 
     configured_by_agent = {
         index: agent.get("entity_name")
@@ -50,6 +60,11 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
     }
     profile_ids = set(profile_by_agent.values())
     configured_ids = set(configured_by_agent.values())
+    missing_workflow_profiles = sorted(
+        item["id"] for item in cohort["personas"]
+        if normalized_words(item["firstWorkflow"])
+        not in normalized_words(" ".join((profile_by_name.get(item["id"]) or {}).get(key, "") for key in ("user_char", "description")))
+    )
 
     database = sqlite3.connect(f"file:{(simulation_dir / 'twitter_simulation.db').resolve()}?mode=ro", uri=True)
     try:
@@ -94,6 +109,7 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
 
     checks = {
         "personaCoverage": profile_ids == expected_ids and configured_ids == expected_ids and len(profiles) == len(expected_ids),
+        "profileWorkflowCoverage": not missing_workflow_profiles,
         "profileAgentMapping": all(profile_by_agent.get(key) == value for key, value in configured_by_agent.items()),
         "postAgentMapping": not unknown_post_agents,
         "initialPostAttribution": not attribution_errors and not missing_initial_posts,
@@ -108,6 +124,7 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         "configuredAgents": len(configured_by_agent),
         "missingPersonas": sorted(expected_ids - profile_ids),
         "unexpectedPersonas": sorted(profile_ids - expected_ids),
+        "missingWorkflowProfiles": missing_workflow_profiles,
         "initialPosts": len(actual_initial),
         "dynamicPosts": sum(post_counts.values()),
         "dynamicPostPersonas": dict(sorted(post_counts.items())),
