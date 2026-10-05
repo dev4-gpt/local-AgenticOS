@@ -73,3 +73,21 @@ this does not capture the lesson pages or videos. Current [Skool Terms](https://
 and [Platform Policy](https://help.skool.com/article/179-platform-policy)
 prohibit automated scraping; use a platform-approved export or directly
 owner-supplied material and retain its scope/coverage inventory.
+
+**Signed-in local import attempt, 2026-10-05:** The updated client at
+`http://127.0.0.1:3941/memory` used the existing Chrome tenant session and loaded
+24 memories, 33 nodes, and 57 edges. Provider calls were disabled. The prepared
+bonus-index pack (2 sections, 111 links, 1 skipped URL) was selected and its
+previously authorized scope confirmed. Review reached the real artifact-create
+API, which returned HTTP 503 `storage_not_configured`. The source pack was not
+uploaded and no import was attempted. The local environment lacks the storage
+bucket and namespace; the current storage identity helper also depends on
+Cloud Run metadata, so copying bucket settings alone would not establish local
+upload parity. The graph migration remains unverified against this tenant.
+
+Memory now distinguishes pending, failed, and confirmed-empty reads. A completed
+import also reports a failed records or graph refresh without offering to
+submit that batch again. Storage setup failures show a readable explanation.
+Six isolated browser checks passed with API/storage interception, and TypeScript
+checking passed. These checks cover feedback and consent behavior, not a real
+storage upload or successful hosted source import.

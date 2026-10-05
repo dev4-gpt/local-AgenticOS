@@ -1,15 +1,16 @@
 import { expect, test } from "@playwright/test";
 import { createHash } from "node:crypto";
 
-test.use({ baseURL: "http://127.0.0.1:3939" });
+const clientBaseUrl = process.env.CLIENT_RUNTIME_TEST_URL || "http://127.0.0.1:3939";
+test.use({ baseURL: clientBaseUrl });
 
 test("source pack stays local until permission is confirmed for review", async ({ page, context }) => {
-  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: "http://127.0.0.1:3939" }]);
+  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
   const writes: string[] = [];
   await page.route("**/api/**", (route) => {
     if (route.request().method() !== "GET") {
       writes.push(route.request().url());
-      return route.fulfill({ status: 503, json: { error: "synthetic_review_stop" } });
+      return route.fulfill({ status: 503, json: { error: "storage_not_configured" } });
     }
     return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
   });
@@ -41,13 +42,13 @@ test("source pack stays local until permission is confirmed for review", async (
 
   await permission.check();
   await review.click();
-  await expect(page.getByRole("alert").filter({ hasText: "synthetic_review_stop" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Your source pack has not been uploaded. File storage needs to be configured for this workspace." })).toBeVisible();
   expect(writes).toHaveLength(1);
   expect(new URL(writes[0]).pathname).toBe("/api/client-runtime/artifacts");
 });
 
 test("importing one part does not upload the next part without renewed permission", async ({ page, context }) => {
-  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: "http://127.0.0.1:3939" }]);
+  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
   const startUrl = "https://example.org/course";
   const parts = [1, 2].map((number) => {
     const source = { title: `Synthetic lesson ${number}`, url: `${startUrl}/${number}`, text: "Consent check.", links: [] };
