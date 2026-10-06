@@ -164,8 +164,12 @@ export function clientAuthEnforced() {
 }
 
 export function clientRouteAllowed(pathname: string) {
-  const routes = configuredList("CLIENT_ALLOWED_ROUTES", DEFAULT_CLIENT_ROUTES);
+  const routes = clientAllowedRoutes();
   return routes.some((route) => route === "/" ? pathname === "/" : pathname === route || pathname.startsWith(`${route}/`));
+}
+
+export function clientAllowedRoutes() {
+  return configuredList("CLIENT_ALLOWED_ROUTES", DEFAULT_CLIENT_ROUTES);
 }
 
 export function clientApiRouteAllowed(pathname: string) {

@@ -107,7 +107,7 @@ const SECTION_META: Record<(typeof SECTION_ORDER)[number], { numeral: string; de
   Deliver: { numeral: "VI", description: "Growth and outcomes" },
 };
 
-export default function Sidebar({ clientEdition = false }: { clientEdition?: boolean }) {
+export default function Sidebar({ clientEdition = false, allowedClientRoutes = [] }: { clientEdition?: boolean; allowedClientRoutes?: string[] }) {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [order, setOrder] = useState<string[]>(DEFAULT_ORDER);
@@ -157,7 +157,7 @@ export default function Sidebar({ clientEdition = false }: { clientEdition?: boo
     ...order.filter((h) => BY_HREF[h]),
     ...DEFAULT_ORDER.filter((h) => !order.includes(h)),
   ];
-  const allowedOrder = clientEdition ? fullOrder.filter((href) => href !== "/worlds") : fullOrder.filter((href) => !CLIENT_ONLY_ROUTES.has(href));
+  const allowedOrder = clientEdition ? fullOrder.filter((href) => allowedClientRoutes.includes(href)) : fullOrder.filter((href) => !CLIENT_ONLY_ROUTES.has(href));
   const visible = customize ? allowedOrder : allowedOrder.filter((h) => !hidden.includes(h));
 
   function move(from: string, to: string) {
@@ -302,11 +302,11 @@ export default function Sidebar({ clientEdition = false }: { clientEdition?: boo
   );
 }
 
-export function MobileNav({ clientEdition = false }: { clientEdition?: boolean }) {
+export function MobileNav({ clientEdition = false, allowedClientRoutes = [] }: { clientEdition?: boolean; allowedClientRoutes?: string[] }) {
   const pathname = usePathname();
   const mobileRoutes = new Set(["/", "/memory", "/pipeline", "/flow-lab", "/integrations", "/agent-kanban"]);
   const items = clientEdition
-    ? NAV.filter((item) => CLIENT_NAV_ROUTES.has(item.href))
+    ? NAV.filter((item) => CLIENT_NAV_ROUTES.has(item.href) && allowedClientRoutes.includes(item.href))
     : NAV.filter((item) => mobileRoutes.has(item.href));
   if (pathname === "/worlds") return null;
   return (
