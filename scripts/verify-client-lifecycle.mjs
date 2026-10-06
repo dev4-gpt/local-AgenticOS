@@ -65,10 +65,10 @@ await writeFile(pagedSnapshot, JSON.stringify({
   },
 }), { mode: 0o600 });
 
-function runLifecycle(args, preload) {
+function runLifecycle(args, preload, extraEnv = {}) {
   return spawnSync(process.execPath, [...(preload ? ["--import", join(root, "scripts/fixtures/client-lifecycle-fetch.mjs")] : []), join(root, "scripts/client-lifecycle.mjs"), ...args], {
     encoding: "utf8",
-    env: { ...process.env, SUPABASE_URL: "https://example.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "test-only-placeholder" },
+    env: { ...process.env, SUPABASE_URL: "https://example.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "test-only-placeholder", ...extraEnv },
   });
 }
 
@@ -90,6 +90,13 @@ expect(pagedRun.status === 0, `mocked 501-row restore must succeed: ${pagedRun.s
 expect(JSON.stringify(pagedTables) === JSON.stringify(["client_tenants:1", "client_runtime_audit_events:500", "client_runtime_audit_events:1"]), "restore must split large tenant tables into bounded requests without dropping rows");
 const offboardChannelRun = runLifecycle(["--mode", "offboard", "--slug", "test-client", "--bucket", "test-client-bucket", "--project", "test-project", "--apply", "--confirm-offboard", "--destroy-secrets", "--delete-queue"]);
 expect(offboardChannelRun.status !== 0 && `${offboardChannelRun.stdout}\n${offboardChannelRun.stderr}`.includes("delete-notification-channel"), "offboard apply must require explicit notification-channel deletion consent");
+const offboardArgs = ["--mode", "offboard", "--slug", "test-client", "--bucket", "test-client-bucket", "--project", "test-project", "--out", join(tempDir, "pre-offboard.json"), "--apply", "--confirm-offboard", "--destroy-secrets", "--delete-queue", "--no-notification-channel"];
+const financialRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: "history" });
+expect(financialRun.status !== 0 && `${financialRun.stdout}\n${financialRun.stderr}`.includes("financial history requiring reviewed retention"), "offboard must reject unarchived managed-credit history before changing tenant or cloud state");
+const balanceRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: "balance" });
+expect(balanceRun.status !== 0 && `${balanceRun.stdout}\n${balanceRun.stderr}`.includes("nonzero or unverified credit balance"), "offboard must reject a remaining managed-credit balance");
+const financialErrorRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: "error" });
+expect(financialErrorRun.status !== 0 && `${financialErrorRun.stdout}\n${financialErrorRun.stderr}`.includes("Cannot verify financial history"), "offboard must fail closed when managed-credit history cannot be read");
 await rm(tempDir, { recursive: true, force: true });
 
 if (failures.length) {

@@ -214,6 +214,7 @@ if (!apply) {
   process.exit(0);
 }
 
+await assertNoFinancialOffboardRows();
 await supabasePatch("client_tenants", `slug=eq.${encodeURIComponent(slug)}`, { status: "offboarding", updated_at: new Date().toISOString() });
 if (bucketHasObjects()) runGcloud(["storage", "rm", "--recursive", `gs://${resolvedBucket}/${resolvedNamespace}/**`, "--quiet"]);
 if (deleteBucket) runGcloud(["storage", "buckets", "delete", `gs://${resolvedBucket}`, "--project", project, "--quiet"]);
@@ -246,6 +247,35 @@ async function restoreSnapshot(snapshot) {
     const restoredRows = orderForRestore(table, tenantRows).map((row) => eccRestoreRow(table, row));
     for (let offset = 0; offset < restoredRows.length; offset += 500) {
       await supabaseInsert(table, restoredRows.slice(offset, offset + 500).map((row) => pickExportColumns(table, row)));
+    }
+  }
+}
+
+async function assertNoFinancialOffboardRows() {
+  // Tenant deletion cascades these ledgers, but the credential-safe lifecycle
+  // snapshot is not an accounting archive. Require a separate reviewed path.
+  const historyTables = [
+    "client_credit_transactions",
+    "client_credit_purchase_plans",
+    "client_credit_purchase_plan_allocations",
+    "client_credit_reservations",
+    "client_credit_reservation_events",
+    "client_credit_execution_claims",
+  ];
+  for (const table of historyTables) {
+    const response = await supabaseRequest(`${table}?tenant_slug=eq.${encodeURIComponent(slug)}&select=tenant_slug&limit=1`);
+    if (!response.ok) fail(`Cannot verify financial history for ${table} (${response.status})`);
+    const rows = await response.json().catch(() => null);
+    if (!Array.isArray(rows)) fail(`Cannot verify financial history for ${table}`);
+    if (rows.length) fail(`Refusing offboard: ${table} contains financial history requiring reviewed retention and reconciliation`);
+  }
+  for (const [table, amountFields] of [
+    ["client_credit_accounts", ["balance_micros", "reserved_micros"]],
+    ["client_credit_budgets", ["purchased_micros", "reserved_micros", "spent_micros"]],
+  ]) {
+    const rows = await supabaseSelect(table, `tenant_slug=eq.${encodeURIComponent(slug)}`, `tenant_slug,${amountFields.join(",")}`);
+    if (rows.some((row) => amountFields.some((field) => !/^0$/.test(String(row[field]))))) {
+      fail(`Refusing offboard: ${table} has a nonzero or unverified credit balance`);
     }
   }
 }
