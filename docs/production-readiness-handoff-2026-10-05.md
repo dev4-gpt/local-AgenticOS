@@ -54,3 +54,56 @@ permission grant, source upload, or paid provider call occurred in this check.
 4. Continue the complete journey/parity and hosted engineering acceptance on an
    explicitly approved immutable deployment. Do not convert local green tests
    into a production-readiness percentage.
+
+## Internal-beta continuation, October 5
+
+This section records work after the original checkpoint above. The older
+"Remaining requirements" table is historical, not the current state.
+
+- In Supabase project `ppmoqjtmjtfxadsnejqc`, the verified auth user
+  `a2c2812c-1473-4ea3-92ba-1c106643869d` (`aryamandev777@gmail.com`) now
+  has an active `member` membership in the newly created active `internal-beta`
+  tenant. The real local `/api/client-auth/session` response changed from
+  `tenant_membership_required` to `workspaceAuthorized: true`. Memory loaded
+  with an empty tenant graph before import.
+- The reviewed `product-experience/supabase-client-runtime-source-pack-graph.sql`
+  migration was applied to the project's main database in one transaction after
+  explicit user approval. The import and search functions are present. The
+  pre-existing graph stayed at 33 nodes and 57 edges immediately after the
+  migration; no other tenant graph was refreshed by this test.
+- The approved bonus index was uploaded and imported through the signed-in
+  local UI into `internal-beta`. The preview reported two sources, 111 link
+  entries and one skipped entry. The import reported two added, zero updated,
+  zero unchanged. Database readback found two active memory records with the
+  expected pack SHA-256, 111 stored links, one import audit, 111 URL nodes and
+  110 `links_to` edges. The graph view reported 114 nodes and 113 total edges;
+  repeated targets within a source collapse to one graph edge. A search for an
+  imported link title returned its source record. This verifies the bonus
+  *index* only, not the linked documents, Skool lessons or videos.
+- Google Cloud project `agentos-mvp`: a temporary `signBlob`-only grant on the
+  beta runtime service account and a temporary `storage.objects.get`-only
+  bucket grant scoped to `internal-beta/` objects were added for
+  `aryamandev777@gmail.com`. Both conditions expire at
+  `2026-10-06T18:23:41Z`. The bucket CORS policy also allows the exact local
+  origin `http://127.0.0.1:3939`; this CORS rule does not expire automatically
+  and should be removed when local upload acceptance is finished. Neither
+  binding grants object listing or deletion. The CLI credential initially
+  resolved to a different signed-in email; reauthentication restored the
+  intended identity, and a direct `signBlob` probe returned HTTP 200.
+- No app push, Cloud Run revision, Vercel deployment, paid model call or release
+  ledger acceptance occurred in this continuation. The customer journey,
+  same-release cloud parity, complete authorized source inventory, MiroFish
+  repeat and hosted release gates remain open.
+- Chrome comparison on the same signed-in account: local and hosted-beta home
+  pages have the same main layout and copy. Both `/memory` pages read the two
+  imported records and report 114 nodes / 113 edges from the same tenant data.
+  The local Memory page has a `Community sources` JSON-pack review/import
+  control; hosted beta does not. Its existing Markdown import is a different
+  control. Therefore the migration made the data visible in cloud, but the new
+  source-pack workflow is not deployed. The hosted revision observed was
+  `agentos-internal-beta-00034-v69`, image digest
+  `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`;
+  image provenance did not establish a matching source commit.
+- The isolated MiroFish pilot environment still has no `ZEP_API_KEY`. The
+  prepared bounded repeat `sim_3b7bfff26e22` remains unexecuted. The approved
+  paid-spend limit is $0; do not substitute a paid fallback.
