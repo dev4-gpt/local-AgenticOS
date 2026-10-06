@@ -114,3 +114,19 @@ This section records work after the original checkpoint above. The older
   worktree is dirty, and the ledger bucket is not configured. Later hosted
   gates were not evaluated. Leave that generated change untouched while the
   local server is running; do not mistake a unit-test pass for release approval.
+
+## Memory presentation and export follow-up
+
+- Local source `6afeeac` renders imported source-pack Markdown as readable text
+  and links, collapses long source bodies, and blocks embedded images from
+  auto-loading. Synthetic Chrome browser checks passed 3/3, TypeScript passed,
+  and the live local Memory page showed two compact source records. File-wide
+  lint still reports pre-existing hook warnings in `ClientDataWorkspace.tsx`;
+  the new browser test file lints cleanly. This source is not deployed.
+- On hosted beta revision `agentos-internal-beta-00034-v69`, the signed-in
+  `internal-beta` user exported the two Memory records through the UI. Chrome
+  reported `internal-beta-memory.md` downloaded successfully (15,090 bytes).
+  Local readback found both expected section headings and 112 parsed Markdown
+  links. This is a narrow hosted Memory-export observation on the older
+  revision, not a full tenant export, current-source acceptance, or a J12
+  release receipt.
