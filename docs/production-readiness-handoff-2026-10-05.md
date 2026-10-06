@@ -107,3 +107,10 @@ This section records work after the original checkpoint above. The older
 - The isolated MiroFish pilot environment still has no `ZEP_API_KEY`. The
   prepared bounded repeat `sim_3b7bfff26e22` remains unexecuted. The approved
   paid-spend limit is $0; do not substitute a paid fallback.
+- Current focused verification at `0fe2e36`: 33 source-pack/auth/identity unit
+  checks passed, one optional private-input check skipped; TypeScript typecheck
+  passed. The release verifier returned `releaseReady: false`: the local dev
+  server added generated `.next-client` includes to `tsconfig.json`, so the
+  worktree is dirty, and the ledger bucket is not configured. Later hosted
+  gates were not evaluated. Leave that generated change untouched while the
+  local server is running; do not mistake a unit-test pass for release approval.
