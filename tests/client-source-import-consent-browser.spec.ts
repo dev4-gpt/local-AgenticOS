@@ -133,3 +133,50 @@ test("imported source text renders links without loading embedded media", async 
   await expect(record.getByRole("link", { name: "Unsafe" })).toHaveCount(0);
   expect(mediaRequests).toEqual([]);
 });
+
+test("permanent record deletion requires confirmation", async ({ page, context }) => {
+  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
+  const record = {
+    id: "00000000-0000-4000-8000-000000000002",
+    title: "Synthetic memory",
+    content: "This is disposable test data.",
+    status: "active",
+    metadata: {},
+    created_at: "2026-10-05T00:00:00Z",
+  };
+  let deleted = false;
+  let deleteRequests = 0;
+  await page.route("**/api/**", (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (request.method() === "DELETE") {
+      deleteRequests += 1;
+      expect(path).toBe("/api/client-runtime/records");
+      expect(new URL(request.url()).searchParams.get("id")).toBe(record.id);
+      deleted = true;
+      return route.fulfill({ status: 200, json: { ok: true } });
+    }
+    if (path.endsWith("/memory-graph")) return route.fulfill({ status: 200, json: { ok: true, nodes: [], edges: [] } });
+    return route.fulfill({ status: 200, json: { ok: true, records: deleted ? [] : [record], hasMore: false } });
+  });
+
+  await page.goto("/memory");
+  const item = page.getByRole("article").filter({ hasText: record.title });
+  await expect(item).toBeVisible();
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toContain(record.title);
+    expect(dialog.message()).toContain("cannot be undone");
+    await dialog.dismiss();
+  });
+  await item.getByRole("button", { name: "Delete" }).click();
+  await expect(item).toBeVisible();
+  expect(deleteRequests).toBe(0);
+
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toContain(record.title);
+    await dialog.accept();
+  });
+  await item.getByRole("button", { name: "Delete" }).click();
+  await expect(item).toHaveCount(0);
+  expect(deleteRequests).toBe(1);
+});
