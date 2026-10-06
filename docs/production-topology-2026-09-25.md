@@ -39,6 +39,16 @@ but `https://app.veloceos.cloud/login` returned 404. The older Cloud Run test
 login returned 200. This confirms the shared-login source is not live on the
 public `app` domain; do not offer that URL as a working client login yet.
 
+Read-only refresh on 2026-10-06: the public `Runtime access` > `Client login`
+menu still points to the single `veloce-cloud-test` login, and the public
+`/login` route still returns 404. In the user's Chrome Work profile, the
+`agentos-internal-beta` workspace was signed in and its `/memory` page loaded
+tenant-scoped records. The visible `Classroom Research` link redirected to
+`/client-unavailable?route=%2Fclassroom-research`; its presence in navigation
+is not evidence that the client feature is available. A read-only Cloud Run
+revision query was denied `run.services.get`, so this refresh does not confirm
+the current internal-beta revision or replace the 2026-09-26 revision receipt.
+
 The legacy Cloud Run service is publicly reachable but its `/`, `/healthz`, and
 documented `/status` routes returned `404` during this verification. Its source
 image commit is not present in this repository. It must not be used as a
