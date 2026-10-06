@@ -57,6 +57,11 @@ bill a customer, or publish a campaign.
    Apply `product-experience/supabase-v45-onboarding-verify-token.sql` before
    deploying the verification API. Attach that exact migration to the release
    ledger; other migration evidence does not satisfy the verification gate.
+   Apply `product-experience/supabase-v47-financial-offboard-guard.sql` after
+   the managed-credit tables exist and before permitting tenant offboarding.
+   It prevents a tenant delete or truncate from cascading away credit history,
+   including a row written after the operator preflight. This is a deletion
+   guard, not a financial archive or an approved retention procedure.
 6. Enable only `openai/gpt-4o-mini` on the private Cloud Run gateway. Keep
    video generation disabled.
 7. Run the non-spending managed-provider health check first. Its only allowed
@@ -179,6 +184,7 @@ npm run publish:release-ledger -- \
   --image-digest sha256:<reviewed-image-digest> \
   --migration-file product-experience/supabase-v45-onboarding-verify-token.sql \
   --migration-file product-experience/supabase-v46-onboarding-setup-token.sql \
+  --migration-file product-experience/supabase-v47-financial-offboard-guard.sql \
   --migration-file product-experience/supabase-client-runtime-source-pack-graph.sql \
   --rollback-cloud-run-revision <known-good-revision> \
   --rollback-vercel-deployment <known-good-deployment-id> \

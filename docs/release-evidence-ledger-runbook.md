@@ -116,6 +116,7 @@ npm run publish:release-ledger -- \
   --image-digest sha256:<digest> \
   --migration-file product-experience/supabase-v45-onboarding-verify-token.sql \
   --migration-file product-experience/supabase-v46-onboarding-setup-token.sql \
+  --migration-file product-experience/supabase-v47-financial-offboard-guard.sql \
   --migration-file product-experience/supabase-client-runtime-source-pack-graph.sql \
   --rollback-cloud-run-revision <known-good-revision> \
   --source-import-result passed \

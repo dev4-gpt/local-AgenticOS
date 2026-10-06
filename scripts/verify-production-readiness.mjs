@@ -57,6 +57,7 @@ const requiredFiles = [
   "product-experience/supabase-v44-stripe-financial-event-dispositions.sql",
   "product-experience/supabase-v45-onboarding-verify-token.sql",
   "product-experience/supabase-v46-onboarding-setup-token.sql",
+  "product-experience/supabase-v47-financial-offboard-guard.sql",
   "product-experience/supabase-client-runtime-source-pack-graph.sql",
   "src/app/api/client-runtime/source-import/route.ts",
   "product-experience/supabase-public-launch-control-plane.sql",
@@ -94,6 +95,7 @@ const sourceChecks = [
   ["public-launch Stripe refund disposition", "product-experience/supabase-v44-stripe-financial-event-dispositions.sql", "stripe_financial_event_dispositions"],
   ["transactional onboarding verification", "product-experience/supabase-v45-onboarding-verify-token.sql", "consume_client_onboarding_verify_token"],
   ["transactional onboarding setup", "product-experience/supabase-v46-onboarding-setup-token.sql", "consume_client_onboarding_setup_token"],
+  ["financial offboarding deletion guard", "product-experience/supabase-v47-financial-offboard-guard.sql", "client_tenants_financial_delete_guard"],
   ["tenant source graph import", "product-experience/supabase-client-runtime-source-pack-graph.sql", "import_client_runtime_source_pack"],
   ["reviewed source import API", "src/app/api/client-runtime/source-import/route.ts", "permissionConfirmed"],
   ["public-launch refund classification", "product-experience/src/app/api/billing/webhook/route.ts", "public_launch_review_required"],
@@ -143,6 +145,7 @@ const migrationApplied = migrationFiles.map((file) => {
 const requiredMigrations = [
   { file: "product-experience/supabase-v45-onboarding-verify-token.sql", gate: "verification_migration_attached" },
   { file: "product-experience/supabase-v46-onboarding-setup-token.sql", gate: "setup_migration_attached" },
+  { file: "product-experience/supabase-v47-financial-offboard-guard.sql", gate: "financial_offboard_guard_migration_attached" },
   { file: "product-experience/supabase-client-runtime-source-pack-graph.sql", gate: "source_graph_migration_attached" },
 ];
 const deploymentIdentityKeys = ["vercelDeployment", "cloudRunRevision", "imageDigest"];

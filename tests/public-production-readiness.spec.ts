@@ -42,7 +42,7 @@ test("strict release acceptance does not trust an unpublished local ledger file"
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("release evidence requires the setup and source-graph migrations and new outcome gates", () => {
+test("release evidence requires the setup, financial guard, and source-graph migrations", () => {
   const dir = mkdtempSync(join(tmpdir(), "veloce-incomplete-ledger-"));
   try {
     const file = join(dir, "record.json");
@@ -64,6 +64,7 @@ test("release evidence requires the setup and source-graph migrations and new ou
     const failures = JSON.parse(result.stdout).failures as string[];
     expect(JSON.parse(result.stdout).notEvaluated).toEqual([]);
     expect(failures).toContain("release_gate:setup_migration_attached");
+    expect(failures).toContain("release_gate:financial_offboard_guard_migration_attached");
     expect(failures).toContain("release_gate:source_graph_migration_attached");
     expect(failures).toContain("release_gate:sourceImportResult_approved");
     expect(failures).toContain("release_gate:uiParityResult_approved");
