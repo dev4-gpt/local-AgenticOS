@@ -158,3 +158,19 @@ This section records work after the original checkpoint above. The older
   Hosted J01-J15 receipts, current-source deployment identity, complete
   classroom export/import, MiroFish Zep configuration and buyer run, and
   operations/legal approval remain outstanding.
+
+## Post-readiness Firecrawl follow-up
+
+- The user requested a Firecrawl collection of the Skool classroom after the
+  current production-readiness goal, and a one-page opt-in Python collector is
+  prepared at `scripts/fetch-skool-classroom-firecrawl.py`. It has not been run
+  against Firecrawl or Skool. Offline request-shape and private-output tests
+  passed; the default invocation makes no network request.
+- Passing a Skool session cookie in Firecrawl's request body gives Firecrawl
+  signed-in access to that page. The collector requires an explicit flag and a
+  privately supplied cookie; it never reads browser cookies or logs the token.
+  `storeInCache: false` is not zero data retention. Before any run, verify
+  platform permission, Firecrawl's data handling and credit balance, and the
+  user's specific consent to share that session. Test one page and inspect
+  results before considering a bounded crawl or graph import. The current
+  course-owner grant alone does not establish a Skool platform-policy waiver.
