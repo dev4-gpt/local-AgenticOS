@@ -125,3 +125,20 @@ This is consistent with the later profile repair, not a new successful buyer
 evaluation. The next meaningful step is restoring private Zep configuration
 and executing the already-reviewed bounded repeat within the approved $0
 paid-spend limit, then reviewing the actual outputs and current audit result.
+
+## Offline repeat preflight, 2026-10-06
+
+The private pilot `.env` now has a nonempty `ZEP_API_KEY` entry; its value was
+not read into a report. An earlier Zep key was pasted into chat, so the live
+repeat remains gated on confirmation that the key in the file was newly
+created after revoking the exposed one. The user has approved $0 paid spend.
+
+The pinned Python 3.12 environment installed from `backend/uv.lock` into the
+ignored `backend/.venv`. The simulation runner imports, and 15 focused pilot,
+Zep-barrier, and preparation-failure tests pass. The buyer smoke script now
+checks hashes, bounds, and replay state without loading credentials or the
+simulation stack unless `--apply` is explicitly supplied. Running it without
+`--apply` against `sim_3b7bfff26e22` passed: ten agents, two active buyers,
+ten configured rounds, the reviewed Groq endpoint/model, graph updates off,
+and `applied: false`. The script reports `applied: true` only after a completed
+run. No Groq or Zep request was sent, and no buyer result is claimed.
