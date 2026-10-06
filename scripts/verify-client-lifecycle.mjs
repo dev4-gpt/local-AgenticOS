@@ -36,13 +36,29 @@ const tempDir = await mkdtemp(join(tmpdir(), "veloce-client-lifecycle-"));
 const safeSnapshot = join(tempDir, "safe.json");
 const hashSnapshot = join(tempDir, "hash.json");
 const secretSnapshot = join(tempDir, "secret.json");
+const hermesSnapshot = join(tempDir, "hermes.json");
 const baseSnapshot = { schemaVersion: 2, slug: "test-client", exportedAt: new Date().toISOString(), tables: { client_tenants: [{ slug: "test-client", name: "Test Client", status: "active", retention_days: 30 }] } };
 await writeFile(safeSnapshot, JSON.stringify(baseSnapshot), { mode: 0o600 });
 await writeFile(hashSnapshot, JSON.stringify({ ...baseSnapshot, tables: { client_tenants: [{ ...baseSnapshot.tables.client_tenants[0], worker_token_hash: "deadbeef" }] } }), { mode: 0o600 });
 await writeFile(secretSnapshot, JSON.stringify({ ...baseSnapshot, tables: { client_runtime_requests: [{ tenant_slug: "test-client", details: "api_key=sk-test-secret-value" }] } }), { mode: 0o600 });
+const hermesTables = [
+  "client_hermes_content_factory_runs",
+  "client_hermes_content_factory_stage_outputs",
+  "client_hermes_content_factory_citations",
+  "client_hermes_content_factory_quality_reports",
+  "client_hermes_content_factory_approvals",
+  "client_hermes_content_factory_deliveries",
+];
+await writeFile(hermesSnapshot, JSON.stringify({
+  ...baseSnapshot,
+  tables: {
+    ...baseSnapshot.tables,
+    ...Object.fromEntries(hermesTables.map((table) => [table, [{ id: table, tenant_slug: "test-client", run_id: "test-run" }]])),
+  },
+}), { mode: 0o600 });
 
-function runLifecycle(args) {
-  return spawnSync(process.execPath, [join(root, "scripts/client-lifecycle.mjs"), ...args], {
+function runLifecycle(args, preload) {
+  return spawnSync(process.execPath, [...(preload ? ["--import", join(root, "scripts/fixtures/client-lifecycle-fetch.mjs")] : []), join(root, "scripts/client-lifecycle.mjs"), ...args], {
     encoding: "utf8",
     env: { ...process.env, SUPABASE_URL: "https://example.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "test-only-placeholder" },
   });
@@ -56,6 +72,10 @@ const secretRun = runLifecycle(["--mode", "restore", "--slug", "test-client", "-
 expect(secretRun.status !== 0 && `${secretRun.stdout}\n${secretRun.stderr}`.includes("secret-like"), "restore must reject secret-like snapshot values");
 const confirmationRun = runLifecycle(["--mode", "restore", "--slug", "test-client", "--input", safeSnapshot, "--apply"]);
 expect(confirmationRun.status !== 0 && `${confirmationRun.stdout}\n${confirmationRun.stderr}`.includes("confirm-restore"), "restore apply must require explicit confirmation before any network call");
+const hermesRun = runLifecycle(["--mode", "restore", "--slug", "test-client", "--input", hermesSnapshot, "--apply", "--confirm-restore"], true);
+const restoredTables = [...hermesRun.stdout.matchAll(/^MOCK_RESTORE_TABLE:(.+)$/gm)].map((match) => match[1]);
+expect(hermesRun.status === 0, `mocked Hermes restore must succeed: ${hermesRun.stderr}`);
+expect(JSON.stringify(restoredTables) === JSON.stringify(["client_tenants", ...hermesTables]), "restore must insert all exported Hermes tables after the tenant and run parent");
 const offboardChannelRun = runLifecycle(["--mode", "offboard", "--slug", "test-client", "--bucket", "test-client-bucket", "--project", "test-project", "--apply", "--confirm-offboard", "--destroy-secrets", "--delete-queue"]);
 expect(offboardChannelRun.status !== 0 && `${offboardChannelRun.stdout}\n${offboardChannelRun.stderr}`.includes("delete-notification-channel"), "offboard apply must require explicit notification-channel deletion consent");
 await rm(tempDir, { recursive: true, force: true });
