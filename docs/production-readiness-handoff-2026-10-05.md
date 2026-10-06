@@ -174,3 +174,15 @@ This section records work after the original checkpoint above. The older
   user's specific consent to share that session. Test one page and inspect
   results before considering a bounded crawl or graph import. The current
   course-owner grant alone does not establish a Skool platform-policy waiver.
+- The user also nominated
+  [social-media-scraping-apis](https://github.com/cporter202/social-media-scraping-apis).
+  Its repository is a catalog of third-party Apify actors, not an importable
+  Skool scraping library. The relevant
+  [classroom/posts actor](https://apify.com/memo23/skool-posts-with-comments-scraper)
+  advertises classroom modules, text, media URLs and comments, but requires
+  exported Skool cookies and pay-per-result billing (listed from $4.50 per
+  1,000 results). Its member-profile actors are outside the requested
+  classroom-content scope. No actor, cookie transfer or paid run was started.
+  Reassess only after platform permission, third-party session disclosure,
+  a provider-side $0 hard cap or separately approved spend, and a one-page
+  output sample that can be mapped into the existing tenant source-pack format.
