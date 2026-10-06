@@ -130,3 +130,31 @@ This section records work after the original checkpoint above. The older
   links. This is a narrow hosted Memory-export observation on the older
   revision, not a full tenant export, current-source acceptance, or a J12
   release receipt.
+
+## October 6 candidate and cleanup
+
+- Candidate `23a3344` is clean and committed locally, not pushed or deployed.
+  The canonical root `npm run build` now uses Next's supported Webpack path,
+  matching the local client launcher and public-site build. With the client
+  container flags, it produced a standalone artifact; pruning removed 235
+  disallowed route entries and retained 117, and the trace/route verifier
+  passed. A locally started copy of that packaged server passed the
+  unauthenticated access-control smoke test: login reachable, private pages
+  redirected, and private APIs denied. The temporary smoke server was stopped.
+  This is packaged-local evidence, not a Cloud Run revision receipt.
+- The source-matched deterministic AI report at
+  `tmp/ai-release-local-v1-report.json` records 9/9 cases passed for
+  `23a3344`, with no model or Zep calls and `productionReady: false`.
+  Focused local tests passed 297/298 with one optional private-input skip.
+- The temporary `signBlob` and bucket object-read grants expired at
+  `2026-10-06T18:23:41Z`. At 21:25 UTC, readback still showed the exact
+  localhost CORS origin. It was removed; subsequent bucket readback contained
+  only the pre-existing hosted Cloud Run origin with its original GET, PUT,
+  OPTIONS methods, headers, and 900-second cache age. Local browser uploads
+  on port 3939 will therefore require a new, approved temporary CORS change.
+- The release verifier still returns `releaseReady: false` without a release
+  ledger destination. A read-only inventory of `agentos-mvp` buckets found
+  the beta object bucket and Cloud Build bucket, not a release-ledger bucket.
+  Hosted J01-J15 receipts, current-source deployment identity, complete
+  classroom export/import, MiroFish Zep configuration and buyer run, and
+  operations/legal approval remain outstanding.
