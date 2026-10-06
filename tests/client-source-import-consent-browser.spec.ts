@@ -97,3 +97,39 @@ test("importing one part does not upload the next part without renewed permissio
   await expect(permission).not.toBeChecked();
   expect(artifactCreates).toBe(1);
 });
+
+test("imported source text renders links without loading embedded media", async ({ page, context }) => {
+  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
+  const mediaRequests: string[] = [];
+  await page.route("https://images.example.org/**", (route) => {
+    mediaRequests.push(route.request().url());
+    return route.abort();
+  });
+  await page.route("**/api/**", (route) => {
+    if (new URL(route.request().url()).pathname.endsWith("/memory-graph")) {
+      return route.fulfill({ status: 200, json: { ok: true, nodes: [], edges: [] } });
+    }
+    return route.fulfill({ status: 200, json: { ok: true, records: [{
+      id: "00000000-0000-4000-8000-000000000001",
+      title: "Synthetic source",
+      content: `# Lesson\n\n${"Background note.\n".repeat(75)}\n- [Read details](https://example.org/guide)\n- ![Course image](https://images.example.org/track.png)\n- [Unsafe](javascript:alert(1))`,
+      status: "active",
+      metadata: { source_import_key: "synthetic-key", source_url: "https://example.org/lesson", source_links: [] },
+      created_at: "2026-10-05T00:00:00Z",
+    }], hasMore: false } });
+  });
+
+  await page.goto("/memory");
+  const record = page.getByRole("article").filter({ hasText: "Synthetic source" });
+  const sourceText = record.getByText("Read source text");
+  await expect(sourceText).toBeVisible();
+  await expect(record.getByRole("link", { name: "Read details" })).not.toBeVisible();
+  await sourceText.click();
+  await expect(record.getByRole("heading", { name: "Lesson" })).toBeVisible();
+  await expect(record.getByRole("link", { name: "Read details" })).toHaveAttribute("href", "https://example.org/guide");
+  await expect(record.getByText("Course image")).toBeVisible();
+  await expect(record.getByRole("img")).toHaveCount(0);
+  await expect(record.getByText("Unsafe")).toBeVisible();
+  await expect(record.getByRole("link", { name: "Unsafe" })).toHaveCount(0);
+  expect(mediaRequests).toEqual([]);
+});
