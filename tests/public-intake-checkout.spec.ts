@@ -2,6 +2,51 @@ import { expect, test } from "@playwright/test";
 import { createHmac } from "node:crypto";
 import { loadReviewModule } from "./helpers/load-review-module";
 
+test("support returns the stored ticket ID and never truncates a customer message", async () => {
+  const ticketId = "00000000-0000-4000-8000-000000000015";
+  let nextId = 14;
+  const saved: Record<string, unknown>[] = [];
+  const notified: string[] = [];
+  const acknowledged: string[] = [];
+  const route = loadReviewModule("product-experience/src/app/api/support/route.ts", {
+    "@/lib/publicRequestGuard": { allowPublicRequest: async () => true, payloadTooLarge: () => false },
+    "@/lib/leadNotification": { notifyLead: async (input: { details: string[] }) => { notified.push(...input.details); return "sent"; } },
+    "@/lib/publicLaunch": {
+      cleanPublicText: (value: unknown, max = 4_000) => String(value ?? "").trim().slice(0, max),
+      publicEmail: (value: string) => value.includes("@") ? value : null,
+      requestId: () => `00000000-0000-4000-8000-${String(++nextId).padStart(12, "0")}`,
+      sendSupportAcknowledgement: async (_email: string, id: string) => { acknowledged.push(id); return "sent"; },
+      supabaseServiceInsert: async (_table: string, record: Record<string, unknown>) => { saved.push(record); return { ok: true, rows: [record] }; },
+    },
+  });
+  const request = (body: unknown) => new Request("http://localhost/api/support", { method: "POST", body: JSON.stringify(body) });
+  const baseline = { email: "buyer@example.test", subject: "Export help", message: "Please help export my workspace.", requestType: "general" };
+
+  const oversized = await route.POST(request({ ...baseline, message: "x".repeat(8_001) }));
+  expect(oversized.status).toBe(413);
+  expect(await oversized.json()).toMatchObject({ error: "field_too_large" });
+  const invalid = await route.POST(request({ ...baseline, requestType: "offboard_now" }));
+  expect(invalid.status).toBe(400);
+  const secretReference = await route.POST(request({ ...baseline, requestId: `sk-${"a".repeat(24)}` }));
+  expect(secretReference.status).toBe(400);
+  expect(await secretReference.json()).toMatchObject({ error: "secret_like_content" });
+  expect(saved).toHaveLength(0);
+  expect(notified).toHaveLength(0);
+  expect(acknowledged).toHaveLength(0);
+
+  const accepted = await route.POST(request({ ...baseline, requestId: "earlier-onboarding-id" }));
+  expect(accepted.status).toBe(200);
+  expect(await accepted.json()).toMatchObject({ ok: true, requestId: ticketId });
+  expect(saved).toHaveLength(1);
+  expect(saved[0]).toMatchObject({ id: ticketId, request_id: "earlier-onboarding-id", message: baseline.message });
+  expect(notified).toContain(`Request ID: ${ticketId}`);
+  expect(acknowledged).toEqual([ticketId]);
+
+  const withoutReference = await route.POST(request(baseline));
+  expect(withoutReference.status).toBe(200);
+  expect(saved[1]).toMatchObject({ id: "00000000-0000-4000-8000-000000000016", request_id: null });
+});
+
 test("public intake rejects silent truncation and cross-request idempotency collisions", async () => {
   const priorUrl = process.env.SUPABASE_URL;
   const priorKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

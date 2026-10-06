@@ -16,7 +16,18 @@ const managedProviderKeys = new Set([
 export async function POST(request: Request) {
   if (!(await allowPublicRequest(request, "support-request"))) return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
   if (payloadTooLarge(request)) return NextResponse.json({ ok: false, error: "payload_too_large" }, { status: 413 });
-  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ ok: false, error: "invalid_fields" }, { status: 400 });
+  if (["email", "subject", "message", "requestId", "requestType", "providerKey"].some((field) => body[field] != null && typeof body[field] !== "string")) {
+    return NextResponse.json({ ok: false, error: "invalid_fields" }, { status: 400 });
+  }
+  const exceeds = (field: string, max: number) => typeof body[field] === "string" && (body[field] as string).trim().length > max;
+  if (exceeds("email", 320) || exceeds("subject", 240) || exceeds("message", 8_000) || exceeds("requestId", 180)) {
+    return NextResponse.json({ ok: false, error: "field_too_large" }, { status: 413 });
+  }
+  if (body.requestType != null && body.requestType !== "general" && body.requestType !== "managed_provider_access") {
+    return NextResponse.json({ ok: false, error: "invalid_request_type" }, { status: 400 });
+  }
   const email = publicEmail(body.email);
   const requestType = body.requestType === "managed_provider_access" ? "managed_provider_access" : "general";
   const providerKey = typeof body.providerKey === "string" ? body.providerKey.trim().toUpperCase() : null;
@@ -34,17 +45,19 @@ export async function POST(request: Request) {
   }
   const subject = cleanPublicText(body.subject, 240) || (requestType === "managed_provider_access" ? `Managed provider access: ${providerKey}` : "Veloce support request");
   const message = cleanPublicText(body.message, 8_000);
+  const reference = cleanPublicText(body.requestId, 180);
   if (!email || !subject || !message) return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
-  if (secretLikePattern.test(`${subject}\n${message}`)) return NextResponse.json({ ok: false, error: "secret_like_content" }, { status: 400 });
+  if (secretLikePattern.test(`${subject}\n${message}\n${reference}`)) return NextResponse.json({ ok: false, error: "secret_like_content" }, { status: 400 });
   const id = requestId();
   const result = await supabaseServiceInsert("client_support_requests", {
+    id,
     email,
     subject,
     message,
     request_type: requestType,
     provider_key: requestType === "managed_provider_access" ? providerKey : null,
     requested_budget_micros: requestedBudget,
-    request_id: cleanPublicText(body.requestId, 180) || id,
+    request_id: reference || null,
   });
   if (!result.ok) return NextResponse.json({ ok: false, error: "store_failed" }, { status: 502 });
   const teamNotification = await notifyLead({
