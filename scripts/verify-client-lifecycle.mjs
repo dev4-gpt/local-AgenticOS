@@ -37,6 +37,7 @@ const safeSnapshot = join(tempDir, "safe.json");
 const hashSnapshot = join(tempDir, "hash.json");
 const secretSnapshot = join(tempDir, "secret.json");
 const hermesSnapshot = join(tempDir, "hermes.json");
+const pagedSnapshot = join(tempDir, "paged.json");
 const baseSnapshot = { schemaVersion: 2, slug: "test-client", exportedAt: new Date().toISOString(), tables: { client_tenants: [{ slug: "test-client", name: "Test Client", status: "active", retention_days: 30 }] } };
 await writeFile(safeSnapshot, JSON.stringify(baseSnapshot), { mode: 0o600 });
 await writeFile(hashSnapshot, JSON.stringify({ ...baseSnapshot, tables: { client_tenants: [{ ...baseSnapshot.tables.client_tenants[0], worker_token_hash: "deadbeef" }] } }), { mode: 0o600 });
@@ -54,6 +55,13 @@ await writeFile(hermesSnapshot, JSON.stringify({
   tables: {
     ...baseSnapshot.tables,
     ...Object.fromEntries(hermesTables.map((table) => [table, [{ id: table, tenant_slug: "test-client", run_id: "test-run" }]])),
+  },
+}), { mode: 0o600 });
+await writeFile(pagedSnapshot, JSON.stringify({
+  ...baseSnapshot,
+  tables: {
+    ...baseSnapshot.tables,
+    client_runtime_audit_events: Array.from({ length: 501 }, (_, index) => ({ id: `event-${index}`, tenant_slug: "test-client", event_type: "restore.test" })),
   },
 }), { mode: 0o600 });
 
@@ -75,7 +83,11 @@ expect(confirmationRun.status !== 0 && `${confirmationRun.stdout}\n${confirmatio
 const hermesRun = runLifecycle(["--mode", "restore", "--slug", "test-client", "--input", hermesSnapshot, "--apply", "--confirm-restore"], true);
 const restoredTables = [...hermesRun.stdout.matchAll(/^MOCK_RESTORE_TABLE:(.+)$/gm)].map((match) => match[1]);
 expect(hermesRun.status === 0, `mocked Hermes restore must succeed: ${hermesRun.stderr}`);
-expect(JSON.stringify(restoredTables) === JSON.stringify(["client_tenants", ...hermesTables]), "restore must insert all exported Hermes tables after the tenant and run parent");
+expect(JSON.stringify(restoredTables) === JSON.stringify(["client_tenants", ...hermesTables].map((table) => `${table}:1`)), "restore must insert all exported Hermes tables after the tenant and run parent");
+const pagedRun = runLifecycle(["--mode", "restore", "--slug", "test-client", "--input", pagedSnapshot, "--apply", "--confirm-restore"], true);
+const pagedTables = [...pagedRun.stdout.matchAll(/^MOCK_RESTORE_TABLE:(.+)$/gm)].map((match) => match[1]);
+expect(pagedRun.status === 0, `mocked 501-row restore must succeed: ${pagedRun.stderr}`);
+expect(JSON.stringify(pagedTables) === JSON.stringify(["client_tenants:1", "client_runtime_audit_events:500", "client_runtime_audit_events:1"]), "restore must split large tenant tables into bounded requests without dropping rows");
 const offboardChannelRun = runLifecycle(["--mode", "offboard", "--slug", "test-client", "--bucket", "test-client-bucket", "--project", "test-project", "--apply", "--confirm-offboard", "--destroy-secrets", "--delete-queue"]);
 expect(offboardChannelRun.status !== 0 && `${offboardChannelRun.stdout}\n${offboardChannelRun.stderr}`.includes("delete-notification-channel"), "offboard apply must require explicit notification-channel deletion consent");
 await rm(tempDir, { recursive: true, force: true });

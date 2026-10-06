@@ -244,7 +244,9 @@ async function restoreSnapshot(snapshot) {
     if (tenantRows.length !== rows.length) fail(`Restore contains rows outside requested tenant: ${table}`);
     assertSnapshotSafe(table, tenantRows);
     const restoredRows = orderForRestore(table, tenantRows).map((row) => eccRestoreRow(table, row));
-    await supabaseInsert(table, restoredRows.map((row) => pickExportColumns(table, row)));
+    for (let offset = 0; offset < restoredRows.length; offset += 500) {
+      await supabaseInsert(table, restoredRows.slice(offset, offset + 500).map((row) => pickExportColumns(table, row)));
+    }
   }
 }
 

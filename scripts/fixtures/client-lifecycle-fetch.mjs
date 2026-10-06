@@ -4,9 +4,9 @@ globalThis.fetch = async (url, options) => {
     throw new Error(`Unexpected lifecycle request: ${options.method} ${url}`);
   }
   const rows = JSON.parse(options.body);
-  if (!Array.isArray(rows) || rows.length !== 1 || rows[0].tenant_slug !== "test-client" && rows[0].slug !== "test-client") {
+  if (!Array.isArray(rows) || !rows.length || rows.length > 500 || rows.some((row) => row.tenant_slug !== "test-client" && row.slug !== "test-client")) {
     throw new Error(`Unexpected lifecycle restore payload: ${parsed.pathname}`);
   }
-  console.log(`MOCK_RESTORE_TABLE:${parsed.pathname.split("/").at(-1)}`);
+  console.log(`MOCK_RESTORE_TABLE:${parsed.pathname.split("/").at(-1)}:${rows.length}`);
   return new Response(null, { status: 201 });
 };
