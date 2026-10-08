@@ -68,6 +68,37 @@ test("classroom scope requires an actual path boundary", () => {
 
 test("classroom conversion refuses duplicate source identities", () => {
   expect(() => prepareClassroomSourcePack({ startUrl, sources: [source(0), source(0)], skipped: [], pending: [] })).toThrow("classroom_source_invalid");
+  expect(() => prepareClassroomSourcePack({ startUrl, sources: [source(0), { ...source(0), id: "S2" }], skipped: [], pending: [] })).toThrow("classroom_source_duplicate_page");
+});
+
+test("classroom conversion retains transcript text and playable media references", () => {
+  const lesson = {
+    ...source(0),
+    tab: "Classroom".repeat(40),
+    text: "Transcript:\nThe agent should ask permission before using customer data.",
+    links: [
+      { url: "https://video.example.org/watch/1#chapter-2", text: "Media: Lesson playback" },
+      { url: "https://docs.example.org/lesson-1", text: "Starter code" },
+    ],
+  };
+  const prepared = prepareClassroomSourcePack({ startUrl, sources: [lesson], skipped: [], pending: [] });
+  const parsed = parseClientSourcePack(prepared.batches[0]);
+  expect(prepared.coverage.mediaReferences).toBe(1);
+  expect(prepared.coverage.discoveredQueueExhausted).toBe(true);
+  expect(parsed.sources[0].text).toBe(lesson.text);
+  expect(parsed.sources[0].tab?.length).toBeLessThanOrEqual(240);
+  expect(parsed.sources[0].links).toEqual([
+    { url: "https://video.example.org/watch/1", text: "Media: Lesson playback" },
+    { url: "https://docs.example.org/lesson-1", text: "Starter code" },
+  ]);
+});
+
+test("classroom conversion rejects unsafe or unimportable material before writing", () => {
+  const lesson = source(0);
+  expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lesson, links: [null] }], pending: [] })).toThrow("classroom_link_invalid");
+  expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lesson, links: [{ url: "https://video.example.org/watch/1?token=abc", text: "Media: Video" }] }], pending: [] })).toThrow("classroom_url_invalid");
+  expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lesson, collectedAt: "not-a-date" }], pending: [] })).toThrow("classroom_source_invalid");
+  expect(() => prepareClassroomSourcePack({ startUrl, sources: [lesson], pending: [null] })).toThrow("classroom_pending_entries_invalid");
 });
 
 test("classroom export writes selectable private hashed batches and refuses overwrite", async () => {

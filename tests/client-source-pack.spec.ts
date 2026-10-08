@@ -15,7 +15,7 @@ function examplePack() {
     skipped: [],
     sources: [
       { title: "About", url: "https://www.skool.com/example/about", text: "Welcome #intro", collectedAt: "2026-09-26T00:00:00Z", links: [{ url: "https://www.skool.com/example/classroom", text: "Classroom" }] },
-      { title: "Lesson", url: "https://www.skool.com/example/classroom", text: "A lesson", collectedAt: "2026-09-26T00:00:00Z", links: [{ url: "https://example.org/resource", text: "Resource" }] },
+      { title: "Lesson", url: "https://www.skool.com/example/classroom", text: "Transcript: A lesson", collectedAt: "2026-09-26T00:00:00Z", links: [{ url: "https://video.example.org/watch/1", text: "Media: Lesson playback" }] },
     ],
   };
 }
@@ -56,7 +56,7 @@ test("source import commits only the exact artifact bytes reviewed with permissi
   const realFetch = globalThis.fetch;
   const original = Buffer.from(JSON.stringify(examplePack()));
   const changedPack = examplePack();
-  changedPack.sources[1].text = "B lesson";
+  changedPack.sources[1].text = "Transcript: B lesson";
   const changed = Buffer.from(JSON.stringify(changedPack));
   expect(changed.byteLength).toBe(original.byteLength);
   let stored = original;
@@ -90,7 +90,7 @@ test("source import commits only the exact artifact bytes reviewed with permissi
     expect(reviewed.skipped).toEqual([]);
     expect(reviewed.sources).toHaveLength(2);
     expect(reviewed.sources[0]).toMatchObject({ title: "About", url: "https://www.skool.com/example/about", text: "Welcome #intro", links: [{ url: "https://www.skool.com/example/classroom", text: "Classroom" }] });
-    expect(reviewed.sources[1]).toMatchObject({ title: "Lesson", text: "A lesson", links: [{ url: "https://example.org/resource", text: "Resource" }] });
+    expect(reviewed.sources[1]).toMatchObject({ title: "Lesson", text: "Transcript: A lesson", links: [{ url: "https://video.example.org/watch/1", text: "Media: Lesson playback" }] });
     const withoutPermission = await post({ action: "import", previewSha256: reviewed.packSha256 });
     expect(withoutPermission.status).toBe(400);
     expect((await withoutPermission.json()).error).toBe("source_import_review_required");
@@ -185,6 +185,10 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
       metadata: { artifactId, packSha256: "a".repeat(64), sourceCount: 2, linkCount: 2, imported: 2, updated: 0, duplicates: 0 },
     }]);
     expect((await db.query("select id from client_runtime_memory_graph_nodes where tenant_slug='tenant-a' and kind='document'")).rows).toHaveLength(2);
+    expect((await db.query<{ content: string; links: { url: string; text: string }[] }>("select content, metadata -> 'source_links' as links from client_runtime_records where title='Lesson'")).rows)
+      .toEqual([{ content: "Transcript: A lesson", links: [{ url: "https://video.example.org/watch/1", text: "Media: Lesson playback" }] }]);
+    expect((await db.query<{ url: string }>("select metadata ->> 'url' as url from client_runtime_memory_graph_nodes where tenant_slug='tenant-a' and kind='url' and metadata ->> 'url' = 'https://video.example.org/watch/1'")).rows)
+      .toEqual([{ url: "https://video.example.org/watch/1" }]);
     const second = await db.query<{ value: { imported: number; duplicates: number } }>(sql, args);
     expect(second.rows[0].value).toEqual({ imported: 0, updated: 0, duplicates: 2, graphRefreshed: false });
     expect((await db.query("select id from client_runtime_audit_events")).rows).toHaveLength(2);
