@@ -118,6 +118,7 @@ payment result or used for the strict final attestation.
 | Provider catalog | Only reviewed/selectable providers appear; unreviewed and reference-only entries cannot execute. |
 | BYOK lifecycle | Server-side validation, rotation, revocation, deletion, and proof that the browser/evidence contains no credential value. |
 | Tenant isolation | Tenant A cannot read, execute, export, or delete Tenant B data; run the deletion/export/rollback drill. |
+| Client workspace parity | Record the exact local commit and hosted Cloud Run revision/image. On that revision, signed-in Memory must show the consent-gated `Community sources` JSON import; default client navigation must omit operator-only Classroom/Social Research. Verify a reviewed source pack reaches tenant-scoped records and URL graph, then compare desktop/mobile behavior. The 2026-10-07 internal-beta observation fails this gate. |
 | Operations | Named owner, cost caps, alerts, dashboards, bounded-load and recovery test, and a known-good rollback revision. |
 | Legal | Terms, privacy, consent, retention, support, and marketing/voice policies reviewed by the responsible owner. |
 

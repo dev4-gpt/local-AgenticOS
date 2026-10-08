@@ -49,6 +49,17 @@ is not evidence that the client feature is available. A read-only Cloud Run
 revision query was denied `run.services.get`, so this refresh does not confirm
 the current internal-beta revision or replace the 2026-09-26 revision receipt.
 
+Read-only refresh on 2026-10-07: the signed-in Chrome Work window still showed
+`agentos-internal-beta-vbimnfseva-ew.a.run.app/memory` with tenant-scoped
+memory and graph counts. Its navigation still exposed `Classroom Research` and
+`Social Research`, and the Memory page offered Markdown import/export but no
+`Community sources` JSON source-pack import. Local source commit `e8eacac`
+renders that import control on Memory and excludes operator-only research from
+default client navigation; local tests do not prove those changes are hosted.
+No Cloud Run revision, deployment identity, or same-commit parity was verified
+in this browser check. Treat `sourceImportResult` and `uiParityResult` as open
+release gates; do not describe the bonus link index as a full classroom import.
+
 The legacy Cloud Run service is publicly reachable but its `/`, `/healthz`, and
 documented `/status` routes returned `404` during this verification. Its source
 image commit is not present in this repository. It must not be used as a
