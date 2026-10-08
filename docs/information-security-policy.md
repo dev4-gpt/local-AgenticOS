@@ -72,9 +72,16 @@ platform's behalf.
 - Provider credentials submitted by a tenant (BYOK) are classified as
   restricted: written to a storage location the tenant's own runtime
   cannot read back, never logged, never displayed after submission.
-- Retention periods are configured per tenant and enforced through the
-  offboarding/deletion process, with independent post-deletion
-  verification as standard practice, not an occasional check.
+- Retention periods must be configured per tenant and enforced through the
+  offboarding/deletion process, with independent post-deletion verification
+  as standard practice, not an occasional check.
+- The owner selected a 45-day customer-data window, but its start event and
+  financial-record exception still need an approved decision. Current
+  `client-lifecycle --mode retention` removes expired learning items only;
+  tenant storage lifecycle and offboarding do not prove a 45-day purge of all
+  database rows, private exports, backups, and vendor copies. The read-only
+  `scripts/audit-client-retention-snapshot.mjs` inventories age from a private
+  lifecycle export; it does not authorize deletion or prove enforcement.
 
 ## 6. Encryption policy
 

@@ -85,6 +85,7 @@
     "verify:client-isolation": "node scripts/verify-client-runtime-isolation.mjs",
     "verify:platform-isolation": "node scripts/verify-platform-environment-isolation.mjs",
     "client:lifecycle": "node scripts/client-lifecycle.mjs",
+    "audit:client-retention": "node scripts/audit-client-retention-snapshot.mjs",
     "provision:runtime-alerts": "node scripts/provision-client-runtime-alerts.mjs",
     "validate:client-manifest": "node scripts/validate-client-manifest.mjs",
     "promote:client-credential": "node scripts/promote-client-credential.mjs",
