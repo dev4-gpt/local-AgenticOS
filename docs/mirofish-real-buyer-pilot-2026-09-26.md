@@ -144,3 +144,17 @@ simulation stack unless `--apply` is explicitly supplied. Running it without
 ten configured rounds, the reviewed Groq endpoint/model, graph updates off,
 and `applied: false`. The script reports `applied: true` only after a completed
 run. No Groq or Zep request was sent, and no buyer result is claimed.
+
+## Offline evidence gate, 2026-10-07
+
+The buyer-run auditor now requires each `CREATE_POST` telemetry entry to match
+one committed SQLite post by post ID, agent ID, and content; unrelated actions
+cannot substitute for missing posts. Its action count must equal the final
+runner counter. Completion requires the matching simulation ID,
+`runner_status: completed`, a positive configured round count, Twitter
+completion, and exactly one structured `simulation_end` event with matching
+rounds and action count, even when the text log has no completion phrase.
+Sixteen offline audit/arming/profile tests pass. The
+retained `sim_bfa570ba2a8a` still fails profile-workflow coverage (seven of
+ten missing) despite matching post and completion telemetry. No new simulation
+or provider request was made; the prepared `sim_3b7bfff26e22` remains unrun.

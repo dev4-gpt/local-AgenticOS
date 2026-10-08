@@ -20,14 +20,20 @@ def normalized_words(value: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", value.lower()))
 
 
-def action_log_count(simulation_dir: Path) -> int:
-    count = 0
+def action_log_entries(simulation_dir: Path) -> tuple[list[dict], list[dict]]:
+    actions = []
+    events = []
     for path in (simulation_dir / "twitter" / "actions.jsonl", simulation_dir / "actions.jsonl"):
         if path.exists():
             for line in path.read_text(encoding="utf-8").splitlines():
-                if line.strip() and json.loads(line).get("action_type"):
-                    count += 1
-    return count
+                if not line.strip():
+                    continue
+                entry = json.loads(line)
+                if entry.get("action_type"):
+                    actions.append(entry)
+                elif entry.get("event_type"):
+                    events.append(entry)
+    return actions, events
 
 
 def audit(simulation_dir: Path, cohort_path: Path) -> dict:
@@ -101,20 +107,33 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         for agent in config.get("agent_configs", [])
         if agent.get("activity_level", 0) > 0 and agent.get("active_hours")
     }
-    action_rows = action_log_count(simulation_dir)
+    actions, events = action_log_entries(simulation_dir)
+    action_rows = len(actions)
+    committed_posts = Counter((post_id, agent_id, content) for post_id, agent_id, content, _ in posts)
+    traced_posts = Counter(
+        (action.get("post_id"), action.get("agent_id"), (action.get("action_args") or {}).get("content"))
+        for action in actions if action.get("action_type") == "CREATE_POST"
+    )
+    completion_events = [event for event in events if event.get("event_type") == "simulation_end"]
     log_text = (simulation_dir / "simulation.log").read_text(encoding="utf-8") if (simulation_dir / "simulation.log").exists() else ""
     loop_completed = "模拟循环完成" in log_text
     status = run_state.get("runner_status")
     reported_actions = run_state.get("twitter_actions_count", 0)
+    total_rounds = run_state.get("total_rounds")
 
     checks = {
+        "runIdentity": config.get("simulation_id") == simulation_dir.name == run_state.get("simulation_id"),
         "personaCoverage": profile_ids == expected_ids and configured_ids == expected_ids and len(profiles) == len(expected_ids),
         "profileWorkflowCoverage": not missing_workflow_profiles,
         "profileAgentMapping": all(profile_by_agent.get(key) == value for key, value in configured_by_agent.items()),
         "postAgentMapping": not unknown_post_agents,
         "initialPostAttribution": not attribution_errors and not missing_initial_posts,
-        "actionTelemetry": action_rows >= len(posts) and reported_actions >= len(posts),
-        "completionTelemetry": not loop_completed or (status == "completed" and run_state.get("current_round") == run_state.get("total_rounds")),
+        "actionTelemetry": committed_posts == traced_posts and action_rows == reported_actions,
+        "completionTelemetry": status == "completed" and type(total_rounds) is int and total_rounds > 0
+        and run_state.get("current_round") == total_rounds
+        and run_state.get("twitter_completed") is True and len(completion_events) == 1
+        and completion_events[0].get("total_rounds") == total_rounds
+        and completion_events[0].get("total_actions") == action_rows,
         "buyerActivity": bool(post_counts) and all(post_counts.get(buyer, 0) > 0 for buyer in active_buyers),
     }
     return {
@@ -133,6 +152,8 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         "missingInitialPostAgents": missing_initial_posts,
         "unknownPostAgents": unknown_post_agents,
         "actionLogRows": action_rows,
+        "tracedPosts": sum(traced_posts.values()),
+        "completionEvents": len(completion_events),
         "reportedTwitterActions": reported_actions,
         "loopCompletedInLog": loop_completed,
         "runnerStatus": status,
