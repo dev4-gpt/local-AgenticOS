@@ -3,10 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { LockKeyhole, LogIn, Loader2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-
-function safeNextPath(value: string | null) {
-  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
-}
+import { safeClientLoginNext } from "@/lib/clientLoginRedirect";
 
 function accessMessage(error: string | null | undefined) {
   if (error === "tenant_membership_required" || error === "client_user_not_approved") return "This account does not have access to this workspace. Use your approved workspace account or contact its owner.";
@@ -24,7 +21,7 @@ export default function ClientLogin() {
 
   useEffect(() => {
     fetch("/api/client-auth/session", { cache: "no-store" }).then((response) => response.json()).then((data) => {
-      if (data.authenticated && data.workspaceAuthorized === true) window.location.replace(safeNextPath(params.get("next")));
+      if (data.authenticated && data.workspaceAuthorized === true) window.location.replace(safeClientLoginNext(params.get("next"), window.location.origin));
       else if (data.authenticated) setError(accessMessage(data.accessError));
     }).catch(() => undefined);
   }, [params]);
@@ -39,7 +36,7 @@ export default function ClientLogin() {
       const session = await fetch("/api/client-auth/session", { credentials: "same-origin", cache: "no-store" }).then((result) => result.json()).catch(() => null);
       if (!session?.authenticated) throw new Error("Sign-in succeeded but the session cookie was not accepted. Please try again.");
       if (session.workspaceAuthorized !== true) throw new Error(accessMessage(session.accessError));
-      window.location.replace(safeNextPath(params.get("next")));
+      window.location.replace(safeClientLoginNext(params.get("next"), window.location.origin));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to sign in.");
     } finally { setBusy(false); }

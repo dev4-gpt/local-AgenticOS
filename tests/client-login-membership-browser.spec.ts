@@ -52,3 +52,24 @@ test("an authorized session continues to the requested workspace", async ({ page
   await expect(page).toHaveURL(`${baseURL}/memory`);
   await expect(page.getByText("Authorized redirect fixture")).toBeVisible();
 });
+
+test("an authorized session ignores a backslash-based external next destination", async ({ page }) => {
+  await page.route("**/api/client-auth/session", (route) => route.fulfill({ json: { authenticated: true, workspaceAuthorized: true } }));
+  await page.route(`${baseURL}/`, (route) => route.fulfill({ contentType: "text/html", body: "<main>Tenant home fixture</main>" }));
+  await page.goto(`/login?next=${encodeURIComponent("/\\evil.example/path")}`);
+  await expect(page).toHaveURL(`${baseURL}/`);
+  await expect(page.getByText("Tenant home fixture")).toBeVisible();
+});
+
+test("password login ignores a backslash-based external next destination", async ({ page }) => {
+  let signedIn = false;
+  await page.route("**/api/client-auth/session", (route) => route.fulfill({ json: { authenticated: signedIn, workspaceAuthorized: signedIn } }));
+  await page.route("**/api/client-auth/login", (route) => { signedIn = true; return route.fulfill({ json: { ok: true } }); });
+  await page.route(`${baseURL}/`, (route) => route.fulfill({ contentType: "text/html", body: "<main>Tenant home fixture</main>" }));
+  await page.goto(`/login?next=${encodeURIComponent("/\\evil.example/path")}`);
+  await page.getByLabel("Email", { exact: true }).fill("synthetic@example.invalid");
+  await page.getByLabel("Password", { exact: true }).fill("synthetic-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(`${baseURL}/`);
+  await expect(page.getByText("Tenant home fixture")).toBeVisible();
+});
