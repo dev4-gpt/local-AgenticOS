@@ -126,6 +126,7 @@ function selectionError(reason: unknown) {
   if (code === "source_batch_duplicate_source") return "Two parts describe the same source and tab. Correct the export before importing so one lesson cannot replace another.";
   if (code === "source_batch_files_invalid" || code === "source_batch_files_duplicate") return "Choose up to 100 distinct JSON parts, each no larger than 1 MB.";
   if (code === "source_batch_json_invalid") return "The selected JSON file is malformed or not UTF-8.";
+  if (code === "source_batch_content_invalid") return "A selected source pack contains invalid content. Correct the export and select all files again; nothing was uploaded.";
   if (code === "source_batch_size_changed") return "A selected file changed while it was being checked. Select the complete export again.";
   if (code === "runtime_rate_limited") return "Import limit reached. Wait about 15 minutes, then retry this batch. Previously imported batches remain saved.";
   return code || "Source pack review failed.";

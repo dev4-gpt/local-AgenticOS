@@ -98,6 +98,30 @@ test("importing one part does not upload the next part without renewed permissio
   expect(artifactCreates).toBe(1);
 });
 
+test("an invalid later part blocks the entire selection before any upload", async ({ page, context }) => {
+  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
+  const startUrl = "https://example.org/course";
+  const parts = [1, 2].map((number) => {
+    const buffer = Buffer.from(JSON.stringify({ startUrl, skipped: [], sources: [{ title: `Lesson ${number}`, url: `${startUrl}/${number}`, text: "Lesson text", links: number === 2 ? [{ url: "https://example.org/file?X-Amz-Signature=secret", text: "Download" }] : [] }] }));
+    return { name: `synthetic.part-${String(number).padStart(3, "0")}.json`, buffer, sha256: createHash("sha256").update(buffer).digest("hex"), links: number === 2 ? 1 : 0 };
+  });
+  const manifest = { version: 1, startUrl, sources: 2, links: 1, skipped: 0, batches: parts.map((part) => ({ file: part.name, sha256: part.sha256, sources: 1, links: part.links })) };
+  const writes: string[] = [];
+  await page.route("**/api/**", (route) => {
+    if (route.request().method() !== "GET") writes.push(route.request().url());
+    return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
+  });
+
+  await page.goto("/memory");
+  await page.locator('input[type="file"][multiple]').setInputFiles([
+    { name: "synthetic.manifest.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(manifest)) },
+    ...parts.map((part) => ({ name: part.name, mimeType: "application/json", buffer: part.buffer })),
+  ]);
+  await expect(page.getByRole("alert").filter({ hasText: "A selected source pack contains invalid content" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Review batch 1" })).toHaveCount(0);
+  expect(writes).toEqual([]);
+});
+
 test("imported source text renders links without loading embedded media", async ({ page, context }) => {
   await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
   const mediaRequests: string[] = [];
