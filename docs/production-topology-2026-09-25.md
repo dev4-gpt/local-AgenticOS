@@ -60,6 +60,17 @@ No Cloud Run revision, deployment identity, or same-commit parity was verified
 in this browser check. Treat `sourceImportResult` and `uiParityResult` as open
 release gates; do not describe the bonus link index as a full classroom import.
 
+Further read-only Chrome Work check on 2026-10-07: the current public
+`https://app.veloceos.cloud/login` rendered a 404 page, while the local client
+server at `http://127.0.0.1:3569/memory` redirected to its own login page in
+the same Chrome profile. The signed-in beta session therefore did not establish
+a signed-in local comparison. A fresh `vercel inspect` was inconclusive because
+the CLI's saved token was invalid; the earlier Vercel deployment identity above
+was **not** revalidated. Public J08 requires a reviewed deployment of the
+`product-experience` app, a working `/login`, configured email/callback routing,
+and an actual disposable-tenant sign-in/recovery test. Do not send customers to
+the 404 URL or substitute the single-tenant Cloud Test link as their shared login.
+
 The legacy Cloud Run service is publicly reachable but its `/`, `/healthz`, and
 documented `/status` routes returned `404` during this verification. Its source
 image commit is not present in this repository. It must not be used as a
