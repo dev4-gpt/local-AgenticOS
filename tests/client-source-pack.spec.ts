@@ -278,6 +278,32 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
       await db.exec("delete from client_runtime_records where tenant_slug='tenant-a'; select refresh_client_runtime_memory_graph('tenant-a')");
       expect((await db.query("select id from client_runtime_memory_graph_nodes where tenant_slug='tenant-a'")).rows).toHaveLength(0);
     }
+    const largeStartUrl = "https://example.org/classroom";
+    const largeSources = Array.from({ length: 205 }, (_, index) => ({
+      title: `Synthetic lesson ${String(index + 1).padStart(3, "0")}`,
+      url: `${largeStartUrl}/lesson-${index + 1}`,
+      text: `Synthetic lesson ${index + 1} body with searchable marker ${index === 204 ? "lastlessonmarker" : "ordinarylessonmarker"}.`,
+      links: [{ url: `${largeStartUrl}/resource-${index + 1}`, text: `Resource ${index + 1}` }],
+    }));
+    for (let offset = 0; offset < largeSources.length; offset += 100) {
+      const batch = parseClientSourcePack({ startUrl: largeStartUrl, sources: largeSources.slice(offset, offset + 100) });
+      const imported = await db.query<{ value: { imported: number; updated: number; duplicates: number; graphRefreshed: boolean } }>(
+        sql, ["tenant-a", artifactId, createHash("sha256").update(JSON.stringify(batch.sources)).digest("hex"), JSON.stringify(batch.sources)],
+      );
+      expect(imported.rows[0].value).toEqual({ imported: batch.sources.length, updated: 0, duplicates: 0, graphRefreshed: true });
+    }
+    expect((await db.query("select id from client_runtime_records where tenant_slug='tenant-a' and kind='memory'")).rows).toHaveLength(205);
+    const largeGraph = await db.query<{ kind: string; url: string | null }>(
+      "select kind, metadata ->> 'url' as url from client_runtime_memory_graph_nodes where tenant_slug='tenant-a'",
+    );
+    expect(largeGraph.rows.filter((row) => row.kind === "document")).toHaveLength(205);
+    expect(largeGraph.rows.filter((row) => row.kind === "url").map((row) => row.url).sort()).toEqual(
+      largeSources.flatMap((source) => [source.url, source.links[0].url]).sort(),
+    );
+    const lastLesson = await db.query<{ value: { records: Array<{ title: string }> } }>(searchSql, ["tenant-a", "lastlessonmarker", 0, 50]);
+    expect(lastLesson.rows[0].value.records.map((row) => row.title)).toEqual(["Synthetic lesson 205"]);
+    await db.exec("delete from client_runtime_records where tenant_slug='tenant-a'; select refresh_client_runtime_memory_graph('tenant-a')");
+    expect((await db.query("select id from client_runtime_memory_graph_nodes where tenant_slug='tenant-a'")).rows).toHaveLength(0);
     await db.exec(`
       create function reject_source_import_audit() returns trigger language plpgsql as $$ begin raise exception 'source_audit_failed'; end $$;
       create trigger source_import_audit_failure before insert on client_runtime_audit_events

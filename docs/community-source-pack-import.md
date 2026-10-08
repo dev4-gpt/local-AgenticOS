@@ -31,6 +31,8 @@ For a local `ClassroomRun` JSON from a site that permits automated collection, o
 
 `startUrl`, each source title, HTTPS/HTTP URL, nonempty text, and a `links` array are required. `tab`, `collectedAt`, and `skipped` are optional. The server rejects the whole pack if any page or link is malformed; it never silently drops a source. Keep `startUrl` identical across batches from the same community so repeat imports have stable IDs. A batch is limited to 1 MB, 100 sources, 30,000 characters per source, and 100 links per source. Split larger exports into batches; the product does not yet enumerate or verify that all community content was included.
 
+Local database regression on 2026-10-07 imported 205 synthetic lessons in three batches, then verified all 205 records, 410 distinct source/resource URL nodes, search of the last lesson, and graph cleanup after deletion. This checks multi-batch graph behavior in embedded PostgreSQL only; it does not certify a real classroom export, hosted import, or full community coverage.
+
 Remove signed URLs and credential-bearing query parameters before packaging the export. Source and outbound URLs with common token, code, signature, session, password, API-key, AWS presign, or Google Cloud Storage signing query keys are rejected rather than persisted to records or graph nodes. Replace temporary media download links with stable lesson or watch-page URLs; the import stores references, not video bytes.
 
 ## Tenant workflow
