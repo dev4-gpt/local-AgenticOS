@@ -122,9 +122,18 @@ npm run publish:release-ledger -- \
   --source-import-result passed \
   --ui-parity-result passed \
   --buyer-simulation-result passed \
+  --buyer-simulation-dir <private-reviewed-mirofish-run-dir> \
   --ai-engineering-result passed \
   --test-result focused=passed
 ```
+
+The buyer-simulation result requires the retained run's private
+`buyer_review.json`. Publishing replays the offline MiroFish auditor, hashes its
+inputs before and after the replay, and records only allowlisted counts, pass
+checks, and SHA-256 digests in the ledger. A completed run without a positive
+review for every dynamic post fails `buyer_pilot_evidence`. The ledger does not
+contain generated post text; retain the private run artifacts separately for
+review. This is synthetic pilot evidence, not market validation.
 
 Then validate the current commit against whatever was published:
 

@@ -4,6 +4,7 @@ import { chmodSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "n
 import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { validCustomerJourneyReport } from "./lib/customer-journey-evidence.mjs";
+import { captureBuyerPilotEvidence, validBuyerPilotEvidence } from "./lib/buyer-pilot-evidence.mjs";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const args = process.argv.slice(2);
@@ -151,7 +152,7 @@ const requiredMigrations = [
 const deploymentIdentityKeys = ["vercelDeployment", "cloudRunRevision", "imageDigest"];
 const releaseOutcomeKeys = ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "sourceImportResult", "uiParityResult", "buyerSimulationResult", "aiEngineeringResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"];
 const ledgerOnlyGates = [
-  "ai_evaluation_local_evidence", "customer_journey_evidence", "migration_evidence_attached",
+  "ai_evaluation_local_evidence", "buyer_pilot_evidence", "customer_journey_evidence", "migration_evidence_attached",
   ...requiredMigrations.map(({ gate }) => gate), "test_results_attached", "all_tests_passed",
   ...deploymentIdentityKeys, ...releaseOutcomeKeys.map((key) => `${key}_approved`), "rollback_target",
 ];
@@ -213,6 +214,11 @@ if (publishLedger) {
   catch { warnings.push(`No readable AI evaluation report at ${aiEvaluationReportFile}.`); }
   if (!validLocalAiEvaluation(aiEvaluationLocal, commit)) releaseGateFailures.push("ai_evaluation_local_evidence");
 }
+const buyerSimulationDir = valueAfter("--buyer-simulation-dir");
+const buyerPilot = publishLedger && buyerSimulationDir
+  ? captureBuyerPilotEvidence({ root, simulationDir: buyerSimulationDir, sourceCommit: commit })
+  : null;
+if (publishLedger && !validBuyerPilotEvidence(buyerPilot, commit, root)) releaseGateFailures.push("buyer_pilot_evidence");
 
 let ledgerRecord = null;
 let ledgerRecordPath = null;
@@ -234,6 +240,7 @@ if (!publishLedger) {
     if (ledgerRecord.schemaVersion !== 2) releaseGateFailures.push("release_ledger_schema_version");
     if (!valueAfter("--release-id") && ledgerRecord.source?.commit !== commit) releaseGateFailures.push("release_ledger_commit_mismatch");
     if (!validLocalAiEvaluation(ledgerRecord.aiEvaluationLocal, ledgerRecord.source?.commit)) releaseGateFailures.push("ai_evaluation_local_evidence");
+    if (!validBuyerPilotEvidence(ledgerRecord.buyerPilot, ledgerRecord.source?.commit, root)) releaseGateFailures.push("buyer_pilot_evidence");
     if (!validCustomerJourneyReport(ledgerRecord.customerJourneyReport, ledgerRecord.source?.commit, ledgerRecord.deployment, evidenceBytes)) releaseGateFailures.push("customer_journey_evidence");
     for (const key of deploymentIdentityKeys) {
       if (!ledgerRecord.deployment?.[key]) releaseGateFailures.push(key);
@@ -306,6 +313,7 @@ const evidence = {
     : (ledgerRecord?.migration ?? { applied: [], appliedAt: null, appliedBy: null }),
   tests: publishLedger ? testResults : (ledgerRecord?.tests ?? {}),
   aiEvaluationLocal: publishLedger ? aiEvaluationLocal : (ledgerRecord?.aiEvaluationLocal ?? null),
+  buyerPilot: publishLedger ? buyerPilot : (ledgerRecord?.buyerPilot ?? null),
   customerJourneyReport: publishLedger ? customerJourneyReport : (ledgerRecord?.customerJourneyReport ?? null),
   configurationHash,
   configurationShape: { requiredServerVariables: configurationShape.requiredServerVariables, present: configurationShape.present, publicSecretNames: configurationShape.publicSecretNames },

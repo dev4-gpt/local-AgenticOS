@@ -205,6 +205,7 @@ npm run publish:release-ledger -- \
   --source-import-result passed \
   --ui-parity-result passed \
   --buyer-simulation-result passed \
+  --buyer-simulation-dir <private-reviewed-mirofish-run-dir> \
   --ai-engineering-result passed \
   --managed-openrouter-result passed \
   --operations-approval approved \

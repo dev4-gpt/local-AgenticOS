@@ -15,6 +15,7 @@ test("release verifier records the current revision without secrets", () => {
   expect(result.stdout).toContain("release_gate:ledger_bucket_not_configured");
   const report = JSON.parse(result.stdout);
   expect(report.notEvaluated).toContain("customer_journey_evidence");
+  expect(report.notEvaluated).toContain("buyer_pilot_evidence");
   expect(report.notEvaluated).toContain("sourceImportResult_approved");
   expect(report.notEvaluated).toContain("tenantIsolationResult_approved");
   expect(report.notEvaluated).toContain("buyerSimulationResult_approved");
@@ -71,6 +72,7 @@ test("release evidence requires the setup, financial guard, and source-graph mig
     expect(failures).toContain("release_gate:buyerSimulationResult_approved");
     expect(failures).toContain("release_gate:aiEngineeringResult_approved");
     expect(failures).toContain("release_gate:ai_evaluation_local_evidence");
+    expect(failures).toContain("release_gate:buyer_pilot_evidence");
     expect(failures).toContain("release_gate:customer_journey_evidence");
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
