@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Activity, Clock3, Database, Gauge, RadioTower, RefreshCw, ShieldCheck, Sparkles, WalletCards } from "lucide-react";
+import { Database, Gauge, RadioTower, RefreshCw, ShieldCheck, Sparkles, WalletCards } from "lucide-react";
 import { CLIENT_AGENT_CATALOG } from "@/lib/clientAgentCatalog";
 
 type Credential = { key: string; connected: boolean };
 type ProviderStat = { total?: number; succeeded?: number; failed?: number; active?: number; averageLatencyMs?: number | null; lastModel?: string | null };
 type RuntimeData = {
+  posthogCaptureEnabled?: boolean;
   sample?: { jobsLimited?: boolean };
   providerCounts?: Record<string, ProviderStat>;
   monthlyUsage?: { totalCostMicros?: number; inputTokens?: number; outputTokens?: number; byProvider?: Record<string, { costMicros?: number; inputTokens?: number; outputTokens?: number; model?: string | null }> };
@@ -14,27 +15,40 @@ type RuntimeData = {
   recentJobs?: Array<{ provider?: string | null; model?: string | null; status?: string | null; createdAt?: string | null; finishedAt?: string | null; errorCode?: string | null }>;
 };
 
+type DashboardState = { credentials: Credential[]; runtime: RuntimeData; runtimeAvailable: boolean; loading: boolean };
+
+async function readDashboardData(): Promise<DashboardState> {
+  const [credentialResponse, runtimeResponse] = await Promise.all([
+    fetch("/api/client-runtime/credentials", { cache: "no-store" }).catch(() => null),
+    fetch("/api/client-runtime/observability", { cache: "no-store" }).catch(() => null),
+  ]);
+  const [credentialData, runtimeData] = await Promise.all([
+    credentialResponse?.json().catch(() => null),
+    runtimeResponse?.json().catch(() => null),
+  ]);
+  const runtimeAvailable = runtimeResponse?.ok === true && runtimeData?.ok === true;
+  return {
+    credentials: Array.isArray(credentialData?.credentials) ? credentialData.credentials : [],
+    runtime: runtimeAvailable ? runtimeData : {},
+    runtimeAvailable,
+    loading: false,
+  };
+}
+
 export default function ClientRuntimeDashboard() {
-  const [credentials, setCredentials] = useState<Credential[]>([]);
-  const [runtime, setRuntime] = useState<RuntimeData>({});
-  const [loading, setLoading] = useState(true);
+  const [dashboard, setDashboard] = useState<DashboardState>({ credentials: [], runtime: {}, runtimeAvailable: false, loading: true });
+  const { credentials, runtime, runtimeAvailable, loading } = dashboard;
 
-  async function load() {
-    setLoading(true);
-    const [credentialResponse, runtimeResponse] = await Promise.all([
-      fetch("/api/client-runtime/credentials", { cache: "no-store" }).catch(() => null),
-      fetch("/api/client-runtime/observability", { cache: "no-store" }).catch(() => null),
-    ]);
-    const [credentialData, runtimeData] = await Promise.all([
-      credentialResponse?.json().catch(() => null),
-      runtimeResponse?.json().catch(() => null),
-    ]);
-    setCredentials(Array.isArray(credentialData?.credentials) ? credentialData.credentials : []);
-    setRuntime(runtimeResponse?.ok ? runtimeData : {});
-    setLoading(false);
+  useEffect(() => {
+    let active = true;
+    void readDashboardData().then((result) => { if (active) setDashboard(result); });
+    return () => { active = false; };
+  }, []);
+
+  function refresh() {
+    setDashboard((current) => ({ ...current, loading: true }));
+    void readDashboardData().then(setDashboard);
   }
-
-  useEffect(() => { void load(); }, []);
   const agents = useMemo(() => [...CLIENT_AGENT_CATALOG].sort((a, b) => a.title.localeCompare(b.title)), []);
   const monthly = runtime.monthlyUsage;
   const activity = useMemo(() => [
@@ -55,13 +69,16 @@ export default function ClientRuntimeDashboard() {
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><p className="eyebrow">Hosted runtime evidence</p><h2 className="mt-1 text-[21px]" style={{ color: "var(--cream)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>Command telemetry</h2></div>
-      <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><RefreshCw size={13} className={loading ? "animate-spin" : ""} />Refresh</button>
+      <div className="flex items-center gap-2">
+        <span className="text-[11px]" style={{ color: runtimeAvailable ? "var(--cream-dim)" : "var(--cream-mute)" }}>PostHog {runtimeAvailable ? runtime.posthogCaptureEnabled ? "on" : "off" : "unknown"}</span>
+        <button type="button" onClick={refresh} disabled={loading} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><RefreshCw size={13} className={loading ? "animate-spin" : ""} />Refresh</button>
+      </div>
     </div>
 
     <section className="grid gap-3 xl:grid-cols-3">
-      <Summary icon={<WalletCards size={16} />} label="Monthly budget usage" value={formatUsd(monthly?.totalCostMicros ?? 0)} detail={monthly?.totalCostMicros ? "Reserved or settled provider ledger entries" : "No provider budget entries have been recorded"} color="#f0c94a" />
-      <Summary icon={<Database size={16} />} label="Provider-reported tokens" value={formatNumber((monthly?.inputTokens ?? 0) + (monthly?.outputTokens ?? 0))} detail={`${formatNumber(monthly?.inputTokens ?? 0)} input · ${formatNumber(monthly?.outputTokens ?? 0)} output`} color="#60a5fa" />
-      <Summary icon={<ShieldCheck size={16} />} label="Control mode" value="Tenant scoped" detail="Queue, budget, audit, and RLS controls are active" color="#34d399" />
+      <Summary icon={<WalletCards size={16} />} label="Monthly budget usage" value={runtimeAvailable ? formatUsd(monthly?.totalCostMicros ?? 0) : "Unavailable"} detail={runtimeAvailable ? monthly?.totalCostMicros ? "Reserved or settled provider ledger entries" : "No provider budget entries have been recorded" : "Budget evidence could not be loaded"} color="#f0c94a" />
+      <Summary icon={<Database size={16} />} label="Provider-reported tokens" value={runtimeAvailable ? formatNumber((monthly?.inputTokens ?? 0) + (monthly?.outputTokens ?? 0)) : "Unavailable"} detail={runtimeAvailable ? `${formatNumber(monthly?.inputTokens ?? 0)} input · ${formatNumber(monthly?.outputTokens ?? 0)} output` : "Usage evidence could not be loaded"} color="#60a5fa" />
+      <Summary icon={<ShieldCheck size={16} />} label="Telemetry read" value={runtimeAvailable ? "Available" : "Unavailable"} detail={runtimeAvailable ? "Tenant-scoped audit and job summary" : "Current runtime activity could not be confirmed"} color="#34d399" />
     </section>
 
     <section className="panel overflow-hidden">

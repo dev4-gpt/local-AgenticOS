@@ -29,6 +29,8 @@ test("tenant artifact count uses the complete PostgREST count, not a one-row sam
 
 test("observability pages the full monthly ledger and identifies capped event/job samples", async () => {
   process.env.CLIENT_SLUG = "tenant-a";
+  process.env.POSTHOG_API_KEY = "test-project-key";
+  delete process.env.CLIENT_POSTHOG_CAPTURE_ENABLED;
   const entries = Array.from({ length: 1002 }, (_, index) => ({ id: 1002 - index, tenant_slug: "tenant-a", provider: "openai", model: "test", amount_micros: 100, usage_metadata: { inputTokens: 1, outputTokens: 2 } }));
   const calls: Array<{ table: string; filters: Record<string, string> }> = [];
   const route = loadReviewModule("src/app/api/client-runtime/observability/route.ts", {
@@ -53,8 +55,13 @@ test("observability pages the full monthly ledger and identifies capped event/jo
   expect(body.monthlyUsage.totalCostMicros).toBe(100200);
   expect(body.monthlyUsage.inputTokens).toBe(1002);
   expect(body.sample).toEqual({ eventsLimited: true, jobsLimited: true, limit: 250 });
+  expect(body.posthogConfigured).toBe(true);
+  expect(body.posthogCaptureEnabled).toBe(false);
   expect(calls.filter((call) => call.table === "client_runtime_budget_ledger")).toHaveLength(2);
   expect(calls.every((call) => call.filters.tenant_slug === "eq.tenant-a")).toBe(true);
+  process.env.CLIENT_POSTHOG_CAPTURE_ENABLED = "1";
+  const enabled = await route.GET();
+  expect((await enabled.json()).posthogCaptureEnabled).toBe(true);
 });
 
 test("observability refuses an incomplete monthly ledger", async () => {

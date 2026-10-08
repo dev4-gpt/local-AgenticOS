@@ -70,6 +70,7 @@ export async function GET() {
     ok: true,
     windowHours: WINDOW_HOURS,
     posthogConfigured: Boolean(process.env.POSTHOG_API_KEY?.trim()),
+    posthogCaptureEnabled: Boolean(process.env.POSTHOG_API_KEY?.trim()) && process.env.CLIENT_POSTHOG_CAPTURE_ENABLED === "1",
     sample: { eventsLimited: audit.records.length === SAMPLE_LIMIT, jobsLimited: jobs.records.length === SAMPLE_LIMIT, limit: SAMPLE_LIMIT },
     counts,
     providerCounts,

@@ -4,6 +4,16 @@ const SAFE_KEYS = new Set(["tenant", "bucket", "route", "provider", "status", "r
 const SAFE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SAFE_CODE = /^[a-z0-9][a-z0-9_.:-]{0,95}$/i;
 const SAFE_EVENT = /^[a-z0-9][a-z0-9_.:-]{0,95}$/i;
+const SAFE_DISTINCT_ID = /^[a-f0-9]{64}$/;
+const SAFE_TENANT_TAG = /^tenant:[a-f0-9]{24}$/;
+
+export const CLIENT_PRODUCT_EVENTS = new Set([
+  "client_runtime_provider_workspace_opened",
+  "client_runtime_provider_request_failed",
+  "client_runtime_provider_prompt_submitted",
+  "client_runtime_provider_response_succeeded",
+  "client_runtime_provider_response_failed",
+]);
 
 type SafeTelemetryFields = Record<string, string | number | boolean>;
 
@@ -38,8 +48,11 @@ export function logClientRuntimeEvent(event: string, fields: Record<string, unkn
     timestamp: new Date().toISOString(),
   };
   console.info(JSON.stringify(payload));
-  void capturePostHogEvent(event, safeFields, safeFields.tenant ? `tenant:${safeFields.tenant}` : "veloce-runtime");
-  if (payload.severity === "WARNING") void captureSentryEvent(event, safeFields);
+  const vendorFields = safeFields.tenant
+    ? { ...safeFields, tenant: `tenant:${createHash("sha256").update(String(safeFields.tenant)).digest("hex").slice(0, 24)}` }
+    : safeFields;
+  void capturePostHogEvent(event, vendorFields, String(vendorFields.tenant ?? "veloce-runtime"));
+  if (payload.severity === "WARNING") void captureSentryEvent(event, vendorFields);
 }
 
 export async function captureClientProductEvent(input: {
@@ -47,15 +60,19 @@ export async function captureClientProductEvent(input: {
   distinctId: string;
   properties?: Record<string, unknown>;
 }) {
-  if (!SAFE_EVENT.test(input.event) || !input.distinctId.trim()) return false;
+  if (!CLIENT_PRODUCT_EVENTS.has(input.event) || !SAFE_DISTINCT_ID.test(input.distinctId)) return false;
   const fields = sanitizeFields(input.properties ?? {});
-  return capturePostHogEvent(input.event, fields, input.distinctId.trim().slice(0, 160));
+  return capturePostHogEvent(input.event, fields, input.distinctId);
 }
 
 function sanitizeFields(fields: Record<string, unknown>): SafeTelemetryFields {
   const safe: SafeTelemetryFields = {};
   for (const [key, value] of Object.entries(fields)) {
     if (!SAFE_KEYS.has(key)) continue;
+    if (key === "tenant") {
+      if (typeof value === "string" && SAFE_TENANT_TAG.test(value)) safe[key] = value;
+      continue;
+    }
     if (key === "status" || key === "attempt" || key === "messageCount") {
       if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 999) safe[key] = value;
       continue;
@@ -67,6 +84,7 @@ function sanitizeFields(fields: Record<string, unknown>): SafeTelemetryFields {
 }
 
 async function capturePostHogEvent(event: string, fields: SafeTelemetryFields, distinctId: string) {
+  if (process.env.CLIENT_POSTHOG_CAPTURE_ENABLED !== "1" || !SAFE_EVENT.test(event)) return false;
   const apiKey = process.env.POSTHOG_API_KEY?.trim();
   if (!apiKey) return false;
   const host = (process.env.POSTHOG_HOST?.trim() || "https://app.posthog.com").replace(/\/$/, "");

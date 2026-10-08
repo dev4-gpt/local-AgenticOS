@@ -2,18 +2,11 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
-import { captureClientProductEvent } from "@/lib/clientRuntimeObservability";
+import { captureClientProductEvent, CLIENT_PRODUCT_EVENTS } from "@/lib/clientRuntimeObservability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const EVENTS = new Set([
-  "client_runtime_provider_workspace_opened",
-  "client_runtime_provider_request_failed",
-  "client_runtime_provider_prompt_submitted",
-  "client_runtime_provider_response_succeeded",
-  "client_runtime_provider_response_failed",
-]);
 const PROVIDERS = new Set([
   "anthropic", "openai", "codex", "openrouter", "openclaw", "hermes", "freeclaude", "fusion",
   "gemini", "antigravity", "moonshot", "kimi", "glm", "glm-code", "xai", "grok", "sakana",
@@ -28,7 +21,7 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const event = typeof body.event === "string" ? body.event.trim() : "";
-  if (!EVENTS.has(event)) return error("event_invalid", 400);
+  if (!CLIENT_PRODUCT_EVENTS.has(event)) return error("event_invalid", 400);
   const properties = body.properties && typeof body.properties === "object" && !Array.isArray(body.properties)
     ? body.properties as Record<string, unknown>
     : {};
