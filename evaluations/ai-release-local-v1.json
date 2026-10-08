@@ -74,6 +74,14 @@
       "spec": "client-observability-accuracy.spec.ts",
       "title": "observability refuses an incomplete monthly ledger",
       "evidenceScope": "mocked route test"
+    },
+    {
+      "id": "telemetry-boundary",
+      "behavior": "Client product telemetry rejects unapproved events and strips caller content before analytics and audit",
+      "failureLabel": "telemetry_content_leak",
+      "spec": "client-telemetry-boundary.spec.ts",
+      "title": "product telemetry accepts only shipped events and strips caller content",
+      "evidenceScope": "mocked route test, not deployed analytics configuration"
     }
   ]
 }

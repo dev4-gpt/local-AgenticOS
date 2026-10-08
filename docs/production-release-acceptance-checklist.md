@@ -146,7 +146,7 @@ Run `npm run verify:ai-evaluation` on the clean, committed release candidate
 before publishing. The resulting `tmp/ai-release-local-v1-report.json` must
 match that commit and the versioned fixture; the ledger stores this receipt and
 refuses an AI approval without it. Rerun after any source change. This local
-receipt covers nine deterministic cases only: it does not replace hosted job,
+receipt covers ten deterministic cases only: it does not replace hosted job,
 ledger, trace, model-quality, or customer-journey evidence for
 `--ai-engineering-result passed`.
 The public-journey gate also requires `--customer-journey-report` when publishing.
