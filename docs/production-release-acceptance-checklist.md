@@ -158,11 +158,17 @@ That redacted JSON receipt must have `schemaVersion: 1`, the exact clean
 `J01` through `J15` in the customer-journey matrix. Each case needs at least
 one `evidence` entry with a private `gs://` or redacted `docs/evidence/` `ref`
 and its 64-hex `sha256`. Every case must include exactly one entry with
-`kind: "case-attestation"`; other entries use `kind: "artifact"`. The attestation
+`kind: "case-attestation"` and at least one separate `kind: "artifact"` entry.
+The attestation
 is redacted JSON with `schemaVersion: 1`, the matching `caseId`, `status:
 "passed"`, the same source/deployment identity, an ISO `checkedAt` no later
-than the report, a named `reviewedBy`, and nonempty `observations` recording
-`action`, `observed`, and `result: "passed"`. The verifier checks this structure
+than the report, a named `reviewedBy`, and `observations` recording `checkId`,
+`action`, `observed`, and `result: "passed"`. The required `checkId` values for
+each J-row are defined in `scripts/lib/customer-journey-evidence.mjs`; they
+cover the positive and failure paths from the matrix. Record each required
+check once with its own observed result, and attach redacted test output,
+deployment evidence, or a review record as the hashed artifact. The verifier
+checks this structure
 and reads each referenced artifact (at most 1 MB) to verify its hash. Private
 `gs://` receipts require read access and may incur Cloud Storage request costs;
 do not run this against an unreviewed bucket or billing project. Hash validity
