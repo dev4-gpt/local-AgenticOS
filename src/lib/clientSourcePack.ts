@@ -21,7 +21,7 @@ export type ClientSourcePack = {
 
 const MAX_SOURCES = 100;
 const MAX_LINKS_PER_SOURCE = 100;
-const SENSITIVE_QUERY_KEY = /^(?:api_?key|access_?token|refresh_?token|id_?token|token|secret|password|code|signature|sig|auth|authorization|jwt|session|session_?id)$/i;
+const SENSITIVE_QUERY_KEY = /^(?:api_?key|access_?token|refresh_?token|id_?token|token|secret|password|code|signature|sig|auth|authorization|jwt|session|session_?id|awsaccesskeyid|googleaccessid|key_pair_id|x_(?:amz|goog)_(?:algorithm|credential|date|expires|security_token|signature|signedheaders))$/i;
 
 function object(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -49,7 +49,9 @@ export function parseClientSourcePack(input: unknown): ClientSourcePack {
     const text = typeof source.text === "string" ? source.text.replace(/\r\n?/g, "\n").trim() : "";
     const tab = typeof source.tab === "string" ? source.tab.trim() : null;
     const sourceUrl = safeClientSourceUrl(source.url);
-    const collectedAt = typeof source.collectedAt === "string" && !Number.isNaN(Date.parse(source.collectedAt)) ? new Date(source.collectedAt).toISOString() : null;
+    if (source.collectedAt !== undefined && source.collectedAt !== null
+      && (typeof source.collectedAt !== "string" || Number.isNaN(Date.parse(source.collectedAt)))) throw new Error("source_pack_item_invalid");
+    const collectedAt = typeof source.collectedAt === "string" ? new Date(source.collectedAt).toISOString() : null;
     if (!title || title.length > 240 || !text || text.length > 30_000 || (tab && tab.length > 240) || containsClientSecretLike(title, text)) throw new Error("source_pack_item_invalid");
     if (!Array.isArray(source.links) || source.links.length > MAX_LINKS_PER_SOURCE) throw new Error("source_pack_links_invalid");
     const links = source.links.map((value) => {

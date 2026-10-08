@@ -35,12 +35,25 @@ test("source pack parser preserves pages and links, rejects unsafe or incomplete
   const signedSource = examplePack();
   signedSource.sources[0].url = "https://example.org/page?signature=private-value";
   expect(() => parseClientSourcePack(signedSource)).toThrow("source_pack_url_invalid");
+  for (const signedUrl of [
+    "https://storage.example.org/file?X-Amz-Signature=private-value",
+    "https://storage.example.org/file?X-Goog-Credential=private-value",
+    "https://storage.example.org/file?X-Goog-Signature=private-value",
+    "https://storage.example.org/file?AWSAccessKeyId=private-value",
+  ]) {
+    const signedMedia = examplePack();
+    signedMedia.sources[1].links[0].url = signedUrl;
+    expect(() => parseClientSourcePack(signedMedia)).toThrow("source_pack_url_invalid");
+  }
   const secretLabel = examplePack();
   secretLabel.sources[0].links[0].text = "api_key=sk-ABCDEFGHIJKLMNOPQRST";
   expect(() => parseClientSourcePack(secretLabel)).toThrow("source_pack_links_invalid");
   const oversized = examplePack();
   oversized.sources[0].text = "x".repeat(30_001);
   expect(() => parseClientSourcePack(oversized)).toThrow("source_pack_item_invalid");
+  const invalidDate = examplePack();
+  invalidDate.sources[0].collectedAt = "not-a-date";
+  expect(() => parseClientSourcePack(invalidDate)).toThrow("source_pack_item_invalid");
   const duplicate = examplePack();
   duplicate.sources[1].url = duplicate.sources[0].url;
   expect(() => parseClientSourcePack(duplicate)).toThrow("source_pack_duplicate_source");

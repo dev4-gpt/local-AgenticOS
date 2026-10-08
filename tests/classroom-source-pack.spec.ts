@@ -97,6 +97,14 @@ test("classroom conversion rejects unsafe or unimportable material before writin
   const lesson = source(0);
   expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lesson, links: [null] }], pending: [] })).toThrow("classroom_link_invalid");
   expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lesson, links: [{ url: "https://video.example.org/watch/1?token=abc", text: "Media: Video" }] }], pending: [] })).toThrow("classroom_url_invalid");
+  for (const signedUrl of [
+    "https://storage.example.org/file?X-Amz-Signature=private-value",
+    "https://storage.example.org/file?X-Goog-Credential=private-value",
+    "https://storage.example.org/file?X-Goog-Signature=private-value",
+    "https://storage.example.org/file?AWSAccessKeyId=private-value",
+  ]) {
+    expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lesson, links: [{ url: signedUrl, text: "Media: Video" }] }], pending: [] })).toThrow("classroom_url_invalid");
+  }
   expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lesson, collectedAt: "not-a-date" }], pending: [] })).toThrow("classroom_source_invalid");
   expect(() => prepareClassroomSourcePack({ startUrl, sources: [lesson], pending: [null] })).toThrow("classroom_pending_entries_invalid");
 });
