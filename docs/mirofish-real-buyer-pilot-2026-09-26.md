@@ -158,3 +158,19 @@ Sixteen offline audit/arming/profile tests pass. The
 retained `sim_bfa570ba2a8a` still fails profile-workflow coverage (seven of
 ten missing) despite matching post and completion telemetry. No new simulation
 or provider request was made; the prepared `sim_3b7bfff26e22` remains unrun.
+
+## Buyer-content review gate, 2026-10-07
+
+Telemetry and profile coverage alone do not establish useful buyer-scenario
+output. After a technically complete run, use
+`python3 scripts/audit-mirofish-buyer-run.py --simulation-dir <private-run-dir> --cohort evaluations/mirofish-buyer-micro-v1.json --prepare-review`
+to create an exclusive mode-0600 `buyer_review.json` beside the run. The template
+contains each dynamic post's actual text, post/agent IDs, and SHA-256; every
+verdict defaults to false. A reviewer must inspect each post and fill their
+name, a timezone-aware `reviewedAt`, and four explicit booleans:
+`scenarioRelevant`, `roleFaithful`, `scopeSafe`, and `actionable`. Keep the file
+private and out of Git. The read-only auditor requires exact post text and hash
+matches, one positive review per dynamic post, and private file permissions
+before `pilotEvidencePassed` can be true. It reports only counts and check
+results, not generated post text. Even a passing reviewed synthetic run remains
+`marketValidation: false` until compared with real buyers.

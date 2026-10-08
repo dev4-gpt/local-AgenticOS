@@ -1,8 +1,10 @@
 """Local-only fixture checks for the MiroFish run artifact auditor."""
 
 import csv
+import hashlib
 import importlib.util
 import json
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -29,7 +31,7 @@ class BuyerRunAuditTest(unittest.TestCase):
         ]}), encoding="utf-8")
         self.config = {
             "simulation_id": "sim_test",
-            "agent_configs": [{"entity_name": "P00001"}, {"entity_name": "P00002"}],
+            "agent_configs": [{"entity_name": "P00001"}, {"entity_name": "P00002", "activity_level": 1, "active_hours": [9]}],
             "event_config": {"initial_posts": [{"poster_agent_id": 0, "content": "P00001 evaluates this tool"}]},
         }
         self._write("simulation_config.json", self.config)
@@ -62,6 +64,19 @@ class BuyerRunAuditTest(unittest.TestCase):
             '{"event_type":"simulation_end","total_rounds":1,"total_actions":2}\n',
             encoding="utf-8",
         )
+        self._write("buyer_review.json", {
+            "schemaVersion": 1,
+            "simulationId": "sim_test",
+            "reviewer": "pilot-reviewer",
+            "reviewedAt": "2026-10-07T12:00:00Z",
+            "posts": [{
+                "postId": 2, "agentId": 1,
+                "content": "A skeptical response",
+                "contentSha256": hashlib.sha256(b"A skeptical response").hexdigest(),
+                "scenarioRelevant": True, "roleFaithful": True, "scopeSafe": True, "actionable": True,
+            }],
+        })
+        (self.simulation / "buyer_review.json").chmod(0o600)
 
     def _write(self, name, value):
         (self.simulation / name).write_text(json.dumps(value), encoding="utf-8")
@@ -74,6 +89,63 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.assertEqual(result["tracedPosts"], 2)
         self.assertEqual(result["completionEvents"], 1)
         self.assertTrue(result["checks"]["profileWorkflowCoverage"])
+        self.assertTrue(result["checks"]["buyerContentReview"])
+        self.assertEqual(result["reviewedDynamicPosts"], 1)
+
+    def test_unrestricted_review_or_unscheduled_activity_does_not_pass(self):
+        path = self.simulation / "buyer_review.json"
+        path.chmod(0o644)
+        self.assertFalse(AUDITOR.audit(self.simulation, self.cohort)["checks"]["buyerContentReview"])
+        path.chmod(0o600)
+        self.assertTrue(AUDITOR.audit(self.simulation, self.cohort)["checks"]["buyerContentReview"])
+        self.config["agent_configs"][1].update({"activity_level": 0, "active_hours": []})
+        self._write("simulation_config.json", self.config)
+        self.assertFalse(AUDITOR.audit(self.simulation, self.cohort)["checks"]["buyerActivity"])
+
+    def test_missing_or_stale_content_review_blocks_pilot_acceptance(self):
+        (self.simulation / "buyer_review.json").unlink()
+        missing = AUDITOR.audit(self.simulation, self.cohort)
+        self.assertTrue(missing["technicalEvidencePassed"])
+        self.assertFalse(missing["checks"]["buyerContentReview"])
+        self.assertFalse(missing["pilotEvidencePassed"])
+
+        review = {
+            "schemaVersion": 1, "simulationId": "sim_test", "reviewer": "pilot-reviewer",
+            "reviewedAt": "2026-10-07T12:00:00Z",
+            "posts": [{"postId": 2, "agentId": 1, "content": "A skeptical response", "contentSha256": "0" * 64,
+                       "scenarioRelevant": True, "roleFaithful": True, "scopeSafe": True, "actionable": True}],
+        }
+        self._write("buyer_review.json", review)
+        stale = AUDITOR.audit(self.simulation, self.cohort)
+        self.assertFalse(stale["pilotEvidencePassed"])
+        self.assertEqual(stale["reviewedDynamicPosts"], 0)
+
+        review["posts"][0]["contentSha256"] = hashlib.sha256(b"A skeptical response").hexdigest()
+        review["posts"][0]["scenarioRelevant"] = False
+        self._write("buyer_review.json", review)
+        irrelevant = AUDITOR.audit(self.simulation, self.cohort)
+        self.assertFalse(irrelevant["checks"]["buyerContentReview"])
+        self.assertFalse(irrelevant["pilotEvidencePassed"])
+
+        review["posts"][0]["scenarioRelevant"] = True
+        review["posts"][0]["content"] = "Edited after review"
+        self._write("buyer_review.json", review)
+        self.assertFalse(AUDITOR.audit(self.simulation, self.cohort)["checks"]["buyerContentReview"])
+
+    def test_review_template_is_private_and_fails_closed(self):
+        path = self.simulation / "buyer_review.json"
+        path.unlink()
+        created = AUDITOR.prepare_review_template(self.simulation)
+        self.assertEqual(created, path)
+        self.assertEqual(os.stat(path).st_mode & 0o777, 0o600)
+        review = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(review["posts"][0]["content"], "A skeptical response")
+        self.assertFalse(review["posts"][0]["scenarioRelevant"])
+        self.assertFalse(AUDITOR.audit(self.simulation, self.cohort)["pilotEvidencePassed"])
+        with self.assertRaises(FileExistsError):
+            AUDITOR.prepare_review_template(self.simulation)
+        path.chmod(0o644)
+        self.assertFalse(AUDITOR.audit(self.simulation, self.cohort)["checks"]["buyerContentReview"])
 
     def test_missing_first_workflow_fails_even_with_complete_telemetry(self):
         profile_path = self.simulation / "twitter_profiles.csv"

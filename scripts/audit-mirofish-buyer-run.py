@@ -2,10 +2,13 @@
 
 import argparse
 import csv
+import hashlib
 import json
+import os
 import re
 import sqlite3
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
 
 
@@ -34,6 +37,70 @@ def action_log_entries(simulation_dir: Path) -> tuple[list[dict], list[dict]]:
                 elif entry.get("event_type"):
                     events.append(entry)
     return actions, events
+
+
+def read_posts(simulation_dir: Path) -> list[tuple]:
+    database = sqlite3.connect(f"file:{(simulation_dir / 'twitter_simulation.db').resolve()}?mode=ro", uri=True)
+    try:
+        return database.execute(
+            "SELECT p.post_id, u.agent_id, p.content, p.created_at "
+            "FROM post AS p JOIN user AS u ON u.user_id = p.user_id ORDER BY p.post_id"
+        ).fetchall()
+    finally:
+        database.close()
+
+
+def prepare_review_template(simulation_dir: Path) -> Path:
+    posts = [post for post in read_posts(simulation_dir) if str(post[3]) != "0"]
+    if not posts:
+        raise ValueError("buyer_review_no_dynamic_posts")
+    template = {
+        "schemaVersion": 1, "simulationId": simulation_dir.name,
+        "reviewer": "", "reviewedAt": "",
+        "posts": [{
+            "postId": post_id, "agentId": agent_id, "content": content,
+            "contentSha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            "scenarioRelevant": False, "roleFaithful": False, "scopeSafe": False, "actionable": False,
+        } for post_id, agent_id, content, _ in posts],
+    }
+    path = simulation_dir / "buyer_review.json"
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        json.dump(template, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
+    return path
+
+
+def review_covers_dynamic_posts(simulation_dir: Path, posts: list[tuple]) -> tuple[bool, int]:
+    path = simulation_dir / "buyer_review.json"
+    if not path.exists():
+        return False, 0
+    try:
+        if path.stat().st_mode & 0o077:
+            return False, 0
+        review = load_json(path)
+        reviewed_at = datetime.fromisoformat(review["reviewedAt"].replace("Z", "+00:00"))
+        if (review.get("schemaVersion") != 1 or review.get("simulationId") != simulation_dir.name
+                or not isinstance(review.get("reviewer"), str) or not review["reviewer"].strip()
+                or reviewed_at.tzinfo is None or reviewed_at.utcoffset() is None):
+            return False, 0
+        expected = {
+            (post_id, agent_id, hashlib.sha256(content.encode("utf-8")).hexdigest()): content
+            for post_id, agent_id, content, created_at in posts if str(created_at) != "0"
+        }
+        entries = review.get("posts")
+        if not expected or not isinstance(entries, list) or len(entries) != len(expected):
+            return False, 0
+        reviewed = set()
+        for entry in entries:
+            identity = (entry.get("postId"), entry.get("agentId"), entry.get("contentSha256"))
+            if (identity not in expected or identity in reviewed or entry.get("content") != expected[identity]
+                    or any(entry.get(key) is not True for key in ("scenarioRelevant", "roleFaithful", "scopeSafe", "actionable"))):
+                return False, len(reviewed)
+            reviewed.add(identity)
+        return reviewed == set(expected), len(reviewed)
+    except (AttributeError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return False, 0
 
 
 def audit(simulation_dir: Path, cohort_path: Path) -> dict:
@@ -72,14 +139,7 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         not in normalized_words(" ".join((profile_by_name.get(item["id"]) or {}).get(key, "") for key in ("user_char", "description")))
     )
 
-    database = sqlite3.connect(f"file:{(simulation_dir / 'twitter_simulation.db').resolve()}?mode=ro", uri=True)
-    try:
-        posts = database.execute(
-            "SELECT p.post_id, u.agent_id, p.content, p.created_at "
-            "FROM post AS p JOIN user AS u ON u.user_id = p.user_id ORDER BY p.post_id"
-        ).fetchall()
-    finally:
-        database.close()
+    posts = read_posts(simulation_dir)
 
     initial_specs = config.get("event_config", {}).get("initial_posts", [])
     actual_initial = {(agent_id, content) for _, agent_id, content, created_at in posts if str(created_at) == "0"}
@@ -102,6 +162,7 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
     unknown_post_agents = sorted({agent_id for _, agent_id, _, _ in posts if agent_id not in profile_by_agent})
     dynamic_post_ids = [profile_by_agent.get(agent_id, "<unknown-agent>") for _, agent_id, _, created_at in posts if str(created_at) != "0"]
     post_counts = Counter(dynamic_post_ids)
+    content_review_passed, reviewed_dynamic_posts = review_covers_dynamic_posts(simulation_dir, posts)
     active_buyers = {
         agent.get("entity_name")
         for agent in config.get("agent_configs", [])
@@ -134,7 +195,8 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         and run_state.get("twitter_completed") is True and len(completion_events) == 1
         and completion_events[0].get("total_rounds") == total_rounds
         and completion_events[0].get("total_actions") == action_rows,
-        "buyerActivity": bool(post_counts) and all(post_counts.get(buyer, 0) > 0 for buyer in active_buyers),
+        "buyerActivity": bool(active_buyers) and all(post_counts.get(buyer, 0) > 0 for buyer in active_buyers),
+        "buyerContentReview": content_review_passed,
     }
     return {
         "simulationId": config.get("simulation_id"),
@@ -146,6 +208,7 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         "missingWorkflowProfiles": missing_workflow_profiles,
         "initialPosts": len(actual_initial),
         "dynamicPosts": sum(post_counts.values()),
+        "reviewedDynamicPosts": reviewed_dynamic_posts,
         "dynamicPostPersonas": dict(sorted(post_counts.items())),
         "scheduledBuyers": sorted(active_buyers),
         "attributionErrors": attribution_errors,
@@ -160,6 +223,7 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         "reportedRound": run_state.get("current_round"),
         "configuredRounds": run_state.get("total_rounds"),
         "checks": checks,
+        "technicalEvidencePassed": all(value for key, value in checks.items() if key != "buyerContentReview"),
         "pilotEvidencePassed": all(checks.values()),
         "marketValidation": False,
     }
@@ -169,8 +233,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--simulation-dir", type=Path, required=True)
     parser.add_argument("--cohort", type=Path, required=True)
+    parser.add_argument("--prepare-review", action="store_true")
     args = parser.parse_args()
     result = audit(args.simulation_dir, args.cohort)
+    if args.prepare_review:
+        if not result["technicalEvidencePassed"]:
+            raise SystemExit("technical_evidence_failed")
+        try:
+            path = prepare_review_template(args.simulation_dir)
+        except FileExistsError:
+            raise SystemExit("buyer_review_already_exists")
+        print(json.dumps({"reviewTemplate": str(path), "dynamicPosts": result["dynamicPosts"]}, sort_keys=True))
+        return
     print(json.dumps(result, indent=2, sort_keys=True))
     if not result["pilotEvidencePassed"]:
         raise SystemExit(1)
