@@ -32,4 +32,23 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 
     await expect(page.getByText("PostHog unknown", { exact: true })).toBeVisible();
     await expect(page.getByText("Budget evidence could not be loaded", { exact: true })).toBeVisible();
   });
+
+  test(`tenant dashboard shows redacted job stages at ${viewport.width}px`, async ({ page, context }) => {
+    await page.setViewportSize(viewport);
+    await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
+    await page.route("**/api/client-runtime/observability", (route) => route.fulfill({ status: 200, json: {
+      ok: true, posthogCaptureEnabled: false, providerCounts: {}, recentEvents: [],
+      recentJobs: [{ provider: "openai", status: "failed", errorCode: "provider_timeout", createdAt: "2026-10-08T00:00:00Z",
+        trace: { totalDurationMs: 120, truncated: false, spans: [
+          { stage: "claim", durationMs: 3, outcome: "ok" },
+          { stage: "provider_call", durationMs: 117, outcome: "error" },
+        ] }, output: "private-output" }],
+    } }));
+    await page.goto("/");
+    const trace = page.getByText("Job trace · 120 ms", { exact: true });
+    await expect(trace).toBeVisible();
+    await trace.click();
+    await expect(page.getByRole("list", { name: "Job stages" }).getByText("provider call · error")).toBeVisible();
+    await expect(page.getByText("private-output")).toHaveCount(0);
+  });
 }
