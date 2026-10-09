@@ -1,7 +1,10 @@
 ARG NODE_VERSION=24.14.1-slim
+ARG VELOCE_SOURCE_COMMIT=unverified
 
 FROM node:${NODE_VERSION} AS dependencies
+ARG VELOCE_SOURCE_COMMIT
 WORKDIR /app
+RUN node -e 'if (!/^[0-9a-f]{40}$/.test(process.env.VELOCE_SOURCE_COMMIT || "")) { console.error("Client image build requires a full source commit"); process.exit(1); }'
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
@@ -20,7 +23,7 @@ RUN node scripts/prune-client-runtime-artifact.mjs
 RUN node scripts/verify-client-runtime-build-trace.mjs
 
 FROM node:${NODE_VERSION} AS runner
-ARG VELOCE_SOURCE_COMMIT=unverified
+ARG VELOCE_SOURCE_COMMIT
 WORKDIR /app
 ENV NODE_ENV=production
 ENV VELOCE_BUILD_SOURCE_COMMIT=${VELOCE_SOURCE_COMMIT}

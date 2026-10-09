@@ -280,3 +280,16 @@ ledger destination/current-candidate acceptance bundle was configured. The
 Supabase SQL Editor tab was identified as project `ppmoqjtmjtfxadsnejqc`,
 marked `main PRODUCTION`, but Chrome switched windows before a safe catalog
 query could be run. No hosted SQL was executed or migration applied.
+
+**Local login and image provenance follow-up, October 9:** The configured
+local client on port 3940 was independently reachable and the owner signed
+in through Chrome. The `/memory` view again showed two records, 114 nodes,
+113 edges, and `Community sources`; the stale 3939 link had caused the
+`auth_not_configured` message. The client Dockerfile now rejects an absent or
+malformed 40-character source commit before installing dependencies, so a
+direct Cloud Build invocation with its default `unverified` substitution
+cannot silently produce an unstamped image. The two runbook build commands
+now pass the full commit. The focused build-identity tests, typecheck, and
+security gate passed. This is a local safeguard only: no image was built,
+deployed, or independently attested, and the hosted beta still lacks a
+verifiable source identity.

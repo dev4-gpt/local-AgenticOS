@@ -75,6 +75,20 @@ test("client image build stamps only a clean exact Git commit", () => {
   const dockerfile = readFileSync("Dockerfile.client", "utf8");
   expect(cloudBuild).toContain("VELOCE_SOURCE_COMMIT=${_SOURCE_COMMIT}");
   expect(cloudBuild).toContain("_SOURCE_COMMIT: unverified");
+  expect(dockerfile).toContain("ARG VELOCE_SOURCE_COMMIT=unverified");
+  expect(dockerfile.indexOf("Client image build requires a full source commit")).toBeLessThan(dockerfile.indexOf("RUN npm ci"));
+  const commitCheck = dockerfile.match(/^RUN node -e '([^']+)'$/m)?.[1];
+  expect(commitCheck).toBeTruthy();
+  const checkCommit = (commit: string) => spawnSync(process.execPath, ["-e", commitCheck!], {
+    env: { ...process.env, VELOCE_SOURCE_COMMIT: commit }, encoding: "utf8",
+  });
+  for (const invalid of ["unverified", "a".repeat(12), "not-a-source-commit"]) {
+    expect(checkCommit(invalid).status).toBe(1);
+  }
+  expect(checkCommit("a".repeat(40)).status).toBe(0);
   expect(dockerfile).toContain("ENV VELOCE_BUILD_SOURCE_COMMIT=${VELOCE_SOURCE_COMMIT}");
   expect(dockerfile).toContain("LABEL org.opencontainers.image.revision=${VELOCE_SOURCE_COMMIT}");
+  for (const runbook of ["docs/public-beta-runbook.md", "docs/v3.3-managed-credit-lifecycle-runbook.md"]) {
+    expect(readFileSync(runbook, "utf8")).toContain("_SOURCE_COMMIT=$SOURCE_COMMIT");
+  }
 });
