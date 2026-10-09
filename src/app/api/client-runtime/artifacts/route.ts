@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
+import { clientRetentionExpiresAt } from "@/lib/clientRetention";
 import { clientGcpAccessToken, clientServiceAccountEmail, clientStorageConfig, safeClientFileName, safeClientObjectKey, signedClientStorageUrl } from "@/lib/clientStorage";
 
 export const runtime = "nodejs";
@@ -110,9 +111,8 @@ export async function POST(request: Request) {
   const config = clientStorageConfig();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!config || !tenantSlug) return NextResponse.json({ ok: false, error: "storage_not_configured" }, { status: 503 });
-  const rawRetentionDays = process.env.CLIENT_RETENTION_DAYS ?? "45";
-  const retentionDays = Number(rawRetentionDays);
-  if (!/^[1-9][0-9]{0,3}$/.test(rawRetentionDays) || !Number.isSafeInteger(retentionDays) || retentionDays > 3650) {
+  const retentionExpiresAt = clientRetentionExpiresAt(process.env.CLIENT_RETENTION_DAYS);
+  if (!retentionExpiresAt) {
     return NextResponse.json({ ok: false, error: "retention_not_configured" }, { status: 503 });
   }
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
     p_original_name: originalName,
     p_content_type: contentType,
     p_byte_size: byteSize,
-    p_retention_expires_at: new Date(Date.now() + retentionDays * 86400000).toISOString(),
+    p_retention_expires_at: retentionExpiresAt,
   });
   if (!stored.ok || stored.value !== artifactId) return NextResponse.json({ ok: false, error: "artifact_record_failed" }, { status: 502 });
   return NextResponse.json({ ok: true, artifactId, uploadUrl: signedUrl, uploadHeaders: { "content-type": contentType }, expiresInSeconds: 900 }, { status: 201, headers: { "cache-control": "private, no-store" } });

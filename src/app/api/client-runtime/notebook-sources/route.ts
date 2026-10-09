@@ -4,6 +4,7 @@ import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, insertClientRecord, selectClientRecords, recordClientAudit } from "@/lib/clientDataPlane";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
+import { clientRetentionExpiresAt } from "@/lib/clientRetention";
 import { validateNotebookSource, validateNotebookDeletionRequest, type NotebookSourceKind } from "@/lib/v96NotebookContracts";
 
 export const runtime = "nodejs";
@@ -46,7 +47,8 @@ export async function POST(request: Request) {
   const id = randomUUID();
   const errors = validateNotebookSource({ contractVersion: "v96", id, tenantSlug: session.tenantSlug, kind: kind as NotebookSourceKind, title, sourceUrl, artifactId, status: "registered" });
   if (errors.length) return NextResponse.json({ ok: false, error: "source_input_invalid", details: errors }, { status: 400 });
-  const retentionDays = Math.min(3650, Math.max(1, Number(process.env.CLIENT_NOTEBOOK_RETENTION_DAYS ?? 30)));
+  const retentionExpiresAt = clientRetentionExpiresAt(process.env.CLIENT_NOTEBOOK_RETENTION_DAYS ?? process.env.CLIENT_RETENTION_DAYS);
+  if (!retentionExpiresAt) return fail("retention_not_configured", 503);
   const stored = await insertClientRecord(TABLE, {
     id,
     tenant_slug: session.tenantSlug,
@@ -57,7 +59,7 @@ export async function POST(request: Request) {
     source_url: sourceUrl ?? null,
     artifact_id: artifactId ?? null,
     status: "registered",
-    retention_expires_at: new Date(Date.now() + retentionDays * 86_400_000).toISOString(),
+    retention_expires_at: retentionExpiresAt,
   });
   if (!stored.ok) return fail(stored.status === 404 ? "notebook_lineage_schema_missing" : "notebook_source_write_failed", stored.status === 404 ? 503 : 502);
   await recordClientAudit("tenant.notebook.source_registered", { sourceId: id, kind });

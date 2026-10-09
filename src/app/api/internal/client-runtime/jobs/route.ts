@@ -28,6 +28,7 @@ import { runClientVisualQaAdapter } from "@/lib/clientVisualQaAdapter";
 import { buildIntentClassifierPrompt, intentEvidence, parseClientIntentClassification, resolveClientIntent } from "@/lib/clientIntentRouter";
 import { clientReadyPlaybooks, type ClientIntentSurface } from "@/lib/clientPlaybooks";
 import { configuredResearchWorkerStates, runResearchWorkerAdapter, selectResearchWorker, type ResearchWorkerContentType, type ResearchWorkerDecision } from "@/lib/researchWorkerAdapters";
+import { clientRetentionExpiresAt } from "@/lib/clientRetention";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
   const workerToken = process.env.CLIENT_WORKER_TOKEN?.trim();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!workerToken || !tenantSlug) return NextResponse.json({ ok: false, error: "worker_not_configured" }, { status: 503 });
+  if (!clientRetentionExpiresAt(process.env.CLIENT_RETENTION_DAYS)) return NextResponse.json({ ok: false, error: "retention_not_configured" }, { status: 503 });
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const jobId = typeof body.jobId === "string" ? body.jobId : "";
   const requestedTenant = typeof body.tenantSlug === "string" ? body.tenantSlug : "";
@@ -1267,6 +1269,8 @@ async function processHeyGenJob(jobId: string, tenantSlug: string, workerToken: 
 }
 
 async function storeArtifact(tenantSlug: string, jobId: string, workerToken: string, fileName: string, contentType: string, bytes: Buffer) {
+  const retentionExpiresAt = clientRetentionExpiresAt(process.env.CLIENT_RETENTION_DAYS);
+  if (!retentionExpiresAt) return null;
   const config = clientStorageConfig();
   const token = await clientGcpAccessToken();
   if (!config || !token) return null;
@@ -1285,7 +1289,7 @@ async function storeArtifact(tenantSlug: string, jobId: string, workerToken: str
     p_original_name: fileName,
     p_content_type: storedContentType,
     p_byte_size: bytes.length,
-    p_retention_expires_at: new Date(Date.now() + Number(process.env.CLIENT_RETENTION_DAYS ?? 30) * 86400000).toISOString(),
+    p_retention_expires_at: retentionExpiresAt,
   });
   const artifactId = typeof artifact.value === "string" ? artifact.value : "";
   if (!artifact.ok || !artifactId || !(await traceClientJobStage("artifact_upload", () => uploadClientStorageObject({ bucket: config.bucket, objectKey, contentType: storedContentType, bytes, token }), Boolean))) return null;
