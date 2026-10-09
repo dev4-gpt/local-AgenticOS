@@ -141,7 +141,7 @@ function useReducedMotion() {
   return reduced;
 }
 
-export default function HomeImmersive({ clientEdition = false }: { clientEdition?: boolean }) {
+export default function HomeImmersive({ clientEdition = false, allowedClientRoutes = [] }: { clientEdition?: boolean; allowedClientRoutes?: string[] }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const scrollHostRef = useRef<HTMLElement | null>(null);
   const [active, setActive] = useState(0);
@@ -149,6 +149,7 @@ export default function HomeImmersive({ clientEdition = false }: { clientEdition
   const [sceneReady, setSceneReady] = useState(false);
   const [canvasMounted, setCanvasMounted] = useState(false);
   const reducedMotion = useReducedMotion();
+  const routeAvailable = (href: string) => !clientEdition || allowedClientRoutes.includes(href);
 
   const chapter = CHAPTERS[active] ?? CHAPTERS[0];
   const progressLabel = useMemo(() => String(active + 1).padStart(2, "0"), [active]);
@@ -471,7 +472,7 @@ export default function HomeImmersive({ clientEdition = false }: { clientEdition
         </Link>
         <div className="home-edition-head__status">
           <span><i /> {clientEdition ? "Client runtime" : "Local runtime"}</span>
-          <Link href={clientEdition ? "/credentials" : "/integrations"}>{clientEdition ? "Credential status" : "System status"}</Link>
+          {(!clientEdition || routeAvailable("/credentials")) && <Link href={clientEdition ? "/credentials" : "/integrations"}>{clientEdition ? "Credential status" : "System status"}</Link>}
         </div>
       </header>
 
@@ -511,12 +512,12 @@ export default function HomeImmersive({ clientEdition = false }: { clientEdition
             {clientEdition ? "A client-scoped operating system for context, production, approval, and delivery. Designed to make complex work feel legible." : "A private operating system for agents, context, production, approval, and delivery. Designed to make complex work feel legible."}
           </p>
           <div className="home-immersive__actions">
-            <Link href={clientEdition ? "/context" : "/claude"} className="home-immersive__primary">
+            {routeAvailable(clientEdition ? "/context" : "/claude") && <Link href={clientEdition ? "/context" : "/claude"} className="home-immersive__primary">
               {clientEdition ? "Start a client request" : "Enter Control Room"} <ArrowUpRight size={16} />
-            </Link>
-            <Link href={clientEdition ? "/credentials" : "/memory"} className="home-immersive__secondary">
+            </Link>}
+            {routeAvailable(clientEdition ? "/credentials" : "/memory") && <Link href={clientEdition ? "/credentials" : "/memory"} className="home-immersive__secondary">
               {clientEdition ? "Review credentials" : "Connect Memory"}
-            </Link>
+            </Link>}
           </div>
         </div>
       </section>
@@ -543,9 +544,10 @@ export default function HomeImmersive({ clientEdition = false }: { clientEdition
                 <span className="home-immersive__chapter-name">{item.kicker}</span>
                 <h2>{item.title}</h2>
                 <div>{item.body}</div>
-                <Link href={item.href} className="home-immersive__chapter-link">
-                  {item.action} <ArrowUpRight size={14} />
-                </Link>
+                {(() => {
+                  const destination = routeAvailable(item.href) ? item.href : item.tools.find(([, href]) => routeAvailable(href))?.[1];
+                  return destination ? <Link href={destination} className="home-immersive__chapter-link">{item.action} <ArrowUpRight size={14} /></Link> : null;
+                })()}
               </div>
 
               <div className="home-immersive__artifact" aria-label={`${item.kicker} working workspace preview`}>
@@ -569,7 +571,7 @@ export default function HomeImmersive({ clientEdition = false }: { clientEdition
                   ))}
                 </div>
                 <nav className="home-immersive__artifact-tools" aria-label={`${item.kicker} tools`}>
-                  {item.tools.map(([label, href], toolIndex) => (
+                  {item.tools.filter(([, href]) => routeAvailable(href)).map(([label, href], toolIndex) => (
                     <Link key={href} href={href}>
                       <span>{String(toolIndex + 1).padStart(2, "0")}</span>
                       <strong>{label}</strong>
@@ -590,7 +592,7 @@ export default function HomeImmersive({ clientEdition = false }: { clientEdition
             <span>Open a live bay</span>
           </div>
           <nav>
-            {QUICK_LINKS.map((item) => {
+            {QUICK_LINKS.filter((item) => routeAvailable(item.href)).map((item) => {
               const Icon = item.icon;
               return (
                 <Link key={item.href} href={item.href}>
