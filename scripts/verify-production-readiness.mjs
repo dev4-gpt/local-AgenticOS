@@ -64,6 +64,7 @@ const requiredFiles = [
   "product-experience/supabase-v47-financial-offboard-guard.sql",
   "product-experience/supabase-client-runtime-source-pack-graph.sql",
   "product-experience/supabase-client-runtime-record-retention.sql",
+  "product-experience/supabase-client-runtime-artifact-owner-guard.sql",
   "src/app/api/client-runtime/source-import/route.ts",
   "src/app/api/client-runtime/build-identity/route.ts",
   "scripts/build-client-image.mjs",
@@ -106,6 +107,7 @@ const sourceChecks = [
   ["financial offboarding deletion guard", "product-experience/supabase-v47-financial-offboard-guard.sql", "client_tenants_financial_delete_guard"],
   ["tenant source graph import", "product-experience/supabase-client-runtime-source-pack-graph.sql", "import_client_runtime_source_pack"],
   ["tenant runtime-record retention", "product-experience/supabase-client-runtime-record-retention.sql", "purge_expired_client_runtime_records"],
+  ["tenant artifact owner guard", "product-experience/supabase-client-runtime-artifact-owner-guard.sql", "created_by = auth.uid()"],
   ["reviewed source import API", "src/app/api/client-runtime/source-import/route.ts", "permissionConfirmed"],
   ["authenticated client build identity", "src/app/api/client-runtime/build-identity/route.ts", "currentClientMember"],
   ["clean client image build", "scripts/build-client-image.mjs", "status"],
@@ -159,6 +161,7 @@ const requiredMigrations = [
   { file: "product-experience/supabase-v47-financial-offboard-guard.sql", gate: "financial_offboard_guard_migration_attached" },
   { file: "product-experience/supabase-client-runtime-source-pack-graph.sql", gate: "source_graph_migration_attached" },
   { file: "product-experience/supabase-client-runtime-record-retention.sql", gate: "record_retention_migration_attached" },
+  { file: "product-experience/supabase-client-runtime-artifact-owner-guard.sql", gate: "artifact_owner_guard_migration_attached" },
 ];
 const deploymentIdentityKeys = ["vercelDeployment", "cloudRunRevision", "imageDigest"];
 const releaseOutcomeKeys = ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "sourceImportResult", "uiParityResult", "buyerSimulationResult", "aiEngineeringResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"];

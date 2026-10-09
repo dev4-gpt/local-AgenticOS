@@ -5,6 +5,7 @@ import { cancelClientRuntimeJob, checkClientRuntimeRateLimit, enqueueClientRunti
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { clientVisualQaJobConfigured } from "@/lib/clientCloudRunJobs";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
+import { clientRetentionSecondsRemaining } from "@/lib/clientRetention";
 import { validateClientVisualQaInput } from "@/lib/clientVisualQaAdapter";
 
 export const runtime = "nodejs";
@@ -52,12 +53,12 @@ export async function POST(request: Request) {
   if (validation.length > 0) return error(validation[0], 400);
   const artifactId = String(input.artifactId);
   const artifact = await selectClientRecords("client_runtime_artifacts", { id: `eq.${artifactId}`, tenant_slug: `eq.${tenantSlug}`, limit: "1" });
-  if (!artifact.ok || !artifact.records[0]) return error("artifact_not_found", 404);
+  if (!artifact.ok || artifact.records[0]?.tenant_slug !== tenantSlug || artifact.records[0]?.status !== "ready" || clientRetentionSecondsRemaining(artifact.records[0]) < 1) return error("artifact_not_found", 404);
   const createdBy = typeof artifact.records[0].created_by === "string" ? artifact.records[0].created_by : "";
   const jobId = typeof artifact.records[0].job_id === "string" ? artifact.records[0].job_id : "";
   if (createdBy !== user.id && jobId) {
     const owner = await selectClientRecords("client_runtime_jobs", { id: `eq.${jobId}`, tenant_slug: `eq.${tenantSlug}`, requested_by: `eq.${user.id}`, limit: "1" });
-    if (!owner.ok || !owner.records[0]) return error("artifact_not_found", 404);
+    if (!owner.ok || owner.records[0]?.tenant_slug !== tenantSlug || owner.records[0]?.requested_by !== user.id) return error("artifact_not_found", 404);
   } else if (createdBy !== user.id) {
     return error("artifact_not_found", 404);
   }

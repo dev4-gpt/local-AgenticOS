@@ -4,6 +4,7 @@ import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, countClientRecords, insertClientRecord, recordClientAudit, selectClientRecords } from "@/lib/clientDataPlane";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
+import { clientRetentionSecondsRemaining } from "@/lib/clientRetention";
 import { safeClientFileName } from "@/lib/clientStorage";
 
 export const runtime = "nodejs";
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
   });
   const artifact = artifactResult.records[0];
   if (!artifactResult.ok) return jsonError("memory_import_artifact_lookup_failed", 502);
-  if (!artifact || artifact.status !== "ready" || artifact.original_name !== fileName || !isMarkdownContentType(artifact.content_type)) {
+  if (!artifact || artifact.tenant_slug !== tenantSlug || artifact.created_by !== user.id || artifact.status !== "ready" || clientRetentionSecondsRemaining(artifact) < 1 || artifact.original_name !== fileName || !isMarkdownContentType(artifact.content_type)) {
     return jsonError("memory_import_source_not_verified", 409);
   }
 
