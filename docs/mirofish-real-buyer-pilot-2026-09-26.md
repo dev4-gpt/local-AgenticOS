@@ -1,6 +1,6 @@
 # MiroFish buyer-scenario pilot
 
-Status: a bounded, synthetic two-buyer simulation ran in the isolated checkout. It is a workflow smoke test, **not** market validation or a 10,000-person test. A stricter profile-fidelity audit now fails that run. Last checked: 2026-10-03.
+Status: the latest bounded synthetic run, `sim_fe9b23d28531`, passes the technical/content audit, but only two of ten configured buyers acted. It is a workflow smoke test, **not** market validation or a 10,000-person test. Earlier failed runs remain retained below. Last checked: 2026-10-09.
 
 ## Pinned upstream and non-spending evidence
 
@@ -174,3 +174,9 @@ matches, one positive review per dynamic post, and private file permissions
 before `pilotEvidencePassed` can be true. It reports only counts and check
 results, not generated post text. Even a passing reviewed synthetic run remains
 `marketValidation: false` until compared with real buyers.
+
+## Latest bounded run and release binding, 2026-10-09
+
+The isolated run `sim_fe9b23d28531` completed ten configured rounds with ten profiles, two scheduled active buyers, two seeded posts, and two dynamic posts. The read-only AgentOS auditor passed all ten checks after an AI-assisted content review; it reports `pilotEvidencePassed: true` and `marketValidation: false`. It does not show that ten buyers acted, that real prospects evaluated the product, or that 10,000 personas were simulated. The user's $0 paid-spend limit remains in force; no scale-up is authorized by this receipt.
+
+The release evidence capturer now requires the run's `profile-preparation.json`, verifies its reviewed-profile hash against the actual simulation CSV, and binds its cohort and product-brief hashes to the current AgentOS files. A changed brief or manifest fails capture, and the local receipt schema is now version 2. The existing run passes this stricter offline capture. This prevents a stale scenario from being represented as a current product test, but it does not prove hosted customer behavior, actual provider charges, or market demand. The 50-person and 10,000-person frames remain unexecuted coverage targets.
