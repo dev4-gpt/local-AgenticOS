@@ -121,6 +121,7 @@ payment result or used for the strict final attestation.
 | BYOK lifecycle | Server-side validation, rotation, revocation, deletion, and proof that the browser/evidence contains no credential value. |
 | Tenant isolation | Tenant A cannot read, execute, export, or delete Tenant B data; run the deletion/export/rollback drill. |
 | Artifact member ownership | Apply `supabase-client-runtime-artifact-owner-guard.sql` before the client image. Prove uploader-only completion, uploader or producing-job requester deletion, and owner-scoped, unexpired delivery references with two members in one tenant. Verify denied calls leave object bytes untouched; direct RPC tests are required in addition to HTTP tests. |
+| Notebook source references | Apply `supabase-client-notebook-source-reference-guard.sql` after the artifact owner guard. With two members and two tenants, prove a source cannot link another tenant's notebook, another member's artifact, an expired artifact, or a source lifetime longer than its artifact; include direct PostgREST insert/update tests. |
 | Retention and deletion | The owner selected 45 days from each customer-data item's creation. Approve covered data classes and a separate financial-record schedule. Prove database, object, export, backup, and vendor-copy deletion with tenant-scoped post-deletion checks; an age inventory or learning-item cleanup alone does not pass. |
 | Client workspace parity | Record the exact local commit and hosted Cloud Run revision/image digest. On a newly stamped image, read `/api/client-runtime/build-identity` as an authenticated tenant member and reconcile its reported commit and revision with the immutable image and deployment record; the endpoint alone is not an attestation. On that revision, signed-in Memory must show the consent-gated `Community sources` JSON import; default client navigation must omit operator-only Classroom/Social Research. Verify a reviewed source pack reaches tenant-scoped records and URL graph, then compare desktop/mobile behavior. The older internal-beta observation fails this gate. |
 | Operations | Named owner, cost caps, alerts, dashboards, bounded-load and recovery test, and a known-good rollback revision. |
@@ -199,6 +200,7 @@ npm run publish:release-ledger -- \
   --migration-file product-experience/supabase-client-runtime-source-pack-graph.sql \
   --migration-file product-experience/supabase-client-runtime-record-retention.sql \
   --migration-file product-experience/supabase-client-runtime-artifact-owner-guard.sql \
+  --migration-file product-experience/supabase-client-notebook-source-reference-guard.sql \
   --rollback-cloud-run-revision <known-good-revision> \
   --rollback-vercel-deployment <known-good-deployment-id> \
   --customer-journey-report <reviewed-redacted-journey-report.json> \
