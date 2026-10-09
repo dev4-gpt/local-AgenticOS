@@ -4,7 +4,7 @@ import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, insertClientRecord, selectClientRecords, recordClientAudit } from "@/lib/clientDataPlane";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
-import { clientRetentionExpiresAt } from "@/lib/clientRetention";
+import { clientRetentionExpiresAt, clientRetentionSecondsRemaining } from "@/lib/clientRetention";
 import { validateNotebookSource, validateNotebookDeletionRequest, type NotebookSourceKind } from "@/lib/v96NotebookContracts";
 
 export const runtime = "nodejs";
@@ -25,11 +25,12 @@ export async function GET(request: Request) {
     tenant_slug: `eq.${session.tenantSlug}`,
     ...(notebookId ? { notebook_id: `eq.${notebookId}` } : {}),
     deleted_at: "is.null",
+    retention_expires_at: `gt.${new Date().toISOString()}`,
     order: "created_at.desc",
     limit: "100",
   });
   if (!result.ok) return fail(result.status === 404 ? "notebook_lineage_schema_missing" : "notebook_source_read_failed", result.status === 404 ? 503 : 502);
-  return NextResponse.json({ ok: true, sources: result.records.map(publicSource) }, { headers: { "cache-control": "private, no-store" } });
+  return NextResponse.json({ ok: true, sources: result.records.filter((record) => clientRetentionSecondsRemaining(record) > 0).map(publicSource) }, { headers: { "cache-control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {

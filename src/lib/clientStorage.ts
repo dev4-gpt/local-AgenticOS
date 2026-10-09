@@ -39,8 +39,13 @@ export async function signedClientStorageUrl(input: {
   serviceAccount: string;
   token: string;
   contentType?: string;
+  expiresInSeconds?: number;
+  expiresAt?: string;
 }) {
   const now = new Date();
+  const absoluteExpiry = input.expiresAt === undefined ? 900 : Math.floor((Date.parse(input.expiresAt) - now.valueOf()) / 1_000);
+  const expiresInSeconds = Math.min(input.expiresInSeconds ?? 900, absoluteExpiry);
+  if (!Number.isSafeInteger(expiresInSeconds) || expiresInSeconds < 1 || expiresInSeconds > 900) return null;
   const date = now.toISOString().slice(0, 10).replace(/-/g, "");
   const timestamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   const scope = `${date}/auto/storage/goog4_request`;
@@ -52,7 +57,7 @@ export async function signedClientStorageUrl(input: {
     "X-Goog-Algorithm": "GOOG4-RSA-SHA256",
     "X-Goog-Credential": `${input.serviceAccount}/${scope}`,
     "X-Goog-Date": timestamp,
-    "X-Goog-Expires": "900",
+    "X-Goog-Expires": String(expiresInSeconds),
     "X-Goog-SignedHeaders": signedHeaders,
   });
   const canonicalQuery = [...params.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join("&");

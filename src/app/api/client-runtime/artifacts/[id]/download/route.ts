@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
-import { clientGcpAccessToken, clientServiceAccountEmail, signedClientStorageUrl } from "@/lib/clientStorage";
+import { clientRetentionSecondsRemaining } from "@/lib/clientRetention";
+import { clientGcpAccessToken, clientServiceAccountEmail, safeClientObjectKey, signedClientStorageUrl } from "@/lib/clientStorage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,20 +32,21 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!result.ok) return NextResponse.json({ ok: false, error: "artifact_lookup_failed" }, { status: 502 });
   const artifact = result.records[0];
   const objectKey = typeof artifact?.object_key === "string" ? artifact.object_key : "";
-  if (!artifact || artifact.status !== "ready" || !safeObjectKey(objectKey, namespace)) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+  const expiresInSeconds = artifact ? clientRetentionSecondsRemaining(artifact) : 0;
+  if (!artifact || artifact.tenant_slug !== tenantSlug || artifact.status !== "ready" || !expiresInSeconds || !safeClientObjectKey(objectKey, namespace)) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+  const jobId = typeof artifact.job_id === "string" ? artifact.job_id : "";
+  if (jobId) {
+    const job = await selectClientRecords("client_runtime_jobs", { id: `eq.${jobId}`, tenant_slug: `eq.${tenantSlug}`, requested_by: `eq.${user.id}`, limit: "1" });
+    if (!job.ok || job.records[0]?.tenant_slug !== tenantSlug || job.records[0]?.requested_by !== user.id) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+  } else if (artifact.created_by !== user.id) {
+    return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+  }
 
   const token = await clientGcpAccessToken();
   const serviceAccount = await clientServiceAccountEmail(process.env.CLIENT_RUNTIME_SERVICE_ACCOUNT);
   if (!serviceAccount || !token) return NextResponse.json({ ok: false, error: "signing_identity_unavailable" }, { status: 503 });
 
-  const url = await signedClientStorageUrl({ method: "GET", bucket, objectKey, serviceAccount, token });
+  const url = await signedClientStorageUrl({ method: "GET", bucket, objectKey, serviceAccount, token, expiresInSeconds, expiresAt: String(artifact.retention_expires_at) });
   if (!url) return NextResponse.json({ ok: false, error: "signed_download_unavailable" }, { status: 503 });
   return NextResponse.redirect(url, { status: 302, headers: { "cache-control": "private, no-store" } });
-}
-
-function safeObjectKey(value: string, namespace: string) {
-  return value.startsWith(`${namespace}/`)
-    && !value.startsWith("/")
-    && !value.includes("\\")
-    && !value.split("/").some((part) => part === ".." || part.length === 0);
 }

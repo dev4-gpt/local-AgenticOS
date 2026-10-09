@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
+import { clientRetentionSecondsRemaining } from "@/lib/clientRetention";
 import { clientGcpAccessToken, clientServiceAccountEmail, clientStorageConfig, safeClientObjectKey, signedClientStorageUrl } from "@/lib/clientStorage";
 import { parseClientSourcePack } from "@/lib/clientSourcePack";
 
@@ -33,12 +34,13 @@ export async function POST(request: Request) {
   if (!result.ok) return error("source_import_artifact_lookup_failed", 502);
   const artifact = result.records[0];
   const objectKey = typeof artifact?.object_key === "string" ? artifact.object_key : "";
-  if (!artifact || artifact.status !== "ready" || artifact.content_type !== "application/json" || !String(artifact.original_name ?? "").toLowerCase().endsWith(".json") || typeof artifact.byte_size !== "number" || artifact.byte_size < 1 || artifact.byte_size > MAX_PACK_BYTES || !safeClientObjectKey(objectKey, config.namespace)) return error("source_import_artifact_invalid", 409);
+  const expiresInSeconds = artifact ? clientRetentionSecondsRemaining(artifact) : 0;
+  if (!artifact || artifact.tenant_slug !== tenantSlug || artifact.created_by !== user.id || artifact.status !== "ready" || !expiresInSeconds || artifact.content_type !== "application/json" || !String(artifact.original_name ?? "").toLowerCase().endsWith(".json") || typeof artifact.byte_size !== "number" || artifact.byte_size < 1 || artifact.byte_size > MAX_PACK_BYTES || !safeClientObjectKey(objectKey, config.namespace)) return error("source_import_artifact_invalid", 409);
 
   const token = await clientGcpAccessToken();
   const serviceAccount = await clientServiceAccountEmail(config.serviceAccount);
   if (!token || !serviceAccount) return error("storage_identity_unavailable", 503);
-  const downloadUrl = await signedClientStorageUrl({ method: "GET", bucket: config.bucket, objectKey, serviceAccount, token });
+  const downloadUrl = await signedClientStorageUrl({ method: "GET", bucket: config.bucket, objectKey, serviceAccount, token, expiresInSeconds, expiresAt: String(artifact.retention_expires_at) });
   if (!downloadUrl) return error("signed_download_unavailable", 503);
   const download = await fetch(downloadUrl, { cache: "no-store", signal: AbortSignal.timeout(30_000) }).catch(() => null);
   if (!download?.ok || !download.body) return error("source_import_download_failed", 502);

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
-import { clientRetentionExpiresAt } from "@/lib/clientRetention";
+import { clientRetentionExpiresAt, clientRetentionSecondsRemaining } from "@/lib/clientRetention";
 import { clientGcpAccessToken, clientServiceAccountEmail, clientStorageConfig, safeClientFileName, safeClientObjectKey, signedClientStorageUrl } from "@/lib/clientStorage";
 
 export const runtime = "nodejs";
@@ -27,6 +27,7 @@ export async function GET(request: Request) {
   if (!tenantSlug) return NextResponse.json({ ok: false, error: "runtime_not_configured" }, { status: 503 });
   const artifactId = new URL(request.url).searchParams.get("id")?.trim();
   if (artifactId) return signedDownload(user.id, tenantSlug, artifactId);
+  const activeAfter = `gt.${new Date().toISOString()}`;
   // Two ways an artifact belongs to this member: they uploaded it, or a job they
   // requested produced it. The worker's create RPC sets no created_by, so a
   // created_by-only list hides every artifact the runtime built — exactly the
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
   const owned = await selectClientRecords("client_runtime_artifacts", {
     tenant_slug: `eq.${tenantSlug}`,
     created_by: `eq.${user.id}`,
+    retention_expires_at: activeAfter,
     order: "created_at.desc",
     limit: "100",
   });
@@ -45,19 +47,25 @@ export async function GET(request: Request) {
     order: "created_at.desc",
     limit: "100",
   });
-  const jobIds = jobs.ok ? jobs.records.map((record) => typeof record.id === "string" ? record.id : "").filter(Boolean) : [];
+  const jobIds = jobs.ok ? jobs.records.filter((record) => record.tenant_slug === tenantSlug && record.requested_by === user.id).map((record) => typeof record.id === "string" ? record.id : "").filter(Boolean) : [];
   const produced = jobIds.length
     ? await selectClientRecords("client_runtime_artifacts", {
         tenant_slug: `eq.${tenantSlug}`,
         job_id: `in.(${jobIds.join(",")})`,
+        retention_expires_at: activeAfter,
         order: "created_at.desc",
         limit: "100",
       })
     : { ok: true as const, records: [] as Record<string, unknown>[] };
   const merged = new Map<string, Record<string, unknown>>();
-  for (const record of [...owned.records, ...(produced.ok ? produced.records : [])]) {
+  const ownedJobIds = new Set(jobIds);
+  for (const record of owned.records) {
     const id = typeof record.id === "string" ? record.id : "";
-    if (id && !merged.has(id)) merged.set(id, record);
+    if (id && record.tenant_slug === tenantSlug && record.created_by === user.id && clientRetentionSecondsRemaining(record) > 0) merged.set(id, record);
+  }
+  for (const record of produced.ok ? produced.records : []) {
+    const id = typeof record.id === "string" ? record.id : "";
+    if (id && record.tenant_slug === tenantSlug && typeof record.job_id === "string" && ownedJobIds.has(record.job_id) && !merged.has(id) && clientRetentionSecondsRemaining(record) > 0) merged.set(id, record);
   }
   const result = {
     records: [...merged.values()].sort((left, right) => String(right.created_at ?? "").localeCompare(String(left.created_at ?? ""))).slice(0, 100),
@@ -84,19 +92,21 @@ async function signedDownload(userId: string, tenantSlug: string, artifactId: st
   const objectKey = typeof artifact?.object_key === "string" ? artifact.object_key : "";
   const jobId = typeof artifact?.job_id === "string" ? artifact.job_id : "";
   const createdBy = typeof artifact?.created_by === "string" ? artifact.created_by : "";
-  if (!artifactResult.ok || !artifact || !safeClientObjectKey(objectKey, config.namespace)) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+  const expiresInSeconds = artifact ? clientRetentionSecondsRemaining(artifact) : 0;
+  if (!artifactResult.ok || !artifact || artifact.tenant_slug !== tenantSlug || artifact.status !== "ready" || !expiresInSeconds || !safeClientObjectKey(objectKey, config.namespace)) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
   if (jobId) {
     const job = await selectClientRecords("client_runtime_jobs", { id: `eq.${jobId}`, tenant_slug: `eq.${tenantSlug}`, requested_by: `eq.${userId}`, limit: "1" });
-    if (!job.ok || !job.records[0]) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+    if (!job.ok || job.records[0]?.tenant_slug !== tenantSlug || job.records[0]?.requested_by !== userId) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
   } else if (createdBy !== userId) {
     return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
   }
   const token = await clientGcpAccessToken();
   const serviceAccount = await clientServiceAccountEmail(config.serviceAccount);
   if (!token || !serviceAccount) return NextResponse.json({ ok: false, error: "storage_identity_unavailable" }, { status: 503 });
-  const downloadUrl = await signedClientStorageUrl({ method: "GET", bucket: config.bucket, objectKey, serviceAccount, token });
+  const downloadUrl = await signedClientStorageUrl({ method: "GET", bucket: config.bucket, objectKey, serviceAccount, token, expiresInSeconds, expiresAt: String(artifact.retention_expires_at) });
   if (!downloadUrl) return NextResponse.json({ ok: false, error: "signed_download_unavailable" }, { status: 503 });
-  return NextResponse.json({ ok: true, downloadUrl, expiresInSeconds: 900 }, { headers: { "cache-control": "private, no-store" } });
+  const signedLifetime = Number(new URL(downloadUrl).searchParams.get("X-Goog-Expires"));
+  return NextResponse.json({ ok: true, downloadUrl, expiresInSeconds: Number.isSafeInteger(signedLifetime) && signedLifetime > 0 ? Math.min(expiresInSeconds, signedLifetime) : expiresInSeconds }, { headers: { "cache-control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {

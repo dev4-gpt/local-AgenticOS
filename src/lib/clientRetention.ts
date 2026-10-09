@@ -10,3 +10,10 @@ export function clientRetentionExpiresAt(rawDays: string | undefined, createdAt 
   const expiry = new Date(createdAt + days * DAY_MS);
   return Number.isNaN(expiry.valueOf()) ? null : expiry.toISOString();
 }
+
+export function clientRetentionSecondsRemaining(record: { retention_expires_at?: unknown }, now = Date.now()): number {
+  if (typeof record.retention_expires_at !== "string" || !Number.isFinite(now)) return 0;
+  const expiresAt = Date.parse(record.retention_expires_at);
+  if (!Number.isFinite(expiresAt)) return 0;
+  return Math.max(0, Math.min(900, Math.floor((expiresAt - now) / 1_000)));
+}

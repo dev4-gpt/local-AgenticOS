@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { parseClientSourcePack } from "../src/lib/clientSourcePack";
+import { clientRetentionSecondsRemaining } from "../src/lib/clientRetention";
 import { loadReviewModule } from "./helpers/load-review-module";
 
 const userId = "00000000-0000-4000-8000-000000000001";
@@ -74,18 +75,21 @@ test("source import commits only the exact artifact bytes reviewed with permissi
   expect(changed.byteLength).toBe(original.byteLength);
   let stored = original;
   let writes = 0;
+  let expiry: string | null = new Date(Date.now() + 60_000).toISOString();
+  let downloads = 0;
   try {
     Object.assign(process.env, { CLIENT_SLUG: "tenant-a" });
-    globalThis.fetch = async () => new Response(new Uint8Array(stored));
+    globalThis.fetch = async () => { downloads++; return new Response(new Uint8Array(stored)); };
     const route = loadReviewModule("src/app/api/client-runtime/source-import/route.ts", {
       "@/lib/clientAuth": { currentClientUser: async () => ({ id: userId }), currentClientMember: async () => true },
       "@/lib/clientDataPlane": {
         checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
-        selectClientRecords: async () => ({ ok: true, records: [{ id: artifactId, status: "ready", content_type: "application/json", original_name: "source-pack.json", byte_size: original.byteLength, object_key: "tenant-a/source-pack.json" }] }),
+        selectClientRecords: async () => ({ ok: true, records: [{ id: artifactId, tenant_slug: "tenant-a", created_by: userId, status: "ready", content_type: "application/json", original_name: "source-pack.json", byte_size: original.byteLength, object_key: "tenant-a/source-pack.json", retention_expires_at: expiry }] }),
         clientRpc: async () => { writes++; return { ok: true, value: { imported: 2, updated: 0, duplicates: 0 } }; },
         recordClientAudit: async () => undefined,
       },
       "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+      "@/lib/clientRetention": { clientRetentionSecondsRemaining },
       "@/lib/clientStorage": {
         clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "test-bucket", serviceAccount: "test@example.invalid" }),
         safeClientObjectKey: (key: string) => key.startsWith("tenant-a/"),
@@ -115,6 +119,13 @@ test("source import commits only the exact artifact bytes reviewed with permissi
     stored = original;
     const imported = await post({ action: "import", previewSha256: reviewed.packSha256, permissionConfirmed: true });
     expect(imported.status).toBe(201);
+    expect(writes).toBe(1);
+    const priorDownloads = downloads;
+    expiry = new Date(Date.now() - 1_000).toISOString();
+    const expired = await post({ action: "import", previewSha256: reviewed.packSha256, permissionConfirmed: true });
+    expect(expired.status).toBe(409);
+    expect((await expired.json()).error).toBe("source_import_artifact_invalid");
+    expect(downloads).toBe(priorDownloads);
     expect(writes).toBe(1);
   } finally {
     process.env = savedEnv;

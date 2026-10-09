@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { loadReviewModule } from "./helpers/load-review-module";
-import { clientRetentionExpiresAt } from "../src/lib/clientRetention";
+import { clientRetentionExpiresAt, clientRetentionSecondsRemaining } from "../src/lib/clientRetention";
+import { signedClientStorageUrl } from "../src/lib/clientStorage";
 
 const savedEnv = { ...process.env };
 const DAY_MS = 86_400_000;
@@ -21,7 +22,7 @@ function uploadRoute() {
       },
     },
     "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
-    "@/lib/clientRetention": { clientRetentionExpiresAt },
+    "@/lib/clientRetention": { clientRetentionExpiresAt, clientRetentionSecondsRemaining },
     "@/lib/clientStorage": {
       clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "fixture-bucket", serviceAccount: "fixture@example.invalid" }),
       safeClientFileName: (name: string) => name,
@@ -81,7 +82,7 @@ function notebookRoute() {
     },
     "@/lib/clientInputSafety": { containsClientSecretLike: () => false },
     "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
-    "@/lib/clientRetention": { clientRetentionExpiresAt },
+    "@/lib/clientRetention": { clientRetentionExpiresAt, clientRetentionSecondsRemaining },
     "@/lib/v96NotebookContracts": { validateNotebookSource: () => [] },
   });
   const post = () => route.POST(new Request("https://tenant.invalid/api/client-runtime/notebook-sources", {
@@ -136,4 +137,142 @@ test("invalid worker retention stops before claiming a job or calling a provider
   }));
   expect(response.status).toBe(503);
   expect(await response.json()).toMatchObject({ error: "retention_not_configured" });
+});
+
+test("expired and undated Notebook sources are omitted from member reads", async () => {
+  process.env.CLIENT_SLUG = "tenant-a";
+  const now = Date.now();
+  const records = [
+    { id: "active", retention_expires_at: new Date(now + 20_000).toISOString() },
+    { id: "expired", retention_expires_at: new Date(now - 1_000).toISOString() },
+    { id: "undated", retention_expires_at: null },
+  ];
+  let readFilter: Record<string, string> | null = null;
+  const route = loadReviewModule("src/app/api/client-runtime/notebook-sources/route.ts", {
+    "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
+    "@/lib/clientAuth": { currentClientUser: async () => ({ id: "member-a" }), currentClientMember: async () => true },
+    "@/lib/clientDataPlane": { checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }), selectClientRecords: async (_table: string, filters: Record<string, string>) => { readFilter = filters; return { ok: true, records }; } },
+    "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+    "@/lib/clientRetention": { clientRetentionExpiresAt, clientRetentionSecondsRemaining },
+  });
+  const response = await route.GET(new Request("https://tenant.invalid/api/client-runtime/notebook-sources"));
+  expect(response.status).toBe(200);
+  expect((await response.json()).sources.map((item: { id: string }) => item.id)).toEqual(["active"]);
+  expect(readFilter?.retention_expires_at).toMatch(/^gt\./);
+});
+
+test("artifact list and both download routes enforce expiry and owner or requesting member", async () => {
+  process.env.CLIENT_SLUG = "tenant-a";
+  process.env.CLIENT_STORAGE_NAMESPACE = "tenant-a";
+  process.env.CLIENT_STORAGE_BUCKET = "fixture-bucket";
+  const artifactId = "00000000-0000-4000-8000-000000000001";
+  const jobId = "00000000-0000-4000-8000-000000000002";
+  const active = new Date(Date.now() + 120_000).toISOString();
+  let currentUser = "member-a";
+  let artifact: Record<string, unknown> = { id: artifactId, tenant_slug: "tenant-a", created_by: "member-a", status: "ready", object_key: "tenant-a/private/file.txt", retention_expires_at: active };
+  let signed = 0;
+  const listFilters: Record<string, string>[] = [];
+  const auth = { currentClientUser: async () => ({ id: currentUser }), currentClientMember: async () => true };
+  const data = {
+    checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+    selectClientRecords: async (table: string, filters: Record<string, string>) => {
+      if (table === "client_runtime_jobs") return { ok: true, records: filters.requested_by === "eq.member-a" ? [{ id: jobId, tenant_slug: "tenant-a", requested_by: "member-a" }] : [] };
+      if (filters.id) return { ok: true, records: [artifact] };
+      listFilters.push(filters);
+      return { ok: true, records: [artifact] };
+    },
+  };
+  const storage = {
+    clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "fixture-bucket", serviceAccount: "fixture@example.invalid" }),
+    safeClientObjectKey: (key: string, namespace: string) => key.startsWith(`${namespace}/`),
+    clientGcpAccessToken: async () => "fixture-token",
+    clientServiceAccountEmail: async () => "fixture@example.invalid",
+    signedClientStorageUrl: async (input: { expiresInSeconds?: number }) => { signed++; expect(input.expiresInSeconds).toBeGreaterThan(0); expect(input.expiresInSeconds).toBeLessThanOrEqual(120); return "https://storage.example.invalid/private?X-Goog-Expires=60"; },
+  };
+  const common = {
+    "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init), redirect: (url: string, init?: ResponseInit) => Response.redirect(url, init?.status) } },
+    "@/lib/clientAuth": auth,
+    "@/lib/clientDataPlane": data,
+    "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+    "@/lib/clientRetention": { clientRetentionExpiresAt, clientRetentionSecondsRemaining },
+    "@/lib/clientStorage": storage,
+  };
+  const listRoute = loadReviewModule("src/app/api/client-runtime/artifacts/route.ts", common);
+  const downloadRoute = loadReviewModule("src/app/api/client-runtime/artifacts/[id]/download/route.ts", common);
+  const list = () => listRoute.GET(new Request("https://tenant.invalid/api/client-runtime/artifacts"));
+  const primary = () => listRoute.GET(new Request(`https://tenant.invalid/api/client-runtime/artifacts?id=${artifactId}`));
+  const alternate = () => downloadRoute.GET(new Request(`https://tenant.invalid/api/client-runtime/artifacts/${artifactId}/download`), { params: Promise.resolve({ id: artifactId }) });
+  expect((await (await list()).json()).artifacts).toHaveLength(1);
+  expect(listFilters[0].retention_expires_at).toMatch(/^gt\./);
+  const signedResponse = await primary();
+  expect(signedResponse.status).toBe(200);
+  expect((await signedResponse.json()).expiresInSeconds).toBe(60);
+  expect((await alternate()).status).toBe(302);
+  expect(signed).toBe(2);
+
+  currentUser = "member-b";
+  expect((await (await list()).json()).artifacts).toHaveLength(0);
+  expect((await primary()).status).toBe(404);
+  expect((await alternate()).status).toBe(404);
+  expect(signed).toBe(2);
+
+  artifact = { ...artifact, created_by: null, job_id: jobId };
+  currentUser = "member-a";
+  expect((await primary()).status).toBe(200);
+  expect((await alternate()).status).toBe(302);
+  currentUser = "member-b";
+  expect((await primary()).status).toBe(404);
+  expect((await alternate()).status).toBe(404);
+  expect(signed).toBe(4);
+
+  artifact = { ...artifact, tenant_slug: "tenant-b" };
+  currentUser = "member-a";
+  expect((await (await list()).json()).artifacts).toHaveLength(0);
+  expect((await primary()).status).toBe(404);
+  expect((await alternate()).status).toBe(404);
+  artifact = { ...artifact, tenant_slug: "tenant-a" };
+
+  currentUser = "member-a";
+  for (const retention_expires_at of [new Date(Date.now() - 1_000).toISOString(), null, "not-a-date"]) {
+    artifact = { ...artifact, retention_expires_at };
+    expect((await (await list()).json()).artifacts).toHaveLength(0);
+    expect((await primary()).status).toBe(404);
+    expect((await alternate()).status).toBe(404);
+  }
+  expect(signed).toBe(4);
+});
+
+test("storage signing refuses invalid expiry lengths", async () => {
+  for (const expiresInSeconds of [0, -1, 901, 1.5, Number.NaN]) {
+    expect(await signedClientStorageUrl({ method: "GET", bucket: "fixture", objectKey: "tenant-a/file", serviceAccount: "fixture@example.invalid", token: "fixture", expiresInSeconds })).toBeNull();
+  }
+});
+
+test("storage signature cannot outlive an artifact's absolute expiry", async () => {
+  const originalFetch = globalThis.fetch;
+  let signingCalls = 0;
+  try {
+    globalThis.fetch = async () => {
+      signingCalls++;
+      return Response.json({ signedBlob: Buffer.from("fixture-signature").toString("base64") });
+    };
+    const expiresAt = new Date(Date.now() + 15_000).toISOString();
+    const url = await signedClientStorageUrl({
+      method: "GET", bucket: "fixture", objectKey: "tenant-a/file", serviceAccount: "fixture@example.invalid", token: "fixture",
+      expiresInSeconds: 900, expiresAt,
+    });
+    expect(url).not.toBeNull();
+    const signed = new URL(url!);
+    expect(Number(signed.searchParams.get("X-Goog-Expires"))).toBeGreaterThan(0);
+    expect(Number(signed.searchParams.get("X-Goog-Expires"))).toBeLessThanOrEqual(15);
+    expect(signingCalls).toBe(1);
+    const expired = await signedClientStorageUrl({
+      method: "GET", bucket: "fixture", objectKey: "tenant-a/file", serviceAccount: "fixture@example.invalid", token: "fixture",
+      expiresAt: new Date(Date.now() - 1_000).toISOString(),
+    });
+    expect(expired).toBeNull();
+    expect(signingCalls).toBe(1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
