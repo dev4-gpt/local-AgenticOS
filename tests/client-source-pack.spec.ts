@@ -11,6 +11,8 @@ const userId = "00000000-0000-4000-8000-000000000001";
 const artifactId = "00000000-0000-4000-8000-000000000002";
 const otherUserId = "00000000-0000-4000-8000-000000000003";
 const otherArtifactId = "00000000-0000-4000-8000-000000000004";
+const secondTenantUserId = "00000000-0000-4000-8000-000000000005";
+const secondTenantArtifactId = "00000000-0000-4000-8000-000000000006";
 
 function examplePack() {
   return {
@@ -190,10 +192,11 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
         actor_id uuid, event_type text not null, metadata jsonb not null default '{}'::jsonb
       );
       insert into client_tenants values ('tenant-a'), ('tenant-b');
-      insert into client_memberships values ('tenant-a','${userId}','active'),('tenant-a','${otherUserId}','active');
+      insert into client_memberships values ('tenant-a','${userId}','active'),('tenant-a','${otherUserId}','active'),('tenant-b','${secondTenantUserId}','active');
       insert into client_runtime_artifacts values
         ('${artifactId}','tenant-a','${userId}','ready','application/json',now()+interval '1 day'),
-        ('${otherArtifactId}','tenant-a','${otherUserId}','ready','application/json',now()+interval '1 day');
+        ('${otherArtifactId}','tenant-a','${otherUserId}','ready','application/json',now()+interval '1 day'),
+        ('${secondTenantArtifactId}','tenant-b','${secondTenantUserId}','ready','application/json',now()+interval '1 day');
       select set_config('request.jwt.claim.sub','${userId}',false);
     `);
     await db.exec(readFileSync("product-experience/supabase-client-runtime-memory-graph.sql", "utf8"));
@@ -272,6 +275,13 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
     expect(afterRestore.rows.some((row) => row.url === "https://example.org/new-resource")).toBe(true);
     await expect(db.query(sql, ["tenant-b", artifactId, "a".repeat(64), JSON.stringify(pack.sources)])).rejects.toThrow(/tenant_not_authorized/);
     expect((await db.query<{ value: boolean }>("select refresh_client_runtime_memory_graph('tenant-b') as value")).rows[0].value).toBe(false);
+    await db.exec(`select set_config('request.jwt.claim.sub','${secondTenantUserId}',false)`);
+    const secondTenant = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, ["tenant-b", secondTenantArtifactId, "c".repeat(64), JSON.stringify(pack.sources)]);
+    expect(secondTenant.rows[0].value).toEqual({ imported: 2, updated: 0, duplicates: 0, graphRefreshed: true });
+    expect((await db.query("select id from client_runtime_memory_graph_nodes where tenant_slug='tenant-b' and kind='document'")).rows).toHaveLength(2);
+    expect((await db.query("select id from client_runtime_records where tenant_slug='tenant-a' and kind='memory'")).rows).toHaveLength(2);
+    await expect(db.query(sql, ["tenant-a", artifactId, "a".repeat(64), JSON.stringify(pack.sources)])).rejects.toThrow(/tenant_not_authorized/);
+    await db.exec(`select set_config('request.jwt.claim.sub','${userId}',false)`);
     await db.exec(`
       insert into client_runtime_records (tenant_slug, created_by, kind, title, content, created_at)
       select 'tenant-a', '${userId}', 'memory', 'Archive memory ' || n, 'Archived course text', now() + n * interval '1 minute'

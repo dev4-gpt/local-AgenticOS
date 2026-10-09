@@ -18,6 +18,16 @@ target.
 | Legacy Cloud Run | `agentos-mvp`, service `agentos`, `europe-west1` | Revision `agentos-00013-q7f`, image `agentos:4a347ad3fc308086fdb1b38b7ac56fb3e55251ae`, deployed 2026-05-27 | Legacy service; not associated with this repository's current commit |
 | Internal beta Cloud Run | `agentos-mvp`, service `agentos-internal-beta`, `europe-west1` | Revision `agentos-internal-beta-00034-v69`, image `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`, 100% service traffic, owner-only allowlist, provider calls disabled | Controlled internal beta runtime; live email callback accepted, public customer activation still closed |
 
+Read-only Cloud Run configuration check on 2026-10-09 confirmed that this
+internal-beta service uses `SUPABASE_URL=https://ppmoqjtmjtfxadsnejqc.supabase.co`
+and `CLIENT_SLUG=internal-beta`. The same Supabase project is the production
+database in the recorded Veloce rollout. `internal-beta` is a tenant, not a
+separate database. A migration that replaces a `public` RPC in that project
+changes the function for every tenant; beta-only approval does not authorize
+that project-wide write. The new source-pack RPC guard has not been applied
+there. Use a separate disposable database for beta-only migration testing or
+obtain explicit project-wide approval after preflight and rollback review.
+
 Live browser inspection on 2026-09-26 confirmed that the `app` domain serves the
 `product-experience` editorial site. Its `Runtime access` > `Client login`
 link targets `https://veloce-cloud-test-1075094991117.asia-south1.run.app/login?next=%2F`,
