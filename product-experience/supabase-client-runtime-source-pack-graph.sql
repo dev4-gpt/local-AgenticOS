@@ -2,6 +2,15 @@
 -- and supabase-client-runtime-control-plane.sql (audit events).
 -- User-provided source packs become tenant memories with canonical URLs. This
 -- migration does not authorize automated collection from any platform.
+-- Once the RPC guard is installed, rerunning this file would replace its
+-- public wrapper with the unguarded implementation.
+do $$
+begin
+  if to_regprocedure('public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)') is not null then
+    raise exception 'source_pack_guard_migration_must_run_last';
+  end if;
+end;
+$$;
 
 create unique index if not exists client_runtime_records_source_import_key_idx
   on public.client_runtime_records (tenant_slug, (metadata ->> 'source_import_key'))

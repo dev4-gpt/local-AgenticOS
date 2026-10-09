@@ -203,6 +203,7 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
     const guard = readFileSync("product-experience/supabase-client-runtime-source-pack-rpc-guard.sql", "utf8");
     await db.exec(guard);
     await db.exec(guard);
+    await expect(db.exec(migration)).rejects.toThrow(/source_pack_guard_migration_must_run_last/);
     const privileges = await db.query<{ legacyMember: boolean; guardedMember: boolean }>(`
       select has_function_privilege('authenticated','public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)','EXECUTE') as "legacyMember",
         has_function_privilege('authenticated','public.import_client_runtime_source_pack(text,uuid,text,jsonb)','EXECUTE') as "guardedMember"
