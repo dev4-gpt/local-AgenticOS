@@ -216,11 +216,12 @@ This section records work after the original checkpoint above. The older
 
 ## October 9 internal-beta observation
 
-- In the open Chrome window, the internal-beta Cloud Run origin loaded
-  `/memory` with zero tenant memories. `/classroom-research` displayed the
-  client-edition boundary instead of an operator workflow. This is a narrow
-  UI observation, not a completed signed-in customer journey or source-import
-  acceptance receipt.
+- In the open Chrome window, the internal-beta Cloud Run origin initially
+  showed zero tenant memories during page loading; a later loaded view showed
+  two tenant memories and a 114-node/113-edge graph. The zero count was not
+  evidence of an empty tenant. `/classroom-research` displayed the
+  client-edition boundary instead of an operator workflow. These are narrow
+  UI observations, not a completed customer journey or source-import receipt.
 - The owner approved the source-import RPC guard for internal beta only. The
   beta runtime uses the production Supabase project, so applying this `public`
   function migration would affect all tenants. The hosted migration remains
@@ -250,3 +251,17 @@ file. Neither real target was exercised: the local server was stopped, and
 the required protected runtime cookie file was absent. A future inventory
 pass still needs an authorized signed-in session and exact deployment identity;
 GET-only success would not close the customer-action or two-tenant gates.
+
+**Signed-in local/cloud read check, October 9:** The process already serving
+3939 had been launched without the private client env and returned
+`auth_not_configured` at login. An independently configured local client was
+started on 3940 with provider calls disabled and a separate Next.js build
+directory. The existing Chrome session reached its signed-in `/memory` page:
+two records, 114 graph nodes, 113 edges, and the `Community sources` control.
+The loaded internal-beta `/memory` page showed the same counts but not that
+control. Local `/api/client-runtime/build-identity` returned `ok: true` with
+null source commit/revision, expected for development; internal beta returned
+`client_route_not_enabled`. This confirms a deployed route/config difference,
+not the exact source commit of the hosted image. No tenant mutation or provider
+call was made during this check. The two-member isolation and full journey
+receipts remain missing.
