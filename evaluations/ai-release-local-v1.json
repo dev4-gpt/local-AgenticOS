@@ -82,6 +82,14 @@
       "spec": "client-telemetry-boundary.spec.ts",
       "title": "product telemetry accepts only shipped events and strips caller content",
       "evidenceScope": "mocked route test, not deployed analytics configuration"
+    },
+    {
+      "id": "evaluation-credential-isolation",
+      "behavior": "The offline evaluation runner passes no inherited database, billing, or provider credentials to its tests",
+      "failureLabel": "evaluation_credential_leak",
+      "spec": "ai-release-environment.spec.ts",
+      "title": "offline AI evaluation child process receives no inherited credential variables",
+      "evidenceScope": "local subprocess environment policy test"
     }
   ]
 }

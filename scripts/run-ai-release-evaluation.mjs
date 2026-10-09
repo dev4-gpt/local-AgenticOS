@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { offlineTestEnvironment } from "./lib/offline-test-environment.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fixturePath = join(root, "evaluations/ai-release-local-v1.json");
@@ -26,8 +27,9 @@ for (const item of fixture.cases) {
 }
 
 const uniqueSpecs = [...new Set(fixture.cases.map((item) => `tests/${item.spec}`))];
-const env = { ...process.env };
-for (const name of ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "ZEP_API_KEY", "LLM_API_KEY", "BRAVE_API_KEY", "FIRECRAWL_API_KEY"]) delete env[name];
+// This suite is offline. Do not pass production credentials (including new
+// provider or billing keys) into a child test process by default.
+const env = offlineTestEnvironment(process.env, root);
 const run = spawnSync(process.execPath, [join(root, "node_modules/playwright/cli.js"), "test", ...uniqueSpecs, "--config=playwright.unit.config.ts", "--reporter=json", "--workers=1"], {
   cwd: root, env, encoding: "utf8", maxBuffer: 20 * 1024 * 1024,
 });

@@ -44,6 +44,7 @@ const requiredFiles = [
   "scripts/verify-content-os-video-pilot.mjs",
   "scripts/verify-engineering-controls.mjs",
   "scripts/run-ai-release-evaluation.mjs",
+  "scripts/lib/offline-test-environment.mjs",
   "evaluations/ai-release-local-v1.json",
   "scripts/verify-integration-governance.mjs",
   "scripts/control-plane-disposable-canary.mjs",
