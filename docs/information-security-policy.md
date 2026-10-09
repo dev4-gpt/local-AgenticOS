@@ -88,7 +88,10 @@ platform's behalf.
   45-day purge of all database rows, private exports, backups, and vendor
   copies. The read-only
   `scripts/audit-client-retention-snapshot.mjs` inventories age from a private
-  lifecycle export; it does not authorize deletion or prove enforcement.
+  lifecycle export and counts missing, invalid, expired, and over-window
+  artifact/Notebook source expiry metadata without printing content. A missing
+  table is reported as unmeasured, not empty. It does not authorize deletion,
+  blanket backfills, or prove enforcement.
 
 ## 6. Encryption policy
 

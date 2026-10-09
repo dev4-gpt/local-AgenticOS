@@ -41,7 +41,33 @@ test("retention audit reports age and protected classes without exposing row con
   expect(report.tableInventory.find((item) => item.table === "client_runtime_budget_ledger")?.protected).toBe(true);
   expect(report.tableInventory.find((item) => item.table === "client_runtime_audit_events")?.protected).toBe(true);
   expect(report.tableInventory.find((item) => item.table === "client_visual_qa_findings")?.undated).toBe(1);
+  expect(report.expiryInventory).toEqual([
+    { table: "client_runtime_artifacts", present: false, rows: null, missingExpiry: null, invalidExpiry: null, expiredStillPresent: null, expiryAfterWindow: null, readGuardWouldHide: null },
+    { table: "client_notebook_sources", present: false, rows: null, missingExpiry: null, invalidExpiry: null, expiredStillPresent: null, expiryAfterWindow: null, readGuardWouldHide: null },
+  ]);
   expect(JSON.stringify(report)).not.toMatch(/private|tenant-a|record-id/);
+});
+
+test("expiry inventory measures legacy read impact without exposing artifact content", () => {
+  const base = snapshot();
+  const input = { ...base, tables: { ...base.tables, client_runtime_artifacts: [
+    { tenant_slug: "tenant-a", created_at: recent, retention_expires_at: "2026-11-01T00:00:00.000Z", original_name: "private-document.pdf" },
+    { tenant_slug: "tenant-a", created_at: recent, retention_expires_at: null, object_key: "tenant-a/private-object" },
+    { tenant_slug: "tenant-a", created_at: recent, retention_expires_at: "not-a-date" },
+    { tenant_slug: "tenant-a", created_at: old, retention_expires_at: "2026-09-15T00:00:00.000Z" },
+    { tenant_slug: "tenant-a", created_at: recent, retention_expires_at: "2026-12-01T00:00:00.000Z" },
+  ], client_notebook_sources: [
+    { tenant_slug: "tenant-a", created_at: recent, retention_expires_at: "2026-11-01T00:00:00.000Z" },
+    { tenant_slug: "tenant-a", created_at: old, retention_expires_at: "2026-09-15T00:00:00.000Z" },
+    { tenant_slug: "tenant-a", created_at: old, retention_expires_at: null, deleted_at: "2026-09-01T00:00:00.000Z" },
+  ] } };
+  const report = auditClientRetentionSnapshot(input, { asOf });
+  expect(report.expiryInventory).toEqual([
+    { table: "client_runtime_artifacts", present: true, rows: 5, missingExpiry: 1, invalidExpiry: 1, expiredStillPresent: 1, expiryAfterWindow: 1, readGuardWouldHide: 3 },
+    { table: "client_notebook_sources", present: true, rows: 3, missingExpiry: 1, invalidExpiry: 0, expiredStillPresent: 1, expiryAfterWindow: 0, readGuardWouldHide: 1 },
+  ]);
+  expect(report.retentionEnforced).toBe(false);
+  expect(JSON.stringify(report)).not.toMatch(/private-document|private-object|tenant-a/);
 });
 
 test("retention audit counts an item due at exactly 45 days from creation", () => {

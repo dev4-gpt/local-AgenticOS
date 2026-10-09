@@ -3,6 +3,7 @@ import { readFileSync, statSync } from "node:fs";
 
 const DAY_MS = 86_400_000;
 const FINANCIAL_OR_AUDIT = new Set(["client_runtime_budget_ledger", "client_runtime_audit_events"]);
+const EXPIRING_READS = ["client_runtime_artifacts", "client_notebook_sources"];
 
 function record(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : null;
@@ -42,6 +43,32 @@ export function auditClientRetentionSnapshot(snapshot, { windowDays = 45, asOf =
     tableInventory.push({ table, rows: rows.length, olderThanWindow, dueAtOrBeyondWindow, undated, protected: FINANCIAL_OR_AUDIT.has(table) });
   }
   tableInventory.sort((a, b) => a.table.localeCompare(b.table));
+  const expiryInventory = EXPIRING_READS.map((table) => {
+    const rows = tables[table];
+    if (!Array.isArray(rows)) return { table, present: false, rows: null, missingExpiry: null, invalidExpiry: null, expiredStillPresent: null, expiryAfterWindow: null, readGuardWouldHide: null };
+    const counts = { missingExpiry: 0, invalidExpiry: 0, expiredStillPresent: 0, expiryAfterWindow: 0, readGuardWouldHide: 0 };
+    for (const row of rows) {
+      const visible = table !== "client_notebook_sources" || row.deleted_at === null || row.deleted_at === undefined;
+      if (row.retention_expires_at === null || row.retention_expires_at === undefined || row.retention_expires_at === "") {
+        counts.missingExpiry++;
+        if (visible) counts.readGuardWouldHide++;
+        continue;
+      }
+      const expiresAt = typeof row.retention_expires_at === "string" ? Date.parse(row.retention_expires_at) : NaN;
+      if (!Number.isFinite(expiresAt)) {
+        counts.invalidExpiry++;
+        if (visible) counts.readGuardWouldHide++;
+        continue;
+      }
+      if (expiresAt <= now) {
+        counts.expiredStillPresent++;
+        if (visible) counts.readGuardWouldHide++;
+      }
+      const createdAt = typeof row.created_at === "string" ? Date.parse(row.created_at) : NaN;
+      if (Number.isFinite(createdAt) && expiresAt > createdAt + windowDays * DAY_MS) counts.expiryAfterWindow++;
+    }
+    return { table, present: true, rows: rows.length, ...counts };
+  });
   return {
     schemaVersion: 1,
     asOf: new Date(now).toISOString(),
@@ -51,11 +78,13 @@ export function auditClientRetentionSnapshot(snapshot, { windowDays = 45, asOf =
     configuredTenantRetentionDays: configuredDays,
     windowMatchesTenantConfiguration: configuredDays === windowDays,
     tableInventory,
+    expiryInventory,
     retentionEnforced: false,
     deletionCandidatesApproved: false,
     limitations: [
       "Record age is an inventory signal, not deletion eligibility or a 45-day enforcement receipt.",
       "Snapshot table and object-store completeness require separate verification.",
+      "Expiry diagnostics predict read-guard impact only; they do not prove byte deletion or authorize a blanket backfill.",
       "Managed-credit, billing, refund, backup, and vendor records require separate reviewed retention rules.",
     ],
   };
