@@ -23,6 +23,8 @@ bill a customer, or publish a campaign.
 | Managed gateway boundary | Run `npm run verify:managed-openrouter-cloud -- --expected-digest sha256:<digest> --expected-models openai/gpt-4o-mini`. | Private IAM, exact secret bindings, one invoker, immutable image, approved allowlist, and `/readyz` passing. |
 | Vercel metadata | Run `npm run verify:vercel-production-env`. | Required production names present; sensitive values remain typed sensitive; pricing snapshot fields present after activation configuration. |
 
+Local-only artifact check on 2026-10-09: source `dd6b6cd22c7f8571408eadf34fc41290e300949c` built with the client Docker flags, then `node scripts/prune-client-runtime-artifact.mjs` removed 235 disallowed route entries and retained 118. `npm run verify:client-build-trace` passed on that local artifact. The verifier now requires the build-identity route; its positive and missing-route tests pass. This is not a hosted image digest, deployment, or current-candidate acceptance receipt.
+
 ## 2. Managed OpenRouter: owner-controlled activation
 
 1. In the OpenRouter workspace that owns the **managed** key, configure a $4
