@@ -265,3 +265,18 @@ null source commit/revision, expected for development; internal beta returned
 not the exact source commit of the hosted image. No tenant mutation or provider
 call was made during this check. The two-member isolation and full journey
 receipts remain missing.
+
+**Current-source offline checkpoint, October 9:** On clean commit
+`602ae3a8831bb65ca1323925f8e248d72a63767f`, the focused suite passed
+318 tests with one optional private-input skip; `verify:security` passed,
+including 15 lifecycle and three runtime-config fixture tests; and the
+offline AI evaluation passed 11/11 with `modelSamples: 0`,
+`workingTreeClean: true`, and `productionReady: false`. Nineteen MiroFish
+artifact-auditor unit tests passed without starting another simulation or
+calling Groq/Zep. The AI report is private at
+`tmp/ai-release-local-v1-report.json` and bound to that source commit. The
+production verifier still reported `releaseReady: false` because no release
+ledger destination/current-candidate acceptance bundle was configured. The
+Supabase SQL Editor tab was identified as project `ppmoqjtmjtfxadsnejqc`,
+marked `main PRODUCTION`, but Chrome switched windows before a safe catalog
+query could be run. No hosted SQL was executed or migration applied.
