@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readClientExportPages } from "./lib/client-export-pages.mjs";
-import { eccLifecycleColumns, eccRestoreRow } from "./lib/ecc-lifecycle.mjs";
+import { eccLifecycleColumns } from "./lib/ecc-lifecycle.mjs";
+import { clientLifecycleRestoreRow } from "./lib/client-lifecycle-restore.mjs";
 import { bucketListingHasObjects, queueListingContains, requireReviewedSecretInventory, reviewedClientSecretNames } from "./lib/client-lifecycle-inventory.mjs";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -80,6 +81,9 @@ if (mode === "restore" && objectsPath && !resolvedBucket) fail("--objects restor
 const tables = [
   "client_tenants",
   "client_memberships",
+  "client_manifest_proposals",
+  "client_provider_connections",
+  "client_support_requests",
   "client_runtime_requests",
   "client_runtime_audit_events",
   "client_runtime_jobs",
@@ -91,6 +95,7 @@ const tables = [
   "client_research_runs",
   "client_research_records",
   "client_research_citations",
+  "client_research_worker_failures",
   "client_visual_qa_reports",
   "client_visual_qa_findings",
   "client_runtime_memory_graph_nodes",
@@ -131,6 +136,9 @@ const exportColumns = Object.freeze({
   ...eccLifecycleColumns,
   client_tenants: "slug,name,status,retention_days,created_at,updated_at",
   client_memberships: "tenant_slug,user_id,role,status,created_at",
+  client_manifest_proposals: "id,tenant_slug,requested_by,catalog_ids,provider_keys,credential_modes,pricing_snapshot_ids,idempotency_key,manifest_hash,status,metadata,created_at,updated_at",
+  client_provider_connections: "id,tenant_slug,catalog_id,provider_key,credential_mode,status,pricing_snapshot_id,manifest_version,last_validated_at,revoked_at,created_at,updated_at",
+  client_support_requests: "id,tenant_slug,email,subject,message,status,request_id,request_type,provider_key,requested_budget_micros,created_at,updated_at",
   client_runtime_requests: "id,tenant_slug,submitted_by,request_type,title,details,fields,status,created_at,updated_at",
   client_runtime_audit_events: "id,tenant_slug,actor_id,event_type,request_id,metadata,created_at",
   client_runtime_jobs: "id,tenant_slug,requested_by,capability,provider,model,idempotency_key,status,attempt_count,input_metadata,output_metadata,error_code,created_at,started_at,finished_at",
@@ -142,6 +150,7 @@ const exportColumns = Object.freeze({
   client_research_runs: "id,tenant_slug,notebook_id,job_id,created_by,provider,query,status,idempotency_key,result_count,created_at,updated_at",
   client_research_records: "id,tenant_slug,research_run_id,notebook_id,source_url,retrieved_at,fields,confidence,status,failure_reason",
   client_research_citations: "id,tenant_slug,research_run_id,research_record_id,url,title,retrieved_at,evidence",
+  client_research_worker_failures: "id,tenant_slug,job_id,idempotency_key,phase,sqlstate,record_count,created_at",
   client_visual_qa_reports: "id,tenant_slug,artifact_id,job_id,worker,frames_sampled,runtime_ms,status,warnings,created_at",
   client_visual_qa_findings: "id,tenant_slug,report_id,code,severity,frame,confidence,message",
   client_runtime_memory_graph_nodes: "id,tenant_slug,record_id,graph_key,label,kind,metadata,created_at,updated_at",
@@ -184,6 +193,7 @@ const forbiddenExportFields = new Set([
   "access_token",
   "refresh_token",
   "private_key",
+  "secret_resource",
 ]);
 const secretLikeValue = /(?:api[_ -]?key|secret|password|private[_ -]?key|access[_ -]?token)\s*[:=]\s*[^\s]{4,}|\b(?:sk|rk|ghp|xai)-[A-Za-z0-9_-]{16,}\b/i;
 
@@ -234,6 +244,7 @@ if (!apply) {
 }
 
 await assertNoFinancialOffboardRows();
+await assertNoResidualControlPlaneRows();
 const objectsPresent = bucketHasObjects();
 const queuePresent = deleteQueue ? clientQueueExists() : false;
 const alertResources = listRuntimeAlerts();
@@ -269,7 +280,7 @@ async function restoreSnapshot(snapshot) {
     const tenantRows = rows.filter((row) => table === "client_tenants" ? row.slug === slug : row.tenant_slug === slug);
     if (tenantRows.length !== rows.length) fail(`Restore contains rows outside requested tenant: ${table}`);
     assertSnapshotSafe(table, tenantRows);
-    const restoredRows = orderForRestore(table, tenantRows).map((row) => eccRestoreRow(table, row));
+    const restoredRows = orderForRestore(table, tenantRows).map((row) => clientLifecycleRestoreRow(table, row));
     for (let offset = 0; offset < restoredRows.length; offset += 500) {
       await supabaseInsert(table, restoredRows.slice(offset, offset + 500).map((row) => pickExportColumns(table, row)));
     }
@@ -302,6 +313,18 @@ async function assertNoFinancialOffboardRows() {
     if (rows.some((row) => amountFields.some((field) => !/^0$/.test(String(row[field]))))) {
       fail(`Refusing offboard: ${table} has a nonzero or unverified credit balance`);
     }
+  }
+}
+
+async function assertNoResidualControlPlaneRows() {
+  // These rows survive client_tenants deletion; support tickets also lose
+  // their tenant link, making later tenant-scoped cleanup impossible.
+  for (const table of ["client_support_requests", "client_onboarding_accounts"]) {
+    const response = await supabaseRequest(`${table}?tenant_slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`);
+    if (!response.ok) fail(`Cannot verify retained control-plane rows for ${table} (${response.status})`);
+    const rows = await response.json().catch(() => null);
+    if (!Array.isArray(rows)) fail(`Cannot verify retained control-plane rows for ${table}`);
+    if (rows.length) fail(`Refusing offboard: ${table} requires a reviewed retention and reconciliation decision`);
   }
 }
 

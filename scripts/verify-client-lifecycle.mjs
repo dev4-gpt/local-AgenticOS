@@ -21,6 +21,7 @@ expect(lifecycle.includes("schemaVersion: 3"), "lifecycle exports must use the c
 expect(lifecycle.includes("const exportColumns = Object.freeze"), "lifecycle exports must use an explicit column allowlist");
 expect(!lifecycle.includes("select=*"), "lifecycle exports must never use select=*");
 expect(lifecycle.includes("client_tenants: \"slug,name,status,retention_days,created_at,updated_at\""), "tenant exports must exclude worker_token_hash");
+expect(lifecycle.includes("client_provider_connections: \"id,tenant_slug,catalog_id,provider_key,credential_mode,status,pricing_snapshot_id,manifest_version,last_validated_at,revoked_at,created_at,updated_at\""), "provider connection exports must omit secret references and validation payloads");
 expect(lifecycle.includes("worker_token_hash"), "lifecycle verifier must reject worker token hashes if supplied by an old snapshot");
 expect(lifecycle.includes("pickExportColumns(table, row)"), "restore must use the same approved column boundary as export");
 expect(lifecycle.includes("secretLikeValue") && lifecycle.includes("assertSnapshotSafe"), "lifecycle must reject secret-like values in metadata backups");
@@ -37,12 +38,14 @@ const tempDir = await mkdtemp(join(tmpdir(), "veloce-client-lifecycle-"));
 const safeSnapshot = join(tempDir, "safe.json");
 const hashSnapshot = join(tempDir, "hash.json");
 const secretSnapshot = join(tempDir, "secret.json");
+const providerSecretSnapshot = join(tempDir, "provider-secret.json");
 const hermesSnapshot = join(tempDir, "hermes.json");
 const pagedSnapshot = join(tempDir, "paged.json");
 const baseSnapshot = { schemaVersion: 2, slug: "test-client", exportedAt: new Date().toISOString(), tables: { client_tenants: [{ slug: "test-client", name: "Test Client", status: "active", retention_days: 30 }] } };
 await writeFile(safeSnapshot, JSON.stringify(baseSnapshot), { mode: 0o600 });
 await writeFile(hashSnapshot, JSON.stringify({ ...baseSnapshot, tables: { client_tenants: [{ ...baseSnapshot.tables.client_tenants[0], worker_token_hash: "deadbeef" }] } }), { mode: 0o600 });
 await writeFile(secretSnapshot, JSON.stringify({ ...baseSnapshot, tables: { client_runtime_requests: [{ tenant_slug: "test-client", details: "api_key=sk-test-secret-value" }] } }), { mode: 0o600 });
+await writeFile(providerSecretSnapshot, JSON.stringify({ ...baseSnapshot, tables: { client_provider_connections: [{ tenant_slug: "test-client", secret_resource: "projects/example/secrets/tenant-key" }] } }), { mode: 0o600 });
 const hermesTables = [
   "client_hermes_content_factory_runs",
   "client_hermes_content_factory_stage_outputs",
@@ -79,6 +82,8 @@ const hashRun = runLifecycle(["--mode", "restore", "--slug", "test-client", "--i
 expect(hashRun.status !== 0 && `${hashRun.stdout}\n${hashRun.stderr}`.includes("worker_token_hash"), "restore must reject snapshots containing a worker token verifier");
 const secretRun = runLifecycle(["--mode", "restore", "--slug", "test-client", "--input", secretSnapshot]);
 expect(secretRun.status !== 0 && `${secretRun.stdout}\n${secretRun.stderr}`.includes("secret-like"), "restore must reject secret-like snapshot values");
+const providerSecretRun = runLifecycle(["--mode", "restore", "--slug", "test-client", "--input", providerSecretSnapshot]);
+expect(providerSecretRun.status !== 0 && `${providerSecretRun.stdout}\n${providerSecretRun.stderr}`.includes("secret_resource"), "restore must reject legacy provider secret references");
 const confirmationRun = runLifecycle(["--mode", "restore", "--slug", "test-client", "--input", safeSnapshot, "--apply"]);
 expect(confirmationRun.status !== 0 && `${confirmationRun.stdout}\n${confirmationRun.stderr}`.includes("confirm-restore"), "restore apply must require explicit confirmation before any network call");
 const hermesRun = runLifecycle(["--mode", "restore", "--slug", "test-client", "--input", hermesSnapshot, "--apply", "--confirm-restore"], true);
@@ -89,6 +94,18 @@ const pagedRun = runLifecycle(["--mode", "restore", "--slug", "test-client", "--
 const pagedTables = [...pagedRun.stdout.matchAll(/^MOCK_RESTORE_TABLE:(.+)$/gm)].map((match) => match[1]);
 expect(pagedRun.status === 0, `mocked 501-row restore must succeed: ${pagedRun.stderr}`);
 expect(JSON.stringify(pagedTables) === JSON.stringify(["client_tenants:1", "client_runtime_audit_events:500", "client_runtime_audit_events:1"]), "restore must split large tenant tables into bounded requests without dropping rows");
+const coverageSnapshot = join(tempDir, "coverage.json");
+const coverageExport = runLifecycle(["--mode", "export", "--slug", "test-client", "--out", coverageSnapshot], true, { LIFECYCLE_MOCK_FINANCIAL: "coverage" });
+expect(coverageExport.status === 0, `credential-safe lifecycle coverage export must succeed: ${coverageExport.stderr}`);
+if (coverageExport.status === 0) {
+  const snapshot = JSON.parse(await readFile(coverageSnapshot, "utf8"));
+  for (const table of ["client_manifest_proposals", "client_provider_connections", "client_support_requests", "client_research_worker_failures"]) {
+    expect(snapshot.tables[table]?.length === 1, `lifecycle export must include ${table}`);
+  }
+  expect(!("secret_resource" in snapshot.tables.client_provider_connections[0]), "provider connection backup must not contain a secret resource");
+  const coverageRestore = runLifecycle(["--mode", "restore", "--slug", "test-client", "--input", coverageSnapshot, "--apply", "--confirm-restore"], true);
+  expect(coverageRestore.status === 0, `restoring the redacted control-plane snapshot must not revive access: ${coverageRestore.stderr}`);
+}
 const offboardChannelRun = runLifecycle(["--mode", "offboard", "--slug", "test-client", "--bucket", "test-client-bucket", "--project", "test-project", "--apply", "--confirm-offboard", "--destroy-secrets", "--delete-queue"]);
 expect(offboardChannelRun.status !== 0 && `${offboardChannelRun.stdout}\n${offboardChannelRun.stderr}`.includes("delete-notification-channel"), "offboard apply must require explicit notification-channel deletion consent");
 const manifestPath = join(tempDir, "test-client-manifest.json");
@@ -108,6 +125,12 @@ const balanceRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: 
 expect(balanceRun.status !== 0 && `${balanceRun.stdout}\n${balanceRun.stderr}`.includes("nonzero or unverified credit balance"), "offboard must reject a remaining managed-credit balance");
 const financialErrorRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: "error" });
 expect(financialErrorRun.status !== 0 && `${financialErrorRun.stdout}\n${financialErrorRun.stderr}`.includes("Cannot verify financial history"), "offboard must fail closed when managed-credit history cannot be read");
+for (const [mode, table] of [["support", "client_support_requests"], ["onboarding", "client_onboarding_accounts"]]) {
+  const controlRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: mode });
+  expect(controlRun.status !== 0 && `${controlRun.stdout}\n${controlRun.stderr}`.includes(`${table} requires a reviewed retention`), `offboard must reject surviving ${table} rows`);
+}
+const controlErrorRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: "control-error" });
+expect(controlErrorRun.status !== 0 && `${controlErrorRun.stdout}\n${controlErrorRun.stderr}`.includes("Cannot verify retained control-plane rows"), "offboard must fail closed when control-plane rows cannot be read");
 const missingTenantRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: "missing" });
 expect(missingTenantRun.status !== 0 && `${missingTenantRun.stdout}\n${missingTenantRun.stderr}`.includes("Client tenant not found"), "offboard must stop before cloud cleanup when the requested tenant is absent");
 await rm(tempDir, { recursive: true, force: true });

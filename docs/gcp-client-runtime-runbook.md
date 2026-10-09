@@ -796,8 +796,17 @@ npm run client:lifecycle -- \
 The export is written with mode `0600` and includes tenant-scoped Supabase
 metadata plus optional Cloud Storage objects. It uses an explicit, credential-
 safe column allowlist: worker-token hashes, provider values, and secret-like
-metadata are refused. A restore is dry-run by default;
-pass the matching object backup directory to restore Cloud Storage objects too:
+metadata are refused. Tenant-scoped manifest proposals, provider-connection
+metadata, support tickets,
+and research-worker failure records are included. Provider secret references and
+validation payloads are not exported. Restored proposals and connections return
+to `submitted`; they need fresh review and credential validation before use.
+This is not a complete onboarding, support, or financial-record archive:
+`client_onboarding_accounts`, deployment requests, and credit history remain
+outside this snapshot.
+
+A restore is dry-run by default. Pass the matching object backup directory to
+restore Cloud Storage objects too:
 
 ```bash
 npm run client:lifecycle -- \
@@ -850,6 +859,12 @@ Secret Manager containers. When supplied with
 `--notification-channel` and `--delete-notification-channel`, it also verifies
 the channel display name belongs to the client before deleting that channel.
 Review the export and confirm the resource list before applying this operation.
+Applied offboarding also stops if tenant-linked support tickets or onboarding
+accounts still exist. Both survive tenant deletion, and support tickets lose
+their tenant link. Resolve their retention and reconciliation under an approved
+policy before retrying; do not bypass this check or treat the metadata export
+as proof of deletion. Managed-credit history and nonzero balances also block
+offboarding independently.
 
 Run export and restore in a disposable second tenant before using offboarding
 for a real client. Do not put the service-role key in a manifest, Vercel, Cloud
