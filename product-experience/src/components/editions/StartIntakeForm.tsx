@@ -275,7 +275,7 @@ export function StartIntakeForm() {
         </label>
         <label className={labelClass}>
           Retention period
-          <input name="retentionDays" type="number" min="1" max="3650" className={fieldClass} placeholder="30" />
+          <input name="retentionDays" type="number" min="1" max="3650" defaultValue="45" className={fieldClass} />
         </label>
         <label className={labelClass}>
           Preferred subdomain

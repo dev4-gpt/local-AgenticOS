@@ -110,6 +110,11 @@ export async function POST(request: Request) {
   const config = clientStorageConfig();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!config || !tenantSlug) return NextResponse.json({ ok: false, error: "storage_not_configured" }, { status: 503 });
+  const rawRetentionDays = process.env.CLIENT_RETENTION_DAYS ?? "45";
+  const retentionDays = Number(rawRetentionDays);
+  if (!/^[1-9][0-9]{0,3}$/.test(rawRetentionDays) || !Number.isSafeInteger(retentionDays) || retentionDays > 3650) {
+    return NextResponse.json({ ok: false, error: "retention_not_configured" }, { status: 503 });
+  }
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const originalName = typeof body.fileName === "string" ? safeClientFileName(body.fileName) : null;
   const contentType = typeof body.contentType === "string" ? body.contentType.trim().toLowerCase() : "";
@@ -134,7 +139,7 @@ export async function POST(request: Request) {
     p_original_name: originalName,
     p_content_type: contentType,
     p_byte_size: byteSize,
-    p_retention_expires_at: new Date(Date.now() + Number(process.env.CLIENT_RETENTION_DAYS ?? 30) * 86400000).toISOString(),
+    p_retention_expires_at: new Date(Date.now() + retentionDays * 86400000).toISOString(),
   });
   if (!stored.ok || stored.value !== artifactId) return NextResponse.json({ ok: false, error: "artifact_record_failed" }, { status: 502 });
   return NextResponse.json({ ok: true, artifactId, uploadUrl: signedUrl, uploadHeaders: { "content-type": contentType }, expiresInSeconds: 900 }, { status: 201, headers: { "cache-control": "private, no-store" } });
