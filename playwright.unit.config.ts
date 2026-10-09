@@ -6,4 +6,7 @@ export default defineConfig({
   fullyParallel: false,
   reporter: "line",
   timeout: 45_000,
+  use: process.env.PLAYWRIGHT_CHROME_EXECUTABLE
+    ? { launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROME_EXECUTABLE } }
+    : {},
 });

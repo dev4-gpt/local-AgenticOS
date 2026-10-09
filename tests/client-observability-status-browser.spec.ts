@@ -5,6 +5,26 @@ const clientBaseUrl = process.env.CLIENT_RUNTIME_TEST_URL || "http://127.0.0.1:3
 test.use({ baseURL: clientBaseUrl });
 
 for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+  test(`spend meter does not show stale totals when budget evidence fails at ${viewport.width}px`, async ({ page, context }) => {
+    await page.setViewportSize(viewport);
+    await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
+    let available = false;
+    await page.route("**/api/client-runtime/budget", (route) => route.fulfill({
+      status: available ? 200 : 502,
+      json: available ? { ok: true, capMicros: 1_000_000, spentMicros: 100_000, remainingMicros: 900_000, usedFraction: 0.1, warning: false, exhausted: false, byProvider: { openai: 100_000 } } : { ok: false, error: "budget_read_failed" },
+    }));
+    await page.goto("/integrations");
+    await expect(page.getByText("Budget status unavailable.", { exact: false })).toBeVisible();
+    await expect(page.getByText("$0.10", { exact: false })).toHaveCount(0);
+    available = true;
+    await page.getByRole("button", { name: "Retry" }).click();
+    await expect(page.getByText("$0.10", { exact: false }).first()).toBeVisible();
+    available = false;
+    await page.reload();
+    await expect(page.getByText("Budget status unavailable.", { exact: false })).toBeVisible();
+    await expect(page.getByText("$0.10", { exact: false })).toHaveCount(0);
+  });
+
   test(`observability badge reflects the capture switch at ${viewport.width}px`, async ({ page, context }) => {
     await page.setViewportSize(viewport);
     await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);

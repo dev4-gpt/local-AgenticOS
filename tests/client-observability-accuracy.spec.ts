@@ -7,6 +7,50 @@ const originalEnv = { ...process.env };
 const originalFetch = globalThis.fetch;
 test.afterEach(() => { process.env = { ...originalEnv }; globalThis.fetch = originalFetch; });
 
+function budgetRoute(selectClientRecords: (table: string, filters: Record<string, string>) => Promise<unknown>) {
+  return loadReviewModule("src/app/api/client-runtime/budget/route.ts", {
+    "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
+    "@/lib/clientAuth": { currentClientUser: async () => ({ id: "member" }), currentClientMember: async () => true },
+    "@/lib/clientDataPlane": {
+      checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+      selectClientRecords,
+    },
+    "@/lib/usageCredits": { microsToUsageCredits: (micros: number) => micros },
+  });
+}
+
+test("customer budget meter includes ledger rows beyond the first page", async () => {
+  process.env.CLIENT_SLUG = "tenant-a";
+  process.env.CLIENT_BUDGET_CAP = "1";
+  const entries = Array.from({ length: 1002 }, (_, index) => ({ id: 1002 - index, tenant_slug: "tenant-a", provider: "openai", amount_micros: 100 }));
+  const cursors: string[] = [];
+  const route = budgetRoute(async (table, filters) => {
+    expect(table).toBe("client_runtime_budget_ledger");
+    expect(filters.tenant_slug).toBe("eq.tenant-a");
+    cursors.push(filters.id ?? "first");
+    return { ok: true, records: entries.filter((entry) => !filters.id || entry.id < Number(filters.id.slice(3))).slice(0, 1000) };
+  });
+  const response = await route.GET();
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ spentMicros: 100200, remainingMicros: 899800, byProvider: { openai: 100200 } });
+  expect(cursors).toEqual(["first", "lt.3"]);
+});
+
+test("customer budget meter refuses an incomplete or malformed ledger", async () => {
+  process.env.CLIENT_SLUG = "tenant-a";
+  let pages = 0;
+  const oversized = budgetRoute(async () => {
+    pages++;
+    return { ok: true, records: Array.from({ length: 1000 }, (_, index) => ({ id: 11000 - (pages - 1) * 1000 - index, tenant_slug: "tenant-a", provider: "openai", amount_micros: 1 })) };
+  });
+  expect((await oversized.GET()).status).toBe(502);
+  expect(pages).toBe(11);
+  const wrongTenant = budgetRoute(async () => ({ ok: true, records: [{ id: 1, tenant_slug: "tenant-b", provider: "openai", amount_micros: 1 }] }));
+  expect(await (await wrongTenant.GET()).json()).toMatchObject({ error: "budget_scope_mismatch" });
+  const badAmount = budgetRoute(async () => ({ ok: true, records: [{ id: 1, tenant_slug: "tenant-a", provider: "openai", amount_micros: -1 }] }));
+  expect(await (await badAmount.GET()).json()).toMatchObject({ error: "budget_read_invalid" });
+});
+
 test("tenant artifact count uses the complete PostgREST count, not a one-row sample", async () => {
   const dataPlane = loadReviewModule("src/lib/clientDataPlane.ts", {
     "@/lib/clientAuth": { supabaseAuthConfig: () => ({ url: "https://db.invalid", key: "anon" }), currentClientAccessToken: async () => "member-token" },

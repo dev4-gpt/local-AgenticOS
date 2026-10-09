@@ -6,6 +6,9 @@ import { microsToUsageCredits } from "@/lib/usageCredits";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const LEDGER_PAGE_SIZE = 1000;
+const LEDGER_MAX_ROWS = 10000;
+
 // A deliberately light endpoint. The observability route already summarises
 // spend, but it also reads audit events, jobs and artifacts, which is far too
 // much work for a meter that every spending surface shows on load.
@@ -33,22 +36,20 @@ export async function GET() {
   const monthStart = new Date();
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
-  const ledger = await selectClientRecords("client_runtime_budget_ledger", {
-    tenant_slug: `eq.${tenantSlug}`,
-    created_at: `gte.${monthStart.toISOString()}`,
-    order: "created_at.desc",
-    limit: "1000",
-  });
+  const ledger = await readMonthlyLedger(tenantSlug, monthStart.toISOString());
   if (!ledger.ok) return fail("budget_read_failed", 502);
+  if (ledger.records.some((record) => record.tenant_slug !== tenantSlug)) return fail("budget_scope_mismatch", 502);
 
   const byProvider: Record<string, number> = {};
   let spentMicros = 0;
   for (const record of ledger.records) {
-    const amount = typeof record.amount_micros === "number" && record.amount_micros > 0 ? Math.round(record.amount_micros) : 0;
+    const amount = record.amount_micros;
+    if (typeof amount !== "number" || !Number.isSafeInteger(amount) || amount < 0) return fail("budget_read_invalid", 502);
     const provider = typeof record.provider === "string" && record.provider ? record.provider : "unknown";
     byProvider[provider] = (byProvider[provider] ?? 0) + amount;
     spentMicros += amount;
   }
+  if (!Number.isSafeInteger(spentMicros)) return fail("budget_read_invalid", 502);
 
   const usedFraction = capMicros > 0 ? Math.min(1, spentMicros / capMicros) : 0;
   const byProviderCredits = Object.fromEntries(Object.entries(byProvider).map(([provider, micros]) => [provider, microsToUsageCredits(micros)]));
@@ -71,6 +72,27 @@ export async function GET() {
     byProviderCredits,
     periodStart: monthStart.toISOString(),
   }, { headers: { "cache-control": "private, no-store" } });
+}
+
+async function readMonthlyLedger(tenantSlug: string, monthStart: string) {
+  const records: Record<string, unknown>[] = [];
+  let beforeId: string | null = null;
+  for (let page = 0; page <= LEDGER_MAX_ROWS / LEDGER_PAGE_SIZE; page++) {
+    const result = await selectClientRecords("client_runtime_budget_ledger", {
+      tenant_slug: `eq.${tenantSlug}`,
+      created_at: `gte.${monthStart}`,
+      order: "id.desc",
+      limit: String(LEDGER_PAGE_SIZE),
+      ...(beforeId ? { id: `lt.${beforeId}` } : {}),
+    });
+    if (!result.ok || records.length + result.records.length > LEDGER_MAX_ROWS) return { ok: false, records: [] as Record<string, unknown>[] };
+    records.push(...result.records);
+    if (result.records.length < LEDGER_PAGE_SIZE) return { ok: true, records };
+    const lastId = result.records.at(-1)?.id;
+    if (!/^[1-9]\d*$/.test(String(lastId)) || String(lastId) === beforeId) return { ok: false, records: [] as Record<string, unknown>[] };
+    beforeId = String(lastId);
+  }
+  return { ok: false, records: [] as Record<string, unknown>[] };
 }
 
 function fail(code: string, status: number) {
