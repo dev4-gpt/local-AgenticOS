@@ -151,3 +151,15 @@ revocation between login and session verification, authorized redirects, and
 390px/1440px login layouts. Type checking and targeted lint passed. The real
 browser stayed on login with the membership-required message; full signed-in
 acceptance is still blocked pending an approved test-tenant member account.
+
+**Current read comparison, 2026-10-08:** The existing authorized Chrome session
+now loads the local internal-beta `/memory` page and the hosted internal-beta
+Cloud Run page with the same two bonus-index records and 114 nodes/113 edges.
+Local search for `BONUSES` returns `OTHER BONUSES` with 27 source links. The
+hosted UI still lacks the local `Community sources` import control and exposes
+classroom/social links hidden by the local route policy. This is evidence that
+the bonus-index records are readable in this tenant; it does not establish
+which deployment imported them, a complete Skool classroom export, or release
+parity. No upload was performed in this comparison.
+The five-case local source-import browser suite also passed against this
+server using installed Chrome, synthetic packs, and intercepted API writes.
