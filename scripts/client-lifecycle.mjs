@@ -2,7 +2,7 @@
 import { readClientExportPages } from "./lib/client-export-pages.mjs";
 import { eccLifecycleColumns } from "./lib/ecc-lifecycle.mjs";
 import { clientLifecycleRestoreRow } from "./lib/client-lifecycle-restore.mjs";
-import { bucketListingHasObjects, queueListingContains, requireReviewedSecretInventory, reviewedClientSecretNames } from "./lib/client-lifecycle-inventory.mjs";
+import { listedClientObjectPaths, objectBackupCoversListing, queueListingContains, requireReviewedSecretInventory, reviewedClientSecretNames } from "./lib/client-lifecycle-inventory.mjs";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -24,6 +24,7 @@ const project = valueAfter("--project") || process.env.GOOGLE_CLOUD_PROJECT || p
 const bucket = valueAfter("--bucket");
 const namespace = valueAfter("--namespace") || slug;
 const includeObjects = args.includes("--include-objects");
+const objectBackupPath = /\.json$/i.test(outputPath) ? outputPath.replace(/\.json$/i, "-objects") : `${outputPath}-objects`;
 const confirmRestore = args.includes("--confirm-restore");
 const destroySecrets = args.includes("--destroy-secrets");
 const notificationChannel = valueAfter("--notification-channel");
@@ -200,7 +201,7 @@ const secretLikeValue = /(?:api[_ -]?key|secret|password|private[_ -]?key|access
 if (mode === "export") {
   const snapshot = await exportSnapshot();
   await writeSnapshot(snapshot, outputPath);
-  if (includeObjects) exportObjects(outputPath.replace(/\.json$/i, "-objects"));
+  if (includeObjects) await exportObjects(objectBackupPath);
   console.log(`Client export written: ${outputPath}`);
   process.exit(0);
 }
@@ -245,14 +246,21 @@ if (!apply) {
 
 await assertNoFinancialOffboardRows();
 await assertNoResidualControlPlaneRows();
-const objectsPresent = bucketHasObjects();
+const objectPaths = listBucketObjects();
 const queuePresent = deleteQueue ? clientQueueExists() : false;
 const alertResources = listRuntimeAlerts();
 let secretNames;
 try { secretNames = requireReviewedSecretInventory(listSecretNames(), reviewedClientSecretNames(manifest, slug)); }
 catch (error) { fail(error.message); }
+if (objectPaths.length) {
+  if (!includeObjects) fail("Refusing offboard: tenant objects require --include-objects backup before deletion");
+  await exportObjects(objectBackupPath);
+  if (!objectBackupCoversListing(objectBackupPath, resolvedNamespace, objectPaths)) {
+    fail("Refusing offboard: object backup does not cover the reviewed tenant inventory");
+  }
+}
 await supabasePatch("client_tenants", `slug=eq.${encodeURIComponent(slug)}`, { status: "offboarding", updated_at: new Date().toISOString() });
-if (objectsPresent) runGcloud(["storage", "rm", "--recursive", `gs://${resolvedBucket}/${resolvedNamespace}/**`, "--quiet"]);
+if (objectPaths.length) runGcloud(["storage", "rm", "--recursive", `gs://${resolvedBucket}/${resolvedNamespace}/**`, "--quiet"]);
 if (deleteBucket) runGcloud(["storage", "buckets", "delete", `gs://${resolvedBucket}`, "--project", project, "--quiet"]);
 if (deleteQueue) deleteQueueIfPresent(queuePresent);
 deleteRuntimeAlerts(alertResources);
@@ -439,15 +447,19 @@ async function supabaseRequest(pathname, options = {}) {
   });
 }
 
-function exportObjects(destination) {
-  spawnSync("mkdir", ["-p", destination], { stdio: "ignore" });
-  spawnSync("chmod", ["700", destination], { stdio: "ignore" });
+async function exportObjects(destination) {
+  try {
+    await mkdir(destination, { mode: 0o700 });
+  } catch (error) {
+    if (error?.code === "EEXIST") fail("Object backup already exists; choose a fresh --out path");
+    throw error;
+  }
   runGcloud(["storage", "cp", "--recursive", `gs://${resolvedBucket}/${resolvedNamespace}`, destination]);
 }
 
-function bucketHasObjects() {
+function listBucketObjects() {
   const result = spawnSync("gcloud", ["storage", "ls", `gs://${resolvedBucket}/${resolvedNamespace}/**`], { encoding: "utf8" });
-  try { return bucketListingHasObjects(result); }
+  try { return listedClientObjectPaths(result, resolvedBucket, resolvedNamespace); }
   catch (error) { fail(error.message); }
 }
 

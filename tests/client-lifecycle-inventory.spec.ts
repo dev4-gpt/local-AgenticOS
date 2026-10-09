@@ -1,20 +1,38 @@
 import { expect, test } from "@playwright/test";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { bucketListingHasObjects, queueListingContains, requireReviewedSecretInventory, reviewedClientSecretNames } from "../scripts/lib/client-lifecycle-inventory.mjs";
+import { bucketListingHasObjects, listedClientObjectPaths, objectBackupCoversListing, queueListingContains, requireReviewedSecretInventory, reviewedClientSecretNames } from "../scripts/lib/client-lifecycle-inventory.mjs";
 
 test("offboarding refuses failed object and queue inventory", () => {
   expect(bucketListingHasObjects({ status: 0, stdout: "" })).toBe(false);
   expect(bucketListingHasObjects({ status: 0, stdout: "gs://bucket/tenant-a/file\n" })).toBe(true);
   expect(() => bucketListingHasObjects({ status: 1, stdout: "" })).toThrow("Unable to enumerate client objects");
+  expect(listedClientObjectPaths({ status: 0, stdout: "gs://bucket/tenant-a/file\n" }, "bucket", "tenant-a")).toEqual(["file"]);
+  expect(() => listedClientObjectPaths({ status: 0, stdout: "gs://bucket/tenant-ab/file\n" }, "bucket", "tenant-a"))
+    .toThrow("escaped the reviewed namespace");
+  expect(() => listedClientObjectPaths({ status: 0, stdout: "gs://bucket/tenant-a/../file\n" }, "bucket", "tenant-a"))
+    .toThrow("unsafe path");
 
   expect(queueListingContains({ status: 0, stdout: "" }, "veloce-tenant-a")).toBe(false);
   expect(queueListingContains({ status: 0, stdout: "projects/p/locations/r/queues/veloce-tenant-a\n" }, "veloce-tenant-a")).toBe(true);
   expect(queueListingContains({ status: 0, stdout: "projects/p/locations/r/queues/veloce-tenant-ab\n" }, "veloce-tenant-a")).toBe(false);
   expect(() => queueListingContains({ status: 1, stdout: "" }, "veloce-tenant-a")).toThrow("Unable to enumerate client task queues");
+});
+
+test("object backup must contain every listed tenant object", () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "lifecycle-backup-"));
+  try {
+    mkdirSync(path.join(directory, "tenant-a"));
+    writeFileSync(path.join(directory, "tenant-a", "one"), "one");
+    expect(objectBackupCoversListing(directory, "tenant-a", ["one"])).toBe(true);
+    expect(objectBackupCoversListing(directory, "tenant-a", ["one", "two"])).toBe(false);
+    expect(objectBackupCoversListing(directory, "tenant-a", [])).toBe(false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("offboarding never deletes secrets from a longer tenant-slug match", () => {
@@ -94,6 +112,24 @@ test("offboarding inventories objects and queues before changing tenant state", 
     expect(secretFailure.status).toBe(1);
     expect(secretFailure.stderr).toContain("Unreviewed client secret found");
     expect(secretFailure.stderr).not.toContain("Unexpected lifecycle request");
+
+    writeFileSync(gcloud, "#!/bin/sh\nif [ \"$1\" = storage ] && [ \"$2\" = ls ]; then echo gs://test-client-bucket/test-client/file; fi\nexit 0\n", { mode: 0o700 });
+    const unbackedObjects = spawnSync(process.execPath, [...args, "--out", path.join(directory, "unbacked.json")], { cwd: process.cwd(), env, encoding: "utf8" });
+    expect(unbackedObjects.status).toBe(1);
+    expect(unbackedObjects.stderr).toContain("tenant objects require --include-objects backup");
+    expect(unbackedObjects.stderr).not.toContain("Unexpected lifecycle request");
+
+    writeFileSync(gcloud, "#!/bin/sh\nif [ \"$1\" = storage ] && [ \"$2\" = ls ]; then echo gs://test-client-bucket/test-client/file; fi\nif [ \"$1\" = storage ] && [ \"$2\" = cp ]; then exit 13; fi\nexit 0\n", { mode: 0o700 });
+    const failedBackup = spawnSync(process.execPath, [...args, "--out", path.join(directory, "failed-backup.json"), "--include-objects"], { cwd: process.cwd(), env, encoding: "utf8" });
+    expect(failedBackup.status).toBe(1);
+    expect(failedBackup.stderr).toContain("gcloud action failed: storage");
+    expect(failedBackup.stderr).not.toContain("Unexpected lifecycle request");
+
+    writeFileSync(gcloud, "#!/bin/sh\nif [ \"$1\" = storage ] && [ \"$2\" = ls ]; then echo gs://test-client-bucket/test-client/file; fi\nexit 0\n", { mode: 0o700 });
+    const emptyBackup = spawnSync(process.execPath, [...args, "--out", path.join(directory, "empty-backup.json"), "--include-objects"], { cwd: process.cwd(), env, encoding: "utf8" });
+    expect(emptyBackup.status).toBe(1);
+    expect(emptyBackup.stderr).toContain("object backup does not cover the reviewed tenant inventory");
+    expect(emptyBackup.stderr).not.toContain("Unexpected lifecycle request");
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

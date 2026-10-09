@@ -1,8 +1,36 @@
+import { lstatSync } from "node:fs";
+import path from "node:path";
+
 export function bucketListingHasObjects(result) {
   if (result?.status !== 0 || typeof result.stdout !== "string") {
     throw new Error("Unable to enumerate client objects");
   }
   return result.stdout.trim().length > 0;
+}
+
+export function listedClientObjectPaths(result, bucket, namespace) {
+  bucketListingHasObjects(result);
+  const prefix = `gs://${bucket}/${namespace}/`;
+  const names = result.stdout.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+  const paths = names.map((name) => {
+    if (!name.startsWith(prefix)) throw new Error("Client object inventory escaped the reviewed namespace");
+    const relative = name.slice(prefix.length);
+    if (!relative || relative.split("/").some((segment) => !segment || segment === "." || segment === "..")) {
+      throw new Error("Client object inventory contains an unsafe path");
+    }
+    return relative;
+  });
+  if (new Set(paths).size !== paths.length) throw new Error("Client object inventory contains duplicate paths");
+  return paths;
+}
+
+export function objectBackupCoversListing(destination, namespace, paths) {
+  if (!Array.isArray(paths) || !paths.length) return false;
+  const isFile = (file) => {
+    try { return lstatSync(file).isFile(); }
+    catch { return false; }
+  };
+  return [destination, path.join(destination, namespace)].some((base) => paths.every((name) => isFile(path.join(base, name))));
 }
 
 export function queueListingContains(result, queue) {
