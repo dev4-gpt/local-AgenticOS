@@ -2,7 +2,7 @@
 import { readClientExportPages } from "./lib/client-export-pages.mjs";
 import { eccLifecycleColumns } from "./lib/ecc-lifecycle.mjs";
 import { clientLifecycleRestoreRow } from "./lib/client-lifecycle-restore.mjs";
-import { listedClientObjectPaths, objectBackupCoversListing, queueListingContains, requireReviewedSecretInventory, reviewedClientSecretNames } from "./lib/client-lifecycle-inventory.mjs";
+import { listedClientObjectPaths, objectBackupCoversListing, sameClientObjectInventory, queueListingContains, requireReviewedSecretInventory, reviewedClientSecretNames } from "./lib/client-lifecycle-inventory.mjs";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -259,14 +259,22 @@ if (objectPaths.length) {
     fail("Refusing offboard: object backup does not cover the reviewed tenant inventory");
   }
 }
+if (!sameClientObjectInventory(objectPaths, listBucketObjects())) {
+  fail("Refusing offboard: tenant object inventory changed during backup");
+}
 await supabasePatch("client_tenants", `slug=eq.${encodeURIComponent(slug)}`, { status: "offboarding", updated_at: new Date().toISOString() });
+if (!sameClientObjectInventory(objectPaths, listBucketObjects())) {
+  fail("Refusing offboard: tenant object inventory changed after suspension");
+}
 if (objectPaths.length) runGcloud(["storage", "rm", "--recursive", `gs://${resolvedBucket}/${resolvedNamespace}/**`, "--quiet"]);
+if (listBucketObjects().length) fail("Refusing offboard: tenant objects remain after deletion");
 if (deleteBucket) runGcloud(["storage", "buckets", "delete", `gs://${resolvedBucket}`, "--project", project, "--quiet"]);
 if (deleteQueue) deleteQueueIfPresent(queuePresent);
 deleteRuntimeAlerts(alertResources);
 if (deleteNotificationChannel) await deleteClientNotificationChannel(notificationChannel);
 for (const name of secretNames) runGcloud(["secrets", "delete", name, "--project", project, "--quiet"]);
 if (deleteService) runGcloud(["run", "services", "delete", serviceName, "--region", gcp.region || "asia-south1", "--project", project, "--quiet"]);
+if (!deleteBucket && listBucketObjects().length) fail("Refusing offboard: tenant objects reappeared before tenant deletion");
 await supabaseDelete("client_tenants", `slug=eq.${encodeURIComponent(slug)}`);
 console.log(`Client offboarding completed: ${slug}`);
 

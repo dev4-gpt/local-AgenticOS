@@ -30,6 +30,12 @@ globalThis.fetch = async (url, options) => {
         : [];
     return new Response(JSON.stringify(rows), { status: 200, headers: { "Content-Type": "application/json" } });
   }
+  if (process.env.LIFECYCLE_MOCK_FINANCIAL === "inventory-patch" && parsed.origin === "https://example.supabase.co"
+    && parsed.pathname.endsWith("/client_tenants") && options.method === "PATCH"
+    && JSON.parse(options.body).status === "offboarding") {
+    console.log("MOCK_TENANT_PATCH");
+    return new Response(null, { status: 204 });
+  }
   if (parsed.origin !== "https://example.supabase.co" || options.method !== "POST") {
     throw new Error(`Unexpected lifecycle request: ${options.method} ${url}`);
   }

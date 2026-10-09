@@ -110,15 +110,16 @@ function, under their own respective privacy and security terms.
 
 ## Data retention and deletion
 
-Each tenant workspace has a configured retention period. When your
-account is offboarded (by your request or account closure), your
-workspace data is exported to you first if requested, then your
-infrastructure, database records, and any stored credentials are
-deleted. This has been independently verified after the fact, not just
-claimed: for every tenant deletion performed during this platform's
-development, the underlying cloud resources, database rows, and
-credentials were confirmed actually gone afterward, not merely marked
-inactive.
+Each tenant workspace has a configured retention period. The owner has
+selected a 45-day window measured from each customer-data item's creation,
+but enforcement across database rows, objects, private exports, backups, and
+vendor copies is not yet certified. Offboarding and deletion requests are
+operator-reviewed, with an export available on request. Managed-credit and
+other financial records require a separate approved retention and
+reconciliation schedule. Historical disposable-tenant drills do not prove
+that every tenant deletion or data class has been verified. This section
+requires legal review and current-release deletion evidence before
+publication.
 
 ## Your rights
 

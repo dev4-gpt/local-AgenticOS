@@ -33,6 +33,11 @@ export function objectBackupCoversListing(destination, namespace, paths) {
   return [destination, path.join(destination, namespace)].some((base) => paths.every((name) => isFile(path.join(base, name))));
 }
 
+export function sameClientObjectInventory(reviewed, current) {
+  if (!Array.isArray(reviewed) || !Array.isArray(current)) return false;
+  return JSON.stringify([...reviewed].sort()) === JSON.stringify([...current].sort());
+}
+
 export function queueListingContains(result, queue) {
   if (result?.status !== 0 || typeof result.stdout !== "string") {
     throw new Error("Unable to enumerate client task queues");

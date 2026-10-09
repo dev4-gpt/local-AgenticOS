@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { bucketListingHasObjects, listedClientObjectPaths, objectBackupCoversListing, queueListingContains, requireReviewedSecretInventory, reviewedClientSecretNames } from "../scripts/lib/client-lifecycle-inventory.mjs";
+import { bucketListingHasObjects, listedClientObjectPaths, objectBackupCoversListing, sameClientObjectInventory, queueListingContains, requireReviewedSecretInventory, reviewedClientSecretNames } from "../scripts/lib/client-lifecycle-inventory.mjs";
 
 test("offboarding refuses failed object and queue inventory", () => {
   expect(bucketListingHasObjects({ status: 0, stdout: "" })).toBe(false);
@@ -30,6 +30,8 @@ test("object backup must contain every listed tenant object", () => {
     expect(objectBackupCoversListing(directory, "tenant-a", ["one"])).toBe(true);
     expect(objectBackupCoversListing(directory, "tenant-a", ["one", "two"])).toBe(false);
     expect(objectBackupCoversListing(directory, "tenant-a", [])).toBe(false);
+    expect(sameClientObjectInventory(["one", "two"], ["two", "one"])).toBe(true);
+    expect(sameClientObjectInventory(["one"], ["one", "two"])).toBe(false);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -130,6 +132,33 @@ test("offboarding inventories objects and queues before changing tenant state", 
     expect(emptyBackup.status).toBe(1);
     expect(emptyBackup.stderr).toContain("object backup does not cover the reviewed tenant inventory");
     expect(emptyBackup.stderr).not.toContain("Unexpected lifecycle request");
+
+    writeFileSync(gcloud, `#!/bin/sh
+if [ "$1" = storage ] && [ "$2" = ls ]; then
+  echo gs://test-client-bucket/test-client/file
+  if [ -f "${directory}/first-list" ]; then echo gs://test-client-bucket/test-client/late; else touch "${directory}/first-list"; fi
+  exit 0
+fi
+if [ "$1" = storage ] && [ "$2" = cp ]; then mkdir -p "$5/test-client"; printf x > "$5/test-client/file"; fi
+exit 0
+`, { mode: 0o700 });
+    const changedInventory = spawnSync(process.execPath, [...args, "--out", path.join(directory, "changed-inventory.json"), "--include-objects"], { cwd: process.cwd(), env, encoding: "utf8" });
+    expect(changedInventory.status).toBe(1);
+    expect(changedInventory.stderr).toContain("tenant object inventory changed during backup");
+    expect(changedInventory.stdout).not.toContain("MOCK_TENANT_PATCH");
+
+    writeFileSync(gcloud, `#!/bin/sh
+if [ "$1" = storage ] && [ "$2" = ls ]; then echo gs://test-client-bucket/test-client/file; exit 0; fi
+if [ "$1" = storage ] && [ "$2" = cp ]; then mkdir -p "$5/test-client"; printf x > "$5/test-client/file"; fi
+exit 0
+`, { mode: 0o700 });
+    const incompleteDelete = spawnSync(process.execPath, [...args, "--out", path.join(directory, "incomplete-delete.json"), "--include-objects"], {
+      cwd: process.cwd(), env: { ...env, LIFECYCLE_MOCK_FINANCIAL: "inventory-patch" }, encoding: "utf8",
+    });
+    expect(incompleteDelete.status).toBe(1);
+    expect(incompleteDelete.stdout).toContain("MOCK_TENANT_PATCH");
+    expect(incompleteDelete.stderr).toContain("tenant objects remain after deletion");
+    expect(incompleteDelete.stderr).not.toContain("Unexpected lifecycle request");
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

@@ -852,11 +852,15 @@ When tenant objects exist, `--include-objects` is required. The command creates
 a new private object-backup directory, copies the reviewed namespace, and
 checks that each inventoried object has a local file before changing tenant
 status or deleting cloud objects. An existing backup directory, failed copy,
-or incomplete copy stops the offboard. Keep the backup under the separately
-approved 45-day per-item retention/deletion procedure; this guard does not
-freeze concurrent object writes or prove checksum parity, backup expiry, or
-vendor-copy deletion. A disposable-tenant restore and post-deletion inventory
-are still required before accepting the offboarding gate.
+or incomplete copy stops the offboard. The command rereads the object
+inventory after the backup and after suspending the tenant, and refuses a
+changed set. It also refuses to delete the tenant row if objects remain after
+the cloud delete command. Keep the backup under the separately approved
+45-day per-item retention/deletion procedure; these checks do not make
+concurrent writes impossible or prove checksum parity, backup expiry, or
+vendor-copy deletion. A disposable-tenant restore and independent
+post-deletion inventory are still required before accepting the offboarding
+gate.
 `--delete-bucket` is an
 additional explicit flag and is accepted only for the provisioner's canonical
 `PROJECT_ID-veloce-TENANT_SLUG` dedicated bucket; otherwise the offboarding
