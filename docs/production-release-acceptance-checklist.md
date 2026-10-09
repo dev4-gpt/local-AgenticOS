@@ -194,6 +194,7 @@ npm run publish:release-ledger -- \
   --migration-file product-experience/supabase-v46-onboarding-setup-token.sql \
   --migration-file product-experience/supabase-v47-financial-offboard-guard.sql \
   --migration-file product-experience/supabase-client-runtime-source-pack-graph.sql \
+  --migration-file product-experience/supabase-client-runtime-record-retention.sql \
   --rollback-cloud-run-revision <known-good-revision> \
   --rollback-vercel-deployment <known-good-deployment-id> \
   --customer-journey-report <reviewed-redacted-journey-report.json> \

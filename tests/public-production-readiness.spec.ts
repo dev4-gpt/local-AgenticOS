@@ -67,6 +67,7 @@ test("release evidence requires the setup, financial guard, and source-graph mig
     expect(failures).toContain("release_gate:setup_migration_attached");
     expect(failures).toContain("release_gate:financial_offboard_guard_migration_attached");
     expect(failures).toContain("release_gate:source_graph_migration_attached");
+    expect(failures).toContain("release_gate:record_retention_migration_attached");
     expect(failures).toContain("release_gate:sourceImportResult_approved");
     expect(failures).toContain("release_gate:uiParityResult_approved");
     expect(failures).toContain("release_gate:buyerSimulationResult_approved");

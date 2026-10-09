@@ -63,6 +63,7 @@ const requiredFiles = [
   "product-experience/supabase-v46-onboarding-setup-token.sql",
   "product-experience/supabase-v47-financial-offboard-guard.sql",
   "product-experience/supabase-client-runtime-source-pack-graph.sql",
+  "product-experience/supabase-client-runtime-record-retention.sql",
   "src/app/api/client-runtime/source-import/route.ts",
   "product-experience/supabase-public-launch-control-plane.sql",
   "docs/public-launch-runbook.md",
@@ -101,6 +102,7 @@ const sourceChecks = [
   ["transactional onboarding setup", "product-experience/supabase-v46-onboarding-setup-token.sql", "consume_client_onboarding_setup_token"],
   ["financial offboarding deletion guard", "product-experience/supabase-v47-financial-offboard-guard.sql", "client_tenants_financial_delete_guard"],
   ["tenant source graph import", "product-experience/supabase-client-runtime-source-pack-graph.sql", "import_client_runtime_source_pack"],
+  ["tenant runtime-record retention", "product-experience/supabase-client-runtime-record-retention.sql", "purge_expired_client_runtime_records"],
   ["reviewed source import API", "src/app/api/client-runtime/source-import/route.ts", "permissionConfirmed"],
   ["public-launch refund classification", "product-experience/src/app/api/billing/webhook/route.ts", "public_launch_review_required"],
   ["operator refund review boundary", "product-experience/src/app/api/internal/billing/webhook-review/route.ts", "public_launch_refund_reviewed"],
@@ -151,6 +153,7 @@ const requiredMigrations = [
   { file: "product-experience/supabase-v46-onboarding-setup-token.sql", gate: "setup_migration_attached" },
   { file: "product-experience/supabase-v47-financial-offboard-guard.sql", gate: "financial_offboard_guard_migration_attached" },
   { file: "product-experience/supabase-client-runtime-source-pack-graph.sql", gate: "source_graph_migration_attached" },
+  { file: "product-experience/supabase-client-runtime-record-retention.sql", gate: "record_retention_migration_attached" },
 ];
 const deploymentIdentityKeys = ["vercelDeployment", "cloudRunRevision", "imageDigest"];
 const releaseOutcomeKeys = ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "sourceImportResult", "uiParityResult", "buyerSimulationResult", "aiEngineeringResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"];

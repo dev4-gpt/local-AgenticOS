@@ -78,10 +78,15 @@ platform's behalf.
 - The owner selected a 45-day customer-data window measured separately from
   each item's creation time. Financial-record retention still needs a named
   billing reviewer's approved schedule, and the covered data classes and
-  vendor/backup deletion procedures still need review. Current
-  `client-lifecycle --mode retention` removes expired learning items only;
-  tenant storage lifecycle and offboarding do not prove a 45-day purge of all
-  database rows, private exports, backups, and vendor copies. The read-only
+  vendor/backup deletion procedures still need review. The checked-in
+  `supabase-client-runtime-record-retention.sql` adds a service-role-only,
+  bounded 45-day runtime-record purge with graph cleanup and audit counts.
+  After that migration is deployed, `client-lifecycle --mode retention`
+  previews runtime records and expired learning items; adding both `--apply`
+  and `--confirm-retention-records` purges both scopes. This is not scheduled
+  or deployed yet. Tenant storage lifecycle and offboarding do not prove a
+  45-day purge of all database rows, private exports, backups, and vendor
+  copies. The read-only
   `scripts/audit-client-retention-snapshot.mjs` inventories age from a private
   lifecycle export; it does not authorize deletion or prove enforcement.
 

@@ -53,6 +53,7 @@ if (mode === "offboard" && apply && deleteNotificationChannel === noNotification
 if (mode === "offboard" && apply && deleteNotificationChannel && !notificationChannel) fail("--notification-channel is required when deleting the client alert channel");
 if (mode === "offboard" && apply && !project) fail("--project is required for offboard apply");
 if (mode === "restore" && apply && !confirmRestore) fail("Refusing restore apply without --confirm-restore");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-records")) fail("Refusing retention apply without --confirm-retention-records");
 
 if (mode === "offboard" && apply && !configPath) fail("Offboard apply requires --config with a reviewed client manifest");
 const manifestBytes = configPath ? await readFile(path.resolve(process.cwd(), configPath)) : null;
@@ -207,10 +208,16 @@ if (mode === "export") {
 }
 
 if (mode === "retention") {
+  const recordResponse = await supabaseRequest("rpc/purge_expired_client_runtime_records", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 500 }),
+  });
+  if (!recordResponse.ok) fail(`Client record retention failed (${recordResponse.status}); verify the retention migration and tenant's 45-day configuration`);
+  const records = await recordResponse.json();
   const filter = `tenant_slug=eq.${encodeURIComponent(slug)}&retention_expires_at=lte.${encodeURIComponent(new Date().toISOString())}`;
   const expired = await supabaseSelect("client_learning_items", filter, "id");
   if (apply) await supabaseDelete("client_learning_items", filter);
-  console.log(JSON.stringify({ tenant: slug, expiredItems: expired.length, applied: apply, revisionsCascade: true }));
+  console.log(JSON.stringify({ tenant: slug, runtimeRecords: records, expiredLearningItems: expired.length, applied: apply, learningRevisionsCascade: true }));
   process.exit(0);
 }
 
