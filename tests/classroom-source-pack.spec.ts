@@ -145,6 +145,49 @@ test("large media-only exports keep a bounded warning and every missing-transcri
   expect(prepared.batches[0].skipped).toHaveLength(1);
 });
 
+test("owner inventory checks declared pages and May-to-September publication bounds", () => {
+  const first = { ...source(0), publishedAt: "2026-05-01" };
+  const last = { ...source(1), publishedAt: "2026-09-24" };
+  const expected = {
+    pages: [{ url: first.url }, { url: last.url }],
+    firstPublishedDate: "2026-05-01",
+    lastPublishedDate: "2026-09-24",
+  };
+  const complete = prepareClassroomSourcePack({ startUrl, sources: [first, last], expected, skipped: [], pending: [] });
+  expect(complete.coverage.declaredInventory).toMatchObject({
+    expectedPages: 2, matchedPages: 2, missingPages: [], undeclaredPages: [], missingDates: [], outsideWindow: [],
+    observedFirstDate: "2026-05-01", observedLastDate: "2026-09-24",
+    allDeclaredPagesPresent: true, declaredDateWindowMatched: true,
+  });
+  expect(complete.batches[0].skipped).toEqual([]);
+
+  const partial = prepareClassroomSourcePack({ startUrl, sources: [first], expected, skipped: [], pending: [] });
+  expect(partial.coverage.declaredInventory).toMatchObject({
+    expectedPages: 2, matchedPages: 1, missingPages: [{ url: last.url, tab: "Page" }],
+    allDeclaredPagesPresent: false, declaredDateWindowMatched: false,
+  });
+  expect(partial.batches[0].skipped).toContain("1 page is missing from the declared owner inventory; review the private manifest");
+  const extra = { ...source(2), publishedAt: "2026-06-01" };
+  const undeclared = prepareClassroomSourcePack({ startUrl, sources: [first, last, extra], expected, skipped: [], pending: [] });
+  expect(undeclared.coverage.declaredInventory?.undeclaredPages).toEqual([{ url: extra.url, tab: "Page" }]);
+  expect(undeclared.coverage.declaredInventory?.declaredDateWindowMatched).toBe(false);
+  expect(undeclared.batches[0].skipped).toContain("1 page is not in the declared owner inventory; review the private manifest");
+  const undated = prepareClassroomSourcePack({ startUrl, sources: [first, { ...last, publishedAt: undefined }], expected, skipped: [], pending: [] });
+  expect(undated.coverage.declaredInventory?.missingDates).toEqual([{ url: last.url, tab: "Page" }]);
+  expect(undated.coverage.declaredInventory?.declaredDateWindowMatched).toBe(false);
+  const outside = prepareClassroomSourcePack({ startUrl, sources: [first, { ...last, publishedAt: "2026-09-25" }], expected, skipped: [], pending: [] });
+  expect(outside.coverage.declaredInventory?.outsideWindow).toEqual([{ url: last.url, tab: "Page", publishedAt: "2026-09-25" }]);
+});
+
+test("declared classroom inventory rejects duplicate, unsafe and impossible dates", () => {
+  const lesson = { ...source(0), publishedAt: "2026-05-01" };
+  const expected = { pages: [{ url: lesson.url }], firstPublishedDate: "2026-05-01", lastPublishedDate: "2026-09-24" };
+  expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lesson, publishedAt: "2026-02-30" }], expected, pending: [] })).toThrow("classroom_published_date_invalid");
+  expect(() => prepareClassroomSourcePack({ startUrl, sources: [lesson], expected: { ...expected, pages: [expected.pages[0], expected.pages[0]] }, pending: [] })).toThrow("classroom_expected_inventory_invalid");
+  expect(() => prepareClassroomSourcePack({ startUrl, sources: [lesson], expected: { ...expected, pages: [{ url: `${lesson.url}&token=private` }] }, pending: [] })).toThrow("classroom_url_invalid");
+  expect(() => prepareClassroomSourcePack({ startUrl, sources: [lesson], expected: { ...expected, firstPublishedDate: "2026-09-24", lastPublishedDate: "2026-05-01" }, pending: [] })).toThrow("classroom_expected_inventory_invalid");
+});
+
 test("classroom conversion rejects unsafe or unimportable material before writing", () => {
   const lesson = source(0);
   expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lesson, links: [null] }], pending: [] })).toThrow("classroom_link_invalid");
@@ -170,14 +213,20 @@ test("classroom export writes selectable private hashed batches and refuses over
     const output = path.join(directory, "pack.json");
     const ownerSource = {
       title: "Lesson 1", url: `${startUrl}?md=1`, text: "Lesson 1 text",
+      publishedAt: "2026-05-01",
       links: [{ url: "https://video.example.org/watch/1", text: "Video" }],
     };
     writeFileSync(input, JSON.stringify({
       startUrl,
       sources: [ownerSource, {
         title: "Video-only lesson", url: `${startUrl}?md=2`,
+        publishedAt: "2026-09-24",
         media: [{ kind: "video", title: "Watch", url: "https://video.example.org/watch/2" }],
       }],
+      expected: {
+        pages: [{ url: ownerSource.url }, { url: `${startUrl}?md=2` }],
+        firstPublishedDate: "2026-05-01", lastPublishedDate: "2026-09-24",
+      },
       skipped: [], pending: [],
     }), { mode: 0o600 });
     const command = [path.join(process.cwd(), "scripts/prepare-classroom-source-pack.mjs"), input, output];
@@ -190,6 +239,12 @@ test("classroom export writes selectable private hashed batches and refuses over
     expect(batch.sha256).toBe(createHash("sha256").update(bytes).digest("hex"));
     expect(parseClientSourcePack(JSON.parse(bytes.toString("utf8"))).linkCount).toBe(2);
     expect(manifest.coverage.mediaOnlySourceIds).toHaveLength(1);
+    expect(manifest.coverage.declaredInventory).toMatchObject({
+      expectedPages: 2, matchedPages: 2, declaredDateWindowMatched: true,
+    });
+    expect(JSON.parse(first.stdout).coverage.declaredInventory).toMatchObject({
+      expectedPages: 2, matchedPages: 2, missingPages: 0, undeclaredPages: 0,
+    });
     const selection = await selectClientSourceBatches([
       new File([readFileSync(path.join(directory, "pack.manifest.json"))], "pack.manifest.json"),
       new File([bytes], "pack.part-001.json"),

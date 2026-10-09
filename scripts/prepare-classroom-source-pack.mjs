@@ -31,6 +31,13 @@ function textChunks(text) {
   return chunks;
 }
 
+function calendarDay(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error("classroom_published_date_invalid");
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.valueOf()) || date.toISOString().slice(0, 10) !== value) throw new Error("classroom_published_date_invalid");
+  return value;
+}
+
 export function prepareClassroomSourcePack(run) {
   if (!run || typeof run !== "object" || typeof run.startUrl !== "string" || !Array.isArray(run.sources) || !run.sources.length) {
     throw new Error("classroom_run_invalid");
@@ -38,6 +45,7 @@ export function prepareClassroomSourcePack(run) {
   const startUrl = safeExportUrl(run.startUrl);
   const ids = new Set();
   const identities = new Set();
+  const sourceDates = new Map();
   const sources = [];
   let inputLinks = 0;
   let mediaReferences = 0;
@@ -62,6 +70,7 @@ export function prepareClassroomSourcePack(run) {
     if (typeof id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(id) || ids.has(id)) throw new Error("classroom_source_invalid");
     if (identities.has(identity)) throw new Error("classroom_source_duplicate_page");
     identities.add(identity);
+    sourceDates.set(identity, source.publishedAt === undefined ? null : calendarDay(source.publishedAt));
     ids.add(id);
     const mediaLinks = (source.media ?? []).map((item) => {
       if (!item || typeof item !== "object" || !["video", "audio", "image", "embed", "file"].includes(item.kind)
@@ -111,10 +120,67 @@ export function prepareClassroomSourcePack(run) {
   if (run.pending !== undefined && (!Array.isArray(run.pending) || run.pending.some((item) => typeof item !== "string" || !item.trim()))) {
     throw new Error("classroom_pending_entries_invalid");
   }
+  let declaredInventory = null;
+  if (run.expected !== undefined) {
+    const expected = run.expected;
+    if (!expected || typeof expected !== "object" || !Array.isArray(expected.pages)
+      || !expected.pages.length || expected.pages.length > 10_000) throw new Error("classroom_expected_inventory_invalid");
+    const firstPublishedDate = calendarDay(expected.firstPublishedDate);
+    const lastPublishedDate = calendarDay(expected.lastPublishedDate);
+    if (firstPublishedDate > lastPublishedDate) throw new Error("classroom_expected_inventory_invalid");
+    const declared = new Set();
+    const missingPages = [];
+    const undeclaredPages = [];
+    const missingDates = [];
+    const outsideWindow = [];
+    const observedDates = [];
+    for (const page of expected.pages) {
+      if (!page || typeof page !== "object" || (page.tab !== undefined && (typeof page.tab !== "string" || !page.tab.trim() || SECRET_LIKE.test(page.tab)))) throw new Error("classroom_expected_inventory_invalid");
+      const url = safeExportUrl(page.url);
+      const tab = page.tab?.trim() || "Page";
+      const identity = JSON.stringify([url, tab]);
+      if (declared.has(identity)) throw new Error("classroom_expected_inventory_invalid");
+      declared.add(identity);
+      if (!sourceDates.has(identity)) {
+        missingPages.push({ url, tab });
+        continue;
+      }
+      const publishedAt = sourceDates.get(identity);
+      if (!publishedAt) missingDates.push({ url, tab });
+      else if (publishedAt < firstPublishedDate || publishedAt > lastPublishedDate) outsideWindow.push({ url, tab, publishedAt });
+      else observedDates.push(publishedAt);
+    }
+    for (const identity of identities) {
+      if (!declared.has(identity)) {
+        const [url, tab] = JSON.parse(identity);
+        undeclaredPages.push({ url, tab });
+      }
+    }
+    const observedFirstDate = observedDates.length ? observedDates.sort()[0] : null;
+    const observedLastDate = observedDates.length ? observedDates.at(-1) : null;
+    declaredInventory = {
+      expectedPages: expected.pages.length,
+      matchedPages: expected.pages.length - missingPages.length,
+      missingPages,
+      undeclaredPages,
+      missingDates,
+      outsideWindow,
+      firstPublishedDate,
+      lastPublishedDate,
+      observedFirstDate,
+      observedLastDate,
+      allDeclaredPagesPresent: missingPages.length === 0,
+      declaredDateWindowMatched: missingPages.length === 0 && undeclaredPages.length === 0 && missingDates.length === 0 && outsideWindow.length === 0
+        && observedFirstDate === firstPublishedDate && observedLastDate === lastPublishedDate,
+    };
+  }
   const skipped = [...(run.skipped ?? [])];
   if (mediaOnlySourceIds.length) skipped.push(`${mediaOnlySourceIds.length} media-only ${mediaOnlySourceIds.length === 1 ? "source has" : "sources have"} no lesson text or transcript; review mediaOnlySourceIds in the private manifest`);
   if (Array.isArray(run.pending) && run.pending.length) skipped.push(`${run.pending.length} discovered pages remain uncollected`);
   if (!Array.isArray(run.pending)) skipped.push("Collection coverage unknown: no pending-page inventory in source run");
+  if (declaredInventory?.missingPages.length) skipped.push(`${declaredInventory.missingPages.length} ${declaredInventory.missingPages.length === 1 ? "page is" : "pages are"} missing from the declared owner inventory; review the private manifest`);
+  if (declaredInventory?.undeclaredPages.length) skipped.push(`${declaredInventory.undeclaredPages.length} ${declaredInventory.undeclaredPages.length === 1 ? "page is" : "pages are"} not in the declared owner inventory; review the private manifest`);
+  if (declaredInventory && !declaredInventory.declaredDateWindowMatched) skipped.push("Declared publication-date window is not fully supported by this export; review the private manifest");
   const batches = splitMarkdownSourcePack({ startUrl, skipped, sources });
   if (batches.length > 100) throw new Error("classroom_batch_limit_exceeded");
   const outputLinks = batches.reduce((total, batch) => total + batch.sources.reduce((sum, source) => sum + source.links.length, 0), 0);
@@ -132,6 +198,7 @@ export function prepareClassroomSourcePack(run) {
       skippedPages: Array.isArray(run.skipped) ? run.skipped.length : null,
       pendingPages: Array.isArray(run.pending) ? run.pending.length : null,
       discoveredQueueExhausted: Array.isArray(run.pending) && run.pending.length === 0,
+      declaredInventory,
     },
   };
 }
@@ -168,6 +235,19 @@ if (process.argv[1]?.endsWith("/prepare-classroom-source-pack.mjs")) {
       coverage,
       batches: files.map(({ file, sha256, sources, links }) => ({ file, sha256, sources, links })),
     }, null, 2));
-    console.log(JSON.stringify({ manifest, coverage, batches: files.length }));
+    const { declaredInventory, mediaOnlySourceIds, ...counts } = coverage;
+    console.log(JSON.stringify({ manifest, coverage: {
+      ...counts,
+      mediaOnlySourceIdsCount: mediaOnlySourceIds.length,
+      declaredInventory: declaredInventory && {
+        expectedPages: declaredInventory.expectedPages,
+        matchedPages: declaredInventory.matchedPages,
+        missingPages: declaredInventory.missingPages.length,
+        undeclaredPages: declaredInventory.undeclaredPages.length,
+        missingDates: declaredInventory.missingDates.length,
+        outsideWindow: declaredInventory.outsideWindow.length,
+        declaredDateWindowMatched: declaredInventory.declaredDateWindowMatched,
+      },
+    }, batches: files.length }));
   }
 }
