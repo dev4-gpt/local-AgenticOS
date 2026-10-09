@@ -71,6 +71,28 @@ was **not** revalidated. Public J08 requires a reviewed deployment of the
 and an actual disposable-tenant sign-in/recovery test. Do not send customers to
 the 404 URL or substitute the single-tenant Cloud Test link as their shared login.
 
+Read-only Cloud Run and Cloud Build recheck on 2026-10-09, using a second
+already-configured Google account with `run.services.get`: 100% of the
+`agentos-internal-beta` service traffic still reaches revision
+`agentos-internal-beta-00034-v69`, image
+`sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`.
+Cloud Build `e53232d7-620b-4783-b720-903486ae2ae2` produced that digest on
+2026-09-26 at 16:23 UTC from a storage source. Its metadata has no resolved
+repository commit or commit substitution, and the Cloud Run service has no
+`VELOCE_BUILD_SOURCE_COMMIT` stamp. The digest is verified; a source SHA for
+that image is not. The service's page allowlist includes `/capabilities` and
+`/paperclip`, while its API allowlist omits both
+`/api/client-runtime/source-import` and `/api/client-runtime/build-identity`.
+`CLIENT_ENABLED_CAPABILITIES` is `tenant-data,artifacts,orchestration,quality`,
+provider calls remain disabled, and `CLIENT_RETENTION_DAYS` is `1`, not the
+owner-selected 45-day customer-data period. This is an internal-beta setting,
+not evidence of a compliant production policy. A new image alone would leave
+the two APIs unreachable under this runtime configuration. Reconcile the
+allowlists and retention setting in a reviewed new revision, then verify its
+source stamp, image digest, signed-in routes, two-member isolation, and data
+retention before claiming local/cloud parity. No setting or traffic was changed
+by this read-only check.
+
 The legacy Cloud Run service is publicly reachable but its `/`, `/healthz`, and
 documented `/status` routes returned `404` during this verification. Its source
 image commit is not present in this repository. It must not be used as a
