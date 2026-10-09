@@ -692,6 +692,13 @@ npm run build:client-image
 ```
 
 The image is built from `Dockerfile.client`. It contains no provider values.
+`build:client-image` refuses a dirty checkout and passes its exact Git commit
+to Cloud Build as `_SOURCE_COMMIT`. A direct Cloud Build invocation without
+that substitution stamps `unverified`, which the runtime reports as unknown.
+After deployment, an authenticated tenant member can read
+`/api/client-runtime/build-identity` for the reported source commit and Cloud
+Run revision. Compare both with the reviewed image digest and deployment
+record; this self-reported endpoint is not independent build attestation.
 
 The current internal test image is:
 
