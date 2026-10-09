@@ -186,3 +186,30 @@ This section records work after the original checkpoint above. The older
   Reassess only after platform permission, third-party session disclosure,
   a provider-side $0 hard cap or separately approved spend, and a one-page
   output sample that can be mapped into the existing tenant source-pack format.
+
+## October 9 branch-promotion boundary
+
+- At preflight, GitHub `main` was `f8f03e6` and the clean backup branch was
+  `40e8609`, 98 commits and 176 changed paths ahead with no commits behind.
+  The remote SHAs were checked directly. This branch is a recoverable work
+  backup, not a reviewed production release or a small single-purpose migration
+  PR. Do not merge it wholesale merely because it is pushed.
+- The current branch passes 318 focused tests with one optional private-input
+  skip, the repository security suite, the production Webpack build, and an
+  11/11 deterministic offline AI evaluation bound to `40e8609`. The AI report
+  includes no model or Zep calls and says `productionReady: false`. Local
+  browser checks use intercepted APIs and do not prove hosted behavior.
+- Internal beta is a tenant in Supabase project `ppmoqjtmjtfxadsnejqc`, which
+  also serves the recorded production rollout. Its `public` RPC migrations
+  affect every tenant. The owner's beta-only approval does not authorize the
+  source-pack guard on that shared database; no hosted migration was applied.
+  A disposable database check or explicit project-wide approval is required.
+- Stage promotion by dependency and evidence: review the backup-branch diff and
+  migration order; validate database changes against an isolated target;
+  build a source-stamped client image and verify its runtime allowlists;
+  exercise signed-in beta journeys and two-tenant denial; then capture the
+  exact-deployment J01-J15, buyer, AI, rollback, and operator/legal receipts.
+  Only after those gates pass should `main` or production traffic be changed.
+- The release verifier still reports `releaseReady: false` without a release
+  ledger destination and current-candidate acceptance receipts. Local tests
+  and backup commits do not close that gate.
