@@ -93,6 +93,15 @@ source stamp, image digest, signed-in routes, two-member isolation, and data
 retention before claiming local/cloud parity. No setting or traffic was changed
 by this read-only check.
 
+Read-only storage-policy follow-up on 2026-10-09: the internal-beta bucket
+`agentos-mvp-veloce-internal-beta` has one Delete lifecycle rule with `age: 1`
+and `matchesPrefix: ["internal-beta/"]`. Its reported soft-delete retention is
+604800 seconds (seven days); the bucket description did not report a versioning
+setting. This is consistent with the one-day runtime configuration, but it is
+not the selected 45-day policy and does not prove object-by-object permanent
+deletion, database-row cleanup, backup deletion, or vendor-copy deletion. No
+object names or bytes were inspected, and no bucket setting was changed.
+
 The legacy Cloud Run service is publicly reachable but its `/`, `/healthz`, and
 documented `/status` routes returned `404` during this verification. Its source
 image commit is not present in this repository. It must not be used as a
