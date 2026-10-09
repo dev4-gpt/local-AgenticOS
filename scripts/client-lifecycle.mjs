@@ -401,7 +401,12 @@ function restoreObjects(input) {
 
 async function writeSnapshot(snapshot, filePath) {
   await mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 });
-  await writeFile(filePath, JSON.stringify(snapshot, null, 2), { mode: 0o600 });
+  try {
+    await writeFile(filePath, JSON.stringify(snapshot, null, 2), { mode: 0o600, flag: "wx" });
+  } catch (error) {
+    if (error?.code === "EEXIST") fail("Lifecycle export already exists; choose a fresh --out path");
+    throw error;
+  }
   await chmod(filePath, 0o600);
 }
 

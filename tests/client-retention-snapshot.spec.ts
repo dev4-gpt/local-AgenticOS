@@ -8,6 +8,7 @@ import { auditClientRetentionSnapshot } from "../scripts/audit-client-retention-
 const asOf = "2026-10-07T00:00:00.000Z";
 const old = "2026-08-01T00:00:00.000Z";
 const recent = "2026-10-01T00:00:00.000Z";
+const boundary = "2026-08-23T00:00:00.000Z";
 
 function snapshot() {
   return {
@@ -31,15 +32,26 @@ test("retention audit reports age and protected classes without exposing row con
   const report = auditClientRetentionSnapshot(snapshot(), { windowDays: 45, asOf });
   expect(report.configuredTenantRetentionDays).toBe(45);
   expect(report.windowMatchesTenantConfiguration).toBe(true);
+  expect(report.clockStart).toBe("item.created_at");
   expect(report.retentionEnforced).toBe(false);
   expect(report.deletionCandidatesApproved).toBe(false);
   expect(report.tableInventory.find((item) => item.table === "client_runtime_records")).toEqual({
-    table: "client_runtime_records", rows: 2, olderThanWindow: 1, undated: 0, protected: false,
+    table: "client_runtime_records", rows: 2, olderThanWindow: 1, dueAtOrBeyondWindow: 1, undated: 0, protected: false,
   });
   expect(report.tableInventory.find((item) => item.table === "client_runtime_budget_ledger")?.protected).toBe(true);
   expect(report.tableInventory.find((item) => item.table === "client_runtime_audit_events")?.protected).toBe(true);
   expect(report.tableInventory.find((item) => item.table === "client_visual_qa_findings")?.undated).toBe(1);
   expect(JSON.stringify(report)).not.toMatch(/private|tenant-a|record-id/);
+});
+
+test("retention audit counts an item due at exactly 45 days from creation", () => {
+  const input = snapshot();
+  input.tables.client_runtime_records = [{ id: "boundary-id", tenant_slug: "tenant-a", created_at: boundary }];
+  const report = auditClientRetentionSnapshot(input, { windowDays: 45, asOf });
+  expect(report.tableInventory.find((item) => item.table === "client_runtime_records")).toMatchObject({
+    rows: 1, olderThanWindow: 0, dueAtOrBeyondWindow: 1,
+  });
+  expect(report.retentionEnforced).toBe(false);
 });
 
 test("retention audit rejects cross-tenant and malformed snapshots", () => {

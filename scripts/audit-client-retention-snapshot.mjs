@@ -25,6 +25,7 @@ export function auditClientRetentionSnapshot(snapshot, { windowDays = 45, asOf =
   for (const [table, rows] of Object.entries(tables)) {
     if (!/^[a-z][a-z0-9_]{0,80}$/.test(table) || !Array.isArray(rows)) throw new Error("retention_snapshot_table_invalid");
     let olderThanWindow = 0;
+    let dueAtOrBeyondWindow = 0;
     let undated = 0;
     for (const row of rows) {
       const item = record(row);
@@ -33,15 +34,19 @@ export function auditClientRetentionSnapshot(snapshot, { windowDays = 45, asOf =
       }
       const createdAt = typeof item.created_at === "string" ? Date.parse(item.created_at) : NaN;
       if (!Number.isFinite(createdAt)) undated += 1;
-      else if (createdAt < cutoff) olderThanWindow += 1;
+      else {
+        if (createdAt < cutoff) olderThanWindow += 1;
+        if (createdAt <= cutoff) dueAtOrBeyondWindow += 1;
+      }
     }
-    tableInventory.push({ table, rows: rows.length, olderThanWindow, undated, protected: FINANCIAL_OR_AUDIT.has(table) });
+    tableInventory.push({ table, rows: rows.length, olderThanWindow, dueAtOrBeyondWindow, undated, protected: FINANCIAL_OR_AUDIT.has(table) });
   }
   tableInventory.sort((a, b) => a.table.localeCompare(b.table));
   return {
     schemaVersion: 1,
     asOf: new Date(now).toISOString(),
     windowDays,
+    clockStart: "item.created_at",
     tenantStatus: typeof tenant[0].status === "string" ? tenant[0].status : "unknown",
     configuredTenantRetentionDays: configuredDays,
     windowMatchesTenantConfiguration: configuredDays === windowDays,

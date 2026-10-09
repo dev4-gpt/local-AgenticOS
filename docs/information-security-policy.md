@@ -75,8 +75,10 @@ platform's behalf.
 - Retention periods must be configured per tenant and enforced through the
   offboarding/deletion process, with independent post-deletion verification
   as standard practice, not an occasional check.
-- The owner selected a 45-day customer-data window, but its start event and
-  financial-record exception still need an approved decision. Current
+- The owner selected a 45-day customer-data window measured separately from
+  each item's creation time. Financial-record retention still needs a named
+  billing reviewer's approved schedule, and the covered data classes and
+  vendor/backup deletion procedures still need review. Current
   `client-lifecycle --mode retention` removes expired learning items only;
   tenant storage lifecycle and offboarding do not prove a 45-day purge of all
   database rows, private exports, backups, and vendor copies. The read-only

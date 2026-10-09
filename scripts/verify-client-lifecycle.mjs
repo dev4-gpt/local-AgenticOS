@@ -98,6 +98,10 @@ const coverageSnapshot = join(tempDir, "coverage.json");
 const coverageExport = runLifecycle(["--mode", "export", "--slug", "test-client", "--out", coverageSnapshot], true, { LIFECYCLE_MOCK_FINANCIAL: "coverage" });
 expect(coverageExport.status === 0, `credential-safe lifecycle coverage export must succeed: ${coverageExport.stderr}`);
 if (coverageExport.status === 0) {
+  const originalExport = await readFile(coverageSnapshot, "utf8");
+  const repeatedExport = runLifecycle(["--mode", "export", "--slug", "test-client", "--out", coverageSnapshot], true, { LIFECYCLE_MOCK_FINANCIAL: "coverage" });
+  expect(repeatedExport.status !== 0 && `${repeatedExport.stdout}\n${repeatedExport.stderr}`.includes("Lifecycle export already exists"), "lifecycle export must refuse to overwrite an existing backup");
+  expect(await readFile(coverageSnapshot, "utf8") === originalExport, "a refused lifecycle export must preserve the original backup bytes");
   const snapshot = JSON.parse(await readFile(coverageSnapshot, "utf8"));
   for (const table of ["client_manifest_proposals", "client_provider_connections", "client_support_requests", "client_research_worker_failures"]) {
     expect(snapshot.tables[table]?.length === 1, `lifecycle export must include ${table}`);
@@ -112,26 +116,26 @@ const manifestPath = join(tempDir, "test-client-manifest.json");
 const manifestBytes = JSON.stringify({ clientSlug: "test-client", gcp: { projectId: "test-project", storageBucket: "test-client-bucket" }, storage: { namespace: "test-client" } });
 await writeFile(manifestPath, manifestBytes, { mode: 0o600 });
 const manifestSha256 = createHash("sha256").update(manifestBytes).digest("hex");
-const offboardArgs = ["--mode", "offboard", "--slug", "test-client", "--bucket", "test-client-bucket", "--project", "test-project", "--config", manifestPath, "--manifest-sha256", manifestSha256, "--out", join(tempDir, "pre-offboard.json"), "--apply", "--confirm-offboard", "--destroy-secrets", "--delete-queue", "--no-notification-channel"];
-const alteredManifestRun = runLifecycle(offboardArgs.map((arg) => arg === manifestSha256 ? "0".repeat(64) : arg), true, { LIFECYCLE_MOCK_FINANCIAL: "inventory" });
+const offboardArgs = (label) => ["--mode", "offboard", "--slug", "test-client", "--bucket", "test-client-bucket", "--project", "test-project", "--config", manifestPath, "--manifest-sha256", manifestSha256, "--out", join(tempDir, `${label}.json`), "--apply", "--confirm-offboard", "--destroy-secrets", "--delete-queue", "--no-notification-channel"];
+const alteredManifestRun = runLifecycle(offboardArgs("altered-manifest").map((arg) => arg === manifestSha256 ? "0".repeat(64) : arg), true, { LIFECYCLE_MOCK_FINANCIAL: "inventory" });
 expect(alteredManifestRun.status !== 0 && `${alteredManifestRun.stdout}\n${alteredManifestRun.stderr}`.includes("reviewed manifest SHA-256"), "offboard apply must bind to the reviewed manifest bytes");
-const wrongBucketRun = runLifecycle(offboardArgs.map((arg) => arg === "test-client-bucket" ? "another-bucket" : arg), true, { LIFECYCLE_MOCK_FINANCIAL: "inventory" });
+const wrongBucketRun = runLifecycle(offboardArgs("wrong-bucket").map((arg) => arg === "test-client-bucket" ? "another-bucket" : arg), true, { LIFECYCLE_MOCK_FINANCIAL: "inventory" });
 expect(wrongBucketRun.status !== 0 && `${wrongBucketRun.stdout}\n${wrongBucketRun.stderr}`.includes("does not match the reviewed tenant manifest"), "offboard apply must not redirect cleanup to another bucket");
-const sharedBucketRun = runLifecycle([...offboardArgs, "--delete-bucket"], true, { LIFECYCLE_MOCK_FINANCIAL: "inventory" });
+const sharedBucketRun = runLifecycle([...offboardArgs("shared-bucket"), "--delete-bucket"], true, { LIFECYCLE_MOCK_FINANCIAL: "inventory" });
 expect(sharedBucketRun.status !== 0 && `${sharedBucketRun.stdout}\n${sharedBucketRun.stderr}`.includes("canonical tenant-dedicated bucket"), "offboard apply must not delete a custom or shared bucket");
-const financialRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: "history" });
+const financialRun = runLifecycle(offboardArgs("financial-history"), true, { LIFECYCLE_MOCK_FINANCIAL: "history" });
 expect(financialRun.status !== 0 && `${financialRun.stdout}\n${financialRun.stderr}`.includes("financial history requiring reviewed retention"), "offboard must reject unarchived managed-credit history before changing tenant or cloud state");
-const balanceRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: "balance" });
+const balanceRun = runLifecycle(offboardArgs("balance"), true, { LIFECYCLE_MOCK_FINANCIAL: "balance" });
 expect(balanceRun.status !== 0 && `${balanceRun.stdout}\n${balanceRun.stderr}`.includes("nonzero or unverified credit balance"), "offboard must reject a remaining managed-credit balance");
-const financialErrorRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: "error" });
+const financialErrorRun = runLifecycle(offboardArgs("financial-error"), true, { LIFECYCLE_MOCK_FINANCIAL: "error" });
 expect(financialErrorRun.status !== 0 && `${financialErrorRun.stdout}\n${financialErrorRun.stderr}`.includes("Cannot verify financial history"), "offboard must fail closed when managed-credit history cannot be read");
 for (const [mode, table] of [["support", "client_support_requests"], ["onboarding", "client_onboarding_accounts"]]) {
-  const controlRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: mode });
+  const controlRun = runLifecycle(offboardArgs(mode), true, { LIFECYCLE_MOCK_FINANCIAL: mode });
   expect(controlRun.status !== 0 && `${controlRun.stdout}\n${controlRun.stderr}`.includes(`${table} requires a reviewed retention`), `offboard must reject surviving ${table} rows`);
 }
-const controlErrorRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: "control-error" });
+const controlErrorRun = runLifecycle(offboardArgs("control-error"), true, { LIFECYCLE_MOCK_FINANCIAL: "control-error" });
 expect(controlErrorRun.status !== 0 && `${controlErrorRun.stdout}\n${controlErrorRun.stderr}`.includes("Cannot verify retained control-plane rows"), "offboard must fail closed when control-plane rows cannot be read");
-const missingTenantRun = runLifecycle(offboardArgs, true, { LIFECYCLE_MOCK_FINANCIAL: "missing" });
+const missingTenantRun = runLifecycle(offboardArgs("missing"), true, { LIFECYCLE_MOCK_FINANCIAL: "missing" });
 expect(missingTenantRun.status !== 0 && `${missingTenantRun.stdout}\n${missingTenantRun.stderr}`.includes("Client tenant not found"), "offboard must stop before cloud cleanup when the requested tenant is absent");
 await rm(tempDir, { recursive: true, force: true });
 
