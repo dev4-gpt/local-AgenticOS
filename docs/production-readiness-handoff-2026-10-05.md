@@ -229,3 +229,13 @@ This section records work after the original checkpoint above. The older
   not running. `npm run verify:production-readiness` at `d8f4cc6` still
   reported `releaseReady: false`, with the release ledger unset and required
   receipts not evaluated.
+
+**Later local SQL check, October 9:** Docker Desktop was started and
+`npm run verify:source-import-postgres` passed against a disposable PostgreSQL
+17 container. It applied the memory-graph and source-pack migrations twice,
+then the guard twice, and checked role grants, one allowed import, URL graph
+nodes, cross-member overwrite denial, cross-tenant denial, expired-artifact
+denial, and unchanged data after rejected imports. The container had no
+network connection, published port, or persistent volume and was removed.
+This fixture does not replicate the complete hosted Supabase schema or prove
+that the shared production project is safe to migrate; no hosted SQL changed.
