@@ -239,3 +239,14 @@ denial, and unchanged data after rejected imports. The container had no
 network connection, published port, or persistent volume and was removed.
 This fixture does not replicate the complete hosted Supabase schema or prove
 that the shared production project is safe to migrate; no hosted SQL changed.
+
+**Read-only parity inventory, October 9:** The existing surface-map command
+creates tenant records, workflow jobs, and briefs by default, so it must not
+be mistaken for a passive check. New `--read-only` commands inspect expected
+routes, capabilities, credentials, provider history, and record lists using
+GET only; they reject provider smoke and do not persist rotated cookies.
+The localhost fixture passed with only GET requests and an unchanged cookie
+file. Neither real target was exercised: the local server was stopped, and
+the required protected runtime cookie file was absent. A future inventory
+pass still needs an authorized signed-in session and exact deployment identity;
+GET-only success would not close the customer-action or two-tenant gates.
