@@ -128,6 +128,21 @@ payment result or used for the strict final attestation.
 | Operations | Named owner, cost caps, alerts, dashboards, bounded-load and recovery test, and a known-good rollback revision. |
 | Legal | Terms, privacy, consent, retention, support, and marketing/voice policies reviewed by the responsible owner. |
 
+For the candidate, run the read-only configuration preflight with the reviewed
+service, revision, image digest, and tenant. Set the variables to reviewed
+values first. The script prints only identity and failure codes, never
+environment values. A green result is a configuration check, not a signed-in
+journey, source-SHA attestation, or deletion proof.
+
+```sh
+set -o pipefail
+gcloud --account="$APPROVED_GCP_ACCOUNT" --quiet run services describe "$SERVICE" \
+  --project "$PROJECT" --region "$REGION" --format=json |
+  node scripts/verify-client-runtime-config.mjs \
+    --service "$SERVICE" --expected-revision "$REVISION" \
+    --expected-image-digest "$IMAGE_DIGEST" --tenant "$TENANT_SLUG"
+```
+
 ## 4. External integration release rules
 
 - **OpenReply:** remain disabled until the selected upstream commit has no
