@@ -42,8 +42,7 @@ export function prepareClassroomSourcePack(run) {
   let inputLinks = 0;
   let mediaReferences = 0;
   for (const source of run.sources) {
-    if (!source || typeof source.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(source.id) || ids.has(source.id)
-      || typeof source.title !== "string" || !source.title.trim() || source.title.trim().length > 240
+    if (!source || typeof source.title !== "string" || !source.title.trim() || source.title.trim().length > 240
       || typeof source.url !== "string" || typeof source.text !== "string" || !source.text.trim()
       || SECRET_LIKE.test(`${source.title}\n${source.text}`) || !Array.isArray(source.links)
       || (source.collectedAt !== undefined && (typeof source.collectedAt !== "string" || Number.isNaN(Date.parse(source.collectedAt))))) {
@@ -53,9 +52,11 @@ export function prepareClassroomSourcePack(run) {
     const label = typeof source.tab === "string" && source.tab.trim() ? source.tab.trim() : "Page";
     if (SECRET_LIKE.test(label)) throw new Error("classroom_source_invalid");
     const identity = JSON.stringify([url, label]);
+    const id = source.id === undefined ? `src_${createHash("sha256").update(identity).digest("hex").slice(0, 20)}` : source.id;
+    if (typeof id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(id) || ids.has(id)) throw new Error("classroom_source_invalid");
     if (identities.has(identity)) throw new Error("classroom_source_duplicate_page");
     identities.add(identity);
-    ids.add(source.id);
+    ids.add(id);
     inputLinks += source.links.length;
     const safeLinks = source.links.map((link) => {
       if (!link || typeof link !== "object" || typeof link.text !== "string"
@@ -72,7 +73,7 @@ export function prepareClassroomSourcePack(run) {
     }
     const count = Math.max(text.length, links.length);
     for (let index = 0; index < count; index += 1) {
-      const suffix = ` [${source.id}:${index + 1}/${count}]`;
+      const suffix = ` [${id}:${index + 1}/${count}]`;
       sources.push({
         title: source.title.trim(),
         url,

@@ -71,6 +71,23 @@ test("classroom conversion refuses duplicate source identities", () => {
   expect(() => prepareClassroomSourcePack({ startUrl, sources: [source(0), { ...source(0), id: "S2" }], skipped: [], pending: [] })).toThrow("classroom_source_duplicate_page");
 });
 
+test("owner-provided sources without IDs get stable identities across export order", () => {
+  const lessons = [1, 2].map((number) => ({
+    title: `Lesson ${number}`,
+    url: `${startUrl}?md=${number}`,
+    tab: "Classroom",
+    text: `Lesson ${number} text`,
+    links: [],
+  }));
+  const tabs = (sources: typeof lessons) => prepareClassroomSourcePack({ startUrl, sources, pending: [] })
+    .batches.flatMap((batch) => batch.sources.map((item) => [item.url, item.tab]));
+  expect(new Map(tabs(lessons))).toEqual(new Map(tabs([...lessons].reverse())));
+  expect(() => prepareClassroomSourcePack({ startUrl, sources: [lessons[0], lessons[0]], pending: [] }))
+    .toThrow("classroom_source_invalid");
+  expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lessons[0], id: null }], pending: [] }))
+    .toThrow("classroom_source_invalid");
+});
+
 test("classroom conversion retains transcript text and playable media references", () => {
   const lesson = {
     ...source(0),
@@ -114,7 +131,11 @@ test("classroom export writes selectable private hashed batches and refuses over
   try {
     const input = path.join(directory, "run.json");
     const output = path.join(directory, "pack.json");
-    writeFileSync(input, JSON.stringify({ startUrl, sources: [source(0)], skipped: [], pending: [] }), { mode: 0o600 });
+    const ownerSource = {
+      title: "Lesson 1", url: `${startUrl}?md=1`, text: "Lesson 1 text",
+      links: [{ url: "https://video.example.org/watch/1", text: "Video" }],
+    };
+    writeFileSync(input, JSON.stringify({ startUrl, sources: [ownerSource], skipped: [], pending: [] }), { mode: 0o600 });
     const command = [path.join(process.cwd(), "scripts/prepare-classroom-source-pack.mjs"), input, output];
     const first = spawnSync(process.execPath, command, { cwd: process.cwd(), encoding: "utf8" });
     expect(first.status).toBe(0);
