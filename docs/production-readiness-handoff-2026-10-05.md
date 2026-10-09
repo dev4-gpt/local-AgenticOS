@@ -213,3 +213,19 @@ This section records work after the original checkpoint above. The older
 - The release verifier still reports `releaseReady: false` without a release
   ledger destination and current-candidate acceptance receipts. Local tests
   and backup commits do not close that gate.
+
+## October 9 internal-beta observation
+
+- In the open Chrome window, the internal-beta Cloud Run origin loaded
+  `/memory` with zero tenant memories. `/classroom-research` displayed the
+  client-edition boundary instead of an operator workflow. This is a narrow
+  UI observation, not a completed signed-in customer journey or source-import
+  acceptance receipt.
+- The owner approved the source-import RPC guard for internal beta only. The
+  beta runtime uses the production Supabase project, so applying this `public`
+  function migration would affect all tenants. The hosted migration remains
+  unapplied pending an isolated database test or explicit project-wide scope.
+- A disposable local PostgreSQL test was attempted, but the Docker daemon was
+  not running. `npm run verify:production-readiness` at `d8f4cc6` still
+  reported `releaseReady: false`, with the release ledger unset and required
+  receipts not evaluated.
