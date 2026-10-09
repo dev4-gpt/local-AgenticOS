@@ -559,7 +559,9 @@ export default function HomeImmersive({ clientEdition = false, allowedClientRout
                   <div className="home-immersive__artifact-number">{String(index + 1).padStart(2, "0")}</div>
                   <div>
                     <span>What this lens makes possible</span>
-                    <p>{item.proof}</p>
+                    <p>{clientEdition && item.id === "context"
+                      ? "Search by name, title, or meaning. Tenant records and source links remain inspectable in this workspace."
+                      : item.proof}</p>
                   </div>
                 </div>
                 <div className="home-immersive__artifact-outcomes" aria-label={`${item.kicker} outcomes`}>
