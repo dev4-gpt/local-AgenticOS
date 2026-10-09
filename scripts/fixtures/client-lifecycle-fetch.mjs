@@ -6,6 +6,8 @@ globalThis.fetch = async (url, options) => {
     }
     const rows = Number(parsed.searchParams.get("offset") || 0) > 0
       ? []
+      : parsed.pathname.endsWith("/client_tenants") && process.env.LIFECYCLE_MOCK_FINANCIAL !== "missing"
+        ? [{ slug: "test-client", name: "Test Client", status: "active", retention_days: 30 }]
       : process.env.LIFECYCLE_MOCK_FINANCIAL === "history" && parsed.pathname.endsWith("/client_credit_transactions")
       ? [{ tenant_slug: "test-client" }]
       : process.env.LIFECYCLE_MOCK_FINANCIAL === "balance" && parsed.pathname.endsWith("/client_credit_accounts")

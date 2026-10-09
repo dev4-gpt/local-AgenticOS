@@ -49,6 +49,7 @@ const requiredFiles = [
   "scripts/verify-integration-governance.mjs",
   "scripts/control-plane-disposable-canary.mjs",
   "scripts/client-lifecycle.mjs",
+  "scripts/lib/client-lifecycle-inventory.mjs",
   "workers/public-provisioner/worker.mjs",
   "workers/gcp-provisioner/worker.mjs",
   "workers/gcp-provisioner/Dockerfile", "workers/managed-openrouter/worker.mjs", "workers/managed-openrouter/Dockerfile",

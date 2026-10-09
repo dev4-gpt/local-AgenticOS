@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import { readClientExportPages } from "./lib/client-export-pages.mjs";
 import { eccLifecycleColumns, eccRestoreRow } from "./lib/ecc-lifecycle.mjs";
+import { bucketListingHasObjects, queueListingContains, requireReviewedSecretInventory, reviewedClientSecretNames } from "./lib/client-lifecycle-inventory.mjs";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import process from "node:process";
 
@@ -11,7 +13,9 @@ const args = process.argv.slice(2);
 const mode = valueAfter("--mode") || "export";
 const apply = args.includes("--apply");
 const slug = required(valueAfter("--slug"), "--slug");
+if (!/^[a-z][a-z0-9-]{2,40}$/.test(slug)) fail("--slug must be a canonical client slug");
 const configPath = valueAfter("--config");
+const manifestSha256 = valueAfter("--manifest-sha256");
 const outputPath = path.resolve(process.cwd(), valueAfter("--out") || `.private-client-kits/exports/${slug}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
 const inputPath = valueAfter("--input");
 const objectsPath = valueAfter("--objects");
@@ -48,11 +52,26 @@ if (mode === "offboard" && apply && deleteNotificationChannel && !notificationCh
 if (mode === "offboard" && apply && !project) fail("--project is required for offboard apply");
 if (mode === "restore" && apply && !confirmRestore) fail("Refusing restore apply without --confirm-restore");
 
-const manifest = configPath ? JSON.parse(await readFile(path.resolve(process.cwd(), configPath), "utf8")) : {};
+if (mode === "offboard" && apply && !configPath) fail("Offboard apply requires --config with a reviewed client manifest");
+const manifestBytes = configPath ? await readFile(path.resolve(process.cwd(), configPath)) : null;
+const manifest = manifestBytes ? JSON.parse(manifestBytes.toString("utf8")) : {};
 const gcp = manifest.gcp && typeof manifest.gcp === "object" ? manifest.gcp : {};
 const resolvedBucket = bucket || gcp.storageBucket;
 const resolvedNamespace = manifest.storage?.namespace || namespace;
 const serviceName = gcp.serviceName || `veloce-${slug}`;
+if (namespace !== slug || resolvedNamespace !== slug) fail("storage namespace must equal the client slug");
+if (mode === "offboard" && apply) {
+  if (!/^[0-9a-f]{64}$/.test(manifestSha256 ?? "") || createHash("sha256").update(manifestBytes).digest("hex") !== manifestSha256) {
+    fail("Offboard apply requires the reviewed manifest SHA-256");
+  }
+  if (manifest.clientSlug !== slug || gcp.projectId !== project || gcp.storageBucket !== resolvedBucket
+    || manifest.storage?.namespace !== slug || (gcp.taskQueue && gcp.taskQueue !== `veloce-${slug}`)) {
+    fail("Offboard target does not match the reviewed tenant manifest");
+  }
+  if (deleteBucket && resolvedBucket !== `${project}-veloce-${slug}`) {
+    fail("Whole-bucket deletion requires the canonical tenant-dedicated bucket");
+  }
+}
 
 if ((mode === "offboard" || includeObjects) && !resolvedBucket) fail("--bucket or a manifest storageBucket is required for bucket lifecycle work");
 if (mode === "restore" && (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)) fail("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for restore");
@@ -215,13 +234,18 @@ if (!apply) {
 }
 
 await assertNoFinancialOffboardRows();
+const objectsPresent = bucketHasObjects();
+const queuePresent = deleteQueue ? clientQueueExists() : false;
+const alertResources = listRuntimeAlerts();
+let secretNames;
+try { secretNames = requireReviewedSecretInventory(listSecretNames(), reviewedClientSecretNames(manifest, slug)); }
+catch (error) { fail(error.message); }
 await supabasePatch("client_tenants", `slug=eq.${encodeURIComponent(slug)}`, { status: "offboarding", updated_at: new Date().toISOString() });
-if (bucketHasObjects()) runGcloud(["storage", "rm", "--recursive", `gs://${resolvedBucket}/${resolvedNamespace}/**`, "--quiet"]);
+if (objectsPresent) runGcloud(["storage", "rm", "--recursive", `gs://${resolvedBucket}/${resolvedNamespace}/**`, "--quiet"]);
 if (deleteBucket) runGcloud(["storage", "buckets", "delete", `gs://${resolvedBucket}`, "--project", project, "--quiet"]);
-if (deleteQueue) deleteQueueIfPresent();
-deleteRuntimeAlerts();
+if (deleteQueue) deleteQueueIfPresent(queuePresent);
+deleteRuntimeAlerts(alertResources);
 if (deleteNotificationChannel) await deleteClientNotificationChannel(notificationChannel);
-const secretNames = listSecretNames();
 for (const name of secretNames) runGcloud(["secrets", "delete", name, "--project", project, "--quiet"]);
 if (deleteService) runGcloud(["run", "services", "delete", serviceName, "--region", gcp.region || "asia-south1", "--project", project, "--quiet"]);
 await supabaseDelete("client_tenants", `slug=eq.${encodeURIComponent(slug)}`);
@@ -231,6 +255,7 @@ async function exportSnapshot() {
   const result = { schemaVersion: 3, slug, exportedAt: new Date().toISOString(), tables: {} };
   for (const table of tables) {
     const rows = await supabaseSelect(table, table === "client_tenants" ? `slug=eq.${encodeURIComponent(slug)}` : `tenant_slug=eq.${encodeURIComponent(slug)}`, exportColumns[table]);
+    if (table === "client_tenants" && (rows.length !== 1 || rows[0].slug !== slug)) fail("Client tenant not found in lifecycle database");
     assertSnapshotSafe(table, rows);
     result.tables[table] = rows;
   }
@@ -394,29 +419,42 @@ function exportObjects(destination) {
 
 function bucketHasObjects() {
   const result = spawnSync("gcloud", ["storage", "ls", `gs://${resolvedBucket}/${resolvedNamespace}/**`], { encoding: "utf8" });
-  return result.status === 0 && result.stdout.trim().length > 0;
+  try { return bucketListingHasObjects(result); }
+  catch (error) { fail(error.message); }
 }
 
-function deleteQueueIfPresent() {
+function clientQueueExists() {
   const queue = gcp.taskQueue || `veloce-${slug}`;
   const region = gcp.region || "asia-south1";
-  const existing = spawnSync("gcloud", ["tasks", "queues", "describe", queue, "--location", region, "--project", project], { stdio: "ignore" });
-  if (existing.status !== 0) {
+  const existing = spawnSync("gcloud", ["tasks", "queues", "list", "--location", region, "--project", project, "--format=value(name)"], { encoding: "utf8" });
+  try { return queueListingContains(existing, queue); }
+  catch (error) { fail(error.message); }
+}
+
+function deleteQueueIfPresent(found) {
+  const queue = gcp.taskQueue || `veloce-${slug}`;
+  const region = gcp.region || "asia-south1";
+  if (!found) {
     console.log(`Cloud Tasks queue not found; continuing: ${queue}`);
     return;
   }
   runGcloud(["tasks", "queues", "delete", queue, "--location", region, "--project", project, "--quiet"]);
 }
 
-function deleteRuntimeAlerts() {
+function listRuntimeAlerts() {
   const policies = spawnSync("gcloud", ["monitoring", "policies", "list", "--project", project, `--filter=displayName~^Veloce ${slug} `, "--format=value(name)"], { encoding: "utf8" });
   if (policies.status !== 0) fail("Unable to enumerate client alert policies");
-  for (const name of policies.stdout.split(/\r?\n/).map((value) => value.trim()).filter(Boolean)) {
-    runGcloud(["monitoring", "policies", "delete", name, "--project", project, "--quiet"]);
-  }
   const metrics = spawnSync("gcloud", ["logging", "metrics", "list", "--project", project, `--filter=name~veloce_${slug}_runtime_`, "--format=value(name)"], { encoding: "utf8" });
   if (metrics.status !== 0) fail("Unable to enumerate client log metrics");
-  for (const name of metrics.stdout.split(/\r?\n/).map((value) => value.trim()).filter(Boolean)) {
+  const names = (output) => output.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+  return { policies: names(policies.stdout), metrics: names(metrics.stdout) };
+}
+
+function deleteRuntimeAlerts(resources) {
+  for (const name of resources.policies) {
+    runGcloud(["monitoring", "policies", "delete", name, "--project", project, "--quiet"]);
+  }
+  for (const name of resources.metrics) {
     runGcloud(["logging", "metrics", "delete", name, "--project", project, "--quiet"]);
   }
 }

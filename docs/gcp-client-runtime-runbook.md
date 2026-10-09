@@ -823,15 +823,26 @@ npm run client:lifecycle -- \
   --mode offboard \
   --slug veloce-cloud-test \
   --config .private-client-kits/veloce-cloud-test.gcp.json \
+  --manifest-sha256 REVIEWED_MANIFEST_SHA256 \
+  --project REVIEWED_PROJECT_ID \
   --notification-channel projects/veloce-agenticos-2026/notificationChannels/11435881475361291593 \
-  --apply --confirm-offboard --destroy-secrets --delete-queue --delete-notification-channel --delete-bucket
+  --apply --confirm-offboard --destroy-secrets --delete-queue --delete-notification-channel
 ```
 
 `--delete-queue` is required for an applied offboarding so no durable work can
-remain queued for a deleted tenant. `--delete-bucket` is intentionally explicit. Use it only when the bucket is
-dedicated to that client and the export has been reviewed; otherwise the
-offboarding command removes the client namespace objects but leaves the empty
-bucket for an operator-controlled retention decision.
+remain queued for a deleted tenant. Record the SHA-256 of the reviewed manifest
+independently and pass the exact project from that manifest; the CLI rejects
+changed bytes, a different tenant, project, bucket, or storage namespace before
+destructive work. It also requires a real tenant row and successful object,
+queue, alert, and secret inventories before changing tenant status. An
+unreadable inventory is not treated as an empty one. A secret matched only by
+the tenant-name prefix is refused unless its exact name is derivable from the
+reviewed manifest; externally managed secret references are never deleted.
+`--delete-bucket` is an
+additional explicit flag and is accepted only for the provisioner's canonical
+`PROJECT_ID-veloce-TENANT_SLUG` dedicated bucket; otherwise the offboarding
+command removes tenant-namespace objects but leaves the bucket for an
+operator-controlled retention decision.
 
 Offboarding also removes the client-scoped runtime alert policies and log-based
 metrics created by `provision:runtime-alerts`, then deletes the matching
