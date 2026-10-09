@@ -23,13 +23,16 @@ For a local `ClassroomRun` JSON from a site that permits automated collection, o
       "collectedAt": "2026-09-26T00:00:00Z",
       "links": [
         { "url": "https://example.org/resource", "text": "Reference" }
+      ],
+      "media": [
+        { "kind": "video", "title": "Lesson playback", "url": "https://video.example.org/watch/lesson-1" }
       ]
     }
   ]
 }
 ```
 
-`startUrl`, each source title, HTTPS/HTTP URL, nonempty text, and a `links` array are required. `id`, `tab`, `collectedAt`, and `skipped` are optional. If `id` is absent, the converter derives a stable ID from the canonical source URL and tab; explicit IDs must be unique. The server rejects the whole pack if any page or link is malformed; it never silently drops a source. Keep `startUrl` identical across batches from the same community so repeat imports have stable IDs. A batch is limited to 1 MB, 100 sources, 30,000 characters per source, and 100 links per source. Split larger exports into batches; the product does not yet enumerate or verify that all community content was included.
+`startUrl`, each source title, and an HTTPS/HTTP source URL are required. Each source needs nonempty lesson `text` or at least one structured `media` / `video_page_links` reference; ordinary `links` are optional. `video_page_links` is an array of stable watch-page URL strings. The converter folds media into reviewed outbound links. Structured `media` entries require `kind` (`video`, `audio`, `image`, `embed`, or `file`), `title`, and `url`. Media-only lessons receive one visible incomplete-content warning; the private manifest's `coverage.mediaOnlySourceIds` identifies every such lesson even in a large export. A link is not a video download or transcript. `id`, `tab`, `collectedAt`, and `skipped` are optional. If `id` is absent, the converter derives a stable ID from the canonical source URL and tab; explicit IDs must be unique. The server rejects the whole pack if any page or link is malformed; it never silently drops a source. Keep `startUrl` identical across batches from the same community so repeat imports have stable IDs. A batch is limited to 1 MB, 100 sources, 30,000 characters per source, and 100 links per source. Split larger exports into batches; the product does not yet enumerate or verify that all community content was included.
 
 Local database regression on 2026-10-07 imported 205 synthetic lessons in three batches, then verified all 205 records, 410 distinct source/resource URL nodes, search of the last lesson, and graph cleanup after deletion. This checks multi-batch graph behavior in embedded PostgreSQL only; it does not certify a real classroom export, hosted import, or full community coverage.
 

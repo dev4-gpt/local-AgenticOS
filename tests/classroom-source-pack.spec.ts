@@ -110,10 +110,47 @@ test("classroom conversion retains transcript text and playable media references
   ]);
 });
 
+test("owner export preserves structured media and flags video-only lessons", () => {
+  const lesson = {
+    title: "Video-only lesson",
+    url: `${startUrl}?md=video-only`,
+    media: [{ kind: "video", title: "Lesson playback", url: "https://video.example.org/watch/2#chapter" }],
+    video_page_links: ["https://video.example.org/watch/3"],
+  };
+  const prepared = prepareClassroomSourcePack({ startUrl, sources: [lesson], skipped: [], pending: [] });
+  const parsed = parseClientSourcePack(prepared.batches[0]);
+  expect(prepared.coverage.mediaReferences).toBe(2);
+  expect(prepared.coverage.mediaOnlySources).toBe(1);
+  expect(prepared.coverage.mediaOnlySourceIds).toEqual([`src_${createHash("sha256").update(JSON.stringify([lesson.url, "Page"])).digest("hex").slice(0, 20)}`]);
+  expect(prepared.coverage.inputLinks).toBe(2);
+  expect(prepared.coverage.outputLinks).toBe(2);
+  expect(prepared.batches[0].skipped).toContain("1 media-only source has no lesson text or transcript; review mediaOnlySourceIds in the private manifest");
+  expect(parsed.sources[0].text).toContain("No lesson text or transcript supplied");
+  expect(parsed.sources[0].links).toEqual([
+    { url: "https://video.example.org/watch/2", text: "Media: Lesson playback" },
+    { url: "https://video.example.org/watch/3", text: "Media: Video page" },
+  ]);
+});
+
+test("large media-only exports keep a bounded warning and every missing-transcript ID", () => {
+  const sources = Array.from({ length: 105 }, (_, index) => ({
+    title: `Playback ${index + 1}`,
+    url: `${startUrl}?md=video-${index + 1}`,
+    media: [{ kind: "video", title: "Watch", url: `https://video.example.org/watch/${index + 1}` }],
+  }));
+  const prepared = prepareClassroomSourcePack({ startUrl, sources, skipped: [], pending: [] });
+  expect(prepared.coverage.mediaOnlySources).toBe(105);
+  expect(new Set(prepared.coverage.mediaOnlySourceIds).size).toBe(105);
+  expect(prepared.batches.reduce((sum, batch) => sum + batch.sources.length, 0)).toBe(105);
+  expect(prepared.batches[0].skipped).toHaveLength(1);
+});
+
 test("classroom conversion rejects unsafe or unimportable material before writing", () => {
   const lesson = source(0);
   expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lesson, links: [null] }], pending: [] })).toThrow("classroom_link_invalid");
   expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lesson, links: [{ url: "https://video.example.org/watch/1?token=abc", text: "Media: Video" }] }], pending: [] })).toThrow("classroom_url_invalid");
+  expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lesson, media: [{ kind: "video", title: "Playback", url: "https://video.example.org/watch/1?token=abc" }] }], pending: [] })).toThrow("classroom_url_invalid");
+  expect(() => prepareClassroomSourcePack({ startUrl, sources: [{ ...lesson, media: [{ kind: "video", title: "Playback", url: "https://video.example.org/watch/1" }], video_page_links: [null] }], pending: [] })).toThrow("classroom_media_invalid");
   for (const signedUrl of [
     "https://storage.example.org/file?X-Amz-Signature=private-value",
     "https://storage.example.org/file?X-Goog-Credential=private-value",
@@ -135,7 +172,14 @@ test("classroom export writes selectable private hashed batches and refuses over
       title: "Lesson 1", url: `${startUrl}?md=1`, text: "Lesson 1 text",
       links: [{ url: "https://video.example.org/watch/1", text: "Video" }],
     };
-    writeFileSync(input, JSON.stringify({ startUrl, sources: [ownerSource], skipped: [], pending: [] }), { mode: 0o600 });
+    writeFileSync(input, JSON.stringify({
+      startUrl,
+      sources: [ownerSource, {
+        title: "Video-only lesson", url: `${startUrl}?md=2`,
+        media: [{ kind: "video", title: "Watch", url: "https://video.example.org/watch/2" }],
+      }],
+      skipped: [], pending: [],
+    }), { mode: 0o600 });
     const command = [path.join(process.cwd(), "scripts/prepare-classroom-source-pack.mjs"), input, output];
     const first = spawnSync(process.execPath, command, { cwd: process.cwd(), encoding: "utf8" });
     expect(first.status).toBe(0);
@@ -144,14 +188,15 @@ test("classroom export writes selectable private hashed batches and refuses over
     const bytes = readFileSync(batch.file);
     expect(path.basename(batch.file)).toBe("pack.part-001.json");
     expect(batch.sha256).toBe(createHash("sha256").update(bytes).digest("hex"));
-    expect(parseClientSourcePack(JSON.parse(bytes.toString("utf8"))).linkCount).toBe(1);
+    expect(parseClientSourcePack(JSON.parse(bytes.toString("utf8"))).linkCount).toBe(2);
+    expect(manifest.coverage.mediaOnlySourceIds).toHaveLength(1);
     const selection = await selectClientSourceBatches([
       new File([readFileSync(path.join(directory, "pack.manifest.json"))], "pack.manifest.json"),
       new File([bytes], "pack.part-001.json"),
     ]);
-    expect(selection.sourceCount).toBe(1);
-    expect(selection.linkCount).toBe(1);
-    expect(selection.skippedCount).toBe(0);
+    expect(selection.sourceCount).toBe(2);
+    expect(selection.linkCount).toBe(2);
+    expect(selection.skippedCount).toBe(1);
     expect(statSync(batch.file).mode & 0o777).toBe(0o600);
     expect(statSync(path.join(directory, "pack.manifest.json")).mode & 0o777).toBe(0o600);
     const second = spawnSync(process.execPath, command, { cwd: process.cwd(), encoding: "utf8" });

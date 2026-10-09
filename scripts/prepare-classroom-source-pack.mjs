@@ -41,12 +41,18 @@ export function prepareClassroomSourcePack(run) {
   const sources = [];
   let inputLinks = 0;
   let mediaReferences = 0;
+  const mediaOnlySourceIds = [];
   for (const source of run.sources) {
     if (!source || typeof source.title !== "string" || !source.title.trim() || source.title.trim().length > 240
-      || typeof source.url !== "string" || typeof source.text !== "string" || !source.text.trim()
-      || SECRET_LIKE.test(`${source.title}\n${source.text}`) || !Array.isArray(source.links)
+      || typeof source.url !== "string" || (source.text !== undefined && typeof source.text !== "string")
+      || SECRET_LIKE.test(`${source.title}\n${source.text ?? ""}`)
+      || (source.links !== undefined && !Array.isArray(source.links))
       || (source.collectedAt !== undefined && (typeof source.collectedAt !== "string" || Number.isNaN(Date.parse(source.collectedAt))))) {
       throw new Error("classroom_source_invalid");
+    }
+    if ((source.media !== undefined && !Array.isArray(source.media))
+      || (source.video_page_links !== undefined && !Array.isArray(source.video_page_links))) {
+      throw new Error("classroom_media_invalid");
     }
     const url = safeExportUrl(source.url);
     const label = typeof source.tab === "string" && source.tab.trim() ? source.tab.trim() : "Page";
@@ -57,8 +63,23 @@ export function prepareClassroomSourcePack(run) {
     if (identities.has(identity)) throw new Error("classroom_source_duplicate_page");
     identities.add(identity);
     ids.add(id);
-    inputLinks += source.links.length;
-    const safeLinks = source.links.map((link) => {
+    const mediaLinks = (source.media ?? []).map((item) => {
+      if (!item || typeof item !== "object" || !["video", "audio", "image", "embed", "file"].includes(item.kind)
+        || typeof item.title !== "string" || !item.title.trim() || item.title.trim().length > 280
+        || SECRET_LIKE.test(item.title)) throw new Error("classroom_media_invalid");
+      return { url: item.url, text: `${item.kind === "embed" ? "Embed" : "Media"}: ${item.title.trim()}` };
+    });
+    const videoLinks = (source.video_page_links ?? []).map((value) => {
+      if (typeof value !== "string") throw new Error("classroom_media_invalid");
+      return { url: value, text: "Media: Video page" };
+    });
+    const suppliedLinks = [...(source.links ?? []), ...mediaLinks, ...videoLinks];
+    if (!source.text?.trim() && !mediaLinks.length && !videoLinks.length) throw new Error("classroom_source_invalid");
+    if (!source.text?.trim()) {
+      mediaOnlySourceIds.push(id);
+    }
+    inputLinks += suppliedLinks.length;
+    const safeLinks = suppliedLinks.map((link) => {
       if (!link || typeof link !== "object" || typeof link.text !== "string"
         || link.text.trim().length > 300 || SECRET_LIKE.test(link.text)) throw new Error("classroom_link_invalid");
       const linkUrl = safeExportUrl(link.url);
@@ -66,7 +87,7 @@ export function prepareClassroomSourcePack(run) {
       if (/^(?:Media|Embed):\s/.test(text)) mediaReferences += 1;
       return { url: linkUrl, text };
     });
-    const text = textChunks(source.text.trim());
+    const text = textChunks(source.text?.trim() || "[No lesson text or transcript supplied in the authorized export.]");
     const links = [];
     for (let start = 0; start < safeLinks.length; start += MAX_LINKS_PER_SOURCE) {
       links.push(safeLinks.slice(start, start + MAX_LINKS_PER_SOURCE));
@@ -91,6 +112,7 @@ export function prepareClassroomSourcePack(run) {
     throw new Error("classroom_pending_entries_invalid");
   }
   const skipped = [...(run.skipped ?? [])];
+  if (mediaOnlySourceIds.length) skipped.push(`${mediaOnlySourceIds.length} media-only ${mediaOnlySourceIds.length === 1 ? "source has" : "sources have"} no lesson text or transcript; review mediaOnlySourceIds in the private manifest`);
   if (Array.isArray(run.pending) && run.pending.length) skipped.push(`${run.pending.length} discovered pages remain uncollected`);
   if (!Array.isArray(run.pending)) skipped.push("Collection coverage unknown: no pending-page inventory in source run");
   const batches = splitMarkdownSourcePack({ startUrl, skipped, sources });
@@ -105,6 +127,8 @@ export function prepareClassroomSourcePack(run) {
       inputLinks,
       outputLinks,
       mediaReferences,
+      mediaOnlySources: mediaOnlySourceIds.length,
+      mediaOnlySourceIds,
       skippedPages: Array.isArray(run.skipped) ? run.skipped.length : null,
       pendingPages: Array.isArray(run.pending) ? run.pending.length : null,
       discoveredQueueExhausted: Array.isArray(run.pending) && run.pending.length === 0,
