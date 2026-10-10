@@ -254,6 +254,22 @@ prefix after that many days; it does not apply to other tenant prefixes in a
 shared bucket. Verify it with `gcloud storage buckets describe` and inspect
 `lifecycle_config.rule` before treating retention as live.
 
+Before release, stream the reviewed bucket snapshot into the read-only storage
+preflight using the actual Cloud Run `status.url` as the origin:
+
+```sh
+gcloud storage buckets describe gs://BUCKET --project PROJECT --format=json \
+  | node scripts/verify-client-storage-config.mjs \
+      --bucket BUCKET --namespace TENANT_SLUG --expected-origin https://CLIENT_RUNTIME.run.app
+```
+
+It requires an exact 45-day namespace Delete rule and the active origin's
+signed upload/download CORS methods. It also rejects overlapping Delete rules,
+versioning, and nonzero soft-delete retention because those can change the
+effective per-item deletion window. Review recoverability and the customer
+retention policy before changing soft delete; a passing bucket check alone
+does not prove that bytes, backups, or vendor copies were purged.
+
 The current lifecycle SQL also provides authenticated tenant-scoped artifact
 deletion. The runtime removes the Cloud Storage object first, treats an already
 missing object as idempotently deleted, and then removes its Supabase metadata.

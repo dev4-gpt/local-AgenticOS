@@ -35,7 +35,7 @@
     "verify:integration-catalog-contract": "node scripts/verify-integration-catalog-contract.mjs",
     "verify:flow-lab": "node scripts/verify-flow-lab.mjs",
     "verify:client-runtime": "node scripts/verify-client-runtime.mjs",
-    "verify:client-runtime-config-fixtures": "npx playwright test tests/client-runtime-config-check.spec.ts --config=playwright.unit.config.ts --reporter=line",
+    "verify:client-runtime-config-fixtures": "npx playwright test tests/client-runtime-config-check.spec.ts tests/client-storage-config-check.spec.ts --config=playwright.unit.config.ts --reporter=line",
     "verify:client-navigation-policy": "npx playwright test tests/client-navigation-policy.spec.ts --config=playwright.unit.config.ts --reporter=line",
     "verify:client-authenticated": "node scripts/verify-client-runtime-authenticated.mjs",
     "verify:client-magic-link": "node scripts/verify-client-runtime-magic-link.mjs",

@@ -325,3 +325,15 @@ hosted revision and its configuration remain unverified. The release verifier
 still reports `releaseReady: false` with no release ledger destination or
 current-candidate acceptance bundle. No hosted migration or deployment was
 performed.
+
+**Read-only storage preflight, October 9:** The current beta revision is still
+`agentos-internal-beta-00034-v69` at 100% traffic on the September 26 image.
+The live service preflight still fails on one-day retention and absent
+source-import/build-identity API routes. A separate bucket preflight now
+checks the active Cloud Run origin against CORS, an exact tenant-prefixed
+45-day Delete rule, overlapping earlier rules, versioning, and soft delete.
+The live bucket fails because CORS lacks the active `vbimnfseva-ew.a.run.app`
+origin, the only overlapping Delete rule is one day, and soft delete retains
+objects for another seven days. The checker reads configuration only; it
+does not prove object-by-object deletion or cover backups/vendor copies. No
+Cloud Run or bucket setting was changed.
