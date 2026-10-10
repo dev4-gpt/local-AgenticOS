@@ -39,6 +39,10 @@ export function evaluateClientRuntimeConfig(service, expected) {
 
   const apiRoutes = list("CLIENT_ALLOWED_API_ROUTES");
   for (const route of REQUIRED_API_ROUTES) if (!apiRoutes.has(route)) failures.push(`required_api_route_missing:${route}`);
+  if (apiRoutes.has("/api/client-runtime/source-import")) {
+    const workerToken = env.find((entry) => entry?.name === "CLIENT_WORKER_TOKEN");
+    if (!workerToken?.valueFrom?.secretKeyRef?.name || workerToken.value) failures.push("source_import_worker_secret_missing");
+  }
   const pages = list("CLIENT_ALLOWED_ROUTES");
   for (const route of REQUIRED_PAGES) if (!pages.has(route)) failures.push(`required_page_missing:${route}`);
   for (const route of FORBIDDEN_PAGES) if (pages.has(route)) failures.push(`operator_page_exposed:${route}`);

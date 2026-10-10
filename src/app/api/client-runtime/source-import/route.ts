@@ -29,6 +29,8 @@ export async function POST(request: Request) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(artifactId) || (action !== "preview" && action !== "import")) return error("source_import_input_invalid", 400);
   const previewSha256 = typeof body?.previewSha256 === "string" ? body.previewSha256 : "";
   if (action === "import" && (!/^[a-f0-9]{64}$/.test(previewSha256) || body?.permissionConfirmed !== true)) return error("source_import_review_required", 400);
+  const workerToken = action === "import" ? process.env.CLIENT_WORKER_TOKEN?.trim() : null;
+  if (action === "import" && (!workerToken || workerToken.length < 24)) return error("source_import_verifier_unavailable", 503);
 
   const result = await selectClientRecords("client_runtime_artifacts", { id: `eq.${artifactId}`, tenant_slug: `eq.${tenantSlug}`, created_by: `eq.${user.id}`, limit: "1" });
   if (!result.ok) return error("source_import_artifact_lookup_failed", 502);
@@ -87,6 +89,7 @@ export async function POST(request: Request) {
     p_artifact_id: artifactId,
     p_pack_sha256: packSha256,
     p_sources: pack.sources,
+    p_worker_token: workerToken,
   });
   if (!imported.ok || !imported.value || typeof imported.value !== "object") return error(imported.status === 404 ? "source_import_schema_missing" : "source_import_write_failed", 502);
   return NextResponse.json({ ok: true, ...summary, result: imported.value }, { status: 201, headers: { "cache-control": "private, no-store" } });

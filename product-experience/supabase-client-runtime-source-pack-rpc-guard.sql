@@ -1,6 +1,6 @@
 -- Apply after supabase-client-runtime-source-pack-graph.sql and the artifact
 -- lifecycle migration. Keep the original import body as a non-member-callable
--- implementation, then guard direct member RPC calls before it runs.
+-- implementation, then admit imports only from the artifact-review route.
 begin;
 
 do $$
@@ -18,11 +18,23 @@ $$;
 revoke all on function public.import_client_runtime_source_pack_legacy(text, uuid, text, jsonb)
   from public, anon, authenticated;
 
+-- An earlier version of this guard exposed a four-argument member RPC.
+-- Revoke it during an in-place upgrade; a fresh install renamed it above.
+do $$
+begin
+  if to_regprocedure('public.import_client_runtime_source_pack(text,uuid,text,jsonb)') is not null then
+    revoke all on function public.import_client_runtime_source_pack(text, uuid, text, jsonb)
+      from public, anon, authenticated;
+  end if;
+end;
+$$;
+
 create or replace function public.import_client_runtime_source_pack(
   p_tenant_slug text,
   p_artifact_id uuid,
   p_pack_sha256 text,
-  p_sources jsonb
+  p_sources jsonb,
+  p_worker_token text
 )
 returns jsonb
 language plpgsql
@@ -32,6 +44,14 @@ as $$
 begin
   if auth.uid() is null or not public.client_member(p_tenant_slug) then
     raise exception 'tenant_not_authorized';
+  end if;
+  if length(coalesce(p_worker_token, '')) < 24 or not exists (
+    select 1 from public.client_tenants t
+    where t.slug = p_tenant_slug
+      and t.status = 'active'
+      and t.worker_token_hash = encode(extensions.digest(p_worker_token, 'sha256'), 'hex')
+  ) then
+    raise exception 'source_import_verifier_unavailable';
   end if;
   if p_artifact_id is null or not exists (
     select 1 from public.client_runtime_artifacts a
@@ -70,9 +90,9 @@ begin
 end;
 $$;
 
-revoke all on function public.import_client_runtime_source_pack(text, uuid, text, jsonb)
+revoke all on function public.import_client_runtime_source_pack(text, uuid, text, jsonb, text)
   from public, anon;
-grant execute on function public.import_client_runtime_source_pack(text, uuid, text, jsonb)
+grant execute on function public.import_client_runtime_source_pack(text, uuid, text, jsonb, text)
   to authenticated;
 
 commit;

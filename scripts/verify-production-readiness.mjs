@@ -109,6 +109,7 @@ const sourceChecks = [
   ["financial offboarding deletion guard", "product-experience/supabase-v47-financial-offboard-guard.sql", "client_tenants_financial_delete_guard"],
   ["tenant source graph import", "product-experience/supabase-client-runtime-source-pack-graph.sql", "import_client_runtime_source_pack"],
   ["tenant source RPC guard", "product-experience/supabase-client-runtime-source-pack-rpc-guard.sql", "source_pack_owned_by_other_member"],
+  ["server-verified source import", "product-experience/supabase-client-runtime-source-pack-rpc-guard.sql", "p_worker_token"],
   ["tenant runtime-record retention", "product-experience/supabase-client-runtime-record-retention.sql", "purge_expired_client_runtime_records"],
   ["tenant artifact owner guard", "product-experience/supabase-client-runtime-artifact-owner-guard.sql", "created_by = auth.uid()"],
   ["tenant notebook reference guard", "product-experience/supabase-client-notebook-source-reference-guard.sql", "client_notebook_source_reference_allowed"],

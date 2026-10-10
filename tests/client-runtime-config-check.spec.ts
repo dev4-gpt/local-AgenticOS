@@ -24,6 +24,7 @@ function snapshot() {
         { name: "CLIENT_ALLOWED_API_ROUTES", value: "/api/client-runtime/source-import,/api/client-runtime/build-identity" },
         { name: "CLIENT_ENABLED_CAPABILITIES", value: "tenant-data,artifacts" },
         { name: "SUPABASE_ANON_KEY", value: "DO_NOT_PRINT_PRIVATE_VALUE" },
+        { name: "CLIENT_WORKER_TOKEN", valueFrom: { secretKeyRef: { name: "reviewed-worker-token", key: "latest" } } },
       ],
     }] } } },
   };
@@ -72,4 +73,15 @@ test("candidate config preflight rejects ambiguous variables and split traffic",
   expect(result.failures).toContain("duplicate_runtime_variable");
   expect(result.failures).toContain("traffic_not_single_expected_revision");
   expect(result.failures).toContain("retention_days_not_45");
+});
+
+test("source import requires a secret-backed worker verifier", () => {
+  const missing = snapshot();
+  missing.spec.template.spec.containers[0].env = missing.spec.template.spec.containers[0].env.filter((entry) => entry.name !== "CLIENT_WORKER_TOKEN");
+  expect(evaluateClientRuntimeConfig(missing, expected).failures).toContain("source_import_worker_secret_missing");
+  const plaintext = snapshot();
+  plaintext.spec.template.spec.containers[0].env.find((entry) => entry.name === "CLIENT_WORKER_TOKEN")!.value = "DO_NOT_PRINT_PRIVATE_VALUE";
+  const result = evaluateClientRuntimeConfig(plaintext, expected);
+  expect(result.failures).toContain("source_import_worker_secret_missing");
+  expect(JSON.stringify(result)).not.toContain("DO_NOT_PRINT_PRIVATE_VALUE");
 });

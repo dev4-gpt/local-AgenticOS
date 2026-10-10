@@ -293,3 +293,17 @@ now pass the full commit. The focused build-identity tests, typecheck, and
 security gate passed. This is a local safeguard only: no image was built,
 deployed, or independently attested, and the hosted beta still lacks a
 verifiable source identity.
+
+**Source-import verifier hardening, October 9:** The still-unapplied RPC guard
+now revokes member access to the old four-argument source import and requires
+the tenant's server-held worker token for the five-argument import. The
+authenticated HTTP route checks the reviewed artifact bytes before sending
+that token; without a configured token it fails before object download. The
+candidate Cloud Run preflight requires a Secret Manager-backed token when
+source import is exposed. Embedded PostgreSQL covers an upgrade from the old
+guard, direct-RPC denial, wrong token, tenant/member ownership, idempotency,
+and graph results. A disposable PostgreSQL 17 smoke, 318 focused tests (one
+optional skip), typecheck, lint, and the security gate passed. This remains
+source-only work: no hosted migration, deployment, or tenant write occurred.
+The production Supabase project still needs explicit project-wide approval,
+the exact revision/configuration receipt, and two-member hosted verification.

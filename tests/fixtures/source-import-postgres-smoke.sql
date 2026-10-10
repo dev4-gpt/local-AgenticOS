@@ -11,7 +11,7 @@ create function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
 $$;
 
-create table public.client_tenants (slug text primary key);
+create table public.client_tenants (slug text primary key, status text not null, worker_token_hash text not null);
 create table public.client_memberships (tenant_slug text, user_id uuid, status text);
 create function public.client_member(p_tenant_slug text) returns boolean language sql stable as $$
   select exists (
@@ -46,7 +46,9 @@ create table public.client_runtime_audit_events (
   metadata jsonb not null default '{}'::jsonb
 );
 
-insert into public.client_tenants values ('tenant-a'), ('tenant-b');
+insert into public.client_tenants values
+  ('tenant-a','active',encode(extensions.digest('source-import-test-worker-token-2026','sha256'),'hex')),
+  ('tenant-b','active',encode(extensions.digest('source-import-test-worker-token-2026','sha256'),'hex'));
 insert into public.client_memberships values
   ('tenant-a', '00000000-0000-4000-8000-000000000001', 'active'),
   ('tenant-a', '00000000-0000-4000-8000-000000000003', 'active'),
@@ -64,7 +66,8 @@ insert into public.client_runtime_artifacts values
 do $$
 begin
   if has_function_privilege('authenticated', 'public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)', 'EXECUTE')
-     or not has_function_privilege('authenticated', 'public.import_client_runtime_source_pack(text,uuid,text,jsonb)', 'EXECUTE') then
+     or coalesce(has_function_privilege('authenticated', to_regprocedure('public.import_client_runtime_source_pack(text,uuid,text,jsonb)'), 'EXECUTE'), false)
+     or not has_function_privilege('authenticated', 'public.import_client_runtime_source_pack(text,uuid,text,jsonb,text)', 'EXECUTE') then
     raise exception 'source_import_role_grants_failed';
   end if;
 end
@@ -72,6 +75,17 @@ $$;
 
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false);
 set role authenticated;
+do $$
+begin
+  perform public.import_client_runtime_source_pack(
+    'tenant-a', '00000000-0000-4000-8000-000000000002', repeat('a', 64), '[]'::jsonb,
+    'wrong-worker-token-that-is-long-enough'
+  );
+  raise exception 'unverified_source_import_was_allowed';
+exception when others then
+  if sqlerrm <> 'source_import_verifier_unavailable' then raise; end if;
+end
+$$;
 select public.import_client_runtime_source_pack(
   'tenant-a', '00000000-0000-4000-8000-000000000002', repeat('a', 64),
   jsonb_build_array(jsonb_build_object(
@@ -80,7 +94,7 @@ select public.import_client_runtime_source_pack(
     'sourceUrl', 'https://example.org/lesson',
     'sourceImportKey', repeat('b', 64),
     'links', jsonb_build_array(jsonb_build_object('url', 'https://example.org/video', 'text', 'Video'))
-  ))
+  )), 'source-import-test-worker-token-2026'
 );
 reset role;
 
@@ -103,7 +117,7 @@ begin
       'title', 'Overwrite', 'text', 'Other member content',
       'sourceUrl', 'https://example.org/lesson',
       'sourceImportKey', repeat('b', 64), 'links', '[]'::jsonb
-    ))
+    )), 'source-import-test-worker-token-2026'
   );
   raise exception 'cross_member_import_was_allowed';
 exception when others then
@@ -117,7 +131,7 @@ set role authenticated;
 do $$
 begin
   perform public.import_client_runtime_source_pack(
-    'tenant-b', '00000000-0000-4000-8000-000000000002', repeat('a', 64), '[]'::jsonb
+    'tenant-b', '00000000-0000-4000-8000-000000000002', repeat('a', 64), '[]'::jsonb, 'source-import-test-worker-token-2026'
   );
   raise exception 'cross_tenant_import_was_allowed';
 exception when others then
@@ -133,7 +147,7 @@ set role authenticated;
 do $$
 begin
   perform public.import_client_runtime_source_pack(
-    'tenant-a', '00000000-0000-4000-8000-000000000002', repeat('a', 64), '[]'::jsonb
+    'tenant-a', '00000000-0000-4000-8000-000000000002', repeat('a', 64), '[]'::jsonb, 'source-import-test-worker-token-2026'
   );
   raise exception 'expired_artifact_import_was_allowed';
 exception when others then

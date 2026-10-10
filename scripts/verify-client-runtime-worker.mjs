@@ -154,7 +154,7 @@ expect(
 expect(deliveryApproval.includes("delivery.approved") && deliveryApproval.includes("delivery.queued") && deliveryApproval.includes("client_runtime_audit_events"), "delivery approval CLI must record redacted approval and queue audit events");
 expect(networkSafety.includes("resolvesToPublicAddresses") && seoAdapter.includes("resolveSafePublicUrl") && deliveryAdapter.includes("resolveSafePublicUrl"), "outbound adapters must re-check DNS resolution before fetching public URLs");
 expect(seoAdapter.includes("readBoundedResponseBytes") && seoAdapter.includes("4_000_000"), "SEO adapter must bound provider response bytes before parsing");
-expect(telemetryRoute.includes("captureClientProductEvent") && telemetryRoute.includes("telemetry-write") && telemetryRoute.includes("SAFE_KEYS"), "telemetry route must authenticate, rate-limit, and allowlist product event properties");
+expect(telemetryRoute.includes("captureClientProductEvent") && telemetryRoute.includes("telemetry-write") && telemetryRoute.includes("safeProperties.provider") && telemetryRoute.includes("safeProperties.messageCount"), "telemetry route must authenticate, rate-limit, and allowlist product event properties");
 expect(telemetryRoute.includes("recordClientAudit"), "telemetry route must retain redacted events in the tenant audit stream");
 expect(observability.includes("POSTHOG_API_KEY") && observability.includes("SENTRY_DSN") && observability.includes("application/x-sentry-envelope"), "observability must support optional PostHog capture and redacted Sentry envelopes");
 expect(clientProviderWorkspace.includes('message.role === "assistant" && message.jobId === jobId'), "provider workspace must append assistant output even when the user prompt already has the job id");
@@ -191,6 +191,7 @@ expect(memoryImportRoute.includes("client_runtime_records") && memoryImportRoute
 expect(runtimePolicy.includes('"/api/client-runtime/memory-import"') && provisioner.includes("/api/client-runtime/memory-import"), "memory import must be included in the reviewed client API allowlist");
 expect(sourceImportRoute.includes("currentClientMember") && sourceImportRoute.includes("created_by: `eq.${user.id}`") && sourceImportRoute.includes("safeClientObjectKey"), "source import must verify tenant membership, artifact owner and object namespace");
 expect(sourcePackGraphSql.includes("import_client_runtime_source_pack") && sourcePackGraphSql.includes("source_import_key") && sourcePackGraphSql.includes("links_to"), "source-pack migration must preserve idempotency and outbound graph links");
+expect(sourceImportRoute.includes("CLIENT_WORKER_TOKEN") && sourceImportRoute.includes("p_worker_token"), "source import must require the server-held tenant worker verifier");
 expect(runtimePolicy.includes('"/api/client-runtime/source-import"') && provisioner.includes("/api/client-runtime/source-import"), "source import must be included in the reviewed client API allowlist");
 expect(memoryGraphRoute.includes("refresh_client_runtime_memory_graph") && memoryGraphRoute.includes("currentClientMember"), "memory graph refresh must use the authenticated tenant RPC");
 expect(memoryGraphRoute.includes("runtime_limit_unavailable") && memoryGraphRoute.includes("runtime_rate_limited"), "memory graph route must distinguish a limiter outage from rate limiting");
