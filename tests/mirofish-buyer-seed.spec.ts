@@ -6,6 +6,19 @@ const fixture = JSON.parse(readFileSync("evaluations/mirofish-buyer-micro-v1.jso
 const ontology = JSON.parse(readFileSync("evaluations/mirofish-buyer-ontology-v1.json", "utf8"));
 const base = readFileSync("docs/mirofish-buyer-pilot-seed.md", "utf8");
 
+test("buyer scenario uses the published base price and keeps low-budget nonbuyers", () => {
+  const commercial = readFileSync("docs/commercial-model.md", "utf8");
+  const publicPricing = readFileSync("product-experience/src/app/credits/page.tsx", "utf8");
+  for (const price of ["$2,500", "$1,250/month"]) {
+    expect(commercial).toContain(price);
+    expect(publicPricing).toContain(price);
+    expect(base).toContain(price);
+  }
+  expect(base).toContain("provider usage billed separately");
+  expect(base).toContain("should normally reject or defer");
+  expect(base).not.toContain("Public pricing and scope are not guaranteed by this seed");
+});
+
 test("micro buyer seed names ten framed fictional buyers without claiming a simulation", () => {
   const seed = prepareMirofishBuyerSeed(fixture, base);
   expect(seed.match(/^## Fictional buyer P\d{5}$/gm)).toHaveLength(10);
