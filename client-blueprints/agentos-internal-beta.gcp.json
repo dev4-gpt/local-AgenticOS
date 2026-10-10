@@ -51,7 +51,7 @@
     "namespace": "internal-beta",
     "corsOrigins": ["https://agentos-internal-beta-1028728465669.europe-west1.run.app"]
   },
-  "retention": { "days": 1 },
+  "retention": { "days": 45 },
   "secretEnv": { "SUPABASE_ANON_KEY": "supabase-anon-key" },
   "notes": "Internal only. No providers, public customer activation, managed spending, or external actions. Offboard after acceptance."
 }

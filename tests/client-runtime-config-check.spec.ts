@@ -1,9 +1,15 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { evaluateClientRuntimeConfig } from "../scripts/lib/client-runtime-config-check.mjs";
 
 const digest = "a".repeat(64);
 const expected = { service: "agentos-internal-beta", revision: "agentos-internal-beta-00035-test", digest, tenant: "internal-beta" };
+const internalBetaManifest = JSON.parse(readFileSync("client-blueprints/agentos-internal-beta.gcp.json", "utf8"));
+
+test("internal beta deployment manifest retains customer data for the agreed 45 days", () => {
+  expect(internalBetaManifest.retention.days).toBe(45);
+});
 
 function snapshot() {
   return {
