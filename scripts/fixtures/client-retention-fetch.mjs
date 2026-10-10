@@ -11,6 +11,14 @@ globalThis.fetch = async (url, options) => {
     console.log(`MOCK_RECORD_RETENTION:${payload.p_apply}`);
     return Response.json({ tenant: "tenant-a", candidates: 2, deleted: payload.p_apply ? 2 : 0, remainingCandidates: payload.p_apply ? 0 : 2 });
   }
+  if (parsed.pathname.endsWith("/rpc/purge_expired_client_notebook_sources") && options.method === "POST") {
+    const payload = JSON.parse(options.body);
+    if (payload.p_tenant_slug !== "tenant-a" || payload.p_batch_limit !== 100) throw new Error("Unexpected source retention RPC payload");
+    if (process.env.RETENTION_MOCK_SOURCE_RPC_FAIL === "1") return new Response(null, { status: 404 });
+    console.log(`MOCK_SOURCE_RETENTION:${payload.p_apply}`);
+    return Response.json({ tenant: "tenant-a", candidates: 1, deleted: payload.p_apply ? 1 : 0,
+      remainingCandidates: payload.p_apply ? 0 : 1, legacyMissingExpiry: 1, legacyExtendedExpiry: 1 });
+  }
   if (parsed.pathname.endsWith("/client_learning_items") && (!options.method || options.method === "GET")) {
     if (parsed.searchParams.get("tenant_slug") !== "eq.tenant-a" || !parsed.searchParams.get("retention_expires_at")?.startsWith("lte.")
       || !parsed.searchParams.get("created_at")?.startsWith("lte.") || parsed.searchParams.get("limit") !== "100"

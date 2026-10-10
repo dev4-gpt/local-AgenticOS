@@ -177,9 +177,11 @@ test("operator retention requires confirmation and stops when the record RPC fai
   const preview = run([]);
   expect(preview.status).toBe(0);
   expect(preview.stdout).toContain("MOCK_RECORD_RETENTION:false");
+  expect(preview.stdout).toContain("MOCK_SOURCE_RETENTION:false");
   expect(preview.stdout).not.toContain("MOCK_LEARNING_RETENTION_DELETE");
   expect(JSON.parse(preview.stdout.trim().split("\n").at(-1) || "{}")).toMatchObject({
-    runtimeRecords: { candidates: 2, deleted: 0 }, expiredLearningItems: 1, applied: false,
+    runtimeRecords: { candidates: 2, deleted: 0 }, notebookSources: { candidates: 1, deleted: 0 },
+    expiredLearningItems: 1, applied: false,
   });
 
   const unconfirmed = run(["--apply"]);
@@ -191,28 +193,40 @@ test("operator retention requires confirmation and stops when the record RPC fai
   expect(missingLearningConfirmation.status).toBe(1);
   expect(missingLearningConfirmation.stderr).toContain("--confirm-retention-learning");
 
-  const failedRpc = run(["--apply", "--confirm-retention-records", "--confirm-retention-learning"], { RETENTION_MOCK_RPC_FAIL: "1" });
+  const missingSourceConfirmation = run(["--apply", "--confirm-retention-records", "--confirm-retention-learning"]);
+  expect(missingSourceConfirmation.status).toBe(1);
+  expect(missingSourceConfirmation.stderr).toContain("--confirm-retention-sources");
+
+  const confirmed = ["--apply", "--confirm-retention-records", "--confirm-retention-learning", "--confirm-retention-sources"];
+
+  const failedRpc = run(confirmed, { RETENTION_MOCK_RPC_FAIL: "1" });
   expect(failedRpc.status).toBe(1);
   expect(failedRpc.stderr).toContain("Client record retention failed (404)");
   expect(failedRpc.stdout).not.toContain("MOCK_LEARNING_RETENTION_DELETE");
 
-  const missingReferenceGuard = run(["--apply", "--confirm-retention-records", "--confirm-retention-learning"], { RETENTION_MOCK_REFERENCE_GUARD_FAIL: "1" });
+  const failedSourceRpc = run(confirmed, { RETENTION_MOCK_SOURCE_RPC_FAIL: "1" });
+  expect(failedSourceRpc.status).toBe(1);
+  expect(failedSourceRpc.stderr).toContain("Notebook source retention failed (404)");
+  expect(failedSourceRpc.stdout).not.toContain("MOCK_LEARNING_RETENTION_DELETE");
+
+  const missingReferenceGuard = run(confirmed, { RETENTION_MOCK_REFERENCE_GUARD_FAIL: "1" });
   expect(missingReferenceGuard.status).toBe(1);
   expect(missingReferenceGuard.stderr).toContain("Learning retention reference guard is not applied");
   expect(missingReferenceGuard.stdout).not.toContain("MOCK_RECORD_RETENTION");
 
-  const invalidIds = run(["--apply", "--confirm-retention-records", "--confirm-retention-learning"], { RETENTION_MOCK_BAD_IDS: "1" });
+  const invalidIds = run(confirmed, { RETENTION_MOCK_BAD_IDS: "1" });
   expect(invalidIds.status).toBe(1);
   expect(invalidIds.stderr).toContain("Learning retention selection returned invalid IDs");
   expect(invalidIds.stdout).not.toContain("MOCK_RECORD_RETENTION");
   expect(invalidIds.stdout).not.toContain("MOCK_LEARNING_RETENTION_DELETE");
 
-  const mismatchedDelete = run(["--apply", "--confirm-retention-records", "--confirm-retention-learning"], { RETENTION_MOCK_DELETE_MISMATCH: "1" });
+  const mismatchedDelete = run(confirmed, { RETENTION_MOCK_DELETE_MISMATCH: "1" });
   expect(mismatchedDelete.status).toBe(1);
   expect(mismatchedDelete.stderr).toContain("Learning retention delete did not match the reviewed batch");
 
-  const applied = run(["--apply", "--confirm-retention-records", "--confirm-retention-learning"]);
+  const applied = run(confirmed);
   expect(applied.status).toBe(0);
   expect(applied.stdout).toContain("MOCK_RECORD_RETENTION:true");
+  expect(applied.stdout).toContain("MOCK_SOURCE_RETENTION:true");
   expect(applied.stdout).toContain("MOCK_LEARNING_RETENTION_DELETE");
 });

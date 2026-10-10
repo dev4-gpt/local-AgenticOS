@@ -55,6 +55,7 @@ if (mode === "offboard" && apply && !project) fail("--project is required for of
 if (mode === "restore" && apply && !confirmRestore) fail("Refusing restore apply without --confirm-restore");
 if (mode === "retention" && apply && !args.includes("--confirm-retention-records")) fail("Refusing retention apply without --confirm-retention-records");
 if (mode === "retention" && apply && !args.includes("--confirm-retention-learning")) fail("Refusing learning retention apply without --confirm-retention-learning");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-sources")) fail("Refusing Notebook source retention apply without --confirm-retention-sources");
 
 if (mode === "offboard" && apply && !configPath) fail("Offboard apply requires --config with a reviewed client manifest");
 const manifestBytes = configPath ? await readFile(path.resolve(process.cwd(), configPath)) : null;
@@ -231,6 +232,12 @@ if (mode === "retention") {
   });
   if (!recordResponse.ok) fail(`Client record retention failed (${recordResponse.status}); verify the retention migration and tenant's 45-day configuration`);
   const records = await recordResponse.json();
+  const sourceResponse = await supabaseRequest("rpc/purge_expired_client_notebook_sources", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
+  });
+  if (!sourceResponse.ok) fail(`Notebook source retention failed (${sourceResponse.status}); verify the source retention migration and tenant's 45-day configuration`);
+  const sources = await sourceResponse.json();
   if (apply && ids.length) {
     const deletion = new URLSearchParams(filter);
     deletion.set("id", `in.(${ids.join(",")})`);
@@ -242,7 +249,7 @@ if (mode === "retention") {
       fail("Learning retention delete did not match the reviewed batch");
     }
   }
-  console.log(JSON.stringify({ tenant: slug, runtimeRecords: records, expiredLearningItems: ids.length,
+  console.log(JSON.stringify({ tenant: slug, runtimeRecords: records, notebookSources: sources, expiredLearningItems: ids.length,
     learningBatchLimit, moreLearningItemsMayRemain: ids.length === learningBatchLimit,
     applied: apply, learningRevisionsCascade: true }));
   process.exit(0);

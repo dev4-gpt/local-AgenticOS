@@ -77,7 +77,7 @@
     "client:self-marketing": "node scripts/run-client-self-marketing-campaign.mjs",
     "client:self-marketing-assets": "node scripts/generate-client-self-marketing-assets.mjs",
     "verify:client-provider-policy": "node scripts/verify-client-provider-policy.mjs",
-    "verify:client-lifecycle": "node scripts/verify-client-lifecycle.mjs && npx playwright test tests/client-lifecycle-inventory.spec.ts tests/client-retention-snapshot.spec.ts tests/client-artifact-owner-guard.spec.ts tests/client-notebook-source-reference-guard.spec.ts --config=playwright.unit.config.ts --reporter=line",
+    "verify:client-lifecycle": "node scripts/verify-client-lifecycle.mjs && npx playwright test tests/client-lifecycle-inventory.spec.ts tests/client-retention-snapshot.spec.ts tests/client-record-retention.spec.ts tests/client-notebook-source-retention.spec.ts tests/client-artifact-owner-guard.spec.ts tests/client-notebook-source-reference-guard.spec.ts --config=playwright.unit.config.ts --reporter=line",
     "verify:source-import-postgres": "sh scripts/verify-source-import-postgres.sh && npx playwright test tests/source-guard-schema-evidence.spec.ts --config=playwright.unit.config.ts --reporter=line",
     "verify:capability-traits": "npx playwright test tests/capability-traits.spec.ts tests/capability-contracts.spec.ts tests/context-quality.spec.ts --config=playwright.unit.config.ts --reporter=line",
     "verify:references": "npx playwright test tests/capability-traits.spec.ts tests/client-intent-router.spec.ts tests/lane-parity.spec.ts tests/loop-registry.spec.ts tests/loop-adapter.spec.ts tests/harness-audit.spec.ts tests/instruction-budget.spec.ts tests/research-worker-adapters.spec.ts --config=playwright.unit.config.ts --reporter=line",

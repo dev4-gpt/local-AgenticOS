@@ -11,6 +11,7 @@ const lifecycle = await readFile(join(root, "scripts/client-lifecycle.mjs"), "ut
 const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"), "utf8");
 const artifactRoute = await readFile(join(root, "src/app/api/client-runtime/artifacts/[id]/route.ts"), "utf8");
 const lifecycleSql = await readFile(join(root, "product-experience/supabase-client-runtime-lifecycle.sql"), "utf8");
+const sourceRetentionSql = await readFile(join(root, "product-experience/supabase-client-notebook-source-retention.sql"), "utf8");
 const failures = [];
 
 function expect(condition, message) {
@@ -33,6 +34,8 @@ expect(provisioner.includes("storageLifecycleFile") && provisioner.includes("mat
 expect(provisioner.includes("normalizeRetentionDays") && provisioner.includes("retentionDays"), "GCP provisioner must derive storage retention from the validated manifest");
 expect(artifactRoute.includes("deleteClientStorageObject") && artifactRoute.includes('clientRpc("delete_client_runtime_artifact"'), "artifact deletion must remove the tenant object before metadata");
 expect(lifecycleSql.includes("delete_client_runtime_artifact") && lifecycleSql.includes("grant execute on function public.delete_client_runtime_artifact(text, uuid)"), "artifact deletion must use an authenticated, tenant-scoped RPC");
+expect(lifecycle.includes("--confirm-retention-sources") && lifecycle.includes("rpc/purge_expired_client_notebook_sources"), "Notebook source retention must require confirmation and call the scoped purge RPC");
+expect(sourceRetentionSql.includes("retention_expires_at <= now()") && sourceRetentionSql.includes("created_at <= v_cutoff") && sourceRetentionSql.includes("to service_role"), "Notebook source retention must enforce age, expiry, and service-role access");
 
 const tempDir = await mkdtemp(join(tmpdir(), "veloce-client-lifecycle-"));
 const safeSnapshot = join(tempDir, "safe.json");
