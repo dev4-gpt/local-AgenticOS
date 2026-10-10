@@ -243,3 +243,19 @@ compare with actual prospects before changing pricing or scaling personas.
 The user's Free-plan check is not a post-run provider billing receipt, and the
 keys' account linkage was not independently verified. No paid-spend or broad
 market claim is made.
+
+## Saved-run audit recheck, 2026-10-10
+
+The AgentOS read-only auditor was rerun against the saved MiroFish directory
+`/Users/aryamandev/Documents/Codex/Projects/MiroFish-Buyer-Pilot/backend/uploads/simulations/sim_4d52cec6d408`
+using the current `evaluations/mirofish-buyer-micro-v1.json` cohort. It returned
+all 12 checks true: run identity, 10-profile/workflow coverage, persona and
+post attribution, novelty, action/completion telemetry, two active-buyer
+replies, and exact private content-review coverage. The saved state reports
+`completed`, round 10 of 10, eight actions, and one completion event. The
+auditor still returns `marketValidation: false`; its receipt is synthetic
+scenario evidence only. The MiroFish workspace also has `buyer_review.json`
+and is ignored `.env` (not tracked by Git), but the saved provider-status
+marker says `stopped` and contains no billing reconciliation. This recheck
+made no provider request and does not establish actual provider charges or
+independent account-level $0 spend.
