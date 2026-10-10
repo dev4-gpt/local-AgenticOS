@@ -1,6 +1,6 @@
 # MiroFish buyer-scenario pilot
 
-Status: the latest bounded synthetic run, `sim_49b3a7426c50`, completed with two of ten buyers active. Its technical audit passes but its content review fails on an invented budget amount; release-evidence capture refuses it. The earlier `sim_fe9b23d28531` run used a brief without the published price and is stale. Neither is market validation or a 10,000-person test. A revised repeat is prepared offline, but the user clarified that current Groq/Zep Free-plan status was assumed, not checked; no new provider call is authorized until billing state is verified. Last checked: 2026-10-10.
+Status: the latest bounded synthetic run, `sim_4d52cec6d408`, completed with two of ten buyers active. Its technical and private content audit passes, and current-source release-evidence capture accepts the artifacts. This is not market validation or a 10,000-person test. Actual provider charges have not been independently reconciled. Last checked: 2026-10-10.
 
 ## Pinned upstream and non-spending evidence
 
@@ -214,3 +214,32 @@ execution and private content review await actual dashboard verification of
 both Free plans and no paid overage under the owner's $0 ceiling. A prior
 "confirmed" answer was later clarified as an assumption, so it is not treated
 as cost-control evidence.
+
+## Revised repeat result, 2026-10-10
+
+After the user checked the dashboards and reported both Groq and Zep on Free
+plans, the owner-approved $0-spend bounded repeat ran as `sim_4d52cec6d408`.
+The isolated runner completed ten configured rounds with ten profiles but only
+two active buyers, eight actions, two seeded posts, and two generated
+quote-posts. Graph-memory updates were disabled; no customer or Skool material
+was used as scenario text. The audit passed all 12 technical/content checks,
+with correct persona attribution and two reviewed dynamic replies. The private
+mode-0600 review file has SHA-256
+`c45b52d72107a412e685f88b1de698059ad72332946f4fbd06c9d1ca0d294945`.
+The release capturer accepted eight hashed artifacts against AgentOS source
+`d13a53570c53bdd4e1532f603ffe2e2b61b457b2` and the current cohort and
+product brief. Its receipt reports `pilotEvidencePassed: true` and
+`marketValidation: false`.
+
+The agency security reviewer remains below the published offer and asks for
+client-file isolation proof before reconsidering at another budget. The
+healthcare-administration budget holder asks for an auditable intake handoff,
+cost transparency, and access controls while citing the published $2,500 setup
+and $1,250 monthly fees; it does not invent a precise personal budget. These
+are useful acceptance-test prompts, not real objections from buyers or evidence
+of willingness to pay. Prioritize a same-revision isolation/access-control
+demonstration and an explicit total-cost view in the hosted customer journey;
+compare with actual prospects before changing pricing or scaling personas.
+The user's Free-plan check is not a post-run provider billing receipt, and the
+keys' account linkage was not independently verified. No paid-spend or broad
+market claim is made.
