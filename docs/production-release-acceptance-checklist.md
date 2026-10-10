@@ -122,7 +122,7 @@ payment result or used for the strict final attestation.
 | Tenant isolation | Tenant A cannot read, execute, export, or delete Tenant B data; run the deletion/export/rollback drill. |
 | Artifact member ownership | Apply `supabase-client-runtime-artifact-owner-guard.sql` before the client image. Prove uploader-only completion, uploader or producing-job requester deletion, and owner-scoped, unexpired delivery references with two members in one tenant. Verify denied calls leave object bytes untouched; direct RPC tests are required in addition to HTTP tests. |
 | Notebook source references | Apply `supabase-client-notebook-source-reference-guard.sql` after the artifact owner guard. With two members and two tenants, prove a source cannot link another tenant's notebook, another member's artifact, an expired artifact, or a source lifetime longer than its artifact; include direct PostgREST insert/update tests. |
-| Source-pack RPC isolation | Apply `supabase-client-runtime-source-pack-rpc-guard.sql` after the source graph and artifact lifecycle migrations. Internal beta shares the production Supabase project; this public-function migration is project-wide and needs explicit project-wide approval, not beta-only approval. Prove direct member calls to the legacy and four-argument RPCs fail, a missing or wrong worker token fails, and a valid server-held token still cannot import through an expired artifact, overwrite another member's source-key memory, or cross tenants. Verify `CLIENT_WORKER_TOKEN` is Secret Manager-backed on the exact client revision, unavailable to browser code, and rotated if exposed. The SQL cannot independently read GCS bytes; require the HTTP route's exact-byte review and hash check before its token-bearing RPC call. |
+| Source-pack RPC isolation | Apply `supabase-client-runtime-source-pack-rpc-guard.sql` after the source graph and artifact lifecycle migrations. Internal beta shares the production Supabase project; this public-function migration is project-wide and needs explicit project-wide approval, not beta-only approval. Prove direct `authenticated` and `service_role` calls to the legacy and four-argument RPCs fail, a missing or wrong worker token fails, and a valid server-held token still cannot import through an expired artifact, overwrite another member's source-key memory, or cross tenants. Verify `CLIENT_WORKER_TOKEN` is Secret Manager-backed on the exact client revision, unavailable to browser code, and rotated if exposed. The release ledger queries the hosted function and grants through Supabase's read-only Management API and rechecks them on validation; a local SQL file hash alone is insufficient. The SQL cannot independently read GCS bytes; require the HTTP route's exact-byte review and hash check before its token-bearing RPC call. |
 | Client runtime configuration | On the candidate Cloud Run revision, verify `CLIENT_ALLOWED_API_ROUTES` includes `/api/client-runtime/source-import` and `/api/client-runtime/build-identity`, source import has a Secret Manager-backed `CLIENT_WORKER_TOKEN`, `CLIENT_ALLOWED_ROUTES` exposes only approved client pages, and `CLIENT_RETENTION_DAYS` matches the approved 45-day customer-data policy. The 2026-10-09 internal-beta revision fails these checks with both APIs absent and retention set to one day. Capture the exact revision and a redacted configuration receipt; do not treat a new image alone as parity. |
 | Client storage configuration | Bind the serving Cloud Run `status.url` and exact tenant/bucket to signed upload/download CORS, an exact 45-day tenant-prefixed Delete rule, and reviewed versioning/soft-delete policy. The release ledger now requires a live Cloud Run plus bucket configuration receipt and rechecks it for drift. A passing receipt does not prove byte, backup, or vendor-copy deletion. |
 | Retention and deletion | The owner selected 45 days from each customer-data item's creation. Approve covered data classes and a separate financial-record schedule. Prove database, object, export, backup, and vendor-copy deletion with tenant-scoped post-deletion checks; an age inventory or learning-item cleanup alone does not pass. |
@@ -204,6 +204,18 @@ missing rather than let it through. See
 [`docs/release-evidence-ledger-runbook.md`](release-evidence-ledger-runbook.md)
 for the one-time bucket/IAM setup this depends on.
 
+For hosted source-import verification, create a short-lived [scoped Supabase
+personal access token](https://supabase.com/docs/guides/platform/personal-access-tokens)
+restricted to the exact project with Database (Read) permission. Set it
+privately as `VELOCE_SUPABASE_READ_ONLY_TOKEN`; do not put it on the command
+line, in chat, or in the ledger. Publication and strict verification use
+Supabase's [read-only query endpoint](https://supabase.com/docs/reference/api/v1-read-only-query)
+to check the installed guard body and role grants. That endpoint is beta; an
+unavailable endpoint or token fails the gate closed. The Cloud Run revision's
+`SUPABASE_URL` must identify the same project. This catalog receipt does not
+replace signed-in two-member import tests or permission to change the shared
+production database.
+
 ```bash
 npm run publish:release-ledger -- \
   --ledger-bucket <reviewed-ledger-bucket> \
@@ -217,6 +229,7 @@ npm run publish:release-ledger -- \
   --client-cloud-service <reviewed-service> \
   --client-storage-bucket <reviewed-client-bucket> \
   --client-storage-namespace <tenant-slug> \
+  --supabase-project-ref <reviewed-supabase-project-ref> \
   --migration-file product-experience/supabase-v45-onboarding-verify-token.sql \
   --migration-file product-experience/supabase-v46-onboarding-setup-token.sql \
   --migration-file product-experience/supabase-v47-financial-offboard-guard.sql \

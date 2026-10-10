@@ -3,6 +3,7 @@
 create role anon;
 create role authenticated;
 create role service_role;
+alter default privileges in schema public grant execute on functions to service_role;
 create schema auth;
 create schema extensions;
 grant usage on schema auth to authenticated;
@@ -71,6 +72,7 @@ begin
      or has_function_privilege('service_role', 'public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)', 'EXECUTE')
      or coalesce(has_function_privilege('authenticated', to_regprocedure('public.import_client_runtime_source_pack(text,uuid,text,jsonb)'), 'EXECUTE'), false)
      or coalesce(has_function_privilege('service_role', to_regprocedure('public.import_client_runtime_source_pack(text,uuid,text,jsonb)'), 'EXECUTE'), false)
+     or has_function_privilege('service_role', 'public.import_client_runtime_source_pack(text,uuid,text,jsonb,text)', 'EXECUTE')
      or not has_function_privilege('authenticated', 'public.import_client_runtime_source_pack(text,uuid,text,jsonb,text)', 'EXECUTE') then
     raise exception 'source_import_role_grants_failed';
   end if;

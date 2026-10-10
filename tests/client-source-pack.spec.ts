@@ -184,6 +184,7 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
   try {
     await db.exec(`
       create role anon; create role authenticated; create role service_role;
+      alter default privileges in schema public grant execute on functions to service_role;
       create schema auth; create schema extensions; create extension pgcrypto with schema extensions;
       create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
       create table client_tenants (slug text primary key, status text not null, worker_token_hash text not null);
@@ -231,14 +232,15 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
     await db.exec(guard);
     await db.exec(guard);
     await expect(db.exec(migration)).rejects.toThrow(/source_pack_guard_migration_must_run_last/);
-    const privileges = await db.query<{ legacyMember: boolean; legacyWorker: boolean; directMember: boolean; directWorker: boolean; guardedMember: boolean }>(`
+    const privileges = await db.query<{ legacyMember: boolean; legacyWorker: boolean; directMember: boolean; directWorker: boolean; guardedMember: boolean; guardedWorker: boolean }>(`
       select has_function_privilege('authenticated','public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)','EXECUTE') as "legacyMember",
         has_function_privilege('service_role','public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)','EXECUTE') as "legacyWorker",
         coalesce(has_function_privilege('authenticated',to_regprocedure('public.import_client_runtime_source_pack(text,uuid,text,jsonb)'),'EXECUTE'),false) as "directMember",
         coalesce(has_function_privilege('service_role',to_regprocedure('public.import_client_runtime_source_pack(text,uuid,text,jsonb)'),'EXECUTE'),false) as "directWorker",
-        has_function_privilege('authenticated','public.import_client_runtime_source_pack(text,uuid,text,jsonb,text)','EXECUTE') as "guardedMember"
+        has_function_privilege('authenticated','public.import_client_runtime_source_pack(text,uuid,text,jsonb,text)','EXECUTE') as "guardedMember",
+        has_function_privilege('service_role','public.import_client_runtime_source_pack(text,uuid,text,jsonb,text)','EXECUTE') as "guardedWorker"
     `);
-    expect(privileges.rows[0]).toEqual({ legacyMember: false, legacyWorker: false, directMember: false, directWorker: false, guardedMember: true });
+    expect(privileges.rows[0]).toEqual({ legacyMember: false, legacyWorker: false, directMember: false, directWorker: false, guardedMember: true, guardedWorker: false });
     const pack = parseClientSourcePack(examplePack());
     const sql = "select import_client_runtime_source_pack($1,$2,$3,$4::jsonb,$5) as value";
     const args = ["tenant-a", artifactId, "a".repeat(64), JSON.stringify(pack.sources), workerToken];

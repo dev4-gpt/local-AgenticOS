@@ -369,3 +369,21 @@ hosted function body matches source or that all clients tolerate the change.
 Because the guard would alter a shared function used by those tenants, the
 internal-beta-only approval does not authorize applying it to this database.
 No hosted SQL mutation or deployment was performed.
+
+**Hosted source-guard release binding, October 9:** The release ledger no longer
+treats an attached source-import SQL file as sufficient hosted proof. In
+publication mode it queries the exact Supabase project through the scoped
+read-only Management API, checks the tested five-argument function-body MD5,
+security-definer/search-path/owner shape, and role grants on both the guarded
+and old import functions. Strict validation re-queries the project and fails
+if that state drifts or read access is unavailable. The Cloud Run configuration
+receipt separately requires `SUPABASE_URL` to identify the same project ref;
+only the ref, digest, check results, and timestamps enter the ledger, never
+the access token. This is catalog evidence, not a two-member import test or
+proof that every other attached migration was applied. The read-only endpoint
+is beta, so an unsupported response fails closed. The disposable PostgreSQL
+upgrade smoke, two hosted-query fixture tests, 18 focused release/source
+tests, typecheck, security suite, and lint passed. A no-ledger publication
+dry run returned `releaseReady: false` with the new schema gate failed because
+no scoped read-only token was configured; it did not write a ledger record.
+No hosted SQL, runtime deployment, or paid provider call was made.

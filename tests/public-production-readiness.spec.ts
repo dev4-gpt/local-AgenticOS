@@ -16,6 +16,7 @@ test("release verifier records the current revision without secrets", () => {
   const report = JSON.parse(result.stdout);
   expect(report.notEvaluated).toContain("customer_journey_evidence");
   expect(report.notEvaluated).toContain("client_cloud_config_evidence");
+  expect(report.notEvaluated).toContain("source_guard_schema_evidence");
   expect(report.notEvaluated).toContain("buyer_pilot_evidence");
   expect(report.notEvaluated).toContain("sourceImportResult_approved");
   expect(report.notEvaluated).toContain("tenantIsolationResult_approved");
@@ -80,6 +81,7 @@ test("release evidence requires the setup, financial, source-graph, artifact-own
     expect(failures).toContain("release_gate:buyer_pilot_evidence");
     expect(failures).toContain("release_gate:customer_journey_evidence");
     expect(failures).toContain("release_gate:client_cloud_config_evidence");
+    expect(failures).toContain("release_gate:source_guard_schema_evidence");
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -142,6 +144,7 @@ test("customer journey approval requires fifteen current-deployment receipts", (
     expect(publish.status).toBe(1);
     expect(JSON.parse(publish.stdout).failures).toContain("release_gate:customer_journey_evidence");
     expect(JSON.parse(publish.stdout).failures).toContain("release_gate:ledger_bucket_not_configured");
+    expect(JSON.parse(publish.stdout).failures).toContain("release_gate:source_guard_schema_evidence");
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

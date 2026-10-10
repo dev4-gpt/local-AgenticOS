@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 import { validCustomerJourneyReport } from "./lib/customer-journey-evidence.mjs";
 import { captureBuyerPilotEvidence, validBuyerPilotEvidence } from "./lib/buyer-pilot-evidence.mjs";
 import { evaluateClientCloudConfigEvidence, validClientCloudConfigEvidence } from "./lib/client-cloud-config-evidence.mjs";
+import { captureSourceGuardSchemaEvidence, validSourceGuardSchemaEvidence } from "./lib/source-guard-schema-evidence.mjs";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const args = process.argv.slice(2);
@@ -47,6 +48,7 @@ const requiredFiles = [
   "scripts/run-ai-release-evaluation.mjs",
   "scripts/lib/offline-test-environment.mjs",
   "scripts/lib/client-cloud-config-evidence.mjs",
+  "scripts/lib/source-guard-schema-evidence.mjs",
   "scripts/verify-client-storage-config.mjs",
   "evaluations/ai-release-local-v1.json",
   "scripts/verify-integration-governance.mjs",
@@ -173,11 +175,11 @@ const requiredMigrations = [
   { file: "product-experience/supabase-client-runtime-artifact-owner-guard.sql", gate: "artifact_owner_guard_migration_attached" },
   { file: "product-experience/supabase-client-notebook-source-reference-guard.sql", gate: "notebook_reference_guard_migration_attached" },
 ];
-const deploymentIdentityKeys = ["vercelDeployment", "cloudRunRevision", "imageDigest"];
+const deploymentIdentityKeys = ["vercelDeployment", "cloudRunRevision", "imageDigest", "supabaseProjectRef"];
 const releaseOutcomeKeys = ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "sourceImportResult", "uiParityResult", "buyerSimulationResult", "aiEngineeringResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"];
 const ledgerOnlyGates = [
   "ai_evaluation_local_evidence", "buyer_pilot_evidence", "customer_journey_evidence", "migration_evidence_attached",
-  "client_cloud_config_evidence",
+  "client_cloud_config_evidence", "source_guard_schema_evidence",
   ...requiredMigrations.map(({ gate }) => gate), "test_results_attached", "all_tests_passed",
   ...deploymentIdentityKeys, ...releaseOutcomeKeys.map((key) => `${key}_approved`), "rollback_target",
 ];
@@ -195,6 +197,7 @@ const deployment = {
   vercelDeployment: valueAfter("--vercel-deployment") || process.env.VELOCE_VERCEL_DEPLOYMENT || null,
   cloudRunRevision: valueAfter("--cloud-run-revision") || process.env.VELOCE_CLOUD_RUN_REVISION || null,
   imageDigest: valueAfter("--image-digest") || process.env.VELOCE_IMAGE_DIGEST || null,
+  supabaseProjectRef: valueAfter("--supabase-project-ref") || process.env.VELOCE_SUPABASE_PROJECT_REF || null,
   publicJourneyResult: valueAfter("--public-journey-result") || process.env.VELOCE_PUBLIC_JOURNEY_RESULT || null,
   stripeSmokeResult: valueAfter("--stripe-smoke-result") || process.env.VELOCE_STRIPE_SMOKE_RESULT || null,
   providerCatalogResult: valueAfter("--provider-catalog-result") || process.env.VELOCE_PROVIDER_CATALOG_RESULT || null,
@@ -244,6 +247,14 @@ const buyerPilot = publishLedger && buyerSimulationDir
   ? captureBuyerPilotEvidence({ root, simulationDir: buyerSimulationDir, sourceCommit: commit })
   : null;
 if (publishLedger && !validBuyerPilotEvidence(buyerPilot, commit, root)) releaseGateFailures.push("buyer_pilot_evidence");
+const supabaseReadOnlyToken = process.env.VELOCE_SUPABASE_READ_ONLY_TOKEN?.trim() || null;
+const sourceGuardSchema = publishLedger ? await captureSourceGuardSchemaEvidence({
+  projectRef: deployment.supabaseProjectRef, token: supabaseReadOnlyToken,
+}) : null;
+if (publishLedger && !validSourceGuardSchemaEvidence(sourceGuardSchema, null, deployment.supabaseProjectRef)) {
+  releaseGateFailures.push("source_guard_schema_evidence");
+  if (sourceGuardSchema?.failures?.length) warnings.push(`Source guard schema check failed: ${sourceGuardSchema.failures.join(", ")}`);
+}
 const clientCloudAccount = valueAfter("--client-cloud-account") || process.env.VELOCE_CLIENT_CLOUD_ACCOUNT || null;
 const clientCloudConfig = publishLedger ? captureLiveClientCloudConfig({
   project: valueAfter("--client-cloud-project"),
@@ -253,6 +264,7 @@ const clientCloudConfig = publishLedger ? captureLiveClientCloudConfig({
   namespace: valueAfter("--client-storage-namespace"),
   revision: deployment.cloudRunRevision,
   imageDigest: deployment.imageDigest,
+  supabaseProjectRef: deployment.supabaseProjectRef,
 }, clientCloudAccount) : null;
 if (publishLedger && !validClientCloudConfigEvidence(clientCloudConfig, null, deployment)) {
   releaseGateFailures.push("client_cloud_config_evidence");
@@ -287,6 +299,13 @@ if (!publishLedger) {
     if (!validClientCloudConfigEvidence(storedCloudConfig, ledgerRecordFile ? null : currentCloudConfig,
       ledgerRecord.deployment, { requireCurrent: !ledgerRecordFile })) {
       releaseGateFailures.push("client_cloud_config_evidence");
+    }
+    const storedSourceGuard = ledgerRecord.sourceGuardSchema;
+    const currentSourceGuard = !ledgerRecordFile && validSourceGuardSchemaEvidence(storedSourceGuard, null, ledgerRecord.deployment?.supabaseProjectRef)
+      ? await captureSourceGuardSchemaEvidence({ projectRef: storedSourceGuard.projectRef, token: supabaseReadOnlyToken }) : null;
+    if (!validSourceGuardSchemaEvidence(storedSourceGuard, ledgerRecordFile ? null : currentSourceGuard,
+      ledgerRecord.deployment?.supabaseProjectRef, { requireCurrent: !ledgerRecordFile })) {
+      releaseGateFailures.push("source_guard_schema_evidence");
     }
     for (const key of deploymentIdentityKeys) {
       if (!ledgerRecord.deployment?.[key]) releaseGateFailures.push(key);
@@ -362,6 +381,7 @@ const evidence = {
   buyerPilot: publishLedger ? buyerPilot : (ledgerRecord?.buyerPilot ?? null),
   customerJourneyReport: publishLedger ? customerJourneyReport : (ledgerRecord?.customerJourneyReport ?? null),
   clientCloudConfig: publishLedger ? clientCloudConfig : (ledgerRecord?.clientCloudConfig ?? null),
+  sourceGuardSchema: publishLedger ? sourceGuardSchema : (ledgerRecord?.sourceGuardSchema ?? null),
   configurationHash,
   configurationShape: { requiredServerVariables: configurationShape.requiredServerVariables, present: configurationShape.present, publicSecretNames: configurationShape.publicSecretNames },
   rollbackTarget: publishLedger ? rollbackTarget : (ledgerRecord?.rollbackTarget ?? rollbackTarget),
@@ -457,6 +477,7 @@ function captureLiveClientCloudConfig(expected, account) {
       || !/^[a-z][a-z0-9-]{2,62}$/.test(expected?.service ?? "")
       || !/^[a-z0-9][a-z0-9._-]{2,221}$/.test(expected?.bucket ?? "")
       || !/^[a-z][a-z0-9-]{2,40}$/.test(expected?.namespace ?? "")
+      || !/^[a-z0-9]{20}$/.test(expected?.supabaseProjectRef ?? "")
       || !/^sha256:[0-9a-f]{64}$/i.test(expected?.imageDigest ?? "")
       || !expected?.revision || (account && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account))) return null;
   const accountArg = account ? [`--account=${account}`] : [];

@@ -91,7 +91,7 @@ end;
 $$;
 
 revoke all on function public.import_client_runtime_source_pack(text, uuid, text, jsonb, text)
-  from public, anon;
+  from public, anon, service_role;
 grant execute on function public.import_client_runtime_source_pack(text, uuid, text, jsonb, text)
   to authenticated;
 
