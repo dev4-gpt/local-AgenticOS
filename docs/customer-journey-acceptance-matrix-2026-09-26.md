@@ -207,3 +207,14 @@ GCP project `agentos-mvp` listed only `agentos` and `agentos-internal-beta`;
 neither Cloud Test origin was mapped to a service in that project. This does
 not establish that they are absent from another GCP project. Their serving
 project, runtime configuration, and tenant mapping remain unknown.
+
+**Build-identity endpoint follow-up, 2026-10-10:** An authenticated read-only
+GET to local `http://127.0.0.1:3941/api/client-runtime/build-identity` returned
+`ok: true` but null source commit and revision. The local launcher had not
+stamped a source identity. Source now derives `VELOCE_BUILD_SOURCE_COMMIT`
+from Git only for a clean checkout and clears the stamp when the checkout is
+dirty or Git metadata is unavailable; this avoids attributing changed code to
+an old commit. The focused local-launcher and build-identity tests pass 7/7.
+The already-running port-3941 process was not restarted, so it still reports
+the pre-fix null identity. No authenticated client configuration was loaded
+into a new server, and no tenant write, provider call, or deployment occurred.

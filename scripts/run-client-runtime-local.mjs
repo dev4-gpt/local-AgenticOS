@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -13,6 +13,10 @@ const checkConfig = args.includes("--check-config");
 const buildProduction = args.includes("--build-production");
 const production = args.includes("--production");
 const env = { ...process.env };
+
+const localSourceCommit = cleanLocalSourceCommit();
+if (localSourceCommit) env.VELOCE_BUILD_SOURCE_COMMIT = localSourceCommit;
+else delete env.VELOCE_BUILD_SOURCE_COMMIT;
 
 if ((checkConfig && (buildProduction || production)) || (buildProduction && production)) {
   console.error("Choose one of --check-config, --build-production, or --production.");
@@ -91,6 +95,7 @@ if (publicBaseUrl) console.log("Public HTTPS callback configured for Cloud Tasks
 if (env.CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH === "1") console.log("Local development storage and Cloud Tasks identity enabled through the explicit gcloud auth path; the access token is never printed.");
 if (publicBaseUrl && env.CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH !== "1") console.log("Full tunnel parity also needs --gcp-auth (or CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH=1) so Cloud Tasks can authenticate from this laptop.");
 console.log("Loaded credential names only; secret values are not printed.");
+console.log(`Local source identity: ${localSourceCommit ?? "unverified (dirty checkout or Git metadata unavailable)"}.`);
 console.log(`Provider calls ${env.CLIENT_PROVIDER_CALLS_ENABLED === "1" ? "enabled by explicit configuration" : "disabled"}.`);
 if (parityBlockers.length) {
   console.log("");
@@ -144,4 +149,12 @@ function parseEnv(raw) {
     if (key && value) out[key] = value;
   }
   return out;
+}
+
+function cleanLocalSourceCommit() {
+  const status = spawnSync("git", ["status", "--porcelain"], { cwd: process.cwd(), encoding: "utf8" });
+  if (status.status !== 0 || status.stdout.trim()) return null;
+  const head = spawnSync("git", ["rev-parse", "--verify", "HEAD"], { cwd: process.cwd(), encoding: "utf8" });
+  const commit = head.status === 0 ? head.stdout.trim() : "";
+  return /^[0-9a-f]{40}$/i.test(commit) ? commit.toLowerCase() : null;
 }
