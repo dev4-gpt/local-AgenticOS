@@ -23,6 +23,48 @@ path, verify rate-limit failure behavior, run J08/J13 with an approved tenant,
 and prove revoked access cannot reach a workspace. None of this changes the
 currently deployed test-runtime link until a reviewed release.
 
+### Public login deployment preflight (observed October 9, 2026)
+
+The live `https://app.veloceos.cloud/login` returned 404. Its Runtime access
+menu still linked `Client login` to the cloud-test Cloud Run origin, while
+current source links to `/login`. Vercel project `veloce-agentic-os/product-experience`
+served a Production deployment from `main` commit
+`c1f41ca9f47d64190030cc237c7e8763576b1802`; it was not connected to a
+Git repository. Pushing the current WIP branch therefore does not update this
+site. Vercel's Production environment listed `SUPABASE_ANON_KEY` but not
+`CLIENT_LOGIN_ENABLED`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, or
+`PUBLIC_APP_URL`; no shared variables were linked. Do not infer readiness from
+the locally passing Next build, which does include `/login` and the request API.
+
+Supabase Auth URL Configuration in project `ppmoqjtmjtfxadsnejqc` listed only
+the cloud-test wildcard and internal-beta `/auth/callback` redirect. It did
+not list `https://app.veloceos.cloud/auth/callback`. Its default Site URL was
+the cloud-test origin. These are read-only observations, not permission to
+change shared production Auth settings, reveal secret values, or deploy.
+
+Before a customer-facing login release:
+
+1. Review an immutable source commit and deploy it to a non-production Vercel
+   Preview first, without assigning `app.veloceos.cloud` or connecting Git for
+   automatic production builds as a side effect. Record the deployment ID and
+   source commit. Preview environment variables must be configured separately
+   if the sign-in flow will be tested there.
+2. With approved project-wide change scope, configure the required server-only
+   login variables and an exact callback redirect for the tested origin. Keep
+   production `CLIENT_LOGIN_ENABLED` off. Enable it only on the configured
+   preview to check the durable rate limiter, active-account lookup, delivered
+   Magic Link, callback, and tenant handoff.
+3. Test active, unknown, inactive, ambiguous, revoked, and second-tenant
+   accounts on that exact preview and capture redacted J08/J13 receipts. Verify
+   the public header points to `/login`, the page loads, and the callback
+   returns to the correct tenant without leaking a session token.
+4. Only after the broader J01-J15 release gates and operator approval, promote
+   the reviewed deployment/configuration to `app.veloceos.cloud`. Recheck the
+   custom domain, exact redirect, login, rollback target, and release ledger.
+
+The previous WIP backup push is recoverability evidence, not a preview
+deployment or a public release.
+
 Configure both custom domains at the hosting layer and keep Cloudflare DNS records for the active hosting targets. Do not point the public domain at a tenant runtime directly.
 
 ## Required server configuration
