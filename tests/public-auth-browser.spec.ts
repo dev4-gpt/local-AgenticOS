@@ -29,6 +29,21 @@ test("expired public callback offers recovery without calling the destination AP
   expect(destinationCalls).toBe(0);
 });
 
+test("stalled public destination lookup offers recovery", async ({ page }) => {
+  await page.addInitScript(() => {
+    const nativeTimeout = AbortSignal.timeout.bind(AbortSignal);
+    AbortSignal.timeout = () => nativeTimeout(50);
+  });
+  await page.route("**/api/onboarding/runtime-destination", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.fulfill({ json: { runtimeUrl: "https://tenant-a.run.app" } }).catch(() => {});
+  });
+  await page.goto("/auth/callback#access_token=browser-test-access&refresh_token=browser-test-refresh");
+  await expect(page.getByText("Your tenant runtime is not available for this sign-in link.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Request a new sign-in link" })).toBeVisible();
+  await expect(page).toHaveURL(/\/auth\/callback$/);
+});
+
 test("public callback transfers a test session only to a validated runtime origin", async ({ page }) => {
   await page.route("**/api/onboarding/runtime-destination", (route) => route.fulfill({ json: { runtimeUrl: "https://tenant-a.run.app" } }));
   await page.route("https://tenant-a.run.app/auth/callback", (route) => route.fulfill({ status: 200, body: "<main>Tenant callback reached</main>", contentType: "text/html" }));

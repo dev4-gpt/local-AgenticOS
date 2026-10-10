@@ -17,6 +17,7 @@ export default function ClientLoginForm({ enabled }: { enabled: boolean }) {
     try {
       const response = await fetch("/api/client-login/request", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }),
+        signal: AbortSignal.timeout(20_000),
       });
       if (!response.ok) {
         setError(response.status === 429 ? "Please wait before requesting another link." : "Sign-in is unavailable right now. Please contact support.");

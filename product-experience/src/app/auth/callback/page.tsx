@@ -17,7 +17,10 @@ export default function OnboardingAuthCallback() {
     // The fragment is available only after mount; this is the invalid-link UI state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!accessToken || !refreshToken) { setMessage("This sign-in link is invalid or expired."); setFailed(true); return; }
-    fetch("/api/onboarding/runtime-destination", { method: "POST", cache: "no-store", headers: { "content-type": "application/json", authorization: `Bearer ${accessToken}` } })
+    fetch("/api/onboarding/runtime-destination", {
+      method: "POST", cache: "no-store", signal: AbortSignal.timeout(20_000),
+      headers: { "content-type": "application/json", authorization: `Bearer ${accessToken}` },
+    })
       .then(async (response) => {
         const body = await response.json().catch(() => null);
         if (!response.ok || typeof body?.runtimeUrl !== "string") throw new Error("destination_unavailable");

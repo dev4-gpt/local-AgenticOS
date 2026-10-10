@@ -12,9 +12,11 @@ test.afterEach(() => {
 
 test("public menu uses the shared login entry, not a tenant URL", () => {
   const header = readFileSync("product-experience/src/components/editions/Header.tsx", "utf8");
+  const loginForm = readFileSync("product-experience/src/app/login/ClientLoginForm.tsx", "utf8");
   expect(header).toContain('href="/login"');
   expect(header).not.toContain("NEXT_PUBLIC_CLIENT_RUNTIME_URL");
   expect(header).not.toContain("veloce-cloud-test");
+  expect(loginForm).toContain("signal: AbortSignal.timeout(20_000)");
 });
 
 test("repeat login sends a one-time link only for one active onboarded account", async () => {
