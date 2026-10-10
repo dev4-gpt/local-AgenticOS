@@ -44,6 +44,10 @@ const secretEnv = normalizeSecretEnv(manifest.secretEnv ?? manifest.secretRefs ?
 const manifestRuntimeEnv = manifest.runtimeEnv && typeof manifest.runtimeEnv === "object" && !Array.isArray(manifest.runtimeEnv)
   ? manifest.runtimeEnv
   : {};
+if (Object.hasOwn(manifestRuntimeEnv, "CLIENT_WORKER_TOKEN")) fail("runtimeEnv.CLIENT_WORKER_TOKEN must be Secret Manager-backed");
+for (const name of Object.keys(secretEnv)) {
+  if (Object.hasOwn(manifestRuntimeEnv, name)) fail(`runtimeEnv.${name} cannot shadow a Secret Manager binding`);
+}
 const credentialInboxSecret = normalizeClientSecretName(slug, String(manifestRuntimeEnv.CLIENT_CREDENTIAL_INBOX_SECRET || "client-credential-inbox"));
 const requestInboxSecret = normalizeClientSecretName(slug, String(manifestRuntimeEnv.CLIENT_REQUEST_INBOX_SECRET || credentialInboxSecret));
 const inboxSecretNames = [...new Set([
@@ -197,7 +201,8 @@ if (apply) {
   if (manifest.acknowledgeClientSafeRuntime !== true) fail("Refusing --apply: acknowledgeClientSafeRuntime must be true. Do not deploy raw private 3939.");
   if (allowedUserEmails.length === 0) fail("Refusing --apply: access.allowedUserEmails must include at least one approved runtime user.");
   if (accessMode === "cloud-run-iam" && invokerEmails.length === 0) fail("Refusing --apply: access.invokerEmails must include at least one approved IAM invoker.");
-  if (phase === "deploy" && Object.keys(secretEnv).length === 0) fail("Refusing --apply: deploy phase requires at least the Supabase anon key in secretEnv.");
+  if (phase === "deploy" && !secretEnv.SUPABASE_ANON_KEY) fail("Refusing --apply: deploy phase requires SUPABASE_ANON_KEY in secretEnv.");
+  if (phase === "deploy" && !secretEnv.CLIENT_WORKER_TOKEN) fail("Refusing --apply: source import requires CLIENT_WORKER_TOKEN in secretEnv.");
   if (phase === "deploy" || phase === "all") deployImage = resolveImageDigest(image);
 }
 
