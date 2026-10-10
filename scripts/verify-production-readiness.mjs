@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { validCustomerJourneyReport } from "./lib/customer-journey-evidence.mjs";
 import { captureBuyerPilotEvidence, validBuyerPilotEvidence } from "./lib/buyer-pilot-evidence.mjs";
+import { evaluateClientCloudConfigEvidence, validClientCloudConfigEvidence } from "./lib/client-cloud-config-evidence.mjs";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const args = process.argv.slice(2);
@@ -45,6 +46,8 @@ const requiredFiles = [
   "scripts/verify-engineering-controls.mjs",
   "scripts/run-ai-release-evaluation.mjs",
   "scripts/lib/offline-test-environment.mjs",
+  "scripts/lib/client-cloud-config-evidence.mjs",
+  "scripts/verify-client-storage-config.mjs",
   "evaluations/ai-release-local-v1.json",
   "scripts/verify-integration-governance.mjs",
   "scripts/control-plane-disposable-canary.mjs",
@@ -174,6 +177,7 @@ const deploymentIdentityKeys = ["vercelDeployment", "cloudRunRevision", "imageDi
 const releaseOutcomeKeys = ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "sourceImportResult", "uiParityResult", "buyerSimulationResult", "aiEngineeringResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"];
 const ledgerOnlyGates = [
   "ai_evaluation_local_evidence", "buyer_pilot_evidence", "customer_journey_evidence", "migration_evidence_attached",
+  "client_cloud_config_evidence",
   ...requiredMigrations.map(({ gate }) => gate), "test_results_attached", "all_tests_passed",
   ...deploymentIdentityKeys, ...releaseOutcomeKeys.map((key) => `${key}_approved`), "rollback_target",
 ];
@@ -240,6 +244,20 @@ const buyerPilot = publishLedger && buyerSimulationDir
   ? captureBuyerPilotEvidence({ root, simulationDir: buyerSimulationDir, sourceCommit: commit })
   : null;
 if (publishLedger && !validBuyerPilotEvidence(buyerPilot, commit, root)) releaseGateFailures.push("buyer_pilot_evidence");
+const clientCloudAccount = valueAfter("--client-cloud-account") || process.env.VELOCE_CLIENT_CLOUD_ACCOUNT || null;
+const clientCloudConfig = publishLedger ? captureLiveClientCloudConfig({
+  project: valueAfter("--client-cloud-project"),
+  region: valueAfter("--client-cloud-region"),
+  service: valueAfter("--client-cloud-service"),
+  bucket: valueAfter("--client-storage-bucket"),
+  namespace: valueAfter("--client-storage-namespace"),
+  revision: deployment.cloudRunRevision,
+  imageDigest: deployment.imageDigest,
+}, clientCloudAccount) : null;
+if (publishLedger && !validClientCloudConfigEvidence(clientCloudConfig, null, deployment)) {
+  releaseGateFailures.push("client_cloud_config_evidence");
+  if (clientCloudConfig?.failures?.length) warnings.push(`Client cloud config failed: ${clientCloudConfig.failures.join(", ")}`);
+}
 
 let ledgerRecord = null;
 let ledgerRecordPath = null;
@@ -263,6 +281,13 @@ if (!publishLedger) {
     if (!validLocalAiEvaluation(ledgerRecord.aiEvaluationLocal, ledgerRecord.source?.commit)) releaseGateFailures.push("ai_evaluation_local_evidence");
     if (!validBuyerPilotEvidence(ledgerRecord.buyerPilot, ledgerRecord.source?.commit, root)) releaseGateFailures.push("buyer_pilot_evidence");
     if (!validCustomerJourneyReport(ledgerRecord.customerJourneyReport, ledgerRecord.source?.commit, ledgerRecord.deployment, evidenceBytes)) releaseGateFailures.push("customer_journey_evidence");
+    const storedCloudConfig = ledgerRecord.clientCloudConfig;
+    const currentCloudConfig = !ledgerRecordFile && validClientCloudConfigEvidence(storedCloudConfig, null, ledgerRecord.deployment)
+      ? captureLiveClientCloudConfig(storedCloudConfig, clientCloudAccount) : null;
+    if (!validClientCloudConfigEvidence(storedCloudConfig, ledgerRecordFile ? null : currentCloudConfig,
+      ledgerRecord.deployment, { requireCurrent: !ledgerRecordFile })) {
+      releaseGateFailures.push("client_cloud_config_evidence");
+    }
     for (const key of deploymentIdentityKeys) {
       if (!ledgerRecord.deployment?.[key]) releaseGateFailures.push(key);
     }
@@ -336,6 +361,7 @@ const evidence = {
   aiEvaluationLocal: publishLedger ? aiEvaluationLocal : (ledgerRecord?.aiEvaluationLocal ?? null),
   buyerPilot: publishLedger ? buyerPilot : (ledgerRecord?.buyerPilot ?? null),
   customerJourneyReport: publishLedger ? customerJourneyReport : (ledgerRecord?.customerJourneyReport ?? null),
+  clientCloudConfig: publishLedger ? clientCloudConfig : (ledgerRecord?.clientCloudConfig ?? null),
   configurationHash,
   configurationShape: { requiredServerVariables: configurationShape.requiredServerVariables, present: configurationShape.present, publicSecretNames: configurationShape.publicSecretNames },
   rollbackTarget: publishLedger ? rollbackTarget : (ledgerRecord?.rollbackTarget ?? rollbackTarget),
@@ -423,6 +449,29 @@ function sha256(value) {
 function gcloudTextSoft(command) {
   const result = spawnSync("gcloud", command, { encoding: "utf8" });
   return result.status === 0 ? result.stdout.trim() : "";
+}
+
+function captureLiveClientCloudConfig(expected, account) {
+  if (!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(expected?.project ?? "")
+      || !/^[a-z]+-[a-z]+[0-9]+$/.test(expected?.region ?? "")
+      || !/^[a-z][a-z0-9-]{2,62}$/.test(expected?.service ?? "")
+      || !/^[a-z0-9][a-z0-9._-]{2,221}$/.test(expected?.bucket ?? "")
+      || !/^[a-z][a-z0-9-]{2,40}$/.test(expected?.namespace ?? "")
+      || !/^sha256:[0-9a-f]{64}$/i.test(expected?.imageDigest ?? "")
+      || !expected?.revision || (account && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account))) return null;
+  const accountArg = account ? [`--account=${account}`] : [];
+  const service = gcloudJson(["run", "services", "describe", expected.service,
+    "--project", expected.project, "--region", expected.region, "--format=json", ...accountArg]);
+  const bucket = gcloudJson(["storage", "buckets", "describe", `gs://${expected.bucket}`,
+    "--project", expected.project, "--format=json", ...accountArg]);
+  if (!service || !bucket) return null;
+  return evaluateClientCloudConfigEvidence(service, bucket, expected, new Date().toISOString());
+}
+
+function gcloudJson(command) {
+  const result = spawnSync("gcloud", command, { encoding: "utf8", timeout: 20_000, maxBuffer: 2_000_000 });
+  if (result.status !== 0) return null;
+  try { return JSON.parse(result.stdout); } catch { return null; }
 }
 
 function publishToLedger(evidenceRecord) {

@@ -337,3 +337,14 @@ origin, the only overlapping Delete rule is one day, and soft delete retains
 objects for another seven days. The checker reads configuration only; it
 does not prove object-by-object deletion or cover backups/vendor copies. No
 Cloud Run or bucket setting was changed.
+
+**Release-ledger cloud binding, October 9:** The verifier now requires a
+live Cloud Run plus bucket configuration receipt at publication and re-reads
+both resources during strict validation. The receipt binds the serving
+revision/image, tenant, bucket, active origin, runtime allowlists and
+Secret Manager worker-token reference to CORS and the 45-day storage policy;
+only verdict codes and configuration hashes enter the ledger. A no-ledger
+publication-mode dry check against the current beta failed the new gate on
+the known runtime and bucket configuration mismatches. No ledger write,
+deployment, provider call, or hosted setting change occurred. This check
+does not attest the image source commit or prove deletion of bytes/backups.

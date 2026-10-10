@@ -114,6 +114,11 @@ npm run publish:release-ledger -- \
   --vercel-deployment <deployment-id> \
   --cloud-run-revision <revision> \
   --image-digest sha256:<digest> \
+  --client-cloud-project <reviewed-project> \
+  --client-cloud-region <reviewed-region> \
+  --client-cloud-service <reviewed-service> \
+  --client-storage-bucket <reviewed-client-bucket> \
+  --client-storage-namespace <tenant-slug> \
   --migration-file product-experience/supabase-v45-onboarding-verify-token.sql \
   --migration-file product-experience/supabase-v46-onboarding-setup-token.sql \
   --migration-file product-experience/supabase-v47-financial-offboard-guard.sql \
@@ -127,6 +132,15 @@ npm run publish:release-ledger -- \
   --ai-engineering-result passed \
   --test-result focused=passed
 ```
+
+Use `--client-cloud-account <already-configured-reader-email>` only when the
+default `gcloud` account cannot read the reviewed project. Publication reads
+the Cloud Run service and bucket directly, checks the serving revision/digest,
+tenant, routes, worker-token Secret Manager reference, CORS, and 45-day object
+policy, and stores only a redacted verdict and configuration hashes. Strict
+verification re-reads both resources and fails if their relevant configuration
+has drifted. This is a configuration receipt, not proof of source-image commit,
+object-byte deletion, backup cleanup, or the signed-in customer journey.
 
 The buyer-simulation result requires the retained run's private
 `buyer_review.json`. Publishing replays the offline MiroFish auditor, hashes its
