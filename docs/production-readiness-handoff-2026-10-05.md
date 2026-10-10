@@ -456,3 +456,17 @@ exception or commercial redistribution rights. No authenticated cookie-based
 scrape or full-course import was performed. Resume with a permitted export,
 then verify source coverage and tenant-scoped import/deletion in the hosted
 environment before claiming completion.
+
+**MiroFish artifact reconciliation, October 10:** A read-only inspection of the
+current buyer-pilot checkout found completed run `sim_4d52cec6d408`: its
+run-state reports 10/10 rounds and 8 Twitter actions; its config selects the
+two synthetic buyer personas P00603 and P04949, uses Groq's
+`openai/gpt-oss-120b`, disables Reddit and command waiting, and the bounded
+runner disables graph updates. Its review JSON contains two AI-assisted posts,
+both marked actionable, role-faithful, scenario-relevant, and scope-safe. This
+is a bounded synthetic simulation, not real buyer validation; no independent
+provider billing reconciliation is attached. A separate completed run,
+`sim_49b3a7426c50`, has one of two posts marked not role-faithful, demonstrating
+that review must gate the evidence. The newer hash-pinned candidate
+`sim_b0958acead3f` remains a dry-run-only preparation. No new provider request
+was issued during this reconciliation.
