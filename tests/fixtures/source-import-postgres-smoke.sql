@@ -2,6 +2,7 @@
 
 create role anon;
 create role authenticated;
+create role service_role;
 create schema auth;
 create schema extensions;
 grant usage on schema auth to authenticated;
@@ -60,13 +61,16 @@ insert into public.client_runtime_artifacts values
 \i /migration/supabase-client-runtime-memory-graph.sql
 \i /migration/supabase-client-runtime-source-pack-graph.sql
 \i /migration/supabase-client-runtime-source-pack-graph.sql
+grant execute on function public.import_client_runtime_source_pack(text, uuid, text, jsonb) to service_role;
 \i /migration/supabase-client-runtime-source-pack-rpc-guard.sql
 \i /migration/supabase-client-runtime-source-pack-rpc-guard.sql
 
 do $$
 begin
   if has_function_privilege('authenticated', 'public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)', 'EXECUTE')
+     or has_function_privilege('service_role', 'public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)', 'EXECUTE')
      or coalesce(has_function_privilege('authenticated', to_regprocedure('public.import_client_runtime_source_pack(text,uuid,text,jsonb)'), 'EXECUTE'), false)
+     or coalesce(has_function_privilege('service_role', to_regprocedure('public.import_client_runtime_source_pack(text,uuid,text,jsonb)'), 'EXECUTE'), false)
      or not has_function_privilege('authenticated', 'public.import_client_runtime_source_pack(text,uuid,text,jsonb,text)', 'EXECUTE') then
     raise exception 'source_import_role_grants_failed';
   end if;

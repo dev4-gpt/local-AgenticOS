@@ -348,3 +348,24 @@ publication-mode dry check against the current beta failed the new gate on
 the known runtime and bucket configuration mismatches. No ledger write,
 deployment, provider call, or hosted setting change occurred. This check
 does not attest the image source commit or prove deletion of bytes/backups.
+
+**Hosted source-import catalog preflight, October 9:** Read-only queries in
+the signed-in Supabase SQL Editor confirmed project `ppmoqjtmjtfxadsnejqc`
+is marked `main PRODUCTION`. The four-argument
+`import_client_runtime_source_pack` exists, is a `plpgsql` security-definer
+returning `jsonb`, and is executable by `authenticated` but not `anon`.
+Neither the renamed legacy function nor the five-argument guarded function
+exists yet. The required tenant/artifact/record columns, `client_member`,
+`extensions.digest`, and source-import-key index are present. Its owner is
+`postgres`, its configured search path is `public, extensions`, and its body
+includes artifact, ownership, and graph-refresh checks. The base function's
+explicit execute grants are `postgres`, `authenticated`, and `service_role`;
+six tenants are active. No tenant records or credential values were read.
+The pending guard now revokes the old function from `service_role` too, and
+the disposable PostgreSQL 17 upgrade smoke passes with that preexisting
+grant. All four focused source-pack tests and `verify:security` also pass.
+This catalog check is a compatibility preflight, not a proof that the
+hosted function body matches source or that all clients tolerate the change.
+Because the guard would alter a shared function used by those tenants, the
+internal-beta-only approval does not authorize applying it to this database.
+No hosted SQL mutation or deployment was performed.

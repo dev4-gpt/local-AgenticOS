@@ -183,7 +183,7 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
   const db = new PGlite({ extensions: { pgcrypto } });
   try {
     await db.exec(`
-      create role anon; create role authenticated;
+      create role anon; create role authenticated; create role service_role;
       create schema auth; create schema extensions; create extension pgcrypto with schema extensions;
       create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
       create table client_tenants (slug text primary key, status text not null, worker_token_hash text not null);
@@ -220,21 +220,25 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
     await db.exec(`
       alter function public.import_client_runtime_source_pack(text,uuid,text,jsonb)
         rename to import_client_runtime_source_pack_legacy;
+      grant execute on function public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)
+        to service_role;
       create function public.import_client_runtime_source_pack(text,uuid,text,jsonb)
         returns jsonb language sql security definer as $$ select '{}'::jsonb $$;
       grant execute on function public.import_client_runtime_source_pack(text,uuid,text,jsonb)
-        to authenticated;
+        to authenticated, service_role;
     `);
     const guard = readFileSync("product-experience/supabase-client-runtime-source-pack-rpc-guard.sql", "utf8");
     await db.exec(guard);
     await db.exec(guard);
     await expect(db.exec(migration)).rejects.toThrow(/source_pack_guard_migration_must_run_last/);
-    const privileges = await db.query<{ legacyMember: boolean; directMember: boolean; guardedMember: boolean }>(`
+    const privileges = await db.query<{ legacyMember: boolean; legacyWorker: boolean; directMember: boolean; directWorker: boolean; guardedMember: boolean }>(`
       select has_function_privilege('authenticated','public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)','EXECUTE') as "legacyMember",
+        has_function_privilege('service_role','public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)','EXECUTE') as "legacyWorker",
         coalesce(has_function_privilege('authenticated',to_regprocedure('public.import_client_runtime_source_pack(text,uuid,text,jsonb)'),'EXECUTE'),false) as "directMember",
+        coalesce(has_function_privilege('service_role',to_regprocedure('public.import_client_runtime_source_pack(text,uuid,text,jsonb)'),'EXECUTE'),false) as "directWorker",
         has_function_privilege('authenticated','public.import_client_runtime_source_pack(text,uuid,text,jsonb,text)','EXECUTE') as "guardedMember"
     `);
-    expect(privileges.rows[0]).toEqual({ legacyMember: false, directMember: false, guardedMember: true });
+    expect(privileges.rows[0]).toEqual({ legacyMember: false, legacyWorker: false, directMember: false, directWorker: false, guardedMember: true });
     const pack = parseClientSourcePack(examplePack());
     const sql = "select import_client_runtime_source_pack($1,$2,$3,$4::jsonb,$5) as value";
     const args = ["tenant-a", artifactId, "a".repeat(64), JSON.stringify(pack.sources), workerToken];

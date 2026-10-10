@@ -16,7 +16,7 @@ end;
 $$;
 
 revoke all on function public.import_client_runtime_source_pack_legacy(text, uuid, text, jsonb)
-  from public, anon, authenticated;
+  from public, anon, authenticated, service_role;
 
 -- An earlier version of this guard exposed a four-argument member RPC.
 -- Revoke it during an in-place upgrade; a fresh install renamed it above.
@@ -24,7 +24,7 @@ do $$
 begin
   if to_regprocedure('public.import_client_runtime_source_pack(text,uuid,text,jsonb)') is not null then
     revoke all on function public.import_client_runtime_source_pack(text, uuid, text, jsonb)
-      from public, anon, authenticated;
+      from public, anon, authenticated, service_role;
   end if;
 end;
 $$;
