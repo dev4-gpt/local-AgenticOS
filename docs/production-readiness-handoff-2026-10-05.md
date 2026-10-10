@@ -307,3 +307,18 @@ optional skip), typecheck, lint, and the security gate passed. This remains
 source-only work: no hosted migration, deployment, or tenant write occurred.
 The production Supabase project still needs explicit project-wide approval,
 the exact revision/configuration receipt, and two-member hosted verification.
+
+**Tenant-token isolation follow-up, October 9:** The source-pack fixture now
+uses a distinct worker token for each tenant. Embedded PostgreSQL verifies
+that tenant A's token is rejected for an authorized tenant B member, then
+accepts tenant B's token. The disposable PostgreSQL 17 smoke also rejects
+tenant A's token for tenant B without changing data; both checks passed.
+The signed-in Chrome internal-beta Memory page still showed two records and
+a 114-node/113-edge graph. No local signed-in page was available in the
+visible Chrome windows during this check, so this is not a new parity receipt.
+Read-only `gcloud run services list --project agentos-mvp` returned
+`run.services.list` permission denied for the active Google account; the
+hosted revision and its configuration remain unverified. The release verifier
+still reports `releaseReady: false` with no release ledger destination or
+current-candidate acceptance bundle. No hosted migration or deployment was
+performed.

@@ -14,6 +14,7 @@ const otherArtifactId = "00000000-0000-4000-8000-000000000004";
 const secondTenantUserId = "00000000-0000-4000-8000-000000000005";
 const secondTenantArtifactId = "00000000-0000-4000-8000-000000000006";
 const workerToken = "source-import-test-worker-token-2026";
+const secondTenantWorkerToken = "source-import-second-tenant-token-2026";
 
 function examplePack() {
   return {
@@ -204,7 +205,7 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
       );
       insert into client_tenants values
         ('tenant-a','active',encode(extensions.digest('${workerToken}','sha256'),'hex')),
-        ('tenant-b','active',encode(extensions.digest('${workerToken}','sha256'),'hex'));
+        ('tenant-b','active',encode(extensions.digest('${secondTenantWorkerToken}','sha256'),'hex'));
       insert into client_memberships values ('tenant-a','${userId}','active'),('tenant-a','${otherUserId}','active'),('tenant-b','${secondTenantUserId}','active');
       insert into client_runtime_artifacts values
         ('${artifactId}','tenant-a','${userId}','ready','application/json',now()+interval '1 day'),
@@ -302,7 +303,9 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
     await expect(db.query(sql, ["tenant-b", artifactId, "a".repeat(64), JSON.stringify(pack.sources), workerToken])).rejects.toThrow(/tenant_not_authorized/);
     expect((await db.query<{ value: boolean }>("select refresh_client_runtime_memory_graph('tenant-b') as value")).rows[0].value).toBe(false);
     await db.exec(`select set_config('request.jwt.claim.sub','${secondTenantUserId}',false)`);
-    const secondTenant = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, ["tenant-b", secondTenantArtifactId, "c".repeat(64), JSON.stringify(pack.sources), workerToken]);
+    await expect(db.query(sql, ["tenant-b", secondTenantArtifactId, "c".repeat(64), JSON.stringify(pack.sources), workerToken]))
+      .rejects.toThrow(/source_import_verifier_unavailable/);
+    const secondTenant = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, ["tenant-b", secondTenantArtifactId, "c".repeat(64), JSON.stringify(pack.sources), secondTenantWorkerToken]);
     expect(secondTenant.rows[0].value).toEqual({ imported: 2, updated: 0, duplicates: 0, graphRefreshed: true });
     expect((await db.query("select id from client_runtime_memory_graph_nodes where tenant_slug='tenant-b' and kind='document'")).rows).toHaveLength(2);
     expect((await db.query("select id from client_runtime_records where tenant_slug='tenant-a' and kind='memory'")).rows).toHaveLength(2);

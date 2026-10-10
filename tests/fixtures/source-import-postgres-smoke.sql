@@ -48,7 +48,7 @@ create table public.client_runtime_audit_events (
 
 insert into public.client_tenants values
   ('tenant-a','active',encode(extensions.digest('source-import-test-worker-token-2026','sha256'),'hex')),
-  ('tenant-b','active',encode(extensions.digest('source-import-test-worker-token-2026','sha256'),'hex'));
+  ('tenant-b','active',encode(extensions.digest('source-import-second-tenant-token-2026','sha256'),'hex'));
 insert into public.client_memberships values
   ('tenant-a', '00000000-0000-4000-8000-000000000001', 'active'),
   ('tenant-a', '00000000-0000-4000-8000-000000000003', 'active'),
@@ -140,6 +140,22 @@ end
 $$;
 reset role;
 
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000005', false);
+set role authenticated;
+do $$
+begin
+  perform public.import_client_runtime_source_pack(
+    'tenant-b', '00000000-0000-4000-8000-000000000002', repeat('a', 64), '[]'::jsonb,
+    'source-import-test-worker-token-2026'
+  );
+  raise exception 'other_tenant_worker_token_was_allowed';
+exception when others then
+  if sqlerrm <> 'source_import_verifier_unavailable' then raise; end if;
+end
+$$;
+reset role;
+
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false);
 update public.client_runtime_artifacts
 set retention_expires_at = now() - interval '1 second'
 where id = '00000000-0000-4000-8000-000000000002';
