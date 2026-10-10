@@ -17,7 +17,7 @@ test("release buyer receipt is replayed and bound to the audited run inputs", ()
     mkdirSync(join(simulationDir, "twitter"), { recursive: true });
     const checks = Object.fromEntries([
       "runIdentity", "personaCoverage", "profileWorkflowCoverage", "profileAgentMapping",
-      "postAgentMapping", "initialPostAttribution", "actionTelemetry",
+      "postAgentMapping", "initialPostAttribution", "dynamicPostNovelty", "dynamicPostPersonaIdentity", "actionTelemetry",
       "completionTelemetry", "buyerActivity", "buyerContentReview",
     ].map((name) => [name, true]));
     const audit = {
@@ -25,7 +25,7 @@ test("release buyer receipt is replayed and bound to the audited run inputs", ()
       technicalEvidencePassed: true, marketValidation: false, runnerStatus: "completed",
       expectedPersonas: 2, generatedProfiles: 2, configuredAgents: 2,
       dynamicPosts: 1, reviewedDynamicPosts: 1, configuredRounds: 1, reportedRound: 1,
-      actionLogRows: 2, tracedPosts: 2, completionEvents: 1, checks,
+      actionLogRows: 4, tracedPosts: 2, completionEvents: 1, checks,
       futureUnsafeField: "must not enter the ledger",
     };
     const script = join(root, "scripts/audit-mirofish-buyer-run.py");
@@ -54,6 +54,10 @@ test("release buyer receipt is replayed and bound to the audited run inputs", ()
     expect(validBuyerPilotEvidence({ ...receipt, profilePreparation: { ...receipt?.profilePreparation, reviewedSha256: "c".repeat(64) } }, commit, root)).toBe(false);
     expect(validBuyerPilotEvidence({ ...receipt, sourceCommit: "b".repeat(40) }, commit, root)).toBe(false);
     expect(validBuyerPilotEvidence({ ...receipt, audit: { ...audit, checks: { ...checks, buyerContentReview: false } } }, commit, root)).toBe(false);
+    expect(validBuyerPilotEvidence({ ...receipt, audit: { ...audit, checks: { ...checks, dynamicPostNovelty: false } } }, commit, root)).toBe(false);
+    expect(validBuyerPilotEvidence({ ...receipt, audit: { ...audit, checks: { ...checks, dynamicPostPersonaIdentity: false } } }, commit, root)).toBe(false);
+    expect(validBuyerPilotEvidence({ ...receipt, audit: { ...audit, tracedPosts: 0 } }, commit, root)).toBe(false);
+    expect(validBuyerPilotEvidence({ ...receipt, audit: { ...audit, tracedPosts: 5 } }, commit, root)).toBe(false);
     writeFileSync(join(root, "docs/mirofish-buyer-pilot-seed.md"), "Changed product scenario.\n");
     expect(validBuyerPilotEvidence(receipt, commit, root)).toBe(false);
     expect(captureBuyerPilotEvidence({ root, simulationDir, sourceCommit: commit })).toBeNull();

@@ -2,8 +2,8 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 
-const SOURCE_CONFIG_SHA256 = "338a696fa96a1ed6a7e3f60046aab97e7603010c3a0e26f43fd0564aa7b5cbac";
-const SOURCE_PROFILES_SHA256 = "6ef07dc0fec27cc15f30dc5afe71ad1a6b855c6fd6e6f9e90ef2075f7d0e704c";
+const SOURCE_CONFIG_SHA256 = "b6c926b80225faaacaad1929a999ddf20a804d101e01e51f510a1d99eb6fa09d";
+const SOURCE_PROFILES_SHA256 = "e47a927cb0b8e83cc16993388a8ab223ac35099ef8c31bb0e41ea916b113db0d";
 const SELECTED = new Set(["P00603", "P04949"]);
 
 function sha256(bytes) { return createHash("sha256").update(bytes).digest("hex"); }
@@ -49,12 +49,12 @@ export function prepareRepeatSmoke(source, simulationId) {
       {
         poster_type: "Buyer",
         poster_agent_id: idByName.get("P00603"),
-        content: "P00603: I review security for a solo agency, am new to AI, and have less than $50 a month. Can AgentOS review a client handoff without exposing client files or requiring me to connect a provider first?",
+        content: "P00603: I review security for a solo agency, am new to AI, and have less than $50 a month. AgentOS lists $2,500 setup plus $1,250/month before provider usage, so I cannot buy this offer. I would still want evidence that a client handoff keeps files isolated and needs no provider connection before I reconsider at a different budget.",
       },
       {
         poster_type: "Buyer",
         poster_agent_id: idByName.get("P04949"),
-        content: "P04949: I own the budget for healthcare administration and know AI systems well. Show me an auditable administrative intake handoff, with costs and access controls visible. I am not asking for clinical decision support.",
+        content: "P04949: I own the budget for healthcare administration and know AI systems well. AgentOS lists $2,500 setup plus $1,250/month before provider usage. Show me an auditable administrative intake handoff, with total costs and access controls visible, before I decide whether that price is justified. I am not asking for clinical decision support.",
       },
     ],
     scheduled_events: [],
@@ -71,7 +71,7 @@ async function main() {
   if (!sourceDir || !outputRoot || !profileManifestPath) throw new Error("Usage: node scripts/prepare-mirofish-repeat-smoke.mjs <retained-simulation-dir> <isolated-output-root> <reviewed-profile-manifest.json>");
   const configBytes = await readFile(join(sourceDir, "simulation_config.json"));
   const sourceProfileBytes = await readFile(join(sourceDir, "twitter_profiles.csv"));
-  if (basename(sourceDir) !== "sim_6339fcf4322c" || sha256(configBytes) !== SOURCE_CONFIG_SHA256 || sha256(sourceProfileBytes) !== SOURCE_PROFILES_SHA256) {
+  if (basename(sourceDir) !== "sim_fe9b23d28531" || sha256(configBytes) !== SOURCE_CONFIG_SHA256 || sha256(sourceProfileBytes) !== SOURCE_PROFILES_SHA256) {
     throw new Error("retained_pilot_artifacts_changed");
   }
   const manifest = JSON.parse(await readFile(profileManifestPath, "utf8"));

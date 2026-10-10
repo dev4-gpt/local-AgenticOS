@@ -9,7 +9,7 @@ const REQUIRED_ARTIFACTS = [
 ];
 const REQUIRED_CHECKS = [
   "runIdentity", "personaCoverage", "profileWorkflowCoverage", "profileAgentMapping",
-  "postAgentMapping", "initialPostAttribution", "actionTelemetry",
+  "postAgentMapping", "initialPostAttribution", "dynamicPostNovelty", "dynamicPostPersonaIdentity", "actionTelemetry",
   "completionTelemetry", "buyerActivity", "buyerContentReview",
 ];
 const MAX_ARTIFACT_BYTES = 50_000_000;
@@ -68,7 +68,8 @@ export function validBuyerPilotEvidence(receipt, expectedCommit, root) {
     && Number.isSafeInteger(audit.configuredRounds) && audit.configuredRounds > 0
     && audit.reportedRound === audit.configuredRounds
     && Number.isSafeInteger(audit.actionLogRows) && audit.actionLogRows > 0
-    && audit.tracedPosts === audit.actionLogRows && audit.completionEvents === 1
+    && Number.isSafeInteger(audit.tracedPosts) && audit.tracedPosts > 0
+    && audit.tracedPosts <= audit.actionLogRows && audit.completionEvents === 1
     && audit.checks && Object.values(audit.checks).every((value) => value === true)
     && REQUIRED_CHECKS.every((name) => audit.checks?.[name] === true);
 }

@@ -50,9 +50,9 @@ class BuyerRunAuditTest(unittest.TestCase):
         database = sqlite3.connect(self.simulation / "twitter_simulation.db")
         database.executescript(
             "CREATE TABLE user(user_id INTEGER, agent_id INTEGER);"
-            "CREATE TABLE post(post_id INTEGER, user_id INTEGER, content TEXT, created_at INTEGER);"
+            "CREATE TABLE post(post_id INTEGER, user_id INTEGER, content TEXT, created_at INTEGER, quote_content TEXT, original_post_id INTEGER);"
             "INSERT INTO user VALUES (1,0),(2,1);"
-            "INSERT INTO post VALUES (1,1,'P00001 evaluates this tool',0),(2,2,'A skeptical response',1);"
+            "INSERT INTO post(post_id,user_id,content,created_at) VALUES (1,1,'P00001 evaluates this tool',0),(2,2,'A skeptical response',1);"
         )
         database.commit()
         database.close()
@@ -90,7 +90,74 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.assertEqual(result["completionEvents"], 1)
         self.assertTrue(result["checks"]["profileWorkflowCoverage"])
         self.assertTrue(result["checks"]["buyerContentReview"])
+        self.assertTrue(result["checks"]["dynamicPostNovelty"])
+        self.assertTrue(result["checks"]["dynamicPostPersonaIdentity"])
         self.assertEqual(result["reviewedDynamicPosts"], 1)
+
+    def test_copied_or_wrong_persona_dynamic_post_fails_without_content_review(self):
+        database = sqlite3.connect(self.simulation / "twitter_simulation.db")
+        database.execute("UPDATE post SET content = 'P00001 evaluates this tool' WHERE post_id = 2")
+        database.commit()
+        database.close()
+        copied = AUDITOR.audit(self.simulation, self.cohort)
+        self.assertFalse(copied["checks"]["dynamicPostNovelty"])
+        self.assertFalse(copied["checks"]["dynamicPostPersonaIdentity"])
+        self.assertEqual(copied["duplicateDynamicPostIds"], [2])
+        self.assertEqual(copied["dynamicIdentityErrors"][0]["assignedPersona"], "P00002")
+        self.assertFalse(copied["technicalEvidencePassed"])
+
+        database = sqlite3.connect(self.simulation / "twitter_simulation.db")
+        database.execute("UPDATE post SET content = 'P00001 asks a different question' WHERE post_id = 2")
+        database.commit()
+        database.close()
+        wrong_persona = AUDITOR.audit(self.simulation, self.cohort)
+        self.assertTrue(wrong_persona["checks"]["dynamicPostNovelty"])
+        self.assertFalse(wrong_persona["checks"]["dynamicPostPersonaIdentity"])
+
+    def test_quote_review_uses_generated_commentary_not_copied_source(self):
+        database = sqlite3.connect(self.simulation / "twitter_simulation.db")
+        database.execute(
+            "UPDATE post SET content = 'P00001 evaluates this tool', quote_content = 'A skeptical response', original_post_id = 1 WHERE post_id = 2"
+        )
+        database.commit()
+        database.close()
+        actions = self.simulation / "twitter" / "actions.jsonl"
+        actions.write_text(actions.read_text(encoding="utf-8").replace(
+            '"post_id":2,"agent_id":1,"action_args":{"content":"A skeptical response"}',
+            '"post_id":2,"agent_id":1,"action_args":{"content":"P00001 evaluates this tool"}',
+        ), encoding="utf-8")
+        review_path = self.simulation / "buyer_review.json"
+        review = json.loads(review_path.read_text(encoding="utf-8"))
+        review["posts"][0]["quotedPostId"] = 1
+        review["posts"][0]["quotedContentSha256"] = hashlib.sha256(b"P00001 evaluates this tool").hexdigest()
+        self._write("buyer_review.json", review)
+        result = AUDITOR.audit(self.simulation, self.cohort)
+        self.assertTrue(result["pilotEvidencePassed"])
+        self.assertEqual(result["duplicateDynamicPostIds"], [])
+
+        review["posts"][0]["quotedContentSha256"] = "0" * 64
+        self._write("buyer_review.json", review)
+        self.assertFalse(AUDITOR.audit(self.simulation, self.cohort)["checks"]["buyerContentReview"])
+
+    def test_partial_content_review_counts_only_approved_posts(self):
+        posts = [
+            AUDITOR.Post(2, 1, "First response", 1, None, None),
+            AUDITOR.Post(3, 1, "Second response", 1, None, None),
+        ]
+        self._write("buyer_review.json", {
+            "schemaVersion": 1, "simulationId": "sim_test", "reviewer": "pilot-reviewer",
+            "reviewedAt": "2026-10-10T14:39:17Z",
+            "posts": [
+                {
+                    "postId": post.post_id, "agentId": post.agent_id, "content": post.content,
+                    "contentSha256": hashlib.sha256(post.content.encode()).hexdigest(),
+                    "scenarioRelevant": True, "roleFaithful": index == 0,
+                    "scopeSafe": True, "actionable": True,
+                }
+                for index, post in enumerate(posts)
+            ],
+        })
+        self.assertEqual(AUDITOR.review_covers_dynamic_posts(self.simulation, posts), (False, 1))
 
     def test_unrestricted_review_or_unscheduled_activity_does_not_pass(self):
         path = self.simulation / "buyer_review.json"
@@ -177,7 +244,7 @@ class BuyerRunAuditTest(unittest.TestCase):
 
     def test_unmapped_post_agent_fails_without_crashing(self):
         database = sqlite3.connect(self.simulation / "twitter_simulation.db")
-        database.executescript("INSERT INTO user VALUES (3,99); INSERT INTO post VALUES (3,3,'Other post',1);")
+        database.executescript("INSERT INTO user VALUES (3,99); INSERT INTO post(post_id,user_id,content,created_at) VALUES (3,3,'Other post',1);")
         database.commit()
         database.close()
         result = AUDITOR.audit(self.simulation, self.cohort)

@@ -53,6 +53,7 @@ def review_profiles(rows: list[dict], cohort: dict, frame: list[dict], product_b
             f'Monthly budget: {buyer["monthlyBudget"]}. Privacy posture: {buyer["privacy"]}. '
             f'First workflow to assess: {workflow}. Evaluate AgentOS for this workflow specifically; '
             "ask for evidence and reject it when privacy, setup effort, cost, or controls are inadequate. "
+            "Treat the budget band as the only budget fact: do not invent a more precise amount or assume the published fees fit unless the band proves it. "
             "Do not invent age, gender, nationality, clinical outcomes, or regulated advice."
             f"\n\nAgentOS evaluation context:\n{product_brief.strip()}\n\n"
             "When participating, evaluate AgentOS against your own first workflow and constraints. "

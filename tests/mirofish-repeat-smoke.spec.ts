@@ -23,7 +23,10 @@ test("repeat smoke preserves the ten-buyer frame but activates only two in one r
     const assigned = next.agent_configs[post.poster_agent_id].entity_name;
     expect(post.content).toContain(assigned);
     expect(post.content.match(/P\d{5}/g)).toEqual([assigned]);
+    expect(post.content).toContain("$2,500 setup");
+    expect(post.content).toContain("$1,250/month");
   }
+  expect(next.event_config.initial_posts[0].content).toContain("cannot buy this offer");
   expect(next.wait_for_commands).toBe(false);
 });
 
@@ -41,7 +44,7 @@ test("repeat smoke accepts only a reviewed profile file bound to the original co
   const brief = "current product evidence";
   const manifest = {
     schemaVersion: 2, preparation: "canonical-buyer-scenarios-v2", file: "profiles.csv",
-    sourceSha256: "6ef07dc0fec27cc15f30dc5afe71ad1a6b855c6fd6e6f9e90ef2075f7d0e704c",
+    sourceSha256: "e47a927cb0b8e83cc16993388a8ab223ac35099ef8c31bb0e41ea916b113db0d",
     reviewedSha256: sha256(reviewed), cohortSha256: sha256(cohort), productBriefSha256: sha256(brief), profileCount: 10, providerCalls: 0,
   };
   const check = (candidate = manifest, profiles = reviewed, product = brief) => validReviewedProfileManifest(candidate, Buffer.from(profiles), Buffer.from(cohort), Buffer.from(product));
