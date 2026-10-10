@@ -412,3 +412,33 @@ existing per-record Memory delete and refresh path, not an atomic batch removal,
 a hosted two-member deletion, or deletion of the separately uploaded JSON object
 and its backups. Those still need hosted evidence before the source-to-graph
 removal gate can be accepted.
+
+**Current release and buyer-pilot checkpoint, October 10:** AgentOS branch
+`wip/backup-2026-10-03` is clean and tracks `origin` at commit
+`aa01d4bab24d1eaa75902b47b68e1378e15ab955`, which includes the Notebook Studio
+source-grounded draft workflow. The current `npm run verify:production-readiness`
+result is `releaseReady: false`; it fails because no release-ledger bucket is
+configured and leaves customer-journey, buyer-pilot, local evaluation, hosted
+migration receipts, Cloud Run/Vercel/Supabase identities, UI parity, operational
+and legal approvals, rollback, and multiple other gates unevaluated. Local code
+and test success must not be represented as production approval. No cloud
+migration, hosted setting change, or deployment was performed for this
+checkpoint.
+
+The separate MiroFish buyer-pilot checkout is clean on local branch
+`buyer-pilot-telemetry`. The fresh reviewed candidate
+`sim_b0958acead3f` is present with its pinned configuration, profile, and
+preparation files; its hashes are recorded in the pilot notes/tests. This is a
+prepared candidate, not a completed simulation or buyer validation. The earlier
+tokenizer-bootstrap failure remains archived and was not overwritten. Do not
+start a new provider-backed run until the pilot's current $0 spend constraint
+and run approval are explicitly confirmed; no provider request was made at this
+checkpoint.
+
+The Skool scope remains limited to content supplied through a platform-permitted
+export and rights sufficient for the intended product use. Prior owner/member
+authorization documents do not by themselves establish a platform scraping
+exception or commercial redistribution rights. No authenticated cookie-based
+scrape or full-course import was performed. Resume with a permitted export,
+then verify source coverage and tenant-scoped import/deletion in the hosted
+environment before claiming completion.
