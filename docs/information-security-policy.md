@@ -81,10 +81,14 @@ platform's behalf.
   vendor/backup deletion procedures still need review. The checked-in
   `supabase-client-runtime-record-retention.sql` adds a service-role-only,
   bounded 45-day runtime-record purge with graph cleanup and audit counts.
-  After that migration is deployed, `client-lifecycle --mode retention`
-  previews runtime records and expired learning items; adding both `--apply`
-  and `--confirm-retention-records` purges both scopes. This is not scheduled
-  or deployed yet. Tenant storage lifecycle and offboarding do not prove a
+  After that migration and `supabase-v48-ecc-learning-retention-references.sql`
+  are deployed and verified, `client-lifecycle --mode retention` previews
+  runtime records and learning items due at least 45 days after creation.
+  Apply requires `--apply --confirm-retention-records --confirm-retention-learning`;
+  the CLI checks the hosted learning-reference guard before any purge. This is
+  not scheduled or deployed yet. The two deletion calls are not one database
+  transaction: review each result and rerun bounded batches after a partial
+  failure. Tenant storage lifecycle and offboarding do not prove a
   45-day purge of all database rows, private exports, backups, and vendor
   copies. The read-only
   `scripts/audit-client-retention-snapshot.mjs` inventories age from a private

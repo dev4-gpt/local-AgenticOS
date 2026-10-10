@@ -213,12 +213,6 @@ if (mode === "retention") {
   if (!referenceCheck.ok || await referenceCheck.json().catch(() => false) !== true) {
     fail("Learning retention reference guard is not applied; refusing record purge");
   }
-  const recordResponse = await supabaseRequest("rpc/purge_expired_client_runtime_records", {
-    method: "POST",
-    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 500 }),
-  });
-  if (!recordResponse.ok) fail(`Client record retention failed (${recordResponse.status}); verify the retention migration and tenant's 45-day configuration`);
-  const records = await recordResponse.json();
   const now = new Date();
   const cutoff = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000);
   const filter = new URLSearchParams({ tenant_slug: `eq.${slug}`, created_at: `lte.${cutoff.toISOString()}`, retention_expires_at: `lte.${now.toISOString()}` });
@@ -231,6 +225,12 @@ if (mode === "retention") {
     || ids.some((id) => typeof id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) {
     fail("Learning retention selection returned invalid IDs");
   }
+  const recordResponse = await supabaseRequest("rpc/purge_expired_client_runtime_records", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 500 }),
+  });
+  if (!recordResponse.ok) fail(`Client record retention failed (${recordResponse.status}); verify the retention migration and tenant's 45-day configuration`);
+  const records = await recordResponse.json();
   if (apply && ids.length) {
     const deletion = new URLSearchParams(filter);
     deletion.set("id", `in.(${ids.join(",")})`);

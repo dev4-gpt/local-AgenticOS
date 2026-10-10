@@ -204,6 +204,7 @@ test("operator retention requires confirmation and stops when the record RPC fai
   const invalidIds = run(["--apply", "--confirm-retention-records", "--confirm-retention-learning"], { RETENTION_MOCK_BAD_IDS: "1" });
   expect(invalidIds.status).toBe(1);
   expect(invalidIds.stderr).toContain("Learning retention selection returned invalid IDs");
+  expect(invalidIds.stdout).not.toContain("MOCK_RECORD_RETENTION");
   expect(invalidIds.stdout).not.toContain("MOCK_LEARNING_RETENTION_DELETE");
 
   const mismatchedDelete = run(["--apply", "--confirm-retention-records", "--confirm-retention-learning"], { RETENTION_MOCK_DELETE_MISMATCH: "1" });
