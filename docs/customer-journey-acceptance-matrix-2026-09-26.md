@@ -229,3 +229,18 @@ but no verifier cookie exists. This proves the unauthenticated login boundary
 only; it does not establish a signed-in session, source/revision identity from
 the running process, same-user local/cloud data parity, or a completed customer
 journey. No tenant data was read or written, and no provider call occurred.
+
+**Live Internal Beta release-config recheck, 2026-10-10:** A read-only Cloud
+Run inventory in `agentos-mvp` / `europe-west1`, evaluated with the current
+`verify-client-runtime-config.mjs` policy, confirms
+`agentos-internal-beta-00034-v69` still receives 100% traffic with image
+`sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`.
+The verifier fails exactly on `retention_days_not_45` (live value `1`),
+`required_api_route_missing:/api/client-runtime/source-import`, and
+`required_api_route_missing:/api/client-runtime/build-identity`. The live
+provider-call flag remains `0`. The sanitized snapshot omitted environment
+values except the named non-secret policy fields; secret values were not
+queried or emitted. No deployment, migration, tenant write, traffic change, or
+provider request occurred. Internal Beta is not a valid candidate for the
+current local source or the approved 45-day customer-data policy; the
+production gate remains open.
