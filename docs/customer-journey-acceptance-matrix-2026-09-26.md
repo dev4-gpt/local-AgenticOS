@@ -218,3 +218,14 @@ an old commit. The focused local-launcher and build-identity tests pass 7/7.
 The already-running port-3941 process was not restarted, so it still reports
 the pre-fix null identity. No authenticated client configuration was loaded
 into a new server, and no tenant write, provider call, or deployment occurred.
+
+**Local unauthenticated-route recheck, 2026-10-10:** With checkout at
+`758096c14750b53e4c3386da7dc1b3c5855c1752`, read-only requests to the live
+client runtime at `127.0.0.1:3941` returned HTTP 200 for `/login`, redirected
+`/memory` to `/login?next=%2Fmemory`, and returned HTTP 401 for
+`/api/client-runtime/build-identity`. The client launcher config-only check
+passes with the private internal-beta env file and provider calls disabled,
+but no verifier cookie exists. This proves the unauthenticated login boundary
+only; it does not establish a signed-in session, source/revision identity from
+the running process, same-user local/cloud data parity, or a completed customer
+journey. No tenant data was read or written, and no provider call occurred.
