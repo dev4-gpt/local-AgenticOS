@@ -14,6 +14,10 @@ test("buyer scenario uses the published base price and keeps low-budget nonbuyer
     expect(publicPricing).toContain(price);
     expect(base).toContain(price);
   }
+  expect(publicPricing).toContain("Illustrative first month");
+  expect(publicPricing).toContain("$3,750");
+  expect(publicPricing).toContain("provider usage");
+  expect(publicPricing).toContain("separate prepaid wallet");
   expect(base).toContain("provider usage billed separately");
   expect(base).toContain("should normally reject or defer");
   expect(base).not.toContain("Public pricing and scope are not guaranteed by this seed");

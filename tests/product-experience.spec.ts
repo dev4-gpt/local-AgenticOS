@@ -84,7 +84,9 @@ test("product experience exposes the public catalog and credits policy", async (
   await expect(page.getByText(/OpenSEO/i)).toBeVisible();
 
   await page.goto("/credits", { waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { name: /platform fees, scope, and provider credits/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /platform fees and provider usage/i })).toBeVisible();
+  await expect(page.getByText("$3,750", { exact: true })).toBeVisible();
+  await expect(page.getByText(/excludes taxes, provider usage, and any approved scope-based quote/i)).toBeVisible();
   await expect(page.getByText(/With BYOK, you pay the provider directly/i)).toBeVisible();
 });
 
