@@ -413,8 +413,8 @@ a hosted two-member deletion, or deletion of the separately uploaded JSON object
 and its backups. Those still need hosted evidence before the source-to-graph
 removal gate can be accepted.
 
-**Current release and buyer-pilot checkpoint, October 10:** AgentOS branch
-`wip/backup-2026-10-03` is clean and tracks `origin` at commit
+**Current release and buyer-pilot checkpoint, October 10:** At verification,
+AgentOS branch `wip/backup-2026-10-03` contained feature commit
 `aa01d4bab24d1eaa75902b47b68e1378e15ab955`, which includes the Notebook Studio
 source-grounded draft workflow. The current `npm run verify:production-readiness`
 result is `releaseReady: false`; it fails because no release-ledger bucket is
@@ -428,7 +428,10 @@ checkpoint.
 The separate MiroFish buyer-pilot checkout is clean on local branch
 `buyer-pilot-telemetry`. The fresh reviewed candidate
 `sim_b0958acead3f` is present with its pinned configuration, profile, and
-preparation files; its hashes are recorded in the pilot notes/tests. This is a
+preparation files. Their verified SHA-256 values are `2b2207bcf0f8929610441c335224475d2c4706dbde334dcd1696d71eb1cf7618`
+(configuration), `83a0d906dbcf522e00dcb5082cdd6c97340f829dafd63b332c14adf4de7b2911`
+(profiles), and `1aa577d397432cd75e4ecc5dbc1de1b84745fd319fb5c86fe7a95c1755f3fe26`
+(preparation). The provider-free runner test suite passes 8/8. This is a
 prepared candidate, not a completed simulation or buyer validation. The earlier
 tokenizer-bootstrap failure remains archived and was not overwritten. Do not
 start a new provider-backed run until the pilot's current $0 spend constraint
