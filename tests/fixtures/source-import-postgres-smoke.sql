@@ -15,7 +15,8 @@ $$;
 
 create table public.client_tenants (slug text primary key, status text not null, worker_token_hash text not null);
 create table public.client_memberships (tenant_slug text, user_id uuid, status text);
-create function public.client_member(p_tenant_slug text) returns boolean language sql stable as $$
+create function public.client_member(p_tenant_slug text) returns boolean
+language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from public.client_memberships
     where tenant_slug = p_tenant_slug and user_id = auth.uid() and status = 'active'
@@ -32,6 +33,13 @@ create table public.client_runtime_records (
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
+alter table public.client_runtime_records enable row level security;
+create policy client_runtime_records_member_select on public.client_runtime_records
+  for select to authenticated using (public.client_member(tenant_slug));
+create policy client_runtime_records_owner_delete on public.client_runtime_records
+  for delete to authenticated
+  using (public.client_member(tenant_slug) and created_by = auth.uid());
+grant select, delete on public.client_runtime_records to authenticated;
 create table public.client_runtime_artifacts (
   id uuid primary key,
   tenant_slug text not null,
@@ -183,6 +191,57 @@ begin
   if (select count(*) from public.client_runtime_records) <> 1
      or (select count(*) from public.client_runtime_audit_events) <> 1 then
     raise exception 'denied_import_changed_data';
+  end if;
+end
+$$;
+
+insert into public.client_runtime_records (tenant_slug, created_by, kind, title, content, metadata)
+values ('tenant-b', '00000000-0000-4000-8000-000000000005', 'memory', 'Other tenant', 'Retained note',
+  jsonb_build_object('source_url', 'https://example.org/other-tenant'));
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000005', false);
+set role authenticated;
+select public.refresh_client_runtime_memory_graph('tenant-b');
+reset role;
+
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000003', false);
+set role authenticated;
+do $$
+declare v_deleted integer;
+begin
+  delete from public.client_runtime_records
+  where tenant_slug = 'tenant-a' and kind = 'memory' and created_by = auth.uid()
+    and metadata ->> 'source_import_key' = repeat('b', 64);
+  get diagnostics v_deleted = row_count;
+  if v_deleted <> 0 then raise exception 'other_member_removed_source'; end if;
+end
+$$;
+reset role;
+
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false);
+set role authenticated;
+do $$
+declare v_deleted integer;
+begin
+  delete from public.client_runtime_records
+  where tenant_slug = 'tenant-a' and kind = 'memory' and created_by = auth.uid()
+    and metadata ->> 'source_import_key' = repeat('b', 64);
+  get diagnostics v_deleted = row_count;
+  if v_deleted <> 1 then raise exception 'owner_source_removal_failed'; end if;
+  if not public.refresh_client_runtime_memory_graph('tenant-a') then
+    raise exception 'source_removal_graph_refresh_failed';
+  end if;
+end
+$$;
+reset role;
+
+do $$
+begin
+  if exists (select 1 from public.client_runtime_records where tenant_slug = 'tenant-a')
+     or exists (select 1 from public.client_runtime_memory_graph_nodes where tenant_slug = 'tenant-a')
+     or exists (select 1 from public.client_runtime_memory_graph_edges where tenant_slug = 'tenant-a')
+     or (select count(*) from public.client_runtime_records where tenant_slug = 'tenant-b') <> 1
+     or (select count(*) from public.client_runtime_memory_graph_nodes where tenant_slug = 'tenant-b') <> 2 then
+    raise exception 'source_removal_graph_or_tenant_boundary_failed';
   end if;
 end
 $$;

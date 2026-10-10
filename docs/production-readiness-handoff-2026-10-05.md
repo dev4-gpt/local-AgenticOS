@@ -400,3 +400,15 @@ local parsing and migration compatibility, not a complete Skool course export,
 a hosted guarded RPC, a two-member import, or graph deletion. The shared
 production Supabase project remains unchanged pending approval that covers all
 affected tenants.
+
+**Source-removal disposable check, October 10:** The source-import PostgreSQL
+smoke now uses the records migration's authenticated owner-delete RLS policy
+and security-definer membership shape. After importing one source with a source
+URL and outbound link, a different member's owner-scoped delete matched zero
+rows. The owner's delete matched one; graph refresh removed all document, URL,
+and edge rows for that tenant while another tenant's record and graph remained.
+The PostgreSQL smoke and two source-guard evidence tests pass. This models the
+existing per-record Memory delete and refresh path, not an atomic batch removal,
+a hosted two-member deletion, or deletion of the separately uploaded JSON object
+and its backups. Those still need hosted evidence before the source-to-graph
+removal gate can be accepted.
