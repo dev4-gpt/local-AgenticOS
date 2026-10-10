@@ -314,8 +314,11 @@ that tenant A's token is rejected for an authorized tenant B member, then
 accepts tenant B's token. The disposable PostgreSQL 17 smoke also rejects
 tenant A's token for tenant B without changing data; both checks passed.
 The signed-in Chrome internal-beta Memory page still showed two records and
-a 114-node/113-edge graph. No local signed-in page was available in the
-visible Chrome windows during this check, so this is not a new parity receipt.
+a 114-node/113-edge graph. The configured local client was restarted on
+port 3940 with provider calls disabled, and the owner signed in there. Its
+Memory page showed the same counts plus the `Community sources` control;
+the deployed internal beta lacked that control. This is a fresh read-only
+parity observation, not a complete customer journey or source-import receipt.
 Read-only `gcloud run services list --project agentos-mvp` returned
 `run.services.list` permission denied for the active Google account; the
 hosted revision and its configuration remain unverified. The release verifier
