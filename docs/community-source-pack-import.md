@@ -2,6 +2,8 @@
 
 This is an authenticated tenant-memory import for a **user-provided, authorized JSON export**. It is not a Skool crawler and does not bypass a platform login, access control, or collection policy. Obtain the material by a method the community and platform permit before using it here. Do not include member profiles, private messages, credentials, or content outside the approved scope.
 
+The former Firecrawl helper is intentionally retired as a refusal-only command. It never reads `FIRECRAWL_API_KEY` or session cookies and makes no network request. Use a platform-approved owner export with the JSON or Markdown preparation commands below.
+
 ## Format
 
 The file uses the `ClassroomRun` shape already written by AgentOS local research, or a compatible JSON object:
