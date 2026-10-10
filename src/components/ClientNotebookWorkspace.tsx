@@ -13,7 +13,6 @@ import { BookOpen, Download, FileText, FolderOpen, LoaderCircle, Send, Sparkles,
 import {
   NOTEBOOK_STUDIO_OUTPUTS,
   notebookChatPrompt,
-  notebookStudioGoal,
   notebookStudioOutput,
   type NotebookSource,
   type NotebookStudioOutput,
@@ -21,12 +20,12 @@ import {
 
 type Tab = "research" | "chat" | "studio" | "assets";
 type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
-type Execution = { id: string; status: string; title: string | null; artifactId: string | null; errorCode: string | null; createdAt: string | null };
+type Execution = { id: string; status: string; title: string | null; artifactId: string | null; errorCode: string | null; createdAt: string | null; sourceReferences?: Array<{ id: string; title: string; sourceUrl: string | null; links: Array<{ url: string; text: string }> }> };
 type Artifact = { id: string; original_name: string | null; content_type: string | null; byte_size: number | null; status: string | null; created_at: string | null };
 
 const FIELD = { color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" } as const;
 
-export default function ClientNotebookWorkspace({ tab, sources, notebookId, onImported }: { tab: Tab; sources: NotebookSource[]; notebookId: string | null; onImported: () => void | Promise<void> }) {
+export default function ClientNotebookWorkspace({ tab, sources, notebookId, notebookScope, onImported }: { tab: Tab; sources: NotebookSource[]; notebookId: string | null; notebookScope: string; onImported: () => void | Promise<void> }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [error, setError] = useState("");
 
@@ -34,14 +33,14 @@ export default function ClientNotebookWorkspace({ tab, sources, notebookId, onIm
   useEffect(() => { setSelectedIds((current) => current.filter((id) => sources.some((source) => source.id === id))); }, [sources]);
 
   function toggle(id: string) {
-    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : current.length < 5 ? [...current, id] : current);
   }
 
   return <div className="space-y-4">
     {error && <p className="panel p-3 text-[11px]" style={{ color: "#fda4af" }}>{error}</p>}
     {tab === "research" && <ResearchLane notebookId={notebookId} onError={setError} onImported={onImported} />}
     {tab === "chat" && <ChatLane sources={sources} selected={selected} selectedIds={selectedIds} onToggle={toggle} onError={setError} />}
-    {tab === "studio" && <StudioLane sources={sources} selected={selected} selectedIds={selectedIds} onToggle={toggle} onError={setError} />}
+    {tab === "studio" && <StudioLane sources={sources} selected={selected} selectedIds={selectedIds} notebookScope={notebookScope} onToggle={toggle} onError={setError} />}
     {tab === "assets" && <AssetsLane onError={setError} />}
   </div>;
 }
@@ -175,7 +174,7 @@ function ChatLane({ sources, selected, selectedIds, onToggle, onError }: { sourc
 }
 
 /** Studio: the workspace-execution lane, producing a tenant artifact. */
-function StudioLane({ sources, selected, selectedIds, onToggle, onError }: { sources: NotebookSource[]; selected: NotebookSource[]; selectedIds: string[]; onToggle: (id: string) => void; onError: (value: string) => void }) {
+function StudioLane({ sources, selected, selectedIds, notebookScope, onToggle, onError }: { sources: NotebookSource[]; selected: NotebookSource[]; selectedIds: string[]; notebookScope: string; onToggle: (id: string) => void; onError: (value: string) => void }) {
   const [output, setOutput] = useState<NotebookStudioOutput>("outline");
   const [instruction, setInstruction] = useState("");
   const [executions, setExecutions] = useState<Execution[]>([]);
@@ -204,7 +203,10 @@ function StudioLane({ sources, selected, selectedIds, onToggle, onError }: { sou
       body: JSON.stringify({
         surface: "notebook",
         title: `${preset.label} · ${selected.length} source${selected.length === 1 ? "" : "s"}`,
-        goal: notebookStudioGoal({ output, instruction, sources: selected }),
+        notebookOutput: output,
+        instruction,
+        sourceIds: selected.map((source) => source.id),
+        notebookScope,
         artifactIntent: "brief",
       }),
     }).catch(() => null);
@@ -239,11 +241,19 @@ function StudioLane({ sources, selected, selectedIds, onToggle, onError }: { sou
         {busy ? <LoaderCircle size={13} className="animate-spin" /> : <FileText size={13} />}Build the document
       </button>
       {selected.length === 0 && <p className="mt-2 text-[10px]" style={{ color: "var(--cream-mute)" }}>Select at least one source above.</p>}
+      {selected.length > 0 && <p className="mt-2 text-[10px]" style={{ color: "var(--cream-mute)" }}>Drafts are grounded in tenant-verified sources and keep a source register.</p>}
       <div className="mt-4 space-y-2">
         {executions.map((execution) => <div key={execution.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3" style={{ borderColor: "var(--line-soft)" }}>
           <div className="min-w-0">
             <p className="truncate text-[12px]" style={{ color: "var(--cream)" }}>{execution.title || "Notebook document"}</p>
             <p className="text-[10px]" style={{ color: "var(--cream-mute)" }}>{execution.status}{execution.errorCode ? ` · ${execution.errorCode}` : ""}{execution.createdAt ? ` · ${new Date(execution.createdAt).toLocaleString()}` : ""}</p>
+            {!!execution.sourceReferences?.length && <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px]" aria-label="Draft sources">
+              {execution.sourceReferences.map((source) => <span key={source.id} className="inline-flex flex-wrap items-center gap-2" style={{ color: "var(--cream-mute)" }}>
+                <span>{source.title}</span>
+                {source.sourceUrl && <a href={source.sourceUrl} target="_blank" rel="noreferrer" className="underline" style={{ color: "#60a5fa" }}>Source</a>}
+                {source.links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="underline" style={{ color: "#60a5fa" }}>{link.text || "Resource"}</a>)}
+              </span>)}
+            </div>}
           </div>
           {execution.artifactId && <button type="button" onClick={() => void download(execution.artifactId!)}
             className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[10px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Download size={12} />Download</button>}
@@ -299,7 +309,7 @@ function SourcePicker({ sources, selectedIds, onToggle, hint }: { sources: Noteb
       <h3 className="text-[12px] font-semibold" style={{ color: "var(--cream)" }}>Sources</h3>
       <span className="text-[10px]" style={{ color: "var(--cream-mute)" }}>{selectedIds.length} of {sources.length} selected</span>
     </div>
-    <p className="mt-1 text-[10px]" style={{ color: "var(--cream-mute)" }}>{hint}</p>
+      <p className="mt-1 text-[10px]" style={{ color: "var(--cream-mute)" }}>{hint} Select up to 5 sources.</p>
     {sources.length === 0
       ? <p className="mt-3 text-[11px]" style={{ color: "var(--cream-mute)" }}>No notebook sources yet. Add one in the library or research tab.</p>
       : <div className="mt-3 flex flex-wrap gap-2">{sources.map((source) => {

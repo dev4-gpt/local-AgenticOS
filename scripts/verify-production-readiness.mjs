@@ -74,6 +74,7 @@ const requiredFiles = [
   "product-experience/supabase-client-notebook-source-retention.sql",
   "product-experience/supabase-client-runtime-artifact-owner-guard.sql",
   "product-experience/supabase-client-notebook-source-reference-guard.sql",
+  "product-experience/supabase-client-notebook-execution-sources.sql",
   "src/app/api/client-runtime/source-import/route.ts",
   "src/app/api/client-runtime/build-identity/route.ts",
   "scripts/build-client-image.mjs",
@@ -122,6 +123,7 @@ const sourceChecks = [
   ["member notebook-source retention guard", "product-experience/supabase-client-notebook-source-retention.sql", "guard_client_notebook_source_retention"],
   ["tenant artifact owner guard", "product-experience/supabase-client-runtime-artifact-owner-guard.sql", "created_by = auth.uid()"],
   ["tenant notebook reference guard", "product-experience/supabase-client-notebook-source-reference-guard.sql", "client_notebook_source_reference_allowed"],
+  ["tenant notebook execution source guard", "product-experience/supabase-client-notebook-execution-sources.sql", "load_client_notebook_execution_sources_worker"],
   ["reviewed source import API", "src/app/api/client-runtime/source-import/route.ts", "permissionConfirmed"],
   ["authenticated client build identity", "src/app/api/client-runtime/build-identity/route.ts", "currentClientMember"],
   ["clean client image build", "scripts/build-client-image.mjs", "status"],
@@ -180,6 +182,7 @@ const requiredMigrations = [
   { file: "product-experience/supabase-client-notebook-source-retention.sql", gate: "notebook_source_retention_migration_attached" },
   { file: "product-experience/supabase-client-runtime-artifact-owner-guard.sql", gate: "artifact_owner_guard_migration_attached" },
   { file: "product-experience/supabase-client-notebook-source-reference-guard.sql", gate: "notebook_reference_guard_migration_attached" },
+  { file: "product-experience/supabase-client-notebook-execution-sources.sql", gate: "notebook_execution_sources_migration_attached" },
 ];
 const deploymentIdentityKeys = ["vercelDeployment", "cloudRunRevision", "imageDigest", "supabaseProjectRef"];
 const releaseOutcomeKeys = ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "sourceImportResult", "uiParityResult", "buyerSimulationResult", "aiEngineeringResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"];

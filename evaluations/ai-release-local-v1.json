@@ -90,6 +90,30 @@
       "spec": "ai-release-environment.spec.ts",
       "title": "offline AI evaluation child process receives no inherited credential variables",
       "evidenceScope": "local subprocess environment policy test"
+    },
+    {
+      "id": "notebook-source-provenance",
+      "behavior": "Notebook draft prompts are reconstructed from verified source text and its queued content hash",
+      "failureLabel": "notebook_source_provenance_regression",
+      "spec": "client-notebook-execution-provenance.spec.ts",
+      "title": "worker-side prompt reconstruction verifies source hashes and cites only queued source IDs",
+      "evidenceScope": "local prompt reconstruction unit test"
+    },
+    {
+      "id": "notebook-source-retention",
+      "behavior": "Notebook workers cannot load expired, inactive, unclaimed, or cross-scope source text",
+      "failureLabel": "notebook_source_retention_regression",
+      "spec": "notebook-execution-source-worker.spec.ts",
+      "title": "worker source RPC returns only active, unexpired sources for a running tenant job",
+      "evidenceScope": "embedded PostgreSQL RPC test"
+    },
+    {
+      "id": "notebook-citation-audit",
+      "behavior": "A notebook draft cannot complete without citations from its verified source manifest and a source register",
+      "failureLabel": "notebook_citation_audit_regression",
+      "spec": "client-notebook-execution-provenance.spec.ts",
+      "title": "draft citation audit requires a valid source token and a source register",
+      "evidenceScope": "local citation contract unit test"
     }
   ]
 }

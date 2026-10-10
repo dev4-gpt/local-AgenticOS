@@ -13,6 +13,7 @@ import { logClientRuntimeEvent } from "@/lib/clientRuntimeObservability";
 import { clientJobTraceSnapshot, traceClientJobStage, withClientJobTrace } from "@/lib/clientJobTrace";
 import { runClientWorkflowRunner } from "@/lib/clientWorkflowRunner";
 import { artifactFromWorkspaceOutput, isClientWorkspaceSurface, isWorkspaceArtifactIntent, workspacePrompt, workspaceTerminalEvents } from "@/lib/clientWorkspaceExecution";
+import { auditNotebookDraftCitations, buildNotebookExecutionGoal } from "@/lib/clientNotebookExecutionProvenance";
 import { paperclipRunSummary } from "@/lib/clientPaperclipAdapter";
 import { parseRoomDirectives, roomActionSummary, roomPersona, roomPrompt } from "@/lib/clientRoomAdapter";
 import { parsePipelineShape, pipelineStageAfterShaping } from "@/lib/clientPipelineAdapter";
@@ -253,7 +254,23 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
   const input = job.input_metadata ?? {};
   const surface = typeof input.surface === "string" ? input.surface.trim().toLowerCase() : "";
   const title = typeof input.title === "string" ? input.title.trim().slice(0, 240) : "";
-  const goal = typeof input.goal === "string" ? input.goal.trim().slice(0, 10_000) : "";
+  let goal = typeof input.goal === "string" ? input.goal.trim().slice(0, 10_000) : "";
+  if (surface === "notebook") {
+    const ids = Array.isArray(input.sourceIds) ? input.sourceIds : [];
+    const references = Array.isArray(input.sourceReferences) ? input.sourceReferences : [];
+    const output = typeof input.notebookOutput === "string" ? input.notebookOutput : "";
+    const instruction = typeof input.instruction === "string" ? input.instruction : "";
+    const loaded = await workerRpc("load_client_notebook_execution_sources_worker", { p_tenant_slug: tenantSlug, p_job_id: jobId, p_worker_token: workerToken });
+    const value = loaded.value as { sources?: unknown } | null;
+    const built = loaded.ok && value && Array.isArray(value.sources)
+      ? buildNotebookExecutionGoal({ output, instruction, sourceIds: ids, sourceReferences: references, records: value.sources })
+      : { ok: false as const, error: "notebook_source_unavailable" as const };
+    if (!built.ok) {
+      await completeJob(tenantSlug, jobId, workerToken, "failed", { terminalEvents: workspaceTerminalEvents(surface, "failed", "A selected source is unavailable or changed after the draft was queued.") }, built.error);
+      return NextResponse.json({ ok: true, status: "failed" });
+    }
+    goal = built.goal;
+  }
   // Anything unrecognised falls back to preview, as before.
   const artifactIntent = typeof input.artifactIntent === "string" && isWorkspaceArtifactIntent(input.artifactIntent) ? input.artifactIntent : "preview";
   // A Paperclip agent run is still a workspace execution, but it carries its own
@@ -290,6 +307,15 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const safeOutput = safeClientProviderOutput(result.output);
+  if (surface === "notebook") {
+    const citationAudit = auditNotebookDraftCitations(safeOutput, Array.isArray(input.sourceReferences) ? input.sourceReferences : []);
+    if (!citationAudit.ok) {
+      const actualAmountMicros = result.usage ? clientTextUsageCostMicros(model, result.usage) ?? estimate : estimate;
+      if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros, usageMetadata: result.usage ?? { estimatedCostMicros: estimate, usageFallback: 1 } }, { citationAudit: { ok: false, reason: citationAudit.reason } }))) return NextResponse.json({ ok: true, status: "failed" });
+      await completeJob(tenantSlug, jobId, workerToken, "failed", { citationAudit: { ok: false, reason: citationAudit.reason }, terminalEvents: workspaceTerminalEvents(surface, "failed", "The generated draft did not satisfy its verified citation contract.") }, `notebook_${citationAudit.reason}`);
+      return NextResponse.json({ ok: true, status: "failed" });
+    }
+  }
   const finishReason = typeof result.finishReason === "string" ? result.finishReason : null;
   const artifact = artifactFromWorkspaceOutput({ surface, title, artifactIntent, output: safeOutput, finishReason });
   if (!artifact) {
@@ -319,6 +345,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
     model: result.model,
     artifactId,
     artifactIntent,
+    ...(surface === "notebook" ? { citationAudit: auditNotebookDraftCitations(safeOutput, Array.isArray(input.sourceReferences) ? input.sourceReferences : []) } : {}),
     ...(artifact.previewHtml ? { previewHtml: artifact.previewHtml } : {}),
     terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "completed", `Committed ${artifact.fileName} to tenant storage.`)],
   };

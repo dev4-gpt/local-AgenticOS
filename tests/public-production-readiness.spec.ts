@@ -74,6 +74,7 @@ test("release evidence requires the setup, financial, learning-retention, source
     expect(failures).toContain("release_gate:record_retention_migration_attached");
     expect(failures).toContain("release_gate:artifact_owner_guard_migration_attached");
     expect(failures).toContain("release_gate:notebook_reference_guard_migration_attached");
+    expect(failures).toContain("release_gate:notebook_execution_sources_migration_attached");
     expect(failures).toContain("release_gate:sourceImportResult_approved");
     expect(failures).toContain("release_gate:uiParityResult_approved");
     expect(failures).toContain("release_gate:buyerSimulationResult_approved");

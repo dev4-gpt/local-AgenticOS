@@ -8,6 +8,7 @@ import ClientCommunitySourceImport from "@/components/ClientCommunitySourceImpor
 import ClientMemoryGraph3D, { type ClientGraphEdge, type ClientGraphNode } from "@/components/ClientMemoryGraph3D";
 import ClientNotebookWorkspace from "@/components/ClientNotebookWorkspace";
 import VoiceButton from "@/components/VoiceButton";
+import { notebookSourceLinks, safeNotebookSourceUrl } from "@/lib/clientNotebookLanes";
 
 type Surface = "memory" | "journal" | "goals" | "notebook";
 type LoadState = "loading" | "loaded" | "error";
@@ -296,7 +297,13 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   // loaded page of records or the bounded graph preview.
   const searchedRecords = memoryQuery.trim().length >= 2 && searchResult.query === memoryQuery.trim() ? searchResult.records : [];
   // What the notebook's chat and studio lanes are allowed to draw on.
-  const notebookSources = useMemo(() => active.map((record) => ({ id: record.id, title: record.title, content: record.content })), [active]);
+  const notebookSources = useMemo(() => active.map((record) => ({
+    id: record.id,
+    title: record.title,
+    content: record.content,
+    sourceUrl: safeNotebookSourceUrl(record.metadata?.source_url),
+    links: notebookSourceLinks(record.metadata?.source_links),
+  })), [active]);
   function selectGraphNode(nodeId: string) {
     setSelectedGraphNodeId((current) => current === nodeId ? null : nodeId);
   }
@@ -324,7 +331,7 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
       </div></>}
     </section>
     {surface === "goals" && <section className="grid grid-cols-2 gap-3 md:grid-cols-4"><StatCard label="Total" value={String(goalStats.total)} color="#60a5fa" /><StatCard label="Active" value={String(goalStats.active)} color="#c4b5fd" /><StatCard label="Completed" value={String(goalStats.completed)} color="#34d399" /><StatCard label="Progress" value={`${goalStats.progress}%`} color="#f0c94a" progress={goalStats.progress} /></section>}
-    {surface === "notebook" && notebookTab !== "library" ? <ClientNotebookWorkspace tab={notebookTab} sources={notebookSources} notebookId={activeNotebook === "all" || activeNotebook === "unfiled" ? null : activeNotebook} onImported={async () => { await load(); }} /> : surface === "goals" ? <GoalComposer title={title} content={content} category={category} busy={busy} filter={goalFilter} stats={goalStats} onTitle={setTitle} onContent={setContent} onCategory={setCategory} onFilter={setGoalFilter} onAdd={add} /> : surface === "journal" ? <JournalComposer title={title} content={content} busy={busy} days={journalDays} selectedDay={journalDay} entries={journalRecords} onTitle={setTitle} onContent={setContent} onSelectDay={setJournalDay} onAdd={add} /> : <section id={surface === "memory" ? "client-memory-composer" : undefined} className="panel p-5 md:p-6">
+    {surface === "notebook" && notebookTab !== "library" ? <ClientNotebookWorkspace tab={notebookTab} sources={notebookSources} notebookId={activeNotebook === "all" || activeNotebook === "unfiled" ? null : activeNotebook} notebookScope={activeNotebook} onImported={async () => { await load(); }} /> : surface === "goals" ? <GoalComposer title={title} content={content} category={category} busy={busy} filter={goalFilter} stats={goalStats} onTitle={setTitle} onContent={setContent} onCategory={setCategory} onFilter={setGoalFilter} onAdd={add} /> : surface === "journal" ? <JournalComposer title={title} content={content} busy={busy} days={journalDays} selectedDay={journalDay} entries={journalRecords} onTitle={setTitle} onContent={setContent} onSelectDay={setJournalDay} onAdd={add} /> : <section id={surface === "memory" ? "client-memory-composer" : undefined} className="panel p-5 md:p-6">
       <div className="flex items-center gap-2"><Plus size={15} color="#60a5fa" /><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Add tenant record</h2></div>
       <div className="mt-4 flex gap-3"><VoiceButton size={38} onTranscript={(transcript, options) => { if (options.final) setContent((current) => `${current}${current ? "\n" : ""}${transcript}`); }} /><div className="min-w-0 flex-1"><input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={copy.placeholder} className="w-full rounded-md border px-3 py-2.5 text-[12px]" style={{ color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" }} />
       <textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder={copy.content} className="mt-3 min-h-[130px] w-full resize-y rounded-md border px-3 py-2.5 text-[12px] leading-relaxed" style={{ color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" }} /></div></div>

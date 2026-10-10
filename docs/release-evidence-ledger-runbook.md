@@ -124,6 +124,7 @@ npm run publish:release-ledger -- \
   --migration-file product-experience/supabase-v47-financial-offboard-guard.sql \
   --migration-file product-experience/supabase-client-runtime-source-pack-graph.sql \
   --migration-file product-experience/supabase-client-runtime-source-pack-rpc-guard.sql \
+  --migration-file product-experience/supabase-client-notebook-execution-sources.sql \
   --rollback-cloud-run-revision <known-good-revision> \
   --source-import-result passed \
   --ui-parity-result passed \
