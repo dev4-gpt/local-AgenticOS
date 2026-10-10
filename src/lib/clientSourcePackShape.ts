@@ -5,6 +5,7 @@ export type ClientSourcePackShapeItem = {
   sourceUrl: string;
   tab: string | null;
   text: string;
+  publishedAt: string | null;
   collectedAt: string | null;
   links: { url: string; text: string }[];
 };
@@ -47,6 +48,9 @@ export function parseClientSourcePackShape(input: unknown): ClientSourcePackShap
     const text = typeof source.text === "string" ? source.text.replace(/\r\n?/g, "\n").trim() : "";
     const tab = typeof source.tab === "string" ? source.tab.trim() : null;
     const sourceUrl = safeClientSourceUrl(source.url);
+    if (source.publishedAt !== undefined && source.publishedAt !== null
+      && (typeof source.publishedAt !== "string" || !isCalendarDate(source.publishedAt))) throw new Error("source_pack_item_invalid");
+    const publishedAt = typeof source.publishedAt === "string" ? source.publishedAt : null;
     if (source.collectedAt !== undefined && source.collectedAt !== null
       && (typeof source.collectedAt !== "string" || Number.isNaN(Date.parse(source.collectedAt)))) throw new Error("source_pack_item_invalid");
     const collectedAt = typeof source.collectedAt === "string" ? new Date(source.collectedAt).toISOString() : null;
@@ -63,7 +67,7 @@ export function parseClientSourcePackShape(input: unknown): ClientSourcePackShap
     const identity = `${startUrl}\n${sourceUrl}\n${tab ?? ""}`;
     if (seen.has(identity)) throw new Error("source_pack_duplicate_source");
     seen.add(identity);
-    return { title, sourceUrl, tab, text, collectedAt, links };
+    return { title, sourceUrl, tab, text, publishedAt, collectedAt, links };
   });
   if (pack.skipped !== undefined && (!Array.isArray(pack.skipped) || pack.skipped.length > 100)) throw new Error("source_pack_skipped_invalid");
   const skipped = (pack.skipped ?? []).map((value: unknown) => {
@@ -76,4 +80,10 @@ export function parseClientSourcePackShape(input: unknown): ClientSourcePackShap
     return detail;
   });
   return { startUrl, sources, skipped, skippedCount: skipped.length, linkCount: sources.reduce((total, source) => total + source.links.length, 0) };
+}
+
+function isCalendarDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime()) && date.getUTCFullYear() > 0 && date.toISOString().slice(0, 10) === value;
 }

@@ -78,6 +78,7 @@ export async function POST(request: Request) {
       title: source.title,
       url: source.sourceUrl,
       tab: source.tab,
+      publishedAt: source.publishedAt,
       collectedAt: source.collectedAt,
       text: source.text,
       links: source.links,

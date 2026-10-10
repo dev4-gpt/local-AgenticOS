@@ -178,6 +178,7 @@ const requiredMigrations = [
   { file: "product-experience/supabase-v48-ecc-learning-retention-references.sql", gate: "learning_retention_reference_migration_attached" },
   { file: "product-experience/supabase-client-runtime-source-pack-graph.sql", gate: "source_graph_migration_attached" },
   { file: "product-experience/supabase-client-runtime-source-pack-rpc-guard.sql", gate: "source_rpc_guard_migration_attached" },
+  { file: "product-experience/supabase-client-runtime-source-pack-published-date.sql", gate: "source_published_date_migration_attached" },
   { file: "product-experience/supabase-client-runtime-record-retention.sql", gate: "record_retention_migration_attached" },
   { file: "product-experience/supabase-client-notebook-source-retention.sql", gate: "notebook_source_retention_migration_attached" },
   { file: "product-experience/supabase-client-runtime-artifact-owner-guard.sql", gate: "artifact_owner_guard_migration_attached" },

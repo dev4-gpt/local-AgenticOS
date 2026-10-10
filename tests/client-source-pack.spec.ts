@@ -22,7 +22,7 @@ function examplePack() {
     skipped: [],
     sources: [
       { title: "About", url: "https://www.skool.com/example/about", text: "Welcome #intro", collectedAt: "2026-09-26T00:00:00Z", links: [{ url: "https://www.skool.com/example/classroom", text: "Classroom" }] },
-      { title: "Lesson", url: "https://www.skool.com/example/classroom", text: "Transcript: A lesson", collectedAt: "2026-09-26T00:00:00Z", links: [{ url: "https://video.example.org/watch/1", text: "Media: Lesson playback" }] },
+      { title: "Lesson", url: "https://www.skool.com/example/classroom", text: "Transcript: A lesson", publishedAt: "2026-05-01", collectedAt: "2026-09-26T00:00:00Z", links: [{ url: "https://video.example.org/watch/1", text: "Media: Lesson playback" }] },
     ],
   };
 }
@@ -32,6 +32,7 @@ test("source pack parser preserves pages and links, rejects unsafe or incomplete
   expect(pack.sources).toHaveLength(2);
   expect(pack.linkCount).toBe(2);
   expect(pack.sources[0].sourceImportKey).toMatch(/^[a-f0-9]{64}$/);
+  expect(pack.sources[1].publishedAt).toBe("2026-05-01");
   expect(pack.sources[0].links[0].url).toBe("https://www.skool.com/example/classroom");
   const unsafe = examplePack();
   unsafe.sources[0].links[0].url = "javascript:alert(1)";
@@ -61,6 +62,11 @@ test("source pack parser preserves pages and links, rejects unsafe or incomplete
   const invalidDate = examplePack();
   invalidDate.sources[0].collectedAt = "not-a-date";
   expect(() => parseClientSourcePack(invalidDate)).toThrow("source_pack_item_invalid");
+  for (const publishedAt of ["0000-01-01", "2026-02-30", "2026-5-01", "2026-05-01T00:00:00Z"]) {
+    const invalidPublishedDate = examplePack();
+    invalidPublishedDate.sources[1].publishedAt = publishedAt;
+    expect(() => parseClientSourcePack(invalidPublishedDate)).toThrow("source_pack_item_invalid");
+  }
   const duplicate = examplePack();
   duplicate.sources[1].url = duplicate.sources[0].url;
   expect(() => parseClientSourcePack(duplicate)).toThrow("source_pack_duplicate_source");
@@ -114,7 +120,7 @@ test("source import commits only the exact artifact bytes reviewed with permissi
     expect(reviewed.skipped).toEqual([]);
     expect(reviewed.sources).toHaveLength(2);
     expect(reviewed.sources[0]).toMatchObject({ title: "About", url: "https://www.skool.com/example/about", text: "Welcome #intro", links: [{ url: "https://www.skool.com/example/classroom", text: "Classroom" }] });
-    expect(reviewed.sources[1]).toMatchObject({ title: "Lesson", text: "Transcript: A lesson", links: [{ url: "https://video.example.org/watch/1", text: "Media: Lesson playback" }] });
+    expect(reviewed.sources[1]).toMatchObject({ title: "Lesson", text: "Transcript: A lesson", publishedAt: "2026-05-01", links: [{ url: "https://video.example.org/watch/1", text: "Media: Lesson playback" }] });
     const withoutPermission = await post({ action: "import", previewSha256: reviewed.packSha256 });
     expect(withoutPermission.status).toBe(400);
     expect((await withoutPermission.json()).error).toBe("source_import_review_required");
@@ -231,6 +237,9 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
     const guard = readFileSync("product-experience/supabase-client-runtime-source-pack-rpc-guard.sql", "utf8");
     await db.exec(guard);
     await db.exec(guard);
+    const publishedDateMigration = readFileSync("product-experience/supabase-client-runtime-source-pack-published-date.sql", "utf8");
+    await db.exec(publishedDateMigration);
+    await db.exec(publishedDateMigration);
     await expect(db.exec(migration)).rejects.toThrow(/source_pack_guard_migration_must_run_last/);
     const privileges = await db.query<{ legacyMember: boolean; legacyWorker: boolean; directMember: boolean; directWorker: boolean; guardedMember: boolean; guardedWorker: boolean }>(`
       select has_function_privilege('authenticated','public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)','EXECUTE') as "legacyMember",
@@ -257,6 +266,9 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
     await db.exec(`update client_runtime_artifacts set retention_expires_at=now()+interval '1 day' where id='${artifactId}'`);
     await expect(db.query(sql, ["tenant-a", artifactId, "a".repeat(64), JSON.stringify([pack.sources[0], pack.sources[0]]), workerToken]))
       .rejects.toThrow(/source_pack_duplicate_source/);
+    const invalidPublishedDate = { ...pack.sources[0], publishedAt: "2026-02-30" };
+    await expect(db.query(sql, ["tenant-a", artifactId, "a".repeat(64), JSON.stringify([invalidPublishedDate]), workerToken]))
+      .rejects.toThrow();
     expect((await db.query("select id from client_runtime_records where tenant_slug='tenant-a'")).rows).toHaveLength(0);
     await db.exec("set role authenticated");
     const first = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, args);
@@ -273,8 +285,8 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
       metadata: { artifactId, packSha256: "a".repeat(64), sourceCount: 2, linkCount: 2, imported: 2, updated: 0, duplicates: 0 },
     }]);
     expect((await db.query("select id from client_runtime_memory_graph_nodes where tenant_slug='tenant-a' and kind='document'")).rows).toHaveLength(2);
-    expect((await db.query<{ content: string; links: { url: string; text: string }[] }>("select content, metadata -> 'source_links' as links from client_runtime_records where title='Lesson'")).rows)
-      .toEqual([{ content: "Transcript: A lesson", links: [{ url: "https://video.example.org/watch/1", text: "Media: Lesson playback" }] }]);
+    expect((await db.query<{ content: string; links: { url: string; text: string }[]; publishedAt: string }>("select content, metadata -> 'source_links' as links, metadata ->> 'source_published_at' as \"publishedAt\" from client_runtime_records where title='Lesson'")).rows)
+      .toEqual([{ content: "Transcript: A lesson", links: [{ url: "https://video.example.org/watch/1", text: "Media: Lesson playback" }], publishedAt: "2026-05-01" }]);
     expect((await db.query<{ url: string }>("select metadata ->> 'url' as url from client_runtime_memory_graph_nodes where tenant_slug='tenant-a' and kind='url' and metadata ->> 'url' = 'https://video.example.org/watch/1'")).rows)
       .toEqual([{ url: "https://video.example.org/watch/1" }]);
     const second = await db.query<{ value: { imported: number; duplicates: number } }>(sql, args);
@@ -282,12 +294,13 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
     expect((await db.query("select id from client_runtime_audit_events")).rows).toHaveLength(2);
     const revised = examplePack();
     revised.sources[1].text = "A revised lesson #newtopic";
+    revised.sources[1].publishedAt = "2026-09-24";
     revised.sources[1].links = [{ url: "https://example.org/new-resource", text: "New resource" }];
     const revisedPack = parseClientSourcePack(revised);
     const refreshed = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, ["tenant-a", artifactId, "b".repeat(64), JSON.stringify(revisedPack.sources), workerToken]);
     expect(refreshed.rows[0].value).toEqual({ imported: 0, updated: 1, duplicates: 1, graphRefreshed: true });
-    const revisedRecord = await db.query<{ content: string; links: { url: string; text: string }[] }>("select content, metadata -> 'source_links' as links from client_runtime_records where title='Lesson'");
-    expect(revisedRecord.rows).toEqual([{ content: "A revised lesson #newtopic", links: [{ url: "https://example.org/new-resource", text: "New resource" }] }]);
+    const revisedRecord = await db.query<{ content: string; links: { url: string; text: string }[]; publishedAt: string }>("select content, metadata -> 'source_links' as links, metadata ->> 'source_published_at' as \"publishedAt\" from client_runtime_records where title='Lesson'");
+    expect(revisedRecord.rows).toEqual([{ content: "A revised lesson #newtopic", links: [{ url: "https://example.org/new-resource", text: "New resource" }], publishedAt: "2026-09-24" }]);
     const nodes = await db.query<{ kind: string; url: string | null }>("select kind, metadata ->> 'url' as url from client_runtime_memory_graph_nodes where tenant_slug='tenant-a'");
     expect(nodes.rows.filter((row) => row.kind === "document")).toHaveLength(2);
     expect(nodes.rows.filter((row) => row.kind === "url").map((row) => row.url).sort()).toEqual([

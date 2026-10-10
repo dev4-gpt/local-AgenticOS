@@ -15,6 +15,7 @@ type Preview = {
     title: string;
     url: string;
     tab: string | null;
+    publishedAt: string | null;
     collectedAt: string | null;
     text: string;
     links: { url: string; text: string }[];
@@ -105,7 +106,7 @@ export default function ClientCommunitySourceImport({ onImported }: { onImported
           <summary className="cursor-pointer break-words font-medium">{source.title} <span className="font-normal opacity-70">({source.links.length} links)</span></summary>
           <div className="mt-2 space-y-2 pl-4">
             <a href={source.url} target="_blank" rel="noopener noreferrer" className="block break-all underline">{source.url}</a>
-            {(source.tab || source.collectedAt) && <p className="break-words opacity-70">{[source.tab, source.collectedAt].filter(Boolean).join(" · ")}</p>}
+            {(source.tab || source.publishedAt || source.collectedAt) && <p className="break-words opacity-70">{[source.tab, source.publishedAt && `Published ${source.publishedAt}`, source.collectedAt && `Collected ${source.collectedAt}`].filter(Boolean).join(" · ")}</p>}
             <p className="max-h-48 overflow-auto whitespace-pre-wrap break-words">{source.text}</p>
             {source.links.length > 0 && <ul className="list-disc space-y-1 pl-4">{source.links.map((link, linkIndex) => <li key={`${link.url}-${linkIndex}`} className="break-words"><a href={link.url} target="_blank" rel="noopener noreferrer" className="break-all underline">{link.text || link.url}</a></li>)}</ul>}
           </div>
