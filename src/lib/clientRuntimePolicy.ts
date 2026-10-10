@@ -6,6 +6,7 @@ const DEFAULT_CLIENT_ROUTES = [
   "/flow-lab", "/integrations", "/video", "/studio", "/openmontage", "/music", "/games", "/thumbnails",
   "/notebook", "/kanban", "/memory", "/leads", "/radar", "/guide", "/seo-guide", "/hybrid",
 ];
+const OPERATOR_ONLY_CLIENT_ROUTES = new Set(["/classroom-research", "/social-research"]);
 const DEFAULT_CLIENT_API_ROUTES = [
   "/api/capabilities",
   "/api/speech/transcribe",
@@ -170,7 +171,8 @@ export function clientRouteAllowed(pathname: string) {
 }
 
 export function clientAllowedRoutes() {
-  return configuredList("CLIENT_ALLOWED_ROUTES", DEFAULT_CLIENT_ROUTES);
+  return configuredList("CLIENT_ALLOWED_ROUTES", DEFAULT_CLIENT_ROUTES)
+    .filter((route) => ![...OPERATOR_ONLY_CLIENT_ROUTES].some((blocked) => route === blocked || route.startsWith(`${blocked}/`)));
 }
 
 export function clientApiRouteAllowed(pathname: string) {

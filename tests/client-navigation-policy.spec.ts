@@ -16,8 +16,17 @@ test("default client navigation excludes operator-only research", () => {
 });
 
 test("runtime route overrides drive both navigation and middleware", () => {
-  process.env.CLIENT_ALLOWED_ROUTES = "/,/context,/classroom-research";
-  expect(clientAllowedRoutes()).toEqual(["/", "/context", "/classroom-research"]);
-  expect(clientRouteAllowed("/classroom-research")).toBe(true);
-  expect(clientRouteAllowed("/memory")).toBe(false);
+  process.env.CLIENT_ALLOWED_ROUTES = "/,/context,/memory";
+  expect(clientAllowedRoutes()).toEqual(["/", "/context", "/memory"]);
+  expect(clientRouteAllowed("/memory")).toBe(true);
+  expect(clientRouteAllowed("/journal")).toBe(false);
+});
+
+test("operator-only research routes stay unavailable even if a manifest lists them", () => {
+  process.env.CLIENT_ALLOWED_ROUTES = "/,/context,/classroom-research,/classroom-research/archive,/social-research,/memory";
+
+  expect(clientAllowedRoutes()).toEqual(["/", "/context", "/memory"]);
+  expect(clientRouteAllowed("/classroom-research")).toBe(false);
+  expect(clientRouteAllowed("/classroom-research/archive")).toBe(false);
+  expect(clientRouteAllowed("/social-research/results")).toBe(false);
 });
