@@ -181,3 +181,22 @@ No credentials were entered, no customer data was read, and no tenant write or
 provider request occurred. Owner sign-in to the local and Cloud Test pages is
 still required before read-only same-user parity checks; this setup does not
 accept any J01-J15 row.
+
+**Authenticated read-only parity correction, 2026-10-10:** The later signed-in
+Chrome Work session supersedes the sign-in-required observation above. Local
+`http://127.0.0.1:3941/memory` rendered 2 tenant memories and a 114-node,
+113-edge graph, including Community sources and two bonus-link index records
+(27 and 84 links); this is not a full Skool classroom export. Local
+`/notebook` authenticated but had 0 notebook records and 0 active sources.
+`https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/memory` rendered 24 tenant
+memories and a 33-node, 57-edge graph, while its authenticated `/notebook`
+rendered 0 notebook records and 0 active sources. The distinct
+`https://veloce-cloud-test-1075094991117.asia-south1.run.app/notebook` origin
+rendered 9 notebook records and 9 active sources; its Studio exposed Outline,
+Summary, Briefing, and Study questions, with no source selected and document
+generation disabled. These origins therefore do not currently provide a
+consistent same-data Notebook journey; matching login status or memory counts
+does not establish shared tenant identity, deployment, or database. No source
+was selected, document generated, tenant record changed, provider request
+made, or deployment performed. This read-only comparison accepts no J01-J15
+row and does not replace two-tenant isolation or release-identity evidence.
