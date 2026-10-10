@@ -166,3 +166,18 @@ The same day's read-only `gcloud run services describe agentos-internal-beta --p
 **Release-ledger storage inventory, 2026-10-10:** A read-only bucket list for GCP project `agentos-mvp` returned only `agentos-mvp-veloce-internal-beta` and `agentos-mvp_cloudbuild`; no dedicated release-evidence bucket exists. The internal-beta bucket contains tenant/runtime data and the Cloud Build bucket is build infrastructure, so neither was selected for ledger receipts. No bucket was created or modified. The strict release gate remains blocked until an owner-approved ledger destination is configured and its retention/access policy is verified.
 
 **Local client-runtime image candidate, 2026-10-10:** The first local Docker build was stopped after it began transferring 3.45 GB of ignored Next.js cache snapshots. `.dockerignore` now excludes all `.next*` build snapshots, nested private env/config directories, and the duplicate `product-experience 2/` folder; the fix is in commit `7d1aa459ce58291fd39aaa2b79c9f8a4096c8844`. The corrected build context was 113.78 MB. The local-only image built successfully from that clean commit with digest `sha256:8b094fd71cdc1483b08c2a20b573134e71512f05413661a57660c41a29382432`, and its OCI revision label matches the full source SHA. Next build, TypeScript, route pruning, and build-trace checks passed; Next emitted two Edge-runtime API warnings. A temporary loopback container returned 200 for `/status` and `/login`, 405 for GET `/api/client-runtime/source-import` (POST-only route present), and 401 for unauthenticated `/api/client-runtime/build-identity`. Cloud Run currently uses a TCP startup probe on 8080, so `/healthz`'s auth-gate redirect is not that service's probe. The live revision remains `agentos-internal-beta-00034-v69`; IAM returned 403 to route probes, so cloud route behavior is not verified. The image was neither pushed to a registry nor deployed, and it has no provider credentials.
+
+**Authenticated local parity re-entry, 2026-10-10:** The private local Supabase
+environment file is mode `0600`, contains the required URL and anon key, and
+targets the known internal-beta project. The client launcher passes its
+config-only check with the `internal-beta` slug and owner email allowlist,
+without printing secret values. A local client server is now ready at
+`http://127.0.0.1:3941` in a dedicated Next build directory, with provider
+calls disabled; the existing port-3939 process was left untouched. The visible
+Chrome Work profile's `veloce-cloud-test` Memory request redirected to its
+runtime login form, so there is no authenticated Cloud Test journey to compare
+yet and its tenant/project identity is not established by this observation.
+No credentials were entered, no customer data was read, and no tenant write or
+provider request occurred. Owner sign-in to the local and Cloud Test pages is
+still required before read-only same-user parity checks; this setup does not
+accept any J01-J15 row.
