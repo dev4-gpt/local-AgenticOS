@@ -1,6 +1,6 @@
 # MiroFish buyer-scenario pilot
 
-Status: the latest bounded synthetic run, `sim_49b3a7426c50`, completed with two of ten buyers active. Its technical audit passes but its content review fails on an invented budget amount; release-evidence capture refuses it. The earlier `sim_fe9b23d28531` run used a brief without the published price and is stale. Neither is market validation or a 10,000-person test. Last checked: 2026-10-10.
+Status: the latest bounded synthetic run, `sim_49b3a7426c50`, completed with two of ten buyers active. Its technical audit passes but its content review fails on an invented budget amount; release-evidence capture refuses it. The earlier `sim_fe9b23d28531` run used a brief without the published price and is stale. Neither is market validation or a 10,000-person test. A revised repeat is prepared offline, but the user clarified that current Groq/Zep Free-plan status was assumed, not checked; no new provider call is authorized until billing state is verified. Last checked: 2026-10-10.
 
 ## Pinned upstream and non-spending evidence
 
@@ -194,3 +194,23 @@ The isolated repeat `sim_49b3a7426c50` used the price-aware CSV above. Its confi
 The first read-only audit exposed an OASIS representation mistake: for a quote-post, `post.content` contains the quoted original, while the new buyer response is in `post.quote_content`. After correcting the auditor to review and hash the generated quote text while retaining the original-content telemetry check, all 11 technical checks pass. The private mode-0600 review file has SHA-256 `15b04eda3484976099ef4f3e73e9c53546cd0f638a71348945bec952088d7bb9`. The solo-agency security reviewer correctly rejected the $2,500 setup and $1,250/month offer against an under-$50 budget, and asked for client-file isolation evidence. The healthcare budget holder asked for an administrative intake demo, audit logs, isolation, and total-cost clarity, but asserted a `$2k+` monthly budget not supported by its source band of `over $1000`. The review approves only the agency reply: `buyerContentReview: false`, `pilotEvidencePassed: false`, `marketValidation: false`. These are synthetic hypotheses, not buyer interviews or measured conversion.
 
 Profile preparation now explicitly forbids inventing a precise budget or affordability from a broad band. This change has not been used in a provider run. Do not cite the October 10 run as a passed buyer pilot; a fresh reviewed profile file and a new bounded run would be required, followed by real-prospect comparison. The 50-person and 10,000-person frames remain unrun.
+
+## Revised repeat prepared, 2026-10-10
+
+The canonical preparer produced a private, mode-0600 ten-profile CSV from the
+runner-pinned source file, with reviewed SHA-256
+`83a0d906dbcf522e00dcb5082cdd6c97340f829dafd63b332c14adf4de7b2911`.
+All ten profiles contain their exact source budget band and the instruction not
+to invent a precise amount. The isolated candidate `sim_4d52cec6d408` is
+prepared with config SHA-256
+`c5fbce5a16820723f3a48a7db980f871318f34c77c05489acb1506b5e2fb90ac`:
+ten configured profiles, only `P00603` and `P04949` active in one round, ten
+clock rounds total, and no wait-for-command loop. The arming preflight returned `applied: false`;
+three repeat-smoke tests and three profile-preparer tests passed. Preparation
+made zero Groq or Zep calls. The isolated runner is pinned to those hashes;
+its six offline tests and dry-run preflight passed with `applied: false` and
+graph-memory updates disabled. The candidate is not a buyer result: live
+execution and private content review await actual dashboard verification of
+both Free plans and no paid overage under the owner's $0 ceiling. A prior
+"confirmed" answer was later clarified as an assumption, so it is not treated
+as cost-control evidence.
