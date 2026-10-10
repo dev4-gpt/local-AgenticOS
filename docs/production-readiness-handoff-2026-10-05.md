@@ -425,6 +425,15 @@ and test success must not be represented as production approval. No cloud
 migration, hosted setting change, or deployment was performed for this
 checkpoint.
 
+On the bundled Node `v24.19.0` runtime, the local AI release evaluation passed
+14/14 deterministic cases. It records zero model samples and zero provider cost,
+and correctly keeps `productionReady: false`. Running the same evaluation under
+the shell's Node `v26.4.0` also passed all 14 test cases but failed its runtime
+eligibility check, so Node 24 is the supported evidence runtime here. The
+focused client observability and job-trace suite passed 13/13, including ledger
+completeness, cross-tenant rejection, and trace redaction. These are local
+automated checks, not hosted or stochastic model-quality evidence.
+
 The separate MiroFish buyer-pilot checkout is clean on local branch
 `buyer-pilot-telemetry`. The fresh reviewed candidate
 `sim_b0958acead3f` is present with its pinned configuration, profile, and
@@ -436,7 +445,9 @@ prepared candidate, not a completed simulation or buyer validation. The earlier
 tokenizer-bootstrap failure remains archived and was not overwritten. Do not
 start a new provider-backed run until the pilot's current $0 spend constraint
 and run approval are explicitly confirmed; no provider request was made at this
-checkpoint.
+checkpoint. The candidate's exact-hash dry-run preflight also passed with ten
+agents, two selected buyers, ten rounds, Twitter only, graph updates disabled,
+and `applied: false`.
 
 The Skool scope remains limited to content supplied through a platform-permitted
 export and rights sufficient for the intended product use. Prior owner/member
