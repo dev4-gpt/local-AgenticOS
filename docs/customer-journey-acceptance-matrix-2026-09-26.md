@@ -200,3 +200,10 @@ does not establish shared tenant identity, deployment, or database. No source
 was selected, document generated, tenant record changed, provider request
 made, or deployment performed. This read-only comparison accepts no J01-J15
 row and does not replace two-tenant isolation or release-identity evidence.
+Read-only GETs to `/api/client-runtime/build-identity` on both Cloud Test
+origins returned `client_route_not_enabled`, so neither app exposed a source
+SHA or Cloud Run revision. The read-only Cloud Run inventory for the selected
+GCP project `agentos-mvp` listed only `agentos` and `agentos-internal-beta`;
+neither Cloud Test origin was mapped to a service in that project. This does
+not establish that they are absent from another GCP project. Their serving
+project, runtime configuration, and tenant mapping remain unknown.
