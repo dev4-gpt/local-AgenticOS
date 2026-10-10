@@ -5,6 +5,8 @@ This is a checkpoint, not release acceptance. Source under test:
 changes following authentication repair `2c5f347`). No push, deployment,
 permission grant, source upload, or paid provider call occurred in this check.
 
+Latest verification snapshot: [October 10 refresh on `dc91aec`](verification-refresh-2026-10-10-dc91aec.md). This records local checks and remaining hosted gates, not release acceptance.
+
 ## Verified progress
 
 - Standard local regression suite: 297 passed, one optional private-source-pack

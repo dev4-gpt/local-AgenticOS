@@ -1,0 +1,22 @@
+# Verification Refresh: `dc91aec`
+
+Date: 2026-10-10  
+Source tested: `dc91aec70b6903818088f19747470a851b1006ef`  
+Branch: `wip/backup-2026-10-03`, clean and pushed at verification time.
+
+## Local Checks
+
+- `npm run test:focused`: 343 passed, 1 optional private-input test skipped, 0 failed (344 total).
+- `npm run verify:security`: passed. Its lifecycle and retention suite passed 22/22; notebook execution provenance passed 19/19; runtime/storage config fixtures passed 10/10; static provider, security, and integration-governance checks passed.
+- Observability and trace accuracy specs: 13/13 passed. Desktop/mobile observability UI specs: 6/6 passed using isolated Chrome, not the user's signed-in profile.
+- `npm run verify:ai-evaluation` under Node `v24.19.0`: 14/14 deterministic cases passed, zero model samples, `productionReady: false`.
+- `VELOCE_DIST_DIR=.next-candidate npm run build` under Node `v24.19.0`: production build passed and generated 66 static pages. Route output included `/api/client-runtime/source-import` and `/api/client-runtime/build-identity`. Existing warnings: two Edge-runtime `process.cwd()` warnings from Next internals and middleware-convention deprecation. The candidate build directory and the two generated `tsconfig.json` entries were removed afterward; `.next-client` remained untouched. This was not an OCI image build.
+- `python3 scripts/audit-mirofish-buyer-run.py` against saved run `sim_4d52cec6d408`: all 12 technical/content checks passed; 10 profiles and 10 rounds, 2 active synthetic buyers, 8 action rows, 2 reviewed dynamic posts. `marketValidation` remains false. No provider call or billing reconciliation occurred.
+
+## Release Status
+
+`node scripts/verify-production-readiness.mjs` returned `releaseReady: false`, with `ledger_bucket_not_configured` and 36 release evidence fields unevaluated. Missing evidence includes hosted customer-journey receipts, migration receipts, deployment identity, tenant isolation, source import, cloud/UI parity, buyer simulation approval, operational/legal approvals, and rollback target. This is not production acceptance.
+
+No full classroom export was found in the checked Downloads/repository paths; the known bonus-link index is not the course export. No Skool collection or source import was performed. The local service at port 3941 was listening, but the verifier cookie file was absent, so this run did not repeat an authenticated local/cloud comparison. No hosted migration, tenant write, IAM/bucket change, deployment, model call, or provider spend occurred.
+
+The next verification step is a signed-in, same-identity Cloud Test comparison with authenticated build/deployment identity and a reviewed migration receipt. For course ingestion, obtain a platform-permitted export or owner-supplied source files first; then run the reviewed source-pack flow and verify exact coverage before claiming completion.
