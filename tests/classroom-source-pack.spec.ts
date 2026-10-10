@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { prepareClassroomSourcePack } from "../scripts/prepare-classroom-source-pack.mjs";
+import { assertCompleteClassroomCoverage, prepareClassroomSourcePack } from "../scripts/prepare-classroom-source-pack.mjs";
 import { isClassroomUrlInScope } from "../src/lib/classroomResearch";
 import { selectClientSourceBatches } from "../src/lib/clientSourceBatchSelection";
 import { parseClientSourcePack } from "../src/lib/clientSourcePack";
@@ -160,6 +160,7 @@ test("owner inventory checks declared pages and May-to-September publication bou
     allDeclaredPagesPresent: true, declaredDateWindowMatched: true,
   });
   expect(complete.batches[0].skipped).toEqual([]);
+  expect(() => assertCompleteClassroomCoverage(complete.coverage)).not.toThrow();
 
   const partial = prepareClassroomSourcePack({ startUrl, sources: [first], expected, skipped: [], pending: [] });
   expect(partial.coverage.declaredInventory).toMatchObject({
@@ -167,6 +168,7 @@ test("owner inventory checks declared pages and May-to-September publication bou
     allDeclaredPagesPresent: false, declaredDateWindowMatched: false,
   });
   expect(partial.batches[0].skipped).toContain("1 page is missing from the declared owner inventory; review the private manifest");
+  expect(() => assertCompleteClassroomCoverage(partial.coverage)).toThrow("classroom_export_incomplete");
   const extra = { ...source(2), publishedAt: "2026-06-01" };
   const undeclared = prepareClassroomSourcePack({ startUrl, sources: [first, last, extra], expected, skipped: [], pending: [] });
   expect(undeclared.coverage.declaredInventory?.undeclaredPages).toEqual([{ url: extra.url, tab: "Page" }]);
@@ -177,6 +179,19 @@ test("owner inventory checks declared pages and May-to-September publication bou
   expect(undated.coverage.declaredInventory?.declaredDateWindowMatched).toBe(false);
   const outside = prepareClassroomSourcePack({ startUrl, sources: [first, { ...last, publishedAt: "2026-09-25" }], expected, skipped: [], pending: [] });
   expect(outside.coverage.declaredInventory?.outsideWindow).toEqual([{ url: last.url, tab: "Page", publishedAt: "2026-09-25" }]);
+});
+
+test("complete-export gate requires a declared inventory, exhausted queue, and lesson text", () => {
+  const first = { ...source(0), publishedAt: "2026-05-01" };
+  const expected = { pages: [{ url: first.url }], firstPublishedDate: "2026-05-01", lastPublishedDate: "2026-05-01" };
+  const coverage = (run: Record<string, unknown>) => prepareClassroomSourcePack({
+    startUrl, sources: [first], expected, skipped: [], pending: [], ...run,
+  }).coverage;
+  expect(() => assertCompleteClassroomCoverage(coverage({ expected: undefined }))).toThrow("classroom_export_incomplete");
+  expect(() => assertCompleteClassroomCoverage(coverage({ pending: ["page-2"] }))).toThrow("classroom_export_incomplete");
+  expect(() => assertCompleteClassroomCoverage(coverage({ skipped: ["restricted page"] }))).toThrow("classroom_export_incomplete");
+  expect(() => assertCompleteClassroomCoverage(coverage({ sources: [{ ...first, text: "", media: [{ kind: "video", title: "Playback", url: "https://video.example.org/1" }] }] })))
+    .toThrow("classroom_export_incomplete");
 });
 
 test("declared classroom inventory rejects duplicate, unsafe and impossible dates", () => {
@@ -229,6 +244,14 @@ test("classroom export writes selectable private hashed batches and refuses over
       },
       skipped: [], pending: [],
     }), { mode: 0o600 });
+    const strictOutput = path.join(directory, "complete.json");
+    const strict = spawnSync(process.execPath, [
+      path.join(process.cwd(), "scripts/prepare-classroom-source-pack.mjs"), input, strictOutput, "--require-complete",
+    ], { cwd: process.cwd(), encoding: "utf8" });
+    expect(strict.status).not.toBe(0);
+    expect(strict.stderr).toContain("classroom_export_incomplete");
+    expect(existsSync(path.join(directory, "complete.manifest.json"))).toBe(false);
+    expect(existsSync(path.join(directory, "complete.part-001.json"))).toBe(false);
     const command = [path.join(process.cwd(), "scripts/prepare-classroom-source-pack.mjs"), input, output];
     const first = spawnSync(process.execPath, command, { cwd: process.cwd(), encoding: "utf8" });
     expect(first.status).toBe(0);

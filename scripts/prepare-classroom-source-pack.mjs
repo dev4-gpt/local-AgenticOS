@@ -203,18 +203,29 @@ export function prepareClassroomSourcePack(run) {
   };
 }
 
+export function assertCompleteClassroomCoverage(coverage) {
+  const inventory = coverage?.declaredInventory;
+  if (!inventory || !inventory.declaredDateWindowMatched || !coverage.discoveredQueueExhausted
+    || coverage.skippedPages !== 0 || coverage.mediaOnlySources !== 0) {
+    throw new Error("classroom_export_incomplete");
+  }
+}
+
 function writePrivateFile(file, contents) {
   writeFileSync(file, contents, { flag: "wx", mode: 0o600 });
 }
 
 if (process.argv[1]?.endsWith("/prepare-classroom-source-pack.mjs")) {
-  const [input, output] = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const requireComplete = args.includes("--require-complete");
+  const [input, output] = args.filter((arg) => arg !== "--require-complete");
   if (!input || !output) {
-    console.error("Usage: node scripts/prepare-classroom-source-pack.mjs classroom-run.json output.json");
+    console.error("Usage: node scripts/prepare-classroom-source-pack.mjs classroom-run.json output.json [--require-complete]");
     process.exitCode = 2;
   } else {
     const raw = readFileSync(input);
     const { batches, coverage } = prepareClassroomSourcePack(JSON.parse(raw.toString("utf8")));
+    if (requireComplete) assertCompleteClassroomCoverage(coverage);
     const parsed = path.parse(output);
     const files = batches.map((batch, index) => {
       const file = path.join(parsed.dir, `${parsed.name}.part-${String(index + 1).padStart(3, "0")}${parsed.ext || ".json"}`);

@@ -10,6 +10,22 @@ For an authorized, user-supplied Markdown document, use `node scripts/prepare-ma
 
 For a local `ClassroomRun` JSON from a site that permits automated collection, or an equivalent owner-provided JSON export, use `node scripts/prepare-classroom-source-pack.mjs input-run.json /private/tmp/source-pack.json`. This splits long text, large link lists, and more than 100 source views into tenant-import-compatible parts. Its mode-600 manifest records the input hash, part hashes, source/link/media-reference counts, skipped pages, pending pages, and whether the **discovered queue** was exhausted. An optional owner-declared `expected` inventory checks page/tab identities and publication-date bounds, recording missing, undeclared, undated, or out-of-window pages in that private manifest. This only checks the supplied export against the supplied inventory; neither is an independent census of the community. The terminal prints counts, not the missing-page URLs. It does not download video bytes, transcribe videos, or upload anything. A Skool-hosted page is not an allowed collector target under current platform rules; use a platform-approved or owner-hosted export instead.
 
+Add `--require-complete` when preparing a pack that will be described as a
+complete classroom export. The command fails before writing any output unless
+the declared page/date inventory matches, the discovered queue is explicitly
+empty, there are no skipped pages, and every source has lesson text or a
+transcript. Ordinary partial packs remain supported without this flag. This
+gate checks only the supplied export and inventory: it cannot prove the owner
+listed every platform page or that referenced video bytes were copied.
+
+Read-only signed-in Chrome observation on October 9, 2026: the classroom list
+displayed 108 items, with 93 entries from the first September 24 label through
+the May 1 end of the list. These are navigation labels and a provisional
+inventory count, not a downloaded page list, lesson-body capture, or verified
+publication-date export. The local member pack and bonus index still do not
+provide those 93 lesson bodies. Obtain a permitted owner/platform export and
+reconcile its exact page identities before claiming full coverage.
+
 ```json
 {
   "startUrl": "https://www.skool.com/example/about",
