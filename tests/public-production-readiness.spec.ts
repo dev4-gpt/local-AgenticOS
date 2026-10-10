@@ -45,7 +45,7 @@ test("strict release acceptance does not trust an unpublished local ledger file"
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("release evidence requires the setup, financial, source-graph, artifact-owner, and notebook-reference migrations", () => {
+test("release evidence requires the setup, financial, learning-retention, source-graph, artifact-owner, and notebook-reference migrations", () => {
   const dir = mkdtempSync(join(tmpdir(), "veloce-incomplete-ledger-"));
   try {
     const file = join(dir, "record.json");
@@ -68,6 +68,7 @@ test("release evidence requires the setup, financial, source-graph, artifact-own
     expect(JSON.parse(result.stdout).notEvaluated).toEqual([]);
     expect(failures).toContain("release_gate:setup_migration_attached");
     expect(failures).toContain("release_gate:financial_offboard_guard_migration_attached");
+    expect(failures).toContain("release_gate:learning_retention_reference_migration_attached");
     expect(failures).toContain("release_gate:source_graph_migration_attached");
     expect(failures).toContain("release_gate:source_rpc_guard_migration_attached");
     expect(failures).toContain("release_gate:record_retention_migration_attached");

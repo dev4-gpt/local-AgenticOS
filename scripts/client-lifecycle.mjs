@@ -54,6 +54,7 @@ if (mode === "offboard" && apply && deleteNotificationChannel && !notificationCh
 if (mode === "offboard" && apply && !project) fail("--project is required for offboard apply");
 if (mode === "restore" && apply && !confirmRestore) fail("Refusing restore apply without --confirm-restore");
 if (mode === "retention" && apply && !args.includes("--confirm-retention-records")) fail("Refusing retention apply without --confirm-retention-records");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-learning")) fail("Refusing learning retention apply without --confirm-retention-learning");
 
 if (mode === "offboard" && apply && !configPath) fail("Offboard apply requires --config with a reviewed client manifest");
 const manifestBytes = configPath ? await readFile(path.resolve(process.cwd(), configPath)) : null;
@@ -208,16 +209,42 @@ if (mode === "export") {
 }
 
 if (mode === "retention") {
+  const referenceCheck = await supabaseRequest("rpc/client_learning_retention_references_ready", { method: "POST", body: "{}" });
+  if (!referenceCheck.ok || await referenceCheck.json().catch(() => false) !== true) {
+    fail("Learning retention reference guard is not applied; refusing record purge");
+  }
   const recordResponse = await supabaseRequest("rpc/purge_expired_client_runtime_records", {
     method: "POST",
     body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 500 }),
   });
   if (!recordResponse.ok) fail(`Client record retention failed (${recordResponse.status}); verify the retention migration and tenant's 45-day configuration`);
   const records = await recordResponse.json();
-  const filter = `tenant_slug=eq.${encodeURIComponent(slug)}&retention_expires_at=lte.${encodeURIComponent(new Date().toISOString())}`;
-  const expired = await supabaseSelect("client_learning_items", filter, "id");
-  if (apply) await supabaseDelete("client_learning_items", filter);
-  console.log(JSON.stringify({ tenant: slug, runtimeRecords: records, expiredLearningItems: expired.length, applied: apply, learningRevisionsCascade: true }));
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000);
+  const filter = new URLSearchParams({ tenant_slug: `eq.${slug}`, created_at: `lte.${cutoff.toISOString()}`, retention_expires_at: `lte.${now.toISOString()}` });
+  const learningBatchLimit = 100;
+  const selection = await supabaseRequest(`client_learning_items?${filter}&select=id&order=id&limit=${learningBatchLimit}`);
+  if (!selection.ok) fail(`Learning retention selection failed (${selection.status})`);
+  const learning = await selection.json().catch(() => null);
+  const ids = Array.isArray(learning) ? learning.map((item) => item?.id) : null;
+  if (!ids || ids.length > learningBatchLimit || new Set(ids).size !== ids.length
+    || ids.some((id) => typeof id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) {
+    fail("Learning retention selection returned invalid IDs");
+  }
+  if (apply && ids.length) {
+    const deletion = new URLSearchParams(filter);
+    deletion.set("id", `in.(${ids.join(",")})`);
+    deletion.set("select", "id");
+    const response = await supabaseRequest(`client_learning_items?${deletion}`, { method: "DELETE", headers: { Prefer: "return=representation" } });
+    if (!response.ok) fail(`Learning retention delete failed (${response.status})`);
+    const deleted = await response.json().catch(() => null);
+    if (!Array.isArray(deleted) || deleted.length !== ids.length || deleted.some((item) => !ids.includes(item?.id))) {
+      fail("Learning retention delete did not match the reviewed batch");
+    }
+  }
+  console.log(JSON.stringify({ tenant: slug, runtimeRecords: records, expiredLearningItems: ids.length,
+    learningBatchLimit, moreLearningItemsMayRemain: ids.length === learningBatchLimit,
+    applied: apply, learningRevisionsCascade: true }));
   process.exit(0);
 }
 

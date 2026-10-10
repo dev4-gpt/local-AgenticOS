@@ -111,6 +111,59 @@ test("record retention rejects unconfigured tenants and rolls back on audit fail
   }
 });
 
+test("new learning items survive deletion of older source records and jobs", async () => {
+  const db = await retentionDatabase();
+  try {
+    await db.exec(`
+      create unique index client_runtime_records_tenant_id_test on client_runtime_records (tenant_slug, id);
+      create table client_runtime_jobs (
+        id uuid primary key, tenant_slug text not null references client_tenants(slug),
+        unique (tenant_slug, id)
+      );
+      create table client_learning_items (
+        id uuid primary key, tenant_slug text not null references client_tenants(slug),
+        source_job_id uuid, source_record_id uuid, created_at timestamptz not null,
+        constraint client_learning_items_tenant_slug_source_job_id_fkey
+          foreign key (tenant_slug, source_job_id) references client_runtime_jobs (tenant_slug, id) on delete cascade,
+        constraint client_learning_items_tenant_slug_source_record_id_fkey
+          foreign key (tenant_slug, source_record_id) references client_runtime_records (tenant_slug, id) on delete cascade
+      );
+      insert into client_runtime_jobs values ('00000000-0000-4000-8000-000000000031', 'tenant-a');
+      insert into client_learning_items values
+        ('00000000-0000-4000-8000-000000000041', 'tenant-a', null,
+         '00000000-0000-4000-8000-000000000001', now()),
+        ('00000000-0000-4000-8000-000000000042', 'tenant-a',
+         '00000000-0000-4000-8000-000000000031', null, now());
+    `);
+    const migration = readFileSync("product-experience/supabase-v48-ecc-learning-retention-references.sql", "utf8");
+    await db.exec(migration);
+    await db.exec(migration);
+    expect((await db.query<{ ready: boolean }>("select public.client_learning_retention_references_ready() as ready")).rows[0].ready).toBe(true);
+    await db.query(call, ["tenant-a", true, 1]);
+    await db.exec("delete from client_runtime_jobs where tenant_slug='tenant-a'");
+    const items = await db.query<{ id: string; tenant_slug: string; source_job_id: string | null; source_record_id: string | null }>(
+      "select id, tenant_slug, source_job_id, source_record_id from client_learning_items order by id",
+    );
+    expect(items.rows).toEqual([
+      { id: "00000000-0000-4000-8000-000000000041", tenant_slug: "tenant-a", source_job_id: null, source_record_id: null },
+      { id: "00000000-0000-4000-8000-000000000042", tenant_slug: "tenant-a", source_job_id: null, source_record_id: null },
+    ]);
+    const privileges = await db.query<{ browser: boolean; operator: boolean }>(`
+      select has_function_privilege('authenticated', 'public.client_learning_retention_references_ready()', 'EXECUTE') as browser,
+        has_function_privilege('service_role', 'public.client_learning_retention_references_ready()', 'EXECUTE') as operator
+    `);
+    expect(privileges.rows[0]).toEqual({ browser: false, operator: true });
+    await db.exec(`
+      alter table client_learning_items drop constraint client_learning_items_tenant_slug_source_job_id_fkey;
+      alter table client_learning_items add constraint client_learning_items_tenant_slug_source_job_id_fkey
+        foreign key (tenant_slug, source_job_id) references client_runtime_jobs (tenant_slug, id) on delete cascade;
+    `);
+    expect((await db.query<{ ready: boolean }>("select public.client_learning_retention_references_ready() as ready")).rows[0].ready).toBe(false);
+  } finally {
+    await db.close();
+  }
+});
+
 test("operator retention requires confirmation and stops when the record RPC fails", () => {
   const script = path.join(process.cwd(), "scripts/client-lifecycle.mjs");
   const fixture = path.join(process.cwd(), "scripts/fixtures/client-retention-fetch.mjs");
@@ -134,12 +187,30 @@ test("operator retention requires confirmation and stops when the record RPC fai
   expect(unconfirmed.stderr).toContain("--confirm-retention-records");
   expect(unconfirmed.stdout).toBe("");
 
-  const failedRpc = run(["--apply", "--confirm-retention-records"], { RETENTION_MOCK_RPC_FAIL: "1" });
+  const missingLearningConfirmation = run(["--apply", "--confirm-retention-records"]);
+  expect(missingLearningConfirmation.status).toBe(1);
+  expect(missingLearningConfirmation.stderr).toContain("--confirm-retention-learning");
+
+  const failedRpc = run(["--apply", "--confirm-retention-records", "--confirm-retention-learning"], { RETENTION_MOCK_RPC_FAIL: "1" });
   expect(failedRpc.status).toBe(1);
   expect(failedRpc.stderr).toContain("Client record retention failed (404)");
   expect(failedRpc.stdout).not.toContain("MOCK_LEARNING_RETENTION_DELETE");
 
-  const applied = run(["--apply", "--confirm-retention-records"]);
+  const missingReferenceGuard = run(["--apply", "--confirm-retention-records", "--confirm-retention-learning"], { RETENTION_MOCK_REFERENCE_GUARD_FAIL: "1" });
+  expect(missingReferenceGuard.status).toBe(1);
+  expect(missingReferenceGuard.stderr).toContain("Learning retention reference guard is not applied");
+  expect(missingReferenceGuard.stdout).not.toContain("MOCK_RECORD_RETENTION");
+
+  const invalidIds = run(["--apply", "--confirm-retention-records", "--confirm-retention-learning"], { RETENTION_MOCK_BAD_IDS: "1" });
+  expect(invalidIds.status).toBe(1);
+  expect(invalidIds.stderr).toContain("Learning retention selection returned invalid IDs");
+  expect(invalidIds.stdout).not.toContain("MOCK_LEARNING_RETENTION_DELETE");
+
+  const mismatchedDelete = run(["--apply", "--confirm-retention-records", "--confirm-retention-learning"], { RETENTION_MOCK_DELETE_MISMATCH: "1" });
+  expect(mismatchedDelete.status).toBe(1);
+  expect(mismatchedDelete.stderr).toContain("Learning retention delete did not match the reviewed batch");
+
+  const applied = run(["--apply", "--confirm-retention-records", "--confirm-retention-learning"]);
   expect(applied.status).toBe(0);
   expect(applied.stdout).toContain("MOCK_RECORD_RETENTION:true");
   expect(applied.stdout).toContain("MOCK_LEARNING_RETENTION_DELETE");
