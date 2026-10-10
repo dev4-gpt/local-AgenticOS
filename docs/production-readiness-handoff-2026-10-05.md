@@ -387,3 +387,16 @@ tests, typecheck, security suite, and lint passed. A no-ledger publication
 dry run returned `releaseReady: false` with the new schema gate failed because
 no scoped read-only token was configured; it did not write a ledger record.
 No hosted SQL, runtime deployment, or paid provider call was made.
+
+**Current-candidate source-pack recheck, October 10:** On source commit
+`094347b00fb85bb433a5e8a2feddf3bcfe37a115`, the classroom, client, and
+Markdown source-pack unit suites passed 23 tests with the optional private
+pack test skipped when no pack path was supplied. With the private bonus-index
+pack supplied to that test, all eight Markdown tests passed. The private pack
+currently declares two sources and 111 links; its content remains outside Git.
+The disposable PostgreSQL 17 source-import upgrade smoke and the two
+source-guard schema-evidence tests also passed on this candidate. This verifies
+local parsing and migration compatibility, not a complete Skool course export,
+a hosted guarded RPC, a two-member import, or graph deletion. The shared
+production Supabase project remains unchanged pending approval that covers all
+affected tenants.
