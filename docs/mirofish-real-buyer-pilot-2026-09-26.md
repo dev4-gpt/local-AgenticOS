@@ -341,3 +341,32 @@ the MiroFish test module could not be executed; Python syntax compilation and
 direct positive/negative preflight checks passed. The candidate has not run,
 its cross-persona interaction is not proven, and no new provider call is
 authorized by the prior one-repeat approval.
+
+## Authorized staggered repeat result, 2026-10-10
+
+The previously prepared candidate `sim_131302f00602` was run once under the
+user's existing $0 paid-spend approval, using the configured Groq endpoint and
+model. The pinned public tokenizer asset was cached outside the repository and
+matched its expected SHA-256. The simulation completed all ten rounds with two
+scheduled synthetic buyers and seven action rows. Graph-memory updates were
+disabled. No credentials were printed or added to tracked files.
+
+The current read-only auditor passed run identity, ten-persona coverage,
+workflow/profile mapping, attribution, novelty, action and completion telemetry,
+and buyer activity. It found two dynamic posts and one cross-persona quote;
+P04949 did not interact with the other buyer. `crossBuyerInteraction` and
+`buyerContentReview` therefore remain false, `pilotEvidencePassed` is false,
+and `marketValidation` is false. A mode-0600 review worksheet was prepared in
+the ignored simulation directory for human review. The completed simulation
+is not a passing buyer pilot and does not support market-fit claims.
+
+The local MiroFish buyer-smoke test initially exposed an inconsistent negative
+fixture: it expected a post naming the assigned persona to fail attribution.
+The fixture was corrected to use a different persona ID; the test file passes
+8/8 tests in the repository's Python 3.12 environment. This is a test-only
+change and remains local pending review/push of that separate checkout.
+
+Although the run was authorized under the reported Free plans and $0 paid-spend
+limit, provider billing was not independently reconciled. No claim of verified
+zero usage/cost is made. This run made provider requests; the audit and test
+rechecks after completion were read-only.
