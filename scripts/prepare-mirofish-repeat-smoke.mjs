@@ -5,7 +5,7 @@ import { basename, dirname, join } from "node:path";
 const SOURCE_CONFIG_SHA256 = "b6c926b80225faaacaad1929a999ddf20a804d101e01e51f510a1d99eb6fa09d";
 const SOURCE_PROFILES_SHA256 = "e47a927cb0b8e83cc16993388a8ab223ac35099ef8c31bb0e41ea916b113db0d";
 const SELECTED = new Set(["P00603", "P04949"]);
-const ACTIVE_HOURS = new Map([["P00603", [8]], ["P04949", [9]]]);
+const ACTIVE_HOURS = new Map([["P00603", [8]], ["P04949", [8]]]);
 
 function sha256(bytes) { return createHash("sha256").update(bytes).digest("hex"); }
 
@@ -34,9 +34,9 @@ export function prepareRepeatSmoke(source, simulationId) {
     ...config.time_config,
     total_simulation_hours: 10,
     minutes_per_round: 60,
-    agents_per_hour_min: 1,
-    agents_per_hour_max: 1,
-    peak_hours: [8, 9],
+    agents_per_hour_min: 2,
+    agents_per_hour_max: 2,
+    peak_hours: [8],
     peak_activity_multiplier: 1,
     off_peak_hours: [],
   };
@@ -50,13 +50,18 @@ export function prepareRepeatSmoke(source, simulationId) {
     initial_posts: [
       {
         poster_type: "Buyer",
+        poster_agent_id: idByName.get("P00603"),
+        content: "P00603: I review security for a small AI consultancy on a sub-$50 monthly budget. AgentOS lists $2,500 setup plus $1,250/month before provider usage. I would need a concrete, isolated client-document handoff and an auditable draft before considering a pilot. What evidence would make that practical at my scale?",
+      },
+      {
+        poster_type: "Buyer",
         poster_agent_id: idByName.get("P04949"),
         content: "P04949: I own the budget for healthcare administration and know AI systems well. AgentOS lists $2,500 setup plus $1,250/month before provider usage. Show me an auditable administrative intake handoff, with total costs and access controls visible, before I decide whether that price is justified. I am not asking for clinical decision support.",
       },
     ],
     scheduled_events: [],
     hot_topics: ["first useful workflow", "privacy and access control", "budget visibility", "AI literacy", "approval and audit evidence"],
-    narrative_direction: "Buyers evaluate the first useful workflow and may reject AgentOS when evidence, privacy, setup effort, or cost controls are inadequate. Do not invent product proof or clinical outcomes.",
+    narrative_direction: "Both buyers are active in the same discussion round and can respond to each other's distinct opening post. Evaluate the first useful workflow and reject AgentOS when evidence, privacy, setup effort, or cost controls are inadequate. Do not invent product proof or clinical outcomes.",
   };
   config.wait_for_commands = false;
   config.generation_reasoning = "Manual, bounded English-language two-buyer repeat smoke. This is not market validation.";
