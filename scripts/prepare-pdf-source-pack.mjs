@@ -9,17 +9,20 @@ const MAX_PDF_BYTES = 100 * 1024 * 1024;
 const MAX_TEXT_BYTES = 20 * 1024 * 1024;
 
 export function parsePdfLinks(output) {
-  return output.split(/\r?\n/).flatMap((line) => {
-    const match = line.match(/^\s*(\d+)\s+Annotation\s+(\S+)\s*$/);
-    if (!match) return [];
+  const links = [];
+  const skipped = [];
+  for (const line of output.split(/\r?\n/)) {
+    const match = line.match(/^\s*(\d+)\s+Annotation\s+(.+?)\s*$/);
+    if (!match) continue;
     try {
-      const url = new URL(match[2]);
-      if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return [];
-      return [{ url: url.toString(), text: `PDF link on page ${Number(match[1])}` }];
+      const url = new URL(match[2].trim());
+      if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("unsupported_link");
+      links.push({ url: url.toString(), text: `PDF link on page ${Number(match[1])}` });
     } catch {
-      return [];
+      skipped.push(`PDF page ${Number(match[1])}: unsupported or invalid link omitted`);
     }
-  });
+  }
+  return { links, skipped };
 }
 
 export function cleanPdfText(text) {
@@ -59,13 +62,13 @@ export function pdfSourcePack({ pdfPath, pageUrl, title, publishedDate, collecte
   if (Buffer.byteLength(extracted, "utf8") > MAX_TEXT_BYTES) throw new Error("pdf_text_too_large");
   const text = cleanPdfText(extracted);
   if (!text) throw new Error("pdf_text_unavailable_or_scanned_needs_ocr");
-  const links = parsePdfLinks(runCommand("pdfinfo", ["-url", pdfPath]));
+  const extractedLinks = parsePdfLinks(runCommand("pdfinfo", ["-url", pdfPath]));
   const fileTitle = path.basename(pdfPath, path.extname(pdfPath)).replace(/^\d{4}-\d{2}-\d{2}[-_ ]*/, "").replace(/[-_]+/g, " ").trim();
   const sourceTitle = title?.trim() || metadataValue(metadata, "Title") || fileTitle;
   const date = publishedDate || path.basename(pdfPath).match(/^(\d{4}-\d{2}-\d{2})[-_ ]/)?.[1];
-  const source = { title: sourceTitle, tab: sourceTitle, url: sourceUrl.toString(), text, links, collectedAt };
+  const source = { title: sourceTitle, tab: sourceTitle, url: sourceUrl.toString(), text, links: extractedLinks.links, collectedAt };
   if (date) source.publishedAt = date;
-  const prepared = prepareClassroomSourcePack({ startUrl: sourceUrl.toString(), sources: [source], skipped: [], pending: [] });
+  const prepared = prepareClassroomSourcePack({ startUrl: sourceUrl.toString(), sources: [source], skipped: extractedLinks.skipped, pending: [] });
   return {
     batches: prepared.batches,
     coverage: prepared.coverage,
@@ -74,7 +77,8 @@ export function pdfSourcePack({ pdfPath, pageUrl, title, publishedDate, collecte
       inputSha256: createHash("sha256").update(readFileSync(pdfPath)).digest("hex"),
       pages,
       textCharacters: text.length,
-      embeddedLinks: links.length,
+      embeddedLinks: extractedLinks.links.length,
+      skippedLinkAnnotations: extractedLinks.skipped.length,
       title: sourceTitle,
       publishedDate: date ?? null,
     },
@@ -111,7 +115,7 @@ if (process.argv[1]?.endsWith("/prepare-pdf-source-pack.mjs")) {
       for (const batch of batchFiles) writePrivate(batch.file, batch.encoded);
       const manifestBatches = batchFiles.map(({ file, sha256, sources, links }) => ({ file, sha256, sources, links }));
       writePrivate(manifest, JSON.stringify({ version: 1, ...result.metadata, coverage: result.coverage, batches: manifestBatches }, null, 2));
-      console.log(JSON.stringify({ manifest, pages: result.metadata.pages, sources: result.coverage.outputSources, links: result.coverage.outputLinks, batches: batchFiles.length }));
+      console.log(JSON.stringify({ manifest, pages: result.metadata.pages, sources: result.coverage.outputSources, links: result.coverage.outputLinks, skipped: result.coverage.skippedPages, batches: batchFiles.length }));
     } catch (error) {
       console.error(error instanceof Error ? error.message : "pdf_source_pack_failed");
       process.exitCode = 1;
