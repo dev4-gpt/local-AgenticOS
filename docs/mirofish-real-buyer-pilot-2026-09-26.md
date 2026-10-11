@@ -244,6 +244,31 @@ The user's Free-plan check is not a post-run provider billing receipt, and the
 keys' account linkage was not independently verified. No paid-spend or broad
 market claim is made.
 
+## Pinned bounded repeat review, 2026-10-11
+
+The latest MiroFish workspace candidate `sim_b0958acead3f` was checked without
+provider calls. Its config, profile, and preparation hashes match the reviewed
+runner pins. Run-state and event telemetry report ten configured rounds,
+10 generated profiles, two active synthetic buyers, eight Twitter action rows,
+two dynamic quote-posts, and one completion event. The simulation had already
+completed before this review; no new Groq or Zep request was made here.
+
+The two dynamic posts were reviewed locally by an explicitly identified
+AI-assisted reviewer against the exact profile roles and first workflows. Both
+were scenario-relevant, role-faithful, scope-safe, and actionable: one demands
+proof of an isolated client handoff and provider boundary before considering
+price; the other asks for an auditable administrative-intake demo, isolation,
+and transparent pricing. The private mode-0600 review file remains under the
+ignored MiroFish simulation directory. The current AgentOS evidence capturer
+accepted the run against source `0729e69c411afdc7e3943584fadbbefac7af4760`:
+`pilotEvidencePassed: true`, 10 profiles, 10 rounds, and two reviewed posts.
+
+This is a technically and content-reviewed synthetic scenario, not market
+validation: only two synthetic buyers acted, no real prospects were interviewed,
+and actual Groq/Zep usage or billing was not independently reconciled. The
+user-reported $0 limit and Free plans remain the authorization boundary; no
+additional simulation or paid call is authorized by this audit.
+
 ## Saved-run audit recheck, 2026-10-10
 
 The AgentOS read-only auditor was rerun against the saved MiroFish directory
