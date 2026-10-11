@@ -5,6 +5,7 @@ import { basename, dirname, join } from "node:path";
 const SOURCE_CONFIG_SHA256 = "b6c926b80225faaacaad1929a999ddf20a804d101e01e51f510a1d99eb6fa09d";
 const SOURCE_PROFILES_SHA256 = "e47a927cb0b8e83cc16993388a8ab223ac35099ef8c31bb0e41ea916b113db0d";
 const SELECTED = new Set(["P00603", "P04949"]);
+const ACTIVE_HOURS = new Map([["P00603", [8]], ["P04949", [9]]]);
 
 function sha256(bytes) { return createHash("sha256").update(bytes).digest("hex"); }
 
@@ -33,24 +34,20 @@ export function prepareRepeatSmoke(source, simulationId) {
     ...config.time_config,
     total_simulation_hours: 10,
     minutes_per_round: 60,
-    agents_per_hour_min: 2,
-    agents_per_hour_max: 2,
-    peak_hours: [9],
+    agents_per_hour_min: 1,
+    agents_per_hour_max: 1,
+    peak_hours: [8, 9],
     peak_activity_multiplier: 1,
     off_peak_hours: [],
   };
   for (const agent of agents) {
-    const active = SELECTED.has(agent.entity_name);
-    agent.active_hours = active ? [9] : [];
+    const activeHours = ACTIVE_HOURS.get(agent.entity_name) ?? [];
+    agent.active_hours = [...activeHours];
+    const active = activeHours.length > 0;
     agent.activity_level = active ? 1 : 0;
   }
   config.event_config = {
     initial_posts: [
-      {
-        poster_type: "Buyer",
-        poster_agent_id: idByName.get("P00603"),
-        content: "P00603: I review security for a solo agency, am new to AI, and have less than $50 a month. AgentOS lists $2,500 setup plus $1,250/month before provider usage, so I cannot buy this offer. I would still want evidence that a client handoff keeps files isolated and needs no provider connection before I reconsider at a different budget.",
-      },
       {
         poster_type: "Buyer",
         poster_agent_id: idByName.get("P04949"),
@@ -88,7 +85,7 @@ async function main() {
   await writeFile(join(outputDir, "simulation_config.json"), outputBytes, { mode: 0o600 });
   await writeFile(join(outputDir, "twitter_profiles.csv"), profileBytes, { mode: 0o600 });
   await writeFile(join(outputDir, "profile-preparation.json"), `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
-  process.stdout.write(`${JSON.stringify({ simulationId, outputDir, configSha256: sha256(outputBytes), profileSha256: sha256(profileBytes), profilePreparation: manifest.preparation, selectedBuyers: [...SELECTED].sort(), rounds: 10, providerCalls: 0 })}\n`);
+  process.stdout.write(`${JSON.stringify({ simulationId, outputDir, configSha256: sha256(outputBytes), profileSha256: sha256(profileBytes), profilePreparation: manifest.preparation, selectedBuyers: [...SELECTED].sort(), buyerSchedule: Object.fromEntries(ACTIVE_HOURS), rounds: 10, providerCalls: 0 })}\n`);
 }
 
 if (process.argv[1]?.endsWith("/prepare-mirofish-repeat-smoke.mjs")) main().catch((error) => { console.error(error.message); process.exitCode = 1; });

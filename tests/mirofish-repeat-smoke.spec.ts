@@ -4,7 +4,7 @@ import { prepareRepeatSmoke, validReviewedProfileManifest } from "../scripts/pre
 
 const buyers = ["P00603", "P01315", "P02225", "P03040", "P04949", "P05453", "P06865", "P07078", "P08037", "P09494"];
 
-test("repeat smoke preserves the ten-buyer frame but activates only two in one round", () => {
+test("repeat smoke preserves ten profiles and staggers two buyer turns for cross-persona responses", () => {
   const source = {
     simulation_id: "sim_oldpilot000",
     agent_configs: buyers.map((entity_name, agent_id) => ({ entity_name, agent_id, active_hours: [1, 2], activity_level: 0.5 })),
@@ -15,10 +15,10 @@ test("repeat smoke preserves the ten-buyer frame but activates only two in one r
   const next = prepareRepeatSmoke(source, "sim_123456abcdef");
   expect(source.event_config.initial_posts).toHaveLength(1);
   expect(next.simulation_id).toBe("sim_123456abcdef");
-  expect(next.time_config).toMatchObject({ total_simulation_hours: 10, minutes_per_round: 60, agents_per_hour_min: 2, agents_per_hour_max: 2 });
-  expect(next.agent_configs.filter((agent: { activity_level: number }) => agent.activity_level === 1).map((agent: { entity_name: string }) => agent.entity_name)).toEqual(["P00603", "P04949"]);
+  expect(next.time_config).toMatchObject({ total_simulation_hours: 10, minutes_per_round: 60, agents_per_hour_min: 1, agents_per_hour_max: 1, peak_hours: [8, 9] });
+  expect(next.agent_configs.filter((agent: { activity_level: number }) => agent.activity_level === 1).map((agent: { entity_name: string; active_hours: number[] }) => [agent.entity_name, agent.active_hours])).toEqual([["P00603", [8]], ["P04949", [9]]]);
   expect(next.agent_configs.filter((agent: { activity_level: number }) => agent.activity_level === 0)).toHaveLength(8);
-  expect(next.event_config.initial_posts).toHaveLength(2);
+  expect(next.event_config.initial_posts).toHaveLength(1);
   for (const post of next.event_config.initial_posts) {
     const assigned = next.agent_configs[post.poster_agent_id].entity_name;
     expect(post.content).toContain(assigned);
@@ -26,7 +26,7 @@ test("repeat smoke preserves the ten-buyer frame but activates only two in one r
     expect(post.content).toContain("$2,500 setup");
     expect(post.content).toContain("$1,250/month");
   }
-  expect(next.event_config.initial_posts[0].content).toContain("cannot buy this offer");
+  expect(next.agent_configs[next.event_config.initial_posts[0].poster_agent_id].entity_name).toBe("P04949");
   expect(next.wait_for_commands).toBe(false);
 });
 

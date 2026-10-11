@@ -325,3 +325,19 @@ listed as missing interactions. The auditor exits nonzero with
 Groq/Zep requests. Do not cite either run as evidence that buyers interacted
 with one another or as market validation; adjust the scenario/simulation
 setup before any separately authorized repeat.
+
+## Staggered repeat candidate, 2026-10-10
+
+Prepared candidate `sim_131302f00602` from the pinned, reviewed synthetic
+profiles without loading keys or starting a simulation. It keeps ten profiles
+and ten rounds, schedules P00603 at hour 8 and P04949 at hour 9, and seeds one
+P04949 post so the first active buyer has no own seed post to quote. The
+AgentOS repeat-preparation test passes, and the isolated MiroFish runner's
+read-only preflight returned `applied: false` for the exact configuration
+hash `4960815130d002572de202df7e55b220455c686357eb0377156dd21149435749`.
+The runner change is local commit `5dc9f91` on `buyer-pilot-telemetry`; that
+checkout's push remote is disabled. Python `pytest` is not installed here, so
+the MiroFish test module could not be executed; Python syntax compilation and
+direct positive/negative preflight checks passed. The candidate has not run,
+its cross-persona interaction is not proven, and no new provider call is
+authorized by the prior one-repeat approval.
