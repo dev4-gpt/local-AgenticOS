@@ -73,3 +73,12 @@ The available private bonus-link pack was validated locally with
 the parser suite passed 8/8 and the pack contains 2 source sections, 111 links,
 1 skipped invalid URL, and no direct video URLs. This is a bonus-link index,
 not a classroom export; it was not uploaded or imported into a hosted graph.
+
+On source `86ceca0a07de7173f73a7ab2ed373214a655797a`, the actual private
+bonus pack was passed through the guarded import RPC in a disposable
+network-disabled PostgreSQL graph. The RPC reported 2 imported records and a
+graph refresh; queries found 2 source edges, 110 distinct `links_to` edges,
+and 1 import audit event. The pack contains 111 raw links, with one repeated
+source/URL pair collapsing to one graph edge. The harness used a synthetic
+verified artifact row; it did not exercise real object upload or hosted
+storage. This remains sample-pack evidence, not full classroom coverage.
