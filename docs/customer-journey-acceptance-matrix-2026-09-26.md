@@ -309,3 +309,15 @@ provider requests were made. The production-readiness verifier remains
 `releaseReady: false`: the release-ledger bucket is unconfigured, so required
 receipts and approvals remain unevaluated. These local checks do not prove
 hosted rate limiting or customer-journey acceptance.
+
+**Current-head MiroFish receipt refresh, 2026-10-10:** The retained synthetic
+run `sim_b0958acead3f` was re-audited and its eight artifact hashes were
+captured against clean AgentOS commit
+`701de92ac9016ed03a84ff9c3bf77642a67ffc1d`. All 12 technical and content
+checks pass for ten profiles, ten configured rounds, and two active synthetic
+buyers; `pilotEvidencePassed: true`, `marketValidation: false`. No `.env` was
+loaded and no provider request was made. AgentOS's MiroFish artifact suite
+passed 22 tests, and the pinned MiroFish buyer-smoke suite passed 8 tests.
+This is a reproducible synthetic pilot receipt, not 10,000 active personas,
+real-buyer validation, or independent billing reconciliation; the approved
+paid-spend ceiling remains $0.
