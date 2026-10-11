@@ -29,7 +29,9 @@ Branch: `wip/backup-2026-10-03`, clean and tracking origin.
   hosted migration, tenant write, model/provider request, or paid operation was
   performed.
 - `npm run verify:production-readiness` remains the authoritative release gate;
-  the previously refreshed result is `releaseReady: false` because the release
-  evidence ledger is not configured and hosted customer-journey, migration,
-  deployment identity, tenant isolation, source import, parity, buyer-pilot,
-  approvals, and rollback evidence remain incomplete or unevaluated.
+  rerun on documentation HEAD `b3b2fce8cf1ee9867f922acb5e6e6671eb531ce9`
+  returned `releaseReady: false`, with `ledger_bucket_not_configured` and 37
+  ledger-backed checks `notEvaluated`. These include AI evaluation, buyer
+  pilot, customer journey, migration receipts, deployment identity, tenant
+  isolation, source import, local/cloud parity, test attachment, approvals,
+  and rollback. The local image smoke does not satisfy those hosted gates.
