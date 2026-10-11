@@ -33,6 +33,9 @@ export function evaluateClientRuntimeConfig(service, expected) {
   }
   const list = (name) => new Set((variables.get(name) ?? "").split(",").map((item) => item.trim()).filter(Boolean));
   if (variables.get("CLIENT_SLUG") !== expected.tenant) failures.push("tenant_mismatch");
+  if (variables.get("CLIENT_RUNTIME_ENFORCE_AUTH") !== "1") failures.push("runtime_auth_not_enforced");
+  const expectedProviderCalls = expected.providerCallsEnabled === true ? "1" : "0";
+  if (variables.get("CLIENT_PROVIDER_CALLS_ENABLED") !== expectedProviderCalls) failures.push("provider_calls_policy_mismatch");
   if (variables.get("CLIENT_RETENTION_DAYS") !== "45") failures.push("retention_days_not_45");
   const notebookDays = variables.get("CLIENT_NOTEBOOK_RETENTION_DAYS");
   if (notebookDays !== undefined && notebookDays !== "45") failures.push("notebook_retention_days_not_45");

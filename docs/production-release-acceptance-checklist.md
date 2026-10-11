@@ -144,8 +144,14 @@ gcloud --account="$APPROVED_GCP_ACCOUNT" --quiet run services describe "$SERVICE
   --project "$PROJECT" --region "$REGION" --format=json |
   node scripts/verify-client-runtime-config.mjs \
     --service "$SERVICE" --expected-revision "$REVISION" \
-    --expected-image-digest "$IMAGE_DIGEST" --tenant "$TENANT_SLUG"
+    --expected-image-digest "$IMAGE_DIGEST" --tenant "$TENANT_SLUG" \
+    --expected-provider-calls disabled
 ```
+
+The preflight requires runtime authentication enforcement and checks the
+provider-call setting against this explicit expectation. Keep it `disabled`
+for internal beta; use `enabled` only for a separately reviewed client whose
+provider, model, budget, and credential allowlists have been verified.
 
 ## 4. External integration release rules
 

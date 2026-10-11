@@ -11,9 +11,11 @@ const service = valueAfter("--service");
 const revision = valueAfter("--expected-revision");
 const digestValue = valueAfter("--expected-image-digest")?.replace(/^sha256:/i, "").toLowerCase();
 const tenant = valueAfter("--tenant");
+const expectedProviderCalls = valueAfter("--expected-provider-calls") ?? "disabled";
 if (!/^[a-z][a-z0-9-]{2,60}$/.test(service ?? "") || !/^[a-z][a-z0-9-]{2,126}$/.test(revision ?? "")
-    || !/^[0-9a-f]{64}$/.test(digestValue ?? "") || !/^[a-z][a-z0-9-]{2,40}$/.test(tenant ?? "")) {
-  console.error("Pass --service, --expected-revision, --expected-image-digest, and --tenant with canonical values.");
+    || !/^[0-9a-f]{64}$/.test(digestValue ?? "") || !/^[a-z][a-z0-9-]{2,40}$/.test(tenant ?? "")
+    || !["enabled", "disabled"].includes(expectedProviderCalls)) {
+  console.error("Pass --service, --expected-revision, --expected-image-digest, and --tenant with canonical values; --expected-provider-calls may be enabled or disabled.");
   process.exit(2);
 }
 
@@ -31,6 +33,9 @@ catch {
   console.error("Cloud Run service snapshot is not valid JSON.");
   process.exit(2);
 }
-const result = evaluateClientRuntimeConfig(snapshot, { service, revision, digest: digestValue, tenant });
+const result = evaluateClientRuntimeConfig(snapshot, {
+  service, revision, digest: digestValue, tenant,
+  providerCallsEnabled: expectedProviderCalls === "enabled",
+});
 console.log(JSON.stringify(result, null, 2));
 if (!result.ok) process.exitCode = 1;

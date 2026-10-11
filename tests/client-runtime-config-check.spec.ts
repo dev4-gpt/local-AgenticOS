@@ -37,6 +37,8 @@ function snapshot() {
       image: `example.invalid/client-runtime@sha256:${digest}`,
       env: [
         { name: "CLIENT_SLUG", value: "internal-beta" },
+        { name: "CLIENT_RUNTIME_ENFORCE_AUTH", value: "1" },
+        { name: "CLIENT_PROVIDER_CALLS_ENABLED", value: "0" },
         { name: "CLIENT_RETENTION_DAYS", value: "45" },
         { name: "CLIENT_NOTEBOOK_RETENTION_DAYS", value: "45" },
         { name: "CLIENT_ALLOWED_ROUTES", value: "/,/memory,/notebook" },
@@ -103,4 +105,19 @@ test("source import requires a secret-backed worker verifier", () => {
   const result = evaluateClientRuntimeConfig(plaintext, expected);
   expect(result.failures).toContain("source_import_worker_secret_missing");
   expect(JSON.stringify(result)).not.toContain("DO_NOT_PRINT_PRIVATE_VALUE");
+});
+
+test("candidate config requires auth enforcement and the reviewed provider-call policy", () => {
+  const service = snapshot();
+  const env = service.spec.template.spec.containers[0].env;
+  env.find((entry) => entry.name === "CLIENT_RUNTIME_ENFORCE_AUTH")!.value = "0";
+  env.find((entry) => entry.name === "CLIENT_PROVIDER_CALLS_ENABLED")!.value = "1";
+  const result = evaluateClientRuntimeConfig(service, expected);
+  expect(result.failures).toContain("runtime_auth_not_enforced");
+  expect(result.failures).toContain("provider_calls_policy_mismatch");
+
+  env.find((entry) => entry.name === "CLIENT_RUNTIME_ENFORCE_AUTH")!.value = "1";
+  env.find((entry) => entry.name === "CLIENT_PROVIDER_CALLS_ENABLED")!.value = "1";
+  expect(evaluateClientRuntimeConfig(service, { ...expected, providerCallsEnabled: true }).failures)
+    .not.toContain("provider_calls_policy_mismatch");
 });

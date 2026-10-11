@@ -21,6 +21,8 @@ function snapshots() {
       image: `example.invalid/client-runtime@${digest}`,
       env: [
         { name: "CLIENT_SLUG", value: expected.namespace },
+        { name: "CLIENT_RUNTIME_ENFORCE_AUTH", value: "1" },
+        { name: "CLIENT_PROVIDER_CALLS_ENABLED", value: "0" },
         { name: "CLIENT_RETENTION_DAYS", value: "45" },
         { name: "CLIENT_ALLOWED_ROUTES", value: "/,/memory,/notebook" },
         { name: "CLIENT_ALLOWED_API_ROUTES", value: "/api/client-runtime/source-import,/api/client-runtime/build-identity" },
