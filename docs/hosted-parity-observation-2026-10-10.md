@@ -199,3 +199,16 @@ shared user or tenant. The local page and two Cloud Test pages disagree on both
 data counts and available features. Parity is not verified. No tenant writes,
 imports, provider calls, database changes, migrations, or deployments were
 performed.
+
+## Local Runtime Start Check, October 10
+
+The current-source client launcher reported missing `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+`CLIENT_SLUG`, and `CLIENT_ALLOWED_USER_EMAILS`. The repository's `.env.local`
+exists, but none of those four names is configured there. An attempt to start
+the current clean source on port 3943 found an existing Next.js dev server for
+the same `.next-client` directory on port 3939 and exited without starting a
+second server or stopping the existing one. The 3939 build-identity endpoint
+returns HTTP 401 without an authenticated browser session. Authenticated
+current-source local parity therefore still requires an approved private
+runtime env file and a signed-in local session. No env values were emitted,
+and no providers, tenant data, or hosted systems were touched.
