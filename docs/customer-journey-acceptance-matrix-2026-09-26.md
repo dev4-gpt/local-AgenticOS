@@ -328,6 +328,12 @@ paid-spend ceiling remains $0.
 `veloce-agenticos-2026/asia-south1`. Revision `veloce-cloud-test-acceptance-9417c3c`
 receives 100% traffic with image digest
 `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`.
+The digest matches the historic release artifact built from source commit
+`9417c3c`; current Git history shows the source-import route was added later
+in `f2f3b8e` and the build-identity route in `dd6b6cd`. This explains why
+those APIs are absent from the deployed image, rather than indicating a local
+route-registration failure. Cloud Test still needs an explicitly approved
+build/configuration/release before it can verify current-source parity.
 The runtime has `CLIENT_PROVIDER_CALLS_ENABLED=1` and
 `CLIENT_RETENTION_DAYS=14`; its API allowlist omits
 `/api/client-runtime/build-identity` and `/api/client-runtime/source-import`.
