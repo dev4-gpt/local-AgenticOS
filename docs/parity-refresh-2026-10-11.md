@@ -56,3 +56,30 @@ browser tabs were restored to their Memory pages after the checks.
    image digest, or select the actual current Cloud Test host.
 3. Compare both signed-in workspaces against the same tenant, source revision,
    feature manifest, and read-only data scope before calling them equivalent.
+
+## Follow-up Observation: 2026-10-11
+
+- The browser opened
+  `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2Fmemory`
+  and ended at `/memory`. The checked-in login component only redirects this
+  way after the session endpoint reports both authentication and workspace
+  authorization; no user ID or email was inspected.
+- That current Memory view showed **0 tenant memories, 0 graph nodes, and 0
+  edges**, with “No tenant records yet.” This conflicts with the earlier
+  same-day observation of 24 memories, 33 nodes, and 57 edges. It does not prove
+  deletion; the session/tenant or backend query may differ and needs
+  investigation.
+- `GET /api/client-runtime/build-identity` returned
+  `{"ok":false,"error":"client_route_not_enabled"}` on both the
+  `mquo4bf7aq` login alias and the documented primary Cloud Test host
+  `veloce-cloud-test-1075094991117.asia-south1.run.app`.
+- Local `http://127.0.0.1:3941/api/client-runtime/build-identity` refused the
+  connection. The local server is not currently available, so no
+  contemporaneous same-account local/cloud comparison could be made.
+- The separate `agentos-internal-beta` service in `agentos-mvp` is not the
+  Cloud Test target: its canonical URL is in `europe-west1`, while the Cloud
+  Test manifest points to the `veloce-agenticos-2026` project in
+  `asia-south1`. Its revision metadata is not evidence for the Cloud Test
+  service.
+- These were read-only observations. No tenant data, settings, Cloud Run
+  resources, or provider state was changed.
