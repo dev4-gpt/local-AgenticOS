@@ -322,17 +322,27 @@ This is a reproducible synthetic pilot receipt, not 10,000 active personas,
 real-buyer validation, or independent billing reconciliation; the approved
 paid-spend ceiling remains $0.
 
-**Cloud Test route and project-identity recheck, 2026-10-10:** On the
-separately named Cloud Test origin `veloce-cloud-test-mquo4bf7aq-el.a.run.app`,
-unauthenticated GETs returned `/status` 200, `/login` 200, `/memory` 307,
-`/api/client-runtime/build-identity` 403, and
-`/api/client-runtime/source-import` 403. The current local runtime on port
-3941 returned 200, 200, 307, 401, and 405 respectively; the latter is a
-POST-only route present locally. In a read-only GCP inventory, accessible
-`agentos-mvp/europe-west1` exposed only `agentos` and `agentos-internal-beta`,
-neither matching the Cloud Test hostname; its Cloud Run service identity was
-not mapped in the accessible projects. Internal Beta independently remains
-revision `agentos-internal-beta-00034-v69` with one-day retention and no
-source-import/build-identity API allowlist entries. No authenticated session,
-tenant data, project identity, same-revision parity, or customer action was
-verified; no configuration or deployment changed.
+**Cloud Test deployment and route recheck, 2026-10-10:** Using the configured
+`aryamandev777@gmail.com` gcloud account, a read-only inventory mapped
+`veloce-cloud-test-mquo4bf7aq-el.a.run.app` to service `veloce-cloud-test` in
+`veloce-agenticos-2026/asia-south1`. Revision `veloce-cloud-test-acceptance-9417c3c`
+receives 100% traffic with image digest
+`sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`.
+The runtime has `CLIENT_PROVIDER_CALLS_ENABLED=1` and
+`CLIENT_RETENTION_DAYS=14`; its API allowlist omits
+`/api/client-runtime/build-identity` and `/api/client-runtime/source-import`.
+Its `CLIENT_STORAGE_BUCKET` is
+`veloce-agenticos-2026-veloce-cloud-test`. A metadata-only bucket describe
+returned null for `retentionPolicy`, `lifecycle`, `softDeletePolicy`, and
+`iamConfiguration`; no object listing or reads were performed, so object-byte
+expiry and access mode remain unverified.
+Unauthenticated GETs returned `/status` 200, `/login` 200, `/memory` 307, and
+403 for both omitted API routes. Current local port 3941 returned 200, 200,
+307, 401, and 405 respectively (source-import is POST-only and present
+locally). This is a concrete deployment/configuration mismatch; do not invoke
+provider-capable actions or apply a hosted change as part of this audit. The
+provider flag is enabled on this service, so no execution UI/API was used.
+Internal Beta is a separate service in `agentos-mvp/europe-west1`, revision
+`agentos-internal-beta-00034-v69`, with provider calls disabled and one-day
+retention. No signed-in same-user session or tenant data was inspected, and no
+configuration or deployment changed.
