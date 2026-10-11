@@ -11,6 +11,19 @@ test("internal beta deployment manifest retains customer data for the agreed 45 
   expect(internalBetaManifest.retention.days).toBe(45);
 });
 
+test("internal beta manifest keeps providers and workers off with secret-backed import credentials", () => {
+  expect(internalBetaManifest.providerCallsEnabled).toBe(false);
+  expect(internalBetaManifest.intentRoutingEnabled).toBe(false);
+  expect(internalBetaManifest.runtimeEnv.CLIENT_RUNTIME_WORKER_ENABLED).toBe("0");
+  expect(internalBetaManifest.approvalPolicy).toBe("approve_external_actions");
+  expect(internalBetaManifest.modelAllowlist).toEqual([]);
+  expect(internalBetaManifest.secretEnv).toEqual({
+    SUPABASE_ANON_KEY: "supabase-anon-key",
+    CLIENT_WORKER_TOKEN: "worker-token",
+  });
+  expect(JSON.stringify(internalBetaManifest)).not.toMatch(/(sk-[A-Za-z0-9]{20,}|eyJ[A-Za-z0-9_-]{40,})/);
+});
+
 function snapshot() {
   return {
     metadata: { name: expected.service, generation: 35 },
