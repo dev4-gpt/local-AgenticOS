@@ -38,7 +38,12 @@ browser tabs were restored to their Memory pages after the checks.
 - `npm run verify:source-import-browser` did not reach its test assertions:
   Playwright's pinned Chromium executable is absent. Retrying with installed
   Chrome also failed during browser launch (`SIGABRT`) before test execution.
-  This is an environment limitation, not an application assertion result.
+  This was an environment limitation, not an application assertion result.
+- Follow-up: after installing Playwright's official Chromium and granting the
+  test process local browser-launch permission, all **5/5** synthetic browser
+  tests passed against the local `3941` UI. Every API request was intercepted
+  by fixtures. The running UI still reports no build identity, so this does not
+  attest the runtime's exact source commit.
 - No Skool material was read or imported. The user is preparing that local/Drive
   archive and asked that it remain paused until they request a check.
 
