@@ -288,3 +288,11 @@ observability, billing reconciliation, or a completed customer journey. The
 local JSON report is generated under ignored `tmp/`; the strict readiness
 gate still reports `releaseReady: false` because no ledger bucket or approved
 release evidence bundle is configured.
+
+**Focused cross-workstream suite, 2026-10-10:** On source commit
+`53197c84754d84c908aaf53538c0f2ef50c3c747`, `npm run test:focused` passed
+344/344 executed tests with one configured skip under Node `v24.18.0`. The
+suite includes release-contract, migration-fixture, tenant-isolation,
+observability, source-pack, MiroFish-pilot, and lifecycle regressions. This is
+local automated evidence only; it does not convert any hosted gate to
+accepted, and the skipped case remains outside the passing count.
