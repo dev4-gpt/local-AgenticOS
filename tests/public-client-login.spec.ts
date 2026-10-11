@@ -105,3 +105,31 @@ test("login rate limit fails closed when durable storage is unavailable", async 
   const request = new Request("https://app.veloceos.cloud/api/client-login/request", { headers: { "x-forwarded-for": "192.0.2.10" } });
   expect(await guard.allowPublicRequest(request, "client-login", true)).toBe(false);
 });
+
+test("in-memory public rate limit expires old keys and caps unique-key growth", async () => {
+  const priorUrl = process.env.SUPABASE_URL;
+  const priorServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const originalNow = Date.now;
+  delete process.env.SUPABASE_URL;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  let now = 1_800_000_000_000;
+  Date.now = () => now;
+  try {
+    const guard = loadReviewModule("product-experience/src/lib/publicRequestGuard.ts", {});
+    const requestFor = (index: number) => new Request("https://app.veloceos.cloud/api/support", {
+      headers: { "x-forwarded-for": `198.51.${Math.floor(index / 256)}.${index % 256}` },
+    });
+    let accepted = 0;
+    for (let index = 0; index < 10_000; index += 1) {
+      accepted += Number(await guard.allowPublicRequest(requestFor(index), "memory-cap-test"));
+    }
+    expect(accepted).toBe(10_000);
+    expect(await guard.allowPublicRequest(requestFor(10_000), "memory-cap-test")).toBe(false);
+    now += 15 * 60 * 1000 + 1;
+    expect(await guard.allowPublicRequest(requestFor(10_000), "memory-cap-test")).toBe(true);
+  } finally {
+    Date.now = originalNow;
+    if (priorUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = priorUrl;
+    if (priorServiceKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = priorServiceKey;
+  }
+});

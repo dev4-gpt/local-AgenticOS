@@ -3,7 +3,9 @@ import { createHash } from "node:crypto";
 const WINDOW_SECONDS = 15 * 60;
 const LIMIT = 5;
 const MAX_BODY_BYTES = 100_000;
+const MAX_TRACKED_KEYS = 10_000;
 const attempts = new Map<string, number[]>();
+let nextMemoryCleanup = 0;
 
 function forwardedClient(req: Request) {
   const forwarded = req.headers.get("x-forwarded-for")?.split(",", 1)[0]?.trim();
@@ -12,11 +14,23 @@ function forwardedClient(req: Request) {
 
 function memoryLimit(key: string) {
   const now = Date.now();
-  const recent = (attempts.get(key) ?? []).filter((time) => now - time < WINDOW_SECONDS * 1000);
+  const cutoff = now - WINDOW_SECONDS * 1000;
+  if (now >= nextMemoryCleanup) {
+    for (const [storedKey, timestamps] of attempts) {
+      const active = timestamps.filter((time) => time > cutoff);
+      if (active.length) attempts.set(storedKey, active);
+      else attempts.delete(storedKey);
+    }
+    nextMemoryCleanup = now + WINDOW_SECONDS * 1000;
+  }
+
+  const existing = attempts.get(key);
+  const recent = (existing ?? []).filter((time) => time > cutoff);
   if (recent.length >= LIMIT) {
     attempts.set(key, recent);
     return false;
   }
+  if (!existing && attempts.size >= MAX_TRACKED_KEYS) return false;
   attempts.set(key, [...recent, now]);
   return true;
 }
