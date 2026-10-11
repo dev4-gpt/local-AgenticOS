@@ -17,6 +17,9 @@ Branch: `wip/backup-2026-10-03`, clean and tracking origin.
   provisioner dry-run resolves the expected secret references without
   applying changes. The manifest still references the old September 26 image
   digest, so it is not deploy-ready.
+- `tests/client-runtime-config-check.spec.ts`: 6/6 passed after adding a
+  manifest regression check for provider/worker disablement, approval policy,
+  empty model allowlist, and Secret Manager references. Typecheck passed.
 
 ## Release State and Limits
 
@@ -30,6 +33,11 @@ Branch: `wip/backup-2026-10-03`, clean and tracking origin.
 - No ledger bucket was guessed or configured. No deployment, hosted migration
   or write, release-ledger publication, LLM/Zep request, MiroFish run, or cloud
   spend occurred in this verification.
+- A read-only `gcloud storage buckets list --project=agentos-mvp` check, using
+  active account `aryamandev777@gmail.com`, was denied with HTTP 403 for
+  `storage.buckets.list`. The ledger bucket therefore remains unknown and
+  unconfigured from this account; request the minimal bucket-list permission
+  or provide the reviewed bucket identity before using the release ledger.
 
 These local checks improve confidence in the tested source; they do not prove
 that the hosted customer journey or production controls are ready.
