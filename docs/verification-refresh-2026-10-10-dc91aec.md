@@ -67,3 +67,9 @@ The audit made no provider calls. A read-only local session check returned
 `/memory` redirected to login. Thus the signed-in local customer journey is
 still unverified. Unauthenticated checks of both Cloud Test API paths returned
 403, which does not identify their service/revision or prove route parity.
+
+The available private bonus-link pack was validated locally with
+`AGENTOS_SOURCE_PACK_FILE=.private-client-kits/bonus-index-source-pack.json`:
+the parser suite passed 8/8 and the pack contains 2 source sections, 111 links,
+1 skipped invalid URL, and no direct video URLs. This is a bonus-link index,
+not a classroom export; it was not uploaded or imported into a hosted graph.
