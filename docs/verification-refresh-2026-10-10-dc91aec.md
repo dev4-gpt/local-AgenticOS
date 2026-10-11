@@ -82,3 +82,10 @@ and 1 import audit event. The pack contains 111 raw links, with one repeated
 source/URL pair collapsing to one graph edge. The harness used a synthetic
 verified artifact row; it did not exercise real object upload or hosted
 storage. This remains sample-pack evidence, not full classroom coverage.
+
+The current-source buyer evidence capturer accepted `sim_4d52cec6d408` against
+source `5716e735456d56941b71af60c5238ff3ba1d4b67`: 10 profiles, all 12 audit
+checks true, `pilotEvidencePassed: true`, and `marketValidation: false`.
+`npm run verify:mirofish-buyer-artifacts` passed 22/22 tests. These were local
+read-only checks; no new LLM/Zep request occurred, and actual provider charges
+for the historical run remain unreconciled.
