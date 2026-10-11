@@ -316,7 +316,7 @@ The read-only auditor now checks that each active buyer quote-posts another
 persona's post; quoting one's own seeded post does not count as buyer
 interaction. The full MiroFish artifact suite passes (23 tests). Rechecking
 both retained runs, `sim_4d52cec6d408` and `sim_b0958acead3f`, found that all
-13 technical, attribution, telemetry, novelty, and private content-review
+12 other technical, attribution, telemetry, novelty, and private content-review
 checks pass, but `crossBuyerInteraction` fails for both. Each run has two
 self-quote posts, zero cross-persona quote posts, and both active buyers are
 listed as missing interactions. The auditor exits nonzero with
