@@ -296,3 +296,16 @@ suite includes release-contract, migration-fixture, tenant-isolation,
 observability, source-pack, MiroFish-pilot, and lifecycle regressions. This is
 local automated evidence only; it does not convert any hosted gate to
 accepted, and the skipped case remains outside the passing count.
+
+**Public request-abuse fallback and exact-head refresh, 2026-10-10:** The
+in-memory public rate-limit fallback now expires inactive keys every 15-minute
+window and caps storage at 10,000 distinct keys, failing closed for new keys
+at capacity. A regression filled the cap, verified the next unique key was
+denied without allocation, advanced the clock past expiry, and verified
+capacity recovered. On clean commit `1d2af80ec6f69131e9614880b886903b7f42c2eb`,
+the focused suite passed 345 tests with one configured skip and the offline
+AI/observability evaluation passed 14/14 under Node `v24.18.0`; no model or
+provider requests were made. The production-readiness verifier remains
+`releaseReady: false`: the release-ledger bucket is unconfigured, so required
+receipts and approvals remain unevaluated. These local checks do not prove
+hosted rate limiting or customer-journey acceptance.
