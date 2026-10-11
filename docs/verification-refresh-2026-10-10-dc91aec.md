@@ -42,3 +42,17 @@ Both responses served the page title `Veloce AgenticOS — Mission Control`.
 This proves both URLs currently serve a login page, but does not prove they
 resolve to the same Cloud Run service, revision, tenant, or authenticated data.
 No credentials, cookies, writes, deployment, or provider calls were used.
+
+## Addendum: Current-Head Local Acceptance
+
+On source `a488d80cefd751929816ae80df67bf8bff6f8e04`, `npm run test:focused`
+passed 343 tests with one optional private-input test skipped. `npm run
+verify:security` passed, including 22 lifecycle/retention tests, 19 notebook
+provenance tests, and 10 runtime/storage configuration tests. The isolated
+source-import checks passed: disposable PostgreSQL migration smoke with
+container networking disabled, 2 source-guard evidence tests, and 5 browser
+tests with API/storage calls intercepted. These checks made no hosted writes,
+provider calls, or deployments. The production-readiness verifier still
+returns `releaseReady: false`; at this head it reports the release ledger
+unconfigured and 38 evidence fields not evaluated. Local tests do not replace
+hosted journey, tenant-isolation, migration, import, or parity receipts.
