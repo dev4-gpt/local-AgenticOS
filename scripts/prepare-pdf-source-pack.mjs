@@ -29,6 +29,22 @@ export function cleanPdfText(text) {
   return text.replace(/\f(?:\r?\n)*/g, "\n\n").replace(/\u0000/g, "").replace(/[^\S\n\r\t]+\n/g, "\n").trim();
 }
 
+export function parsePdfTextLinks(text) {
+  const links = [];
+  const skipped = [];
+  for (const match of text.matchAll(/https?:\/\/[^\s<>"'`]+/gi)) {
+    const candidate = match[0].replace(/[.,;:!?]+$/, "").replace(/[)\]}]+$/, "");
+    try {
+      const url = new URL(candidate);
+      if (url.username || url.password) throw new Error("credentials_in_url");
+      links.push({ url: url.toString(), text: "PDF text URL" });
+    } catch {
+      skipped.push("PDF text contains a credential-bearing or invalid URL omitted");
+    }
+  }
+  return { links, skipped };
+}
+
 function run(command, args, maxBuffer = MAX_TEXT_BYTES) {
   const result = spawnSync(command, args, { encoding: "utf8", maxBuffer, timeout: 120_000 });
   if (result.error?.code === "ENOBUFS") throw new Error("pdf_text_too_large");
@@ -63,12 +79,20 @@ export function pdfSourcePack({ pdfPath, pageUrl, title, publishedDate, collecte
   const text = cleanPdfText(extracted);
   if (!text) throw new Error("pdf_text_unavailable_or_scanned_needs_ocr");
   const extractedLinks = parsePdfLinks(runCommand("pdfinfo", ["-url", pdfPath]));
+  const textLinks = parsePdfTextLinks(text);
+  const linksByUrl = new Map();
+  for (const link of [...extractedLinks.links, ...textLinks.links]) {
+    const url = new URL(link.url);
+    url.hash = "";
+    const key = url.toString();
+    if (!linksByUrl.has(key)) linksByUrl.set(key, link);
+  }
   const fileTitle = path.basename(pdfPath, path.extname(pdfPath)).replace(/^\d{4}-\d{2}-\d{2}[-_ ]*/, "").replace(/[-_]+/g, " ").trim();
   const sourceTitle = title?.trim() || metadataValue(metadata, "Title") || fileTitle;
   const date = publishedDate || path.basename(pdfPath).match(/^(\d{4}-\d{2}-\d{2})[-_ ]/)?.[1];
-  const source = { title: sourceTitle, tab: sourceTitle, url: sourceUrl.toString(), text, links: extractedLinks.links, collectedAt };
+  const source = { title: sourceTitle, tab: sourceTitle, url: sourceUrl.toString(), text, links: [...linksByUrl.values()], collectedAt };
   if (date) source.publishedAt = date;
-  const prepared = prepareClassroomSourcePack({ startUrl: sourceUrl.toString(), sources: [source], skipped: extractedLinks.skipped, pending: [] });
+  const prepared = prepareClassroomSourcePack({ startUrl: sourceUrl.toString(), sources: [source], skipped: [...extractedLinks.skipped, ...textLinks.skipped], pending: [] });
   return {
     batches: prepared.batches,
     coverage: prepared.coverage,
@@ -78,6 +102,8 @@ export function pdfSourcePack({ pdfPath, pageUrl, title, publishedDate, collecte
       pages,
       textCharacters: text.length,
       embeddedLinks: extractedLinks.links.length,
+      textLinks: textLinks.links.length,
+      uniqueLinks: linksByUrl.size,
       skippedLinkAnnotations: extractedLinks.skipped.length,
       title: sourceTitle,
       publishedDate: date ?? null,
