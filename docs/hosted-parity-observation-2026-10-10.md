@@ -169,3 +169,33 @@ the image contains the current source-import/build-identity implementation.
 Do not apply this manifest until a clean current-source image is built and
 verified, then update and review the pinned digest. No secret, tenant row,
 Cloud Run resource, or traffic was changed by the dry run.
+
+## Current Browser Recheck, October 10
+
+Read-only Chrome observations from the current session:
+
+- `http://127.0.0.1:3941/memory` settled at 2 tenant memories, 114 graph
+  nodes, and 113 edges. It exposes `Community sources` and `Review JSON source
+  packs`. Its build-identity endpoint reports `sourceCommit: null` and
+  `cloudRunRevision: null`, so this runtime is not bound to a verified source
+  revision.
+- `http://127.0.0.1:3942/api/client-runtime/build-identity` displayed a claim
+  for source commit `e622a517c8803e116a17cb5d496fab9e998bed10`, but opening
+  `/memory` in that origin returned `ERR_CONNECTION_REFUSED`. The identity page
+  was therefore stale/cached relative to the stopped server and is not runtime
+  evidence.
+- `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/memory` rendered 0 tenant
+  memories, 0 nodes, and 0 edges, with no Community sources section. Its
+  build-identity route returns `client_route_not_enabled`.
+- `https://veloce-cloud-test-1075094991117.asia-south1.run.app/memory` rendered
+  24 tenant memories, 33 nodes, and 57 edges, without Community sources. Its
+  build-identity route also returns `client_route_not_enabled`.
+- `https://agentos-internal-beta-vbimnfseva-ew.a.run.app/memory` redirected to
+  `/login?next=%2Fmemory` in this browser session. No credentials were entered;
+  current authenticated Internal Beta parity could not be checked.
+
+These are distinct origins and observed record counts; they do not establish a
+shared user or tenant. The local page and two Cloud Test pages disagree on both
+data counts and available features. Parity is not verified. No tenant writes,
+imports, provider calls, database changes, migrations, or deployments were
+performed.
