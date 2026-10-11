@@ -1,6 +1,6 @@
 # MiroFish buyer-scenario pilot
 
-Status: the latest bounded synthetic run, `sim_4d52cec6d408`, completed with two of ten buyers active. Its technical and private content audit passes, and current-source release-evidence capture accepts the artifacts. This is not market validation or a 10,000-person test. Actual provider charges have not been independently reconciled. Last checked: 2026-10-10.
+Status: the latest bounded synthetic run, `sim_b0958acead3f`, completed with two of ten synthetic buyers active. Its technical and private content checks pass, but the strengthened interaction-quality check fails: each buyer quote-posted its own seeded post rather than engaging another persona. Treat this as a completed technical smoke test, not a passed buyer pilot. This is not market validation or a 10,000-person test. Actual provider charges have not been independently reconciled. Last checked: 2026-10-10.
 
 ## Pinned upstream and non-spending evidence
 
@@ -309,3 +309,19 @@ event. No provider key was loaded, no new Groq/Zep request was made, and no
 simulation file changed. `marketValidation` remains false; provider billing
 was not independently reconciled, and this is not a 10,000-person run or real
 prospect evidence.
+
+## Cross-persona interaction recheck, 2026-10-10
+
+The read-only auditor now checks that each active buyer quote-posts another
+persona's post; quoting one's own seeded post does not count as buyer
+interaction. The full MiroFish artifact suite passes (23 tests). Rechecking
+both retained runs, `sim_4d52cec6d408` and `sim_b0958acead3f`, found that all
+13 technical, attribution, telemetry, novelty, and private content-review
+checks pass, but `crossBuyerInteraction` fails for both. Each run has two
+self-quote posts, zero cross-persona quote posts, and both active buyers are
+listed as missing interactions. The auditor exits nonzero with
+`technicalEvidencePassed: true`, `pilotEvidencePassed: false`, and
+`marketValidation: false`. These inspections were read-only and made no
+Groq/Zep requests. Do not cite either run as evidence that buyers interacted
+with one another or as market validation; adjust the scenario/simulation
+setup before any separately authorized repeat.

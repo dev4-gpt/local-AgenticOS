@@ -52,7 +52,9 @@ class BuyerRunAuditTest(unittest.TestCase):
             "CREATE TABLE user(user_id INTEGER, agent_id INTEGER);"
             "CREATE TABLE post(post_id INTEGER, user_id INTEGER, content TEXT, created_at INTEGER, quote_content TEXT, original_post_id INTEGER);"
             "INSERT INTO user VALUES (1,0),(2,1);"
-            "INSERT INTO post(post_id,user_id,content,created_at) VALUES (1,1,'P00001 evaluates this tool',0),(2,2,'A skeptical response',1);"
+            "INSERT INTO post(post_id,user_id,content,created_at,quote_content,original_post_id) VALUES "
+            "(1,1,'P00001 evaluates this tool',0,NULL,NULL),"
+            "(2,2,'P00001 evaluates this tool',1,'A skeptical response',1);"
         )
         database.commit()
         database.close()
@@ -60,7 +62,7 @@ class BuyerRunAuditTest(unittest.TestCase):
         actions.parent.mkdir()
         actions.write_text(
             '{"action_type":"CREATE_POST","post_id":1,"agent_id":0,"action_args":{"content":"P00001 evaluates this tool"}}\n'
-            '{"action_type":"CREATE_POST","post_id":2,"agent_id":1,"action_args":{"content":"A skeptical response"}}\n'
+            '{"action_type":"CREATE_POST","post_id":2,"agent_id":1,"action_args":{"content":"P00001 evaluates this tool"}}\n'
             '{"event_type":"simulation_end","total_rounds":1,"total_actions":2}\n',
             encoding="utf-8",
         )
@@ -73,6 +75,8 @@ class BuyerRunAuditTest(unittest.TestCase):
                 "postId": 2, "agentId": 1,
                 "content": "A skeptical response",
                 "contentSha256": hashlib.sha256(b"A skeptical response").hexdigest(),
+                "quotedPostId": 1,
+                "quotedContentSha256": hashlib.sha256(b"P00001 evaluates this tool").hexdigest(),
                 "scenarioRelevant": True, "roleFaithful": True, "scopeSafe": True, "actionable": True,
             }],
         })
@@ -92,11 +96,12 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.assertTrue(result["checks"]["buyerContentReview"])
         self.assertTrue(result["checks"]["dynamicPostNovelty"])
         self.assertTrue(result["checks"]["dynamicPostPersonaIdentity"])
+        self.assertTrue(result["checks"]["crossBuyerInteraction"])
         self.assertEqual(result["reviewedDynamicPosts"], 1)
 
     def test_copied_or_wrong_persona_dynamic_post_fails_without_content_review(self):
         database = sqlite3.connect(self.simulation / "twitter_simulation.db")
-        database.execute("UPDATE post SET content = 'P00001 evaluates this tool' WHERE post_id = 2")
+        database.execute("UPDATE post SET quote_content = 'P00001 evaluates this tool' WHERE post_id = 2")
         database.commit()
         database.close()
         copied = AUDITOR.audit(self.simulation, self.cohort)
@@ -107,7 +112,7 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.assertFalse(copied["technicalEvidencePassed"])
 
         database = sqlite3.connect(self.simulation / "twitter_simulation.db")
-        database.execute("UPDATE post SET content = 'P00001 asks a different question' WHERE post_id = 2")
+        database.execute("UPDATE post SET quote_content = 'P00001 asks a different question' WHERE post_id = 2")
         database.commit()
         database.close()
         wrong_persona = AUDITOR.audit(self.simulation, self.cohort)
@@ -121,11 +126,6 @@ class BuyerRunAuditTest(unittest.TestCase):
         )
         database.commit()
         database.close()
-        actions = self.simulation / "twitter" / "actions.jsonl"
-        actions.write_text(actions.read_text(encoding="utf-8").replace(
-            '"post_id":2,"agent_id":1,"action_args":{"content":"A skeptical response"}',
-            '"post_id":2,"agent_id":1,"action_args":{"content":"P00001 evaluates this tool"}',
-        ), encoding="utf-8")
         review_path = self.simulation / "buyer_review.json"
         review = json.loads(review_path.read_text(encoding="utf-8"))
         review["posts"][0]["quotedPostId"] = 1
@@ -138,6 +138,20 @@ class BuyerRunAuditTest(unittest.TestCase):
         review["posts"][0]["quotedContentSha256"] = "0" * 64
         self._write("buyer_review.json", review)
         self.assertFalse(AUDITOR.audit(self.simulation, self.cohort)["checks"]["buyerContentReview"])
+
+    def test_self_quotes_do_not_count_as_buyer_interaction(self):
+        database = sqlite3.connect(self.simulation / "twitter_simulation.db")
+        database.executescript(
+            "INSERT INTO user VALUES (3,1);"
+            "INSERT INTO post(post_id,user_id,content,created_at) VALUES (3,3,'P00002 first post',0);"
+            "UPDATE post SET content='P00002 first post', original_post_id=3 WHERE post_id=2;"
+        )
+        database.commit()
+        database.close()
+        result = AUDITOR.audit(self.simulation, self.cohort)
+        self.assertFalse(result["checks"]["crossBuyerInteraction"])
+        self.assertEqual(result["selfQuotePostIds"], [2])
+        self.assertEqual(result["missingBuyerInteractions"], ["P00002"])
 
     def test_partial_content_review_counts_only_approved_posts(self):
         posts = [

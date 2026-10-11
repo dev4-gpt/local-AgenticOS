@@ -23,6 +23,7 @@ class Post(NamedTuple):
     created_at: str
     quote_content: str | None
     original_post_id: int | None
+    original_post_agent_id: int | None = None
 
 
 def generated_text(post: Post) -> str:
@@ -62,7 +63,11 @@ def read_posts(simulation_dir: Path) -> list[Post]:
     try:
         return [Post(*row) for row in database.execute(
             "SELECT p.post_id, u.agent_id, p.content, p.created_at, p.quote_content, p.original_post_id "
-            "FROM post AS p JOIN user AS u ON u.user_id = p.user_id ORDER BY p.post_id"
+            ", original_user.agent_id "
+            "FROM post AS p JOIN user AS u ON u.user_id = p.user_id "
+            "LEFT JOIN post AS original_post ON original_post.post_id = p.original_post_id "
+            "LEFT JOIN user AS original_user ON original_user.user_id = original_post.user_id "
+            "ORDER BY p.post_id"
         ).fetchall()]
     finally:
         database.close()
@@ -215,6 +220,19 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         for agent in config.get("agent_configs", [])
         if agent.get("activity_level", 0) > 0 and agent.get("active_hours")
     }
+    cross_buyer_quotes = [
+        post for post in dynamic_posts
+        if profile_by_agent.get(post.agent_id) in active_buyers
+        and post.original_post_agent_id in profile_by_agent
+        and post.agent_id != post.original_post_agent_id
+    ]
+    cross_engaged_buyers = {profile_by_agent[post.agent_id] for post in cross_buyer_quotes}
+    active_buyer_personas = {
+        agent.get("entity_name")
+        for agent in config.get("agent_configs", [])
+        if agent.get("activity_level", 0) > 0 and agent.get("active_hours")
+    }
+    missing_buyer_interactions = sorted(active_buyer_personas - cross_engaged_buyers)
     actions, events = action_log_entries(simulation_dir)
     action_rows = len(actions)
     committed_posts = Counter((post.post_id, post.agent_id, post.content) for post in posts)
@@ -245,6 +263,7 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         and completion_events[0].get("total_rounds") == total_rounds
         and completion_events[0].get("total_actions") == action_rows,
         "buyerActivity": bool(active_buyers) and all(post_counts.get(buyer, 0) > 0 for buyer in active_buyers),
+        "crossBuyerInteraction": bool(active_buyers) and not missing_buyer_interactions,
         "buyerContentReview": content_review_passed,
     }
     return {
@@ -259,6 +278,9 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         "dynamicPosts": sum(post_counts.values()),
         "reviewedDynamicPosts": reviewed_dynamic_posts,
         "dynamicPostPersonas": dict(sorted(post_counts.items())),
+        "crossBuyerQuotePostIds": [post.post_id for post in cross_buyer_quotes],
+        "selfQuotePostIds": [post.post_id for post in dynamic_posts if post.original_post_id is not None and post.agent_id == post.original_post_agent_id],
+        "missingBuyerInteractions": missing_buyer_interactions,
         "scheduledBuyers": sorted(active_buyers),
         "attributionErrors": attribution_errors,
         "missingInitialPostAgents": missing_initial_posts,
@@ -274,7 +296,7 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
         "reportedRound": run_state.get("current_round"),
         "configuredRounds": run_state.get("total_rounds"),
         "checks": checks,
-        "technicalEvidencePassed": all(value for key, value in checks.items() if key != "buyerContentReview"),
+        "technicalEvidencePassed": all(value for key, value in checks.items() if key not in {"buyerContentReview", "crossBuyerInteraction"}),
         "pilotEvidencePassed": all(checks.values()),
         "marketValidation": False,
     }
