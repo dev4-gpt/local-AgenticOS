@@ -67,8 +67,31 @@ source-pack JSON parts (May 11-19 and May 11-30). The remaining items include
 standalone resource PDFs and the `AGENT OS System!` PDF; they are not evidence
 of dated lesson-page coverage. The folder's `School Tabs Agent OS - Archive
 Manifest` spreadsheet is a resource-copy/link register and contains no
-date-prefixed lesson rows. Therefore the user's reported May 20-July 3 batch
-is not represented in this folder's current dated lesson set or manifest; it
-may be elsewhere and should be located/reconciled before claiming archive or
-import completeness. No files were moved, uploaded, or imported during this
-read-only recheck.
+date-prefixed lesson rows. The Drive-only snapshot did not include the user's
+reported May 20-July 3 batch. The later local inventory below found many dated
+PDFs in the ignored `source/tmp/` folder, but does not prove complete coverage
+or that all user-reported items are present. No files were moved, uploaded, or
+imported during the Drive-only recheck.
+
+## Local-versus-Drive Recheck (2026-10-10)
+
+A read-only filename inventory of `/Users/aryamandev/Documents/Codex/Projects/AgentOS/source/tmp`
+found 64 PDFs total, including 59 files with a date-prefixed or ordinal-date
+filename. This count includes the October AgentOS System PDF and is not a count
+of distinct lesson days. Classroom lesson filenames span May 1 through July 11,
+2026; this is a file-presence result, not proof that every available lesson in
+that date range is represented. The local
+set includes the May 11-14 and May 19 PDFs also listed in Drive, and includes
+additional May, June, and July PDFs not present in the Drive folder inventory.
+The local May 19 HTML capture is under
+`.private-client-kits/skool-course-capture/2026-05-11-to-19/`.
+
+The `tmp/` directory is ignored by Git (`.gitignore`), so these PDFs are not
+included in project commits or pushes. Keep the local files intact until each
+intended archive file has been uploaded to Drive and verified there. The Drive
+folder currently has 105 items; its date-prefixed classroom set remains the
+9 PDFs through May 19, 2 sanitized HTML files for May 19 and May 30, and 2 JSON
+source-pack parts. The separate `agent-os-system-2026-10-10.pdf` is present in
+Drive. No local-to-Drive completeness or byte-for-byte verification has been
+performed for the extra May-July PDFs, and no files were moved, uploaded, or
+deleted during this check.
