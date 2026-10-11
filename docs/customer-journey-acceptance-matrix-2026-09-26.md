@@ -260,3 +260,16 @@ revision is an older image. Local `3941/notebook` showed 0 notebook records and
 took control of Chrome. No route write, provider call, migration, or deployment
 occurred. The full J01-J15 customer journey and same-release parity remain
 unaccepted.
+
+**Public unauthenticated request-body bounds, 2026-10-10:** The deployment
+request, support, repeat-login, and billing-checkout routes now use a shared
+JSON reader that caps bytes while consuming the request stream, in addition to
+rejecting an oversized declared `Content-Length`. Chunked bodies above 100 KB
+return 413 before database, email, login, or Stripe side effects; malformed
+JSON returns a bounded 400 response. Focused route tests cover streamed
+oversize requests on all four endpoints and assert no downstream actions;
+helper tests cover malformed, valid, and over-limit streams. The focused
+public-intake/login suites, TypeScript, ESLint, and public-launch contract pass
+locally. This closes a local request-abuse gap only: it does not establish
+deployed rate-limit behavior or accept any public customer-journey row.
+J01-J15 remain unaccepted on the hosted candidate.

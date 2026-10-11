@@ -21,8 +21,45 @@ function memoryLimit(key: string) {
   return true;
 }
 
-export function payloadTooLarge(req: Request) {
-  return Number(req.headers.get("content-length") ?? 0) > MAX_BODY_BYTES;
+export function payloadTooLarge(req: Request, maxBytes = MAX_BODY_BYTES) {
+  const contentLength = Number(req.headers.get("content-length") ?? 0);
+  return Number.isFinite(contentLength) && contentLength > maxBytes;
+}
+
+export async function readPublicJsonBody(req: Request, maxBytes = MAX_BODY_BYTES): Promise<
+  { ok: true; value: unknown } | { ok: false; error: "too_large" | "invalid_json" }
+> {
+  if (payloadTooLarge(req, maxBytes)) return { ok: false, error: "too_large" };
+  if (!req.body) return { ok: false, error: "invalid_json" };
+
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        return { ok: false, error: "too_large" };
+      }
+      chunks.push(value);
+    }
+
+    const bytes = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return { ok: true, value: JSON.parse(new TextDecoder().decode(bytes)) as unknown };
+  } catch {
+    await reader.cancel().catch(() => undefined);
+    return { ok: false, error: "invalid_json" };
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 export async function allowPublicRequest(req: Request, bucket: string, requireDurable = false) {

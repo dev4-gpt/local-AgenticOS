@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import { createHmac } from "node:crypto";
 import { loadReviewModule } from "./helpers/load-review-module";
 
+const publicRequestGuard = loadReviewModule("product-experience/src/lib/publicRequestGuard.ts", {});
+
 test("support returns the stored ticket ID and never truncates a customer message", async () => {
   const ticketId = "00000000-0000-4000-8000-000000000015";
   let nextId = 14;
@@ -9,7 +11,7 @@ test("support returns the stored ticket ID and never truncates a customer messag
   const notified: string[] = [];
   const acknowledged: string[] = [];
   const route = loadReviewModule("product-experience/src/app/api/support/route.ts", {
-    "@/lib/publicRequestGuard": { allowPublicRequest: async () => true, payloadTooLarge: () => false },
+    "@/lib/publicRequestGuard": { ...publicRequestGuard, allowPublicRequest: async () => true },
     "@/lib/leadNotification": { notifyLead: async (input: { details: string[] }) => { notified.push(...input.details); return "sent"; } },
     "@/lib/publicLaunch": {
       cleanPublicText: (value: unknown, max = 4_000) => String(value ?? "").trim().slice(0, max),
@@ -20,8 +22,17 @@ test("support returns the stored ticket ID and never truncates a customer messag
     },
   });
   const request = (body: unknown) => new Request("http://localhost/api/support", { method: "POST", body: JSON.stringify(body) });
+  const chunkedOversize = () => new Request("http://localhost/api/support", {
+    method: "POST",
+    body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode(`{"message":"${"x".repeat(100_001)}"}`)); controller.close(); } }),
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
   const baseline = { email: "buyer@example.test", subject: "Export help", message: "Please help export my workspace.", requestType: "general" };
 
+  const streamedOversize = await route.POST(chunkedOversize());
+  expect(streamedOversize.status).toBe(413);
+  expect(await streamedOversize.json()).toMatchObject({ error: "payload_too_large" });
+  expect(saved).toHaveLength(0);
   const oversized = await route.POST(request({ ...baseline, message: "x".repeat(8_001) }));
   expect(oversized.status).toBe(413);
   expect(await oversized.json()).toMatchObject({ error: "field_too_large" });
@@ -47,6 +58,19 @@ test("support returns the stored ticket ID and never truncates a customer messag
   expect(saved[1]).toMatchObject({ id: "00000000-0000-4000-8000-000000000016", request_id: null });
 });
 
+test("public JSON reader bounds actual streamed bytes and rejects malformed JSON", async () => {
+  const { readPublicJsonBody } = publicRequestGuard;
+  const streamRequest = (text: string) => new Request("http://localhost/api", {
+    method: "POST",
+    body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode(text)); controller.close(); } }),
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
+
+  expect(await readPublicJsonBody(streamRequest("{"))).toMatchObject({ ok: false, error: "invalid_json" });
+  expect(await readPublicJsonBody(streamRequest(`{"value":"${"x".repeat(100_001)}"}`))).toMatchObject({ ok: false, error: "too_large" });
+  expect(await readPublicJsonBody(new Request("http://localhost/api", { method: "POST", body: JSON.stringify({ ok: true }) }))).toEqual({ ok: true, value: { ok: true } });
+});
+
 test("public intake rejects silent truncation and cross-request idempotency collisions", async () => {
   const priorUrl = process.env.SUPABASE_URL;
   const priorKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -59,7 +83,7 @@ test("public intake rejects silent truncation and cross-request idempotency coll
   const prior = { id: "existing-request", email: "other@example.test", name: "Other", company: "Other Co", workflow: "Other work" };
   try {
     const route = loadReviewModule("product-experience/src/app/api/deployment-request/route.ts", {
-      "@/lib/publicRequestGuard": { allowPublicRequest: async () => true, payloadTooLarge: () => false },
+      "@/lib/publicRequestGuard": { ...publicRequestGuard, allowPublicRequest: async () => true },
       "@/lib/leadNotification": { notifyLead: async () => {} },
       "@/lib/commercialScope": { normalizeCommercialScopeInputs: () => ({}), recommendCommercialScope: () => ({ version: "test" }) },
       "@/lib/publicLaunch": {
@@ -73,6 +97,14 @@ test("public intake rejects silent truncation and cross-request idempotency coll
     });
     const baseline = { name: "Buyer", email: "buyer@example.test", company: "Buyer Co", workflow: "Analyze intake", termsAccepted: true, privacyAccepted: true };
     const request = (body: unknown) => new Request("http://localhost/api/deployment-request", { method: "POST", body: JSON.stringify(body) });
+    const streamedOversize = new Request("http://localhost/api/deployment-request", {
+      method: "POST",
+      body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode(`{"notes":"${"x".repeat(100_001)}"}`)); controller.close(); } }),
+      duplex: "half",
+    } as RequestInit & { duplex: "half" });
+    expect((await route.POST(streamedOversize)).status).toBe(413);
+    expect(selected).toBe(0);
+    expect(stored).toBe(0);
     const oversized = await route.POST(request({ ...baseline, workflow: "a".repeat(4_001) }));
     expect(oversized.status).toBe(413);
     expect(await oversized.json()).toMatchObject({ error: "field_too_large" });
@@ -111,7 +143,7 @@ test("Checkout does not create a session before email verification", async () =>
   const keys: string[] = [];
   let fingerprint = "";
   const route = loadReviewModule("product-experience/src/app/api/billing/checkout/route.ts", {
-    "@/lib/publicRequestGuard": { allowPublicRequest: async () => true },
+    "@/lib/publicRequestGuard": { ...publicRequestGuard, allowPublicRequest: async () => true },
     "@/lib/publicLaunch": {
       stripeSecretConfigured: () => true,
       stripeConfigured: () => true,
@@ -130,6 +162,14 @@ test("Checkout does not create a session before email verification", async () =>
     },
   });
   const request = () => new Request("http://localhost/api/billing/checkout", { method: "POST", body: JSON.stringify({ requestId, email: "buyer@example.test" }) });
+  const streamedOversize = new Request("http://localhost/api/billing/checkout", {
+    method: "POST",
+    body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode(`{"email":"${"x".repeat(100_001)}"}`)); controller.close(); } }),
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
+  expect((await route.POST(streamedOversize)).status).toBe(413);
+  expect(created).toBe(0);
+  expect(fetched).toBe(0);
   const premature = await route.POST(request());
   expect(premature.status).toBe(409);
   expect(await premature.json()).toMatchObject({ error: "email_verification_required" });

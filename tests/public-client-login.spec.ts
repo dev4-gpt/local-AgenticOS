@@ -4,6 +4,7 @@ import { loadReviewModule } from "./helpers/load-review-module";
 
 const savedEnv = { ...process.env };
 const originalFetch = globalThis.fetch;
+const publicRequestGuard = loadReviewModule("product-experience/src/lib/publicRequestGuard.ts", {});
 
 test.afterEach(() => {
   process.env = { ...savedEnv };
@@ -36,10 +37,10 @@ test("repeat login sends a one-time link only for one active onboarded account",
         return { ok: true, rows };
       },
     },
-    "@/lib/publicRequestGuard": { allowPublicRequest: async (_request: Request, _bucket: string, requireDurable: boolean) => {
+    "@/lib/publicRequestGuard": { ...publicRequestGuard, allowPublicRequest: async (_request: Request, _bucket: string, requireDurable: boolean) => {
       expect(requireDurable).toBe(true);
       return allowed;
-    }, payloadTooLarge: () => false },
+    } },
   });
   globalThis.fetch = async (url, init) => {
     sent.push({ url: String(url), init: init ?? {} });
@@ -48,7 +49,15 @@ test("repeat login sends a one-time link only for one active onboarded account",
   const request = (email = "OWNER@example.com") => new Request("https://app.veloceos.cloud/api/client-login/request", {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }),
   });
+  const streamedOversize = new Request("https://app.veloceos.cloud/api/client-login/request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode(`{"email":"${"x".repeat(100_001)}"}`)); controller.close(); } }),
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
 
+  expect((await route.POST(streamedOversize)).status).toBe(413);
+  expect(sent).toHaveLength(0);
   expect((await route.POST(request())).status).toBe(202);
   expect(sent).toHaveLength(0);
   rows = [{ auth_user_id: "user-a", tenant_slug: "tenant-a" }];
@@ -78,7 +87,7 @@ test("repeat login is off by default and rejects malformed requests", async () =
       publicLaunchConfig: () => ({ url: "https://db.invalid", serviceKey: "service-key" }),
       supabaseServiceSelect: async () => { throw new Error("must not query"); },
     },
-    "@/lib/publicRequestGuard": { allowPublicRequest: async () => true, payloadTooLarge: () => false },
+    "@/lib/publicRequestGuard": { ...publicRequestGuard, allowPublicRequest: async () => true },
   });
   const request = () => new Request("https://app.veloceos.cloud/api/client-login/request", {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: "bad" }),

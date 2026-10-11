@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { allowPublicRequest, payloadTooLarge } from "@/lib/publicRequestGuard";
+import { allowPublicRequest, payloadTooLarge, readPublicJsonBody } from "@/lib/publicRequestGuard";
 import { notifyLead } from "@/lib/leadNotification";
 import { cleanPublicText, publicEmail, requestId, sendSupportAcknowledgement, supabaseServiceInsert } from "@/lib/publicLaunch";
 
@@ -16,7 +16,9 @@ const managedProviderKeys = new Set([
 export async function POST(request: Request) {
   if (!(await allowPublicRequest(request, "support-request"))) return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
   if (payloadTooLarge(request)) return NextResponse.json({ ok: false, error: "payload_too_large" }, { status: 413 });
-  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const parsed = await readPublicJsonBody(request);
+  if (!parsed.ok) return NextResponse.json({ ok: false, error: parsed.error === "too_large" ? "payload_too_large" : "invalid_fields" }, { status: parsed.error === "too_large" ? 413 : 400 });
+  const body = parsed.value as Record<string, unknown> | null;
   if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ ok: false, error: "invalid_fields" }, { status: 400 });
   if (["email", "subject", "message", "requestId", "requestType", "providerKey"].some((field) => body[field] != null && typeof body[field] !== "string")) {
     return NextResponse.json({ ok: false, error: "invalid_fields" }, { status: 400 });

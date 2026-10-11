@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { publicEmail, publicLaunchConfig, supabaseServiceSelect } from "@/lib/publicLaunch";
-import { allowPublicRequest, payloadTooLarge } from "@/lib/publicRequestGuard";
+import { allowPublicRequest, payloadTooLarge, readPublicJsonBody } from "@/lib/publicRequestGuard";
 
 export const runtime = "nodejs";
 
@@ -12,13 +12,16 @@ export async function POST(request: Request) {
   if (process.env.CLIENT_LOGIN_ENABLED !== "1" || !config || !authKey) {
     return NextResponse.json({ ok: false, error: "login_unavailable" }, { status: 503, headers: { "cache-control": "no-store" } });
   }
-  if (request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() !== "application/json" || payloadTooLarge(request)) {
+  if (request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() !== "application/json") {
     return NextResponse.json({ ok: false, error: "invalid_request" }, { status: 400 });
   }
+  if (payloadTooLarge(request)) return NextResponse.json({ ok: false, error: "payload_too_large" }, { status: 413 });
   if (!(await allowPublicRequest(request, "client-login", true))) {
     return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429, headers: { "Retry-After": "900", "cache-control": "no-store" } });
   }
-  const body = await request.json().catch(() => null) as { email?: unknown } | null;
+  const parsed = await readPublicJsonBody(request);
+  if (!parsed.ok) return NextResponse.json({ ok: false, error: parsed.error === "too_large" ? "payload_too_large" : "invalid_request" }, { status: parsed.error === "too_large" ? 413 : 400 });
+  const body = parsed.value as { email?: unknown } | null;
   const email = publicEmail(body?.email);
   if (!email) return NextResponse.json({ ok: false, error: "invalid_email" }, { status: 400 });
 
