@@ -297,3 +297,15 @@ profiles, ten configured agents and rounds, two reviewed dynamic posts,
 locally without loading the pilot `.env`, modifying the simulation artifacts,
 or making Groq/Zep requests. It is not independent provider billing
 reconciliation, a 10,000-person run, or real-prospect market validation.
+
+## Current pushed-source audit, 2026-10-10
+
+The same saved `sim_b0958acead3f` run was re-audited against pushed AgentOS
+source commit `9dfbc4e71489f86be25aef147e1f39df690d6723`. The current
+read-only evidence capturer returned a valid receipt over eight artifact
+hashes and all 12 technical/content checks: 10 profiles, 10 configured rounds,
+two reviewed synthetic-buyer posts, eight action rows, and one completion
+event. No provider key was loaded, no new Groq/Zep request was made, and no
+simulation file changed. `marketValidation` remains false; provider billing
+was not independently reconciled, and this is not a 10,000-person run or real
+prospect evidence.
