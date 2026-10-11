@@ -284,3 +284,16 @@ and is ignored `.env` (not tracked by Git), but the saved provider-status
 marker says `stopped` and contains no billing reconciliation. This recheck
 made no provider request and does not establish actual provider charges or
 independent account-level $0 spend.
+
+## Current-head offline receipt recheck, 2026-10-10
+
+The same retained `sim_b0958acead3f` was re-audited and passed through the
+current `captureBuyerPilotEvidence` implementation against clean AgentOS
+commit `15b6664ad3c1f9fc6579bfbb407a16eb34a70184`. The captured receipt
+validated eight artifact hashes against the current cohort, product brief,
+profile-preparation manifest, and audit script. It reports ten generated
+profiles, ten configured agents and rounds, two reviewed dynamic posts,
+`pilotEvidencePassed: true`, and `marketValidation: false`. The capture ran
+locally without loading the pilot `.env`, modifying the simulation artifacts,
+or making Groq/Zep requests. It is not independent provider billing
+reconciliation, a 10,000-person run, or real-prospect market validation.
