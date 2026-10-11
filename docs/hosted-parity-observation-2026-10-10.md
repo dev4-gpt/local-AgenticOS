@@ -153,3 +153,19 @@ same dataset but do not prove the signed-in user resolves to the same tenant.
 The `mquo4bf7aq` host remains unmapped to a service/revision; its disabled
 build-identity endpoint remains a parity blocker. No settings, tenant data,
 provider calls, or deployments were changed in this inspection.
+
+## Internal Beta Candidate Manifest Dry Run, October 11
+
+The checked-in `client-blueprints/agentos-internal-beta.gcp.json` now declares
+the `worker-token` Secret Manager reference for `CLIENT_WORKER_TOKEN`, while
+keeping provider calls and the background runtime worker disabled. Its
+manifest validator passed. A deploy-phase provisioner dry run emitted the
+source-import and build-identity API routes and 45-day retention, but still
+pinned image digest
+`sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`.
+That is the September 26 image with no resolved Git source commit. The dry run
+does not prove the secret version exists, the matching tenant hash is set, or
+the image contains the current source-import/build-identity implementation.
+Do not apply this manifest until a clean current-source image is built and
+verified, then update and review the pinned digest. No secret, tenant row,
+Cloud Run resource, or traffic was changed by the dry run.
