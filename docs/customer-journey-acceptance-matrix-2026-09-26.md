@@ -350,5 +350,17 @@ provider-capable actions or apply a hosted change as part of this audit. The
 provider flag is enabled on this service, so no execution UI/API was used.
 Internal Beta is a separate service in `agentos-mvp/europe-west1`, revision
 `agentos-internal-beta-00034-v69`, with provider calls disabled and one-day
-retention. No signed-in same-user session or tenant data was inspected, and no
-configuration or deployment changed.
+retention. At this inventory checkpoint no signed-in same-user session or
+tenant data was inspected, and no configuration or deployment changed.
+
+**Authenticated Chrome Work profile parity recheck, 2026-10-10:** A later
+read-only UI inspection in the user's Chrome Work profile found local
+`127.0.0.1:3941/memory` with 2 tenant memories, 114 graph nodes, 113 edges,
+and the Community sources/review control; the two bonus-index records expose
+27 and 84 source links. Cloud Test `/memory` showed 24 memories, 33 nodes, 57
+edges, and no Community sources panel. Internal Beta `/notebook` showed an
+authenticated tenant with 0 notebook records and 0 active sources. This
+confirms visible state and data-count differences among the three runtimes;
+sharing a Chrome profile does not prove identical Supabase user or tenant
+identity across origins. No import, record write, provider call, or hosted
+change occurred.
