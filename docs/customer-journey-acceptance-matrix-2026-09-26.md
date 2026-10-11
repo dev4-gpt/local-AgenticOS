@@ -321,3 +321,18 @@ passed 22 tests, and the pinned MiroFish buyer-smoke suite passed 8 tests.
 This is a reproducible synthetic pilot receipt, not 10,000 active personas,
 real-buyer validation, or independent billing reconciliation; the approved
 paid-spend ceiling remains $0.
+
+**Cloud Test route and project-identity recheck, 2026-10-10:** On the
+separately named Cloud Test origin `veloce-cloud-test-mquo4bf7aq-el.a.run.app`,
+unauthenticated GETs returned `/status` 200, `/login` 200, `/memory` 307,
+`/api/client-runtime/build-identity` 403, and
+`/api/client-runtime/source-import` 403. The current local runtime on port
+3941 returned 200, 200, 307, 401, and 405 respectively; the latter is a
+POST-only route present locally. In a read-only GCP inventory, accessible
+`agentos-mvp/europe-west1` exposed only `agentos` and `agentos-internal-beta`,
+neither matching the Cloud Test hostname; its Cloud Run service identity was
+not mapped in the accessible projects. Internal Beta independently remains
+revision `agentos-internal-beta-00034-v69` with one-day retention and no
+source-import/build-identity API allowlist entries. No authenticated session,
+tenant data, project identity, same-revision parity, or customer action was
+verified; no configuration or deployment changed.
