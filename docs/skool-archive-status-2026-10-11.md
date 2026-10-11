@@ -55,3 +55,20 @@ as links (without downloading video unless the authorized package provides
 the files), preserve source attribution, and prepare the permitted material
 for AgentOS graph import. Do not import directly into a hosted tenant until
 the target, license scope, and import receipt are reviewed.
+
+## User Update and Drive Recheck (2026-10-10)
+
+The user reports that lessons through July 3 are now downloaded. This is a
+user-reported completion boundary, not an independently verified lesson
+inventory. A read-only recheck of the `School Tabs Agent OS` Drive folder found
+105 items. Of these, 9 are date-prefixed lesson PDFs (through May 19), 2 are
+date-prefixed sanitized HTML copies (May 19 and May 30), and 2 are dated
+source-pack JSON parts (May 11-19 and May 11-30). The remaining items include
+standalone resource PDFs and the `AGENT OS System!` PDF; they are not evidence
+of dated lesson-page coverage. The folder's `School Tabs Agent OS - Archive
+Manifest` spreadsheet is a resource-copy/link register and contains no
+date-prefixed lesson rows. Therefore the user's reported May 20-July 3 batch
+is not represented in this folder's current dated lesson set or manifest; it
+may be elsewhere and should be located/reconciled before claiming archive or
+import completeness. No files were moved, uploaded, or imported during this
+read-only recheck.
