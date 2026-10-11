@@ -81,13 +81,75 @@ Source checked: `4082811e8470d8fbfac24a082fee17580ee21ca4` on
   `mquo4bf7aq` host.
 - A different signed-in host, `agentos-internal-beta-vbimnfseva-ew.a.run.app`,
   showed 2 memories / 114 nodes / 113 edges and a zero-record notebook. Its
-  `/classroom-research` route resolves to `client-unavailable`. The Cloud Run
-  console service `agentos-internal-beta-1028728465669.europe-west1.run.app`
-  is another hostname; the `vbimnfseva-ew` alias has not been tied to that
-  service or revision, so these observations must not be attributed to the
-  console-listed service.
+  `/classroom-research` route resolves to `client-unavailable`. At that time,
+  the Cloud Run service hostname and revision had not been mapped; a direct
+  Cloud Console configuration read on October 11 below resolves that mapping.
 - No local browser re-login, database comparison, import, provider request,
   hosted write, migration, deployment, or paid call was performed in this
   refresh. The prior local-vs-`mquo4bf7aq` comparison remains the evidence for
   local source-import controls; build identity and same-tenant identity are
   still unresolved.
+
+## Exact-HEAD Browser Recheck, October 11
+
+Source checked: `f2c5989` on `wip/backup-2026-10-03`.
+
+- Read-only Chrome inspection at `127.0.0.1:3941/memory` again showed the
+  `Community sources` upload and `Review JSON source packs` controls, with 2
+  tenant memories, 114 nodes, and 113 edges. Its build-identity endpoint still
+  returns `ok: true` with `sourceCommit: null` and `cloudRunRevision: null`;
+  local source identity is therefore unverified.
+- `veloce-cloud-test-mquo4bf7aq-el.a.run.app/memory` again showed 24 tenant
+  memories, 33 nodes, and 57 edges, without the community-source controls.
+  Its build-identity endpoint returns `client_route_not_enabled`, so the
+  serving revision remains unverified.
+- The distinct `veloce-cloud-test-1075094991117.asia-south1.run.app/notebook`
+  surface showed 9 notebook records and 9 active sources. It is a separate
+  deployment and is not evidence about `mquo4bf7aq` or Internal Beta.
+- `agentos-internal-beta-vbimnfseva-ew.a.run.app/memory` showed the previously
+  observed 2 memories, 114 nodes, and 113 edges. Its Classroom Research route
+  remained unavailable. At this point in the browser recheck, the alias had
+  not yet been mapped; a separate read-only Cloud Console inspection below
+  resolves it to the Internal Beta service and active revision.
+- These are separate signed-in workspaces with differing record counts; no
+  common tenant identity was established. The counts alone do not prove data
+  loss or tenant isolation. No tenant data was changed, and no provider call,
+  migration, or deployment was made.
+
+Parity remains unproven. The Internal Beta URL is now mapped to its active
+image/revision, but the `mquo4bf7aq` Cloud Test URL remains unmapped. A
+same-tenant comparison of the rendered feature manifest and source-import
+surface is still outstanding. Do not publish or call the surfaces equivalent
+until that is done.
+
+## Cloud Run Configuration Mapping, October 11
+
+Read-only Cloud Console inspection of project `agentos-mvp` confirms that
+`agentos-internal-beta-vbimnfseva-ew.a.run.app` is the configured runtime base
+URL for Cloud Run service `agentos-internal-beta`, region `europe-west1`.
+Revision `agentos-internal-beta-00034-v69` receives 100% of service traffic;
+it was deployed September 26, 2026. Its immutable container image is pinned to
+`sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`.
+Cloud Run has no build/source metadata for this revision, so its Git commit is
+still unknown.
+
+The read-only Cloud Run service list in `agentos-mvp` showed only `agentos` and
+`agentos-internal-beta`. The `agentos` service URL is
+`agentos-1028728465669.europe-west1.run.app`; neither listed service matches
+the `mquo4bf7aq` Cloud Test hostname. Its owning service/project is still
+unknown from this account view.
+
+The redacted runtime configuration shows provider calls disabled and
+`CLIENT_RETENTION_DAYS=1`, which conflicts with the approved 45-day per-item
+retention policy. The service is therefore not ready for customer data under
+the approved retention setting. Do not deploy or change retention based on
+this observation alone; the reviewed candidate manifest, bucket/RPC retention
+semantics, and rollback evidence must be checked before an approved rollout.
+
+The local and Internal Beta memory screens currently show the same totals
+(2 memories, 114 nodes, 113 edges), while `mquo4bf7aq` and the Asia test host
+show different counts and features. Matching totals are consistent with the
+same dataset but do not prove the signed-in user resolves to the same tenant.
+The `mquo4bf7aq` host remains unmapped to a service/revision; its disabled
+build-identity endpoint remains a parity blocker. No settings, tenant data,
+provider calls, or deployments were changed in this inspection.
