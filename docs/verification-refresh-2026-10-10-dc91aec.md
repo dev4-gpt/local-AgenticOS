@@ -32,3 +32,13 @@ On clean pushed source `5a0e4c37736ba650749b0a16a0e08e8ff2b2a049`, the determini
 ## Addendum: Source-Import Local Acceptance
 
 On the same source code as pushed commit `514a555d9b936afedd9a30c98e58a3b8a1f4a1fe`, `npm run verify:source-import-postgres` passed the disposable PostgreSQL 17 migration smoke with container networking disabled and read-only repository mounts; both source-guard schema-evidence tests passed. `npm run verify:source-import-browser` passed 5/5 in an isolated system-Chrome profile at local port 3941 with API and storage responses intercepted. Coverage includes permission before upload, fresh permission for each batch, rejection of an invalid later part before upload, safe link/media rendering, and explicit deletion confirmation. This validates local SQL and UI contracts only. It does not upload the community pack, apply a hosted migration, or establish hosted graph completeness. No hosted tenant write, provider call, or deployment occurred.
+
+## Addendum: Cloud Test Login URL Reachability
+
+On 2026-10-10, unauthenticated read-only HTTP checks returned 200 for both
+`https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/login?next=%2F` and
+`https://veloce-cloud-test-1075094991117.asia-south1.run.app/login?next=%2F`.
+Both responses served the page title `Veloce AgenticOS — Mission Control`.
+This proves both URLs currently serve a login page, but does not prove they
+resolve to the same Cloud Run service, revision, tenant, or authenticated data.
+No credentials, cookies, writes, deployment, or provider calls were used.
