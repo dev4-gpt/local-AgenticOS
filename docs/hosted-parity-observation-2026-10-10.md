@@ -66,6 +66,10 @@ Source checked: `4082811e8470d8fbfac24a082fee17580ee21ca4` on
 
 - `npm run test:focused`: 345 passed, 1 skipped (346 total).
 - `npm run typecheck`: passed.
+- On supported Node `v24.19.0`, `npm run verify:ai-evaluation` passed 14/14
+  deterministic cases with `localGatePassed: true`, `productionReady: false`,
+  and zero model samples. The ignored report is
+  `tmp/ai-release-local-f28cd22-node24.json`; no LLM or Zep request was made.
 - `npm run verify:production-readiness`: `releaseReady: false`,
   `ledger_bucket_not_configured`, and 37 unevaluated release-evidence fields.
 - Read-only Chrome inspection reconfirmed that the signed-in
