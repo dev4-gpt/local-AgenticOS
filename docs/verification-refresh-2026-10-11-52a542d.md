@@ -21,6 +21,12 @@ Branch: `wip/backup-2026-10-03`, clean and tracking origin.
 - Offline MiroFish artifact/audit tests previously passed 22/22 on the
   immediately preceding docs-only candidate; they validate audit logic, not a
   new simulation or market demand.
+- Supplemental `npm run verify:security` passed on pushed documentation HEAD
+  `dc182ab` (same product code as `52a542d`): security release, provider
+  policy, client lifecycle (22 tests), Notebook execution provenance (19
+  tests), runtime config fixtures (10 tests), and the OpenReply, VoxCPM, Scout,
+  Content OS, integration-governance, and engineering-control contract checks.
+  OpenReply live health was explicitly not checked.
 
 ## Release State and Limits
 
