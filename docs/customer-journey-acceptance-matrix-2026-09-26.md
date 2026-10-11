@@ -273,3 +273,18 @@ public-intake/login suites, TypeScript, ESLint, and public-launch contract pass
 locally. This closes a local request-abuse gap only: it does not establish
 deployed rate-limit behavior or accept any public customer-journey row.
 J01-J15 remain unaccepted on the hosted candidate.
+
+**Exact-head deterministic AI and observability evaluation, 2026-10-10:** On
+clean commit `61b6f3b2fb3faedd0f0d2c967256cbe3810789d8`, the offline AI release
+suite passed 14/14 cases under supported Node `v24.18.0` (`localGatePassed:
+true`, `productionReady: false`). Coverage includes provider routing,
+credential revocation, tenant budgets, artifact integrity, source-graph
+isolation, trace redaction, observability ledger completeness, telemetry
+filtering, and notebook provenance/retention/citations. The runner removed
+inherited provider, database, and billing credentials from the child process;
+model samples and provider requests were zero. This is deterministic local
+contract evidence, not model-quality or stochastic evaluation, cloud
+observability, billing reconciliation, or a completed customer journey. The
+local JSON report is generated under ignored `tmp/`; the strict readiness
+gate still reports `releaseReady: false` because no ledger bucket or approved
+release evidence bundle is configured.
