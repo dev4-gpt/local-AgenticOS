@@ -56,3 +56,14 @@ provider calls, or deployments. The production-readiness verifier still
 returns `releaseReady: false`; at this head it reports the release ledger
 unconfigured and 38 evidence fields not evaluated. Local tests do not replace
 hosted journey, tenant-isolation, migration, import, or parity receipts.
+
+On the same source code (`e2a0bbff66578fa3a6edf54bd5343f22eac53361`), the
+observability status browser suite passed 6/6 in isolated system Chrome with
+synthetic auth and mocked telemetry. The saved MiroFish run
+`sim_4d52cec6d408` was re-audited: all 12 technical/content checks passed for
+10 synthetic profiles and 2 active buyers; `marketValidation` remains false.
+The audit made no provider calls. A read-only local session check returned
+`authenticated: false` with no configuration error; `/login` returned 200 and
+`/memory` redirected to login. Thus the signed-in local customer journey is
+still unverified. Unauthenticated checks of both Cloud Test API paths returned
+403, which does not identify their service/revision or prove route parity.
