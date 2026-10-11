@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { expect, test } from "@playwright/test";
+import { readBoundedResponseBytes } from "../src/lib/clientNetworkSafety";
 import { captureClientProductEvent, CLIENT_PRODUCT_EVENTS, logClientRuntimeEvent } from "../src/lib/clientRuntimeObservability";
 import { loadReviewModule } from "./helpers/load-review-module";
 
@@ -18,6 +19,7 @@ test("product telemetry accepts only shipped events and strips caller content", 
       checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
       recordClientAudit: async (event: string, metadata: Record<string, unknown>) => { audited.push({ event, metadata }); return true; },
     },
+    "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
     "@/lib/clientRuntimeObservability": {
       CLIENT_PRODUCT_EVENTS,
       captureClientProductEvent: async (input: Record<string, unknown>) => { captured.push(input); return true; },
@@ -62,6 +64,7 @@ test("telemetry rejects unauthenticated and rate-limited requests before egress"
       checkClientRuntimeRateLimit: async () => ({ ok: true, allowed }),
       recordClientAudit: async () => { throw new Error("audit must not run"); },
     },
+    "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
     "@/lib/clientRuntimeObservability": { CLIENT_PRODUCT_EVENTS, captureClientProductEvent: async () => { captures++; return true; } },
   });
   const request = () => new Request("https://client.invalid/api/client-runtime/telemetry", {
@@ -72,6 +75,37 @@ test("telemetry rejects unauthenticated and rate-limited requests before egress"
   allowed = false;
   expect((await route.POST(request())).status).toBe(429);
   expect(captures).toBe(0);
+});
+
+test("telemetry bounds request bytes before parsing or egress", async () => {
+  let captures = 0;
+  let audits = 0;
+  const route = loadReviewModule("src/app/api/client-runtime/telemetry/route.ts", {
+    "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
+    "@/lib/clientAuth": { currentClientUser: async () => ({ id: "user-123" }), currentClientMember: async () => true },
+    "@/lib/clientDataPlane": {
+      checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+      recordClientAudit: async () => { audits++; return true; },
+    },
+    "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
+    "@/lib/clientRuntimeObservability": {
+      CLIENT_PRODUCT_EVENTS,
+      captureClientProductEvent: async () => { captures++; return true; },
+    },
+  });
+  const oversized = await route.POST(new Request("https://client.invalid/api/client-runtime/telemetry", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ event: "client_runtime_provider_prompt_submitted", padding: "x".repeat(17 * 1024) }),
+  }));
+  expect(oversized.status).toBe(413);
+  expect(await oversized.json()).toMatchObject({ error: "request_body_too_large" });
+  const malformed = await route.POST(new Request("https://client.invalid/api/client-runtime/telemetry", {
+    method: "POST", body: "{",
+  }));
+  expect(malformed.status).toBe(400);
+  expect(await malformed.json()).toMatchObject({ error: "request_invalid" });
+  expect(captures).toBe(0);
+  expect(audits).toBe(0);
 });
 
 test("PostHog capture is off by default and rejects unknown events or raw IDs", async () => {

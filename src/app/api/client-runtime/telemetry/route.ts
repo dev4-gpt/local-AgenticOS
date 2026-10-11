@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, recordClientAudit } from "@/lib/clientDataPlane";
+import { readBoundedResponseBytes } from "@/lib/clientNetworkSafety";
 import { captureClientProductEvent, CLIENT_PRODUCT_EVENTS } from "@/lib/clientRuntimeObservability";
 
 export const runtime = "nodejs";
@@ -11,6 +12,7 @@ const PROVIDERS = new Set([
   "anthropic", "openai", "codex", "openrouter", "openclaw", "hermes", "freeclaude", "fusion",
   "gemini", "antigravity", "moonshot", "kimi", "glm", "glm-code", "xai", "grok", "sakana",
 ]);
+const MAX_TELEMETRY_BODY_BYTES = 16 * 1024;
 
 export async function POST(request: Request) {
   const user = await currentClientUser();
@@ -19,7 +21,22 @@ export async function POST(request: Request) {
   if (!limit.ok) return error("runtime_limit_unavailable", 503);
   if (!limit.allowed) return error("runtime_rate_limited", 429);
 
-  const body = await request.json().catch(() => ({}));
+  let bodyBytes: Buffer | null;
+  try {
+    bodyBytes = await readBoundedResponseBytes(new Response(request.body, { headers: request.headers }), MAX_TELEMETRY_BODY_BYTES);
+  } catch {
+    return error("request_invalid", 400);
+  }
+  if (!bodyBytes) return error("request_body_too_large", 413);
+  let parsedBody: unknown;
+  try {
+    parsedBody = JSON.parse(bodyBytes.toString("utf8"));
+  } catch {
+    return error("request_invalid", 400);
+  }
+  const body = parsedBody && typeof parsedBody === "object" && !Array.isArray(parsedBody)
+    ? parsedBody as Record<string, unknown>
+    : {};
   const event = typeof body.event === "string" ? body.event.trim() : "";
   if (!CLIENT_PRODUCT_EVENTS.has(event)) return error("event_invalid", 400);
   const properties = body.properties && typeof body.properties === "object" && !Array.isArray(body.properties)
