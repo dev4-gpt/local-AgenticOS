@@ -34,3 +34,27 @@ surface-map verifier remains blocked because its session-cookie file is absent.
 Next verification should establish both runtimes' tenant/build identities,
 then compare the same source-import and memory surfaces without creating
 records. No deployment or hosted changes are authorized by this observation.
+
+## Follow-up Verification
+
+- On source `36275a78d476266d9df2ffdb18f662f2a01efc99`, the local authenticated
+  `/api/client-runtime/build-identity` endpoint returned `ok: true` but null
+  source commit and Cloud Run revision. This local process was not stamped with
+  build identity.
+- The same read-only endpoint on the `mquo4bf7aq` Cloud Test host returned
+  `{"ok":false,"error":"client_route_not_enabled"}`. The host therefore
+  cannot attest its serving source or revision through this endpoint.
+- `npm run verify:source-import-postgres` passed using a temporary,
+  network-isolated PostgreSQL container with repository migrations and fixtures
+  mounted read-only; the 2 source-guard schema tests also passed.
+- `verify:source-import-browser` passed 5/5 on the already-running local app
+  with synthetic browser auth and every API call intercepted by test fixtures.
+  These tests cover import consent, per-batch renewed consent, malformed later
+  batches, safe text/link rendering, and explicit deletion confirmation. They
+  do not import any Skool content or establish hosted behavior.
+
+The deployment target for the `mquo4bf7aq` host remains unknown. A read-only
+Cloud Run inventory in project `agentos-mvp` lists `agentos` and
+`agentos-internal-beta`, not a service whose URL matches that host. Do not
+conflate it with the separately named Cloud Test host or Internal Beta; no
+serving revision can be safely attributed yet.
