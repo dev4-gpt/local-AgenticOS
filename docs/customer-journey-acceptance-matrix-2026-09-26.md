@@ -244,3 +244,19 @@ queried or emitted. No deployment, migration, tenant write, traffic change, or
 provider request occurred. Internal Beta is not a valid candidate for the
 current local source or the approved 45-day customer-data policy; the
 production gate remains open.
+
+**Signed-in Memory-route parity spot check, 2026-10-10:** In Chrome's Work
+profile, local `http://127.0.0.1:3941/memory` settled to 2 tenant memories,
+114 graph nodes, and 113 edges. It displayed the `Community sources` JSON
+review/import control and the `OTHER BONUSES` and `LAUNCH KITS:` records.
+Internal Beta `agentos-internal-beta-vbimnfseva-ew.a.run.app/memory` showed
+the same counts and record titles, but only the standard Markdown import; the
+Community-sources control was absent. This is a narrow data-count/content and
+UI parity observation, not proof that both origins used the same authenticated
+identity, tenant, source commit, or image. The local build-identity route was
+previously observed to return null commit/revision, and the deployed beta
+revision is an older image. Local `3941/notebook` showed 0 notebook records and
+0 active sources; the Cloud Notebook comparison was interrupted when the user
+took control of Chrome. No route write, provider call, migration, or deployment
+occurred. The full J01-J15 customer journey and same-release parity remain
+unaccepted.
