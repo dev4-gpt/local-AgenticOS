@@ -64,7 +64,7 @@ function writePrivate(file, contents) {
   writeFileSync(file, contents, { flag: "wx", mode: 0o600 });
 }
 
-export function pdfSourcePack({ pdfPath, pageUrl, title, publishedDate, collectedAt, runCommand = run }) {
+export function pdfSourcePack({ pdfPath, pageUrl, title, publishedDate, collectedAt, inferPublishedDateFromFilename = true, runCommand = run }) {
   const fileStat = lstatSync(pdfPath);
   if (!fileStat.isFile() || fileStat.size < 1 || fileStat.size > MAX_PDF_BYTES) throw new Error("pdf_file_invalid");
   if (path.extname(pdfPath).toLowerCase() !== ".pdf") throw new Error("pdf_file_invalid");
@@ -89,7 +89,7 @@ export function pdfSourcePack({ pdfPath, pageUrl, title, publishedDate, collecte
   }
   const fileTitle = path.basename(pdfPath, path.extname(pdfPath)).replace(/^\d{4}-\d{2}-\d{2}[-_ ]*/, "").replace(/[-_]+/g, " ").trim();
   const sourceTitle = title?.trim() || metadataValue(metadata, "Title") || fileTitle;
-  const date = publishedDate || path.basename(pdfPath).match(/^(\d{4}-\d{2}-\d{2})[-_ ]/)?.[1];
+  const date = publishedDate || (inferPublishedDateFromFilename ? path.basename(pdfPath).match(/^(\d{4}-\d{2}-\d{2})[-_ ]/)?.[1] : undefined);
   const source = { title: sourceTitle, tab: sourceTitle, url: sourceUrl.toString(), text, links: [...linksByUrl.values()], collectedAt };
   if (date) source.publishedAt = date;
   const prepared = prepareClassroomSourcePack({ startUrl: sourceUrl.toString(), sources: [source], skipped: [...extractedLinks.skipped, ...textLinks.skipped], pending: [] });

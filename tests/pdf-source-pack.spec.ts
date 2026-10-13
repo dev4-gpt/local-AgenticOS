@@ -23,6 +23,7 @@ test("PDF source preparation preserves extracted lesson text and embedded URLs i
     expect(result.metadata).toMatchObject({ pages: 2, publishedDate: "2026-05-11", embeddedLinks: 1, textLinks: 2, uniqueLinks: 2, skippedLinkAnnotations: 1 });
     const parsed = parseClientSourcePack(result.batches[0]);
     expect(parsed.sources[0].text).toContain("A useful workflow.");
+    expect(parsed.sources[0].publishedAt).toBe("2026-05-11");
     expect(parsed.sources[0].links).toEqual([
       { url: "https://example.org/video?id=one", text: "PDF link on page 1" },
       { url: "https://example.org/guide", text: "PDF text URL" },
