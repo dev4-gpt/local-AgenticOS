@@ -35,3 +35,18 @@ one run under a `$0` paid-spend limit. This report does not include an
 independent post-run provider usage or billing receipt, so exact token usage and
 provider-side charges remain unverified. The Groq Free tier has published
 model rate limits; Groq documents paid-tier spend limits separately.
+
+## Offline Evidence Audit
+
+An offline audit of the stored run artifacts confirms the technical telemetry:
+all 10 expected personas and workflows are present, the run completed all 10
+rounds, the 8 action-log entries reconcile, and the two active buyers each
+generated one novel post quoting the other buyer. Persona attribution and
+completion telemetry pass; there are no duplicate dynamic posts or self-quotes.
+
+The pilot acceptance gate still fails because there is no complete, private
+content-review receipt for both generated posts. Do not treat telemetry or the
+cross-buyer quotes as validated buyer interest. Both buyers' initial posts
+repeat the seeded `$2,500 setup + $1,250/month` figure, so this run cannot test
+price sensitivity; that figure is not verified as AgentOS pricing. No new
+provider request was made for this audit.
