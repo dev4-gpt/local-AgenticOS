@@ -61,6 +61,7 @@ A later read-only check in the existing Chrome profile found:
 | Existing local preview (`127.0.0.1:3952`) | The signed-in memory page loaded 2 tenant memories and 114 nodes / 113 edges, with community-source controls. Its authenticated build-identity route reported `872bcc5d0defca907d78f22e8898e8d0f73fa352`, older than the current source checkout. This process was left untouched. |
 | Current source preview (`127.0.0.1:3953`) | Started temporarily from the current checkout with provider calls disabled. The signed-in memory page loaded 2 tenant memories and 114 nodes / 113 edges, with community-source controls. Its authenticated route reported `c12a300cf0e72d315ec40ad2ded89db3d49419a9`; this is runtime-reported metadata, not independent image attestation. The temporary server was stopped after verification. |
 | Cloud Test (`veloce-cloud-test-mquo4bf7aq`) | In the same Chrome profile, the memory page loaded 0 memories and 0 graph nodes / edges and did not show community-source controls. The build-identity route returned `client_route_not_enabled`. |
+| Internal Beta (`agentos-internal-beta-vbimnfseva-ew`) | A fresh navigation redirected to `/login?next=%2Fmemory`. No credentials were entered and no current memory or UI comparison was made; the earlier October 13 observation is not a current-session result. |
 
 The same browser profile does not prove the local and Cloud Test sessions refer to
 the same member or tenant. Therefore the empty Cloud Test graph is an observed
