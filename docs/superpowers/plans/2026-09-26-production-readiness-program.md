@@ -122,6 +122,22 @@ scraping constraints throughout.
 - `npm run verify:mirofish-buyer-artifacts` passed **23/23** offline tests.
   These validate pilot attribution, telemetry, and review guards; they are not
   evidence that a MiroFish simulation or buyer interaction occurred.
+- `npm run verify:policy-gates` passed: 696 license entries, 8 provider-egress
+  manifests, 48 tenant-boundary routes, 3 navigation-policy tests, integration
+  catalog validation, and ECC provenance.
+- `npm run verify:public-beta`, `npm run verify:public-launch`,
+  `npm run verify:engineering-controls`, and
+  `npm run verify:client-provider-policy` all passed.
+- `npm run verify:client-lifecycle` passed **22/22** retention, ownership,
+  and offboarding contract tests.
+- The client-runtime observability, telemetry-boundary, and job-trace suite
+  passed **24/24**, including desktop/mobile status states, bounded redacted
+  traces, and cross-tenant fail-closed behavior. No external provider requests
+  were made.
+- `npm run test:focused` under Node 24 passed **349/350** tests (one skipped).
+  This broad local regression suite includes customer-journey and release-gate
+  contracts, buyer-pilot evidence validation, and two-tenant isolation tests;
+  it does not replace signed-in hosted acceptance.
 - A Node 24 production build passed. The general workspace build does not
   include the client-runtime `Community sources` control, so the first browser
   attempt against that edition was invalid for this feature.

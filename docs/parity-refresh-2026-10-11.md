@@ -83,3 +83,30 @@ browser tabs were restored to their Memory pages after the checks.
   service.
 - These were read-only observations. No tenant data, settings, Cloud Run
   resources, or provider state was changed.
+
+## Follow-up — 2026-10-13
+
+Source checked: `55cf8fbcd7e488009b62edd1bd14bcbc73012f9f` on
+`wip/backup-2026-10-03`.
+
+- The private internal-beta client-runtime env file passed the launcher's
+  value-redacting config check. Provider calls remained disabled.
+- The source-import browser suite passed **5/5** against local port 3941 with
+  all API calls intercepted by fixtures. This verifies the local UI contract,
+  not a hosted import or real tenant write.
+- A read-only navigation in the existing Chrome session reached local
+  `/memory`; the session, records, and memory-graph endpoints returned HTTP
+  200. The account identity and returned record contents were not inspected.
+- An unauthenticated GET to the documented Cloud Test
+  `/api/client-runtime/build-identity` endpoint returned HTTP 403 with
+  `client_route_not_enabled`.
+- A read-only Cloud Run description for `agentos-internal-beta` could not be
+  obtained: the active Google account is authenticated but lacks
+  `run.services.get`. No alternate account was selected and no cloud resource
+  was changed.
+
+Parity remains **unproven**. The local client-runtime surface is freshly
+tested, but the Cloud Test host cannot attest its serving revision and the
+Internal Beta revision/configuration could not be refreshed from the active
+account. No same-tenant comparison, hosted source import, or deployment was
+performed.
