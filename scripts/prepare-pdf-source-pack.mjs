@@ -7,6 +7,21 @@ import { prepareClassroomSourcePack } from "./prepare-classroom-source-pack.mjs"
 
 const MAX_PDF_BYTES = 100 * 1024 * 1024;
 const MAX_TEXT_BYTES = 20 * 1024 * 1024;
+const CREDENTIAL_ASSIGNMENT = /(api[_ -]?key|secret|password|private[_ -]?key|access[_ -]?token)(\s*[:=]\s*)(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s"'`]{4,})/gi;
+const CREDENTIAL_TOKEN = /\b(?:sk|rk|ghp|xai)-[A-Za-z0-9_-]{16,}\b/gi;
+
+function redactCredentialLikeText(text) {
+  let redacted = 0;
+  let clean = text.replace(CREDENTIAL_ASSIGNMENT, (_match, label, separator) => {
+    redacted += 1;
+    return `${label}${separator}***`;
+  });
+  clean = clean.replace(CREDENTIAL_TOKEN, () => {
+    redacted += 1;
+    return "***";
+  });
+  return { text: clean, redacted };
+}
 
 export function parsePdfLinks(output) {
   const links = [];
@@ -64,7 +79,7 @@ function writePrivate(file, contents) {
   writeFileSync(file, contents, { flag: "wx", mode: 0o600 });
 }
 
-export function pdfSourcePack({ pdfPath, pageUrl, title, publishedDate, collectedAt, inferPublishedDateFromFilename = true, runCommand = run }) {
+export function pdfSourcePack({ pdfPath, pageUrl, title, publishedDate, collectedAt, inferPublishedDateFromFilename = true, sanitizeCredentialLikeText = false, runCommand = run }) {
   const fileStat = lstatSync(pdfPath);
   if (!fileStat.isFile() || fileStat.size < 1 || fileStat.size > MAX_PDF_BYTES) throw new Error("pdf_file_invalid");
   if (path.extname(pdfPath).toLowerCase() !== ".pdf") throw new Error("pdf_file_invalid");
@@ -76,7 +91,9 @@ export function pdfSourcePack({ pdfPath, pageUrl, title, publishedDate, collecte
   if (!Number.isSafeInteger(pages) || pages < 1) throw new Error("pdf_page_count_invalid");
   const extracted = runCommand("pdftotext", ["-enc", "UTF-8", "-layout", "-nopgbrk", pdfPath, "-"]);
   if (Buffer.byteLength(extracted, "utf8") > MAX_TEXT_BYTES) throw new Error("pdf_text_too_large");
-  const text = cleanPdfText(extracted);
+  const extractedText = cleanPdfText(extracted);
+  const sanitized = sanitizeCredentialLikeText ? redactCredentialLikeText(extractedText) : { text: extractedText, redacted: 0 };
+  const text = sanitized.text;
   if (!text) throw new Error("pdf_text_unavailable_or_scanned_needs_ocr");
   const extractedLinks = parsePdfLinks(runCommand("pdfinfo", ["-url", pdfPath]));
   const textLinks = parsePdfTextLinks(text);
@@ -105,6 +122,7 @@ export function pdfSourcePack({ pdfPath, pageUrl, title, publishedDate, collecte
       textLinks: textLinks.links.length,
       uniqueLinks: linksByUrl.size,
       skippedLinkAnnotations: extractedLinks.skipped.length,
+      redactedCredentialLikeValues: sanitized.redacted,
       title: sourceTitle,
       publishedDate: date ?? null,
     },

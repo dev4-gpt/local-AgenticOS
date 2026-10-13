@@ -60,3 +60,38 @@ test("local PDF batch preparation imports only unambiguous first-page lesson URL
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("local PDF batch preparation redacts credential-like values before validation", () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "pdf-classroom-secrets-"));
+  const sourceDirectory = path.join(directory, "pdfs");
+  mkdirSync(sourceDirectory);
+  const filename = "lesson-credentials.pdf";
+  writeFileSync(path.join(sourceDirectory, filename), filename);
+  const runCommand = (command: string, args: string[]) => {
+    const pdfPath = args.at(-1) === "-" ? args.at(-2)! : args.at(-1)!;
+    if (command === "pdftotext" && args.includes("-f")) return `${startUrl}?md=credentials`;
+    if (command === "pdfinfo" && args.includes("-url")) return "";
+    if (command === "pdfinfo") return "Pages: 1\nTitle: Credential handling\n";
+    return "GROQ_API_KEY=unit-test-secret-value\nOPENAI_API_KEY=\"unit test secret tail\"\nExample token: sk-abcdefghijklmnopqrs";
+  };
+
+  try {
+    const prepared = preparePdfClassroomRun({
+      directory: sourceDirectory,
+      startUrl,
+      sourceUrlPrefix: startUrl,
+      runCommand,
+    });
+    expect(prepared.coverage).toMatchObject({ preparedPdfs: 1, unresolvedPdfs: 0 });
+    expect(prepared.files[0]).toMatchObject({ redactedCredentialLikeValues: 3 });
+    const source = parseClientSourcePack(prepared.batches[0]).sources[0];
+    expect(source.text).toContain("GROQ_API_KEY=***");
+    expect(source.text).toContain("OPENAI_API_KEY=***");
+    expect(source.text).toContain("Example token: ***");
+    expect(source.text).not.toContain("unit-test-secret-value");
+    expect(source.text).not.toContain("unit test secret tail");
+    expect(source.text).not.toContain("sk-abcdefghijklmnopqrs");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

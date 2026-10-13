@@ -77,6 +77,7 @@ export function preparePdfClassroomRun({ directory, startUrl, sourceUrlPrefix, r
         pageUrl: candidates[0],
         title: titleFromFilename(filename),
         inferPublishedDateFromFilename: false,
+        sanitizeCredentialLikeText: true,
         runCommand,
       });
       rows.push({
