@@ -30,3 +30,15 @@ that cannot later be imported.
 ## Beta Gate
 
 The controlled beta must be deployed and then verified before this path is considered hosted-ready. The latest recorded beta configuration is `agentos-internal-beta` in `agentos-mvp/europe-west1`; its runtime is one-day retention and lacks the source-import API route, while the selected item-retention policy is 45 days. The bucket lifecycle policy must also be reconciled with that 45-day decision before accepting new source uploads. Keep public rollout closed until the deployed revision, effective route allowlist, retention configuration, storage policy, and signed-in source-pack journey are independently verified.
+
+## Latest Local Verification
+
+Verified on source commit `5c749e01775c103edbd1ef345fb003f0ca690eca`:
+
+- Runtime configuration, storage configuration, cloud-config evidence, and record/artifact retention tests: 26/26 passed.
+- Local static security release check: passed.
+- Isolated MiroFish buyer-pilot, telemetry, and profile tests: 22/22 passed using the repository virtual environment; no simulation or provider request was started.
+- Non-publishing production-readiness verifier: `releaseReady: false`; 37 release checks remain unevaluated because no verified release-ledger record is configured. Hosted customer-journey, migration, runtime-identity, and buyer evidence remain unproven.
+- The current local preview endpoint on port 3952 was not listening during this check. No current signed-in local journey was therefore verified.
+
+These are local checks only. No deployment, hosted database write, storage operation, provider request, or release-ledger publication was performed. The prior recorded cloud configuration above is historical evidence and has not been refreshed in this verification.
