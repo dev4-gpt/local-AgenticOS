@@ -175,9 +175,13 @@ if (process.argv[1]?.endsWith("/prepare-pdf-classroom-run.mjs")) {
       const manifestPath = path.join(parsed.dir, `${parsed.name}.manifest.json`);
       if ([...files.map((item) => item.file), manifestPath].some((file) => existsSync(file))) throw new Error("classroom_output_exists");
       for (const item of files) writePrivate(item.file, item.contents);
+      const skipped = prepared.batches.reduce((count, batch) => count + batch.skipped.length, 0);
       writePrivate(manifestPath, JSON.stringify({
         version: 1,
         startUrl: new URL(value("--start-url")).toString(),
+        sources: prepared.coverage.importedSourceSegments,
+        links: prepared.coverage.importedLinks,
+        skipped,
         sourceUrlPrefix: new URL(value("--source-url-prefix")).toString(),
         coverage: prepared.coverage,
         files: prepared.files,

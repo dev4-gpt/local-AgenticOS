@@ -12,7 +12,7 @@ The local-only PDF batch preparer processed 64 PDFs from `tmp/` and wrote a priv
 - No publication dates were inferred from filenames. The pack has no owner-declared page inventory and does not claim the discovered page queue is exhausted.
 - All four batch hashes, source identity uniqueness, URL-prefix scope, per-batch size limits, and mode-600 file permissions verified.
 
-The local manifest is `tmp/authorized-skool-import/pdf-batch-2026-10-13-v2.manifest.json`. The batch files are referenced there. These files contain lesson content and are ignored by Git; they were not committed or uploaded.
+The local manifest is `tmp/authorized-skool-import/pdf-batch-2026-10-13-v3.manifest.json`. The batch files are referenced there. The actual four files passed AgentOS' production batch selector and content parser via `AGENTOS_PRIVATE_SOURCE_PACK_MANIFEST=<manifest> npm run verify:private-source-pack`. These files contain lesson content and are ignored by Git; they were not committed or uploaded.
 
 ## Limits
 
