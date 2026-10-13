@@ -76,3 +76,71 @@ Execution order: establish baseline and test matrix; implement the authorized im
 3. Specify the export format and graph migration, then implement the first authorized import slice.
 4. Capture local/cloud route screenshots and action parity, fixing the first verified discrepancy.
 5. Prepare the isolated MiroFish pilot and explicit cost proposal before any paid run.
+
+## Execution checkpoint — 2026-10-13
+
+This is a measured checkpoint, not a production-readiness claim. The repository
+was clean at source commit `da73092d2a41727d7e4dfef11d67b1093df34127` on
+`wip/backup-2026-10-03`.
+
+- The strict evidence verifier returned `releaseReady: false`. Its configured
+  ledger bucket is missing, and deployment, migration, customer-journey,
+  source-import, parity, buyer-pilot, AI-evaluation, operations, legal, and
+  rollback evidence are not attached to this candidate.
+- The offline AI release suite ran 14/14 cases successfully with no provider
+  requests. The first run under Node v26.4.0 was rejected by the verifier; a
+  rerun under installed Node v24 passed the local gate. The report is
+  local-only and explicitly does not establish model quality or hosted behavior.
+- The latest parity observation remains **unproven**: local and cloud data and
+  capability surfaces differed, the cloud build identity route was unavailable,
+  and no contemporaneous same-tenant comparison is recorded.
+- The Skool archive inventory remains partial. No complete authorized source
+  package has been imported and verified in the tenant graph. Use the
+  user-provided/official export path; do not automate authenticated bulk
+  collection without platform-level authorization.
+- The latest MiroFish preparation record describes a two-buyer, ten-round
+  candidate that passed offline preflight, but records no executed simulation
+  or validated buyer interaction. A run must remain within the user's approved
+  zero-paid-spend limit and current provider-account limits.
+- Making the GitHub repository public is not equivalent to publishing or
+  accepting the AgentOS production service.
+
+The previous baseline-and-evaluation step is now complete. Next, make the local
+AI gate reproducible in the project's documented runtime setup, refresh the
+customer journey and parity evidence on a single identified candidate, then
+finish the authorized import and pilot evidence before attempting strict
+release acceptance. Preserve the stated cost, deployment, tenant-data, and
+scraping constraints throughout.
+
+### Verification refresh — 2026-10-13
+
+- Re-ran the offline AI evaluator with Node 24: **14/14 cases passed** and the
+  local gate passed. No provider calls were made.
+- `npm run verify:html-source-pack` passed **5/5** tests.
+- `npm run verify:source-import-postgres` passed its disposable local Postgres
+  smoke and **2/2** source-guard schema-evidence tests.
+- `npm run verify:mirofish-buyer-artifacts` passed **23/23** offline tests.
+  These validate pilot attribution, telemetry, and review guards; they are not
+  evidence that a MiroFish simulation or buyer interaction occurred.
+- A Node 24 production build passed. The general workspace build does not
+  include the client-runtime `Community sources` control, so the first browser
+  attempt against that edition was invalid for this feature.
+- `npm run verify:source-import-browser` subsequently passed **5/5** against
+  the configured local internal-beta client runtime on port 3941. The private
+  env file passed its safe config check, provider calls were disabled, and the
+  tests intercepted every API request. This validates the local UI contract,
+  not a hosted import or customer content.
+- A read-only navigation in the existing Chrome session reached local
+  `/memory`; the session, records, and memory-graph endpoints returned HTTP
+  200. The user/tenant identity and returned records were not inspected, so
+  this is partial local-journey evidence, not a same-tenant parity result.
+- Re-ran `npm run verify:production-readiness`: `releaseReady: false`. The
+  current plan edit makes the worktree dirty; the release ledger bucket is also
+  unset, and required evidence remains unevaluated. No production release
+  artifact was created.
+
+No hosted database, tenant data, Skool content, provider, or deployment was
+changed during this refresh. Next: re-run the signed-in customer journey and
+parity checks on one source-identified candidate, then complete the authorized
+sample import and pilot evidence. Do not label the product production-ready
+until the release verifier has complete evidence and passes.
