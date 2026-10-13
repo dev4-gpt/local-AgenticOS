@@ -29,7 +29,9 @@ that cannot later be imported.
 
 ## Beta Gate
 
-The controlled beta must be deployed and then verified before this path is considered hosted-ready. The latest recorded beta configuration is `agentos-internal-beta` in `agentos-mvp/europe-west1`; its runtime is one-day retention and lacks the source-import API route, while the selected item-retention policy is 45 days. The bucket lifecycle policy must also be reconciled with that 45-day decision before accepting new source uploads. Keep public rollout closed until the deployed revision, effective route allowlist, retention configuration, storage policy, and signed-in source-pack journey are independently verified.
+The controlled beta must be deployed and then verified before this path is considered hosted-ready. Read-only verification on 2026-10-13 found `agentos-internal-beta-00034-v69` in `agentos-mvp/europe-west1`, image digest `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`. The revision has `CLIENT_RUNTIME_WORKER_ENABLED=0`, `CLIENT_PROVIDER_CALLS_ENABLED=0`, and `CLIENT_RETENTION_DAYS=1`; the authenticated app has no source-pack controls and its build-identity route returns `client_route_not_enabled`. No source-import setting appeared in the inspected service YAML. Cloud Run showed no build/source metadata, so the image digest is known but its source commit is not independently linked.
+
+This one-day setting conflicts with the selected 45-day per-item retention policy. The bucket's effective lifecycle and recovery policy, including the previously noted seven-day recovery window, was not inspected during this follow-up. Keep public rollout closed and do not accept new source uploads until the deployed revision, effective route/worker configuration, 45-day application and storage deletion behavior, and signed-in source-pack journey are independently verified. Financial/billing-record retention remains a separate policy exception requiring the named reviewer; do not apply the 45-day item policy to those records by assumption.
 
 ## Latest Local Verification
 

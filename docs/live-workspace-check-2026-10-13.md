@@ -10,7 +10,7 @@ configuration.
 | Current local checkout | `http://127.0.0.1:3952/memory` | Started from clean checkout `872bcc5d0defca907d78f22e8898e8d0f73fa352` with provider calls disabled. The existing Chrome session loaded 2 memories and 114 nodes / 113 edges, and the source-pack controls rendered. No batch was selected and no upload/import was attempted. The authenticated build-identity route self-reported the same commit; the endpoint explicitly does not independently attest the runtime image. |
 | Cloud Test (mquo4bf7aq) | `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/memory` | Loaded 24 tenant memories and a graph with 33 nodes / 57 edges. Community source-pack controls are absent. |
 | Cloud Test (1075094991117) | `https://veloce-cloud-test-1075094991117.asia-south1.run.app/notebook` | Loaded 9 notebook records and 9 active sources. This is a separate Cloud Run deployment. |
-| Internal Beta | `https://agentos-internal-beta-vbimnfseva-ew.a.run.app/memory` | Loaded 2 tenant memories and a graph with 114 nodes / 113 edges. It is distinct from both Cloud Test deployments. |
+| Internal Beta | `https://agentos-internal-beta-vbimnfseva-ew.a.run.app/memory` | Fresh signed-in view loaded 2 tenant memories and a graph with 114 nodes / 113 edges. Community source-pack controls are absent. It is distinct from both Cloud Test deployments. |
 
 The Cloud Test `mquo4bf7aq` runtime returned `client_route_not_enabled` for
 `/api/client-runtime/build-identity`, so its source commit and image digest
@@ -69,3 +69,29 @@ configuration/data difference, not evidence of data loss. Cloud Test still has
 no independently verified source revision or image digest, and source-import
 parity remains unproven. No records were changed, no import was attempted, and
 no provider, storage, database-write, or deployment action was performed.
+
+## Internal Beta Runtime Follow-Up
+
+The signed-in Internal Beta view was refreshed after the earlier reauthentication
+gate. It still shows 2 memories and 114 graph nodes / 113 edges, but unlike the
+current source preview it does not expose community source-pack controls. Its
+authenticated `/api/client-runtime/build-identity` route returns
+`client_route_not_enabled`; the application cannot attest its own source revision.
+
+Read-only Cloud Run console inspection identified service `agentos-internal-beta`
+in `agentos-mvp/europe-west1`, revision `agentos-internal-beta-00034-v69`,
+image digest `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`.
+The console had no build or source metadata. The selected revision is request-billed,
+with 1 vCPU, 1 GiB memory, concurrency 1, a 900-second timeout, and a maximum of
+one instance. Its environment reports `CLIENT_RUNTIME_WORKER_ENABLED=0`,
+`CLIENT_PROVIDER_CALLS_ENABLED=0`, and `CLIENT_RETENTION_DAYS=1`. A console YAML
+search found no `source-import` setting. Minimum-instance configuration, billing
+actuals, and the bucket's effective lifecycle/recovery policy were not verified.
+
+Matching the local/Internal Beta memory and graph counts does not prove they use
+the same database, account, or source revision. The one-day runtime setting
+contradicts the selected 45-day per-item retention policy. Treat this as a
+release-blocking configuration mismatch; do not accept customer uploads or claim
+hosted source-import parity until the policy, deployed route/worker, and storage
+retention behavior are reconciled and verified. No deployment, migration,
+database/storage write, import, or provider request was made during this follow-up.
