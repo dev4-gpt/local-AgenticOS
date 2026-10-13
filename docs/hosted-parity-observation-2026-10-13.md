@@ -59,7 +59,14 @@ a second existing local runtime on `3942` reported
 their identity as runtime-reported, not an independent attestation; both SHAs
 are ancestors of the current `f901b8b` checkout. Neither local response
 reported a Cloud Run revision. These signals cannot establish which exact
-source or image is serving Cloud Test.
+source or image is serving Cloud Test. Both local processes' working directories
+were the current AgentOS checkout. Comparing the reported SHAs with current
+`src/` shows later changes to the source-import route, its upload route, the
+source-import component, and client storage; the `3942` stamp predates the
+storage-proxy commit. Because these local servers may hot-reload files from the
+shared checkout, the old stamp alone does not prove their active UI bundle is
+stale. The source-import upload path itself was not invoked in this browser
+check, so its active runtime behavior remains unverified here.
 
 No records, settings, credentials, or cloud resources were changed. No import,
 provider call, or deployment was performed. Reconcile tenant identity and
