@@ -102,6 +102,7 @@ export function prepareClassroomSourcePack(run) {
       links.push(safeLinks.slice(start, start + MAX_LINKS_PER_SOURCE));
     }
     const count = Math.max(text.length, links.length);
+    const publishedAt = sourceDates.get(identity);
     for (let index = 0; index < count; index += 1) {
       const suffix = ` [${id}:${index + 1}/${count}]`;
       sources.push({
@@ -109,6 +110,7 @@ export function prepareClassroomSourcePack(run) {
         url,
         tab: `${label.slice(0, 240 - suffix.length)}${suffix}`,
         text: text[index] ?? text[0].slice(0, 1_000),
+        ...(publishedAt ? { publishedAt } : {}),
         collectedAt: source.collectedAt,
         links: links[index] ?? [],
       });

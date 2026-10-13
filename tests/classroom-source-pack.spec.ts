@@ -25,6 +25,7 @@ function source(index: number) {
 test("classroom conversion preserves links and splits at importer limits", async () => {
   const sources = Array.from({ length: 105 }, (_, index) => source(index));
   sources[0].text = `${"A".repeat(29_999)}😀${"B".repeat(8_000)}`;
+  sources[0].publishedAt = "2026-05-01";
   sources[0].links = Array.from({ length: 205 }, (_, index) => ({ url: `https://video.example.org/watch/${index + 1}`, text: "Video" }));
   const prepared = prepareClassroomSourcePack({ startUrl, sources, skipped: [], pending: ["https://www.skool.com/approved-course/classroom?page=2"] });
   expect(prepared.coverage.inputSources).toBe(105);
@@ -38,6 +39,7 @@ test("classroom conversion preserves links and splits at importer limits", async
   expect(parsed.reduce((sum, batch) => sum + batch.linkCount, 0)).toBe(309);
   const first = parsed.flatMap((batch) => batch.sources).filter((item) => item.sourceUrl === `${startUrl}?md=1`);
   expect(first).toHaveLength(3);
+  expect(first.map((item) => item.publishedAt)).toEqual(Array(3).fill("2026-05-01"));
   expect(first[0].text + first[1].text).toBe(sources[0].text);
   expect(first[1].text.startsWith("😀")).toBe(true);
   const parts = prepared.batches.map((batch, index) => {
