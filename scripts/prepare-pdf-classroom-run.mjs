@@ -38,6 +38,19 @@ function candidateUrls(text, prefix) {
   return [...urls].sort();
 }
 
+function footerSourceUrl(text, prefix) {
+  const candidates = [];
+  for (const match of text.matchAll(/https?:\/\/[^\s<>"'`]+/gi)) {
+    const raw = match[0].replace(/[.,;:!?]+$/, "").replace(/[)\]}]+$/, "");
+    try {
+      const url = new URL(raw);
+      if (insidePrefix(url, prefix)) candidates.push({ url: url.toString(), end: match.index + raw.length });
+    } catch { /* Ignore non-URL text. */ }
+  }
+  const last = candidates.at(-1);
+  return last && /^\s*\d+\/\d+\s*$/.test(text.slice(last.end)) ? last.url : null;
+}
+
 function canonicalUrl(value) {
   const url = new URL(value);
   url.hash = "";
@@ -68,6 +81,10 @@ export function preparePdfClassroomRun({ directory, startUrl, sourceUrlPrefix, r
     try {
       const firstPage = runCommand("pdftotext", ["-f", "1", "-l", "1", "-enc", "UTF-8", "-layout", "-nopgbrk", pdfPath, "-"]);
       const candidates = candidateUrls(firstPage, prefix);
+      if (candidates.length > 1) {
+        const footerUrl = footerSourceUrl(firstPage, prefix);
+        if (footerUrl) candidates.splice(0, candidates.length, footerUrl);
+      }
       if (candidates.length !== 1) {
         rows.push({ filename, status: candidates.length ? "ambiguous_source_url" : "source_url_missing", candidateCount: candidates.length });
         continue;

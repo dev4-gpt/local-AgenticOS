@@ -61,6 +61,29 @@ test("local PDF batch preparation imports only unambiguous first-page lesson URL
   }
 });
 
+test("local PDF prep uses only a verified footer URL to resolve wrapped lesson links", () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "pdf-classroom-footer-"));
+  const filename = "2026-06-07-lesson.pdf";
+  writeFileSync(path.join(directory, filename), filename);
+  const pageUrl = `${startUrl}?md=lesson-page`;
+  const runCommand = (command: string, args: string[]) => {
+    const pdfPath = args.at(-1) === "-" ? args.at(-2)! : args.at(-1)!;
+    if (command === "pdftotext" && args.includes("-f")) {
+      return `Lesson mentions ${startUrl}?\nmd=linked-lesson\n${pageUrl}    1/4`;
+    }
+    if (command === "pdfinfo" && args.includes("-url")) return "";
+    if (command === "pdfinfo") return "Pages: 1\nTitle: Footer lesson\n";
+    return "Lesson body";
+  };
+  try {
+    const prepared = preparePdfClassroomRun({ directory, startUrl, sourceUrlPrefix: startUrl, runCommand });
+    expect(prepared.coverage).toMatchObject({ preparedPdfs: 1, ambiguousPdfs: 0, unresolvedPdfs: 0 });
+    expect(parseClientSourcePack(prepared.batches[0]).sources[0].sourceUrl).toBe(pageUrl);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("local PDF batch preparation redacts credential-like values before validation", () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), "pdf-classroom-secrets-"));
   const sourceDirectory = path.join(directory, "pdfs");
