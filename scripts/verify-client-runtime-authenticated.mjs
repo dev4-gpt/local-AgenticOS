@@ -344,10 +344,10 @@ async function verifyWorkspaceExecution() {
 
   const artifact = await api(`/api/client-runtime/artifacts?id=${encodeURIComponent(execution.artifactId)}`);
   const artifactBody = await safeJson(artifact);
-  const downloadUrl = typeof artifactBody?.downloadUrl === "string" ? artifactBody.downloadUrl : null;
-  expect(artifact.status === 200 && Boolean(downloadUrl), `workspace artifact signed download failed (${artifact.status})`);
-  if (!downloadUrl) return;
-  const downloaded = await fetch(downloadUrl, { cache: "no-store" }).catch(() => null);
+  const downloadPath = typeof artifactBody?.downloadUrl === "string" ? artifactBody.downloadUrl : null;
+  expect(artifact.status === 200 && downloadPath?.startsWith("/api/client-runtime/artifacts/"), `workspace artifact proxy download path missing (${artifact.status})`);
+  if (!downloadPath) return;
+  const downloaded = await api(downloadPath);
   const html = downloaded?.ok ? await downloaded.text().catch(() => "") : "";
   expect(downloaded?.ok === true && /veloce hosted workspace acceptance/i.test(html), "workspace artifact download did not contain the expected preview output");
 }
@@ -364,7 +364,7 @@ async function verifyArtifactRoundTrip() {
   artifactId = isUuid(createdBody?.artifactId) ? createdBody.artifactId : null;
   const uploadUrl = typeof createdBody?.uploadUrl === "string" ? createdBody.uploadUrl : null;
   const uploadHeaders = createdBody?.uploadHeaders && typeof createdBody.uploadHeaders === "object" ? createdBody.uploadHeaders : {};
-  expect(Boolean(uploadUrl), "artifact allocation did not return a signed upload URL");
+  expect(uploadUrl?.startsWith("/api/client-runtime/artifacts/") === true, "artifact allocation did not return a same-origin upload path");
   if (!artifactId || !uploadUrl) return;
 
   const upload = await fetch(uploadUrl, {
@@ -373,20 +373,18 @@ async function verifyArtifactRoundTrip() {
     body: bytes,
     cache: "no-store",
   }).catch(() => null);
-  expect(upload?.ok === true, `signed artifact upload failed (${upload?.status ?? 503})`);
+  expect(upload?.ok === true, `proxied artifact upload failed (${upload?.status ?? 503})`);
   if (upload?.ok !== true) return;
 
   const completed = await api(`/api/client-runtime/artifacts/${artifactId}/complete`, { method: "POST" });
   expect(completed.status === 200, `artifact completion failed (${completed.status})`);
   if (completed.status !== 200) return;
 
-  const download = await api(`/api/client-runtime/artifacts/${artifactId}/download`, { redirect: "manual" });
-  const signedDownloadUrl = download.headers.get("location");
-  expect(download.status === 302 && Boolean(signedDownloadUrl), `signed artifact download was not issued (${download.status})`);
-  if (!signedDownloadUrl) return;
-  const downloaded = await fetch(signedDownloadUrl, { cache: "no-store" }).catch(() => null);
-  const downloadedBytes = downloaded ? new Uint8Array(await downloaded.arrayBuffer()) : null;
-  expect(downloaded?.ok === true && downloadedBytes && equalBytes(downloadedBytes, bytes), "signed artifact download did not match uploaded bytes");
+  const downloaded = await api(`/api/client-runtime/artifacts/${artifactId}/download`);
+  expect(downloaded.status === 200, `artifact proxy download failed (${downloaded.status})`);
+  if (!downloaded.ok) return;
+  const downloadedBytes = new Uint8Array(await downloaded.arrayBuffer());
+  expect(downloaded?.ok === true && downloadedBytes && equalBytes(downloadedBytes, bytes), "proxied artifact download did not match uploaded bytes");
 }
 
 async function waitForWorkflow(id) {

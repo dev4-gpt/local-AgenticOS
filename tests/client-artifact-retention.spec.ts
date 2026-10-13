@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { loadReviewModule } from "./helpers/load-review-module";
 import { clientRetentionExpiresAt, clientRetentionSecondsRemaining } from "../src/lib/clientRetention";
-import { signedClientStorageUrl } from "../src/lib/clientStorage";
+import { proxyClientStorageObject } from "../src/lib/clientStorage";
 
 const savedEnv = { ...process.env };
 const DAY_MS = 86_400_000;
@@ -10,7 +10,6 @@ test.afterEach(() => { process.env = { ...savedEnv }; });
 
 function uploadRoute() {
   const stored: Record<string, unknown>[] = [];
-  let signed = 0;
   const route = loadReviewModule("src/app/api/client-runtime/artifacts/route.ts", {
     "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
     "@/lib/clientAuth": { currentClientUser: async () => ({ id: "member-a" }), currentClientMember: async () => true },
@@ -26,16 +25,13 @@ function uploadRoute() {
     "@/lib/clientStorage": {
       clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "fixture-bucket", serviceAccount: "fixture@example.invalid" }),
       safeClientFileName: (name: string) => name,
-      clientGcpAccessToken: async () => "fixture-token",
-      clientServiceAccountEmail: async () => "fixture@example.invalid",
-      signedClientStorageUrl: async () => { signed++; return "https://storage.example.invalid/upload"; },
     },
   });
   const post = () => route.POST(new Request("https://tenant.invalid/api/client-runtime/artifacts", {
     method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ fileName: "evidence.json", contentType: "application/json", byteSize: 32 }),
   }));
-  return { post, stored, signedCalls: () => signed };
+  return { post, stored };
 }
 
 test("artifact uploads default to 45 days from creation and honor explicit disposable retention", async () => {
@@ -43,7 +39,9 @@ test("artifact uploads default to 45 days from creation and honor explicit dispo
   delete process.env.CLIENT_RETENTION_DAYS;
   const fixture = uploadRoute();
   const before = Date.now();
-  expect((await fixture.post()).status).toBe(201);
+  const response = await fixture.post();
+  expect(response.status).toBe(201);
+  expect((await response.json()).uploadUrl).toMatch(/^\/api\/client-runtime\/artifacts\/[0-9a-f-]{36}\/upload$/i);
   const expiry = Date.parse(String(fixture.stored[0].p_retention_expires_at));
   expect(expiry - before).toBeGreaterThanOrEqual(45 * DAY_MS);
   expect(expiry - before).toBeLessThan(45 * DAY_MS + 2_000);
@@ -54,10 +52,9 @@ test("artifact uploads default to 45 days from creation and honor explicit dispo
   const disposableExpiry = Date.parse(String(fixture.stored[1].p_retention_expires_at));
   expect(disposableExpiry - disposable).toBeGreaterThanOrEqual(DAY_MS);
   expect(disposableExpiry - disposable).toBeLessThan(DAY_MS + 2_000);
-  expect(fixture.signedCalls()).toBe(2);
 });
 
-test("invalid artifact retention fails before signing or writing", async () => {
+test("invalid artifact retention fails before proxy allocation or writing", async () => {
   process.env.CLIENT_SLUG = "tenant-a";
   const fixture = uploadRoute();
   for (const value of ["", "0", "3651", "1e2", " 45 ", "NaN"]) {
@@ -66,8 +63,70 @@ test("invalid artifact retention fails before signing or writing", async () => {
     expect(response.status).toBe(503);
     expect(await response.json()).toMatchObject({ error: "retention_not_configured" });
   }
-  expect(fixture.signedCalls()).toBe(0);
   expect(fixture.stored).toHaveLength(0);
+});
+
+function artifactUploadBytesRoute() {
+  const artifactId = "00000000-0000-4000-8000-000000000001";
+  let currentUser = "member-a";
+  let artifact: Record<string, unknown> = {
+    id: artifactId,
+    tenant_slug: "tenant-a",
+    created_by: "member-a",
+    status: "pending",
+    object_key: "tenant-a/member-a/file.txt",
+    content_type: "text/plain",
+    byte_size: 5,
+    retention_expires_at: new Date(Date.now() + 60_000).toISOString(),
+  };
+  const uploads: Array<{ bucket: string; objectKey: string; contentType: string; bytes: Buffer }> = [];
+  const route = loadReviewModule("src/app/api/client-runtime/artifacts/[id]/upload/route.ts", {
+    "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
+    "@/lib/clientAuth": { currentClientUser: async () => ({ id: currentUser }), currentClientMember: async () => true },
+    "@/lib/clientDataPlane": {
+      checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+      selectClientRecords: async () => ({ ok: true, records: [artifact] }),
+    },
+    "@/lib/clientNetworkSafety": {
+      readBoundedResponseBytes: async (response: Response, maxBytes: number) => {
+        const bytes = Buffer.from(await response.arrayBuffer());
+        if (bytes.byteLength > maxBytes) throw new Error("too_large");
+        return bytes;
+      },
+    },
+    "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+    "@/lib/clientRetention": { clientRetentionSecondsRemaining },
+    "@/lib/clientStorage": {
+      clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "fixture-bucket" }),
+      safeClientObjectKey: (key: string, namespace: string) => key.startsWith(`${namespace}/`),
+      clientGcpAccessToken: async () => "fixture-token",
+      uploadClientStorageObject: async (input: { bucket: string; objectKey: string; contentType: string; bytes: Buffer }) => { uploads.push(input); return true; },
+    },
+  });
+  const put = (body = "hello", contentType = "text/plain") => route.PUT(new Request(`https://tenant.invalid/api/client-runtime/artifacts/${artifactId}/upload`, {
+    method: "PUT", headers: { "content-type": contentType }, body,
+  }), { params: Promise.resolve({ id: artifactId }) });
+  return { put, uploads, setUser: (user: string) => { currentUser = user; }, setArtifact: (value: Record<string, unknown>) => { artifact = value; } };
+}
+
+test("artifact byte proxy binds uploads to the pending owner's size, type, and retention", async () => {
+  process.env.CLIENT_SLUG = "tenant-a";
+  const fixture = artifactUploadBytesRoute();
+  const uploaded = await fixture.put();
+  expect(uploaded.status).toBe(200);
+  expect(await uploaded.json()).toMatchObject({ ok: true, status: "uploaded" });
+  expect(fixture.uploads).toHaveLength(1);
+  expect(fixture.uploads[0]).toMatchObject({ bucket: "fixture-bucket", objectKey: "tenant-a/member-a/file.txt", contentType: "text/plain" });
+  expect(fixture.uploads[0].bytes.toString()).toBe("hello");
+
+  expect((await fixture.put("hello", "application/pdf")).status).toBe(400);
+  expect((await fixture.put("other-size")).status).toBe(409);
+  fixture.setUser("member-b");
+  expect((await fixture.put()).status).toBe(404);
+  fixture.setUser("member-a");
+  fixture.setArtifact({ ...fixture.uploads[0], id: "00000000-0000-4000-8000-000000000001", tenant_slug: "tenant-a", created_by: "member-a", status: "pending", object_key: "tenant-a/member-a/file.txt", content_type: "text/plain", byte_size: 5, retention_expires_at: new Date(Date.now() - 1_000).toISOString() });
+  expect((await fixture.put()).status).toBe(404);
+  expect(fixture.uploads).toHaveLength(1);
 });
 
 function notebookRoute() {
@@ -169,8 +228,8 @@ test("artifact list and both download routes enforce expiry and owner or request
   const jobId = "00000000-0000-4000-8000-000000000002";
   const active = new Date(Date.now() + 120_000).toISOString();
   let currentUser = "member-a";
-  let artifact: Record<string, unknown> = { id: artifactId, tenant_slug: "tenant-a", created_by: "member-a", status: "ready", object_key: "tenant-a/private/file.txt", retention_expires_at: active };
-  let signed = 0;
+  let artifact: Record<string, unknown> = { id: artifactId, tenant_slug: "tenant-a", created_by: "member-a", status: "ready", object_key: "tenant-a/private/file.txt", original_name: "file.txt", content_type: "text/plain", byte_size: 5, retention_expires_at: active };
+  let proxied = 0;
   const listFilters: Record<string, string>[] = [];
   const auth = { currentClientUser: async () => ({ id: currentUser }), currentClientMember: async () => true };
   const data = {
@@ -186,8 +245,8 @@ test("artifact list and both download routes enforce expiry and owner or request
     clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "fixture-bucket", serviceAccount: "fixture@example.invalid" }),
     safeClientObjectKey: (key: string, namespace: string) => key.startsWith(`${namespace}/`),
     clientGcpAccessToken: async () => "fixture-token",
-    clientServiceAccountEmail: async () => "fixture@example.invalid",
-    signedClientStorageUrl: async (input: { expiresInSeconds?: number }) => { signed++; expect(input.expiresInSeconds).toBeGreaterThan(0); expect(input.expiresInSeconds).toBeLessThanOrEqual(120); return "https://storage.example.invalid/private?X-Goog-Expires=60"; },
+    safeClientFileName: (name: string) => name,
+    proxyClientStorageObject: async (input: { maxBytes: number; expectedBytes: number }) => { proxied++; expect(input.maxBytes).toBeGreaterThan(0); expect(input.expectedBytes).toBe(5); return { body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode("file!")); controller.close(); } }), contentType: "text/plain", contentLength: "5" }; },
   };
   const common = {
     "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init), redirect: (url: string, init?: ResponseInit) => Response.redirect(url, init?.status) } },
@@ -204,26 +263,29 @@ test("artifact list and both download routes enforce expiry and owner or request
   const alternate = () => downloadRoute.GET(new Request(`https://tenant.invalid/api/client-runtime/artifacts/${artifactId}/download`), { params: Promise.resolve({ id: artifactId }) });
   expect((await (await list()).json()).artifacts).toHaveLength(1);
   expect(listFilters[0].retention_expires_at).toMatch(/^gt\./);
-  const signedResponse = await primary();
-  expect(signedResponse.status).toBe(200);
-  expect((await signedResponse.json()).expiresInSeconds).toBe(60);
-  expect((await alternate()).status).toBe(302);
-  expect(signed).toBe(2);
+  const proxyResponse = await primary();
+  expect(proxyResponse.status).toBe(200);
+  expect(await proxyResponse.json()).toMatchObject({ downloadUrl: `/api/client-runtime/artifacts/${artifactId}/download` });
+  const download = await alternate();
+  expect(download.status).toBe(200);
+  expect(download.headers.get("content-disposition")).toBe('attachment; filename="file.txt"');
+  expect(await download.text()).toBe("file!");
+  expect(proxied).toBe(1);
 
   currentUser = "member-b";
   expect((await (await list()).json()).artifacts).toHaveLength(0);
   expect((await primary()).status).toBe(404);
   expect((await alternate()).status).toBe(404);
-  expect(signed).toBe(2);
+  expect(proxied).toBe(1);
 
   artifact = { ...artifact, created_by: null, job_id: jobId };
   currentUser = "member-a";
   expect((await primary()).status).toBe(200);
-  expect((await alternate()).status).toBe(302);
+  expect((await alternate()).status).toBe(200);
   currentUser = "member-b";
   expect((await primary()).status).toBe(404);
   expect((await alternate()).status).toBe(404);
-  expect(signed).toBe(4);
+  expect(proxied).toBe(2);
 
   artifact = { ...artifact, tenant_slug: "tenant-b" };
   currentUser = "member-a";
@@ -239,39 +301,25 @@ test("artifact list and both download routes enforce expiry and owner or request
     expect((await primary()).status).toBe(404);
     expect((await alternate()).status).toBe(404);
   }
-  expect(signed).toBe(4);
+  expect(proxied).toBe(2);
 });
 
-test("storage signing refuses invalid expiry lengths", async () => {
-  for (const expiresInSeconds of [0, -1, 901, 1.5, Number.NaN]) {
-    expect(await signedClientStorageUrl({ method: "GET", bucket: "fixture", objectKey: "tenant-a/file", serviceAccount: "fixture@example.invalid", token: "fixture", expiresInSeconds })).toBeNull();
-  }
-});
-
-test("storage signature cannot outlive an artifact's absolute expiry", async () => {
+test("storage proxy streams bounded bytes without returning an external URL", async () => {
   const originalFetch = globalThis.fetch;
-  let signingCalls = 0;
+  let storageRequest = "";
   try {
-    globalThis.fetch = async () => {
-      signingCalls++;
-      return Response.json({ signedBlob: Buffer.from("fixture-signature").toString("base64") });
+    globalThis.fetch = async (input, init) => {
+      storageRequest = `${String(input)} ${String((init?.headers as Record<string, string>)?.Authorization ?? "")}`;
+      return new Response("payload", { headers: { "content-length": "7", "content-type": "text/plain" } });
     };
-    const expiresAt = new Date(Date.now() + 15_000).toISOString();
-    const url = await signedClientStorageUrl({
-      method: "GET", bucket: "fixture", objectKey: "tenant-a/file", serviceAccount: "fixture@example.invalid", token: "fixture",
-      expiresInSeconds: 900, expiresAt,
-    });
-    expect(url).not.toBeNull();
-    const signed = new URL(url!);
-    expect(Number(signed.searchParams.get("X-Goog-Expires"))).toBeGreaterThan(0);
-    expect(Number(signed.searchParams.get("X-Goog-Expires"))).toBeLessThanOrEqual(15);
-    expect(signingCalls).toBe(1);
-    const expired = await signedClientStorageUrl({
-      method: "GET", bucket: "fixture", objectKey: "tenant-a/file", serviceAccount: "fixture@example.invalid", token: "fixture",
-      expiresAt: new Date(Date.now() - 1_000).toISOString(),
-    });
-    expect(expired).toBeNull();
-    expect(signingCalls).toBe(1);
+    const proxied = await proxyClientStorageObject({ bucket: "fixture", objectKey: "tenant-a/file", token: "fixture-token", maxBytes: 10, expectedBytes: 7 });
+    expect(proxied).not.toBeNull();
+    expect(proxied?.contentType).toBe("text/plain");
+    expect(await new Response(proxied!.body).text()).toBe("payload");
+    expect(storageRequest).toContain("https://storage.googleapis.com/storage/v1/b/fixture/o/tenant-a%2Ffile?alt=media Bearer fixture-token");
+
+    globalThis.fetch = async () => new Response("too large", { headers: { "content-length": "9" } });
+    expect(await proxyClientStorageObject({ bucket: "fixture", objectKey: "tenant-a/file", token: "fixture-token", maxBytes: 8, expectedBytes: 9 })).toBeNull();
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -2,7 +2,7 @@
 
 ## Decision
 
-The community source-pack import flow uses Cloud Run's existing server identity to write and read objects in the tenant bucket. It does not mint signed URLs or request `iam.serviceAccounts.signBlob`; IAM remains unchanged. The ordinary artifact gallery continues to use its existing signed-URL flow and is outside this change.
+The community source-pack import and ordinary artifact upload/download flows use Cloud Run's existing server identity to write and read objects in the tenant bucket. They do not mint signed URLs or request `iam.serviceAccounts.signBlob`; IAM remains unchanged. Browser clients use authenticated same-origin routes, with bounded upload and download bodies.
 
 ## Request Path
 

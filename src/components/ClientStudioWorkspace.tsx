@@ -158,7 +158,7 @@ export default function ClientStudioWorkspace({ surface }: { surface: ClientWork
         <button type="button" onClick={() => void load(true)} title="Refresh" className="p-1.5" style={{ color: "var(--cream-mute)" }}>{historyLoading ? <LoaderCircle size={13} className="animate-spin" /> : <RotateCw size={13} />}</button>
       </div>
       {shipped.length === 0 ? <p className="py-8 text-center text-[11.5px]" style={{ color: "var(--cream-mute)" }}>
-        {historyLoading ? `Loading ${config.outputNoun}…` : `No ${config.outputNoun} yet. Anything you ${config.action.toLowerCase()} lands here with a signed download.`}
+        {historyLoading ? `Loading ${config.outputNoun}…` : `No ${config.outputNoun} yet. Anything you ${config.action.toLowerCase()} lands here with an authenticated download.`}
       </p> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {shipped.map((item) => <motion.div key={item.id} layout className="flex flex-col overflow-hidden rounded-xl border" style={{ borderColor: "var(--line-soft)", background: "rgba(255,255,255,0.025)" }}>
           {item.previewHtml ? <button type="button" onClick={() => void download(item.artifactId!)} className="relative block aspect-[16/10] w-full overflow-hidden" style={{ background: "#05080d" }}>

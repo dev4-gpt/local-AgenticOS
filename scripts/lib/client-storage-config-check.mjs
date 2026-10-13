@@ -1,6 +1,3 @@
-const REQUIRED_METHODS = ["GET", "PUT"];
-const REQUIRED_HEADERS = ["Content-Type", "ETag"];
-
 export function evaluateClientStorageConfig(bucket, expected) {
   const failures = [];
   const prefix = `${expected.namespace}/`;
@@ -8,18 +5,6 @@ export function evaluateClientStorageConfig(bucket, expected) {
 
   const cors = Array.isArray(bucket?.cors_config) ? bucket.cors_config : [];
   if (cors.some((rule) => rule?.origin?.includes("*"))) failures.push("cors_wildcard_origin");
-  const originRule = cors.find((rule) => Array.isArray(rule?.origin) && rule.origin.includes(expected.origin));
-  if (!originRule) failures.push("runtime_origin_not_allowed");
-  else {
-    for (const method of REQUIRED_METHODS) {
-      if (!originRule.method?.includes(method)) failures.push(`cors_method_missing:${method}`);
-    }
-    for (const header of REQUIRED_HEADERS) {
-      if (!originRule.responseHeader?.some((value) => value.toLowerCase() === header.toLowerCase())) {
-        failures.push(`cors_response_header_missing:${header}`);
-      }
-    }
-  }
 
   const rules = Array.isArray(bucket?.lifecycle_config?.rule) ? bucket.lifecycle_config.rule : [];
   let exactDeleteRule = false;

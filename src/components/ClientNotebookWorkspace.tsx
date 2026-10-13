@@ -263,7 +263,7 @@ function StudioLane({ sources, selected, selectedIds, notebookScope, onToggle, o
   </>;
 }
 
-/** Assets: the tenant artifacts API, with signed downloads. */
+/** Assets: the tenant artifacts API, with authenticated downloads. */
 function AssetsLane({ onError }: { onError: (value: string) => void }) {
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [loading, setLoading] = useState(true);

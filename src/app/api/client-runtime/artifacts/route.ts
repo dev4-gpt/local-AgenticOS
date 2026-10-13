@@ -4,7 +4,7 @@ import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientRetentionExpiresAt, clientRetentionSecondsRemaining } from "@/lib/clientRetention";
-import { clientGcpAccessToken, clientServiceAccountEmail, clientStorageConfig, safeClientFileName, safeClientObjectKey, signedClientStorageUrl } from "@/lib/clientStorage";
+import { clientStorageConfig, safeClientFileName, safeClientObjectKey } from "@/lib/clientStorage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,12 +26,12 @@ export async function GET(request: Request) {
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!tenantSlug) return NextResponse.json({ ok: false, error: "runtime_not_configured" }, { status: 503 });
   const artifactId = new URL(request.url).searchParams.get("id")?.trim();
-  if (artifactId) return signedDownload(user.id, tenantSlug, artifactId);
+  if (artifactId) return downloadProxyPath(user.id, tenantSlug, artifactId);
   const activeAfter = `gt.${new Date().toISOString()}`;
   // Two ways an artifact belongs to this member: they uploaded it, or a job they
   // requested produced it. The worker's create RPC sets no created_by, so a
   // created_by-only list hides every artifact the runtime built — exactly the
-  // ones the gallery exists to show. Signed download already authorises by job
+  // ones the gallery exists to show. The download proxy authorizes by job
   // ownership, so listing them the same way keeps read and download consistent.
   const owned = await selectClientRecords("client_runtime_artifacts", {
     tenant_slug: `eq.${tenantSlug}`,
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
   return NextResponse.json({ ok: true, artifacts }, { headers: { "cache-control": "private, no-store" } });
 }
 
-async function signedDownload(userId: string, tenantSlug: string, artifactId: string) {
+async function downloadProxyPath(userId: string, tenantSlug: string, artifactId: string) {
   if (!/^[0-9a-f-]{36}$/i.test(artifactId)) return NextResponse.json({ ok: false, error: "artifact_id_invalid" }, { status: 400 });
   const config = clientStorageConfig();
   if (!config) return NextResponse.json({ ok: false, error: "storage_not_configured" }, { status: 503 });
@@ -100,13 +100,8 @@ async function signedDownload(userId: string, tenantSlug: string, artifactId: st
   } else if (createdBy !== userId) {
     return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
   }
-  const token = await clientGcpAccessToken();
-  const serviceAccount = await clientServiceAccountEmail(config.serviceAccount);
-  if (!token || !serviceAccount) return NextResponse.json({ ok: false, error: "storage_identity_unavailable" }, { status: 503 });
-  const downloadUrl = await signedClientStorageUrl({ method: "GET", bucket: config.bucket, objectKey, serviceAccount, token, expiresInSeconds, expiresAt: String(artifact.retention_expires_at) });
-  if (!downloadUrl) return NextResponse.json({ ok: false, error: "signed_download_unavailable" }, { status: 503 });
-  const signedLifetime = Number(new URL(downloadUrl).searchParams.get("X-Goog-Expires"));
-  return NextResponse.json({ ok: true, downloadUrl, expiresInSeconds: Number.isSafeInteger(signedLifetime) && signedLifetime > 0 ? Math.min(expiresInSeconds, signedLifetime) : expiresInSeconds }, { headers: { "cache-control": "private, no-store" } });
+  const downloadUrl = `/api/client-runtime/artifacts/${encodeURIComponent(artifactId)}/download`;
+  return NextResponse.json({ ok: true, downloadUrl, expiresInSeconds }, { headers: { "cache-control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {
@@ -135,12 +130,6 @@ export async function POST(request: Request) {
 
   const artifactId = randomUUID();
   const objectKey = `${config.namespace}/${user.id}/${artifactId}-${originalName}`;
-  const token = await clientGcpAccessToken();
-  const serviceAccount = await clientServiceAccountEmail(config.serviceAccount);
-  if (!token || !serviceAccount) return NextResponse.json({ ok: false, error: "storage_identity_unavailable" }, { status: 503 });
-  const signedUrl = await signedClientStorageUrl({ method: "PUT", bucket: config.bucket, objectKey, serviceAccount, token, contentType });
-  if (!signedUrl) return NextResponse.json({ ok: false, error: "signed_upload_unavailable" }, { status: 503 });
-
   const stored = await clientRpc("create_client_runtime_artifact", {
     p_tenant_slug: tenantSlug,
     p_artifact_id: artifactId,
@@ -152,5 +141,6 @@ export async function POST(request: Request) {
     p_retention_expires_at: retentionExpiresAt,
   });
   if (!stored.ok || stored.value !== artifactId) return NextResponse.json({ ok: false, error: "artifact_record_failed" }, { status: 502 });
-  return NextResponse.json({ ok: true, artifactId, uploadUrl: signedUrl, uploadHeaders: { "content-type": contentType }, expiresInSeconds: 900 }, { status: 201, headers: { "cache-control": "private, no-store" } });
+  const uploadUrl = `/api/client-runtime/artifacts/${encodeURIComponent(artifactId)}/upload`;
+  return NextResponse.json({ ok: true, artifactId, uploadUrl, uploadHeaders: { "content-type": contentType }, expiresInSeconds: 900 }, { status: 201, headers: { "cache-control": "private, no-store" } });
 }

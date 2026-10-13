@@ -18,7 +18,7 @@ function snapshot() {
   };
 }
 
-test("storage preflight accepts matching origin and 45-day object policy", () => {
+test("storage preflight accepts same-origin proxy storage and 45-day object policy", () => {
   const result = evaluateClientStorageConfig(snapshot(), expected);
   expect(result).toMatchObject({ ok: true, failures: [] });
   const cli = spawnSync(process.execPath, ["scripts/verify-client-storage-config.mjs",
@@ -28,19 +28,20 @@ test("storage preflight accepts matching origin and 45-day object policy", () =>
   expect(JSON.parse(cli.stdout)).toMatchObject({ ok: true, failures: [] });
 });
 
-test("storage preflight rejects the observed beta CORS and retention mismatch", () => {
+test("storage preflight checks exact retention and soft-delete policy, not direct-client CORS", () => {
   const bucket = snapshot();
   bucket.cors_config[0].origin = ["https://agentos-internal-beta-1028728465669.europe-west1.run.app"];
   bucket.lifecycle_config.rule[0].condition.age = 1;
   bucket.soft_delete_policy.retentionDurationSeconds = 604800;
   const result = evaluateClientStorageConfig(bucket, expected);
   expect(result.failures).toEqual(expect.arrayContaining([
-    "runtime_origin_not_allowed", "overlapping_delete_rule_unreviewed",
+    "overlapping_delete_rule_unreviewed",
     "exact_retention_delete_rule_missing", "soft_delete_extends_retention",
   ]));
+  expect(result.failures).not.toContain("runtime_origin_not_allowed");
 });
 
-test("storage preflight rejects broad early deletion, versioning, and incomplete CORS", () => {
+test("storage preflight rejects wildcard CORS, broad early deletion, and versioning", () => {
   const bucket = snapshot();
   bucket.cors_config[0].method = ["GET"];
   bucket.cors_config[0].responseHeader = ["ETag"];
@@ -49,7 +50,14 @@ test("storage preflight rejects broad early deletion, versioning, and incomplete
   Object.assign(bucket, { versioning_enabled: true });
   const result = evaluateClientStorageConfig(bucket, expected);
   expect(result.failures).toEqual(expect.arrayContaining([
-    "cors_wildcard_origin", "cors_method_missing:PUT", "cors_response_header_missing:Content-Type",
+    "cors_wildcard_origin",
     "overlapping_delete_rule_unreviewed", "bucket_versioning_extends_retention",
   ]));
+});
+
+test("storage preflight accepts no bucket CORS because browsers use the server proxy", () => {
+  const bucket = snapshot();
+  bucket.cors_config = [];
+  const result = evaluateClientStorageConfig(bucket, expected);
+  expect(result).toMatchObject({ ok: true, failures: [] });
 });

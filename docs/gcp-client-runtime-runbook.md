@@ -242,11 +242,12 @@ confirmation function before enabling the `artifacts` capability. Uploads are
 created as `pending`, checked against Cloud Storage metadata, and only then
 marked `ready`; downloads reject every other state.
 
-The GCP prepare phase also applies the manifest's `storage.corsOrigins` to the
-private bucket. It permits only signed `GET` and `PUT` requests from the listed
-HTTPS client origins; CORS does not make the bucket public. Keep the origins
-specific to the deployed client URL and rerun prepare when a custom domain is
-added.
+The GCP prepare phase may apply the manifest's `storage.corsOrigins` to the
+private bucket for compatibility with older clients. Current artifact uploads
+and downloads use authenticated same-origin server proxy routes, so browser
+workflows do not access the bucket directly and do not depend on bucket CORS.
+Keep any retained origins HTTPS-only and specific; CORS does not make the
+bucket public.
 
 The same prepare phase applies a Cloud Storage lifecycle rule from
 `retention.days`. The rule deletes only objects below the client namespace
@@ -263,12 +264,13 @@ gcloud storage buckets describe gs://BUCKET --project PROJECT --format=json \
       --bucket BUCKET --namespace TENANT_SLUG --expected-origin https://CLIENT_RUNTIME.run.app
 ```
 
-It requires an exact 45-day namespace Delete rule and the active origin's
-signed upload/download CORS methods. It also rejects overlapping Delete rules,
-versioning, and nonzero soft-delete retention because those can change the
-effective per-item deletion window. Review recoverability and the customer
-retention policy before changing soft delete; a passing bucket check alone
-does not prove that bytes, backups, or vendor copies were purged.
+It requires an exact 45-day namespace Delete rule. The active client origin is
+still provided for the verification receipt, but browser access no longer
+depends on direct-bucket upload/download CORS methods. It also rejects overlapping
+Delete rules, versioning, and nonzero soft-delete retention because those can
+change the effective per-item deletion window. Review recoverability and the
+customer retention policy before changing soft delete; a passing bucket check
+alone does not prove that bytes, backups, or vendor copies were purged.
 
 The current lifecycle SQL also provides authenticated tenant-scoped artifact
 deletion. The runtime removes the Cloud Storage object first, treats an already
@@ -654,7 +656,7 @@ only the job record and output metadata; it never sees the worker token.
 The repository includes a credential-safe acceptance harness for the controlled
 cloud-test tenant. It creates a provider-free `/orchestrate` plan, waits for
 `Execution: completed` with four `done` steps, then uploads and downloads a
-small signed artifact and verifies the returned bytes before deleting both test
+small proxy-uploaded artifact and verifies the returned bytes before deleting both test
 records. It never prints the cookie, response bodies, signed URLs, or provider
 output.
 
