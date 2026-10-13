@@ -15,9 +15,11 @@ the two active synthetic profiles, zero distinct posts beyond the opening
 prompts, and eight total simulation actions. The two saved quote annotations
 mark `scenarioRelevant`, `roleFaithful`, `scopeSafe`, and `actionable` false.
 The review file has empty `reviewer` and `reviewedAt` fields, so these
-annotations do not establish a named human review. The activity evaluator's
-`distinct_response_activity_observed` status is only a text-difference signal;
-it does not incorporate the quality annotations.
+annotations do not establish a named human review. The original run receipt's
+`distinct_response_activity_observed` status was only a text-difference signal.
+The evaluator has since been updated to report review annotations separately;
+re-evaluation returns `unattributed_annotations`, 0 qualified, 2 rejected, with
+artifact binding explicitly marked unverified. The 13 focused pilot tests pass.
 
 ## Interpretation and limits
 
