@@ -42,3 +42,9 @@ Verified on source commit `5c749e01775c103edbd1ef345fb003f0ca690eca`:
 - The current local preview endpoint on port 3952 was not listening during this check. No current signed-in local journey was therefore verified.
 
 These are local checks only. No deployment, hosted database write, storage operation, provider request, or release-ledger publication was performed. The prior recorded cloud configuration above is historical evidence and has not been refreshed in this verification.
+
+## Follow-Up on `571b8f4`
+
+- The deterministic AI release suite passed 14/14 on Node 24.18.0 with zero model samples or provider cost. Its local gate passed, but `productionReady` remains false; the complete report is tracked at `docs/evidence/ai-release-local-2026-10-13-571b8f4.json`.
+- The mocked Notebook Studio and observability browser suites passed 16/16, and the mocked source-import consent suite passed 7/7. The dedicated Playwright config now starts an isolated local client server with provider calls disabled, so these suites can run from a cold checkout without adopting a stale server.
+- These tests prove local contracts and UI behavior only. They do not prove hosted migrations, customer data import, same-tenant cloud parity, buyer validation, or release readiness.
