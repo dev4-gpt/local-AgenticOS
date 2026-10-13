@@ -30,6 +30,22 @@ packs remain ignored under `tmp/`.
   and no classroom source-pack control. No tenant identity was inspected.
 - This observation does not prove same-tenant local/cloud parity. A current
   local comparison and independent identity binding remain outstanding.
+- The saved MiroFish simulation `sim_f91504972e42` completed 10/10 rounds
+  with 10 synthetic agents and two active buyers, using model
+  `openai/gpt-oss-120b` through the Groq-compatible endpoint. Both buyers'
+  later `CREATE_POST` actions echoed their opening posts, but the SQLite
+  artifact contains one distinct quote comment from each buyer. The updated
+  evaluator records `distinct_response_activity_observed`, with zero distinct
+  posts and two distinct quote responses. This is simulated discussion only,
+  not purchase intent or market validation. Config, profile, and preparation
+  SHA-256 values are respectively
+  `1614f845385a638189f7cff61672b6c02476a4d9037b1d9e73041f22bfd9c09c`,
+  `83a0d906dbcf522e00dcb5082c2dd6c97340f829dafd63b332c14adf4de7b2911`, and
+  `1aa577d397432cd75e4ecc5dbc1de1b84745fd319fb5c86fe7a95c1755f3fe26`.
+  Provider billing for that earlier run was not independently reconciled;
+  no new model request was made during this verification. MiroFish commit
+  `d57527c` contains the evaluator fix and tests locally, but its configured
+  push URL is disabled.
 - No classroom batch was previewed or imported in a tenant. The full May-October
   archive and its videos/transcripts are not proven complete.
 - `npm run verify:production-readiness` returns `releaseReady: false`,
@@ -47,4 +63,6 @@ evidence. Separately, get owner review of the ten unresolved PDFs, then require
 an enabled hosted source-import route, verified tenant, retention configuration,
 and signed-in preview before any tenant import. Re-establish local/cloud parity
 with independently bound identities and collect the remaining customer-journey
-and MiroFish evidence; the prior two-buyer simulation remains inconclusive.
+evidence. Any further MiroFish run needs fresh action-specific approval and
+provider-billing verification; the current two-buyer result is synthetic
+discussion evidence only.
