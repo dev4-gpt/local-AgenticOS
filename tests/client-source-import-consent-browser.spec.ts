@@ -75,6 +75,32 @@ test("source pack review reports unavailable runtime storage identity", async ({
 
 });
 
+test("source pack review reports a missing guarded importer before storage", async ({ page, context }) => {
+  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
+  const writes: string[] = [];
+  await page.route("**/api/**", (route) => {
+    if (route.request().method() === "GET") return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
+    writes.push(new URL(route.request().url()).pathname);
+    return route.fulfill({ status: 503, json: { ok: false, error: "source_import_verifier_unavailable" } });
+  });
+
+  await page.goto("/memory");
+  await page.locator('input[type="file"][multiple]').setInputFiles({
+    name: "synthetic-source-pack.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({
+      startUrl: "https://example.org/course",
+      skipped: [],
+      sources: [{ title: "Synthetic lesson", url: "https://example.org/course/lesson", text: "Guarded-import setup check.", links: [] }],
+    })),
+  });
+  await page.getByRole("checkbox", { name: /permission to upload and use this batch/ }).check();
+  await page.getByRole("button", { name: "Review batch 1" }).click();
+  await expect(page.locator('p[role="alert"]')).toContainText("guarded importer is not configured");
+  await expect(page.getByRole("button", { name: "Import sources" })).toHaveCount(0);
+  expect(writes).toEqual(["/api/client-runtime/source-import/upload"]);
+});
+
 test("importing one part does not upload the next part without renewed permission", async ({ page, context }) => {
   await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
   const startUrl = "https://example.org/course";

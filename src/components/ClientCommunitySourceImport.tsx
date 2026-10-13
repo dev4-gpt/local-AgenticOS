@@ -130,6 +130,7 @@ function selectionError(reason: unknown) {
   const code = reason instanceof Error ? reason.message : "";
   if (code === "storage_not_configured") return "Your source pack has not been uploaded. File storage needs to be configured for this workspace.";
   if (code === "storage_identity_unavailable") return "Your source pack has not been uploaded. This runtime could not obtain its approved cloud-storage identity. Ask the workspace administrator to check the runtime identity configuration.";
+  if (code === "source_import_verifier_unavailable") return "Your source pack has not been uploaded. The guarded importer is not configured for this workspace; ask the workspace administrator to finish its setup.";
   if (code === "source_import_permission_required") return "Confirm permission before uploading this batch.";
   if (code === "source_import_manifest_mismatch") return "The uploaded batch differs from the reviewed manifest.";
   if (code === "source_import_upload_failed") return "The source pack could not be stored and was not imported. Check the workspace storage configuration, then retry.";

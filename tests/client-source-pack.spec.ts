@@ -191,7 +191,7 @@ test("source upload requires permission and stores through the authenticated ser
     return uploadRoute.POST(new Request("https://tenant.example.invalid/api/client-runtime/source-import/upload", { method: "POST", body: form }));
   };
   try {
-    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "45" });
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "45", CLIENT_WORKER_TOKEN: "unit-test-worker-token-credential-2026" });
     const withoutConsent = await post(false);
     expect(withoutConsent.status).toBe(400);
     expect((await withoutConsent.json()).error).toBe("source_import_permission_required");
@@ -201,6 +201,44 @@ test("source upload requires permission and stores through the authenticated ser
     expect(accepted.status).toBe(201);
     expect(await accepted.json()).toMatchObject({ ok: true, packSha256: createHash("sha256").update(bytes).digest("hex") });
     expect(calls).toEqual(["create_client_runtime_artifact", "storage_upload", "confirm_client_runtime_artifact"]);
+  } finally {
+    process.env = savedEnv;
+  }
+});
+
+test("source upload fails before artifact or storage writes when the guarded importer is unconfigured", async () => {
+  const savedEnv = { ...process.env };
+  const calls: string[] = [];
+  const bytes = Buffer.from(JSON.stringify(examplePack()));
+  const uploadRoute = loadReviewModule("src/app/api/client-runtime/source-import/upload/route.ts", {
+    "@/lib/clientAuth": { currentClientUser: async () => ({ id: userId }), currentClientMember: async () => true },
+    "@/lib/clientDataPlane": {
+      checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+      clientRpc: async () => { calls.push("artifact_rpc"); return { ok: true, value: "artifact" }; },
+    },
+    "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
+    "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+    "@/lib/clientRetention": { clientRetentionExpiresAt: () => new Date(Date.now() + 86_400_000).toISOString() },
+    "@/lib/clientStorage": {
+      clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "test-bucket", serviceAccount: null }),
+      clientGcpAccessToken: async () => { calls.push("storage_identity"); return "runtime-token"; },
+      clientStorageObjectMetadata: async () => null,
+      deleteClientStorageObject: async () => { calls.push("storage_delete"); return true; },
+      safeClientFileName: (name: string) => name,
+      uploadClientStorageObject: async () => { calls.push("storage_upload"); return true; },
+    },
+    "@/lib/clientSourcePack": { parseClientSourcePack },
+  });
+  try {
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "45", CLIENT_WORKER_TOKEN: "unit-test-worker-token-credential-2026" });
+    delete process.env.CLIENT_WORKER_TOKEN;
+    const form = new FormData();
+    form.set("file", new File([bytes], "source-pack.json", { type: "application/json" }));
+    form.set("permissionConfirmed", "true");
+    const response = await uploadRoute.POST(new Request("https://tenant.example.invalid/api/client-runtime/source-import/upload", { method: "POST", body: form }));
+    expect(response.status).toBe(503);
+    expect((await response.json()).error).toBe("source_import_verifier_unavailable");
+    expect(calls).toEqual([]);
   } finally {
     process.env = savedEnv;
   }
@@ -233,7 +271,7 @@ test("source upload removes partial storage and artifact state when verification
     "@/lib/clientSourcePack": { parseClientSourcePack },
   });
   try {
-    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "45" });
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "45", CLIENT_WORKER_TOKEN: "unit-test-worker-token-credential-2026" });
     const form = new FormData();
     form.set("file", new File([bytes], "source-pack.json", { type: "application/json" }));
     form.set("permissionConfirmed", "true");

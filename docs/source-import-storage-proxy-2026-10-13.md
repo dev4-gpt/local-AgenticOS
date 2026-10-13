@@ -11,14 +11,21 @@ The community source-pack import and ordinary artifact upload/download flows use
 3. It stores the object under the configured tenant namespace and member ID, checks the stored size and content type, then confirms the artifact through the existing authenticated RPCs. A failed storage check triggers object and artifact cleanup.
 4. Preview reads the object through the bounded server-side GCS proxy. Import remains a separate explicit action that checks the reviewed SHA-256 and server-held worker verifier before graph writes.
 
+Before accepting an upload, the server now also requires a configured
+`CLIENT_WORKER_TOKEN` of the minimum supported length. If it is absent, the
+route returns `source_import_verifier_unavailable` before requesting a GCP
+identity, creating artifact metadata, or writing to Cloud Storage. The client
+shows an administrator-facing setup message rather than uploading an artifact
+that cannot later be imported.
+
 ## Verification
 
-- Production build: passed, with existing Next.js Edge-runtime warnings.
-- TypeScript, touched-file ESLint, and static client-worker boundary verifier: passed.
-- Source-import browser suite: 6/6 passed against an isolated local client runtime; provider calls disabled.
-- Source-pack parser/API/SQL suite: 6/6 passed, including upload consent, server-side artifact lifecycle, cleanup, and graph idempotency.
+- Production build: passed, with the existing Next.js middleware deprecation warning.
+- Focused client regression suite: 355 passed, 1 skipped (356 total).
+- Source-import browser suite: 7/7 passed against the local client runtime with mocked API/storage; provider calls disabled.
+- Source-pack parser/API/SQL suite: 7/7 passed, including consent, fail-fast verifier configuration, artifact cleanup, and graph idempotency.
 - Client runtime configuration fixtures: 12/12 passed.
-- No IAM change, hosted database write, provider request, or Cloud Run deployment was made for this implementation.
+- No GCP identity retrieval, Cloud Storage operation, IAM change, hosted database write, provider request, or Cloud Run deployment was made for this preflight change.
 
 ## Beta Gate
 

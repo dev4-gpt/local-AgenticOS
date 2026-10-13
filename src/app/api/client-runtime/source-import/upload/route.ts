@@ -59,6 +59,8 @@ export async function POST(request: Request) {
     return error(reason instanceof Error && reason.message.startsWith("source_pack_") ? reason.message : "source_pack_json_invalid", 400);
   }
 
+  const workerToken = process.env.CLIENT_WORKER_TOKEN?.trim();
+  if (!workerToken || workerToken.length < 24) return error("source_import_verifier_unavailable", 503);
   const token = await clientGcpAccessToken();
   if (!token) return error("storage_identity_unavailable", 503);
   const artifactId = randomUUID();
