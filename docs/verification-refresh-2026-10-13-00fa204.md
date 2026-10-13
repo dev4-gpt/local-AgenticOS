@@ -43,3 +43,29 @@ Source revision: `00fa2040a249b03508155de367051871075224cf` on
 
 No deployment, hosted migration, tenant write, source import, provider request,
 or release-ledger publication occurred during this verification.
+
+## Signed-In Chrome Parity Recheck
+
+Read-only pages were opened in the existing Aryaman (Work) Chrome profile on
+October 13. Counts below were recorded after allowing each page to finish
+loading; the initial zero-count state was transient while client requests were
+still in flight.
+
+| Runtime | Memory / graph after load | JSON source-pack UI | Build identity API |
+| --- | --- | --- | --- |
+| Local `127.0.0.1:3941` | 2 memories / 114 nodes / 113 edges | Present | Not checked in this recheck |
+| Internal Beta `agentos-internal-beta-vbimnfseva-ew.a.run.app` | 2 memories / 114 nodes / 113 edges | Absent | `client_route_not_enabled` |
+| Cloud Test `veloce-cloud-test-mquo4bf7aq-el.a.run.app` | 24 memories / 33 nodes / 57 edges | Absent | `client_route_not_enabled` |
+
+The read-only Cloud Test `/api/client-runtime/records?kind=memory` response
+contained tenant-scoped records, and the UI rendered 24 after hydration. The
+Internal Beta page rendered the two previously observed bonus-index records.
+Matching counts between Local and Internal Beta do not establish matching
+tenant identity or source revision. The `mquo4bf7aq` tenant has a different
+record/graph shape. Both hosted APIs being route-disabled prevents browser
+attestation of their current source revision. The hosted source-import feature
+is therefore still not proven available, and none of these observations proves
+same-tenant local/cloud parity.
+
+No import controls were activated, no page data was changed, and no mutation
+request or provider call was made during this recheck.
