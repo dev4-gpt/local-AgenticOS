@@ -200,6 +200,32 @@ data counts and available features. Parity is not verified. No tenant writes,
 imports, provider calls, database changes, migrations, or deployments were
 performed.
 
+## Local Test Runtime Recovery, October 13
+
+- The current pushed source (`8b2b3ee7bbfa994564f6a7f802c1d965bc2e1500`) was
+  built in the isolated client production output and started on
+  `http://127.0.0.1:3941` using the private internal-beta local env file.
+  Provider calls remain disabled.
+- A fresh unauthenticated request returned HTTP 200 for `/login`, redirected
+  `/memory` to `/login?next=%2Fmemory`, and returned HTTP 401 for
+  `/api/client-runtime/build-identity`. The login page rendered in the
+  in-app browser. The signed-in journey has not been rechecked in this fresh
+  browser session.
+- The dev-mode launcher hit a file-watcher `EMFILE` loop in this checkout and
+  was stopped; the production-mode local runtime is the stable test surface.
+- A read-only Google Drive inventory of `School Tabs Agent OS` found 107 items.
+  Its 13 date-prefixed items comprise 9 lesson PDFs, 2 sanitized HTML pages,
+  and 2 JSON source packs. The archive manifest still reports incomplete
+  classroom coverage and unverified video files.
+- The AgentOS markdown/source-pack suite passed 12/12 with
+  `source-pack-final.part-001.json` as its optional private fixture. The two
+  staged variants' manifests report 9 input sources, 17 output chunks, one
+  pending page, no declared owner inventory, and 2–3 skipped pages; each
+  recorded batch hash matches its staged file. This proves parser
+  compatibility, not complete coverage or a graph import.
+- No hosted data, local tenant data, or provider state was changed. No cloud
+  deployment or migration was run.
+
 ## Local Runtime Start Check, October 10
 
 The current-source client launcher reported missing `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
