@@ -30,3 +30,38 @@ until live retention and bucket policy are read back, costs are estimated from
 actual usage, and the owner approves a controlled candidate rollout. Then
 repeat signed-in parity and verify the new revision/image identity before
 recording hosted acceptance evidence.
+
+## Follow-up - Signed-in Memory Surface in Existing Chrome Tabs
+
+Observed read-only on the AgentOS checkout at `f901b8bd9d94f07be2deff25014114b2048c6e57`.
+The existing Chrome Work profile had an open Cloud Test `/memory` tab that
+rendered tenant records. The local `127.0.0.1:3941/memory` tab also rendered
+tenant records. No user email, auth token, account ID, or tenant ID was inspected;
+this does not establish that the two tabs resolve to the same member or tenant.
+
+Both screens had the same overall Memory-page layout and navigation. The data
+and available controls differed:
+
+| Runtime | Tenant memories | Graph nodes | Graph edges | Community source-pack controls |
+| --- | ---: | ---: | ---: | --- |
+| Local `127.0.0.1:3941` | 2 | 114 | 113 | Present (`Review JSON source packs`) |
+| Cloud Test `veloce-cloud-test-mquo4bf7aq-el.a.run.app` | 24 | 33 | 57 | Not present |
+
+Thus the shared visual structure is not full functional or data parity. The
+local graph counts also differ substantially despite fewer visible tenant
+memories; that may reflect graph scope or stale data, and was not investigated
+with tenant writes.
+
+The Cloud Test build-identity endpoint returned `client_route_not_enabled`.
+Local `3941` reported source commit `8b2b3ee7bbfa994564f6a7f802c1d965bc2e1500`;
+a second existing local runtime on `3942` reported
+`16c25a2eaeaba59c8e9bf455784ec89c161ef3b6`. Both responses explicitly label
+their identity as runtime-reported, not an independent attestation; both SHAs
+are ancestors of the current `f901b8b` checkout. Neither local response
+reported a Cloud Run revision. These signals cannot establish which exact
+source or image is serving Cloud Test.
+
+No records, settings, credentials, or cloud resources were changed. No import,
+provider call, or deployment was performed. Reconcile tenant identity and
+runtime provenance, then deploy only through an approved controlled rollout;
+parity and the customer journey remain unaccepted.
