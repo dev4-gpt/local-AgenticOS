@@ -19,7 +19,10 @@ annotations do not establish a named human review. The original run receipt's
 `distinct_response_activity_observed` status was only a text-difference signal.
 The evaluator has since been updated to report review annotations separately;
 re-evaluation returns `unattributed_annotations`, 0 qualified, 2 rejected, with
-artifact binding explicitly marked unverified. The 13 focused pilot tests pass.
+artifact binding explicitly marked unverified. The evaluator fix is committed
+locally in the MiroFish checkout as `60ab7c7`; its 14 focused pilot tests pass.
+That checkout's configured Git remote disables push, so this commit is not
+published upstream.
 
 ## Interpretation and limits
 
