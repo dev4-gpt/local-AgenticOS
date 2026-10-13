@@ -150,10 +150,12 @@ scraping constraints throughout.
   `/memory`; the session, records, and memory-graph endpoints returned HTTP
   200. The user/tenant identity and returned records were not inspected, so
   this is partial local-journey evidence, not a same-tenant parity result.
-- Re-ran `npm run verify:production-readiness`: `releaseReady: false`. The
-  current plan edit makes the worktree dirty; the release ledger bucket is also
-  unset, and required evidence remains unevaluated. No production release
-  artifact was created.
+- The final `npm run verify:production-readiness` on clean pushed HEAD
+  `2cbb9cb33f330f224ed30fffcb232141b1407984` returned
+  `releaseReady: false`. The only hard failure is the unconfigured release
+  ledger bucket; 37 release-evidence items remain unevaluated. The earlier
+  dirty-tree warning was cleared by committing and pushing the checkpoint. No
+  production release artifact was created.
 
 No hosted database, tenant data, Skool content, provider, or deployment was
 changed during this refresh. Next: re-run the signed-in customer journey and
