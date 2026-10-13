@@ -7,6 +7,7 @@
 - The two commits immediately preceding this refresh add authenticated, bounded same-origin artifact proxy routes (`ad9e31f`) and strict PDF-footer URL disambiguation (`a183c98`). IAM was not changed.
 - Storage-proxy tests passed 13/13 after the final byte-size check. PDF/source-import/private-pack tests passed 14/14 on this source. Observability accuracy and job-trace tests passed 13/13.
 - The broad focused suite passed 353 tests with one skipped on parent `ad9e31f`, before the three-file footer-resolution change. That change's affected PDF/source-import tests were rerun on the current source.
+- Follow-up verification on documentation-only HEAD `14520db09757d7beca689c0d29ea91787b059ab0` reran the complete `test:focused` suite with Node `v24.18.0`: 354 passed, one skipped (355 total).
 
 ## AI Evaluation and Observability
 
@@ -24,6 +25,7 @@
 
 - The private local PDF pack is `tmp/authorized-skool-import/pdf-batch-2026-10-13-v6.manifest.json`: 56/64 PDFs, 149 source segments, and 6,609 links. Its production selector/parser passes and the exact source-text credential scan reports zero matches after nine redactions. Eight non-identical snapshots of four source URLs remain excluded; no cloud import occurred.
 - `npm run verify:production-readiness` on this clean commit returns `releaseReady: false` with `release_gate:ledger_bucket_not_configured`. Hosted journey, migrations, deployment identity, source import, UI parity, approvals, and rollback evidence remain unevaluated until a reviewed ledger target is configured.
+- The same release verifier was rerun on `14520db` with Node `v24.18.0`; it remains `releaseReady: false` with the same ledger-bucket failure and 37 ledger-backed checks still not evaluated. No live Chrome tabs were exposed to the available browser session during this check, so the existing hosted-journey observations were not refreshed.
 - The ledger runbook identifies `veloce-agenticos-2026` as historical and explicitly unverified. No cloud bucket or IAM inspection/change was attempted.
 - Deployment remains on hold. The approved recovery policy retains seven days of Cloud Storage soft-delete. The currently documented internal-beta revision still uses one-day application retention; the requested 45-day application policy is not deployed, and physical deletion for an exact 45-day policy is not proven.
 - No deployment, hosted database write, migration, source upload/import, provider request, or release-ledger publication occurred during this refresh.
