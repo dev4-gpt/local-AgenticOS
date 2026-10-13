@@ -47,6 +47,37 @@ test("source pack stays local until permission is confirmed for review", async (
   expect(new URL(writes[0]).pathname).toBe("/api/client-runtime/artifacts");
 });
 
+test("source pack review distinguishes missing storage identity from signing failure", async ({ page, context }) => {
+  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
+  let artifactError = "storage_identity_unavailable";
+  await page.route("**/api/**", (route) => {
+    if (route.request().method() === "GET") return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
+    if (new URL(route.request().url()).pathname === "/api/client-runtime/artifacts") {
+      return route.fulfill({ status: 503, json: { ok: false, error: artifactError } });
+    }
+    return route.fulfill({ status: 503, json: { ok: false, error: "unexpected_write" } });
+  });
+
+  await page.goto("/memory");
+  await page.locator('input[type="file"][multiple]').setInputFiles({
+    name: "synthetic-source-pack.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({
+      startUrl: "https://example.org/course",
+      skipped: [],
+      sources: [{ title: "Synthetic lesson", url: "https://example.org/course/lesson", text: "Diagnostic test.", links: [] }],
+    })),
+  });
+  const permission = page.getByRole("checkbox", { name: /permission to upload and use this batch/ });
+  await permission.check();
+  await page.getByRole("button", { name: "Review batch 1" }).click();
+  await expect(page.getByRole("alert")).toContainText("could not obtain its approved cloud-storage identity");
+
+  artifactError = "signed_upload_unavailable";
+  await page.getByRole("button", { name: "Review batch 1" }).click();
+  await expect(page.getByRole("alert")).toContainText("could not authorize a temporary upload link");
+});
+
 test("importing one part does not upload the next part without renewed permission", async ({ page, context }) => {
   await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
   const startUrl = "https://example.org/course";

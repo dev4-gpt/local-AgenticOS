@@ -121,7 +121,8 @@ export default function ClientCommunitySourceImport({ onImported }: { onImported
 function selectionError(reason: unknown) {
   const code = reason instanceof Error ? reason.message : "";
   if (code === "storage_not_configured") return "Your source pack has not been uploaded. File storage needs to be configured for this workspace.";
-  if (code === "storage_identity_unavailable" || code === "signed_upload_unavailable") return "Your source pack has not been uploaded. This workspace could not access file storage. Contact your workspace administrator.";
+  if (code === "storage_identity_unavailable") return "Your source pack has not been uploaded. This runtime could not obtain its approved cloud-storage identity. Ask the workspace administrator to check the runtime identity configuration.";
+  if (code === "signed_upload_unavailable") return "Your source pack has not been uploaded. The runtime identity is available, but it could not authorize a temporary upload link. Ask the workspace administrator to check its storage-signing permission.";
   if (code === "source_batch_manifest_required") return "Select the manifest and every numbered part together.";
   if (code === "source_batch_manifest_mismatch" || code === "source_batch_manifest_invalid") return "The selected parts do not match the export manifest.";
   if (code === "source_batch_duplicate_source") return "Two parts describe the same source and tab. Correct the export before importing so one lesson cannot replace another.";
