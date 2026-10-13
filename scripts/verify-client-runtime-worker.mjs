@@ -100,6 +100,7 @@ const runtimeRateLimitedRoutes = [
   "src/app/api/client-runtime/records/route.ts",
   "src/app/api/client-runtime/memory-import/route.ts",
   "src/app/api/client-runtime/source-import/route.ts",
+  "src/app/api/client-runtime/source-import/upload/route.ts",
   "src/app/api/client-runtime/memory-graph/route.ts",
   "src/app/api/client-runtime/delivery/route.ts",
   "src/app/api/client-runtime/telemetry/route.ts",
@@ -190,6 +191,9 @@ expect(memoryImportRoute.includes("containsClientSecretLike") && memoryImportRou
 expect(memoryImportRoute.includes("client_runtime_records") && memoryImportRoute.includes("tenant.memory.exported"), "memory import/export must use tenant records and write redacted audit events");
 expect(runtimePolicy.includes('"/api/client-runtime/memory-import"') && provisioner.includes("/api/client-runtime/memory-import"), "memory import must be included in the reviewed client API allowlist");
 expect(sourceImportRoute.includes("currentClientMember") && sourceImportRoute.includes("created_by: `eq.${user.id}`") && sourceImportRoute.includes("safeClientObjectKey"), "source import must verify tenant membership, artifact owner and object namespace");
+const sourceImportUploadRoute = runtimeRateLimitedRouteSources.find(([path]) => path.endsWith("source-import/upload/route.ts"))?.[1] ?? "";
+expect(sourceImportUploadRoute.includes("permissionConfirmed") && sourceImportUploadRoute.includes("uploadClientStorageObject") && sourceImportUploadRoute.includes("deleteClientStorageObject"), "source-pack upload must require consent, proxy storage writes and clean up failed uploads");
+expect(sourceImportRoute.includes("readClientStorageObject") && !sourceImportRoute.includes("signedClientStorageUrl"), "source-pack preview must read through the server-side storage proxy without signed URLs");
 expect(sourcePackGraphSql.includes("import_client_runtime_source_pack") && sourcePackGraphSql.includes("source_import_key") && sourcePackGraphSql.includes("links_to"), "source-pack migration must preserve idempotency and outbound graph links");
 expect(sourceImportRoute.includes("CLIENT_WORKER_TOKEN") && sourceImportRoute.includes("p_worker_token"), "source import must require the server-held tenant worker verifier");
 expect(runtimePolicy.includes('"/api/client-runtime/source-import"') && provisioner.includes("/api/client-runtime/source-import"), "source import must be included in the reviewed client API allowlist");

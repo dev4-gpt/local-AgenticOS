@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { clientRuntimeAccessToken } from "./clientGcpIdentity";
+import { readBoundedResponseBytes } from "./clientNetworkSafety";
 
 const METADATA_ROOT = "http://metadata.google.internal/computeMetadata/v1";
 
@@ -85,6 +86,20 @@ export async function clientStorageObjectMetadata(bucket: string, objectKey: str
   const data = await response.json().catch(() => null) as { size?: string; contentType?: string } | null;
   const size = Number(data?.size ?? -1);
   return Number.isFinite(size) && size >= 0 && typeof data?.contentType === "string" ? { size, contentType: data.contentType } : null;
+}
+
+export async function readClientStorageObject(input: { bucket: string; objectKey: string; token: string; maxBytes: number }) {
+  const response = await fetch(`https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(input.bucket)}/o/${encodeURIComponent(input.objectKey)}?alt=media`, {
+    headers: { Authorization: `Bearer ${input.token}` },
+    cache: "no-store",
+    signal: AbortSignal.timeout(30_000),
+  }).catch(() => null);
+  if (!response?.ok || !response.body) return null;
+  try {
+    return await readBoundedResponseBytes(response, input.maxBytes);
+  } catch {
+    return null;
+  }
 }
 
 export async function deleteClientStorageObject(bucket: string, objectKey: string, token: string) {

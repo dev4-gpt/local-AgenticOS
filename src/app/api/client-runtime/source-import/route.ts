@@ -2,10 +2,10 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, selectClientRecords } from "@/lib/clientDataPlane";
+import { readBoundedResponseBytes } from "@/lib/clientNetworkSafety";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientRetentionSecondsRemaining } from "@/lib/clientRetention";
-import { clientGcpAccessToken, clientServiceAccountEmail, clientStorageConfig, safeClientObjectKey, signedClientStorageUrl } from "@/lib/clientStorage";
-import { readBoundedResponseBytes } from "@/lib/clientNetworkSafety";
+import { clientGcpAccessToken, clientStorageConfig, readClientStorageObject, safeClientObjectKey } from "@/lib/clientStorage";
 import { parseClientSourcePack } from "@/lib/clientSourcePack";
 
 export const runtime = "nodejs";
@@ -57,23 +57,9 @@ export async function POST(request: Request) {
   if (!artifact || artifact.tenant_slug !== tenantSlug || artifact.created_by !== user.id || artifact.status !== "ready" || !expiresInSeconds || artifact.content_type !== "application/json" || !String(artifact.original_name ?? "").toLowerCase().endsWith(".json") || typeof artifact.byte_size !== "number" || artifact.byte_size < 1 || artifact.byte_size > MAX_PACK_BYTES || !safeClientObjectKey(objectKey, config.namespace)) return error("source_import_artifact_invalid", 409);
 
   const token = await clientGcpAccessToken();
-  const serviceAccount = await clientServiceAccountEmail(config.serviceAccount);
-  if (!token || !serviceAccount) return error("storage_identity_unavailable", 503);
-  const downloadUrl = await signedClientStorageUrl({ method: "GET", bucket: config.bucket, objectKey, serviceAccount, token, expiresInSeconds, expiresAt: String(artifact.retention_expires_at) });
-  if (!downloadUrl) return error("signed_download_unavailable", 503);
-  const download = await fetch(downloadUrl, { cache: "no-store", signal: AbortSignal.timeout(30_000) }).catch(() => null);
-  if (!download?.ok || !download.body) return error("source_import_download_failed", 502);
-  const reader = download.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > MAX_PACK_BYTES) { await reader.cancel(); return error("source_pack_too_large", 413); }
-    chunks.push(value);
-  }
-  const bytes = Buffer.concat(chunks);
+  if (!token) return error("storage_identity_unavailable", 503);
+  const bytes = await readClientStorageObject({ bucket: config.bucket, objectKey, token, maxBytes: MAX_PACK_BYTES });
+  if (!bytes) return error("source_import_download_failed", 502);
   if (bytes.byteLength !== artifact.byte_size) return error("source_import_size_mismatch", 409);
   const packSha256 = createHash("sha256").update(bytes).digest("hex");
   if (action === "import" && packSha256 !== previewSha256) return error("source_import_preview_changed", 409);

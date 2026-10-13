@@ -80,7 +80,6 @@ test("source pack parser preserves pages and links, rejects unsafe or incomplete
 
 test("source import commits only the exact artifact bytes reviewed with permission", async () => {
   const savedEnv = { ...process.env };
-  const realFetch = globalThis.fetch;
   const original = Buffer.from(JSON.stringify(examplePack()));
   const changedPack = examplePack();
   changedPack.sources[1].text = "Transcript: B lesson";
@@ -93,7 +92,6 @@ test("source import commits only the exact artifact bytes reviewed with permissi
   const rpcCalls: Array<{ name: string; body: Record<string, unknown> }> = [];
   try {
     Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_WORKER_TOKEN: workerToken });
-    globalThis.fetch = async () => { downloads++; return new Response(new Uint8Array(stored)); };
     const route = loadReviewModule("src/app/api/client-runtime/source-import/route.ts", {
       "@/lib/clientAuth": { currentClientUser: async () => ({ id: userId }), currentClientMember: async () => true },
       "@/lib/clientDataPlane": {
@@ -108,10 +106,8 @@ test("source import commits only the exact artifact bytes reviewed with permissi
         clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "test-bucket", serviceAccount: "test@example.invalid" }),
         safeClientObjectKey: (key: string) => key.startsWith("tenant-a/"),
         clientGcpAccessToken: async () => "test-token",
-        clientServiceAccountEmail: async () => "test@example.invalid",
-        signedClientStorageUrl: async () => "https://storage.example.invalid/source-pack.json",
+        readClientStorageObject: async () => { downloads++; return Buffer.from(stored); },
       },
-      "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
       "@/lib/clientSourcePack": { parseClientSourcePack },
     });
     const post = (body: Record<string, unknown>) => route.POST(new Request("https://tenant.example.invalid/api/client-runtime/source-import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ artifactId, ...body }) }));
@@ -158,7 +154,95 @@ test("source import commits only the exact artifact bytes reviewed with permissi
     expect(writes).toBe(1);
   } finally {
     process.env = savedEnv;
-    globalThis.fetch = realFetch;
+  }
+});
+
+test("source upload requires permission and stores through the authenticated server proxy", async () => {
+  const savedEnv = { ...process.env };
+  const calls: string[] = [];
+  const bytes = Buffer.from(JSON.stringify(examplePack()));
+  const uploadRoute = loadReviewModule("src/app/api/client-runtime/source-import/upload/route.ts", {
+    "@/lib/clientAuth": { currentClientUser: async () => ({ id: userId }), currentClientMember: async () => true },
+    "@/lib/clientDataPlane": {
+      checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+      clientRpc: async (name: string, body: Record<string, unknown>) => {
+        calls.push(name);
+        if (name === "create_client_runtime_artifact") return { ok: true, value: body.p_artifact_id };
+        return { ok: true, value: true };
+      },
+    },
+    "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
+    "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+    "@/lib/clientRetention": { clientRetentionExpiresAt: () => new Date(Date.now() + 86_400_000).toISOString() },
+    "@/lib/clientStorage": {
+      clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "test-bucket", serviceAccount: null }),
+      clientGcpAccessToken: async () => "runtime-token",
+      clientStorageObjectMetadata: async () => ({ size: bytes.byteLength, contentType: "application/json" }),
+      deleteClientStorageObject: async () => { calls.push("storage_delete"); return true; },
+      safeClientFileName: (name: string) => name,
+      uploadClientStorageObject: async (input: { bytes: Buffer }) => { expect(input.bytes).toEqual(bytes); calls.push("storage_upload"); return true; },
+    },
+    "@/lib/clientSourcePack": { parseClientSourcePack },
+  });
+  const post = (permissionConfirmed: boolean) => {
+    const form = new FormData();
+    form.set("file", new File([bytes], "source-pack.json", { type: "application/json" }));
+    if (permissionConfirmed) form.set("permissionConfirmed", "true");
+    return uploadRoute.POST(new Request("https://tenant.example.invalid/api/client-runtime/source-import/upload", { method: "POST", body: form }));
+  };
+  try {
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "45" });
+    const withoutConsent = await post(false);
+    expect(withoutConsent.status).toBe(400);
+    expect((await withoutConsent.json()).error).toBe("source_import_permission_required");
+    expect(calls).toEqual([]);
+
+    const accepted = await post(true);
+    expect(accepted.status).toBe(201);
+    expect(await accepted.json()).toMatchObject({ ok: true, packSha256: createHash("sha256").update(bytes).digest("hex") });
+    expect(calls).toEqual(["create_client_runtime_artifact", "storage_upload", "confirm_client_runtime_artifact"]);
+  } finally {
+    process.env = savedEnv;
+  }
+});
+
+test("source upload removes partial storage and artifact state when verification fails", async () => {
+  const savedEnv = { ...process.env };
+  const calls: string[] = [];
+  const bytes = Buffer.from(JSON.stringify(examplePack()));
+  const uploadRoute = loadReviewModule("src/app/api/client-runtime/source-import/upload/route.ts", {
+    "@/lib/clientAuth": { currentClientUser: async () => ({ id: userId }), currentClientMember: async () => true },
+    "@/lib/clientDataPlane": {
+      checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+      clientRpc: async (name: string, body: Record<string, unknown>) => {
+        calls.push(name);
+        return { ok: true, value: name === "create_client_runtime_artifact" ? body.p_artifact_id : true };
+      },
+    },
+    "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
+    "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+    "@/lib/clientRetention": { clientRetentionExpiresAt: () => new Date(Date.now() + 86_400_000).toISOString() },
+    "@/lib/clientStorage": {
+      clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "test-bucket", serviceAccount: null }),
+      clientGcpAccessToken: async () => "runtime-token",
+      clientStorageObjectMetadata: async () => null,
+      deleteClientStorageObject: async () => { calls.push("storage_delete"); return true; },
+      safeClientFileName: (name: string) => name,
+      uploadClientStorageObject: async () => { calls.push("storage_upload"); return true; },
+    },
+    "@/lib/clientSourcePack": { parseClientSourcePack },
+  });
+  try {
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "45" });
+    const form = new FormData();
+    form.set("file", new File([bytes], "source-pack.json", { type: "application/json" }));
+    form.set("permissionConfirmed", "true");
+    const response = await uploadRoute.POST(new Request("https://tenant.example.invalid/api/client-runtime/source-import/upload", { method: "POST", body: form }));
+    expect(response.status).toBe(502);
+    expect((await response.json()).error).toBe("source_import_upload_failed");
+    expect(calls).toEqual(["create_client_runtime_artifact", "storage_upload", "storage_delete", "delete_client_runtime_artifact"]);
+  } finally {
+    process.env = savedEnv;
   }
 });
 

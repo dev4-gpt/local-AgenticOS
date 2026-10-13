@@ -44,15 +44,15 @@ test("source pack stays local until permission is confirmed for review", async (
   await review.click();
   await expect(page.getByRole("alert").filter({ hasText: "Your source pack has not been uploaded. File storage needs to be configured for this workspace." })).toBeVisible();
   expect(writes).toHaveLength(1);
-  expect(new URL(writes[0]).pathname).toBe("/api/client-runtime/artifacts");
+  expect(new URL(writes[0]).pathname).toBe("/api/client-runtime/source-import/upload");
 });
 
-test("source pack review distinguishes missing storage identity from signing failure", async ({ page, context }) => {
+test("source pack review reports unavailable runtime storage identity", async ({ page, context }) => {
   await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
-  let artifactError = "storage_identity_unavailable";
+  const artifactError = "storage_identity_unavailable";
   await page.route("**/api/**", (route) => {
     if (route.request().method() === "GET") return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
-    if (new URL(route.request().url()).pathname === "/api/client-runtime/artifacts") {
+    if (new URL(route.request().url()).pathname === "/api/client-runtime/source-import/upload") {
       return route.fulfill({ status: 503, json: { ok: false, error: artifactError } });
     }
     return route.fulfill({ status: 503, json: { ok: false, error: "unexpected_write" } });
@@ -71,11 +71,8 @@ test("source pack review distinguishes missing storage identity from signing fai
   const permission = page.getByRole("checkbox", { name: /permission to upload and use this batch/ });
   await permission.check();
   await page.getByRole("button", { name: "Review batch 1" }).click();
-  await expect(page.getByRole("alert")).toContainText("could not obtain its approved cloud-storage identity");
+  await expect(page.locator('p[role="alert"]')).toContainText("could not obtain its approved cloud-storage identity");
 
-  artifactError = "signed_upload_unavailable";
-  await page.getByRole("button", { name: "Review batch 1" }).click();
-  await expect(page.getByRole("alert")).toContainText("could not authorize a temporary upload link");
 });
 
 test("importing one part does not upload the next part without renewed permission", async ({ page, context }) => {
@@ -88,17 +85,17 @@ test("importing one part does not upload the next part without renewed permissio
   });
   const manifest = { version: 1, startUrl, sources: 2, links: 0, skipped: 0, batches: parts.map((part) => ({ file: part.name, sha256: part.sha256, sources: 1, links: 0 })) };
   let artifactCreates = 0;
-  await page.route("https://storage.example.invalid/**", (route) => route.fulfill({ status: 200, body: "" }));
   await page.route("**/api/**", (route) => {
     const request = route.request();
     if (request.method() === "GET") return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
     const path = new URL(request.url()).pathname;
-    if (path === "/api/client-runtime/artifacts") {
+    if (path === "/api/client-runtime/source-import/upload") {
       artifactCreates += 1;
+      expect(request.headers()["content-type"]).toContain("multipart/form-data");
+      expect(request.postData() ?? "").toContain('name="permissionConfirmed"');
       const artifactId = `00000000-0000-4000-8000-${String(artifactCreates).padStart(12, "0")}`;
-      return route.fulfill({ status: 200, json: { artifactId, uploadUrl: `https://storage.example.invalid/${artifactCreates}`, uploadHeaders: { "content-type": "application/json" } } });
+      return route.fulfill({ status: 201, json: { artifactId } });
     }
-    if (path.endsWith("/complete")) return route.fulfill({ status: 200, json: { ok: true } });
     if (path === "/api/client-runtime/source-import") {
       const body = request.postDataJSON();
       const index = Number(String(body.artifactId).slice(-1)) - 1;

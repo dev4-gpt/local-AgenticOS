@@ -29,6 +29,17 @@ async function postJson(url: string, body: Record<string, unknown>) {
   return data;
 }
 
+async function postSourcePack(batch: { file: File; sha256: string | null }) {
+  const form = new FormData();
+  form.set("file", batch.file);
+  form.set("permissionConfirmed", "true");
+  if (batch.sha256) form.set("expectedSha256", batch.sha256);
+  const response = await fetch("/api/client-runtime/source-import/upload", { method: "POST", body: form });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(typeof data?.error === "string" ? data.error : "Source pack upload failed.");
+  return data;
+}
+
 export default function ClientCommunitySourceImport({ onImported }: { onImported: () => Promise<void> }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -43,10 +54,7 @@ export default function ClientCommunitySourceImport({ onImported }: { onImported
   const [result, setResult] = useState("");
 
   async function reviewBatch(batch: { file: File; sha256: string | null }) {
-    const upload = await postJson("/api/client-runtime/artifacts", { fileName: batch.file.name, contentType: "application/json", byteSize: batch.file.size });
-    const written = await fetch(upload.uploadUrl, { method: "PUT", headers: upload.uploadHeaders ?? { "content-type": "application/json" }, body: batch.file });
-    if (!written.ok) throw new Error("Source pack upload failed.");
-    await postJson(`/api/client-runtime/artifacts/${upload.artifactId}/complete`, {});
+    const upload = await postSourcePack(batch);
     const data = await postJson("/api/client-runtime/source-import", { action: "preview", artifactId: upload.artifactId });
     if (batch.sha256 && data.packSha256 !== batch.sha256) throw new Error("The uploaded batch differs from the reviewed manifest.");
     setPreview({ artifactId: upload.artifactId, packSha256: data.packSha256, sourceCount: data.sourceCount, linkCount: data.linkCount, skippedCount: data.skippedCount, skipped: data.skipped, sources: data.sources });
@@ -122,7 +130,9 @@ function selectionError(reason: unknown) {
   const code = reason instanceof Error ? reason.message : "";
   if (code === "storage_not_configured") return "Your source pack has not been uploaded. File storage needs to be configured for this workspace.";
   if (code === "storage_identity_unavailable") return "Your source pack has not been uploaded. This runtime could not obtain its approved cloud-storage identity. Ask the workspace administrator to check the runtime identity configuration.";
-  if (code === "signed_upload_unavailable") return "Your source pack has not been uploaded. The runtime identity is available, but it could not authorize a temporary upload link. Ask the workspace administrator to check its storage-signing permission.";
+  if (code === "source_import_permission_required") return "Confirm permission before uploading this batch.";
+  if (code === "source_import_manifest_mismatch") return "The uploaded batch differs from the reviewed manifest.";
+  if (code === "source_import_upload_failed") return "The source pack could not be stored and was not imported. Check the workspace storage configuration, then retry.";
   if (code === "source_batch_manifest_required") return "Select the manifest and every numbered part together.";
   if (code === "source_batch_manifest_mismatch" || code === "source_batch_manifest_invalid") return "The selected parts do not match the export manifest.";
   if (code === "source_batch_duplicate_source") return "Two parts describe the same source and tab. Correct the export before importing so one lesson cannot replace another.";
