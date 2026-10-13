@@ -5,12 +5,14 @@ import { checkClientRuntimeRateLimit, clientRpc, selectClientRecords } from "@/l
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientRetentionSecondsRemaining } from "@/lib/clientRetention";
 import { clientGcpAccessToken, clientServiceAccountEmail, clientStorageConfig, safeClientObjectKey, signedClientStorageUrl } from "@/lib/clientStorage";
+import { readBoundedResponseBytes } from "@/lib/clientNetworkSafety";
 import { parseClientSourcePack } from "@/lib/clientSourcePack";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_PACK_BYTES = 1_000_000;
+const MAX_REQUEST_BYTES = 8 * 1024;
 
 export async function POST(request: Request) {
   const user = await currentClientUser();
@@ -23,7 +25,22 @@ export async function POST(request: Request) {
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   const config = clientStorageConfig();
   if (!tenantSlug || !config) return error("storage_not_configured", 503);
-  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  let bodyBytes: Buffer | null;
+  try {
+    bodyBytes = await readBoundedResponseBytes(new Response(request.body, { headers: request.headers }), MAX_REQUEST_BYTES);
+  } catch {
+    return error("source_import_input_invalid", 400);
+  }
+  if (!bodyBytes) return error("source_import_request_too_large", 413);
+  let parsedBody: unknown;
+  try {
+    parsedBody = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bodyBytes));
+  } catch {
+    return error("source_import_input_invalid", 400);
+  }
+  const body = parsedBody && typeof parsedBody === "object" && !Array.isArray(parsedBody)
+    ? parsedBody as Record<string, unknown>
+    : null;
   const artifactId = typeof body?.artifactId === "string" ? body.artifactId : "";
   const action = body?.action;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(artifactId) || (action !== "preview" && action !== "import")) return error("source_import_input_invalid", 400);

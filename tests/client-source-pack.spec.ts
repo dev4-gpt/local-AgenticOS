@@ -5,6 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { parseClientSourcePack } from "../src/lib/clientSourcePack";
 import { clientRetentionSecondsRemaining } from "../src/lib/clientRetention";
+import { readBoundedResponseBytes } from "../src/lib/clientNetworkSafety";
 import { loadReviewModule } from "./helpers/load-review-module";
 
 const userId = "00000000-0000-4000-8000-000000000001";
@@ -110,9 +111,15 @@ test("source import commits only the exact artifact bytes reviewed with permissi
         clientServiceAccountEmail: async () => "test@example.invalid",
         signedClientStorageUrl: async () => "https://storage.example.invalid/source-pack.json",
       },
+      "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
       "@/lib/clientSourcePack": { parseClientSourcePack },
     });
     const post = (body: Record<string, unknown>) => route.POST(new Request("https://tenant.example.invalid/api/client-runtime/source-import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ artifactId, ...body }) }));
+    const oversizedRequest = await post({ action: "preview", padding: "x".repeat(9_000) });
+    expect(oversizedRequest.status).toBe(413);
+    expect((await oversizedRequest.json()).error).toBe("source_import_request_too_large");
+    expect(downloads).toBe(0);
+    expect(writes).toBe(0);
     const preview = await post({ action: "preview" });
     expect(preview.status).toBe(200);
     const reviewed = await preview.json();
