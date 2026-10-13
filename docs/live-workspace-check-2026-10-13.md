@@ -6,10 +6,18 @@ configuration.
 
 | Runtime | Observed surface | Result |
 | --- | --- | --- |
-| Local client | `http://127.0.0.1:3941/memory` | Loaded 2 tenant memories and a graph with 114 nodes / 113 edges. `Community sources` and `Review JSON source packs` are present. |
+| Older local client | `http://127.0.0.1:3941/memory` | Loaded 2 tenant memories and a graph with 114 nodes / 113 edges. `Community sources` and `Review JSON source packs` are present. The permission-controlled batch UI showed 0/1 imported (19 sources / 259 links) and a storage-access error. The authenticated build-identity route self-reported commit `8b2b3ee7bbfa994564f6a7f802c1d965bc2e1500`. |
+| Current local checkout | `http://127.0.0.1:3952/memory` | Started from clean checkout `872bcc5d0defca907d78f22e8898e8d0f73fa352` with provider calls disabled. The existing Chrome session loaded 2 memories and 114 nodes / 113 edges, and the source-pack controls rendered. No batch was selected and no upload/import was attempted. The authenticated build-identity route self-reported the same commit; the endpoint explicitly does not independently attest the runtime image. |
 | Cloud Test (mquo4bf7aq) | `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/memory` | Loaded 24 tenant memories and a graph with 33 nodes / 57 edges. Community source-pack controls are absent. |
 | Cloud Test (1075094991117) | `https://veloce-cloud-test-1075094991117.asia-south1.run.app/notebook` | Loaded 9 notebook records and 9 active sources. This is a separate Cloud Run deployment. |
 | Internal Beta | `https://agentos-internal-beta-vbimnfseva-ew.a.run.app/memory` | Loaded 2 tenant memories and a graph with 114 nodes / 113 edges. It is distinct from both Cloud Test deployments. |
+
+The Cloud Test `mquo4bf7aq` runtime returned `client_route_not_enabled` for
+`/api/client-runtime/build-identity`, so its source commit and image digest
+could not be verified from the signed-in application. UI differences and
+record counts alone do not prove that deployments use different source code.
+The two local build IDs above are runtime-reported metadata, not independent
+image attestations.
 
 The two local/Internal Beta records are the existing bonus-link index records,
 with 27 and 84 outbound links. This is not a full classroom export. The
