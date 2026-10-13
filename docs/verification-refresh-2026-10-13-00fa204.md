@@ -69,3 +69,24 @@ same-tenant local/cloud parity.
 
 No import controls were activated, no page data was changed, and no mutation
 request or provider call was made during this recheck.
+
+## Fresh Local Production Build Check
+
+On October 13, the supported Node.js `v24.18.0` runtime built the current
+`16c25a2eaeaba59c8e9bf455784ec89c161ef3b6` checkout successfully with
+provider calls disabled. The production build included the source-import and
+build-identity routes. It was started locally at `127.0.0.1:3942` only; no
+Cloud Run service was changed.
+
+In the signed-in Aryaman (Work) Chrome profile, `/memory` hydrated to 2 tenant
+memories and a 114-node / 113-edge graph, and displayed the JSON source-pack
+review controls. The authenticated build-identity endpoint returned the
+current source commit and `cloudRunRevision: null`; its own response explicitly
+labels the value as runtime-reported, not independently attested. An
+unauthenticated request correctly returned `401 not_authenticated`.
+
+This verifies that the fresh local production build renders the current
+tenant-memory screen and exposes the import UI. It does not prove successful
+source upload/signing, import completion, graph mutation, or hosted parity.
+No import controls were activated, no tenant data was changed, and no model
+provider request was made.
