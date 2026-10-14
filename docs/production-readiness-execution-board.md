@@ -2043,3 +2043,15 @@ does not authorize hosted changes, provider calls, or spending.
 - These are local deterministic gates. No live model quality sample, hosted
   telemetry export, or customer/provider request was made; they do not satisfy
   hosted or release-ledger evidence by themselves.
+
+## Continuation Update - Focused Cross-Product Regression Suite (2026-10-14)
+
+- `npm run test:focused` passed under supported Node 24 on source commit
+  `c3675b9eaa6a2316b081e4e905d3a189a8f3348a`: **365 passed, 1 skipped, 366
+  total**. Coverage includes tenant isolation, client login/membership,
+  retention, import and notebook-source guards, AI-provider spend policy,
+  buyer-pilot receipts, observability/traces, and production readiness
+  contracts.
+- This is broad local regression evidence only. It does not attach release
+  evidence, identify deployed revisions, prove hosted configuration, or replace
+  the blocked same-user cloud journey and incomplete Skool capture.
