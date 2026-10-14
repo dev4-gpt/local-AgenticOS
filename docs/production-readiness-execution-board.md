@@ -1422,6 +1422,21 @@ does not authorize hosted changes, provider calls, or spending.
   Notebook tabs otherwise share Library, Research, Chat, Studio, and Assets.
   These observations corroborate runtime/config drift and do not replace the
   route-allowlist or complete customer-journey checks.
-- Cloud Test's existing tab is at its sign-in page pending re-authentication.
+- The existing Cloud Test tab was re-authenticated and again shows **9** tenant
+  records. This confirms the observation after its temporary login redirect;
+  it still does not prove the same Supabase principal as local/Internal Beta.
   No hosted writes, migration, deployment, provider request, or billing action
   occurred.
+
+## Continuation Update - Current-Source Focused Suite (2026-10-14)
+
+- `npm run test:focused` under Node 24 passes **365/366** tests; one test is
+  skipped. The run includes auth/membership, route policy, source-pack and graph
+  boundaries, tenant isolation, notebook provenance, observability, buyer
+  evidence binding, release-verifier behavior, retention, and provider-cost
+  guards. Tests are local fixtures; they do not certify live services.
+- Refreshed `npm run verify:ai-evaluation` on commit `5233ad5` passes **16/16**
+  deterministic cases with zero model samples and zero provider calls.
+- `npm run verify:production-readiness` on `5233ad5` remains
+  `releaseReady: false`, with `ledger_bucket_not_configured` and **37** evidence
+  fields unevaluated. No release ledger, deployment, or hosted change occurred.
