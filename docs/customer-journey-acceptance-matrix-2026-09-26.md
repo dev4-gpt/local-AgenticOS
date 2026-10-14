@@ -377,3 +377,18 @@ Notebook Studio output. These tests establish local UI/contract behavior only;
 they do not authenticate to Supabase or exercise a hosted deployment. The
 J01-J15 current-candidate evidence rows remain open, and the Cloud Test
 build-identity route still returns 403.
+
+**Security and source-import database refresh, 2026-10-14:** On commit
+`4c90f96`, `npm run verify:security` passed, including local secret-file
+permission checks, security-release/provider-policy checks, lifecycle and
+retention tests, notebook execution/source-reference guards, 16 runtime and
+storage configuration fixtures, and the remaining integration-governance
+verifiers. `npm run verify:source-import-postgres` then passed against
+disposable PostgreSQL 17 with networking disabled, read-only migration/fixture
+mounts, and a temporary database filesystem; both source-guard schema-evidence
+tests passed. A first disposable-container attempt disconnected during
+startup, but the fixture passed in a preserved disposable container and the
+full verifier passed on retry. These results validate local security and SQL
+contracts only; no Supabase migration, tenant import, hosted write, deployment,
+or provider request occurred. The Skool graph remains partial and the hosted
+J01-J15 journey is not accepted.
