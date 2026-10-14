@@ -2365,3 +2365,16 @@ does not authorize hosted changes, provider calls, or spending.
 - This is deterministic fixture/API evidence, not a signed-in customer action,
   hosted storage verification, or proof of live signed-URL behavior. No
   provider request, hosted mutation, or deployment occurred.
+
+## Continuation Update - Source Import Security Regression (2026-10-14)
+
+- Re-ran the current-source private source-pack, import-guard schema, and
+  artifact-retention suites: **19/19 passed**. Coverage includes reviewed-pack
+  hash binding and explicit permission, tenant/member ownership, guarded SQL
+  grants and legacy-function denial, upload cleanup behavior, 45-day local
+  retention rules, and bounded authenticated storage-proxy downloads.
+- These are isolated local fixtures and a disposable PostgreSQL-compatible
+  schema check. They do not prove the guard migration is installed in the
+  production-backed Supabase project or verify live Cloud Storage policy.
+  Hosted import and migration remain held; no hosted write or deployment was
+  performed.
