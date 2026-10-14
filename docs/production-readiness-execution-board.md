@@ -17,7 +17,7 @@ release verification without deploying or spending beyond approved limits.
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
 | Local product and customer journey | In progress; unauthenticated checks pass; private config scaffold prepared | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Add the Supabase anon key and the intended signed-in email to `.private-client-kits/internal-beta-parity.env` locally. Its URL and `internal-beta` tenant slug come from the checked-in runtime manifest. Use only read-only, tenant-scoped parity against production-backed project `ppmoqjtmjtfxadsnejqc`; do not run writes or migrations. Provider calls stay disabled |
-| Authorized Skool archive and graph import | In progress; 60/107 register IDs captured locally; Drive packs add no new IDs | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Collect/reconcile the 47 register IDs absent from local v7, resolve the 107-versus-109 lesson count and one uncollected page flagged by both Drive packs, and account for videos/resources; then run a scoped graph import only against the confirmed internal-beta target |
+| Authorized Skool archive and graph import | In progress; 60/107 register IDs captured locally; local graph export built, not hosted-imported | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Collect/reconcile the 47 register IDs absent from local v7, resolve the 107-versus-109 lesson count and one uncollected page flagged by both Drive packs, and account for videos/resources; then run a scoped graph import only against the confirmed internal-beta target |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Local gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep offline gate on Node 24; inspect the private MiroFish review file with the owner, then run only a bounded provider pilot after live Free-plan/spend-cap confirmation |
 | MiroFish buyer pilot | Offline persona-frame audit passes; private review aid prepared; human review and cost receipt pending | Reviewed generated posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Owner independently reviews `backend/uploads/simulations/sim_f91504972e42/offline-review-assistance.md` and records official verdicts; correct the under-$50 persona/offer mismatch before any rerun; synthetic results remain hypotheses, not market validation |
@@ -25,7 +25,11 @@ release verification without deploying or spending beyond approved limits.
 
 ## Verified Snapshot (2026-10-14)
 
-- Branch `wip/backup-2026-10-03` is pushed. Five existing documentation or
+- Branch `wip/backup-2026-10-03` is pushed through `88f57bd` (local private
+  source-pack graph exporter plus three passing focused tests). The ignored,
+  owner-only export contains 460 nodes and 7,740 edges from the 175 prepared
+  segments and 7,565 links. It marks `complete: false` and
+  `videoAssetsIncluded: false`; it is not a hosted import receipt. Five existing documentation or
   evidence paths are uncommitted and must be reviewed, not silently discarded.
 - Node 24 local AI evaluation on the current commit: 14/14 deterministic cases
   passed, `localGatePassed: true`, zero model samples and no provider requests.
@@ -93,6 +97,17 @@ release verification without deploying or spending beyond approved limits.
   and `CLIENT_PROVIDER_CALLS_ENABLED=0`. `--check-config` correctly reports
   the remaining anon-key/email requirements without printing values. No
   Supabase request or signed-in parity test has been made.
+- Rechecked all three current repo `.env.local` candidates using presence-only
+  diagnostics; none contains the required Supabase URL/key and allowed email
+  together. Local AgentOS login ports 3939, 3941, 3942, 3943, and 3954 were not
+  listening during this check. No browser sign-in or authenticated parity
+  evidence was available in the currently open Chrome window, which is on a
+  separate research/GitHub page.
+- The 45-day application contract is already implemented as an item-creation
+  clock for expiring objects and a tenant-scoped `created_at` purge for runtime
+  records; live Internal Beta still reports one-day retention and the bucket's
+  seven-day recovery policy remains intentionally unchanged. This local code
+  evidence does not resolve physical-deletion timing or authorize deployment.
 
 ## Track Execution Rules
 
