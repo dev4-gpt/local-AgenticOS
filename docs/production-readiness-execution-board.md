@@ -342,3 +342,11 @@ release verification without deploying or spending beyond approved limits.
   video bytes. This is
   staging evidence, not an AgentOS tenant import. Hosted import, full archive
   coverage, and tenant journey verification remain open.
+- The partial graph was also uploaded to the existing School Tabs Agent OS
+  Drive folder as `AgentOS-Knowledge-Graph-Partial-2026-10-14.jsonld`. Drive
+  lists the uploaded file at 5,682,442 bytes, matching the local artifact.
+- The current Aryaman (Work) Chrome tab at `127.0.0.1:3941/memory` is signed
+  in and shows 2 existing tenant memories, 114 graph nodes, 113 edges, and the
+  community-source review control. The private CLI cookie file is absent, so
+  no automated parity requests were attempted. This confirms local UI access
+  only; same-user cloud parity and the serving build identity remain unverified.
