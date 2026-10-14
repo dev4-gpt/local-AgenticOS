@@ -1897,3 +1897,23 @@ does not authorize hosted changes, provider calls, or spending.
   selected, the graph, parser, sanitizer, and merge suites pass **15/15** under
   Node 24. No tenant import or Drive upload occurred; the local graph remains
   private and incomplete.
+
+## Continuation Update - Ledger Target And Drive Reconciliation (2026-10-14)
+
+- Read-only inspection of `Veloce Ai` (`gen-lang-client-0685339364`) showed no
+  Cloud Storage buckets and a billing-required notice. Billing remains off;
+  no bucket, IAM, database, deployment, or tenant state changed. The release
+  ledger remains blocked until the owner selects a target and reviews cost.
+- A fresh read-only listing of the authorized `School Tabs Agent OS` Drive
+  folder returned 111 items: the previous 107 archive items plus four JSON-LD
+  graph exports. The richer local graph remains the comparison baseline
+  (819 nodes / 8,711 edges; 79/107 registered lessons have linked text).
+- The subset-based gap checklist has 29 missing lesson titles; title matching
+  against Drive filenames found no exact page-capture match. A related
+  `GROKOPUS` bonus PDF is not linked to a lesson ID and is not counted as a
+  page capture. Large Drive JSON-LD exports were not readable inline, so their
+  graph contents and any improvement over the local baseline remain unverified.
+- Next: reconcile those four Drive graph exports through an authorized file
+  transfer or readable export, while retaining the richer local graph and
+  keeping hosted import held until the archive is complete and the internal
+  beta target is verified.

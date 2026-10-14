@@ -58,11 +58,10 @@ or publish the source content as part of a code commit.
 
 ## Google Drive Reconciliation Snapshot
 
-Read-only review on 2026-10-14 found 107 direct items in the School Tabs Agent
-OS Drive folder: 98 PDFs, 3 HTML files, 2 JSON source packs, one Markdown
-lesson-link register, one spreadsheet manifest, one Python file, and one ZIP.
-The 98 PDFs include bonus resources and should not be counted as classroom
-lesson-page coverage.
+The initial read-only review on 2026-10-14 found 107 direct items in the School
+Tabs Agent OS Drive folder. A later read-only inventory found 111 items: the
+same 107 archive files plus four JSON-LD graph exports. The 98 PDFs include
+bonus resources and should not be counted as classroom lesson-page coverage.
 
 The spreadsheet's archive-summary row reports 109 in-scope entries (108 dated
 lessons plus the standalone AgentOS System lesson), only 9 dated lessons
@@ -295,5 +294,25 @@ discrepancy.
   24 with zero model samples and zero provider requests. Its report correctly
   keeps `productionReady: false`.
 - These checks validate local archive structure and deterministic contracts;
-  they do not constitute a hosted graph import or complete the 29 missing
-  lesson-text records / 25 uncollected pages / four metadata-only records.
+  they do not constitute a hosted graph import or complete the 25 pending
+  pages. The older 29-entry `archive-gap-checklist-combined` was generated
+  against the 492-node subset graph. The richer 819-node merged graph has 107
+  registered lessons, with text linked for 79 and 28 still metadata-only. Keep
+  these counts tied to their respective artifacts rather than treating the
+  older checklist as the canonical page-text count.
+
+## Continuation Update - Drive File Reconciliation (2026-10-14)
+
+- A fresh metadata-only listing of the owner-authorized Drive folder returned
+  **111** items: the earlier 107 archive items plus four JSON-LD graph exports.
+  The PDFs include many bonus resources and are not evidence of corresponding
+  classroom-page captures by themselves.
+- Comparing the 29 lesson titles in the older subset-based gap checklist to
+  Drive filenames found no exact title match; one generic bonus PDF,
+  `GROKOPUS (GrokBot + Claude Opus 5.5 System)`, is topically related to a
+  September 23 lesson but has no lesson ID/date metadata tying it to that page.
+  It remains a bonus resource, not a verified page capture.
+- The Drive folder's newer graph exports are present, but the connector did not
+  return readable inline content for the large JSON-LD crosswalk. No claim is
+  made that those exports improve on the richer local graph until their
+  contents can be compared. No files were uploaded, changed, or deleted.
