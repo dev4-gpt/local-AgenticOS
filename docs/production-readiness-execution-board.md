@@ -2261,3 +2261,30 @@ does not authorize hosted changes, provider calls, or spending.
   private-source sanitizer tests (**2/2**), and portable-graph validation.
   Nothing was imported into a hosted tenant or uploaded, and no provider call
   or deployment occurred.
+
+## Continuation Update - September 22 Security Lesson Capture (2026-10-14)
+
+- In the user's existing signed-in Chrome Work profile and existing
+  `Skool tabs - AgentOS` group, the September 22 `Agent OS Security Fixes`
+  lesson was opened and read from the visible page. The page shows a 4:54
+  embedded video and a linked discussion, `My AgentOS Stack: Setup, Security,
+  and Getting the Most Out of It`. The discussion exposes a partial original
+  post and comments, plus Julian Goldie's video-response link
+  (`https://share.descript.com/view/Lj19JdX1owl`). The embedded lesson's direct
+  media URL/transcript and the collapsed post/comment text were not exposed;
+  they remain pending. No lesson progress, comments, or account settings were
+  changed.
+- An owner-only capture and prepared source pack are under ignored
+  `tmp/authorized-skool-import/agentos-2026-09-22-security-fixes.*`. The
+  capture records only visible excerpts and marks the source partial. The
+  prepared manifest records **1 source, 2 links, 1 media reference, and 2
+  pending items**; it does not claim video bytes or a transcript.
+- Merging into the latest private graph produces
+  `tmp/authorized-skool-import/agentos-combined-security-fixes-refresh-2026-10-14.jsonld`:
+  **1,135 nodes / 9,021 explicit relations**, with lesson text linked to
+  **81/107** registered lessons and 215 linked text segments. Portable-graph
+  validation passed; coverage remains `partial` and `videoAssetsIncluded` is
+  false.
+- Focused classroom source-pack tests passed **12/12**; graph and source-pack
+  sanitizer tests passed **10/10**. No hosted graph import, upload,
+  deployment, or AI-provider request was made.
