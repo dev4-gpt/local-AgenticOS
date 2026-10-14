@@ -95,3 +95,24 @@ and hosted-build causes remain unresolved. The local Supabase environment
 designation is also unverified. Do not import, seed, delete records, or apply
 migrations to force parity; first establish the Cloud Test deployment identity
 and the tenant/project scope through an approved read-only mechanism.
+
+## Current-Source Continuation Check - 2026-10-14
+
+On the pushed checkout at `dd9fa452d5000b902cd4c893e990215317f8847b`, the
+signed-in local runtime at `http://127.0.0.1:3985/notebook` authenticated and
+rendered successfully with 0 notebook records and 0 active sources. The
+already-open Cloud Test Notebook rendered 9 records and 9 active sources. This
+is a tenant-visible data difference only; the current Cloud Test route does not
+expose build identity, and matching tenant/project scope was not established.
+The local `/api/client-runtime/build-identity` response reported this source
+commit and explicitly labeled its provenance as runtime-reported rather than
+independently attested.
+
+Under Node `v24.19.0`, the deterministic AI release evaluation passed 16/16
+cases with the local gate passing, `productionReady: false`, and no provider
+requests. The focused regression suite passed 365 tests with 1 skipped (366
+total). The production-readiness verifier remains `releaseReady: false`, with
+`ledger_bucket_not_configured` and 38 evidence categories not evaluated. No
+tenant writes, imports, provider calls, deployment, migration, or hosted
+configuration changes occurred. The temporary local runtime was stopped after
+the browser check.
