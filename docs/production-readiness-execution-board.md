@@ -919,3 +919,27 @@ does not authorize hosted changes, provider calls, or spending.
   signed-in full customer journey and same-build parity, a complete policy-safe
   Skool source archive and hosted graph import, human/buyer pilot evidence,
   and release approvals remain open.
+
+## Continuation Update - Notebook Surface Read-Only Comparison (2026-10-14)
+
+- Read-only inspection in the user's existing Chrome Work profile found the
+  already-open local app (`127.0.0.1:3939`) and Cloud Test signed into a Notebook
+  surface. Both exposed Library, Research, Chat, Studio, and Assets, but each
+  showed **0 notebook records, 0 active sources, and “No tenant records yet.”**
+  The source picker and draft surface were present, but there was no approved
+  source to exercise retrieval, draft generation, citations, review, or export.
+- The same Chrome session's Internal Beta Memory view showed **2 tenant
+  memories / 114 graph nodes / 113 edges**, while Cloud Test Memory showed
+  **24 / 33 / 57** and local Memory showed **2 / 114 / 113**. These are
+  divergent dataset counts, not proof of same-principal or same-build parity.
+  The Internal Beta Notebook route was not inspected in this pass; the user
+  changed Chrome to another page during that check, and the browser was left
+  there without further interaction.
+- This recheck narrows the customer-journey gap: the hosted/local Notebook UI
+  surfaces exist, but a source-backed customer workflow and durable review
+  result remain unverified. No records were created, imported, or changed.
+- On clean pushed source commit `29afcf872ad341ea6835a6e8fa26811d174902a3`,
+  `npm run verify:production-readiness` returned `releaseReady: false`,
+  `release_gate:ledger_bucket_not_configured`, and **37** fields not evaluated.
+  No ledger target was guessed; no hosted mutation, deployment, or paid call
+  was made.
