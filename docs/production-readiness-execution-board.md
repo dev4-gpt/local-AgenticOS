@@ -796,3 +796,11 @@ does not authorize hosted changes, provider calls, or spending.
   write/import, deployment, or provider call was made. Continue reconciling the
   25 pending pages and media inventory from owner-saved files or a Skool-
   approved export; automated authenticated collection remains disabled.
+- Confirmed the corresponding ignored local artifact at
+  `tmp/authorized-skool-import/agentos-combined-private-graph-2026-10-14.jsonld`;
+  it is mode `0600` and the portable-graph verifier accepts it as partial:
+  492 nodes, 7,770 resolved edges, and no unresolved references. The latest
+  private Drive-capture manifest records 18/18 sources and 40/40 links
+  processed, five skipped pages, 25 pending pages, and zero media references.
+  The separate 107-lesson register still has 47 lesson IDs without local
+  captures; the 18 added sources do not close that lesson-ID gap.
