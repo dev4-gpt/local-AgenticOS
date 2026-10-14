@@ -47,3 +47,9 @@ artifact/profile tests 23/23, and full focused suite 361 passed with one
 skipped. These checks validate local preparation and guard behavior, not model
 compliance, buyer intent, or willingness to pay. A new live run would need
 separate authorization and current provider spend verification.
+
+The scenario guard was pushed as `8ac81b287e119353e3a84fb62dc0c202ce56b1f2`.
+On that clean code commit, the Node `v24.18.0` deterministic AI evaluation
+passed 16/16 with `localGatePassed: true`, zero model samples, and no LLM or
+Zep request. The production-readiness verifier remains false: the release
+ledger bucket is unconfigured and 37 release-evidence fields are unevaluated.

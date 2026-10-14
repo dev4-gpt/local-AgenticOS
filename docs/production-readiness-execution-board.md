@@ -275,8 +275,7 @@ release verification without deploying or spending beyond approved limits.
 
 ## Continuation Update - 2026-10-14 Current Candidate
 
-- The tested and pushed code candidate is `34f546cdb73f349718a17287f51624545d2c73b3` on
-  `wip/backup-2026-10-03`. The buyer-run auditor now reports assessed and
+- The buyer-run auditor now reports assessed and
   approved responses separately; the pilot gate still requires every response
   to pass all quality flags.
 - On Node `v24.18.0`, `npm run test:focused` passed 361 tests with one skipped.
@@ -305,3 +304,7 @@ release verification without deploying or spending beyond approved limits.
 - After that scenario change, the repeat-smoke suite passed 3/3, the MiroFish
   Python artifact/profile suite passed 23/23, and the full focused suite passed
   361 tests with one skipped on Node `v24.18.0`.
+- The updated scenario and tests are pushed in commit `8ac81b287e119353e3a84fb62dc0c202ce56b1f2`.
+  Its supported-runtime AI evaluation passed 16/16 with `localGatePassed: true`;
+  production readiness remains false. The latest readiness output names the
+  unconfigured release-ledger bucket and 37 unevaluated evidence fields.
