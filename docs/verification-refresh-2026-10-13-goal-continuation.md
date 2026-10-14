@@ -72,3 +72,9 @@ The source-import snapshot preservation and client runtime configuration fixes a
 The default shell Node is v26.4.0, outside the repository's declared `>=22 <26` engine range. Its deterministic AI evaluation ran all 14 cases successfully, but its local gate correctly failed the unsupported-engine check. Re-running with installed Node v24.18.0 passed all 14 cases and the local evaluation gate, with zero model samples and no provider requests. That report records the current source commit but `workingTreeClean: false`; it is not valid clean-source release evidence. Production readiness remains false.
 
 Under Node v24.18.0 on current commit `789ee7a`, `npm run verify:security` passed, including 22 lifecycle/configuration tests, 19 notebook provenance tests, and 14 runtime/storage configuration tests. `npm run test:focused` passed 356 of 357 tests, with one skipped. No hosted deployment, tenant mutation, or provider call was part of these checks.
+
+## Observability Browser Recheck - 2026-10-13
+
+The six desktop/mobile cases in `tests/client-observability-status-browser.spec.ts` now pass when Playwright uses the installed Chrome channel and reuses the already-listening local client server on port 3939 (`PW_USE_EXISTING_SERVERS=1`). This avoids the bundled headless Chromium launch failure caused by macOS `bootstrap_check_in` permission denial. The API responses in these UI cases are intercepted fixtures; no hosted tenant writes or provider calls were made. The server's exact source identity was not established by this run.
+
+The paired `tests/client-observability-accuracy.spec.ts` suite also passed 9/9, covering complete budget-ledger pagination, capped samples, malformed/incomplete data failure, trace-field validation/redaction, and tenant-scope mismatch rejection. These results strengthen local UI and handler evidence only; they do not establish live PostHog capture, hosted telemetry, or cloud/local deployment parity.
