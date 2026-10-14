@@ -1,4 +1,5 @@
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
+import { isPrivateAddress } from "@/lib/clientPrivateAddress.mjs";
 
 export type ClientSourcePackShapeItem = {
   title: string;
@@ -30,7 +31,8 @@ export function safeClientSourceUrl(value: unknown) {
   if (typeof value !== "string" || value.length > 2048) throw new Error("source_pack_url_invalid");
   let url: URL;
   try { url = new URL(value); } catch { throw new Error("source_pack_url_invalid"); }
-  if (!["https:", "http:"].includes(url.protocol) || url.username || url.password || !url.hostname || containsClientSecretLike(value)) throw new Error("source_pack_url_invalid");
+  const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (!["https:", "http:"].includes(url.protocol) || url.username || url.password || !hostname || isPrivateAddress(hostname) || containsClientSecretLike(value)) throw new Error("source_pack_url_invalid");
   if ([...url.searchParams.keys()].some((key) => SENSITIVE_QUERY_KEY.test(key.replace(/[-\s]/g, "_")))) throw new Error("source_pack_url_invalid");
   url.hash = "";
   return url.toString();

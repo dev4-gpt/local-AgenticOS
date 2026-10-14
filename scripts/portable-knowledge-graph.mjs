@@ -1,3 +1,5 @@
+import { isPrivateAddress } from "../src/lib/clientPrivateAddress.mjs";
+
 const REFERENCE_FIELDS = ["source", "partOf", "relatedTo", "teaches"];
 const SENSITIVE_QUERY_KEY = /(token|secret|auth|session|api[_-]?key|password|signature|^sig$)/i;
 
@@ -16,7 +18,9 @@ function safePublicUrl(value) {
   if (typeof value !== "string") return false;
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && !url.username && !url.password
+    const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password
+      && !isPrivateAddress(hostname)
       && ![...url.searchParams.keys()].some((key) => SENSITIVE_QUERY_KEY.test(key));
   } catch {
     return false;
@@ -30,7 +34,14 @@ export function validatePortableKnowledgeGraph(input) {
   if (!input["@context"] || (typeof input["@context"] !== "string" && typeof input["@context"] !== "object")) {
     throw new Error("portable_graph_context_invalid");
   }
-  if (!input.metadata || !["partial", "complete"].includes(input.metadata.coverage)) {
+  const sourceCoverage = input.provenance?.coverage;
+  const coverage = input.metadata?.coverage
+    ?? (sourceCoverage && typeof sourceCoverage === "object"
+      ? sourceCoverage.completeCommunityExport === true
+        && sourceCoverage.discoveredQueueExhausted === true
+        && input.provenance.complete === true ? "complete" : "partial"
+      : null);
+  if (!["partial", "complete"].includes(coverage)) {
     throw new Error("portable_graph_coverage_invalid");
   }
 
@@ -69,7 +80,7 @@ export function validatePortableKnowledgeGraph(input) {
     nodeCount: nodes.size,
     relationCount: relationCount + edges.length,
     explicitEdgeCount: edges.length,
-    coverage: input.metadata.coverage,
-    graphFormat: input.metadata.graphFormat ?? null,
+    coverage,
+    graphFormat: input.metadata?.graphFormat ?? input.provenance?.format ?? null,
   };
 }

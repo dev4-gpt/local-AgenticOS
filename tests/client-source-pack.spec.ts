@@ -44,6 +44,20 @@ test("source pack parser preserves pages and links, rejects unsafe or incomplete
   const signedSource = examplePack();
   signedSource.sources[0].url = "https://example.org/page?signature=private-value";
   expect(() => parseClientSourcePack(signedSource)).toThrow("source_pack_url_invalid");
+  for (const privateUrl of [
+    "http://localhost:3000/",
+    "https://admin.localhost/",
+    "http://127.0.0.1/",
+    "http://192.168.1.10/",
+    "http://169.254.169.254/latest/meta-data/",
+    "http://[::1]/",
+    "http://[fd00::1]/",
+    "http://[::ffff:127.0.0.1]/",
+  ]) {
+    const privateTarget = examplePack();
+    privateTarget.sources[0].links[0].url = privateUrl;
+    expect(() => parseClientSourcePack(privateTarget), privateUrl).toThrow("source_pack_url_invalid");
+  }
   for (const signedUrl of [
     "https://storage.example.org/file?X-Amz-Signature=private-value",
     "https://storage.example.org/file?X-Goog-Credential=private-value",

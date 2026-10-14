@@ -1,28 +1,9 @@
-import { isIP } from "node:net";
 import { Buffer } from "node:buffer";
 import { lookup, resolve4, resolve6 } from "node:dns/promises";
+import { isIP } from "node:net";
+import { isPrivateAddress } from "@/lib/clientPrivateAddress.mjs";
 
-export function isPrivateAddress(hostname: string): boolean {
-  const normalized = hostname.trim().toLowerCase().replace(/^\[|\]$/g, "");
-  if (!normalized || normalized === "localhost" || normalized.endsWith(".localhost") || normalized.endsWith(".internal")) return true;
-  const version = isIP(normalized);
-  if (version === 4) {
-    const octets = normalized.split(".").map(Number);
-    const [a, b] = octets;
-    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
-      || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || (a === 198 && (b === 18 || b === 19))
-      || a >= 224;
-  }
-  if (version === 6) {
-    if (normalized.startsWith("::ffff:")) {
-      const mappedIpv4 = normalized.slice("::ffff:".length);
-      return isIP(mappedIpv4) === 4 ? isPrivateAddress(mappedIpv4) : true;
-    }
-    return normalized === "::1" || normalized === "::" || normalized.startsWith("fc") || normalized.startsWith("fd")
-      || normalized.startsWith("fe8") || normalized.startsWith("fe9") || normalized.startsWith("fea") || normalized.startsWith("feb");
-  }
-  return false;
-}
+export { isPrivateAddress } from "@/lib/clientPrivateAddress.mjs";
 
 export async function resolvesToPublicAddresses(hostname: string) {
   const normalized = hostname.trim().toLowerCase().replace(/^\[|\]$/g, "");

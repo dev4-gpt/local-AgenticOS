@@ -20,6 +20,9 @@ test("a named scrape target may not be internal, plaintext, or carry credentials
   expect(safePublicUrl("http://example.com/x", allowed)).toBeNull();
   expect(safePublicUrl("https://user:pass@example.com/x", allowed)).toBeNull();
   expect(safePublicUrl("https://localhost/x", allowed)).toBeNull();
+  for (const privateHost of ["localhost.", "admin.localhost", "svc.internal", "[::1]", "[fd00::1]", "[::ffff:127.0.0.1]"]) {
+    expect(safePublicUrl(`https://${privateHost}/x`, [privateHost])).toBeNull();
+  }
   // The cloud metadata endpoint is the classic SSRF target.
   expect(safePublicUrl("https://169.254.169.254/latest/meta-data/", allowed)).toBeNull();
   expect(safePublicUrl("https://10.0.0.1/admin", allowed)).toBeNull();
