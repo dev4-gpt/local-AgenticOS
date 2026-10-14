@@ -20,7 +20,7 @@ const record = {
   created_at: "2026-10-01T12:00:00Z",
 };
 
-function executionRoute(sourceRecords = [record]) {
+function executionRoute(sourceRecords = [record], selectResponses: Record<string, Record<string, unknown>[]> = {}) {
   const enqueued: Array<Record<string, unknown>> = [];
   const selects: Array<{ table: string; filters: Record<string, string> }> = [];
   const route = loadReviewModule("src/app/api/client-runtime/executions/route.ts", {
@@ -30,6 +30,7 @@ function executionRoute(sourceRecords = [record]) {
       checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
       selectClientRecords: async (table: string, filters: Record<string, string>) => {
         selects.push({ table, filters });
+        if (selectResponses[table]) return { ok: true, records: selectResponses[table] };
         if (table === "client_runtime_records") return { ok: true, records: sourceRecords };
         if (table === "client_notebooks") return { ok: true, records: [{ id: "00000000-0000-4000-8000-000000000002", tenant_slug: "tenant-a", status: "active" }] };
         return { ok: true, records: [] };
@@ -50,6 +51,24 @@ function executionRoute(sourceRecords = [record]) {
   });
   return { route, enqueued, selects };
 }
+
+test("execution reads expose only citation audits bound to selected source IDs", async () => {
+  process.env.CLIENT_SLUG = "tenant-a";
+  const unknownId = "00000000-0000-4000-8000-000000000099";
+  const references = [{ id: recordId, title: "Client discovery notes", sourceUrl: "https://example.org/discovery", links: [] }];
+  const { route } = executionRoute([record], {
+    client_runtime_jobs: [
+      { id: "job-good", status: "succeeded", requested_by: "member-a", created_at: "2026-10-10T12:00:00Z", input_metadata: { surface: "notebook", sourceReferences: references }, output_metadata: { artifactId: "artifact-good", citationAudit: { ok: true, citedSourceIds: [recordId] } } },
+      { id: "job-bad", status: "failed", requested_by: "member-a", created_at: "2026-10-09T12:00:00Z", input_metadata: { surface: "notebook", sourceReferences: references }, output_metadata: { citationAudit: { ok: true, citedSourceIds: [unknownId] } } },
+    ],
+    client_runtime_budget_ledger: [],
+  });
+  const response = await route.GET(new Request("https://agentos.example/api/client-runtime/executions?surface=notebook"));
+  const body = await response.json() as { executions: Array<{ id: string; citationAudit: unknown }> };
+  expect(response.status).toBe(200);
+  expect(body.executions.find((execution) => execution.id === "job-good")?.citationAudit).toEqual({ ok: true, citedSourceIds: [recordId] });
+  expect(body.executions.find((execution) => execution.id === "job-bad")?.citationAudit).toEqual({ ok: false, reason: "citation_unknown_source" });
+});
 
 test.afterEach(() => { delete process.env.CLIENT_SLUG; });
 

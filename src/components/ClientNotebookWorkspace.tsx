@@ -20,7 +20,7 @@ import {
 
 type Tab = "research" | "chat" | "studio" | "assets";
 type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
-type Execution = { id: string; status: string; title: string | null; artifactId: string | null; errorCode: string | null; createdAt: string | null; sourceReferences?: Array<{ id: string; title: string; sourceUrl: string | null; links: Array<{ url: string; text: string }> }> };
+type Execution = { id: string; status: string; title: string | null; artifactId: string | null; errorCode: string | null; createdAt: string | null; sourceReferences?: Array<{ id: string; title: string; sourceUrl: string | null; links: Array<{ url: string; text: string }> }>; citationAudit?: { ok: true; citedSourceIds: string[] } | { ok: false; reason: "citation_missing" | "citation_unknown_source" | "source_register_missing" } | null };
 type Artifact = { id: string; original_name: string | null; content_type: string | null; byte_size: number | null; status: string | null; created_at: string | null };
 
 const FIELD = { color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" } as const;
@@ -296,6 +296,13 @@ function StudioLane({ sources, selected, notebookScope, onToggle, onError }: { s
           <div className="min-w-0">
             <p className="truncate text-[12px]" style={{ color: "var(--cream)" }}>{execution.title || "Notebook document"}</p>
             <p className="text-[10px]" style={{ color: "var(--cream-mute)" }}>{execution.status}{execution.errorCode ? ` · ${execution.errorCode}` : ""}{execution.createdAt ? ` · ${new Date(execution.createdAt).toLocaleString()}` : ""}</p>
+            {execution.citationAudit && <p className="mt-1 text-[10px]" style={{ color: execution.citationAudit.ok ? "#6ee7b7" : "#fda4af" }}>
+              {execution.citationAudit.ok
+                ? `Citation format passed · ${execution.citationAudit.citedSourceIds.length} source${execution.citationAudit.citedSourceIds.length === 1 ? "" : "s"} cited`
+                : execution.citationAudit.reason === "citation_missing" ? "Citation format check failed · no source citations found"
+                : execution.citationAudit.reason === "citation_unknown_source" ? "Citation format check failed · draft cites an unselected source"
+                : "Citation format check failed · source register missing"}
+            </p>}
             {!!execution.sourceReferences?.length && <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px]" aria-label="Draft sources">
               {execution.sourceReferences.map((source) => <span key={source.id} className="inline-flex flex-wrap items-center gap-2" style={{ color: "var(--cream-mute)" }}>
                 <span>{source.title}</span>

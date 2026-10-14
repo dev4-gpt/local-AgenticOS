@@ -725,3 +725,26 @@ does not authorize hosted changes, provider calls, or spending.
 - No hosted requests, writes, migrations, deployment, or paid calls were made.
   Live persistence and parity, a durable human review/approval record, the
   approved complete Skool export/import, and release evidence remain open.
+
+## Continuation Update - Citation Audit in Draft Review (2026-10-14)
+
+- Exposed the worker's stored notebook citation-format audit through the
+  authenticated execution-read API, but only for notebook jobs. The API
+  validates audit shape and requires every cited UUID to match that execution's
+  source register; an unknown or malformed ID is surfaced as a failed check.
+- Notebook Studio now displays the limited result beside the saved draft before
+  review/export. The wording says “Citation format passed,” not that the claims
+  are factually correct; the human reviewer still checks claim-to-source
+  support. This remains a transient review display, not a durable approval.
+- API/provenance tests passed **7/7**, including success and unknown-source
+  audit cases. The corrected browser journey passed **1/1** on matching port
+  `3974`, including the citation-format result, bounded draft preview, and
+  same-origin export handoff. Focused ESLint and TypeScript checks passed.
+- The deterministic AI evaluation on pre-change commit `2a21835` passed
+  **16/16** under supported Node `24.18.0`, with zero model samples and no LLM
+  or Zep request. Its report marks the working tree dirty and `productionReady`
+  false; these local fixtures do not establish hosted behavior, stochastic
+  model quality, or the complete customer journey.
+- No hosted request, write, migration, deployment, or paid provider call was
+  made. Same-user parity, durable human approval, complete authorized source
+  import, and release verification remain open.

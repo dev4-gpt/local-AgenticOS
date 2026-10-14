@@ -30,6 +30,7 @@ test("Notebook Studio submits source IDs and renders the saved source register",
       const status = executionCreated && executionReads++ > 0 ? "succeeded" : "queued";
       return route.fulfill({ status: 200, json: { ok: true, executions: executionCreated ? [{
         id: "job-1", status, title: "Client proposal · 1 source", artifactId: status === "succeeded" ? "artifact-1" : null, errorCode: null,
+        citationAudit: status === "succeeded" ? { ok: true, citedSourceIds: [sourceId] } : null,
         createdAt: "2026-10-10T12:00:00Z", sourceReferences: [{
           id: sourceId, title: "Client discovery", sourceUrl: "https://example.org/discovery",
           links: [{ url: "https://example.org/brief", text: "Approved brief" }],
@@ -67,6 +68,7 @@ test("Notebook Studio submits source IDs and renders the saved source register",
   await expect(page.getByRole("link", { name: "Approved brief" })).toHaveAttribute("href", "https://example.org/brief");
 
   await expect(page.getByText(/^succeeded/)).toBeVisible({ timeout: 8_000 });
+  await expect(page.getByText("Citation format passed · 1 source cited")).toBeVisible();
   await page.getByRole("button", { name: "Review" }).click();
   await expect(page.getByLabel("Draft content for review")).toContainText("Draft report with reviewed sources.");
   await page.evaluate(() => {

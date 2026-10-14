@@ -149,6 +149,7 @@ export async function POST(request: Request) {
 function publicExecution(record: Record<string, unknown>, ledgerRecords: Record<string, unknown>[]) {
   const metadata = record.input_metadata && typeof record.input_metadata === "object" && !Array.isArray(record.input_metadata) ? record.input_metadata as Record<string, unknown> : {};
   const output = record.output_metadata && typeof record.output_metadata === "object" && !Array.isArray(record.output_metadata) ? record.output_metadata as Record<string, unknown> : {};
+  const sourceReferences = publicSourceReferences(metadata.sourceReferences);
   return {
     id: typeof record.id === "string" ? record.id : "",
     status: typeof record.status === "string" ? record.status : "queued",
@@ -160,12 +161,29 @@ function publicExecution(record: Record<string, unknown>, ledgerRecords: Record<
     surface: typeof metadata.surface === "string" ? metadata.surface : null,
     title: typeof metadata.title === "string" ? metadata.title : null,
     artifactIntent: typeof metadata.artifactIntent === "string" ? metadata.artifactIntent : null,
-    sourceReferences: publicSourceReferences(metadata.sourceReferences),
+    sourceReferences,
+    citationAudit: metadata.surface === "notebook" ? publicCitationAudit(output.citationAudit, sourceReferences.map((source) => source.id)) : null,
     artifactId: typeof output.artifactId === "string" ? output.artifactId : null,
     previewHtml: typeof output.previewHtml === "string" ? output.previewHtml : null,
     terminalEvents: Array.isArray(output.terminalEvents) ? output.terminalEvents : (Array.isArray(metadata.terminalEvents) ? metadata.terminalEvents : []),
     usage: presentClientJobUsage({ provider: record.provider, inputMetadata: metadata, outputMetadata: output, ledgerRecords: ledgerRecords.filter((ledger) => ledger.job_id === record.id) }),
   };
+}
+
+function publicCitationAudit(value: unknown, allowedSourceIds: string[]) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const audit = value as Record<string, unknown>;
+  if (audit.ok === true) {
+    const cited = Array.isArray(audit.citedSourceIds) ? audit.citedSourceIds : [];
+    const ids = cited.filter((id): id is string => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)).map((id) => id.toLowerCase());
+    if (!ids.length) return { ok: false as const, reason: "citation_missing" as const };
+    if (ids.length !== cited.length || ids.some((id) => !allowedSourceIds.some((allowed) => allowed.toLowerCase() === id))) return { ok: false as const, reason: "citation_unknown_source" as const };
+    return { ok: true as const, citedSourceIds: [...new Set(ids)] };
+  }
+  if (audit.ok === false && ["citation_missing", "citation_unknown_source", "source_register_missing"].includes(String(audit.reason))) {
+    return { ok: false as const, reason: audit.reason as "citation_missing" | "citation_unknown_source" | "source_register_missing" };
+  }
+  return null;
 }
 
 function publicSourceReferences(value: unknown) {
