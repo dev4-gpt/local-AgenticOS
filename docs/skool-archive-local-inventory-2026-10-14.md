@@ -315,4 +315,17 @@ discrepancy.
 - The Drive folder's newer graph exports are present, but the connector did not
   return readable inline content for the large JSON-LD crosswalk. No claim is
   made that those exports improve on the richer local graph until their
-  contents can be compared. No files were uploaded, changed, or deleted.
+  contents can be compared. That metadata-only reconciliation did not upload,
+  change, or delete files.
+
+## Latest Partial Graph Backup - 2026-10-14
+
+The latest local combined JSON-LD graph was uploaded to the designated Drive
+folder as `AgentOS-Knowledge-Graph-Live-Captured-Partial-2026-10-14.jsonld`
+(8,443,287 bytes; Drive file ID `1-qUoqj7pUOOngOMAghWgDDypXiSYoO-N`). The
+folder now contains 112 direct items, including five partial graph exports.
+This graph validates at 1,136 nodes and has linked text for 82 of the 107
+registered lessons (216 linked text segments). It preserves the current
+partial source status; no claim is made that all lesson text, video bytes, or
+transcripts are present. The Drive file is an external backup, not a hosted
+AgentOS graph-import receipt.
