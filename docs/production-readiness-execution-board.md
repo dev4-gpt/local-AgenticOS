@@ -1593,3 +1593,9 @@ does not authorize hosted changes, provider calls, or spending.
 - The AI evaluation receipt is local-only at
   `tmp/ai-release-local-v1-report.json` (owner-only); no API keys or provider
   traffic were used. Hosted parity and release gates remain open.
+- A fresh `npm run verify:production-readiness` on documentation commit
+  `d52ed2a09b16db80536134447a338d9e5d7ca951` still returns
+  `releaseReady: false`: the ledger bucket is unconfigured and 38 evidence
+  categories are not evaluated. The verifier does not consume the local `tmp/`
+  evaluation report as release-ledger evidence; no hosted identity, journey,
+  migration, customer approval, or rollback receipt is attached.
