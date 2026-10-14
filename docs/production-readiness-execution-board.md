@@ -757,9 +757,10 @@ does not authorize hosted changes, provider calls, or spending.
 
 ## Continuation Update - Standalone Client Artifact Gate (2026-10-14)
 
-- Built the current client runtime as a local standalone artifact on supported
-  Node `24.18.0`, with provider calls disabled. This was a local build only;
-  no image push, cloud deployment, or provider request occurred.
+- Built the client runtime from pushed commit `f6fb313` as a local standalone
+  artifact on supported Node `24.18.0`, with provider calls disabled. The build
+  reported that exact source identity. This was local only; no image push,
+  cloud deployment, or provider request occurred.
 - The first trace-verifier attempt showed a tooling defect: both prune and
   verify scripts hardcoded Next's default `.next` directory, while the client
   runtime uses `.next-client-prod`. Updated both scripts to honor
