@@ -254,3 +254,21 @@ release verification without deploying or spending beyond approved limits.
   configuration, then rerun this preflight before starting the signed-in
   parity journey. The target project is production-backed, so the parity run
   stays read-only and tenant-scoped; this does not authorize a migration.
+
+## Continuation Update - MiroFish Offline Re-audit
+
+- The current MiroFish checkout is clean at `buyer-pilot-telemetry` commit
+  `51fb237`. Its bounded-run smoke tests passed 16/16, and the AgentOS
+  buyer-artifact suite passed 23/23. These tests make no provider request.
+- A fresh offline audit of `sim_f91504972e42` confirms 10/10 rounds, 10/10
+  profiles/workflows, two active buyers, eight action rows, four traced posts,
+  and passing attribution, novelty, telemetry, and cross-buyer checks. Technical
+  evidence passes; `buyerContentReview` is false, zero of two dynamic posts
+  have attributable human review, and `pilotEvidencePassed` and
+  `marketValidation` remain false.
+- Both review JSONs still have blank reviewer/time fields and all-false quality
+  annotations. Their response/quote hashes are bound to the stored posts; the
+  private offline review aid was refreshed to reflect that. Neither official
+  review file was changed. The seeded under-$50 budget versus $2,500 setup plus
+  $1,250/month offer remains an unresolved simulation-quality defect; no rerun
+  or provider call was made, and no provider-cost receipt exists.
