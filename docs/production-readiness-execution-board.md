@@ -21,7 +21,7 @@ release verification without deploying or spending beyond approved limits.
 | Local/cloud parity and hosted security | Read-only Chrome inspection found local `3985` at 0 records / 0 active sources, Cloud Test at 9 / 9, and Internal Beta at 0 / 0; these are not yet a parity result. Local internal-beta config and a new owner-only Cloud Test-scoped local config both pass preflight with provider calls disabled; same Supabase project, different tenant slugs | Same build/artifact identity; same-user, same-tenant feature/data comparison; route allowlist, tenant isolation, storage proxy and 45-day retention verified from the intended live beta configuration | Use `.private-client-kits/cloud-test-parity.env` to start current source read-only for `veloce-cloud-test`; sign in at that local origin and run the authenticated route/data comparison. Do not mutate service, secrets, traffic, Supabase, or retention |
 | AI quality, evaluation, and observability | Current-source deterministic evaluation passes 16/16; focused observability/trace tests passed 13/13. Hosted model quality, provider-side spend cap, and hosted telemetry remain unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled for the $0 pilot. Use offline receipts and trace tests as local-only evidence until provider-side caps and an approved hosted/model path are independently verified |
 | MiroFish buyer pilot | `sim_f91504972e42` has a hash-bound human review (1 qualified, 1 rejected). Approved v2 run `sim_8f4e26a9d170` completed 10/10 and is now hash-bound reviewed (0 qualified, 2 rejected as weak/self-referential). Both runs are synthetic, not market validation | Human-reviewed posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Do not make another provider request under the prior one-repeat approval. Keep both v2 replies out of demand evidence and prioritize actual buyer interviews |
-| Release evidence and decision | Not ready; the existing ledger bucket is confirmed and protected, but there is no record for current commit `dcdc49e`; 37 release evidence categories remain unevaluated. The local branch is clean and 2 commits ahead of origin because GitHub access is unavailable | Clean pushed commit; all required evidence attached to the ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Push the two saved commits when GitHub access is available. Continue customer journey, hosted parity, migration, and approval evidence; publish no partial release record |
+| Release evidence and decision | Not ready; the existing ledger bucket is confirmed and protected, but there is no record for pushed commit `15b61d0`; 37 release evidence categories remain unevaluated. The branch is clean and pushed | Clean pushed commit; all required evidence attached to the ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Continue customer journey, hosted parity, migration, and approval evidence; publish no partial release record |
 
 ## Historical Verified Snapshot (2026-10-14; superseded by continuation updates below)
 
@@ -2570,3 +2570,17 @@ does not authorize hosted changes, provider calls, or spending.
   parser **1/1** on the same source. This and the graph validation remain local
   evidence; neither means the Skool classroom archive or production release is
   complete.
+
+## Continuation Update - Branch Push And Local Mirror Probe (2026-10-14)
+
+- Commits `f0e4c6e`, `dcdc49e`, `fd55ffe`, and `15b61d0` were pushed to
+  `origin/wip/backup-2026-10-03`; the checkout was clean afterward.
+- The local mirror on port `3945` responds at `/login` with HTTP 200, while
+  `/api/health` returns 403 and `/api/client-runtime/build-identity` returns
+  401 without a signed-in session. These responses establish reachability only;
+  they do not identify the running build or verify a customer journey. The
+  available Chrome profile had no Veloce or Skool tab, so no credentials or
+  browser state were used.
+- A read-only release-verifier run against pushed source commit `15b61d0`
+  found no matching ledger record and left **37** evidence categories
+  unevaluated. No ledger record was published.
