@@ -21,7 +21,7 @@ release verification without deploying or spending beyond approved limits.
 | Local/cloud parity and hosted security | Cloud Test and local share Supabase project `ppmoqjtmjtfxadsnejqc` but use different tenant slugs. Cloud Test has provider calls on, a $10/month app cap, 14-day retention, two inline secrets, and lacks source-import/build-identity routes; hosted changes remain held | Same build/artifact identity; same-user, same-tenant feature/data comparison; route allowlist, tenant isolation, storage proxy and 45-day retention verified from the intended live beta configuration | Owner decision pending on whether Cloud Test stays a separate tenant or receives a reviewed change plan. Do not mutate service, secrets, traffic, Supabase, or retention until target and scope are explicitly approved |
 | AI quality, evaluation, and observability | Current-source deterministic evaluation passes 16/16; focused observability/trace tests passed 13/13. Hosted model quality, provider-side spend cap, and hosted telemetry remain unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled for the $0 pilot. Use offline receipts and trace tests as local-only evidence until provider-side caps and an approved hosted/model path are independently verified |
 | MiroFish buyer pilot | `sim_f91504972e42` has a hash-bound human review (1 qualified, 1 rejected). Approved v2 run `sim_8f4e26a9d170` completed 10/10 and is now hash-bound reviewed (0 qualified, 2 rejected as weak/self-referential). Both runs are synthetic, not market validation | Human-reviewed posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Do not make another provider request under the prior one-repeat approval. Keep both v2 replies out of demand evidence and prioritize actual buyer interviews |
-| Release evidence and decision | Not ready; private ledger bucket exists and passes public-access-prevention/UBLA checks, but there is no record for current commit and 38 release gates are unevaluated | Clean commit; all required evidence attached to release ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Keep the verifier authoritative. Do not publish a partial record; complete deployment identities, migrations, test/customer/security receipts, and required approvals first |
+| Release evidence and decision | Not ready; the current verifier has no ledger bucket configured (`release_gate:ledger_bucket_not_configured`), no evidence record for the current commit, and 37 evidence fields are unevaluated | Clean commit; all required evidence attached to release ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Reconcile the previously observed private bucket with the verifier's current project/config before configuring it; do not publish a partial record. Complete deployment identities, migrations, test/customer/security receipts, and required approvals first |
 
 ## Historical Verified Snapshot (2026-10-14; superseded by continuation updates below)
 
@@ -2391,3 +2391,25 @@ does not authorize hosted changes, provider calls, or spending.
   not prove hosted auth, live provider controls, telemetry, storage policy, or
   database migration state. No provider request, hosted change, or deployment
   occurred.
+
+## Continuation Update - Current-Commit Evaluation And Release Gate (2026-10-14)
+
+- On supported Node `v24.19.0`, the offline AI release evaluation passed 16/16
+  deterministic cases on commit `a1533f6318f7410261d6dc1364e24dc99f944dc0`.
+  Its local report is `tmp/ai-release-local-v1-report.json`; it records zero
+  model samples, zero provider cost, `localGatePassed: true`, and
+  `productionReady: false`.
+- Re-running `scripts/verify-production-readiness.mjs` with the same supported
+  runtime confirms `releaseReady: false`. The immediate failure is
+  `release_gate:ledger_bucket_not_configured`; 37 evidence fields remain
+  unevaluated, including the signed-in journey, buyer-pilot receipt, hosted
+  deployment identity, migration receipts, tenant isolation, source import,
+  approvals, and rollback target. No evidence path was returned.
+- Earlier notes that a private bucket was observed do not establish that the
+  current verifier is pointed at that bucket/project. Keep ledger setup
+  read-only until the exact bucket/project identity is reconciled. No ledger
+  record was published, and no hosted write, deployment, or provider call was
+  made in this check.
+- The selected Chrome tab is a YouTube video with its transcript pane visible.
+  The transcript is being viewed in YouTube; this check created no transcript
+  archive or video file.
