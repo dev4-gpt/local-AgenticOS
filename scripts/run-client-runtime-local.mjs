@@ -85,7 +85,8 @@ env.CLIENT_INTENT_ROUTING_ENABLED = env.CLIENT_INTENT_ROUTING_ENABLED || "1";
 // so say it once, up front. These are checks, not defaults -- the launcher must
 // not guess a tenant or an operator identity.
 const parityBlockers = [];
-if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) parityBlockers.push("SUPABASE_URL and SUPABASE_ANON_KEY (pass --env-file; values are never printed)");
+if (!env.SUPABASE_URL) parityBlockers.push("SUPABASE_URL (pass --env-file; values are never printed)");
+if (!env.SUPABASE_ANON_KEY) parityBlockers.push("SUPABASE_ANON_KEY (pass --env-file; values are never printed)");
 if (!env.CLIENT_SLUG?.trim()) parityBlockers.push("CLIENT_SLUG (non-secret, e.g. the tenant slug you are dogfooding)");
 if (!env.CLIENT_ALLOWED_USER_EMAILS?.trim()) parityBlockers.push("CLIENT_ALLOWED_USER_EMAILS (non-secret, comma separated)");
 if (env.CLIENT_PROVIDER_CALLS_ENABLED === "1" && !env.CLIENT_MODEL_ALLOWLIST?.trim()) parityBlockers.push("CLIENT_MODEL_ALLOWLIST (non-secret; required only for provider work)");

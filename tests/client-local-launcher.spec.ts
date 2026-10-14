@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -19,10 +19,19 @@ test("local parity config check keeps provider calls off and names missing setti
   expect(result.stdout).toContain("Provider calls disabled.");
   expect(result.stdout).toContain("Checking Veloce client-runtime local test");
   expect(result.stdout).toContain("Local source identity:");
-  expect(result.stdout).toContain("missing SUPABASE_URL and SUPABASE_ANON_KEY");
+  expect(result.stdout).toContain("missing SUPABASE_URL (pass --env-file; values are never printed)");
+  expect(result.stdout).toContain("missing SUPABASE_ANON_KEY (pass --env-file; values are never printed)");
   expect(result.stdout).toContain("missing CLIENT_SLUG");
   expect(result.stdout).not.toContain("missing CLIENT_MODEL_ALLOWLIST");
   expect(result.stdout).not.toContain("Starting Veloce client-runtime local test");
+});
+
+test("local parity check identifies an absent anon key when the project URL is present", () => {
+  const result = check({ SUPABASE_URL: "https://example.supabase.co" });
+  expect(result.status).toBe(0);
+  expect(result.stdout).not.toContain("missing SUPABASE_URL");
+  expect(result.stdout).toContain("missing SUPABASE_ANON_KEY (pass --env-file; values are never printed)");
+  expect(result.stdout).not.toContain("https://example.supabase.co");
 });
 
 test("production build and start modes cannot be combined with a config-only check", () => {

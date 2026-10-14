@@ -1069,3 +1069,21 @@ does not authorize hosted changes, provider calls, or spending.
 - No hosted request/write, tenant data change, deployment, migration, or
   provider call was made. This guard does not change the production-readiness
   verdict or resolve hosted identity, archive, and beta-rollout blockers.
+
+## Continuation Update - Local Parity Preflight Precision (2026-10-14)
+
+- The parity launcher previously grouped `SUPABASE_URL` and
+  `SUPABASE_ANON_KEY` into one missing-config message whenever either value was
+  absent. The check now reports each name independently, without printing
+  values, and a regression test covers the case where the URL is present but
+  the anon key is missing.
+- Current presence-only check of
+  `.private-client-kits/internal-beta-parity.env` confirms `SUPABASE_URL` is
+  present. It reports only `SUPABASE_ANON_KEY` and
+  `CLIENT_ALLOWED_USER_EMAILS` as missing; provider calls remain disabled.
+  Authenticated parity is still unverified until those values are added and a
+  same-user read-only journey is rerun.
+- The focused launcher suite passed **6/6**; targeted ESLint, TypeScript
+  typecheck, and `git diff --check` passed. No secret values were read or
+  printed, and no hosted request, deployment, tenant write, or provider call
+  occurred.
