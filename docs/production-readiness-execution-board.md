@@ -2735,3 +2735,27 @@ does not authorize hosted changes, provider calls, or spending.
   validates as **1,138 nodes / 9,029 edges**, with `coverage: partial` and
   `videoAssetsIncluded: false`. The private gap file is mode `0600`; it holds
   page metadata only, not lesson text or media. No hosted import was attempted.
+
+## Continuation Update - Memory Recovery And Current-Head Verification (2026-10-14)
+
+- The owner's approved request was to restore only the accidentally deleted
+  `Proof and current limitations` memory through the app's normal recovery
+  flow. Source inspection confirms the Memory UI calls the tenant-record
+  `DELETE` route, whose implementation hard-deletes the row scoped to the
+  signed-in creator and configured tenant. The app has no trash, restore route,
+  or undo flow. No further tenant action was taken; database backup recovery
+  was not attempted because it could affect other tenant data. The accidental
+  deletion remains unresolved pending a scoped backup/export restore path.
+- Re-ran the offline AI evaluation on clean pushed commit
+  `5398ec8136e3560b38b435537761c850dd691df0` under supported Node 24:
+  **16/16** deterministic cases passed, `localGatePassed: true`,
+  `productionReady: false`, and zero provider requests. The ignored local
+  report is `tmp/ai-release-local-5398ec8-node24.json`.
+- Re-ran tenant observability accuracy and job-trace suites on the same source:
+  **13/13 passed**. These remain local tests, not hosted telemetry evidence.
+- Re-ran the read-only production readiness verifier against the existing
+  release-ledger bucket and exact commit. It reports `releaseReady: false`,
+  `release_ledger_record_missing`, and **37** evidence categories not
+  evaluated. No release record was published. Customer journey, hosted parity,
+  full Skool coverage/import, real buyer validation, and hosted/security
+  approvals remain open.
