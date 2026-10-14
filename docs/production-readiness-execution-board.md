@@ -16,8 +16,8 @@ release verification without deploying or spending beyond approved limits.
 
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
-| Local product and customer journey | In progress; unauthenticated checks pass | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Continue local tests and customer-journey fixes. Signed-in parity needs a private env file containing Supabase URL/anon key, client slug, and allowed email; provide its path only, never the values |
-| Authorized Skool archive and graph import | In progress; 60/107 register IDs captured locally | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Collect/reconcile the 47 register IDs absent from local v7, resolve the 107-versus-109 lesson count, and account for videos/resources; then run a scoped graph import only against the confirmed internal-beta target |
+| Local product and customer journey | In progress; unauthenticated checks pass; private config scaffold prepared | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Fill `.private-client-kits/internal-beta-parity.env` locally after verifying the approved Internal Beta Supabase project ref; then pass `--check-config` and run the signed-in journey. Provider calls are explicitly disabled; never share env values |
+| Authorized Skool archive and graph import | In progress; 60/107 register IDs captured locally; Drive packs add no new IDs | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Collect/reconcile the 47 register IDs absent from local v7, resolve the 107-versus-109 lesson count and one uncollected page flagged by both Drive packs, and account for videos/resources; then run a scoped graph import only against the confirmed internal-beta target |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Local gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep offline gate on Node 24; inspect the private MiroFish review file with the owner, then run only a bounded provider pilot after live Free-plan/spend-cap confirmation |
 | MiroFish buyer pilot | Offline persona-frame audit passes; live-smoke content review and cost receipt pending | Reviewed generated posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Inspect and disposition the two rejected generated posts, capture reviewer identity and provider usage receipt if available; do not rerun until the seeded price/brief is corrected and the $0 provider cap is verifiable |
@@ -66,6 +66,18 @@ release verification without deploying or spending beyond approved limits.
 - `verify:production-readiness` reports `releaseReady: false`, with a dirty
   working tree, no release-ledger bucket, and hosted/customer approvals and
   receipts not evaluated.
+- Re-inventoried the connected `School Tabs Agent OS` Drive folder: 107 items
+  (98 PDFs, 3 HTML, 2 JSON, 1 ZIP, 1 Markdown, 1 Python, and 1 spreadsheet).
+  The May 11-19 pack has 17 source rows/9 unique lesson IDs; the May 11-30 v2
+  pack has 19 rows/10 unique IDs. Both packs' lesson IDs are already present
+  in local v7, both report one discovered page uncollected, and neither closes
+  the 47-ID local coverage gap. This check did not download or import their
+  content.
+- Created ignored owner-only local config scaffold
+  `.private-client-kits/internal-beta-parity.env` with required fields blank
+  and `CLIENT_PROVIDER_CALLS_ENABLED=0`. `--check-config` correctly reports
+  the four missing auth/project fields without printing values. The scaffold
+  does not choose a Supabase project or establish signed-in parity.
 
 ## Track Execution Rules
 
