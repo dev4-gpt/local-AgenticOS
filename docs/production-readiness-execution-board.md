@@ -403,6 +403,27 @@ does not authorize hosted changes, provider calls, or spending.
   available, limit the audit to source/configuration review and existing safe
   tests; do not probe or run target-controlled builds dynamically.
 
+### Existing Evidence and Tool Choice
+
+- The connected `School Tabs Agent OS` Drive folder already contains the
+  archive manifest, `skool_video_links.py`, and a partial May 11-30 source pack.
+  Its manifest describes 10 captured pages, 3 media references, and 1 pending
+  page. This is useful reconciliation input, not complete classroom coverage
+  or proof that video bytes/transcripts were saved.
+- Reconcile this existing archive with the local Firecrawl/importer output and
+  graph before considering any new scraping code. The current shortfall is
+  source coverage and evidence reconciliation, not the absence of another
+  scraper.
+- Keep Promptfoo as an optional evaluation harness, not a project dependency
+  or runtime integration. Consider it only after a concrete gap is shown in
+  current offline checks, and begin with saved outputs/mocks. Live provider
+  usage remains outside this plan unless separately verified and approved.
+- Parallel tracks are local customer-journey/regression coverage, archive and
+  graph reconciliation, and source-only security/hosted-readiness preparation.
+  A hosted blocker must not pause local work, but no hosted change proceeds
+  until project/service identity and required private configuration are
+  verified.
+
 ### Ordered Work
 
 1. **Baseline and ownership:** On the current pushed commit, refresh the
