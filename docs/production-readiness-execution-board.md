@@ -2605,3 +2605,20 @@ does not authorize hosted changes, provider calls, or spending.
   protected. The available Chrome profile is the unrelated College profile,
   so no authenticated customer journey was observed. No hosted data, IAM,
   deployment, or provider state was changed.
+
+## Continuation Update - Local Journey Regression Evidence (2026-10-14)
+
+- Against the production-mode local app built from source commit `78ef28c`
+  (the intervening `b1afdf7` change only updates this execution board), the
+  login-membership, Notebook Studio, and source-import-consent browser suites
+  passed **17/17**. They cover authorized/denied redirect behavior, a
+  source-grounded draft through citation review and download, and explicit
+  source-upload consent, cleanup, and deletion safeguards. Tenant APIs were
+  mocked and browser sessions synthetic; this does not count as a live
+  customer journey or hosted parity verification.
+- The corresponding auth, notebook provenance/retention/scope, journey-receipt,
+  and notebook contract suites passed **46/46** under Node 24. The browser
+  runner required elevated process permissions to launch Chromium on macOS;
+  no external provider, hosted tenant, or production service was contacted.
+- The branch remains clean and pushed. The live sign-in check, Skool graph
+  import, cloud parity, and release-ledger record remain outstanding.
