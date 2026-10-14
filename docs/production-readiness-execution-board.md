@@ -1779,3 +1779,25 @@ does not authorize hosted changes, provider calls, or spending.
   billing to be enabled. No billing, bucket, IAM, database, tenant data,
   provider, or deployment changes were made. The local server is available at
   `http://127.0.0.1:3955` with provider calls disabled.
+
+## Continuation Update - Offline Gates And Live Skool Index (2026-10-14)
+
+- On the current pushed source `d2e36d9`, `npm run verify:production-readiness`
+  remains `releaseReady: false`: the blocking failure is
+  `ledger_bucket_not_configured`, and hosted/customer evidence remains
+  unevaluated. The Veloce Ai project has no bucket; billing was not enabled.
+- The deterministic AI release evaluation passed **16/16** on supported Node
+  24 with zero model samples and no provider request. It remains a local gate,
+  not production approval. The report is ignored workspace output.
+- With the private combined Skool manifest explicitly configured, the
+  production source-pack parser passed **1/1**; the private sanitizer passed
+  **2/2** and portable graph-integrity checks passed **4/4**. The combined
+  graph is still private and partial; no tenant import was performed.
+- Read-only navigation in the existing signed-in Chrome tab confirmed the
+  live Skool classroom index has **111 items**: 108 dated lessons through
+  October 10, the separate AgentOS System lesson, and two newer items dated
+  October 13-14. The 107-ID Markdown register is missing one in-scope dated
+  lesson; its identity still needs resolution. The live System page says it
+  was updated October 12 and has a 59:26 player, so its September 11 PDF is
+  stale. No browser cookies were exported; lesson progress and account content
+  were not changed.

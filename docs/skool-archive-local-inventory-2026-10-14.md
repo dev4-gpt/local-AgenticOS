@@ -237,22 +237,44 @@ in source packs, logs, or third-party scraping services.
 
 ## Live Classroom Recheck (2026-10-14)
 
-This recheck supersedes the earlier statement above that a signed-in browser
-session was still needed.
+The user's selected Chrome Work window was verified signed in to the AI Profit
+Boardroom. The classroom sidebar reports **111 items** and, after scrolling to
+the bottom, shows the oldest entries through May 1. It includes the standalone
+`AGENT OS System!` lesson and two dated lessons after the requested October 10
+cutoff (October 13 and October 14). This reconciles the live index as 108 dated
+lessons from May 1 through October 10 plus the separate System lesson (109
+in-scope items). The Drive Markdown register has 107 dated lesson IDs, so one
+in-scope dated page is still absent from that register; its identity is not yet
+resolved. The Drive spreadsheet's row count is an asset inventory and must not
+be mistaken for the number of classroom lessons.
 
-The user-selected Chrome window was verified as signed in to the AI Profit
-Boardroom, with the Agent OS System lesson open. Its page exposes setup and
-update guidance, Descript video references, related Skool posts, a Worlds ZIP
-reference, and a Resources section. The live classroom sidebar reports 110
-items and renders 100 on the current page, including lessons dated May 8
-through October 13. This does not by itself reconcile the 107-ID Drive register
-or the spreadsheet's 108 dated lessons plus System (109), nor does it provide
-all page bodies.
+The live `AGENT OS System!` page shows a 59:26 player, says `Last update: 12th
+October 2026`, and exposes setup/update text, Descript references, related
+Skool posts, a Worlds ZIP reference, and a Resources section. The previously
+archived four-page System PDF is labeled as last updated September 11, so it is
+not a current capture of the visible page. The lesson itself exposes video
+references including `https://share.descript.com/view/UKsEclJ2b18` and
+`https://share.descript.com/view/0xa40M51B07`; these are links, not downloaded
+video bytes or transcripts. The Resources section still requires a separate
+asset inventory.
 
-The requested archive scope remains May 1 through October 10 plus the separate
-Agent OS System lesson; October 11-13 updates are outside that range. Do not
-use the signed-in session to scrape or copy content. Continue with independently
-supplied owner-authorized files or a Skool-approved export or written
-exception. Keep captured course content private and out of Git. A listed video
-URL is only a reference; record actual media or transcript availability
-separately.
+This was a read-only inspection in the user's existing signed-in browser; no
+cookies were exported or sent to a scraper, and no lesson progress, comments,
+or account content were changed. The owner-authorization history is recorded in
+this project conversation. Keep course captures private and out of Git. The
+visible index establishes a canonical count, but does not supply all lesson
+bodies or resolve the missing register ID.
+
+## Offline Verification Refresh (2026-10-14)
+
+- The current combined private manifest passed the production source-pack
+  parser: **1/1** when run with
+  `AGENTOS_PRIVATE_SOURCE_PACK_MANIFEST=tmp/authorized-skool-import/combined-agentos-archive-2026-10-14.manifest.json`.
+- Private source-pack sanitizer tests passed **2/2**; portable graph-integrity
+  tests passed **4/4**.
+- The deterministic AI release evaluation passed **16/16** on supported Node
+  24 with zero model samples and zero provider requests. Its report correctly
+  keeps `productionReady: false`.
+- These checks validate local archive structure and deterministic contracts;
+  they do not constitute a hosted graph import or complete the 29 missing
+  lesson-text records / 25 uncollected pages / four metadata-only records.
