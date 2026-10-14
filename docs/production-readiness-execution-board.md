@@ -963,3 +963,18 @@ does not authorize hosted changes, provider calls, or spending.
   fixture-backed flow cannot be promoted to the real customer journey. No
   tenant data was created or changed. The browser was left on the page the user
   selected.
+
+## Continuation Update - Current-Source Security and Lifecycle Gate (2026-10-14)
+
+- `npm run verify:security` exited successfully under the supported Node
+  `24.19.0` runtime on the current source. The gate included **22** client
+  lifecycle/retention tests, **20** Notebook execution/provenance tests, and
+  **14** client runtime/storage/cloud configuration checks; all passed. OpenReply,
+  VoxCPM, Scout, ContentOS, integration-control-plane, and engineering-control
+  manifest checks also returned `ok: true`. OpenReply live health was not checked
+  because its isolated pilot is not deployed.
+- This is local source/configuration evidence only. It does not verify a live
+  cloud revision, a same-user cross-environment customer journey, or production
+  retention configuration. The production-readiness verifier remains false
+  with `ledger_bucket_not_configured` and 37 fields not evaluated. No hosted
+  changes, tenant writes, deployment, or provider calls were made.
