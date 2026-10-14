@@ -211,8 +211,29 @@ not video bytes or transcripts. No hosted tenant import was made.
 The repository does contain Firecrawl integrations for bounded web research,
 SEO, and outreach. The separate `scripts/fetch-skool-classroom-firecrawl.py`
 is intentionally fail-closed for authenticated Skool collection and advises
-against forwarding Skool session cookies to Firecrawl. Thus the remaining
+against forwarding Skool session cookies to Firecrawl. At the time of this
+audit, the remaining
 blocker is access to the missing source content through an owner/platform-
 approved export or a directly available signed-in browser session, not another
 Firecrawl key or a new scraping framework. Never place session cookies or
-provider keys in chat or in a third-party scrape request.
+
+## Live Classroom Recheck (2026-10-14)
+
+This recheck supersedes the earlier statement above that a signed-in browser
+session was still needed.
+
+The user-selected Chrome window was verified as signed in to the AI Profit
+Boardroom, with the Agent OS System lesson open. Its page exposes setup and
+update guidance, Descript video references, related Skool posts, a Worlds ZIP
+reference, and a Resources section. The live classroom sidebar reports 110
+items and renders 100 on the current page, including lessons dated May 8
+through October 13. This does not by itself reconcile the 107-ID Drive register
+or the spreadsheet's 108 dated lessons plus System (109), nor does it provide
+all page bodies.
+
+The requested archive scope remains May 1 through October 10 plus the separate
+Agent OS System lesson; October 11-13 updates are outside that range. Continue
+from the signed-in browser session without requesting additional access or
+sending cookies to Firecrawl. Keep captured course content private and out of
+Git. A listed video URL is only a reference; record actual media or transcript
+availability separately.

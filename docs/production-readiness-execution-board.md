@@ -17,7 +17,7 @@ release verification without deploying or spending beyond approved limits.
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
 | Local product and customer journey | In progress; unauthenticated checks pass; authenticated parity preflight reports missing config | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Privately populate `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `CLIENT_ALLOWED_USER_EMAILS` in `.private-client-kits/internal-beta-parity.env`; keep `CLIENT_PROVIDER_CALLS_ENABLED=0`. Use only the manifest-verified URL and `internal-beta` tenant, read-only against production-backed project `ppmoqjtmjtfxadsnejqc`; no writes or migrations |
-| Authorized Skool archive and graph import | In progress; 78/107 register IDs have local text captures in the merged private graph; not hosted-imported | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Capture the remaining 29 register IDs (25 discovered pages uncollected; 4 title/video-only), reconcile the 107-register vs. 109-spreadsheet inventory, and account for video bytes/transcripts/resources; then consider a scoped import only against a confirmed internal-beta target |
+| Authorized Skool archive and graph import | In progress; 78/107 Drive-register IDs have local text captures; signed-in classroom view is now verified and shows 110 catalog items; not hosted-imported | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Capture the requested May 1–October 10 lessons plus AgentOS System from the signed-in classroom; reconcile live 110-item catalog, 107-ID Drive register, and 109-row spreadsheet; account separately for links, video references, transcripts, and media bytes; import only after coverage and the internal-beta target are verified |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Current-source deterministic gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled under the $0 paid-spend cap; use current offline receipt and trace-redaction tests as local-only evidence until a separately approved zero-cost hosted/model path is verified |
 | MiroFish buyer pilot | Human review complete; 2/2 responses assessed, 1/2 fully approved; synthetic pilot-quality gate fails; no market validation | Reviewed generated posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Stop spending review time on Post 4; retain it only as a low-value affordability negative control. Any repeat requires separate authorization and a hard cost check |
@@ -523,3 +523,35 @@ does not authorize hosted changes, provider calls, or spending.
 - At completion, report local evidence, hosted evidence, archive coverage, and
   buyer validation separately. Synthetic MiroFish output is not customer
   validation.
+
+## Continuation Update - Live Skool Session Verified
+
+- On 2026-10-14, the user-selected Chrome window was verified as the signed-in
+  AI Profit Boardroom account, with the Agent OS System classroom lesson open.
+  The lesson page exposes setup/update guidance, Descript video links, related
+  Skool posts, the Worlds ZIP reference, and the resource section. This is
+  direct browser evidence; no session cookies were copied or sent to Firecrawl.
+- The live classroom sidebar reports 110 items and renders 100 of them on the
+  current page. Its visible range includes May 8 through October 13 and the
+  Agent OS System item. The Drive register remains 107 lesson IDs and the
+  spreadsheet remains 108 dated lessons plus System (109); none is yet
+  established as the canonical inventory. The October 11-13 items are outside
+  the requested May 1-October 10 range, except the separately requested System
+  lesson.
+- The signed-in browser is now a viable authorized source for page-by-page
+  capture. Next, reconcile each in-scope classroom `md` ID with the local
+  private graph and capture missing page text, links, media references, and
+  resource metadata. Do not report videos as archived unless bytes or
+  transcripts are actually present. Keep the resulting course content private
+  and out of Git; hosted import remains gated on archive reconciliation and a
+  confirmed internal-beta target.
+- Reviewed `cporter202/social-media-scraping-apis` as a possible future source
+  of connector ideas. It is a curated directory of third-party APIs/actors,
+  including Skool member/follower/group and post-comment scrapers; it is not
+  the implementation of an authenticated classroom lesson exporter. Its
+  listings include paid Apify services, and no repository license was visible
+  in the inspected root listing. Do not add it as a runtime dependency or use
+  its member-scraping actors for this archive. Consider a connector only after
+  checking platform scope/terms, operator, data collected, cost, credentials,
+  retention, license, and tenant-safe output. The current authorized-browser
+  path is the better fit for lesson capture.
