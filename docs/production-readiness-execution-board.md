@@ -179,3 +179,19 @@ release verification without deploying or spending beyond approved limits.
   bytes; `complete` remains false. Focused tests pass 4/4, ESLint and
   `npm run typecheck` pass. The export is mode `0600`, ignored by Git, and has
   not been imported to a hosted database.
+
+## Continuation Update - Local Security Gate
+
+- `npm run verify:security` passed on 2026-10-13. The security release gate
+  and client-provider policy checks passed; lifecycle/retention tests passed
+  22/22; notebook execution/provenance checks passed 19/19; runtime and
+  storage configuration fixtures passed 14/14. The remaining declared pilot
+  and integration-manifest checks also returned `ok: true` with no failures.
+- This run was local and made no hosted requests, deployments, database or
+  storage changes, or AI-provider calls. It verifies code-level controls and
+  test fixtures, not the live Cloud Run revision, live bucket policy, signed-in
+  customer journey, or tenant-isolation behavior in a hosted environment.
+- The shell used Node 26.4.0, while `package.json` declares Node `>=22 <26`.
+  All commands exited successfully, but repeat this gate on a supported Node 24
+  runtime before treating it as release evidence. Hosted and release tracks
+  remain open.
