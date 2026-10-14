@@ -1739,3 +1739,20 @@ does not authorize hosted changes, provider calls, or spending.
   historical `veloce-agenticos-2026` project or establish an approved ledger
   destination. Do not enable billing or create a bucket without a verified
   target and cost/retention review.
+
+## Continuation Update - Authenticated Current-Tab Parity Check (2026-10-14)
+
+- In the same existing Chrome profile, the local client at `127.0.0.1:3955`
+  and Cloud Test returned the same authenticated principal from their
+  read-only `/api/client-auth/session` endpoints. The identity is intentionally
+  not recorded here. Local reports `workspaceAuthorized: true`.
+- The local Notebook settled at **0 records / 0 active sources**; Cloud Test
+  settled at **9 records / 9 active sources**. The same principal with these
+  different results confirms a local/cloud data-scope mismatch, not parity.
+- The authenticated local `/api/client-runtime/build-identity` endpoint
+  returned a tenant-scope digest and runtime-reported source `096fa0a`, with no
+  Cloud Run revision. That build predates two documentation-only commits; the
+  Cloud Test endpoint still returns `client_route_not_enabled`. Neither source
+  identity is an independent attestation, and hosted parity remains unproven.
+- Both Veloce tabs were restored to their Notebook pages. This was read-only:
+  no tenant write, provider request, migration, or deployment occurred.
