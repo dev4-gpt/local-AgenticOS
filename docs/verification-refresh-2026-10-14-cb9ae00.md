@@ -87,3 +87,13 @@ output removed.
 This closes a local browser-test runner gap only. It does not prove hosted
 customer acceptance or Cloud Test parity, and it does not change the release
 gate's `ledger_bucket_not_configured` failure or unevaluated hosted evidence.
+
+## Current-Commit Offline Evaluation
+
+After the browser acceptance work was pushed, the deterministic AI release
+evaluation was rerun on source commit
+`754e6a870c883f1fc107de74a4ada9288eea2675` with Node `v24.18.0`. All 16/16
+cases passed, the local evaluation gate passed, and the report records zero
+model samples. Its `productionReady` field remains false by design; this
+offline evaluation does not establish model quality or hosted readiness. The
+ignored local receipt is `tmp/ai-release-local-754e6a8-node24.json`.
