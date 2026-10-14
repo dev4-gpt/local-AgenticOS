@@ -25,8 +25,7 @@ release verification without deploying or spending beyond approved limits.
 
 ## Verified Snapshot (2026-10-14)
 
-- Current source commit: `d86d7116211c0cc6b620e0cbeea9d2c8e517f3a4` on
-  `wip/backup-2026-10-03`; branch is pushed. Five existing documentation or
+- Branch `wip/backup-2026-10-03` is pushed. Five existing documentation or
   evidence paths are uncommitted and must be reviewed, not silently discarded.
 - Node 24 local AI evaluation on the current commit: 14/14 deterministic cases
   passed, `localGatePassed: true`, zero model samples and no provider requests.
