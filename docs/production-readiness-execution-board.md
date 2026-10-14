@@ -2439,3 +2439,21 @@ does not authorize hosted changes, provider calls, or spending.
   The merged private candidate graph validates at 1,137 nodes and 9,028 edges,
   with 82/107 lesson IDs still linked to captured lesson text. It was not
   uploaded, hosted, or imported.
+
+## Continuation Update - Customer Journey Gate Refresh (2026-10-14)
+
+- On clean source commit `18e70cf02d1a7b590f987ebcc6b8e530b61cd9fc` and
+  supported Node `v24.19.0`, the offline customer-journey evidence and public
+  onboarding verification/setup suites passed **8/8**. This is regression
+  evidence for journey receipts and safe onboarding-token behavior; it is not
+  a signed-in end-to-end customer journey.
+- The current-source local mirror is listening at `127.0.0.1:3945`. The user
+  reports signing in, but the available Chrome inspection is on the College
+  profile, not the Work profile, so no authenticated mirror observation or
+  cookie was collected. Same-user local/cloud parity remains unverified.
+- A fresh production-readiness run on the same commit remains
+  `releaseReady: false`, with `release_gate:ledger_bucket_not_configured` and
+  required evidence still unevaluated, including hosted identity, migrations,
+  customer approvals, buyer-pilot evidence, and rollback target. No release
+  evidence was published; no hosted write, deployment, or provider call was
+  made.
