@@ -2055,3 +2055,31 @@ does not authorize hosted changes, provider calls, or spending.
 - This is broad local regression evidence only. It does not attach release
   evidence, identify deployed revisions, prove hosted configuration, or replace
   the blocked same-user cloud journey and incomplete Skool capture.
+
+## Continuation Update - Authorized Drive Bonus PDF Import (2026-10-14)
+
+- Added `scripts/prepare-drive-resource-pdf-pack.mjs` and focused tests for
+  owner-saved Drive PDFs. The importer preserves Drive file provenance and
+  extracted links, redacts credential-like text, records per-file failures,
+  writes only owner-readable artifacts under ignored `tmp/authorized-skool-import`,
+  and always marks the collection incomplete.
+- Processed the 88 supplemental PDFs from the authorized `School Tabs Agent
+  OS` Drive folder: 88 prepared, 96 extracted source segments, 779 pages,
+  190 links before independent URL review, and 5 credential-like values
+  redacted. The sanitizer omitted 5 unsafe link targets, leaving 185; the
+  resulting source manifest records skipped references and remains partial.
+- Merged the sanitized pack into the local graph candidate
+  `tmp/authorized-skool-import/agentos-combined-with-register-drive-bonuses-sanitized-2026-10-14.jsonld`.
+  The portable-graph validator passed with 1,131 nodes and 8,992 explicit
+  edges, `coverage: partial`; output is owner-only. Supplemental resources do
+  not change the classroom lesson-text count of 79/107, the 25 pending pages,
+  or the absence of video bytes.
+- ESLint passed for the new importer and test, and the focused importer,
+  production source-pack parser, URL sanitizer, portable graph, and Skool graph
+  suites passed **17/17**. An initial combined test invocation omitted the
+  private manifest environment variable and stopped before running tests; the
+  rerun supplied the sanitized manifest and passed.
+- This is local/private ingestion only. No Skool session scraping, Drive write,
+  hosted database import, deployment, provider request, or paid usage occurred.
+  The importer and its tests are part of this source change; the hosted archive
+  and release-readiness gates remain open.
