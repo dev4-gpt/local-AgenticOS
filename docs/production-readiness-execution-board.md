@@ -2029,3 +2029,17 @@ does not authorize hosted changes, provider calls, or spending.
   run. The checked-in config is unchanged; the verification result is local
   evidence only and does not satisfy the release ledger's attached-evidence
   fields.
+
+## Continuation Update - Offline AI Evaluation And Trace Gates (2026-10-14)
+
+- On supported Node 24, `scripts/run-ai-release-evaluation.mjs` passed **16/16**
+  deterministic cases with zero model samples and zero provider requests. The
+  owner-only receipt is written under ignored `tmp/` and binds to the exact
+  source commit; it explicitly keeps `productionReady: false`.
+- Focused client observability and job-trace suites passed **13/13**, covering
+  complete ledger pagination, malformed/incomplete-page fail-closed behavior,
+  tenant isolation, safe trace fields, and redaction of prompt/output and
+  historical audit metadata.
+- These are local deterministic gates. No live model quality sample, hosted
+  telemetry export, or customer/provider request was made; they do not satisfy
+  hosted or release-ledger evidence by themselves.
