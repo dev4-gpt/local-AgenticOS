@@ -16,7 +16,7 @@ release verification without deploying or spending beyond approved limits.
 
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
-| Local product and customer journey | In progress; unauthenticated checks pass; authenticated parity preflight reports missing config | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Privately populate `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `CLIENT_ALLOWED_USER_EMAILS` in `.private-client-kits/internal-beta-parity.env`; keep `CLIENT_PROVIDER_CALLS_ENABLED=0`. Use only the manifest-verified URL and `internal-beta` tenant, read-only against production-backed project `ppmoqjtmjtfxadsnejqc`; no writes or migrations |
+| Local product and customer journey | In progress; read-only signed-in browser views now available; full same-principal journey and build identity remain unverified | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Keep provider calls disabled. Complete read-only feature/identity comparison in the already-open sessions; use a private client env for automated Supabase-backed flows only when available. Do not create tenant data or run migrations during parity checks |
 | Authorized Skool archive and graph import | In progress; 78/107 Drive-register IDs have local text captures; signed-in view verified 110 catalog items, but direct collection is held under Skool's current terms/policy; not hosted-imported | Canonical lesson/date inventory; all permitted page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Do not scrape/copy through Skool or forward cookies to Firecrawl. Continue from independently supplied owner-authorized files, or obtain a Skool-approved export/exception; reconcile live 110-item catalog, 107-ID Drive register, and 109-row spreadsheet; then import only after coverage and internal-beta target are verified |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Current-source deterministic gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled under the $0 paid-spend cap; use current offline receipt and trace-redaction tests as local-only evidence until a separately approved zero-cost hosted/model path is verified |
@@ -810,3 +810,27 @@ does not authorize hosted changes, provider calls, or spending.
   archived as media or transcripts. The 18 added sources reduce the earlier
   v7-only gap of 47 to 29. The separate register-versus-spreadsheet count
   discrepancy and partial archive status remain open.
+
+## Continuation Update - Read-Only Runtime Comparison (2026-10-14)
+
+- In the user's existing Chrome work-profile window, read-only inspection
+  confirmed three already-open signed-in memory views: local `127.0.0.1:3939`,
+  Cloud Test (`veloce-cloud-test-mquo4bf7aq-el.a.run.app`), and Internal Beta
+  (`agentos-internal-beta-vbimnfseva-ew.a.run.app`). No new tabs were opened and
+  no tenant records were changed.
+- Local and Internal Beta both rendered 2 tenant memories and a graph of 114
+  nodes / 113 relationships. Cloud Test rendered 24 tenant memories and a
+  graph of 33 nodes / 57 relationships. The visible navigation/source controls
+  also differ: Internal Beta exposes classroom/social research navigation,
+  the local memory view exposes a community-source upload/review control, and
+  Cloud Test shows neither on its memory surface. These observations show live
+  state and feature divergence; aggregate counts do not prove the sessions
+  belong to the same authenticated principal, the records are identical, or the
+  deployed builds match.
+- The authenticated memory surface is reachable in all three environments,
+  but the complete customer workflow (source selection, draft generation,
+  provenance, approval, and export), backend tenant-isolation probes, and
+  build/revision identity comparison remain unverified. No writes, provider
+  calls, migrations, or deployments were performed. Preserve these boundaries
+  in the release evidence; do not treat the browser check as production
+  approval.
