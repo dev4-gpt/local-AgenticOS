@@ -228,3 +228,16 @@ release verification without deploying or spending beyond approved limits.
   and evidence changes remain uncommitted. These runs make no provider calls
   and do not establish live hosted telemetry, real model quality, buyer
   acceptance, or release readiness.
+
+## Continuation Update - Release Gate Refresh
+
+- A fresh local `node scripts/verify-production-readiness.mjs` run on commit
+  `8c982a9a8b6c9c3cef63c0aca7f02907c6f437f6` returned `releaseReady: false`.
+  Its only immediate failures are the dirty working tree (five existing
+  archive/evidence paths) and the unconfigured release-ledger bucket.
+- Buyer-pilot, signed-in customer journey, migration and tenant-isolation
+  receipts, cloud configuration, deployment/image identity, release test
+  results, approvals, and rollback target remain unevaluated. No ledger was
+  configured, no cloud read/write or publication was attempted, and no hosted
+  state changed. Keep the release gate open until these explicit fields have
+  current evidence; do not infer readiness from the green local suites.
