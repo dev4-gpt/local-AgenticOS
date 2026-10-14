@@ -26,6 +26,11 @@ were left untouched.
 - The local listener's working directory is the AgentOS source checkout, but
   this does not prove the running process is serving the current checkout's
   build artifacts.
+- The current-source launcher preflight reads only key names and reports the
+  required Supabase URL/key pair and `CLIENT_ALLOWED_USER_EMAILS` as missing;
+  provider calls remain disabled. A fresh authenticated run from the current
+  checkout therefore cannot be verified until those values are privately
+  configured.
 
 ### Internal Beta
 
