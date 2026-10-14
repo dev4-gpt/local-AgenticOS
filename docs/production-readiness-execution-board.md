@@ -626,3 +626,21 @@ does not authorize hosted changes, provider calls, or spending.
   provider-calls-disabled flag, but the anon key and allowed account email are
   blank. Same-user local/cloud parity therefore remains unverified. No hosted
   reads/writes, migration, deployment, or provider calls were made.
+
+## Continuation Update - Full Focused and Security Checks (2026-10-14)
+
+- Against the clean source tree at `d7306bc`, the focused Playwright suite
+  completed **361 passed, 1 skipped** out of 362 tests under supported Node
+  24.19.0. The suite includes tenant boundaries, provider-spend policy,
+  notebook provenance, retention, graph/source-pack contracts, and release
+  gates. The skip is reported, not counted as a pass.
+- `npm run typecheck` completed successfully under Node 24.19.0.
+- `npm run verify:security` completed successfully: security release and
+  provider-policy checks passed; lifecycle/retention passed 22/22;
+  notebook provenance passed 19/19; runtime/storage config fixtures passed
+  14/14; disabled-pilot and integration-governance manifest checks passed.
+  These remain source/local-test evidence, not live security certification.
+- No product code, cloud service, database, storage policy, provider, or
+  customer data was changed or contacted by these checks. Release readiness,
+  signed-in journey, hosted parity, archive completion/import, and buyer
+  validation remain open.
