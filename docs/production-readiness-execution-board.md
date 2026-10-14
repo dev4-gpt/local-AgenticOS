@@ -2487,3 +2487,15 @@ does not authorize hosted changes, provider calls, or spending.
   this check was intentionally limited to read-only credential access. No
   cloud resource or IAM setting was changed; the release-ledger bucket remains
   unverified and unconfigured.
+
+## Continuation Update - Observability Contract Tests (2026-10-14)
+
+- On source commit `7ffe2b8b6e6a0e81a901adb76623662d00819c6a` under Node
+  `v24.19.0`, the focused observability-accuracy, job-trace, and
+  telemetry-boundary suites passed **18/18**. They cover complete ledger
+  pagination, malformed/incomplete data rejection, tenant isolation, trace
+  redaction, bounded samples, authentication/rate limits, and disabled-by-
+  default PostHog capture.
+- These are local fixture/API contract tests. They do not verify production
+  analytics configuration, live tenant telemetry, hosted traces, or operator
+  dashboards; those release evidence items remain open.
