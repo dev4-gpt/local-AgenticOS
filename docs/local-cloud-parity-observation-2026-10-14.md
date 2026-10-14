@@ -66,3 +66,32 @@ A later read-only check used the already-open tabs for
   confirmed authentication, while the visible Notebook showed tenant access.
   No tenant IDs, project refs, or deployed build identities were verified.
 - No tenant writes, imports, provider calls, or hosted changes were performed.
+
+## Runtime Identity Recheck
+
+Read-only `GET` requests to the existing build-identity routes returned:
+
+- Local `3955` reports source commit
+  `c428639d84c9a6a2fef59312b9c5bd5a9c03d88c`, no Cloud Run revision, and a
+  tenant-scope digest. Its provenance explicitly says the identity is reported
+  by the runtime, not independently attested.
+- Cloud Test returns `client_route_not_enabled` for
+  `/api/client-runtime/build-identity`, so its source commit, Cloud Run
+  revision, and tenant-scope digest cannot be read through this route.
+- The current pushed `HEAD` is `e9f95b51d86bb8947ac89d53249ae255bd1bc898`.
+  `git diff --name-status c428639d84c9a6a2fef59312b9c5bd5a9c03d88c..HEAD`
+  lists documentation changes only, so the local runtime's product source
+  matches the current repository product source. This does not prove the
+  hosted image was built from the same source.
+- The private local kit named `internal-beta-parity.env` points to Supabase
+  project ref `ppmoqjtmjtfxadsnejqc` and tenant slug `internal-beta`; auth is
+  enforced, provider calls are disabled, and one email is allowlisted. The
+  filename and slug do not establish that this Supabase project is an isolated
+  beta project. Verify the project designation before any tenant write or
+  migration.
+
+The same-user record-count difference is therefore confirmed, but the tenant
+and hosted-build causes remain unresolved. The local Supabase environment
+designation is also unverified. Do not import, seed, delete records, or apply
+migrations to force parity; first establish the Cloud Test deployment identity
+and the tenant/project scope through an approved read-only mechanism.
