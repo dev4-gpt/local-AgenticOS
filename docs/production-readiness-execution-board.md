@@ -2142,12 +2142,22 @@ does not authorize hosted changes, provider calls, or spending.
   satisfy the source-import or build-identity parity checks. Different tenant
   slugs also mean the observed 0-vs-9 Notebook count is not evidence of a
   same-tenant comparison.
-- The Cloud Test setting `provider calls enabled` is not evidence of a hard
-  spend cap. Do not make Cloud Test model requests under a `$0` spend
-  assumption until provider-call policy and provider-side budget limits are
-  verified. Retention
-  is inconsistent with the requested 45-day per-item policy. This audit was
-  read-only; no tenant/database writes, provider calls, deployments, or cloud
-  configuration changes occurred. Artifact Registry build metadata remains
-  unreadable to the active account because its `agentos-mvp` service-usage
-  consumer permission is missing.
+- Cloud Test has `CLIENT_PROVIDER_CALLS_ENABLED=1`, `CLIENT_BUDGET_CAP=10`
+  dollars/month, and an 80% warning threshold. The application reserves
+  estimated request cost against its tenant ledger before provider execution;
+  this is not a provider-side hard spend limit and does not establish a `$0`
+  paid-spend ceiling. Do not make Cloud Test model requests under a `$0` spend
+  assumption until provider-side limits and the active tenant credential path
+  are independently verified. Retention is inconsistent with the requested
+  45-day per-item policy.
+- In the Cloud Run template, `CLIENT_CREDENTIAL_INBOX_SECRET` and
+  `CLIENT_REQUEST_INBOX_SECRET` are inline environment values rather than
+  Secret Manager references. Provider API-key and worker-token variables in
+  the template are unset; this does not rule out member credentials stored in
+  Supabase, which were not read. Secret values were not printed or recorded.
+  Move inline secrets to Secret Manager and perform a reviewed rotation before
+  production use; no secret or service configuration was changed in this audit.
+- This audit was read-only; no tenant/database writes, provider calls,
+  deployments, or cloud configuration changes occurred. Artifact Registry
+  build metadata remains unreadable to the active account because its
+  `agentos-mvp` service-usage consumer permission is missing.
