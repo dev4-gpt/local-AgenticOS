@@ -601,3 +601,28 @@ does not authorize hosted changes, provider calls, or spending.
   list, while each linked skill has its own license and security posture. No
   runtime dependency or skill was added; selectively evaluate a specific
   skill only if an AgentOS workflow gap is demonstrated.
+
+## Continuation Update - Supported-Runtime Evidence Refresh (2026-10-14)
+
+- These checks were run against clean, pushed source commit `52a3ac3` on
+  `wip/backup-2026-10-03`; this evidence note is a separate documentation
+  change.
+- Fresh provider-free contract checks passed **28/28** across customer-journey
+  receipt validation, tenant membership before session issuance, source-pack
+  authorization/proxy handling, and notebook source/provenance validation.
+  This is local contract coverage, not a browser-signed customer journey.
+- The offline AI release suite passed **16/16** under supported Node
+  `24.19.0`; `localGatePassed: true`, with zero model samples and no provider
+  requests. The default shell's Node `26.4.0` is outside the declared
+  `>=22 <26` range: its same 16 tests passed, but the evaluator correctly
+  failed the runtime gate. Use the bundled Node 24 executable for release
+  evidence.
+- Refreshed `verify:production-readiness` for this commit. It returns
+  `releaseReady: false` because the ledger bucket is not configured; the
+  verifier also lists journey, buyer-pilot, migration, cloud-config, schema,
+  deployment identity, approvals, and rollback evidence as not evaluated.
+  The JSON report remains in ignored local `tmp/` and no ledger was published.
+- The private parity config still has the Supabase URL, tenant slug, and
+  provider-calls-disabled flag, but the anon key and allowed account email are
+  blank. Same-user local/cloud parity therefore remains unverified. No hosted
+  reads/writes, migration, deployment, or provider calls were made.
