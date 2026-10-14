@@ -16,7 +16,7 @@ release verification without deploying or spending beyond approved limits.
 
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
-| Local product and customer journey | In progress; read-only signed-in browser views now available; full same-principal journey and build identity remain unverified | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Keep provider calls disabled. Complete read-only feature/identity comparison in the already-open sessions; use a private client env for automated Supabase-backed flows only when available. Do not create tenant data or run migrations during parity checks |
+| Local product and customer journey | In progress; local session/build identity verified; same-principal Notebook data still diverges from Cloud Test (0 local vs 9 hosted); full deliverable journey remains unverified | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Keep provider calls disabled. Resolve the local/cloud tenant-data mismatch and Cloud Test build identity before any write; then complete the read-only feature journey. Do not create tenant data or run migrations during parity checks |
 | Authorized Skool archive and graph import | In progress; latest local combined graph has text segments linked to 79/107 registered lessons; 25 pages remain pending and video bytes are absent; not hosted-imported | Canonical lesson/date inventory; all permitted page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Continue reconciling owner-authorized files and the 107-link in-scope register. Do not forward session cookies or use an unapproved scraper. Reconcile the spreadsheet's unresolved count, then import only after archive coverage and the internal-beta target are verified |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Current-source deterministic gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled under the $0 paid-spend cap; use current offline receipt and trace-redaction tests as local-only evidence until a separately approved zero-cost hosted/model path is verified |
@@ -1825,3 +1825,21 @@ does not authorize hosted changes, provider calls, or spending.
   evidence remains unevaluated. The read-only Veloce Ai Cloud Storage page has
   no buckets and requires billing to be enabled. No billing, bucket, IAM,
   database, deployment, tenant, or provider state was changed.
+
+## Continuation Update - Signed-In Local Customer Surface (2026-10-14)
+
+- The private local parity config passes `--check-config`; it reports the
+  current source identity and provider calls disabled without printing secret
+  values. The existing local production client at `127.0.0.1:3955` is
+  authenticated and workspace-authorized. Its read-only build-identity route
+  reports source `c428639d84c9a6a2fef59312b9c5bd5a9c03d88c`, no Cloud Run
+  revision, and runtime-reported (not independently attested) provenance.
+  The source diff from that commit to current HEAD contains documentation only.
+- The local Notebook shows **0 records / 0 active sources**. The already-open
+  Cloud Test Notebook shows **9 / 9**. This is consistent with the earlier
+  same-principal comparison for this exact local build, but the current pass
+  did not re-read Cloud Test's session endpoint; treat the mismatch as confirmed
+  visible data divergence, not proof of shared tenant identity or parity.
+- The Chrome Work window was restored to the user's selected October 10 Skool
+  lesson. No note was added, source imported, tenant data changed, or provider
+  request made. The customer deliverable flow remains incomplete.
