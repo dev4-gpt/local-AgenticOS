@@ -2786,3 +2786,11 @@ does not authorize hosted changes, provider calls, or spending.
   or Skool tabs. No alternate profile was opened. Cloud Test and local counts
   must not be compared again until the same authorized user and tenant are
   confirmed in the designated browser session.
+- On commit `9fcebaf61867936c7f9dfb20eb05e1ba801940d5`, the focused local
+  regression suite passed **367 tests with 1 skipped**. The aggregate
+  `npm run verify:security` gate exited 0: lifecycle/retention **22/22**,
+  notebook execution/provenance **20/20**, runtime/storage configuration
+  fixtures **16/16**, and the static security-release, provider-policy,
+  integration-governance, and pilot-contract checks passed. This makes no
+  claim about live IAM, hosted data, external provider health, or paid-model
+  quality; no hosted call, deployment, or provider request occurred.
