@@ -48,3 +48,29 @@ test("private source graph export supports classroom coverage and preserves date
   });
   expect(graph.provenance).toMatchObject({ complete: false, sourceSegments: 1, links: 1 });
 });
+
+test("private source graph export keeps media-only lessons out of text coverage", () => {
+  const mediaOnlyBatch = JSON.stringify({ sources: [{
+    title: "ChatGPT Voice",
+    text: "[No lesson text or transcript supplied in the authorized export.]",
+    url: "https://www.skool.com/ai-profit-lab-7462/classroom/9daf24e1?md=lesson123",
+    tab: "26th July: ChatGPT Voice [lesson123:1/1]",
+    links: [{ url: "https://www.youtube.com/watch?v=abc123", text: "Media: ChatGPT Voice Update is WILD!" }],
+  }] });
+  const mediaOnlyManifest = {
+    startUrl: "https://example.com/classroom",
+    batches: [{ file: "batch.json", sha256: createHash("sha256").update(mediaOnlyBatch).digest("hex") }],
+    coverage: { outputSources: 1, outputLinks: 1, mediaOnlySourceIds: ["lesson123"], pendingPages: 1 },
+  };
+
+  const graph = buildPrivateSourcePackGraph(mediaOnlyManifest, () => mediaOnlyBatch, "/private");
+  const lesson = graph["@graph"].find((node) => node["@type"] === "LearningResource");
+  expect(lesson).toMatchObject({ contentStatus: "metadata_only", pageTextCaptured: false });
+  expect(lesson).not.toHaveProperty("text");
+  expect(graph["@graph"].find((node) => node["@type"] === "VideoObject")).toMatchObject({
+    name: "ChatGPT Voice Update is WILD!",
+    mediaBytesCaptured: false,
+  });
+  expect(graph.edges.map((edge) => edge["@type"])).toContain("hasVideoReference");
+  expect(graph.provenance).toMatchObject({ textSourceSegments: 0, mediaOnlySourceSegments: 1, complete: false });
+});
