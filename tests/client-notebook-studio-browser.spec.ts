@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 const clientPort = process.env.CLIENT_RUNTIME_TEST_PORT || "3939";
 const clientBaseUrl = process.env.CLIENT_RUNTIME_TEST_URL || `http://127.0.0.1:${clientPort}`;
@@ -43,6 +44,11 @@ test("Notebook Studio submits source IDs and renders the saved source register",
       return route.fulfill({ status: 202, json: { ok: true, jobId: "job-1", status: "queued" } });
     }
     if (request.method() === "GET" && url.pathname.endsWith("/artifacts")) {
+      if (!url.searchParams.has("id")) {
+        return route.fulfill({ status: 200, json: { ok: true, artifacts: [{
+          id: "artifact-1", original_name: "client-proposal.md", content_type: "text/markdown", byte_size: 56, status: "ready",
+        }] } });
+      }
       expect(url.searchParams.get("id")).toBe("artifact-1");
       return route.fulfill({ status: 200, json: { ok: true, downloadUrl: "/api/client-runtime/artifacts/artifact-1/download" } });
     }
@@ -71,13 +77,20 @@ test("Notebook Studio submits source IDs and renders the saved source register",
   await expect(page.getByText("Citation format passed · 1 source cited")).toBeVisible();
   await page.getByRole("button", { name: "Review" }).click();
   await expect(page.getByLabel("Draft content for review")).toContainText("Draft report with reviewed sources.");
-  await page.evaluate(() => {
-    window.sessionStorage.removeItem("notebook-download-url");
-    window.open = ((url?: string | URL) => {
-      window.sessionStorage.setItem("notebook-download-url", String(url ?? ""));
-      return null;
-    }) as typeof window.open;
-  });
+  const downloadPromise = context.waitForEvent("download");
   await page.getByRole("button", { name: "Download" }).click();
-  await expect.poll(() => page.evaluate(() => window.sessionStorage.getItem("notebook-download-url"))).toBe("/api/client-runtime/artifacts/artifact-1/download");
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("client-proposal.md");
+  const downloadedPath = await download.path();
+  expect(downloadedPath).toBeTruthy();
+  expect(await readFile(downloadedPath!, "utf8")).toContain("Draft report with reviewed sources.");
+
+  await page.getByRole("button", { name: "assets", exact: true }).click();
+  const assetDownloadPromise = context.waitForEvent("download");
+  await page.getByRole("button", { name: "Download" }).click();
+  const assetDownload = await assetDownloadPromise;
+  expect(assetDownload.suggestedFilename()).toBe("client-proposal.md");
+  const assetPath = await assetDownload.path();
+  expect(assetPath).toBeTruthy();
+  expect(await readFile(assetPath!, "utf8")).toContain("Draft report with reviewed sources.");
 });

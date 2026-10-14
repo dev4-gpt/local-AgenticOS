@@ -232,7 +232,7 @@ function StudioLane({ sources, selected, notebookScope, onToggle, onError }: { s
     const response = await fetch(`/api/client-runtime/artifacts?id=${encodeURIComponent(artifactId)}`, { cache: "no-store" }).catch(() => null);
     const data = await response?.json().catch(() => null);
     if (!response?.ok || typeof data?.downloadUrl !== "string") { onError(typeof data?.error === "string" ? data.error : "artifact_download_failed"); return; }
-    window.open(data.downloadUrl, "_blank", "noopener,noreferrer");
+    window.location.assign(data.downloadUrl);
   }
 
   async function review(artifactId: string) {
@@ -348,7 +348,7 @@ function AssetsLane({ onError }: { onError: (value: string) => void }) {
     const response = await fetch(`/api/client-runtime/artifacts?id=${encodeURIComponent(artifactId)}`, { cache: "no-store" }).catch(() => null);
     const data = await response?.json().catch(() => null);
     if (!response?.ok || typeof data?.downloadUrl !== "string") { onError(typeof data?.error === "string" ? data.error : "artifact_download_failed"); return; }
-    window.open(data.downloadUrl, "_blank", "noopener,noreferrer");
+    window.location.assign(data.downloadUrl);
   }
 
   return <LanePanel icon={<FolderOpen size={17} />} eyebrow="Tenant Notebook · assets" title="Tenant artifacts"

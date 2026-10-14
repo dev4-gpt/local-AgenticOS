@@ -2351,3 +2351,17 @@ does not authorize hosted changes, provider calls, or spending.
 - No hosted tenant, database, or runtime was changed. The archive-import track
   remains open until the missing pages/media are reconciled and a confirmed,
   approved tenant target is available for the product import flow.
+
+## Continuation Update - Notebook Download Journey (2026-10-14)
+
+- Strengthened the current-source Notebook browser journey to verify a real
+  downloaded artifact's filename and contents rather than only checking the
+  requested URL. The first run exposed that the async download lookup followed
+  by `window.open()` did not produce a browser download.
+- Updated the Notebook Studio and Assets download actions to navigate directly
+  to the returned signed-download URL, avoiding popup blocking after the async
+  lookup. On the isolated provider-disabled local runtime, the browser test
+  passed and received `client-proposal.md` with the expected draft content.
+- This is deterministic fixture/API evidence, not a signed-in customer action,
+  hosted storage verification, or proof of live signed-URL behavior. No
+  provider request, hosted mutation, or deployment occurred.
