@@ -2457,3 +2457,18 @@ does not authorize hosted changes, provider calls, or spending.
   customer approvals, buyer-pilot evidence, and rollback target. No release
   evidence was published; no hosted write, deployment, or provider call was
   made.
+
+## Continuation Update - Graph And Buyer-Pilot Audit Refresh (2026-10-14)
+
+- The current private combined Skool graph validates as a portable graph with
+  **1,137 nodes / 9,028 edges**. Its coverage remains explicitly partial; this
+  structural check does not add lesson text, video assets, or a tenant import.
+- The offline MiroFish artifact audit suite passed **27/27** on the current
+  source. It rejects self-quotes, copied or misattributed posts, incomplete
+  telemetry, stale review, and completed simulations without buyer-generated
+  interaction. The existing two reviewed pilot replies remain rejected as
+  weak/self-referential and provide no demand evidence. No provider request
+  was made.
+- A fresh Chrome inventory still exposes only the College profile; the
+  signed-in Work-profile observation for local port `3945` therefore remains
+  unverified. No cookies were exported or read.
