@@ -1843,3 +1843,38 @@ does not authorize hosted changes, provider calls, or spending.
 - The Chrome Work window was restored to the user's selected October 10 Skool
   lesson. No note was added, source imported, tenant data changed, or provider
   request made. The customer deliverable flow remains incomplete.
+
+## Continuation Update - Runtime Identity And Offline AI Recheck (2026-10-14)
+
+- Current pushed source is `3734f0b7fb00bc1d8c415702829f7ee268b4b592` on
+  `wip/backup-2026-10-03`; the worktree is clean. The local runtime reports
+  source `c428639d84c9a6a2fef59312b9c5bd5a9c03d88c`; the diff to HEAD is docs
+  only. It reports no Cloud Run revision and says its identity is runtime-
+  reported, not independently attested. Cloud Test's build-identity route
+  returns `client_route_not_enabled`; its deployed source/revision remains
+  unknown.
+- Fresh read-only session checks matched the same user subject across local
+  `3955` and Cloud Test. The local workspace is authorized; Notebook shows
+  **0/0** locally and **9/9** in Cloud Test after refresh. One Cloud Test
+  navigation initially rendered 0 before refresh restored 9. This confirms
+  same-user visible divergence and a transient-load observation, not matching
+  tenant or Supabase-project identity.
+- The private parity config's effective settings were inspected without
+  printing secrets: Supabase ref `ppmoqjtmjtfxadsnejqc`, slug `internal-beta`,
+  authentication enforced, provider calls disabled, and one allowlisted user.
+  The name/slug do not prove the Supabase project is an isolated beta. No
+  tenant writes or migrations are approved until that designation is verified.
+- The offline AI evaluation was rerun against this exact commit. Under Node
+  `v24.19.0`, all **16/16** deterministic cases passed, with zero model samples
+  and no provider requests. The default shell's Node `v26.4.0` is outside the
+  suite's supported range; although its 16 tests passed, the gate correctly
+  refused a passing receipt. The supported-runtime report remains local-only.
+- The release verifier still returns `releaseReady: false`, with
+  `ledger_bucket_not_configured` and **37** ledger-backed items unevaluated.
+  `Veloce Ai` has no buckets and requires billing to be enabled for Cloud
+  Storage. No billing, bucket, IAM, database, deployment, tenant, or provider
+  state changed.
+- Next: establish the approved Supabase environment and Cloud Test serving
+  identity through read-only evidence. Then run a scoped same-tenant journey
+  without seeding or changing existing records. Keep hosted writes, migration,
+  and deployment held until the environment designation is clear.
