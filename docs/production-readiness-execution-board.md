@@ -1402,3 +1402,26 @@ does not authorize hosted changes, provider calls, or spending.
   user's browser sign-in.
 - The successful build is code evidence only. No database write, provider call,
   hosted deployment, IAM change, or release-ledger creation occurred.
+
+## Continuation Update - Signed-In Local and Hosted Surface Comparison (2026-10-14)
+
+- In the already-open Chrome profile, current-source local at port `3965` and
+  Internal Beta both show an authenticated session with **0** tenant notebook
+  records. Cloud Test showed **9** records before its session redirected to the
+  login page. No record or notebook mutation was made. The browser profile is
+  shared, but the user principal was not independently matched across the three
+  runtimes, so this is not a same-user parity pass.
+- Current-source local build identity reports source commit `b664db9` and
+  explicitly labels itself runtime-reported, not independently attested. Direct
+  read-only requests to the Internal Beta and Cloud Test build-identity routes
+  both return `client_route_not_enabled`; hosted image/source identity remains
+  unverified.
+- Visible navigation differs: local exposes Context, Goals, Journal, Notebook,
+  and Memory; Internal Beta additionally exposes Classroom Research and Social
+  Research; Cloud Test exposes Leads, Radar, and Delivery in its visible links.
+  Notebook tabs otherwise share Library, Research, Chat, Studio, and Assets.
+  These observations corroborate runtime/config drift and do not replace the
+  route-allowlist or complete customer-journey checks.
+- Cloud Test's existing tab is at its sign-in page pending re-authentication.
+  No hosted writes, migration, deployment, provider request, or billing action
+  occurred.
