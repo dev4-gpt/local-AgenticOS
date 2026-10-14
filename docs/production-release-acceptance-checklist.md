@@ -27,6 +27,8 @@ Local-only artifact check on 2026-10-09: source `dd6b6cd22c7f8571408eadf34fc4129
 
 Local-only current-source container check on 2026-10-14: clean source `7a37c03f5bf1f03b895a9e92de7c9024bfb2817f` built under Node 24 / Next.js 16.3.4 with provider calls disabled. The client build compiled, typechecked, and generated all 66 static pages; Next emitted a middleware deprecation notice and an Edge Runtime warning from its internal dynamic-rendering module. Artifact pruning removed 235 disabled routes and retained 120; `npm run verify:client-build-trace -- --dist-dir .next-client-verification-20261014` passed, including the required build-identity route and trace-path checks. The temporary artifact was removed after verification and no immutable image digest was retained. This remains local-only evidence, not a hosted image, deployment, or acceptance receipt.
 
+Artifact-verifier contract update on 2026-10-14: `verify-client-runtime-build-trace.mjs` now requires both `/api/client-runtime/build-identity` and `/api/client-runtime/source-import` in the packaged route manifest, matching the client artifact acceptance criteria below. The focused artifact-boundary suite passed 2/2, including a negative case proving that omission of source import fails with `source_import_route_missing`. This verifies the gate logic using synthetic manifests; it is not a fresh production build or hosted artifact check.
+
 ## 2. Managed OpenRouter: owner-controlled activation
 
 1. In the OpenRouter workspace that owns the **managed** key, configure a $4

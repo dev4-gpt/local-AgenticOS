@@ -11,6 +11,7 @@ const failures = [];
 
 const appPaths = await readJson(path.join(serverRoot, "app-paths-manifest.json"), "app_paths_manifest_missing");
 if (!Object.hasOwn(appPaths, "/api/client-runtime/build-identity/route")) failures.push("build_identity_route_missing");
+if (!Object.hasOwn(appPaths, "/api/client-runtime/source-import/route")) failures.push("source_import_route_missing");
 for (const [entryKey, entryFile] of Object.entries(appPaths)) {
   const route = routePath(entryKey);
   if (!clientRuntimeArtifactRouteAllowed(route)) failures.push("disallowed_route_manifested");
