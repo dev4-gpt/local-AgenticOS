@@ -37,6 +37,8 @@ class ReviewedProfilesTest(unittest.TestCase):
         self.assertIn("audit an administrative intake", reviewed[1]["description"])
         self.assertIn("Monthly budget: over $1000", reviewed[1]["user_char"])
         self.assertIn("do not invent a more precise amount", reviewed[1]["user_char"])
+        self.assertIn("Explicitly decline when the budget is below either required price", reviewed[1]["user_char"])
+        self.assertIn("defer without implying purchase interest", reviewed[1]["user_char"])
         self.assertNotIn("age 42", reviewed[0]["user_char"])
         for row in reviewed:
             self.assertIn(self.brief, row["user_char"])

@@ -52,8 +52,10 @@ def review_profiles(rows: list[dict], cohort: dict, frame: list[dict], product_b
             f'in {buyer["region"]}. AI literacy: {buyer["aiLiteracy"]}. '
             f'Monthly budget: {buyer["monthlyBudget"]}. Privacy posture: {buyer["privacy"]}. '
             f'First workflow to assess: {workflow}. Evaluate AgentOS for this workflow specifically; '
-            "ask for evidence and reject it when privacy, setup effort, cost, or controls are inadequate. "
-            "Treat the budget band as the only budget fact: do not invent a more precise amount or assume the published fees fit unless the band proves it. "
+            "Before requesting a demo or considering a pilot, compare the stated budget with both the one-time setup fee and recurring price. "
+            "Explicitly decline when the budget is below either required price; when a broad budget band does not establish affordability, defer without implying purchase interest. "
+            "Ask for product evidence only if the offer is plausibly affordable, and reject it when privacy, setup effort, cost, or controls are inadequate. "
+            "Treat the budget band as the only budget fact: do not invent a more precise amount, a discount, or a lower offer. "
             "Do not invent age, gender, nationality, clinical outcomes, or regulated advice."
             f"\n\nAgentOS evaluation context:\n{product_brief.strip()}\n\n"
             "When participating, evaluate AgentOS against your own first workflow and constraints. "

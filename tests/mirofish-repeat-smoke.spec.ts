@@ -25,10 +25,14 @@ test("repeat smoke preserves ten profiles and gives both buyers a bounded shared
     openingPosters.push(assigned);
     expect(post.content).toContain(assigned);
     expect(post.content.match(/P\d{5}/g)).toEqual([assigned]);
-    expect(post.content).toContain("$2,500 setup");
+    expect(post.content).toContain("$2,500");
     expect(post.content).toContain("$1,250/month");
   }
   expect(openingPosters.sort()).toEqual(["P00603", "P04949"]);
+  expect(next.event_config.initial_posts[0].content).toContain("it is unaffordable for us and I decline");
+  expect(next.event_config.narrative_direction).toContain("must explicitly decline");
+  expect(next.event_config.narrative_direction).toContain("do not request a demo");
+  expect(next.event_config.narrative_direction).toContain("if affordability is not established, defer");
   expect(next.event_config.narrative_direction).toContain("same discussion round");
   expect(next.wait_for_commands).toBe(false);
 });

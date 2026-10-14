@@ -20,7 +20,7 @@ release verification without deploying or spending beyond approved limits.
 | Authorized Skool archive and graph import | In progress; 60/107 register IDs captured locally; local graph export built, not hosted-imported | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Collect/reconcile the 47 register IDs absent from local v7, resolve the 107-versus-109 lesson count and one uncollected page flagged by both Drive packs, and account for videos/resources; then run a scoped graph import only against the confirmed internal-beta target |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Local gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep offline gate on Node 24; inspect the private MiroFish review file with the owner, then run only a bounded provider pilot after live Free-plan/spend-cap confirmation |
-| MiroFish buyer pilot | Human review complete; 2/2 responses assessed, 1/2 fully approved; synthetic pilot-quality gate fails | Reviewed generated posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Correct the budget/offer mismatch in the scenario before any rerun; synthetic results remain hypotheses, not market validation |
+| MiroFish buyer pilot | Human review complete; 2/2 responses assessed, 1/2 fully approved; synthetic pilot-quality gate fails | Reviewed generated posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Keep the under-budget persona as a negative control but force an explicit decline; qualify leads against both setup and recurring fees before any separately authorized rerun |
 | Release evidence and decision | Not ready | Clean commit; all required evidence attached to release ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Keep the release verifier as the authoritative gate; configure a ledger bucket only after target project and cost implications are confirmed |
 
 ## Verified Snapshot (2026-10-14)
@@ -296,3 +296,12 @@ release verification without deploying or spending beyond approved limits.
   was made.
 - Full details are recorded in
   `docs/verification-refresh-2026-10-14-34f546c.md`.
+- Follow-up scenario guard: `prepare-mirofish-repeat-smoke.mjs` now tells the
+  sub-$50 persona to decline the $2,500 setup plus $1,250/month offer and
+  prohibits treating activity as lead qualification. Profiles with ambiguous
+  budget bands must defer rather than imply affordability or request a demo.
+  The bounded shared-round behavior is preserved. No new simulation or provider
+  request was made.
+- After that scenario change, the repeat-smoke suite passed 3/3, the MiroFish
+  Python artifact/profile suite passed 23/23, and the full focused suite passed
+  361 tests with one skipped on Node `v24.18.0`.

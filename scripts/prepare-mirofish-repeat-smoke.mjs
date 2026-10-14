@@ -51,7 +51,7 @@ export function prepareRepeatSmoke(source, simulationId) {
       {
         poster_type: "Buyer",
         poster_agent_id: idByName.get("P00603"),
-        content: "P00603: I review security for a small AI consultancy on a sub-$50 monthly budget. AgentOS lists $2,500 setup plus $1,250/month before provider usage. I would need a concrete, isolated client-document handoff and an auditable draft before considering a pilot. What evidence would make that practical at my scale?",
+        content: "P00603: I review security for a small AI consultancy with a sub-$50 monthly budget. AgentOS costs $2,500 to set up plus $1,250/month before provider usage, so it is unaffordable for us and I decline. Do not treat me as a prospective lead unless the published price changes materially.",
       },
       {
         poster_type: "Buyer",
@@ -61,7 +61,7 @@ export function prepareRepeatSmoke(source, simulationId) {
     ],
     scheduled_events: [],
     hot_topics: ["first useful workflow", "privacy and access control", "budget visibility", "AI literacy", "approval and audit evidence"],
-    narrative_direction: "Both buyers are active in the same discussion round and can respond to each other's distinct opening post. Evaluate the first useful workflow and reject AgentOS when evidence, privacy, setup effort, or cost controls are inadequate. Do not invent product proof or clinical outcomes.",
+    narrative_direction: "Both participants are active in the same discussion round and may respond to each other's distinct opening post, but activity is not buyer qualification. P00603 has a sub-$50 monthly budget and must explicitly decline the $2,500 setup plus $1,250/month offer; do not request a demo, imply pilot interest, or count P00603 as a prospective lead. More generally, compare both setup and recurring price to the persona's stated budget before expressing purchase interest; if affordability is not established, defer without requesting a sales demo. Never invent a discount, lower quote, product proof, or clinical outcome.",
   };
   config.wait_for_commands = false;
   config.generation_reasoning = "Manual, bounded English-language two-buyer repeat smoke. This is not market validation.";
