@@ -1395,5 +1395,10 @@ does not authorize hosted changes, provider calls, or spending.
   sandbox (`listen EPERM`), so current-source browser identity and the complete
   signed-in local journey remain unverified. The existing 3939 server/tab was
   left untouched; its build-identity endpoint reports `sourceCommit: null`.
+- After the explicitly sandbox-approved loopback bind, the current-source
+  production runtime started on `http://127.0.0.1:3965` and reports source
+  commit `b664db9`, with provider calls disabled. Its login form is open in the
+  already-existing local Chrome tab; the signed-in journey is now pending the
+  user's browser sign-in.
 - The successful build is code evidence only. No database write, provider call,
   hosted deployment, IAM change, or release-ledger creation occurred.
