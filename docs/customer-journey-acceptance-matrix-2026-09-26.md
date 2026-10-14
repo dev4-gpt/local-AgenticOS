@@ -364,3 +364,16 @@ confirms visible state and data-count differences among the three runtimes;
 sharing a Chrome profile does not prove identical Supabase user or tenant
 identity across origins. No import, record write, provider call, or hosted
 change occurred.
+
+**Current-source local client browser refresh, 2026-10-14:** On pushed source
+commit `9c8e635`, seven client browser specs passed **31/31** against an
+isolated production-mode local runtime on port 3992 with provider calls
+disabled, synthetic browser authentication, and mocked API responses. Coverage
+includes membership denial and recovery, safe `next` redirects, manifest-bound
+navigation at desktop/mobile sizes, pending-versus-empty memory and failed
+refresh handling, source-import consent/cleanup/part permissions, source
+register rendering, budget fail-closed behavior, redacted observability, and
+Notebook Studio output. These tests establish local UI/contract behavior only;
+they do not authenticate to Supabase or exercise a hosted deployment. The
+J01-J15 current-candidate evidence rows remain open, and the Cloud Test
+build-identity route still returns 403.
