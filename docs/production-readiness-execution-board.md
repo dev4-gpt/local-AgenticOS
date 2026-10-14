@@ -1969,3 +1969,27 @@ does not authorize hosted changes, provider calls, or spending.
   does not resolve hosted parity: Cloud Test/Internal Beta still show distinct
   notebook counts and both hide build identity. No running local process was
   stopped or altered.
+
+## Continuation Update - Drive Graph Export Reconciliation (2026-10-14)
+
+- Downloaded the four JSON-LD exports from the authorized `School Tabs Agent
+  OS` Drive folder to temporary local files and compared each against the
+  richer owner-only candidate
+  `tmp/authorized-skool-import/agentos-combined-with-register-drive-changelog-system-oct10-2026-10-14.jsonld`.
+  The Drive files are `AgentOS-Knowledge-Graph-Drive-Provenance-Partial`,
+  `AgentOS-Knowledge-Graph-Exact-Lesson-Crosswalk-Partial`,
+  `AgentOS-Knowledge-Graph-Register-Enriched-Partial`, and
+  `AgentOS-Knowledge-Graph-Partial` (all dated 2026-10-14).
+- Their sizes/counts were respectively 795/8,643, 772/8,351, 772/8,158, and
+  492/7,770 nodes/edges. Every Drive graph's nodes and edges are present in
+  the local 819-node/8,711-edge candidate; none contributes a unique node or
+  edge. The two Drive files that contain text-capture edges cover 78 lessons
+  each, versus 79 in the local candidate. No Drive graph contributes lesson
+  text not already present locally.
+- This closes the graph-export reconciliation: keep the richer local graph as
+  the comparison baseline and do not replace it with any Drive export. It does
+  not close the Skool archive: the local candidate remains partial, with 28 of
+  107 registered lessons lacking linked text, 25 pages pending, and no video
+  bytes. No Drive file, hosted graph, tenant record, or provider state was
+  changed. The downloaded comparison copies are temporary files outside the
+  repository.
