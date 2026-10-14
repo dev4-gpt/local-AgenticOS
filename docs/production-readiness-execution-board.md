@@ -2099,3 +2099,24 @@ does not authorize hosted changes, provider calls, or spending.
   lesson completeness. The graph remains partial: 79/107 lessons have linked
   text, 28 lack linked text, 25 pages remain pending, and video bytes are
   absent. No Drive file or hosted data was changed.
+
+## Continuation Update - Release Ledger Bucket Inventory (2026-10-14)
+
+- The active local GCP identity can list project metadata and includes project
+  `veloce-agenticos-2026` (`Veloce AgenticOS`). This confirms the earlier
+  project ID exists under this identity; it does not establish that it is the
+  separate project/account previously shown as `Veloce Ai`.
+- Read-only Cloud Storage inventory found the existing bucket
+  `veloce-agenticos-2026-veloce-release-ledger` in `ASIA-SOUTH1`. Its metadata
+  has public-access prevention enforced, uniform bucket-level access enabled,
+  object versioning enabled, and a seven-day soft-delete recovery window. The
+  bucket IAM policy has no public principals; the custom release-ledger-writer
+  role is bound to one service account. No bucket policy or IAM was changed.
+- Running the readiness verifier with this bucket name moved the release-gate
+  failure from `ledger_bucket_not_configured` to
+  `release_ledger_record_missing`: no record exists for current commit
+  `c8662671d46952b3dc8405b3a037da174fbc9504`. The verifier still reports 38
+  ledger-backed gates as not evaluated. No object was written. Publishing is
+  not appropriate until deployment identities, migration receipts, tests, and
+  operations/legal approvals are available; preserve the seven-day recovery
+  setting.
