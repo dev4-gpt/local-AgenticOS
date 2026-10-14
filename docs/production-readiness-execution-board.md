@@ -2014,3 +2014,18 @@ does not authorize hosted changes, provider calls, or spending.
   the graph. Archive completeness remains unverified, 25 pages remain pending,
   and no video bytes or hosted import are present. No source content or hosted
   state was changed.
+
+## Continuation Update - Current-Source Notebook Browser Journey (2026-10-14)
+
+- On current commit `4dd8f32d978d24abacbf80b918cf71927024d9bf`, the focused
+  Notebook Studio browser journey passed **1/1** using an isolated production-
+  mode local server on port 3973. It verified source-ID submission, source
+  register and citation-audit rendering, review, and export-link behavior.
+- The browser test intercepted runtime APIs with fixtures; it proves current
+  UI workflow behavior, not a live Supabase write, actual file upload, hosted
+  parity, or user acceptance. Provider calls remained disabled. No tenant or
+  hosted state changed.
+- Playwright's generated `tsconfig.json` include paths were removed after the
+  run. The checked-in config is unchanged; the verification result is local
+  evidence only and does not satisfy the release ledger's attached-evidence
+  fields.
