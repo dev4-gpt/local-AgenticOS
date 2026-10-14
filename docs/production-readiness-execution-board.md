@@ -213,3 +213,18 @@ release verification without deploying or spending beyond approved limits.
   references do not establish archived video bytes or transcripts. A fresh
   read-only Drive listing found 107 files, but its filenames alone do not
   reconcile those 47 lesson IDs against the canonical classroom inventory.
+
+## Continuation Update - AI Evaluation And Observability
+
+- On Node 24.19.0, the current-source offline AI release suite passed 14/14
+  deterministic cases. The owner-only receipt at
+  `tmp/ai-release-local-current-2026-10-13.json` binds to source commit
+  `6fb1625c7c49d25015598292f82b59b05afd4fbc`, records zero model samples and
+  zero provider cost, and explicitly reports `productionReady: false`.
+- Focused observability and job-trace tests passed 13/13, covering complete
+  ledger reads, fail-closed pagination/data validation, trace isolation, and
+  redaction of prompt, output, credential, and malformed historical metadata.
+- The receipt records `workingTreeClean: false` because pre-existing archive
+  and evidence changes remain uncommitted. These runs make no provider calls
+  and do not establish live hosted telemetry, real model quality, buyer
+  acceptance, or release readiness.
