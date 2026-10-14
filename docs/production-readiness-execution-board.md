@@ -673,14 +673,16 @@ does not authorize hosted changes, provider calls, or spending.
   provider calls disabled and no Supabase credentials loaded, the local
   production server returned `/login` 200 and redirected unauthenticated
   `/notebook` to `/login?next=%2Fnotebook` (307).
-- The Notebook Studio Playwright workflow did not reach its UI assertions.
-  First, Next dev mode exhausted the host's file-watcher limit (`EMFILE`) and
-  repeatedly restarted. Production mode built and started, but both system
-  Chrome and bundled Chromium were denied the macOS Mach bootstrap permission
-  (`bootstrap_check_in ... Permission denied`) before a browser page opened.
-  Classify this as blocked browser evidence, not a product test failure or
-  pass. The generated watcher output was removed and the auto-edited
-  `tsconfig.json` paths were restored.
+- Initial Notebook Studio Playwright attempts did not reach their UI
+  assertions. Next dev mode exhausted the host's file-watcher limit (`EMFILE`) and
+  repeatedly restarted. Sandbox browser launches then failed at the macOS Mach
+  bootstrap boundary. After a permission-gated isolated Chromium launch against
+  the existing production-mode local server, the Playwright workflow passed
+  **1/1**: the UI submitted notebook/source IDs (not source text), and rendered
+  the persisted source register with its source and approved-brief links. This
+  is a mocked local workflow, not signed-in parity or live persistence. The
+  generated watcher output was removed and auto-edited `tsconfig.json` paths
+  were restored.
 - Same-user signed-in flow remains unverified: the private parity env still
   lacks the Supabase anon key and allowed email. No hosted request, migration,
   database write, or provider call was made.
