@@ -1350,3 +1350,20 @@ does not authorize hosted changes, provider calls, or spending.
   private local graph artifact, not a hosted import receipt; 29 lesson text
   captures remain missing and video bytes/transcripts remain uncollected. No
   hosted database, deployment, provider, or billing action occurred.
+
+## Continuation Update - Current AI Gate and Local Auth Preflight (2026-10-14)
+
+- The private internal-beta parity config now passes the launcher's owner-only
+  check; it reports credential names only and confirms provider calls disabled.
+  The expected local parity cookie file is absent. Port 3939 already has a
+  listener, which was not replaced or disturbed, so same-user local parity is
+  still unverified.
+- `npm run verify:ai-evaluation` under supported Node 24 passes **16/16**
+  deterministic local cases. The receipt is bound to source commit `e8b8641`,
+  records zero model samples and no provider requests, and leaves
+  `productionReady: false`. Running under unsupported Node 26 correctly failed
+  the runtime gate despite the same cases passing; that receipt is not treated
+  as release evidence.
+- A fresh `npm run verify:production-readiness` on `e8b8641` returns
+  `releaseReady: false`, one blocker (`ledger_bucket_not_configured`), and **37**
+  unevaluated evidence fields. No bucket/IAM change or deployment was attempted.
