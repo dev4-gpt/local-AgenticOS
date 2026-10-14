@@ -74,3 +74,35 @@ test("private source graph export keeps media-only lessons out of text coverage"
   expect(graph.edges.map((edge) => edge["@type"])).toContain("hasVideoReference");
   expect(graph.provenance).toMatchObject({ textSourceSegments: 0, mediaOnlySourceSegments: 1, complete: false });
 });
+
+test("private source graph export keeps transcript text separate and linked to its video and lesson", () => {
+  const transcriptBatch = JSON.stringify({ sources: [{
+    title: "ChatGPT Voice",
+    text: "[No lesson text or transcript supplied in the authorized export.]",
+    url: "https://www.skool.com/ai-profit-lab-7462/classroom/9daf24e1?md=lesson123",
+    tab: "26th July: ChatGPT Voice [lesson123:1/1]",
+    links: [{ url: "https://www.youtube.com/watch?v=abc123", text: "Media: ChatGPT Voice Update is WILD!" }],
+    transcripts: [{
+      url: "https://www.youtube.com/watch?v=abc123",
+      title: "ChatGPT Voice Update is WILD! transcript",
+      text: "Separate transcript text.",
+      segment: 1,
+      segmentCount: 1,
+      collectedAt: "2026-10-14T21:00:00.000Z",
+    }],
+  }] });
+  const transcriptManifest = {
+    startUrl: "https://example.com/classroom",
+    batches: [{ file: "batch.json", sha256: createHash("sha256").update(transcriptBatch).digest("hex") }],
+    coverage: { outputSources: 1, outputLinks: 1, pageTextMissingSourceIds: ["lesson123"], pendingPages: 1 },
+  };
+
+  const graph = buildPrivateSourcePackGraph(transcriptManifest, () => transcriptBatch, "/private");
+  const lesson = graph["@graph"].find((node) => node["@type"] === "LearningResource");
+  const transcript = graph["@graph"].find((node) => node["@type"] === "Transcript");
+  expect(lesson).toMatchObject({ contentStatus: "metadata_only", pageTextCaptured: false });
+  expect(lesson).not.toHaveProperty("text");
+  expect(transcript).toMatchObject({ text: "Separate transcript text.", contentStatus: "transcript_available" });
+  expect(graph.edges.filter((edge) => ["hasTranscript", "transcript_of"].includes(edge["@type"]))).toHaveLength(2);
+  expect(graph.provenance).toMatchObject({ pageTextMissingSourceSegments: 1, transcriptSegments: 1, transcriptCharacters: 25 });
+});

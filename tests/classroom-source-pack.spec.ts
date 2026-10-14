@@ -134,6 +134,39 @@ test("owner export preserves structured media and flags video-only lessons", () 
   ]);
 });
 
+test("classroom transcripts stay separate from missing lesson-page text", () => {
+  const lesson = {
+    title: "Voice lesson",
+    url: `${startUrl}?md=voice`,
+    media: [{ kind: "video", title: "Voice update", url: "https://www.youtube.com/watch?v=abc123" }],
+    transcripts: [{
+      url: "https://www.youtube.com/watch?v=abc123",
+      title: "Voice update transcript",
+      text: "First transcript segment. Second transcript segment.",
+      collectedAt: "2026-10-14T21:00:00.000Z",
+    }],
+  };
+  const prepared = prepareClassroomSourcePack({ startUrl, sources: [lesson], skipped: [], pending: [] });
+  const output = prepared.batches[0].sources[0];
+  expect(prepared.coverage).toMatchObject({
+    mediaOnlySources: 0,
+    mediaOnlySourceIds: [],
+    pageTextMissingSourceIds: [expect.stringMatching(/^src_[a-f0-9]{20}$/)],
+    transcriptSegments: 1,
+    transcriptCharacters: lesson.transcripts[0].text.length,
+  });
+  expect(output.text).toContain("No lesson text or transcript supplied");
+  expect(output.transcripts).toEqual([{
+    url: lesson.transcripts[0].url,
+    title: lesson.transcripts[0].title,
+    text: lesson.transcripts[0].text,
+    segment: 1,
+    segmentCount: 1,
+    collectedAt: lesson.transcripts[0].collectedAt,
+  }]);
+  expect(prepared.batches[0].skipped).toContain("1 source(s) have transcript text but no captured lesson-page text; review pageTextMissingSourceIds in the private manifest");
+});
+
 test("large media-only exports keep a bounded warning and every missing-transcript ID", () => {
   const sources = Array.from({ length: 105 }, (_, index) => ({
     title: `Playback ${index + 1}`,

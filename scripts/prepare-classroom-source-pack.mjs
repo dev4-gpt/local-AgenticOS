@@ -50,6 +50,9 @@ export function prepareClassroomSourcePack(run) {
   let inputLinks = 0;
   let mediaReferences = 0;
   const mediaOnlySourceIds = [];
+  const pageTextMissingSourceIds = [];
+  let transcriptSegments = 0;
+  let transcriptCharacters = 0;
   for (const source of run.sources) {
     if (!source || typeof source.title !== "string" || !source.title.trim() || source.title.trim().length > 240
       || typeof source.url !== "string" || (source.text !== undefined && typeof source.text !== "string")
@@ -59,6 +62,7 @@ export function prepareClassroomSourcePack(run) {
       throw new Error("classroom_source_invalid");
     }
     if ((source.media !== undefined && !Array.isArray(source.media))
+      || (source.transcripts !== undefined && !Array.isArray(source.transcripts))
       || (source.video_page_links !== undefined && !Array.isArray(source.video_page_links))) {
       throw new Error("classroom_media_invalid");
     }
@@ -82,10 +86,31 @@ export function prepareClassroomSourcePack(run) {
       if (typeof value !== "string") throw new Error("classroom_media_invalid");
       return { url: value, text: "Media: Video page" };
     });
+    const transcripts = (source.transcripts ?? []).flatMap((item) => {
+      if (!item || typeof item !== "object" || typeof item.text !== "string" || !item.text.trim()
+        || item.text.length > 500_000 || SECRET_LIKE.test(item.text)
+        || (item.title !== undefined && (typeof item.title !== "string" || !item.title.trim() || item.title.length > 280 || SECRET_LIKE.test(item.title)))
+        || (item.collectedAt !== undefined && (typeof item.collectedAt !== "string" || Number.isNaN(Date.parse(item.collectedAt))))) {
+        throw new Error("classroom_transcript_invalid");
+      }
+      const transcriptUrl = safeExportUrl(item.url);
+      const segments = textChunks(item.text.trim());
+      transcriptSegments += segments.length;
+      transcriptCharacters += item.text.trim().length;
+      return segments.map((text, index) => ({
+        url: transcriptUrl,
+        title: item.title?.trim() || source.title.trim(),
+        text,
+        segment: index + 1,
+        segmentCount: segments.length,
+        ...(item.collectedAt ? { collectedAt: item.collectedAt } : {}),
+      }));
+    });
     const suppliedLinks = [...(source.links ?? []), ...mediaLinks, ...videoLinks];
-    if (!source.text?.trim() && !mediaLinks.length && !videoLinks.length) throw new Error("classroom_source_invalid");
+    if (!source.text?.trim() && !mediaLinks.length && !videoLinks.length && !transcripts.length) throw new Error("classroom_source_invalid");
     if (!source.text?.trim()) {
-      mediaOnlySourceIds.push(id);
+      pageTextMissingSourceIds.push(id);
+      if (!transcripts.length) mediaOnlySourceIds.push(id);
     }
     inputLinks += suppliedLinks.length;
     const safeLinks = suppliedLinks.map((link) => {
@@ -113,6 +138,7 @@ export function prepareClassroomSourcePack(run) {
         ...(publishedAt ? { publishedAt } : {}),
         collectedAt: source.collectedAt,
         links: links[index] ?? [],
+        ...(index === 0 && transcripts.length ? { transcripts } : {}),
       });
     }
   }
@@ -178,6 +204,7 @@ export function prepareClassroomSourcePack(run) {
   }
   const skipped = [...(run.skipped ?? [])];
   if (mediaOnlySourceIds.length) skipped.push(`${mediaOnlySourceIds.length} media-only ${mediaOnlySourceIds.length === 1 ? "source has" : "sources have"} no lesson text or transcript; review mediaOnlySourceIds in the private manifest`);
+  if (pageTextMissingSourceIds.length && pageTextMissingSourceIds.length > mediaOnlySourceIds.length) skipped.push(`${pageTextMissingSourceIds.length - mediaOnlySourceIds.length} source(s) have transcript text but no captured lesson-page text; review pageTextMissingSourceIds in the private manifest`);
   if (Array.isArray(run.pending) && run.pending.length) skipped.push(`${run.pending.length} discovered pages remain uncollected`);
   if (!Array.isArray(run.pending)) skipped.push("Collection coverage unknown: no pending-page inventory in source run");
   if (declaredInventory?.missingPages.length) skipped.push(`${declaredInventory.missingPages.length} ${declaredInventory.missingPages.length === 1 ? "page is" : "pages are"} missing from the declared owner inventory; review the private manifest`);
@@ -196,8 +223,11 @@ export function prepareClassroomSourcePack(run) {
       inputLinks,
       outputLinks,
       mediaReferences,
+      transcriptSegments,
+      transcriptCharacters,
       mediaOnlySources: mediaOnlySourceIds.length,
       mediaOnlySourceIds,
+      pageTextMissingSourceIds,
       skippedPages: Array.isArray(run.skipped) ? run.skipped.length : null,
       pendingPages: Array.isArray(run.pending) ? run.pending.length : null,
       discoveredQueueExhausted: Array.isArray(run.pending) && run.pending.length === 0,
