@@ -106,6 +106,8 @@ test("source-pack merge preserves source identifiers, exact lesson links, and re
   expect(source.identifier).toContain("drive_1Jze5NRrpekft50CWCjt0wN96bXVlc8CH");
   expect(lesson).toMatchObject({ contentStatus: "text_segments_available", pageTextCaptured: true, textCaptureSegmentCount: 1 });
   expect(merged.edges).toContainEqual({ "@type": "hasTextCaptureSegment", source: lesson["@id"], target: source["@id"] });
+  expect(merged["@graph"].filter((node) => node["@type"] === "VideoObject")).toHaveLength(2);
+  expect(merged.edges.filter((edge) => edge["@type"] === "hasVideoReference")).toHaveLength(2);
   expect(merged.provenance).toMatchObject({
     complete: false,
     videoAssetsIncluded: false,

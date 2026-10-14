@@ -1878,3 +1878,22 @@ does not authorize hosted changes, provider calls, or spending.
   identity through read-only evidence. Then run a scoped same-tenant journey
   without seeding or changing existing records. Keep hosted writes, migration,
   and deployment held until the environment designation is clear.
+
+## Continuation Update - Skool Graph Preservation Recheck (2026-10-14)
+
+- The current private source-pack manifest records **193** source segments and
+  **7,577** links; 175 segments came from existing PDFs and 18 from Drive.
+  Publication dates are present on 18 segments; **25 pages remain pending**,
+  discovery is not exhausted, and the export is explicitly incomplete.
+- Comparing the newest `agentos-combined-private-graph-validated` artifact
+  (492 nodes / 7,770 edges) against the richer
+  `agentos-combined-with-register-drive-changelog-system-oct10` graph (819
+  nodes / 8,711 edges) shows the newer file is a strict subset: it omits 129
+  lesson nodes, all 105 video-reference nodes, 93 URL nodes, and 941 edges.
+  Every node and edge in the smaller file is already present unchanged in the
+  richer graph. Do not replace the richer candidate with the newer subset.
+- Added a regression assertion that source-pack merges preserve existing video
+  nodes and `hasVideoReference` edges. With the private manifest explicitly
+  selected, the graph, parser, sanitizer, and merge suites pass **15/15** under
+  Node 24. No tenant import or Drive upload occurred; the local graph remains
+  private and incomplete.
