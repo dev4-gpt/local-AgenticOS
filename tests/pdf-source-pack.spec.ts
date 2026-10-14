@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { parseClientSourcePack } from "../src/lib/clientSourcePack";
-import { cleanPdfText, parsePdfLinks, parsePdfTextLinks, pdfSourcePack } from "../scripts/prepare-pdf-source-pack.mjs";
+import { buildPdfSourcePackManifest, cleanPdfText, parsePdfLinks, parsePdfTextLinks, pdfSourcePack } from "../scripts/prepare-pdf-source-pack.mjs";
 
 test("PDF source preparation preserves extracted lesson text and embedded URLs in the reviewed import format", () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), "agentos-pdf-pack-"));
@@ -56,6 +56,54 @@ test("plain-text URL extraction trims sentence punctuation and omits URLs contai
       links: [{ url: "https://example.org/guide", text: "PDF text URL" }],
       skipped: ["PDF text contains a credential-bearing or invalid URL omitted"],
     });
+});
+
+test("PDF source preparation can redact credential-like text before building a source pack", () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "agentos-pdf-pack-"));
+  const pdfPath = path.join(directory, "bonus.pdf");
+  writeFileSync(pdfPath, "%PDF synthetic fixture");
+  try {
+    const result = pdfSourcePack({
+      pdfPath,
+      pageUrl: "https://drive.google.com/file/d/example/view",
+      title: "Bonus resource",
+      sanitizeCredentialLikeText: true,
+      runCommand: (command, args) => {
+        if (command === "pdfinfo" && args[0] === "-url") return "";
+        if (command === "pdfinfo") return "Pages: 1\n";
+        if (command === "pdftotext") return "API key: sk-abcdefghijklmnop1234\nA reusable client proposal workflow.";
+        throw new Error("unexpected_command");
+      },
+    });
+    const parsed = parseClientSourcePack(result.batches[0]);
+    expect(result.metadata.redactedCredentialLikeValues).toBe(1);
+    expect(parsed.sources[0].text).toContain("API key: ***");
+    expect(parsed.sources[0].text).not.toContain("sk-abcdefghijklmnop1234");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("PDF source manifests include the totals required by the production batch selector", () => {
+  const result = {
+    batches: [{ startUrl: "https://drive.google.com/file/d/example/view", skipped: ["one skipped link"] }],
+    coverage: { outputSources: 1, outputLinks: 2 },
+    metadata: { title: "Bonus resource" },
+  };
+  const manifest = buildPdfSourcePackManifest(result, [{
+    file: "bonus.part-001.json",
+    sha256: "a".repeat(64),
+    sources: 1,
+    links: 2,
+  }]);
+  expect(manifest).toMatchObject({
+    version: 1,
+    startUrl: "https://drive.google.com/file/d/example/view",
+    sources: 1,
+    links: 2,
+    skipped: 1,
+    batches: [{ file: "bonus.part-001.json", sources: 1, links: 2 }],
+  });
 });
 
 test("scanned/image-only PDFs fail with an explicit OCR-required result", () => {

@@ -129,6 +129,21 @@ export function pdfSourcePack({ pdfPath, pageUrl, title, publishedDate, collecte
   };
 }
 
+export function buildPdfSourcePackManifest(result, batchFiles) {
+  const startUrl = result?.batches?.[0]?.startUrl;
+  if (typeof startUrl !== "string" || !Array.isArray(batchFiles) || !batchFiles.length) throw new Error("pdf_source_manifest_invalid");
+  return {
+    version: 1,
+    startUrl,
+    sources: result.coverage.outputSources,
+    links: result.coverage.outputLinks,
+    skipped: result.batches.reduce((total, batch) => total + batch.skipped.length, 0),
+    ...result.metadata,
+    coverage: result.coverage,
+    batches: batchFiles.map(({ file, sha256, sources, links }) => ({ file, sha256, sources, links })),
+  };
+}
+
 if (process.argv[1]?.endsWith("/prepare-pdf-source-pack.mjs")) {
   const args = process.argv.slice(2);
   const [pdfPath, pageUrl, output, ...options] = args;
@@ -136,8 +151,9 @@ if (process.argv[1]?.endsWith("/prepare-pdf-source-pack.mjs")) {
     const index = options.indexOf(name);
     return index < 0 ? undefined : options[index + 1];
   };
+  const sanitizeCredentialLikeText = options.includes("--sanitize-credential-like-text");
   if (!pdfPath || !pageUrl || !output || options.some((item, index) => ["--title", "--published-date"].includes(item) && !options[index + 1])) {
-    console.error("Usage: node scripts/prepare-pdf-source-pack.mjs lesson.pdf lesson-page-url output.json [--title title] [--published-date YYYY-MM-DD]");
+    console.error("Usage: node scripts/prepare-pdf-source-pack.mjs lesson.pdf source-page-url output.json [--title title] [--published-date YYYY-MM-DD] [--sanitize-credential-like-text]");
     process.exitCode = 2;
   } else {
     try {
@@ -146,6 +162,7 @@ if (process.argv[1]?.endsWith("/prepare-pdf-source-pack.mjs")) {
         pageUrl,
         title: option("--title"),
         publishedDate: option("--published-date"),
+        sanitizeCredentialLikeText,
       });
       const parsed = path.parse(output);
       const batchFiles = result.batches.map((batch, index) => {
@@ -157,8 +174,8 @@ if (process.argv[1]?.endsWith("/prepare-pdf-source-pack.mjs")) {
       const manifest = path.join(parsed.dir, `${parsed.name}.manifest.json`);
       if ([...batchFiles.map((batch) => batch.file), manifest].some((file) => existsSync(file))) throw new Error("output_exists");
       for (const batch of batchFiles) writePrivate(batch.file, batch.encoded);
-      const manifestBatches = batchFiles.map(({ file, sha256, sources, links }) => ({ file, sha256, sources, links }));
-      writePrivate(manifest, JSON.stringify({ version: 1, ...result.metadata, coverage: result.coverage, batches: manifestBatches }, null, 2));
+      const sourceManifest = buildPdfSourcePackManifest(result, batchFiles);
+      writePrivate(manifest, JSON.stringify(sourceManifest, null, 2));
       console.log(JSON.stringify({ manifest, pages: result.metadata.pages, sources: result.coverage.outputSources, links: result.coverage.outputLinks, skipped: result.coverage.skippedPages, batches: batchFiles.length }));
     } catch (error) {
       console.error(error instanceof Error ? error.message : "pdf_source_pack_failed");

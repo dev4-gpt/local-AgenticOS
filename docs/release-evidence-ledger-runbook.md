@@ -1,24 +1,35 @@
 # Release-evidence ledger deployment runbook
 
-**No release-ledger project is currently approved or configured.** Do not
-enable billing, create a bucket or service account, or change IAM until the
-project owner selects and reviews the target project, its billing status,
-writer identity, and bucket name. The verifier has no default bucket; pass
-`--ledger-bucket <reviewed-ledger-bucket>` explicitly for publication and
-strict validation only after that review.
+**The release-ledger bucket exists and is configured, but its use for a new
+release record still requires explicit release authorization.** The owner
+selected `veloce-agenticos-2026` for read-only inspection on 2026-10-14. Do
+not create resources, change IAM, deploy, or publish a record based only on
+that inventory. The verifier has no default bucket; pass
+`--ledger-bucket <reviewed-ledger-bucket>` explicitly when performing an
+authorized verification or publication.
 
 ## Current read-only inventory (2026-10-14)
 
-- `Veloce Ai` (`gen-lang-client-0685339364`): Cloud Storage is unavailable
-  until billing is enabled; the bucket list has no rows. No billing or IAM
-  changes were made.
-- `agentos-mvp`: previously inspected buckets are used for other purposes and
-  are not verified release-ledger targets.
-- `veloce-agenticos-2026`: remains an unverified historical project name; do
-  not infer that it is the right project or use it for setup.
+- `veloce-agenticos-2026` (`Veloce AgenticOS`): owner-confirmed for read-only
+  inspection. Existing bucket
+  `veloce-agenticos-2026-veloce-release-ledger` is in `ASIA-SOUTH1`; existing
+  `releases/<commit>/` prefixes were listed. Uniform bucket-level access,
+  public access prevention, and object versioning are enabled. The bucket has
+  a seven-day soft-delete recovery window.
+- The custom `veloceReleaseLedgerWriter` role includes only
+  `storage.objects.create`, `storage.objects.get`, and `storage.objects.list`.
+  The bucket policy also includes project owner/editor legacy bindings and
+  grants `roles/storage.objectViewer` to `aryamandev777@gmail.com`. The writer
+  service account's Token Creator binding includes that user and
+  `veloce-ci-deployer-production@veloce-agenticos-2026.iam.gserviceaccount.com`.
+- `agentos-mvp` and `Veloce Ai` were not used for this inspection. No billing,
+  bucket, IAM, object, or deployment setting was changed. Inspection does not
+  establish that a particular release is ready or authorize publication.
 
-The target project must be selected by the owner before setup. A missing bucket
-is a release blocker, not permission to turn on billing.
+The bucket is an existing candidate, so creation and billing enablement are
+not required for ledger access. Review the intended release and its evidence
+before publishing. A missing record for a commit remains a release blocker;
+it is not permission to publish an incomplete record.
 
 This runbook creates the one-time, org-wide infrastructure for the release
 evidence ledger. It is a singleton, like the provisioner service accounts and

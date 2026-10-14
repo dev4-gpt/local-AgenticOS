@@ -2499,3 +2499,23 @@ does not authorize hosted changes, provider calls, or spending.
 - These are local fixture/API contract tests. They do not verify production
   analytics configuration, live tenant telemetry, hosted traces, or operator
   dashboards; those release evidence items remain open.
+
+## Continuation Update - Release Ledger Bucket Inspection (2026-10-14)
+
+- After the owner confirmed `veloce-agenticos-2026` as the project to inspect,
+  read-only GCP inventory found the existing
+  `veloce-agenticos-2026-veloce-release-ledger` bucket in `ASIA-SOUTH1` and
+  existing `releases/<commit>/` prefixes. Uniform bucket access, public access
+  prevention, and versioning are enabled; the bucket retains soft-deleted
+  objects for seven days.
+- The custom writer role is limited to object create/get/list. The existing
+  bucket policy also includes project owner/editor legacy bindings, and the
+  writer service account can be impersonated by the user and production CI
+  deployer. These are observed permissions, not changes made in this check.
+- This supersedes the earlier statement that `gcloud` inventory could not
+  proceed and the statement that the ledger bucket was unverified. No IAM,
+  bucket, object, billing, tenant, deployment, or release-ledger setting was
+  changed, and no record was published. The bucket inventory does not prove
+  the current candidate release or its evidence is ready; customer journey,
+  hosted parity, migration, buyer, security/operations/legal approval, and
+  rollback evidence remain open.
