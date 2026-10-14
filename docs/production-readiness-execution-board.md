@@ -1185,3 +1185,19 @@ does not authorize hosted changes, provider calls, or spending.
   tenant. Full archive coverage and actual video assets remain incomplete.
 - No Skool session scraping, hosted import/write, provider call, deployment,
   or billing action occurred.
+
+## Continuation Update - Local Customer Browser Gate (2026-10-14)
+
+- The client browser suite now starts against one configured production-mode
+  local runtime with provider calls disabled and a deliberately restricted
+  route manifest. Its navigation fixtures use synthetic sessions; notebook,
+  integrations, auth, source-import, memory, and observability requests use
+  synthetic or intercepted data only.
+- The complete `tests/client-*-browser.spec.ts` suite passes **31/31** and
+  `npm run typecheck` passes. The test harness correction is committed as
+  `b126a0b` and pushed to `wip/backup-2026-10-03`.
+- This proves current-source local browser behavior under the test manifest;
+  it does not prove hosted build parity, same-user hosted access, the approved
+  production route manifest, or any hosted data mutation. The existing local
+  authenticated parity server at port `3976` was not changed. Production
+  readiness remains false pending the release gates above.

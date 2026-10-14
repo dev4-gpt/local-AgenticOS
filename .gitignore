@@ -20,6 +20,7 @@ __pycache__/
 /.next-veloce-recovery-*/
 /.next-v0/
 /.next-client-test/
+/.next-client-browser/
 /.next-client/
 /.next-client-prod/
 /.next-client-prod-*/
