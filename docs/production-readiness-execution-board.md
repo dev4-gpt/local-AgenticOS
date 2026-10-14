@@ -2120,3 +2120,34 @@ does not authorize hosted changes, provider calls, or spending.
   not appropriate until deployment identities, migration receipts, tests, and
   operations/legal approvals are available; preserve the seven-day recovery
   setting.
+
+## Continuation Update - Cloud Test Runtime Configuration Audit (2026-10-14)
+
+- Read-only Cloud Run inventory in project `veloce-agenticos-2026` found the
+  expected `veloce-cloud-test` service but no separately named internal-beta
+  service. Cloud Test's ready revision is
+  `veloce-cloud-test-acceptance-9417c3c`, created 2026-09-23, serving immutable
+  image digest `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`.
+  Its revision suffix resolves to local commit `9417c3c` (2026-09-23), but the
+  full OCI source label could not be verified because Artifact Registry build
+  metadata access was denied. The current source is 354 changed paths beyond
+  that commit; do not treat this as exact image/source attestation.
+- Compared only non-secret settings in the live service template with the
+  owner-only local parity config. Both use Supabase project ref
+  `ppmoqjtmjtfxadsnejqc`, but local is tenant `internal-beta` with provider
+  calls disabled and one allowlisted email, while Cloud Test is tenant
+  `veloce-cloud-test` with provider calls enabled and `CLIENT_RETENTION_DAYS=14`.
+  Cloud Test does not allowlist `/api/client-runtime/source-import` or
+  `/api/client-runtime/build-identity`; its live runtime therefore cannot
+  satisfy the source-import or build-identity parity checks. Different tenant
+  slugs also mean the observed 0-vs-9 Notebook count is not evidence of a
+  same-tenant comparison.
+- The Cloud Test setting `provider calls enabled` is not evidence of a hard
+  spend cap. Do not make Cloud Test model requests under a `$0` spend
+  assumption until provider-call policy and provider-side budget limits are
+  verified. Retention
+  is inconsistent with the requested 45-day per-item policy. This audit was
+  read-only; no tenant/database writes, provider calls, deployments, or cloud
+  configuration changes occurred. Artifact Registry build metadata remains
+  unreadable to the active account because its `agentos-mvp` service-usage
+  consumer permission is missing.
