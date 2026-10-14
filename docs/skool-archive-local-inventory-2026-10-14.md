@@ -110,9 +110,10 @@ directory are absent from Drive.
 ## Next Archive Actions
 
 1. Reconcile all lesson URLs and md identifiers in the Drive Markdown register,
-   spreadsheet, and local v7 manifest; resolve the 107-versus-109 inventory
-   discrepancy and establish the canonical May 1-October 10 lesson list plus
-   the separate AgentOS System lesson.
+   spreadsheet, and combined local graph; confirm the 78 captured IDs and
+   resolve the 107-versus-109 inventory discrepancy to establish the canonical
+   May 1-October 10 lesson list plus the separate AgentOS System lesson. The
+   current manifest comparison leaves 29 register IDs without lesson text.
 2. Resolve the four ambiguous filename dates using the visible classroom
    metadata, not title guesses.
 3. For every lesson, record whether HTML/PDF, outbound links, and video
@@ -175,10 +176,43 @@ this manifest. The corresponding local graph at
 `tmp/authorized-skool-import/agentos-local-graph-v10.jsonld` contains 442
 graph nodes and 7,712 edges.
 
-This refresh does not improve the coverage boundary: the v10 provenance still
-sets `completeCommunityExport`, `discoveredQueueExhausted`, `complete`, and
-`videoAssetsIncluded` to false. It remains a local prepared graph, not an
-accepted tenant import. The course inventory discrepancy, 47 missing register
-IDs relative to the v7 reconciliation, video/media capture, authenticated
-tenant identity, and hosted route/retention verification remain open. No Drive
-files, tenant records, hosted database, or provider settings were changed.
+This PDF-only v10 snapshot did not improve the v7 coverage boundary: its
+provenance still set `completeCommunityExport`, `discoveredQueueExhausted`,
+`complete`, and `videoAssetsIncluded` to false. It was a local prepared graph,
+not an accepted tenant import. The later Drive-supplement reconciliation is
+recorded below. No Drive files, tenant records, hosted database, or provider
+settings were changed during this PDF-only refresh.
+
+## Combined Local Archive Reconciliation (2026-10-14)
+
+The private combined manifest at
+`tmp/authorized-skool-import/combined-agentos-archive-2026-10-14.manifest.json`
+joins the six hash-verified PDF v10 batches with the later Drive supplement.
+Its 193 source segments consist of 175 segments from 64 PDFs plus 18
+substantive Drive page captures; its graph records 7,577 link references. A
+read-only join by the `md` query ID against the 107-entry Markdown register
+confirms 78 distinct lesson IDs with text, up from 60 in the earlier v7-only
+inventory.
+
+The remaining 29 registered IDs are accounted for by the supplement metadata:
+25 discovered classroom pages remain uncollected, and 4 Drive entries contain
+only a title/video reference without lesson text. This accounts for the
+previous 47-ID v7 gap: 18 of those IDs now have text in the supplement, leaving
+29. This does not resolve the separate 107-register versus 109-spreadsheet
+inventory discrepancy or prove complete date coverage.
+
+The combined graph contains 492 nodes (193 `LearningResource` entries and 299
+unique URL nodes). Its provenance remains `complete: false`,
+`discoveredQueueExhausted: false`, and `videoAssetsIncluded: false`. The
+supplement has 40 outbound links but no media references; the graph's link
+references and the three media references noted in an earlier Drive pack are
+not video bytes or transcripts. No hosted tenant import was made.
+
+The repository does contain Firecrawl integrations for bounded web research,
+SEO, and outreach. The separate `scripts/fetch-skool-classroom-firecrawl.py`
+is intentionally fail-closed for authenticated Skool collection and advises
+against forwarding Skool session cookies to Firecrawl. Thus the remaining
+blocker is access to the missing source content through an owner/platform-
+approved export or a directly available signed-in browser session, not another
+Firecrawl key or a new scraping framework. Never place session cookies or
+provider keys in chat or in a third-party scrape request.

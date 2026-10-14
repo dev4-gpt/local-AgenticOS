@@ -17,7 +17,7 @@ release verification without deploying or spending beyond approved limits.
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
 | Local product and customer journey | In progress; unauthenticated checks pass; authenticated parity preflight reports missing config | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Privately populate `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `CLIENT_ALLOWED_USER_EMAILS` in `.private-client-kits/internal-beta-parity.env`; keep `CLIENT_PROVIDER_CALLS_ENABLED=0`. Use only the manifest-verified URL and `internal-beta` tenant, read-only against production-backed project `ppmoqjtmjtfxadsnejqc`; no writes or migrations |
-| Authorized Skool archive and graph import | In progress; 60/107 register IDs captured locally; local graph export built, not hosted-imported | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Collect/reconcile the 47 register IDs absent from local v7, resolve the 107-versus-109 lesson count and one uncollected page flagged by both Drive packs, and account for videos/resources; then run a scoped graph import only against the confirmed internal-beta target |
+| Authorized Skool archive and graph import | In progress; 78/107 register IDs have local text captures in the merged private graph; not hosted-imported | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Capture the remaining 29 register IDs (25 discovered pages uncollected; 4 title/video-only), reconcile the 107-register vs. 109-spreadsheet inventory, and account for video bytes/transcripts/resources; then consider a scoped import only against a confirmed internal-beta target |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Current-source deterministic gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled under the $0 paid-spend cap; use current offline receipt and trace-redaction tests as local-only evidence until a separately approved zero-cost hosted/model path is verified |
 | MiroFish buyer pilot | Human review complete; 2/2 responses assessed, 1/2 fully approved; synthetic pilot-quality gate fails; no market validation | Reviewed generated posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Stop spending review time on Post 4; retain it only as a low-value affordability negative control. Any repeat requires separate authorization and a hard cost check |
@@ -374,6 +374,56 @@ release verification without deploying or spending beyond approved limits.
   ledger, and 37 ledger-backed evidence fields remain unevaluated. No browser
   data was changed, no deployment or hosted write occurred, and no provider
   call was made.
+
+## Continuation Update - Local Journey, Security, and Archive Recheck (2026-10-14)
+
+- At commit `ca5aeda8e7de62867e51e86ba4cefd4c5ca7bc9a`, 27 server-free
+  contract tests passed across customer-journey receipts, selected-source
+  provenance, source-pack validation/import guards, and tenant-scoped
+  observability accuracy. These are local contract tests, not a completed
+  browser or signed-in hosted customer journey.
+- `npm run verify:security` passed on Node `v24.18.0`, including the security
+  release and provider-policy gates, lifecycle/retention (22 tests), notebook
+  execution/provenance (19 tests), client runtime/storage config evidence (14
+  tests), and the declared offline pilot/integration manifest checks. No
+  deployment, hosted request, or provider call was made.
+- The deterministic AI evaluation passed 16/16 on Node `v24.18.0`, with the
+  local gate passing, zero model samples, zero provider requests, and
+  `productionReady: false`. A first attempt under Node `v26.4.0` failed only
+  the supported-engine gate; the supported-runtime rerun is authoritative.
+- The provider-disabled product browser suite passed 16/16 on unused loopback
+  port 3965: membership/login and redirect behavior, Notebook Studio selected
+  source IDs and source register, and consent-gated source import. The default
+  port 3939 was already occupied, so the Playwright config now supports
+  `CLIENT_RUNTIME_TEST_PORT` and `CLIENT_RUNTIME_TEST_URL`; the existing process
+  was not stopped or reused. These are local mocked-runtime checks, not hosted
+  same-user parity.
+- `npx eslint playwright.product-experience.config.ts --max-warnings=0` and
+  `npm run typecheck` passed after the test-port configuration change.
+- Fresh production-readiness verification on this commit still returns
+  `releaseReady: false`: the release ledger bucket is unconfigured and 37
+  ledger-backed fields are not evaluated. No ledger or hosted target was
+  configured as part of this check.
+- Reconciled the ignored private PDF v10 manifest with the later 18-page Drive
+  supplement: the merged graph has 193 text segments, 7,577 link references,
+  and 78 distinct IDs matching the 107-entry Markdown register. This improves
+  the earlier v7 count from 60 to 78; 29 register IDs remain without lesson
+  text (25 discovered/uncollected and 4 title/video-only). The source graph
+  remains `complete: false`, `discoveredQueueExhausted: false`, and
+  `videoAssetsIncluded: false`. All seven hashes in the combined manifest
+  match their batch files, and the four title/video-only IDs are confirmed to
+  be among the 29 remaining IDs; no hosted import was attempted.
+- The spreadsheet's 109-lesson count (108 dated plus standalone System) still
+  conflicts with the 107-ID Markdown register. The Drive May 11-30 JSON packs
+  are partial and overlap earlier captures; they do not close this remaining
+  gap. Resolve the canonical inventory and obtain the remaining lesson text,
+  transcript/media, and resource evidence before calling the archive complete.
+- Repo capability check: Firecrawl is wired for bounded public web research and
+  SEO/outreach tasks. `scripts/fetch-skool-classroom-firecrawl.py` explicitly
+  refuses authenticated Skool collection and warns against sending Skool
+  session cookies to Firecrawl. This is not a missing Firecrawl API key; it is
+  the current deliberate boundary. Use an owner/platform-approved export or a
+  directly accessible signed-in browser session without exporting cookies.
 
 ## Acceleration Plan - Reuse Existing Tooling (2026-10-14)
 
