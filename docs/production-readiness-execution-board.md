@@ -195,3 +195,21 @@ release verification without deploying or spending beyond approved limits.
   customer journey, or tenant-isolation behavior in a hosted environment.
 - Hosted and release tracks remain open; this local gate is not evidence of
   live service configuration or a completed customer journey.
+
+## Continuation Update - Private Skool Graph Content Audit
+
+- Read-only inspection of the ignored, owner-only local graph confirmed 736
+  nodes and 8,101 edges: 175 captured text segments totaling 3,739,506
+  characters, plus all 107 lesson metadata records from the Drive register.
+  The register contributes video and outbound-link references, not the missing
+  lesson text or media. Graph provenance remains `complete: false` and
+  `videoAssetsIncluded: false`.
+- The private graph export and Skool-register graph tests passed 7/7 under Node
+  24.19.0, including text/link preservation, incomplete provenance, duplicate
+  and secret-bearing link rejection, and output-path restrictions. The local
+  export remains mode `0600` and ignored by Git; no hosted import was attempted.
+- Archive coverage is still partial: 47 of the 107 registered lesson IDs lack
+  local page captures, the register and spreadsheet counts disagree, and video
+  references do not establish archived video bytes or transcripts. A fresh
+  read-only Drive listing found 107 files, but its filenames alone do not
+  reconcile those 47 lesson IDs against the canonical classroom inventory.
