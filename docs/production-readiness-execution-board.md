@@ -315,12 +315,13 @@ release verification without deploying or spending beyond approved limits.
   `SUPABASE_ANON_KEY`, and `CLIENT_ALLOWED_USER_EMAILS` missing from the
   private env file. Provider calls remain disabled; no Supabase request was
   made. The signed-in local journey is still waiting on those private values.
-- A read-only Google Drive archive check identified 15 substantive lesson
+- A read-only Google Drive archive check identified 18 substantive lesson
   captures matching the current Skool gap list. A private, mode-600 source pack
-  preserves those texts, publication dates, and 38 safe outbound references;
-  four thin captures and 32 still-missing pages are explicitly recorded as
-  incomplete. Four references to two local/private-network targets were
-  excluded from graph references under the production URL policy. The
+  preserves those texts, publication dates, and 40 safe outbound references;
+  four title/video-only shells and 25 pages absent from that Drive text archive
+  are explicitly recorded as incomplete. Four references to two
+  local/private-network targets were excluded from graph references under the
+  production URL policy. The
   production selector accepted the pack's content. The initial audit wrapper
   was PDF-manifest-specific and stopped at its `importedSourceSegments`
   assertion; it was subsequently generalized and passed as noted below. The
@@ -328,8 +329,10 @@ release verification without deploying or spending beyond approved limits.
   uncommitted. No hosted write or provider request occurred.
 - The private source-pack audit now accepts both PDF-batch and classroom-run
   manifest coverage fields and validates publication-date counts when present.
-  The Drive-derived pack passed `npm run verify:private-source-pack` (1/1), and
+  The refreshed 18-page Drive-derived pack passed
+  `npm run verify:private-source-pack` (1/1), and
   the focused classroom/client/Markdown/PDF/sanitizer suites passed 32 tests
-  with one optional fixture skipped. The 15-page batch is still only prepared;
-  hosted import, full archive coverage, and tenant journey verification remain
-  open.
+  with one optional fixture skipped. Two Drive JSON packs for May 11-30 match
+  lesson IDs already in the local capture manifest and were not re-imported to
+  avoid duplicate memories. The 18-page batch is still only prepared; hosted
+  import, full archive coverage, and tenant journey verification remain open.
