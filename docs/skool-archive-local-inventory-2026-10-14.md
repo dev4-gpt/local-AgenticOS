@@ -94,7 +94,10 @@ The 107-entry Drive register and the spreadsheet's 109-entry classroom count
 remain inconsistent. The checklist of the 47 register IDs missing from local
 v7 is stored privately at
 `tmp/authorized-skool-import/archive-gap-checklist-2026-10-14.json`; it
-contains lesson metadata only and is ignored by Git.
+contains the page URL, title/date, video reference, and outbound links for each
+gap and is ignored by Git. It records 47 video references (32 external URLs
+and 15 Skool-hosted IDs) plus 80 outbound links across 30 pages; these are
+references, not downloaded media.
 
 The Drive Markdown link register says it contains 107 lessons and was collected
 October 11, while the spreadsheet says 109 entries total (108 dated plus the
