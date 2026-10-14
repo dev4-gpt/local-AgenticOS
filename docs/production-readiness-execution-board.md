@@ -23,6 +23,26 @@ release verification without deploying or spending beyond approved limits.
 | MiroFish buyer pilot | `sim_f91504972e42` has a hash-bound human review (1 qualified, 1 rejected). For v2 `sim_8f4e26a9d170`, two dynamic posts are hash-bound reviewed (0 qualified, 2 rejected as weak); the saved directory lacks `run_state.json` and `profile-preparation.json`, so strict completion/receipt is unverified. Both runs are synthetic, not market validation | Human-reviewed posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Do not make another provider request under the prior one-repeat approval. Keep both v2 replies out of demand evidence and prioritize actual buyer interviews |
 | Release evidence and decision | Not ready; the ledger bucket `veloce-agenticos-2026-veloce-release-ledger` exists. The most recent read-only gate check (on `213a6118c539c81348f2699c3c00bc4bef8a8619`) found no matching ledger record and 37 evidence categories unevaluated. Later commits only update this board; no release evidence was published | Clean pushed commit; all required evidence attached to the ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Continue customer journey, hosted parity, migration, and approval evidence; publish no partial release record |
 
+## Current-Head Gate Recheck - 2026-10-14
+
+On current pushed `HEAD` `0461021aa801a77eee7e68287fc64e458f904a49`,
+`npm run verify:production-readiness -- --ledger-bucket
+veloce-agenticos-2026-veloce-release-ledger` returned `releaseReady: false`.
+The configured bucket was reachable, but there is no release record for this
+commit. The verifier reports `release_gate:release_ledger_record_missing` and
+38 categories not evaluated, including signed-in customer journey, buyer
+pilot, hosted deployment identity, migrations, tenant isolation, source import,
+approvals, and rollback target. It returned no evidence path. This is a
+read-only check; no ledger record was published and no hosted state changed.
+
+The Cloud Test-scoped local runtime configuration passes preflight with
+provider calls disabled. Its existing local port `3985` currently has a Node
+listener, but loopback HTTP requests fail to connect; do not treat that
+listener as a working signed-in mirror. The available Chrome profile has no
+Veloce tabs, so no authenticated browser journey was attempted. The local
+runtime and browser checks remain open; the passing preflight is not parity
+evidence.
+
 ## Historical Verified Snapshot (2026-10-14; superseded by continuation updates below)
 
 - Branch `wip/backup-2026-10-03` is pushed through `88f57bd` (local private
