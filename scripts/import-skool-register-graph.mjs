@@ -194,7 +194,6 @@ export function mergeSkoolRegisterGraph(base, registerGraph) {
     .filter((edge) => edge?.["@type"] === "hasTextCaptureSegment")
     .map((edge) => `${edge.source}\u0000${edge.target}`));
   let lessonsWithText = 0;
-  let linkedTextSegments = 0;
   for (const lesson of nodes.values()) {
     if (lesson["@type"] !== "LearningResource" || !lesson["@id"].startsWith("skool-lesson:")) continue;
     let lessonKey;
@@ -226,7 +225,6 @@ export function mergeSkoolRegisterGraph(base, registerGraph) {
       if (captureEdgeKeys.has(edgeKey)) continue;
       mergedEdges.push({ "@type": "hasTextCaptureSegment", source: lesson["@id"], target: segment["@id"] });
       captureEdgeKeys.add(edgeKey);
-      linkedTextSegments++;
     }
   }
   return {

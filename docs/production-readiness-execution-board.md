@@ -1525,7 +1525,9 @@ does not authorize hosted changes, provider calls, or spending.
   `tmp/authorized-skool-import/agentos-combined-with-register-crosswalk-2026-10-14.jsonld`
   passes portable validation at **772 nodes / 8,351 relations**, retains the
   18 unsafe-URL omissions, and remains partial with video assets absent.
-- Focused importer tests pass **7/7**. This candidate has not been uploaded to
-  Drive or imported into hosted AgentOS; the previously uploaded private Drive
-  version remains unchanged. No hosted, provider, database, or billing action
-  occurred.
+- Focused importer tests pass **7/7**. This candidate has not been imported
+  into hosted AgentOS. It has now been uploaded as a new Drive version named
+  `AgentOS-Knowledge-Graph-Exact-Lesson-Crosswalk-Partial-2026-10-14.jsonld`
+  (file ID `1701jAKIhDT9VdD6_0DJpl-1YYU5PNOGd`); fetch-back metadata confirms
+  **5,859,348 bytes**. The prior Drive version remains unchanged. No hosted,
+  provider, database, or billing action occurred.
