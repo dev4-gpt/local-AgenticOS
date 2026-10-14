@@ -1452,21 +1452,40 @@ does not authorize hosted changes, provider calls, or spending.
 - Source review confirms `/classroom-research` and `/social-research` are
   explicitly operator-only and removed by `clientAllowedRoutes()`, with
   regression assertions in `tests/client-navigation-policy.spec.ts`. The
-  signed-in Internal Beta sidebar previously showed both links, so the live
-  observation remains a hosted edition/configuration or revision mismatch;
-  the exact cause is not established. Do not enable either route to make the
-  sidebar match.
+  signed-in Internal Beta sidebar still renders both links after a fresh page
+  reload, although its 100%-traffic revision is configured with
+  `VELOCE_CLIENT_EDITION=1` and a `CLIENT_ALLOWED_ROUTES` list omitting both.
+  Clicking either link returns the explicit client-unavailable boundary; no
+  operator page content was exposed. This is a hosted navigation/build parity
+  defect, not an observed route-access bypass. The image has no source/build
+  metadata, so the exact cause remains unverified. Do not enable either route
+  to make the sidebar match.
 - The focused policy test could not be executed in this checkout because the
   local Vitest binary is absent; an attempted `npm exec` was stopped when it
   tried to resolve externally. Existing checked-in assertions are source
   evidence, not a fresh test pass. No dependency was installed and no network,
   hosted, provider, database, storage, IAM, or billing change was made.
-- Next: verify the Internal Beta effective client-edition/revision settings
-  through a read-only, non-secret configuration check, then compare its route
-  response with the current-source policy. Keep hosted changes held until the
-  exact mismatch and approved target are established.
+- Next: trace the live image digest to a source/build record in Artifact
+  Registry or Cloud Build, then compare it with the current source. Keep hosted
+  changes held until the exact mismatch and approved target are established.
 - Attempted that configuration check with the local Cloud SDK, but the
   sandbox denied access to its existing credentials database before
   authentication. The command returned no service configuration and made no
-  Cloud API request. Continue only through an already-authorized read-only
-  browser session or after the local credential-store access is approved.
+  Cloud API request. The check was completed in the existing authenticated
+  Chrome Cloud Run tab instead; no service settings were changed.
+
+## Continuation Update - MiroFish Repeat Artifact Recheck (2026-10-14)
+
+- The current inventory of the previously unstarted seed `sim_10a4701927e5`
+  contains a
+  `twitter_profiles.csv`; its SHA-256 is
+  `16d5aaf680fe45be99bfe7d4196688b43b4f6514c3f21f2ab8f88daaf30baa78`. It has
+  no `profile-preparation.json`, and its hash matches none of the seven
+  prepared profile receipts. The smoke preflight pins the reviewed profile
+  hash to `83a0d906dbcf522e00dcb5082cdd6c97340f829dafd63b332c14adf4de7b2911`,
+  so the newly present file is not an approved substitute.
+- The approved repeat remains unlaunched. Do not copy another run's profile
+  set or fabricate a human-review receipt; obtain or review the exact profile
+  inputs, regenerate the preparation receipt through an approved process, and
+  pass dry preflight before any provider call. No simulation or provider
+  request was made.
