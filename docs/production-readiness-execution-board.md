@@ -158,3 +158,17 @@ release verification without deploying or spending beyond approved limits.
   outside this commit. Customer journey remains open until private config and
   signed-in evidence are available; hosted, Skool, MiroFish review, and release
   gates remain open as recorded above.
+
+## Continuation Update - Skool Register Reconciliation
+
+- A fresh read-only Drive check confirmed 107 distinct lesson IDs in the
+  Markdown classroom register. The private local v7 pack has 60 matching IDs;
+  47 register IDs are not captured locally, and there are no local-only IDs.
+- The register lists 92 public YouTube references and 15 Skool-hosted video
+  IDs. None of those references is evidence that the underlying video bytes or
+  transcripts were archived.
+- The Drive folder has 107 files, but its spreadsheet still records only 9 of
+  108 dated lessons as archived, plus a separate System PDF. The folder also
+  contains bonus files, so its 98-PDF count is not lesson coverage. The
+  107-register versus 109-spreadsheet lesson total remains unresolved. Details
+  are in `docs/skool-archive-local-inventory-2026-10-14.md`.

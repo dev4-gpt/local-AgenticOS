@@ -122,3 +122,21 @@ directory are absent from Drive.
    preview, and scoped tenant import flow against the confirmed internal-beta
    target. The currently observed production Supabase project and disabled
    hosted import routes are not an import target.
+
+## Live Register Recheck
+
+A fresh read-only Google Drive connector check confirmed that the Markdown
+register currently contains 107 distinct Skool lesson IDs. Comparing those IDs
+against the private v7 manifest again yielded 60 shared IDs, 47 register IDs
+missing from the local pack, and zero local IDs absent from the register. The
+register lists one video reference for each lesson: 92 public YouTube URLs and
+15 Skool-hosted video IDs. These are references only; they do not establish
+that video files, transcripts, or attached resources were saved.
+
+The live Drive folder still contains 107 total files (98 PDFs, 3 HTML, 2 JSON,
+1 ZIP, 1 Python file, 1 Markdown register, and 1 spreadsheet). Its spreadsheet
+still says only 9 of 108 dated lesson pages are archived, with the System PDF
+separate. Thus the local 60-page prepared pack is not 60 lesson PDFs in Drive.
+The register's 107 lesson IDs and spreadsheet's 108 dated lessons plus
+standalone System lesson still differ by two entries; resolving this requires
+the authorized classroom index or another owner-verified canonical inventory.
