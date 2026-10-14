@@ -1,10 +1,12 @@
 import { readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
-import { prepareMirofishBuyerSeed } from "../scripts/prepare-mirofish-buyer-seed.mjs";
+import { prepareFocusedMirofishBuyerSeed, prepareMirofishBuyerSeed } from "../scripts/prepare-mirofish-buyer-seed.mjs";
 
 const fixture = JSON.parse(readFileSync("evaluations/mirofish-buyer-micro-v1.json", "utf8"));
+const focusedFixture = JSON.parse(readFileSync("evaluations/mirofish-buyer-micro-v2.json", "utf8"));
 const ontology = JSON.parse(readFileSync("evaluations/mirofish-buyer-ontology-v1.json", "utf8"));
 const base = readFileSync("docs/mirofish-buyer-pilot-seed.md", "utf8");
+const focusedBase = readFileSync("docs/mirofish-buyer-pilot-seed-v2.md", "utf8");
 
 test("buyer scenario uses the published base price and keeps low-budget nonbuyers", () => {
   const commercial = readFileSync("docs/commercial-model.md", "utf8");
@@ -42,6 +44,30 @@ test("micro buyer seed rejects lost sector and literacy coverage", () => {
   const changed = structuredClone(fixture);
   changed.personas[0] = { ...changed.personas[0], id: "P00135" };
   expect(() => prepareMirofishBuyerSeed(changed, base)).toThrow("mirofish_micro_coverage_invalid");
+});
+
+test("focused buyer seed tests the consultancy workflow hypothesis without claiming demand", () => {
+  const seed = prepareFocusedMirofishBuyerSeed(focusedFixture, focusedBase);
+  expect(seed.match(/^## Fictional buyer P\d{5}$/gm)).toHaveLength(10);
+  expect(seed.match(/ in a small AI automation or development consultancy/g)).toHaveLength(10);
+  expect(seed.match(/AI literacy: new to AI/g)).toHaveLength(2);
+  expect(seed.match(/AI literacy: expert/g)).toHaveLength(2);
+  expect(seed.match(/^P\d{5} is a workflow owner/gm)).toHaveLength(5);
+  expect(seed.match(/^P\d{5} is a security reviewer/gm)).toHaveLength(5);
+  expect(seed).toContain("hypothesis generation, not market validation");
+  expect(seed).toContain("may not experience it");
+});
+
+test("focused buyer seed rejects broad-industry and oversized-company drift", () => {
+  const changed = structuredClone(focusedFixture);
+  changed.personas[0].id = "P09601";
+  expect(() => prepareFocusedMirofishBuyerSeed(changed, focusedBase)).toThrow("mirofish_focused_persona_invalid");
+});
+
+test("focused buyer seed rejects missing literacy or posture balance", () => {
+  const changed = structuredClone(focusedFixture);
+  changed.personas[0] = { id: changed.personas[2].id };
+  expect(() => prepareFocusedMirofishBuyerSeed(changed, focusedBase)).toThrow("mirofish_focused_coverage_invalid");
 });
 
 test("manual ontology stays within Zep Free limits and retains valid graph endpoints", () => {
