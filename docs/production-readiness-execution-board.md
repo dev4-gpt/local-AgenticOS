@@ -16,7 +16,7 @@ release verification without deploying or spending beyond approved limits.
 
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
-| Local product and customer journey | In progress; unauthenticated checks pass; private config scaffold prepared | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Fill `.private-client-kits/internal-beta-parity.env` locally after verifying the approved Internal Beta Supabase project ref; then pass `--check-config` and run the signed-in journey. Provider calls are explicitly disabled; never share env values |
+| Local product and customer journey | In progress; unauthenticated checks pass; private config scaffold prepared | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Fill `.private-client-kits/internal-beta-parity.env` locally for read-only, tenant-scoped parity. The Internal Beta runtime uses production-backed Supabase project `ppmoqjtmjtfxadsnejqc`; do not run tenant writes or migrations there. Provider calls are explicitly disabled; never share env values |
 | Authorized Skool archive and graph import | In progress; 60/107 register IDs captured locally; Drive packs add no new IDs | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Collect/reconcile the 47 register IDs absent from local v7, resolve the 107-versus-109 lesson count and one uncollected page flagged by both Drive packs, and account for videos/resources; then run a scoped graph import only against the confirmed internal-beta target |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Local gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep offline gate on Node 24; inspect the private MiroFish review file with the owner, then run only a bounded provider pilot after live Free-plan/spend-cap confirmation |
@@ -58,6 +58,11 @@ release verification without deploying or spending beyond approved limits.
 - Cloud Test and Internal Beta do not expose build identity. Existing local
   runtimes report different older commits. Signed-in local parity is not
   configured in the current source env file.
+- The checked-in Internal Beta runtime manifest maps `internal-beta` to
+  Supabase project `ppmoqjtmjtfxadsnejqc`; topology evidence identifies that as
+  the production-backed database, with `internal-beta` only a tenant. Local
+  parity must remain read-only and tenant-scoped. No migration or tenant write
+  is authorized by the beta-only approval.
 - Visible Supabase project is production. Internal-beta migration approval does
   not authorize applying tenant-scoped intent as a production-wide function
   migration. No hosted migration or deployment has been performed.
