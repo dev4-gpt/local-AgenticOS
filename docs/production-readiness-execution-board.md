@@ -142,3 +142,19 @@ release verification without deploying or spending beyond approved limits.
    deploy without checking the approved cap and current provider/account state.
 5. Record a blocker against one track, its owner, and the exact evidence needed
    to unblock it; do not pause other tracks because of it.
+
+## Continuation Update - Product Build
+
+- Commit `37dd603` removes the build-time dependency on downloading Google Fonts
+  and gives the product experience local system-font fallbacks. It is pushed to
+  `origin/wip/backup-2026-10-03`.
+- Verification on the committed source: `npm run build` passed, `npm run lint`
+  passed, and `tests/product-experience.spec.ts` passed 11/11 in Chromium,
+  including the no-remote-font assertion. The unconfigured `/login` route
+  returned HTTP 200 with the expected support/access state. This is an
+  unauthenticated local check, not a completed customer journey or signed-in
+  parity result.
+- The other five modified/untracked archive, parity, and evidence paths remain
+  outside this commit. Customer journey remains open until private config and
+  signed-in evidence are available; hosted, Skool, MiroFish review, and release
+  gates remain open as recorded above.
