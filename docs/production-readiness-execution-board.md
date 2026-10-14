@@ -665,3 +665,22 @@ does not authorize hosted changes, provider calls, or spending.
 - The MiroFish artifact/profile/auditor suite passes 23/23. No simulation was
   rerun, no provider request or billing event was made, and no review flags
   were changed.
+
+## Continuation Update - Notebook Studio Local Runtime Check (2026-10-14)
+
+- The current client-runtime production build completed successfully on the
+  supported Node 24 runtime, including TypeScript and all 66 static pages. With
+  provider calls disabled and no Supabase credentials loaded, the local
+  production server returned `/login` 200 and redirected unauthenticated
+  `/notebook` to `/login?next=%2Fnotebook` (307).
+- The Notebook Studio Playwright workflow did not reach its UI assertions.
+  First, Next dev mode exhausted the host's file-watcher limit (`EMFILE`) and
+  repeatedly restarted. Production mode built and started, but both system
+  Chrome and bundled Chromium were denied the macOS Mach bootstrap permission
+  (`bootstrap_check_in ... Permission denied`) before a browser page opened.
+  Classify this as blocked browser evidence, not a product test failure or
+  pass. The generated watcher output was removed and the auto-edited
+  `tsconfig.json` paths were restored.
+- Same-user signed-in flow remains unverified: the private parity env still
+  lacks the Supabase anon key and allowed email. No hosted request, migration,
+  database write, or provider call was made.
