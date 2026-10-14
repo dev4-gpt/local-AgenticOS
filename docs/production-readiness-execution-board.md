@@ -2768,3 +2768,21 @@ does not authorize hosted changes, provider calls, or spending.
   `docs/skool-archive-local-inventory-2026-10-14.md`. The missing lesson text
   and video assets still require the signed-in classroom or owner-supplied
   captures; no scraping, download, or hosted import occurred.
+
+## Continuation Update - Local Journey And Parity Preflight (2026-10-14)
+
+- The private `.private-client-kits/cloud-test-parity.env` passes the local
+  launcher preflight on clean source commit `e3871f0ce6eb527290907605175984df6803fa17`.
+  The configured tenant and Supabase settings are complete, and provider calls
+  are disabled. No secret values were printed. This does not prove that an
+  authenticated browser session is available.
+- A fresh isolated production-mode browser run on the same source passed
+  **21/21** login-membership, Notebook Studio, and source-import consent tests.
+  The tests use synthetic sessions and mocked APIs; no provider or hosted
+  request was made. They validate the local interaction and safeguards, not a
+  signed-in real-tenant journey.
+- Authenticated parity is still open: the expected private cookie file is
+  absent, and the available Chrome extension profile is College with no Veloce
+  or Skool tabs. No alternate profile was opened. Cloud Test and local counts
+  must not be compared again until the same authorized user and tenant are
+  confirmed in the designated browser session.
