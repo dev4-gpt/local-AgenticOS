@@ -97,3 +97,13 @@ cases passed, the local evaluation gate passed, and the report records zero
 model samples. Its `productionReady` field remains false by design; this
 offline evaluation does not establish model quality or hosted readiness. The
 ignored local receipt is `tmp/ai-release-local-754e6a8-node24.json`.
+
+## Pushed-Source Regression Refresh
+
+On commit `5fc6e92` (`docs: record current offline AI evaluation`), supported
+Node `v24.18.0` completed the focused Playwright unit/contract suite with
+365/366 passing and one skipped; `npm run typecheck` passed. The dedicated
+MiroFish checks passed 12/12, and the offline Python MiroFish audit suite
+passed 24/24. These are local synthetic/contract checks only. They do not
+replace the missing same-user hosted journey, production migration receipts,
+or market validation.
