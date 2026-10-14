@@ -156,3 +156,29 @@ its focused tests, lint, and repository typecheck pass. The output is mode
 `0600`, ignored by Git, and has `complete: false`, `pageTextIncluded: false`,
 and `videoAssetsIncluded: false`. It is a local graph export, not a hosted graph
 database import receipt or a complete course archive.
+
+## Latest Read-Only Refresh
+
+The current Google Drive folder listing still contains 107 direct items:
+98 PDFs, 3 HTML files, 2 JSON source packs, 1 Markdown register, 1 spreadsheet,
+1 Python file, and 1 ZIP. This is an asset count, not course-page coverage.
+The folder also contains `skool_video_links.py` and a dated Markdown lesson
+link register; neither is evidence that video bytes or transcripts were saved.
+
+The newest private PDF preparation manifest is
+`tmp/authorized-skool-import/pdf-batch-2026-10-13-v10.manifest.json`. It
+processes 64 PDFs into 175 source segments and 7,537 link references across
+six hash-verified batches. It preserves all eight captures across four
+conflicting lesson URLs, reports zero ambiguous or unresolved PDFs, and
+omits 28 unsafe references. AgentOS' production source-pack parser passed for
+this manifest. The corresponding local graph at
+`tmp/authorized-skool-import/agentos-local-graph-v10.jsonld` contains 442
+graph nodes and 7,712 edges.
+
+This refresh does not improve the coverage boundary: the v10 provenance still
+sets `completeCommunityExport`, `discoveredQueueExhausted`, `complete`, and
+`videoAssetsIncluded` to false. It remains a local prepared graph, not an
+accepted tenant import. The course inventory discrepancy, 47 missing register
+IDs relative to the v7 reconciliation, video/media capture, authenticated
+tenant identity, and hosted route/retention verification remain open. No Drive
+files, tenant records, hosted database, or provider settings were changed.
