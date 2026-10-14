@@ -374,3 +374,81 @@ release verification without deploying or spending beyond approved limits.
   ledger, and 37 ledger-backed evidence fields remain unevaluated. No browser
   data was changed, no deployment or hosted write occurred, and no provider
   call was made.
+
+## Acceleration Plan - Reuse Existing Tooling (2026-10-14)
+
+The active production-readiness goal remains unchanged. This plan narrows the
+execution approach to reduce tool churn and keep independent work moving. It
+does not authorize hosted changes, provider calls, or spending.
+
+### Decisions
+
+- Do not add a new runtime framework, hosted observability service, or scraping
+  stack during this goal. AgentOS already has Playwright, Firecrawl integration,
+  tenant-scoped trace and redaction checks, offline AI evaluation, and a private
+  source-pack importer.
+- Use the installed `acceptance-orchestrator`, `playwright-skill`,
+  `security-audit`, `api-security-testing`, and `agent-evaluation` skills on the
+  existing implementation. Skills guide work; they do not replace evidence or
+  release gates.
+- Defer Promptfoo until saved-output or mock-based evaluation demonstrates a
+  concrete gap in the current offline harness. If adopted, keep the first suite
+  provider-free; any live requests need separate cost verification and approval
+  under the existing $0 paid-spend limit.
+- Defer Langfuse and Phoenix. Reconsider only if the current tenant-scoped trace
+  implementation fails a documented observability requirement that cannot be
+  met with existing code.
+- The Cloudflare security-audit workflow is a review method, not permission to
+  execute untrusted target code. Until an OS-enforced isolated sandbox is
+  available, limit the audit to source/configuration review and existing safe
+  tests; do not probe or run target-controlled builds dynamically.
+
+### Ordered Work
+
+1. **Baseline and ownership:** On the current pushed commit, refresh the
+   readiness verifier and focused local checks. Record each remaining blocker
+   with its evidence owner and exact unblock condition; keep this board as the
+   single status source.
+2. **Customer journey:** Extend the existing Playwright coverage for the
+   local-first workflow (sign-in/access state, workspace, source selection,
+   draft generation with provider calls disabled where possible, provenance,
+   review, and export). Use fixtures for unavailable private credentials. Do
+   not present fixture coverage as signed-in hosted parity.
+3. **Security review:** Use the local security and API-security skills for a
+   scoped source review of authentication, tenant isolation, source
+   import/storage, provider-spend controls, trace redaction, and retention.
+   Track findings by reproducible evidence and independently validate each
+   confirmed finding. Keep the live service untouched; dynamic checks remain
+   gated on a suitable isolated sandbox and an explicitly approved target.
+4. **Skool archive:** Reconcile the Drive manifest, dated lesson IDs, existing
+   partial graph, and local Firecrawl/importer output before building anything
+   new. Resolve count mismatches and distinguish page text, links, video
+   references, transcripts, and actual media bytes. Do not call the archive
+   complete or hosted-import it while source coverage or the target is
+   unresolved.
+5. **AI quality and traces:** Run deterministic offline checks and trace
+   redaction/completeness tests on the supported Node runtime. If an evaluation
+   gap remains, prototype Promptfoo against saved outputs or mocks only. Keep
+   live model-quality claims and spend at zero until a separate approved path
+   exists.
+6. **Release decision:** Re-run the readiness verifier after local evidence is
+   recorded. Hosted parity, migration/import, deployment, retention, and release
+   sign-off remain blocked until environment identity, configuration, and
+   required approvals are verified. Do not infer production readiness from
+   local test success.
+
+### Parallelism and Completion Checks
+
+- Run local Playwright/customer-journey work, source-only security review, and
+  archive reconciliation independently; a blocker in one does not stop the
+  others.
+- Close a track only against its existing exit evidence. For this plan, the
+  security review additionally needs a findings register with validation status
+  and residual risks; the customer-journey track needs passing current-source
+  tests plus a clearly separated record of what remains unverified in hosted
+  use.
+- Any new dependency must name the unmet requirement, maintenance/runtime cost,
+  privacy impact, and fit with the $0 paid-spend constraint before adoption.
+- At completion, report local evidence, hosted evidence, archive coverage, and
+  buyer validation separately. Synthetic MiroFish output is not customer
+  validation.
