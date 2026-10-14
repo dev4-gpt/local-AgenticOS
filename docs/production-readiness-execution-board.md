@@ -2622,3 +2622,25 @@ does not authorize hosted changes, provider calls, or spending.
   no external provider, hosted tenant, or production service was contacted.
 - The branch remains clean and pushed. The live sign-in check, Skool graph
   import, cloud parity, and release-ledger record remain outstanding.
+
+## Continuation Update - Signed-In Local/Cloud Test Parity Probe (2026-10-14)
+
+- In the owner's signed-in Work Chrome session, the existing local mirror at
+  `http://127.0.0.1:3946/memory` loaded **2 tenant memories**, **114 graph
+  nodes**, and **113 edges**. Its UI includes the Community sources and Review
+  JSON source packs panels. The local build-identity response reports source
+  commit `78ef28c6a13147677d38cccde62297b6605d6c64`, no Cloud Run revision,
+  and explicitly labels its provenance as runtime-reported rather than
+  independently attested.
+- The signed-in Cloud Test memory view loaded **24 tenant memories**, **33 graph
+  nodes**, and **57 edges**. Its UI did not show the Community sources import
+  panel. The Cloud Test build-identity endpoint returned
+  `client_route_not_enabled`, so its deployed source revision could not be
+  verified through that route. Different tenant data can explain count
+  differences; the absent import panel and identity route are direct observable
+  capability/evidence gaps.
+- This was a read-only UI inspection. No customer data, hosted configuration,
+  database, IAM, deployment, or provider state was changed. The two signed-in
+  views are not at verified feature parity, and the probe does not establish
+  production readiness. A Cloud Test code/build attestation and an approved,
+  tested source-import rollout remain outstanding.
