@@ -18,8 +18,14 @@ test("private source-pack batches pass the production selector and parser", asyn
     }),
   ];
   const selected = await selectClientSourceBatches(files);
-  expect(selected.sourceCount).toBe(manifest.coverage.importedSourceSegments);
-  expect(selected.linkCount).toBe(manifest.coverage.importedLinks);
+  const expectedSources = manifest.coverage.importedSourceSegments ?? manifest.coverage.outputSources;
+  const expectedLinks = manifest.coverage.importedLinks ?? manifest.coverage.outputLinks;
+  const expectedPublicationDates = manifest.coverage.publicationDates ?? 0;
+  expect(Number.isSafeInteger(expectedSources)).toBe(true);
+  expect(Number.isSafeInteger(expectedLinks)).toBe(true);
+  expect(Number.isSafeInteger(expectedPublicationDates)).toBe(true);
+  expect(selected.sourceCount).toBe(expectedSources);
+  expect(selected.linkCount).toBe(expectedLinks);
   expect(selected.skippedCount).toBe(manifest.skipped);
 
   let sourceCount = 0;
@@ -32,7 +38,7 @@ test("private source-pack batches pass the production selector and parser", asyn
     linkCount += parsed.linkCount;
     publicationDates += parsed.sources.filter((source) => source.publishedAt !== null).length;
   }
-  expect(sourceCount).toBe(manifest.coverage.importedSourceSegments);
-  expect(linkCount).toBe(manifest.coverage.importedLinks);
-  expect(publicationDates).toBe(0);
+  expect(sourceCount).toBe(expectedSources);
+  expect(linkCount).toBe(expectedLinks);
+  expect(publicationDates).toBe(expectedPublicationDates);
 });

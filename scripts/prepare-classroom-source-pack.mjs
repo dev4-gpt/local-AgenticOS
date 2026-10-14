@@ -192,6 +192,7 @@ export function prepareClassroomSourcePack(run) {
     coverage: {
       inputSources: run.sources.length,
       outputSources: sources.length,
+      publicationDates: sources.filter((source) => source.publishedAt !== undefined).length,
       inputLinks,
       outputLinks,
       mediaReferences,

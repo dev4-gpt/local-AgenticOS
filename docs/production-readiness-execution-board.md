@@ -321,8 +321,15 @@ release verification without deploying or spending beyond approved limits.
   four thin captures and 32 still-missing pages are explicitly recorded as
   incomplete. Four references to two local/private-network targets were
   excluded from graph references under the production URL policy. The
-  production selector accepted the pack's content, but the existing
-  PDF-oriented audit stopped at
-  its manifest-field assertion (`importedSourceSegments`), before its final
-  assertions; the pack was not uploaded or imported. Private archive files
-  remain ignored and uncommitted. No hosted write or provider request occurred.
+  production selector accepted the pack's content. The initial audit wrapper
+  was PDF-manifest-specific and stopped at its `importedSourceSegments`
+  assertion; it was subsequently generalized and passed as noted below. The
+  pack was not uploaded or imported. Private archive files remain ignored and
+  uncommitted. No hosted write or provider request occurred.
+- The private source-pack audit now accepts both PDF-batch and classroom-run
+  manifest coverage fields and validates publication-date counts when present.
+  The Drive-derived pack passed `npm run verify:private-source-pack` (1/1), and
+  the focused classroom/client/Markdown/PDF/sanitizer suites passed 32 tests
+  with one optional fixture skipped. The 15-page batch is still only prepared;
+  hosted import, full archive coverage, and tenant journey verification remain
+  open.
