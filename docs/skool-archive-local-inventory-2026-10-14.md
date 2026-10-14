@@ -18,6 +18,13 @@ included below. Counts do not replace lesson-by-lesson reconciliation.
 | Top-level saved HTML pages | 6 | May 22, 25, 26, 27, 29, and 30 captures; the May 30 page also has a PDF |
 | Local video files | 0 | No MP4, WebM, MOV, or M4V found in the archive input directory |
 
+The v7 manifest has 64 PDF records but only 60 unique Skool lesson IDs: four
+source IDs have two preserved captures each. A read-only join against the
+current Drive Markdown register found all 60 unique local IDs in its 107 lesson
+entries, with no local-only IDs; 47 register IDs have no local v7 capture.
+That is 60/107 (56.1%) of the register's listed lessons, not proof that every
+capture contains all page media or that the register is complete.
+
 The four ambiguous PDF labels are:
 
 - `12th_ Hermes Agent Computer Use ...pdf`
@@ -65,7 +72,9 @@ video URLs and attached resources are not saved as media. The spreadsheet also
 marks classroom video downloads incomplete. Its two JSON source-pack rows
 describe 9 pages/132 links/1 pending page for May 11-19 and 10 pages/259 links/
 3 media references/1 pending page for May 11-30; both are explicitly
-incomplete.
+incomplete. The spreadsheet's item-level rows identify 9 dated lesson PDFs
+plus the separate System PDF in Drive; the two HTML lesson captures duplicate
+already-listed May sources rather than adding two unique lessons.
 
 The Drive Markdown link register says it contains 107 lessons and was collected
 October 11, while the spreadsheet says 109 entries total (108 dated plus the

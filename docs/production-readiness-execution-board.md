@@ -17,7 +17,7 @@ release verification without deploying or spending beyond approved limits.
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
 | Local product and customer journey | In progress; unauthenticated checks pass | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Continue local tests and customer-journey fixes. Signed-in parity needs a private env file containing Supabase URL/anon key, client slug, and allowed email; provide its path only, never the values |
-| Authorized Skool archive and graph import | In progress; archive incomplete | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Reconcile the Drive lesson register against its spreadsheet manifest and local v7 pack. The manifest reports 9/108 dated lesson pages archived; preserve conflicting captures and identify missing pages/videos before import |
+| Authorized Skool archive and graph import | In progress; 60/107 register IDs captured locally | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Collect/reconcile the 47 register IDs absent from local v7, resolve the 107-versus-109 lesson count, and account for videos/resources; then run a scoped graph import only against the confirmed internal-beta target |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Local gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep offline gate on Node 24; inspect the private MiroFish review file with the owner, then run only a bounded provider pilot after live Free-plan/spend-cap confirmation |
 | MiroFish buyer pilot | Offline persona-frame audit passes; live-smoke content review and cost receipt pending | Reviewed generated posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Inspect and disposition the two rejected generated posts, capture reviewer identity and provider usage receipt if available; do not rerun until the seeded price/brief is corrected and the $0 provider cap is verifiable |
@@ -40,9 +40,15 @@ release verification without deploying or spending beyond approved limits.
 - Private Skool v7 source-pack parser: 1/1 passed. A file-level audit found 64
   PDFs (32 May-labeled, 22 June-labeled, 5 July-labeled, 4 ambiguous, and the
   Oct 10 AgentOS System PDF), six top-level HTML pages, and no local video
-  files. No filename-labeled August/September or Oct 1-9 lessons are present.
-  Pack is partial and not imported; parser success does not establish archive
+  files. Those PDFs resolve to 60 unique lesson IDs; all 60 are in the 107-entry
+  Drive register, leaving 47 register entries without a local v7 capture. No
+  filename-labeled August/September or Oct 1-9 lessons are present. Pack is
+  partial and not imported; parser success does not establish archive
   completeness. See `docs/skool-archive-local-inventory-2026-10-14.md`.
+- Source-import SQL smoke passed in a disposable PostgreSQL container with
+  networking disabled and read-only migration/fixture mounts; both source-guard
+  evidence tests passed. This is local schema evidence only, not a hosted
+  migration or customer-content import.
 - MiroFish artifact tests: 23 passed. Human content review is incomplete;
   synthetic simulation is not market validation.
 - Cloud Test and Internal Beta do not expose build identity. Existing local
