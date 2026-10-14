@@ -2759,3 +2759,12 @@ does not authorize hosted changes, provider calls, or spending.
   evaluated. No release record was published. Customer journey, hosted parity,
   full Skool coverage/import, real buyer validation, and hosted/security
   approvals remain open.
+- A fresh read-only listing of the authorized `School Tabs Agent OS` Drive
+  folder found 113 direct items, including 9 dated lesson PDFs, 2 lesson HTML
+  captures, 6 partial graph exports, and numerous bonus resources. None of the
+  25 pending page IDs has a title/date-specific capture in that folder; broad
+  word similarity with bonus-file names was not treated as page evidence. The
+  source inventory is updated in
+  `docs/skool-archive-local-inventory-2026-10-14.md`. The missing lesson text
+  and video assets still require the signed-in classroom or owner-supplied
+  captures; no scraping, download, or hosted import occurred.

@@ -200,6 +200,25 @@ not an accepted tenant import. The later Drive-supplement reconciliation is
 recorded below. No Drive files, tenant records, hosted database, or provider
 settings were changed during this PDF-only refresh.
 
+## Drive Gap Recheck (2026-10-14)
+
+A fresh read-only listing of `School Tabs Agent OS` returned **113 direct
+items**: 98 PDFs, 3 HTML files, 6 JSON-LD graphs, 2 JSON source packs, 1
+Markdown register, 1 spreadsheet, 1 Python script, and 1 ZIP. Of the HTML
+files, two are lesson captures (May 19 and May 30); the third is a bonus
+landing-page template. The folder contains **9 date-labeled classroom PDFs**
+from May 11-19, plus the separate AgentOS System PDF. The remaining PDFs are
+bonus resources, not dated classroom-page captures.
+
+Compared with the current private `pending-registered-pages-2026-10-14.json`
+crosswalk, the Drive filenames do not identify captures for the 25 pending
+page IDs. Several bonus filenames share broad words such as “Claude,”
+“Hermes,” or “Marketing,” but their titles do not match the pending lesson
+titles and they are not counted as page evidence. The current Drive snapshot
+therefore does not close the known page-text gap. No Drive content was
+downloaded, no video bytes or transcripts were verified, and no hosted graph
+import was performed.
+
 ## Combined Local Archive Reconciliation (2026-10-14 Snapshot; Superseded Below)
 
 The private combined manifest at
