@@ -1946,3 +1946,26 @@ does not authorize hosted changes, provider calls, or spending.
 - No records, hosted configuration, or provider state were changed. Next:
   enable build identity in a verified test release and arrange an approved
   local runtime bind, then repeat same-user, read-only journey comparison.
+
+## Continuation Update - Local Notebook Runtime Comparison (2026-10-14)
+
+- The current-source Notebook Studio browser journey passed against the
+  already-running local app at `127.0.0.1:3955` and against a fresh isolated
+  production-mode build at `127.0.0.1:3969`. The test used synthetic auth and
+  intercepted every client-runtime API request with fixtures; it verified
+  source-ID submission, source register, citation-audit display, review, and
+  export-link behavior without tenant writes or provider calls.
+- The same test against `127.0.0.1:3939` failed only at the expected citation
+  confirmation. Its DOM showed the successful draft and source links but no
+  citation-audit text, while current source renders that text when supplied by
+  the execution API. This is evidence that `3939` is on a stale/different
+  build, not a current-source UI failure.
+- The test against `127.0.0.1:3941` timed out waiting for the fixture notebook
+  after the UI remained at `Loading tenant records...` with 0/0 records. Treat
+  this runtime as unhealthy or incompatible with the current flow until its
+  identity and API behavior are verified.
+- Current local routing is therefore clear: **3955** is the usable existing
+  local journey target; **3939** and **3941** are not parity references. This
+  does not resolve hosted parity: Cloud Test/Internal Beta still show distinct
+  notebook counts and both hide build identity. No running local process was
+  stopped or altered.
