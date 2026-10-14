@@ -2217,3 +2217,27 @@ does not authorize hosted changes, provider calls, or spending.
   The currently focused Chrome window was an unrelated SharePoint spreadsheet,
   so no browser tabs or signed-in state were touched. Full customer journey
   and same-user parity remain open.
+
+## Continuation Update - Live System Lesson Capture (2026-10-14)
+
+- In the user's existing signed-in Chrome Work profile, the `AGENT OS System!`
+  classroom page was read directly. The visible page is updated October 12 and
+  exposes setup/update guidance, FAQs, 11 external/resource links, six video
+  page references, and a 59:26 embedded player. No lesson progress, comments,
+  account settings, or remote files were changed.
+- The earlier graph record for this page was only a 2,245-character PDF/UI
+  capture. A new owner-only source run and prepared manifest under ignored
+  `tmp/authorized-skool-import/agentos-system-live-capture-2026-10-14.*`
+  preserve the visible page summary and link references. The embedded player
+  did not expose a direct URL or transcript, and the Resources heading did not
+  expose an attachment inventory; those gaps are explicitly pending.
+- The refreshed private graph is
+  `tmp/authorized-skool-import/agentos-combined-with-register-drive-bonuses-system-live-refresh-2026-10-14.jsonld`.
+  It validates at **1,132 nodes / 9,011 explicit relations**. The new page
+  capture adds one source segment and link edges; the lesson-level crosswalk
+  remains **79/107 lessons** with text and 213 linked text segments, because
+  the System lesson was already represented. Coverage remains `partial` and
+  video bytes/transcripts remain absent.
+- The refreshed capture passed the production private source-pack parser
+  (**1/1**) and the portable-graph integrity suite (**4/4**). No hosted graph
+  import, upload, deployment, or provider request was made.
