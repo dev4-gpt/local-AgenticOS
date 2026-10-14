@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { buildSkoolRegisterGraph, mergeSkoolRegisterGraph, privateGraphArtifactPath } from "../scripts/import-skool-register-graph.mjs";
+import { buildSkoolRegisterGraph, mergeSkoolRegisterGraph, mergeSkoolSourcePackGraph, privateGraphArtifactPath } from "../scripts/import-skool-register-graph.mjs";
 import { validatePortableKnowledgeGraph } from "../scripts/portable-knowledge-graph.mjs";
 
 const lessonId = "0123456789abcdef0123456789abcdef";
@@ -74,6 +74,50 @@ test("register lessons link only to text segments with the exact Skool lesson id
 
   const mergedAgain = mergeSkoolRegisterGraph(merged, registerGraph);
   expect(mergedAgain.edges.filter((edge) => edge["@type"] === "hasTextCaptureSegment")).toHaveLength(2);
+});
+
+test("source-pack merge preserves source identifiers, exact lesson links, and register provenance", () => {
+  const registerGraph = buildSkoolRegisterGraph(register, "A1b2C3d4E5f6G7h8I9j0");
+  const base = mergeSkoolRegisterGraph({ "@context": "https://schema.org", "@graph": [], edges: [], provenance: {} }, registerGraph);
+  const pack = {
+    "@context": "https://schema.org",
+    "@graph": [{
+      "@id": "document:drive-source",
+      "@type": "LearningResource",
+      name: "May lesson source",
+      identifier: `May lesson [drive_1Jze5NRrpekft50CWCjt0wN96bXVlc8CH:1/1]`,
+      url: `https://www.skool.com/ai-profit-lab-7462/classroom/9daf24e1?md=${lessonId}`,
+      text: "captured lesson text",
+    }],
+    edges: [],
+    provenance: {
+      format: "agentos-private-source-graph-v1",
+      sourceSegments: 1,
+      links: 0,
+      complete: false,
+      coverage: { outputSources: 1, outputLinks: 0, pendingPages: 1 },
+      batchSha256: ["a".repeat(64)],
+    },
+  };
+
+  const merged = mergeSkoolSourcePackGraph(base, pack);
+  const lesson = merged["@graph"].find((node) => node["@id"] === `skool-lesson:${lessonId}`);
+  const source = merged["@graph"].find((node) => node["@id"] === "document:drive-source");
+  expect(source.identifier).toContain("drive_1Jze5NRrpekft50CWCjt0wN96bXVlc8CH");
+  expect(lesson).toMatchObject({ contentStatus: "text_segments_available", pageTextCaptured: true, textCaptureSegmentCount: 1 });
+  expect(merged.edges).toContainEqual({ "@type": "hasTextCaptureSegment", source: lesson["@id"], target: source["@id"] });
+  expect(merged.provenance).toMatchObject({
+    complete: false,
+    videoAssetsIncluded: false,
+    sourcePackImports: [{ format: "agentos-private-source-graph-v1", complete: false }],
+    registerIndex: { lessonCount: 2, pageTextIncluded: false },
+  });
+  expect(() => validatePortableKnowledgeGraph(merged)).not.toThrow();
+
+  const repeated = mergeSkoolSourcePackGraph(merged, pack);
+  expect(repeated["@graph"]).toHaveLength(merged["@graph"].length);
+  expect(repeated.edges).toHaveLength(merged.edges.length);
+  expect(repeated.provenance.sourcePackImports).toHaveLength(1);
 });
 
 test("merge redacts unsafe legacy URLs but preserves their graph references", () => {

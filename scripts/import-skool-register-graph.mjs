@@ -34,6 +34,16 @@ function lessonIdentity(value) {
   return { url, lessonKey: ids[0].toLowerCase() };
 }
 
+function dedupeEdges(edges) {
+  const seen = new Set();
+  return edges.filter((edge) => {
+    const key = JSON.stringify(Object.keys(edge).sort().map((field) => [field, edge[field]]));
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function buildSkoolRegisterGraph(markdown, registerId) {
   if (typeof markdown !== "string" || !markdown.trim()) throw new Error("register_empty");
   if (typeof registerId !== "string" || !/^[A-Za-z0-9_-]{10,}$/.test(registerId)) throw new Error("register_id_invalid");
@@ -189,7 +199,7 @@ export function mergeSkoolRegisterGraph(base, registerGraph) {
   const registerIndex = registerGraph.provenance && Object.keys(registerGraph.provenance).length > 0
     ? registerGraph.provenance
     : base.provenance?.registerIndex;
-  const mergedEdges = [...base.edges, ...registerGraph.edges];
+  const mergedEdges = dedupeEdges([...base.edges, ...registerGraph.edges]);
   const captureEdgeKeys = new Set(mergedEdges
     .filter((edge) => edge?.["@type"] === "hasTextCaptureSegment")
     .map((edge) => `${edge.source}\u0000${edge.target}`));
@@ -246,6 +256,73 @@ export function mergeSkoolRegisterGraph(base, registerGraph) {
       },
     },
   };
+}
+
+export function mergeSkoolSourcePackGraph(base, sourcePackGraph) {
+  if (!base || !Array.isArray(base["@graph"]) || !Array.isArray(base.edges)
+      || !sourcePackGraph || !Array.isArray(sourcePackGraph["@graph"]) || !Array.isArray(sourcePackGraph.edges)
+      || sourcePackGraph.provenance?.format !== "agentos-private-source-graph-v1") {
+    throw new Error("source_pack_graph_invalid");
+  }
+  const nodes = new Map(base["@graph"].map((node) => [node?.["@id"], node]));
+  let omittedUnsafeUrls = 0;
+  for (const node of sourcePackGraph["@graph"]) {
+    if (!node || typeof node["@id"] !== "string") throw new Error("graph_node_invalid");
+    const previous = nodes.get(node["@id"]);
+    if (previous?.text !== undefined && node.text !== undefined && previous.text !== node.text) {
+      throw new Error("graph_node_identity_conflict");
+    }
+    const merged = { ...previous, ...node };
+    const identifiers = [...new Set([
+      ...(previous?.sourceIdentifiers ?? []),
+      ...(node.sourceIdentifiers ?? []),
+      previous?.identifier,
+      node.identifier,
+    ].filter((value) => typeof value === "string"))];
+    if (identifiers.length > 1) {
+      merged.identifier = previous?.identifier ?? node.identifier;
+      merged.sourceIdentifiers = identifiers;
+    }
+    if (merged.url !== undefined && !safePublicUrl(merged.url)) {
+      delete merged.url;
+      merged.urlOmitted = true;
+      merged.urlOmissionReason = "unsafe_or_invalid_url";
+      omittedUnsafeUrls++;
+    }
+    nodes.set(node["@id"], merged);
+  }
+
+  const edges = dedupeEdges([...base.edges, ...sourcePackGraph.edges]);
+  const imports = base.provenance?.sourcePackImports ?? [];
+  const sourcePackReceipt = {
+    format: sourcePackGraph.provenance.format,
+    source: sourcePackGraph.provenance.source ?? null,
+    batchSha256: sourcePackGraph.provenance.batchSha256 ?? [],
+    sourceSegments: sourcePackGraph.provenance.sourceSegments ?? sourcePackGraph.provenance.coverage?.outputSources ?? null,
+    links: sourcePackGraph.provenance.links ?? sourcePackGraph.provenance.coverage?.outputLinks ?? null,
+    coverage: sourcePackGraph.provenance.coverage ?? null,
+    complete: sourcePackGraph.provenance.complete === true,
+  };
+  const receiptId = sha256(JSON.stringify(sourcePackReceipt));
+  const sourcePackImports = imports.some((entry) => entry.receiptId === receiptId)
+    ? imports
+    : [...imports, { receiptId, ...sourcePackReceipt }];
+  const merged = {
+    ...base,
+    "@context": base["@context"] ?? sourcePackGraph["@context"],
+    "@graph": [...nodes.values()].sort((a, b) => a["@id"].localeCompare(b["@id"])),
+    edges,
+    provenance: {
+      ...(base.provenance ?? {}),
+      complete: false,
+      videoAssetsIncluded: false,
+      omittedUnsafeUrls: Math.max(base.provenance?.omittedUnsafeUrls ?? 0, omittedUnsafeUrls),
+      sourcePackImports,
+      sourceSegments: [...nodes.values()].filter((node) => typeof node.text === "string" && node.text.trim()).length,
+      links: edges.filter((edge) => edge["@type"] === "links_to").length,
+    },
+  };
+  return mergeSkoolRegisterGraph(merged, { "@context": merged["@context"], "@graph": [], edges: [], provenance: {} });
 }
 
 export function privateGraphArtifactPath(candidate, projectRoot = process.cwd()) {
