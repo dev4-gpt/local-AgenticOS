@@ -20,7 +20,7 @@ release verification without deploying or spending beyond approved limits.
 | Authorized Skool archive and graph import | In progress; 60/107 register IDs captured locally; Drive packs add no new IDs | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Collect/reconcile the 47 register IDs absent from local v7, resolve the 107-versus-109 lesson count and one uncollected page flagged by both Drive packs, and account for videos/resources; then run a scoped graph import only against the confirmed internal-beta target |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Local gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep offline gate on Node 24; inspect the private MiroFish review file with the owner, then run only a bounded provider pilot after live Free-plan/spend-cap confirmation |
-| MiroFish buyer pilot | Offline persona-frame audit passes; live-smoke content review and cost receipt pending | Reviewed generated posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Inspect and disposition the two rejected generated posts, capture reviewer identity and provider usage receipt if available; do not rerun until the seeded price/brief is corrected and the $0 provider cap is verifiable |
+| MiroFish buyer pilot | Offline persona-frame audit passes; private review aid prepared; human review and cost receipt pending | Reviewed generated posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Owner independently reviews `backend/uploads/simulations/sim_f91504972e42/offline-review-assistance.md` and records official verdicts; correct the under-$50 persona/offer mismatch before any rerun; synthetic results remain hypotheses, not market validation |
 | Release evidence and decision | Not ready | Clean commit; all required evidence attached to release ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Keep the release verifier as the authoritative gate; configure a ledger bucket only after target project and cost implications are confirmed |
 
 ## Verified Snapshot (2026-10-14)
@@ -55,6 +55,15 @@ release verification without deploying or spending beyond approved limits.
   migration or customer-content import.
 - MiroFish artifact tests: 23 passed. Human content review is incomplete;
   synthetic simulation is not market validation.
+- Offline audit of `sim_f91504972e42`: completed 10/10 rounds with two synthetic
+  buyers and zero provider calls recorded. Both response annotations remain
+  rejected/unqualified with no reviewer identity or timestamp, although their
+  content hashes bind to the run artifacts. A private, explicitly
+  non-authoritative review aid is at
+  `/Users/aryamandev/Documents/Codex/Projects/MiroFish-Buyer-Pilot/backend/uploads/simulations/sim_f91504972e42/offline-review-assistance.md`;
+  it notes that the under-$50 persona did not clearly reject/defer at the
+  seeded $2,500 setup plus $1,250/month offer. No official review fields were
+  changed and no new provider request was made.
 - Cloud Test and Internal Beta do not expose build identity. Existing local
   runtimes report different older commits. Signed-in local parity is not
   configured in the current source env file.
