@@ -1685,3 +1685,22 @@ does not authorize hosted changes, provider calls, or spending.
   this project or compare its configuration to this project's services until
   ownership/build identity is established. No tenant, GCP, or hosted data was
   changed; both browser tabs were returned to their Notebook pages.
+
+## Continuation Update - Tenant-Scope Digest And Security Gate (2026-10-14)
+
+- The authenticated local build-identity route now returns a SHA-256 digest of
+  the normalized Supabase endpoint and configured client slug. It never returns
+  the endpoint or slug themselves; missing or malformed configuration yields
+  `tenantScopeDigest: null`. The digest is a comparison aid, not an independent
+  identity attestation.
+- Regression coverage checks authentication, no-store behavior, digest
+  stability and scope differentiation, missing configuration, and absence of
+  raw endpoint/slug in the response. The focused suite passes **365 tests with
+  1 skipped**; the complete `npm run verify:security` gate exits **0**, including
+  lifecycle (22/22), notebook provenance (20/20), and runtime/storage fixture
+  checks (14/14). `git diff --check` is clean.
+- This change is local and uncommitted at this checkpoint. Cloud Test still
+  returns `client_route_not_enabled`; no deployment or hosted write was made,
+  so hosted build identity, comparable tenant scope, and local/cloud parity
+  remain unverified. The strict release verifier remains blocked on the
+  unconfigured release-ledger bucket and missing hosted evidence.

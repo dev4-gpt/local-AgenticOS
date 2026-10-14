@@ -18,6 +18,8 @@ test("build identity is tenant-authenticated, uncached, and rejects malformed st
   });
   process.env.VELOCE_BUILD_SOURCE_COMMIT = "private-token-not-a-sha";
   process.env.K_REVISION = "revision?secret=unsafe";
+  process.env.SUPABASE_URL = "https://project-ref.supabase.co";
+  process.env.CLIENT_SLUG = "private-tenant-slug";
   const denied = await route.GET();
   expect(denied.status).toBe(401);
   expect(await denied.json()).toEqual({ ok: false, error: "not_authenticated" });
@@ -26,14 +28,28 @@ test("build identity is tenant-authenticated, uncached, and rejects malformed st
   authorized = true;
   const unknown = await route.GET();
   expect(await unknown.json()).toEqual({
-    ok: true, sourceCommit: null, cloudRunRevision: null,
+    ok: true, sourceCommit: null, cloudRunRevision: null, tenantScopeDigest: "24caff626c01fb157da8991cd41f9056f3ffe7dd80d74066a553424aa3d15685",
     provenance: "reported_by_runtime_not_independent_attestation",
   });
   process.env.VELOCE_BUILD_SOURCE_COMMIT = "A".repeat(40);
   process.env.K_REVISION = "agentos-internal-beta-00042-abcd";
   const stamped = await route.GET();
   expect(stamped.headers.get("cache-control")).toBe("private, no-store");
-  expect(await stamped.json()).toMatchObject({ sourceCommit: "a".repeat(40), cloudRunRevision: "agentos-internal-beta-00042-abcd" });
+  const stampedBody = await stamped.json();
+  expect(stampedBody).toMatchObject({
+    sourceCommit: "a".repeat(40),
+    cloudRunRevision: "agentos-internal-beta-00042-abcd",
+    tenantScopeDigest: "24caff626c01fb157da8991cd41f9056f3ffe7dd80d74066a553424aa3d15685",
+  });
+  expect(JSON.stringify(stampedBody)).not.toContain("private-tenant-slug");
+  expect(JSON.stringify(stampedBody)).not.toContain("project-ref.supabase.co");
+
+  process.env.SUPABASE_URL = "https://project-ref.supabase.co:5443/custom-base";
+  const separateProject = await route.GET();
+  expect((await separateProject.json()).tenantScopeDigest).not.toBe(stampedBody.tenantScopeDigest);
+
+  delete process.env.CLIENT_SLUG;
+  expect(await (await route.GET()).json()).toMatchObject({ tenantScopeDigest: null });
   expect(clientApiRouteAllowed("/api/client-runtime/build-identity")).toBe(true);
 });
 
