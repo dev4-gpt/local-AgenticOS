@@ -17,7 +17,7 @@ release verification without deploying or spending beyond approved limits.
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
 | Local product and customer journey | Current-source Notebook browser journey passed 1/1 with fixture APIs; signed-in end-to-end customer journey remains unverified. The visible 0-vs-9 Notebook counts are across different tenant slugs, not a same-tenant parity result | Current-source build; automated journey tests; signed-in same-user, same-tenant journey through workspace, source selection, draft, provenance, review, and export | Keep provider calls disabled. Do not treat cross-tenant record counts as parity evidence. Resolve the intended hosted tenant and then run a read-only same-tenant feature journey before any writes |
-| Authorized Skool archive and graph import | The latest Drive copy remains partial: 1,138 nodes / 9,029 edges, 193 source segments (175 PDF-batch + 18 Drive-added), 7,577 links, and 25 pending pages. The Drive archive manifest reports only 9/108 dated lessons archived and no verified video downloads. No downloaded videos or hosted import receipt | Canonical lesson/date inventory; all permitted page text, links, and available video references accounted for; validated source pack; scoped import receipt; graph counts and link checks | Reconcile the 25 pending pages against the live signed-in classroom and archive manifest; keep video playback on YouTube unless owner-provided downloads are authorized; import to a hosted graph only after coverage and the target tenant are confirmed |
+| Authorized Skool archive and graph import | The Drive manifest (updated 2026-10-14 22:07 UTC) still marks coverage partial: it reports 9/108 dated lesson PDFs archived, no verified video downloads, and a validated graph with 1,138 nodes / 9,029 edges, text linked for 82/107 lesson references, 25 pages pending, and 96 PDF-derived segments from 88 PDFs (779 pages). The newer live-index audit reports 106 dated lessons plus the separate System page, so the manifest's 108-date count remains unresolved. No hosted graph import receipt | Canonical lesson/date inventory; all permitted page text, links, and available video references accounted for; validated source pack; scoped import receipt; graph counts and link checks | Reconcile the 25 pending pages and spreadsheet/index count discrepancy; inspect the latest graph artifact independently before import; import to a hosted graph only after coverage and target tenant are confirmed |
 | Local/cloud parity and hosted security | Read-only Chrome inspection found local `3985` at 0 records / 0 active sources, Cloud Test at 9 / 9, and Internal Beta at 0 / 0; these are not yet a parity result. Local internal-beta config and a new owner-only Cloud Test-scoped local config both pass preflight with provider calls disabled; same Supabase project, different tenant slugs | Same build/artifact identity; same-user, same-tenant feature/data comparison; route allowlist, tenant isolation, storage proxy and 45-day retention verified from the intended live beta configuration | Use `.private-client-kits/cloud-test-parity.env` to start current source read-only for `veloce-cloud-test`; sign in at that local origin and run the authenticated route/data comparison. Do not mutate service, secrets, traffic, Supabase, or retention |
 | AI quality, evaluation, and observability | Current-source deterministic evaluation passes 16/16; focused observability/trace tests passed 13/13. Hosted model quality, provider-side spend cap, and hosted telemetry remain unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled for the $0 pilot. Use offline receipts and trace tests as local-only evidence until provider-side caps and an approved hosted/model path are independently verified |
 | MiroFish buyer pilot | `sim_f91504972e42` has a hash-bound human review (1 qualified, 1 rejected). For v2 `sim_8f4e26a9d170`, two dynamic posts are hash-bound reviewed (0 qualified, 2 rejected as weak); the saved directory lacks `run_state.json` and `profile-preparation.json`, so strict completion/receipt is unverified. Both runs are synthetic, not market validation | Human-reviewed posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Do not make another provider request under the prior one-repeat approval. Keep both v2 replies out of demand evidence and prioritize actual buyer interviews |
@@ -42,6 +42,20 @@ listener as a working signed-in mirror. The available Chrome profile has no
 Veloce tabs, so no authenticated browser journey was attempted. The local
 runtime and browser checks remain open; the passing preflight is not parity
 evidence.
+
+## Latest Drive Archive Manifest Recheck - 2026-10-14
+
+The `School Tabs Agent OS` Drive folder contains 113 items at this recheck. Its
+Archive Manifest, modified `2026-10-14T22:07:01Z`, still says only 9 of 108
+dated lesson PDFs are archived and no video downloads are verified. Its latest
+validated-graph row reports 1,138 nodes / 9,029 edges, text linked to 82/107
+lesson references, 25 pages pending, and 96 PDF-derived segments from 88 PDFs
+(779 pages); it explicitly says no video assets and no hosted import. These
+are manifest-reported figures: a raw Drive fetch of the 8.46 MB graph file
+failed with a transport error, so its current bytes were not independently
+revalidated here. The 108-dated-lesson spreadsheet count remains inconsistent
+with the separate live-index audit of 106 dated lessons plus the System page.
+No Drive content or hosted graph data was changed.
 
 ## Historical Verified Snapshot (2026-10-14; superseded by continuation updates below)
 
