@@ -1929,6 +1929,14 @@ does not authorize hosted changes, provider calls, or spending.
   `{"ok":false,"error":"client_route_not_enabled"}` at
   `/api/client-runtime/build-identity`. Their deployed revisions therefore
   remain unverified; the two hostnames and visible UI are not build evidence.
+- In current source, the build-identity route is present in the default client
+  API allowlist and GCP provisioner manifest. The live error is emitted by
+  middleware when the deployed allowlist does not enable a path. Focused
+  allowlist, build-stamp, cloud-evidence, and runtime-config checks pass
+  **16/16** under Node 24, including rejection of a manifest missing the route.
+  The remaining issue is therefore the deployed source/configuration; verifying
+  or changing it requires the exact Cloud Run project/service and a reviewed
+  test release.
 - The local Notebook Studio browser test could not start its configured local
   server: the sandbox denied binding to `127.0.0.1:3939`, and the escalated
   attempt reported the port occupied while a local probe could not connect.
