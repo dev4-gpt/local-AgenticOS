@@ -1383,3 +1383,17 @@ does not authorize hosted changes, provider calls, or spending.
   existing run profiles cannot be substituted without breaking review/input
   binding. Keep the approved repeat unlaunched until its exact profile set and
   preparation receipt are restored or regenerated and reviewed.
+
+## Continuation Update - Current-Source Client Build (2026-10-14)
+
+- The current client runtime builds successfully in production mode under the
+  repo's supported Node 24 runtime. The build compiled, typechecked, and
+  generated all **66** static pages. Next added the isolated `.next-client-prod`
+  generated type directories to `tsconfig.json`; a follow-up `npm run typecheck`
+  passed.
+- Starting the current-source server on a free local port was denied by the
+  sandbox (`listen EPERM`), so current-source browser identity and the complete
+  signed-in local journey remain unverified. The existing 3939 server/tab was
+  left untouched; its build-identity endpoint reports `sourceCommit: null`.
+- The successful build is code evidence only. No database write, provider call,
+  hosted deployment, IAM change, or release-ledger creation occurred.
