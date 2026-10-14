@@ -978,3 +978,20 @@ does not authorize hosted changes, provider calls, or spending.
   retention configuration. The production-readiness verifier remains false
   with `ledger_bucket_not_configured` and 37 fields not evaluated. No hosted
   changes, tenant writes, deployment, or provider calls were made.
+
+## Continuation Update - Skool Drive Inventory Reconciliation (2026-10-14)
+
+- A fresh read-only Drive listing finds **108** items, one more than the prior
+  107-item snapshot. The new item is a 5.7 MB partial JSON-LD graph export; it
+  is not another lesson capture and does not increase verified page-text or
+  video coverage.
+- Current coverage evidence remains **78/107** Markdown-register lesson IDs
+  with text, **25** discovered pages uncollected, four reference-only entries,
+  and no verified video assets/transcripts. The Drive spreadsheet says 9 of
+  108 dated lessons are archived; the previously observed live classroom
+  sidebar showed 110 items with only 100 rendered. The inventories remain
+  unreconciled; coverage cannot be called complete.
+- No Skool content was collected in this check. Next evidence needed is a
+  canonical lesson URL/`md`-ID roster resolving the 107-register, 108-dated,
+  109-total spreadsheet, and 110-item sidebar counts, followed by permitted
+  owner-supplied page exports and separately verified media/transcripts.

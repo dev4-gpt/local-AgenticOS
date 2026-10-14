@@ -166,6 +166,24 @@ The current Google Drive folder listing still contains 107 direct items:
 The folder also contains `skool_video_links.py` and a dated Markdown lesson
 link register; neither is evidence that video bytes or transcripts were saved.
 
+## Drive Recheck After Partial Graph Export (2026-10-14)
+
+A subsequent read-only listing found **108** direct Drive items, one more than
+the 107-item snapshot above. The added item is
+`AgentOS-Knowledge-Graph-Partial-2026-10-14.jsonld` (5,682,448 bytes). It is a
+partial graph export, not an additional lesson capture. The latest listing
+therefore does not change the verified coverage figures: the Markdown register
+still has 107 lesson IDs, the prepared combined local archive has text for 78,
+25 discovered pages remain uncollected, four entries have references but no
+lesson text, and video assets/transcripts remain unverified.
+
+The Drive spreadsheet still says 9 of 108 dated lessons are archived and
+records the standalone AgentOS System PDF separately. The live classroom
+sidebar previously showed 110 items, with only 100 rendered in that view. These
+are three different inventories (Drive register, spreadsheet scope, and live
+sidebar), not counts that can be reconciled by adding files; a canonical
+lesson-URL/`md`-ID roster is still required before declaring coverage complete.
+
 The newest private PDF preparation manifest is
 `tmp/authorized-skool-import/pdf-batch-2026-10-13-v10.manifest.json`. It
 processes 64 PDFs into 175 source segments and 7,537 link references across
