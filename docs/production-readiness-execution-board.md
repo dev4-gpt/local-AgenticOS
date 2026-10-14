@@ -2799,3 +2799,19 @@ does not authorize hosted changes, provider calls, or spending.
   integration-governance, and pilot-contract checks passed. This makes no
   claim about live IAM, hosted data, external provider health, or paid-model
   quality; no hosted call, deployment, or provider request occurred.
+
+## Continuation Update - MiroFish V2 Offline Audit (2026-10-14)
+
+- Rechecked the separate MiroFish pilot checkout at commit `384e471` without
+  launching a simulation or contacting a provider. Its v2 manifest binds ten
+  synthetic profiles, two active personas, ten rounds, Groq Free, graph-memory
+  writes disabled, no real-customer data, and a `$0` paid-spend cap. The local
+  simulation database contains ten agents and four posts.
+- The existing human review for `sim_8f4e26a9d170` passes the offline
+  artifact-binding verifier: both annotations match the saved post/quote
+  hashes, the reviewer and timestamp are present, and both replies are
+  rejected as weak (zero qualified, two rejected). The buyer-pilot test file
+  passed **18/18** in the pilot's existing virtual environment.
+- This is synthetic, reviewed product-learning evidence, not buyer demand or
+  willingness-to-pay evidence. No additional simulation, provider request,
+  or paid spend occurred.
