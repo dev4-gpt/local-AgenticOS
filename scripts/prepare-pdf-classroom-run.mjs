@@ -118,6 +118,8 @@ export function preparePdfClassroomRun({ directory, startUrl, sourceUrlPrefix, r
   const skipped = [];
   const sources = [];
   let skippedReferences = 0;
+  let conflictingSourceUrlGroups = 0;
+  let preservedConflictingSnapshots = 0;
   for (const row of rows) {
     if (row.status !== "prepared") {
       skipped.push(`${row.filename}: ${row.status}`);
@@ -127,15 +129,20 @@ export function preparePdfClassroomRun({ directory, startUrl, sourceUrlPrefix, r
     if (group.length > 1) {
       const identical = group.every((item) => item.inputSha256 === group[0].inputSha256);
       if (!identical) {
-        row.status = "duplicate_source_url_conflict";
-        skipped.push(`${row.filename}: duplicate source URL has non-identical PDF bytes`);
-        continue;
-      }
-      const first = group[0];
-      if (row !== first) {
-        row.status = "duplicate_identical_pdf";
-        skipped.push(`${row.filename}: byte-identical duplicate of ${first.filename}`);
-        continue;
+        if (row === group[0]) conflictingSourceUrlGroups += 1;
+        row.status = "preserved_source_url_snapshot";
+        preservedConflictingSnapshots += 1;
+        const snapshotLabel = ` [PDF snapshot ${row.inputSha256.slice(0, 12)}]`;
+        for (const source of row.sources) {
+          source.tab = `${source.tab.slice(0, 240 - snapshotLabel.length)}${snapshotLabel}`;
+        }
+      } else {
+        const first = group[0];
+        if (row !== first) {
+          row.status = "duplicate_identical_pdf";
+          skipped.push(`${row.filename}: byte-identical duplicate of ${first.filename}`);
+          continue;
+        }
       }
     }
     for (const warning of row.skipped ?? []) {
@@ -154,12 +161,14 @@ export function preparePdfClassroomRun({ directory, startUrl, sourceUrlPrefix, r
     files: rows.map(({ sources: _sources, ...row }) => row),
     coverage: {
       inputPdfs: filenames.length,
-      preparedPdfs: rows.filter((row) => row.status === "prepared" || row.status === "duplicate_identical_pdf").length,
+      preparedPdfs: rows.filter((row) => ["prepared", "preserved_source_url_snapshot", "duplicate_identical_pdf"].includes(row.status)).length,
+      conflictingSourceUrlGroups,
+      preservedConflictingSnapshots,
       importedSourceSegments: sources.length,
       importedLinks: sources.reduce((count, source) => count + source.links.length, 0),
       skippedReferences,
       ambiguousPdfs: rows.filter((row) => row.status === "ambiguous_source_url").length,
-      unresolvedPdfs: rows.filter((row) => !["prepared", "duplicate_identical_pdf"].includes(row.status)).length,
+      unresolvedPdfs: rows.filter((row) => !["prepared", "preserved_source_url_snapshot", "duplicate_identical_pdf"].includes(row.status)).length,
       completeCommunityExport: false,
       discoveredQueueExhausted: false,
     },

@@ -61,6 +61,47 @@ test("local PDF batch preparation imports only unambiguous first-page lesson URL
   }
 });
 
+test("local PDF preparation preserves non-identical captures of the same lesson as labeled snapshots", () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "pdf-classroom-snapshots-"));
+  const sourceDirectory = path.join(directory, "pdfs");
+  mkdirSync(sourceDirectory);
+  const filenames = ["lesson-current.pdf", "lesson-older-capture.pdf"];
+  for (const filename of filenames) writeFileSync(path.join(sourceDirectory, filename), filename);
+  const pageUrl = `${startUrl}?md=lesson-snapshot`;
+  const runCommand = (command: string, args: string[]) => {
+    const pdfPath = args.at(-1) === "-" ? args.at(-2)! : args.at(-1)!;
+    if (command === "pdftotext" && args.includes("-f")) return pageUrl;
+    if (command === "pdfinfo" && args.includes("-url")) return "";
+    if (command === "pdfinfo") return "Pages: 1\nTitle: Snapshot lesson\n";
+    return path.basename(pdfPath).includes("older") ? "Older lesson capture" : "Current lesson capture";
+  };
+
+  try {
+    const prepared = preparePdfClassroomRun({ directory: sourceDirectory, startUrl, sourceUrlPrefix: startUrl, runCommand });
+    expect(prepared.coverage).toMatchObject({
+      inputPdfs: 2,
+      preparedPdfs: 2,
+      conflictingSourceUrlGroups: 1,
+      preservedConflictingSnapshots: 2,
+      importedSourceSegments: 2,
+      unresolvedPdfs: 0,
+    });
+    expect(prepared.files.map((file) => file.status)).toEqual(["preserved_source_url_snapshot", "preserved_source_url_snapshot"]);
+    const parsed = parseClientSourcePack(prepared.batches[0]);
+    expect(parsed.sources).toHaveLength(2);
+    expect(parsed.sources.map((source) => source.sourceUrl)).toEqual([pageUrl, pageUrl]);
+    expect(parsed.sources.map((source) => source.tab)).toEqual(expect.arrayContaining([
+      expect.stringContaining("PDF snapshot"),
+      expect.stringContaining("PDF snapshot"),
+    ]));
+    expect(new Set(parsed.sources.map((source) => source.tab)).size).toBe(2);
+    expect(new Set(parsed.sources.map((source) => source.sourceImportKey)).size).toBe(2);
+    expect(parsed.sources.map((source) => source.text)).toEqual(["Current lesson capture", "Older lesson capture"]);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("local PDF prep uses only a verified footer URL to resolve wrapped lesson links", () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), "pdf-classroom-footer-"));
   const filename = "2026-06-07-lesson.pdf";
