@@ -1216,3 +1216,19 @@ does not authorize hosted changes, provider calls, or spending.
   `releaseReady: false`, with `release_gate:ledger_bucket_not_configured` and
   **37** evidence fields unevaluated. The ledger runbook labels its historical
   GCP target unverified, so no bucket or IAM configuration was attempted.
+
+## Continuation Update - Drive Graph and Cloud Test Read-Only Recheck (2026-10-14)
+
+- The `School Tabs Agent OS` Drive folder contains
+  `AgentOS-Knowledge-Graph-Partial-2026-10-14.jsonld` at **5,682,442 bytes**.
+  The local combined graph file has the same reported byte length; no remote
+  hash comparison was performed, so byte identity is not claimed.
+- The local combined graph validates at **492 nodes / 7,770 relations** with
+  `coverage: partial`; its combined source manifest records **193 source
+  segments**, **7,577 links**, and **25 pending pages**. The Drive archive
+  manifest still reports **9 of 108 dated lessons** archived, with the
+  standalone Agent OS System PDF separate and video/resource capture incomplete.
+- The selected signed-in Cloud Test Notebook page shows **9 records / 9 active
+  sources**. This is a fresh read-only observation, not same-user parity: the
+  principal and data scope have not been matched to local or Internal Beta.
+  No hosted import, tenant mutation, provider request, or deployment occurred.
