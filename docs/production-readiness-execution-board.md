@@ -55,7 +55,12 @@ are manifest-reported figures: a raw Drive fetch of the 8.46 MB graph file
 failed with a transport error, so its current bytes were not independently
 revalidated here. The 108-dated-lesson spreadsheet count remains inconsistent
 with the separate live-index audit of 106 dated lessons plus the System page.
-No Drive content or hosted graph data was changed.
+The owner-only local candidate
+`tmp/authorized-skool-import/agentos-combined-chatgpt-voice-plus-5k-proposal-2026-10-14.jsonld`
+independently passes `scripts/verify-portable-knowledge-graph.mjs` with 1,138
+nodes, 9,029 relations, and `coverage: partial`. Its byte size matches the
+Drive artifact, but no content hash was available to prove the Drive copy is
+identical. No Drive content or hosted graph data was changed.
 
 ## Offline MiroFish V1 Audit - 2026-10-14
 
