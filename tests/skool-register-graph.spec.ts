@@ -47,6 +47,14 @@ test("Skool register rejects duplicate lesson IDs and secret-bearing links", () 
   expect(graph["@graph"].some((node) => node.url?.includes("api_key"))).toBe(false);
 });
 
+test("Skool register omits loopback and private-network link targets", () => {
+  const unsafe = register.replaceAll("https://example.com/docs", "https://admin.localhost/docs");
+  const graph = buildSkoolRegisterGraph(unsafe, "A1b2C3d4E5f6G7h8I9j0");
+  expect(graph.provenance.skippedUnsafeLinks).toBe(2);
+  expect(graph.edges.some((edge) => edge["@type"] === "links_to")).toBe(false);
+  expect(graph["@graph"].some((node) => node.url?.includes("localhost"))).toBe(false);
+});
+
 test("register graph output is restricted to the private ignored directory", () => {
   expect(privateGraphArtifactPath("tmp/authorized-skool-import/index.jsonld", "/repo")).toBe("/repo/tmp/authorized-skool-import/index.jsonld");
   expect(() => privateGraphArtifactPath("public/index.jsonld", "/repo")).toThrow("private_graph_path_required");

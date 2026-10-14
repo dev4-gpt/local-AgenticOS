@@ -65,3 +65,13 @@ test("AgentOS source graph uses its coverage provenance and validates explicit e
   graph.edges[0].target = "url:missing";
   expect(() => validatePortableKnowledgeGraph(graph)).toThrow("portable_graph_edge_invalid");
 });
+
+test("metadata-only graph register is partial unless provenance explicitly proves completeness", () => {
+  const graph = {
+    "@context": "https://schema.org",
+    "@graph": [{ "@id": "lesson:one", "@type": "LearningResource" }],
+    edges: [],
+    provenance: { format: "agentos-skool-register-graph-v1", complete: false },
+  };
+  expect(validatePortableKnowledgeGraph(graph)).toMatchObject({ coverage: "partial", nodeCount: 1 });
+});

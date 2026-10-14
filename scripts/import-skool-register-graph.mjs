@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { isPrivateAddress } from "../src/lib/clientPrivateAddress.mjs";
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 const CLASSROOM_PATH = "/ai-profit-lab-7462/classroom/9daf24e1";
@@ -13,7 +14,7 @@ function safePublicUrl(value) {
     return null;
   }
   if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
-  if (["localhost", "127.0.0.1", "::1"].includes(url.hostname.toLowerCase())) return null;
+  if (isPrivateAddress(url.hostname)) return null;
   for (const key of url.searchParams.keys()) {
     if (/(token|secret|auth|session|api[_-]?key|password|signature|^sig$)/i.test(key)) return null;
   }

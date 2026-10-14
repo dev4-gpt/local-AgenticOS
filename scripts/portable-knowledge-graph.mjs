@@ -40,7 +40,7 @@ export function validatePortableKnowledgeGraph(input) {
       ? sourceCoverage.completeCommunityExport === true
         && sourceCoverage.discoveredQueueExhausted === true
         && input.provenance.complete === true ? "complete" : "partial"
-      : null);
+      : input.provenance?.complete === false ? "partial" : null);
   if (!["partial", "complete"].includes(coverage)) {
     throw new Error("portable_graph_coverage_invalid");
   }

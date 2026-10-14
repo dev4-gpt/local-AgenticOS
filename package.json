@@ -55,6 +55,7 @@
     "verify:production-readiness": "node scripts/verify-production-readiness.mjs",
     "verify:ai-evaluation": "node scripts/run-ai-release-evaluation.mjs",
     "verify:private-source-pack": "npx playwright test tests/private-source-pack-validation.spec.ts --config=playwright.unit.config.ts --reporter=line",
+    "verify:private-source-pack-sanitizer": "npx playwright test tests/private-source-pack-sanitizer.spec.ts --config=playwright.unit.config.ts --reporter=line",
     "verify:portable-knowledge-graph": "npx playwright test tests/portable-knowledge-graph.spec.ts --config=playwright.unit.config.ts --reporter=line",
     "prepare:pdf-classroom-run": "node scripts/prepare-pdf-classroom-run.mjs",
     "verify:mirofish-buyer-artifacts": "python3 -m unittest discover -s tests -p 'test_mirofish_*.py' -v",
