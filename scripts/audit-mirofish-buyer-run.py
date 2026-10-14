@@ -78,12 +78,13 @@ def prepare_review_template(simulation_dir: Path) -> Path:
     if not posts:
         raise ValueError("buyer_review_no_dynamic_posts")
     template = {
-        "schemaVersion": 1, "simulationId": simulation_dir.name,
+        "schemaVersion": 2, "simulationId": simulation_dir.name,
         "reviewer": "", "reviewedAt": "",
         "posts": [{
             "postId": post.post_id, "agentId": post.agent_id, "content": generated_text(post),
             "contentSha256": hashlib.sha256(generated_text(post).encode("utf-8")).hexdigest(),
             "quotedPostId": post.original_post_id,
+            "quotedContent": post.content if post.original_post_id is not None else None,
             "quotedContentSha256": hashlib.sha256(post.content.encode("utf-8")).hexdigest() if post.original_post_id is not None else None,
             "scenarioRelevant": False, "roleFaithful": False, "scopeSafe": False, "actionable": False,
         } for post in posts],
@@ -105,7 +106,7 @@ def review_covers_dynamic_posts(simulation_dir: Path, posts: list[Post]) -> tupl
             return False, 0
         review = load_json(path)
         reviewed_at = datetime.fromisoformat(review["reviewedAt"].replace("Z", "+00:00"))
-        if (review.get("schemaVersion") != 1 or review.get("simulationId") != simulation_dir.name
+        if (review.get("schemaVersion") != 2 or review.get("simulationId") != simulation_dir.name
                 or not isinstance(review.get("reviewer"), str) or not review["reviewer"].strip()
                 or reviewed_at.tzinfo is None or reviewed_at.utcoffset() is None):
             return False, 0
@@ -125,6 +126,7 @@ def review_covers_dynamic_posts(simulation_dir: Path, posts: list[Post]) -> tupl
             if (post is None or identity in reviewed or entry.get("content") != generated_text(post)
                     or (post.original_post_id is not None and (
                         entry.get("quotedPostId") != post.original_post_id
+                        or entry.get("quotedContent") != post.content
                         or entry.get("quotedContentSha256") != hashlib.sha256(post.content.encode("utf-8")).hexdigest()))):
                 return False, approved
             reviewed.add(identity)

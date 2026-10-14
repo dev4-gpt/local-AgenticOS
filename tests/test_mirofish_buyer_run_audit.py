@@ -67,7 +67,7 @@ class BuyerRunAuditTest(unittest.TestCase):
             encoding="utf-8",
         )
         self._write("buyer_review.json", {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "simulationId": "sim_test",
             "reviewer": "pilot-reviewer",
             "reviewedAt": "2026-10-07T12:00:00Z",
@@ -76,6 +76,7 @@ class BuyerRunAuditTest(unittest.TestCase):
                 "content": "A skeptical response",
                 "contentSha256": hashlib.sha256(b"A skeptical response").hexdigest(),
                 "quotedPostId": 1,
+                "quotedContent": "P00001 evaluates this tool",
                 "quotedContentSha256": hashlib.sha256(b"P00001 evaluates this tool").hexdigest(),
                 "scenarioRelevant": True, "roleFaithful": True, "scopeSafe": True, "actionable": True,
             }],
@@ -129,6 +130,7 @@ class BuyerRunAuditTest(unittest.TestCase):
         review_path = self.simulation / "buyer_review.json"
         review = json.loads(review_path.read_text(encoding="utf-8"))
         review["posts"][0]["quotedPostId"] = 1
+        review["posts"][0]["quotedContent"] = "P00001 evaluates this tool"
         review["posts"][0]["quotedContentSha256"] = hashlib.sha256(b"P00001 evaluates this tool").hexdigest()
         self._write("buyer_review.json", review)
         result = AUDITOR.audit(self.simulation, self.cohort)
@@ -136,6 +138,11 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.assertEqual(result["duplicateDynamicPostIds"], [])
 
         review["posts"][0]["quotedContentSha256"] = "0" * 64
+        self._write("buyer_review.json", review)
+        self.assertFalse(AUDITOR.audit(self.simulation, self.cohort)["checks"]["buyerContentReview"])
+
+        review["posts"][0]["quotedContentSha256"] = hashlib.sha256(b"P00001 evaluates this tool").hexdigest()
+        review["posts"][0]["quotedContent"] = "Edited quoted context"
         self._write("buyer_review.json", review)
         self.assertFalse(AUDITOR.audit(self.simulation, self.cohort)["checks"]["buyerContentReview"])
 
@@ -159,7 +166,7 @@ class BuyerRunAuditTest(unittest.TestCase):
             AUDITOR.Post(3, 1, "Second response", 1, None, None),
         ]
         self._write("buyer_review.json", {
-            "schemaVersion": 1, "simulationId": "sim_test", "reviewer": "pilot-reviewer",
+            "schemaVersion": 2, "simulationId": "sim_test", "reviewer": "pilot-reviewer",
             "reviewedAt": "2026-10-10T14:39:17Z",
             "posts": [
                 {
@@ -191,7 +198,7 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.assertFalse(missing["pilotEvidencePassed"])
 
         review = {
-            "schemaVersion": 1, "simulationId": "sim_test", "reviewer": "pilot-reviewer",
+            "schemaVersion": 2, "simulationId": "sim_test", "reviewer": "pilot-reviewer",
             "reviewedAt": "2026-10-07T12:00:00Z",
             "posts": [{"postId": 2, "agentId": 1, "content": "A skeptical response", "contentSha256": "0" * 64,
                        "scenarioRelevant": True, "roleFaithful": True, "scopeSafe": True, "actionable": True}],
@@ -221,6 +228,7 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.assertEqual(os.stat(path).st_mode & 0o777, 0o600)
         review = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(review["posts"][0]["content"], "A skeptical response")
+        self.assertEqual(review["posts"][0]["quotedContent"], "P00001 evaluates this tool")
         self.assertFalse(review["posts"][0]["scenarioRelevant"])
         self.assertFalse(AUDITOR.audit(self.simulation, self.cohort)["pilotEvidencePassed"])
         with self.assertRaises(FileExistsError):
