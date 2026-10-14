@@ -18,6 +18,19 @@ test("client sign-in entry is reachable and exposes only its configured state", 
   }
 });
 
+test("product experience font stacks resolve without a remote font service", async ({ page }) => {
+  const fontRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("fonts.googleapis.com") || request.url().includes("fonts.gstatic.com")) {
+      fontRequests.push(request.url());
+    }
+  });
+  await page.goto("/login", { waitUntil: "networkidle" });
+  const families = await page.locator("body").evaluate((body) => getComputedStyle(body).fontFamily);
+  expect(families).toContain("system-ui");
+  expect(fontRequests).toEqual([]);
+});
+
 test("product experience opens on the Renaissance hero", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
