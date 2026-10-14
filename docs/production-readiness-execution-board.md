@@ -1917,3 +1917,24 @@ does not authorize hosted changes, provider calls, or spending.
   transfer or readable export, while retaining the richer local graph and
   keeping hosted import held until the archive is complete and the internal
   beta target is verified.
+
+## Continuation Update - Hosted Notebook And Journey Checks (2026-10-14)
+
+- In the existing signed-in Chrome profile, Cloud Test initially rendered
+  **0/0** Notebook records after returning from a read-only endpoint check; one
+  refresh restored **9/9**. Treat the zero as a transient loading observation,
+  not a data-loss event. The `agentos-internal-beta-...a.run.app` tab remains
+  authenticated but shows **0/0**.
+- Both Cloud Test and the Internal Beta URL return
+  `{"ok":false,"error":"client_route_not_enabled"}` at
+  `/api/client-runtime/build-identity`. Their deployed revisions therefore
+  remain unverified; the two hostnames and visible UI are not build evidence.
+- The local Notebook Studio browser test could not start its configured local
+  server: the sandbox denied binding to `127.0.0.1:3939`, and the escalated
+  attempt reported the port occupied while a local probe could not connect.
+  No local runtime was available at `127.0.0.1:3955` either. The narrower,
+  provider-free Notebook provenance and journey-receipt contract suites passed
+  **13/13** under Node 24; this is not a real browser journey.
+- No records, hosted configuration, or provider state were changed. Next:
+  enable build identity in a verified test release and arrange an approved
+  local runtime bind, then repeat same-user, read-only journey comparison.
