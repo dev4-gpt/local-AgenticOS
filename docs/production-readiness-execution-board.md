@@ -896,3 +896,26 @@ does not authorize hosted changes, provider calls, or spending.
   source commit: `ledger_bucket_not_configured` and **37** release fields not
   evaluated. No bucket was guessed, and no deployment, hosted migration, or
   paid call was made.
+
+## Continuation Update - Supported-Runtime Local Gate Refresh (2026-10-14)
+
+- Rechecked clean source commit `d5a16a6b4021fef4d31881af85e9712e094e5b4f`
+  using the supported Node `24.19.0` runtime. The offline AI evaluation passed
+  **16/16** deterministic cases with zero model samples, no LLM/Zep requests,
+  and `productionReady: false`. The ignored local report is
+  `tmp/ai-release-local-v1-report.json` (SHA-256
+  `e6e0a7d3b2bb83aa1a57ab7834a008460cb410e3d16ed96317d9740dacec2834`). A
+  first run under system Node `26.4.0` passed the fixtures but correctly failed
+  the supported-runtime gate; it is not used as release evidence.
+- `npm run test:focused` passed **363/364** tests under Node `24.19.0`, with
+  one skipped. This is local regression evidence only, not hosted parity,
+  customer acceptance, or model-quality evidence.
+- On measured source commit `d5a16a6b4021fef4d31881af85e9712e094e5b4f`,
+  `npm run verify:production-readiness` remained
+  `releaseReady: false`: `ledger_bucket_not_configured`, with **37** fields not
+  evaluated. No ledger target was guessed. No hosted requests, tenant writes,
+  migration, deployment, or paid provider calls were made.
+- The test/evaluation refresh does not change the blockers in the other tracks:
+  signed-in full customer journey and same-build parity, a complete policy-safe
+  Skool source archive and hosted graph import, human/buyer pilot evidence,
+  and release approvals remain open.
