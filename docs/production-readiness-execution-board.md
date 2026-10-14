@@ -1465,3 +1465,8 @@ does not authorize hosted changes, provider calls, or spending.
   through a read-only, non-secret configuration check, then compare its route
   response with the current-source policy. Keep hosted changes held until the
   exact mismatch and approved target are established.
+- Attempted that configuration check with the local Cloud SDK, but the
+  sandbox denied access to its existing credentials database before
+  authentication. The command returned no service configuration and made no
+  Cloud API request. Continue only through an already-authorized read-only
+  browser session or after the local credential-store access is approved.
