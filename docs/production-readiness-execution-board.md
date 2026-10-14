@@ -20,7 +20,7 @@ release verification without deploying or spending beyond approved limits.
 | Authorized Skool archive and graph import | A validated partial graph was added to the Drive archive: 1,138 nodes / 9,029 edges, with text linked to 82/107 lesson refs and 25 pages still pending. The graph includes the 107-entry video/link register and 96 PDF-derived segments from 88 PDFs (779 pages; 5 credential-like values redacted). The Drive archive manifest separately reports only 9/108 dated lesson PDFs saved and no verified video downloads. No video assets or hosted graph import | Canonical lesson/date inventory; all permitted page text, links, and available video references accounted for; validated source pack; scoped import receipt; graph counts and link checks | Reconcile the 25 pending pages against the live signed-in classroom and archive manifest; keep video playback on YouTube unless owner-provided downloads are authorized; import to a hosted graph only after target and coverage are confirmed |
 | Local/cloud parity and hosted security | Read-only Chrome inspection found local `3985` at 0 records / 0 active sources, Cloud Test at 9 / 9, and Internal Beta at 0 / 0; these are not yet a parity result. Local internal-beta config and a new owner-only Cloud Test-scoped local config both pass preflight with provider calls disabled; same Supabase project, different tenant slugs | Same build/artifact identity; same-user, same-tenant feature/data comparison; route allowlist, tenant isolation, storage proxy and 45-day retention verified from the intended live beta configuration | Use `.private-client-kits/cloud-test-parity.env` to start current source read-only for `veloce-cloud-test`; sign in at that local origin and run the authenticated route/data comparison. Do not mutate service, secrets, traffic, Supabase, or retention |
 | AI quality, evaluation, and observability | Current-source deterministic evaluation passes 16/16; focused observability/trace tests passed 13/13. Hosted model quality, provider-side spend cap, and hosted telemetry remain unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled for the $0 pilot. Use offline receipts and trace tests as local-only evidence until provider-side caps and an approved hosted/model path are independently verified |
-| MiroFish buyer pilot | `sim_f91504972e42` has a hash-bound human review (1 qualified, 1 rejected). Approved v2 run `sim_8f4e26a9d170` completed 10/10 and is now hash-bound reviewed (0 qualified, 2 rejected as weak/self-referential). Both runs are synthetic, not market validation | Human-reviewed posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Do not make another provider request under the prior one-repeat approval. Keep both v2 replies out of demand evidence and prioritize actual buyer interviews |
+| MiroFish buyer pilot | `sim_f91504972e42` has a hash-bound human review (1 qualified, 1 rejected). For v2 `sim_8f4e26a9d170`, two dynamic posts are hash-bound reviewed (0 qualified, 2 rejected as weak); the saved directory lacks `run_state.json` and `profile-preparation.json`, so strict completion/receipt is unverified. Both runs are synthetic, not market validation | Human-reviewed posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Do not make another provider request under the prior one-repeat approval. Keep both v2 replies out of demand evidence and prioritize actual buyer interviews |
 | Release evidence and decision | Not ready; the existing ledger bucket is confirmed and protected, but there is no record for pushed commit `15b61d0`; 37 release evidence categories remain unevaluated. The branch is clean and pushed | Clean pushed commit; all required evidence attached to the ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Continue customer journey, hosted parity, migration, and approval evidence; publish no partial release record |
 
 ## Historical Verified Snapshot (2026-10-14; superseded by continuation updates below)
@@ -2898,3 +2898,23 @@ does not authorize hosted changes, provider calls, or spending.
 - These are local mocked/source checks, not hosted telemetry, real provider
   billing, or tenant-visible release receipts. Provider capture remains disabled
   in the test environment; no hosted or paid request occurred.
+
+## Continuation Update - MiroFish Release Receipt Recheck (2026-10-14)
+
+- Rechecked MiroFish checkout commit `384e471` and the saved
+  `sim_8f4e26a9d170` directory offline. The SQLite database has four posts,
+  including two dynamic posts; the schema-v2 review is complete and hash-bound,
+  with zero qualified responses and both responses rejected as weak. No post
+  text was emitted by the audit output.
+- AgentOS's strict run auditor cannot complete because `run_state.json` is
+  absent. The separate release receipt also requires `profile-preparation.json`,
+  which is absent. The current directory includes the config, profiles,
+  database, review, manifest, and actions log, but that is insufficient to
+  prove completed rounds, runner telemetry, or the canonical profile-preparation
+  contract. The earlier board wording that the v2 run “completed 10/10” is
+  superseded: the manifest records the intended ten rounds, not verified
+  completion telemetry.
+- The MiroFish smoke/v2 test files pass **21/21**. These validate code and
+  bounded-run configuration, not this run's missing artifacts. No provider
+  request, simulation replay, or paid spend occurred. Strict run evidence and
+  real buyer validation remain open.
