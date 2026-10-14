@@ -748,3 +748,9 @@ does not authorize hosted changes, provider calls, or spending.
 - No hosted request, write, migration, deployment, or paid provider call was
   made. Same-user parity, durable human approval, complete authorized source
   import, and release verification remain open.
+- After commit `77c27a5`, `verify:production-readiness` returned
+  `releaseReady: false` and no evidence path. The release ledger bucket is the
+  current hard failure; test receipts, migration attachments, same-user
+  journey, hosted project/revision, buyer-pilot approval, operations/legal
+  sign-off, and rollback target remain unevaluated. No ledger or hosted change
+  was attempted.
