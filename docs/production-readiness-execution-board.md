@@ -2083,3 +2083,19 @@ does not authorize hosted changes, provider calls, or spending.
   hosted database import, deployment, provider request, or paid usage occurred.
   The importer and its tests are part of this source change; the hosted archive
   and release-readiness gates remain open.
+
+## Continuation Update - Drive Lesson PDF Crosswalk (2026-10-14)
+
+- Re-read the `School Tabs Agent OS` Drive folder and its archive manifest. The
+  folder currently contains 111 files, including 9 date-named classroom PDFs
+  and the October 10 AgentOS System PDF. The archive manifest maps these 10
+  PDFs to 10 exact Skool classroom lesson IDs.
+- Cross-checked those IDs against the private 107-lesson graph register. All
+  10 resolve to registered lessons with existing `hasTextCaptureSegment`
+  edges (3–10 segments each). Therefore these Drive PDFs are already
+  represented in lesson-text coverage and were not imported as duplicate
+  standalone resources.
+- This identity crosswalk does not prove PDF/page-text equivalence or full
+  lesson completeness. The graph remains partial: 79/107 lessons have linked
+  text, 28 lack linked text, 25 pages remain pending, and video bytes are
+  absent. No Drive file or hosted data was changed.
