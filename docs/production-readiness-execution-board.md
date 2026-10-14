@@ -2739,13 +2739,18 @@ does not authorize hosted changes, provider calls, or spending.
 ## Continuation Update - Memory Recovery And Current-Head Verification (2026-10-14)
 
 - The owner's approved request was to restore only the accidentally deleted
-  `Proof and current limitations` memory through the app's normal recovery
-  flow. Source inspection confirms the Memory UI calls the tenant-record
-  `DELETE` route, whose implementation hard-deletes the row scoped to the
-  signed-in creator and configured tenant. The app has no trash, restore route,
-  or undo flow. No further tenant action was taken; database backup recovery
-  was not attempted because it could affect other tenant data. The accidental
-  deletion remains unresolved pending a scoped backup/export restore path.
+  `Proof and current limitations` memory. The Memory UI calls a tenant-scoped
+  hard-delete route and has no trash/undo control. A supported operator
+  lifecycle restore command exists for snapshots, but it requires the
+  Supabase service role and restores every row present in its input snapshot.
+  Two owner-only exports dated August 9 contain the exact memory ID, title,
+  original creation time, and content; content was not printed or copied.
+  The row was created August 4, making it older than the agreed 45-day
+  retention cutoff on October 14. Re-inserting it would revive expired data
+  and conflict with the retention rule, so no restore/write was made. This
+  incident now requires a retention-exception decision or an explicitly
+  confirmed permanent-deletion outcome; the backup is not evidence that the
+  record was restored.
 - Re-ran the offline AI evaluation on clean pushed commit
   `5398ec8136e3560b38b435537761c850dd691df0` under supported Node 24:
   **16/16** deterministic cases passed, `localGatePassed: true`,
