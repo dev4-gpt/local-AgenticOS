@@ -2667,3 +2667,33 @@ does not authorize hosted changes, provider calls, or spending.
   automation remains held; only platform-approved exports or owner-supplied
   materials may proceed into the existing consented source-pack workflow. Full
   archive coverage, media handling, and a hosted import receipt remain open.
+
+## Continuation Update - Cloud Test Live Revision And Runtime Config (2026-10-14)
+
+- In the approved `veloce-agenticos-2026` GCP project, Cloud Run lists service
+  `veloce-cloud-test` in `asia-south1`; its active revision is
+  `veloce-cloud-test-acceptance-9417c3c` at 100% traffic, deployed September
+  23, 2026. The revision image is pinned to digest
+  `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`,
+  but Cloud Run reports no build or source metadata. This identifies the
+  immutable image, not its Git source commit.
+- The read-only revision configuration shows tenant slug `veloce-cloud-test`,
+  Supabase project ref `ppmoqjtmjtfxadsnejqc`, `CLIENT_RETENTION_DAYS=14`,
+  `CLIENT_PROVIDER_CALLS_ENABLED=1`, `CLIENT_RUNTIME_WORKER_ENABLED=1`, and a
+  tenant budget cap of 10. The workspace provider is Groq with model
+  `openai/gpt-oss-120b`. Secret values were not opened or recorded. This is
+  not the reviewed 45-day configuration and is not a zero-provider-call test
+  environment.
+- Signed-in GET requests to both
+  `/api/client-runtime/source-import` and
+  `/api/client-runtime/build-identity` returned
+  `client_route_not_enabled`; the Memory UI also lacks the Community sources
+  controls. Thus the current live revision cannot support or attest the
+  source-import journey. No database, storage, IAM, deployment, configuration,
+  tenant data, or provider state was changed; no provider request was made.
+- The current revision's route allowlist and runtime policy need a reviewed
+  candidate snapshot, including 45-day retention and the intended provider and
+  worker settings, before a deployment decision. Do not deploy this revision
+  or import the archive as-is. A full test-tenant import, independent source
+  build attestation, retention/storage behavior, same-tenant journey, and
+  rollback proof remain outstanding.
