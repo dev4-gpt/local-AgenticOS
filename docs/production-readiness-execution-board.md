@@ -2201,3 +2201,19 @@ does not authorize hosted changes, provider calls, or spending.
   seven-day soft-delete recovery window remains. No bucket, IAM, object, or
   application state was changed. The ledger still needs a complete,
   current-commit release record; bucket existence is not release evidence.
+
+## Continuation Update - Current-Source Notebook Browser Recheck (2026-10-14)
+
+- On source commit `ca7fcac476b3cd1139bfe21bf712cbda5a811a55`,
+  `verify:notebook-execution-browser` passed **1/1** under Node `24.19.0` on an
+  isolated local port. The provider-disabled browser test selected a fixture
+  source, submitted its ID, observed queued-to-succeeded state, checked the
+  source register/citation audit, reviewed the saved draft, and verified the
+  same-origin export handoff. Its APIs, job completion, and artifact are
+  mocked; this is not live persistence, human approval, or signed-in customer
+  acceptance.
+- The default test port `3939` was already occupied by the user's local
+  runtime, and port `3976` had a stale listener; neither was changed or stopped.
+  The currently focused Chrome window was an unrelated SharePoint spreadsheet,
+  so no browser tabs or signed-in state were touched. Full customer journey
+  and same-user parity remain open.
