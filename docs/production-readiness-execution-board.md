@@ -2005,6 +2005,11 @@ does not authorize hosted changes, provider calls, or spending.
   `10th October: Obsidian + AI Agents Memory System` as missing even though its
   exact Skool lesson ID is linked to a captured segment. The remaining 28
   checklist entries agree with the current edge-derived missing set.
+- Scanned the 113 local JSON/JSON-LD extraction artifacts for source records
+  whose URL contains each missing lesson ID and whose text is non-empty. The
+  only exact-URL capture found was the October 10 page already linked in the
+  current graph; no additional captured body for the remaining 28 lessons was
+  found in the intermediate batches.
 - This is a metadata/link correction only; the captured text was already in
   the graph. Archive completeness remains unverified, 25 pages remain pending,
   and no video bytes or hosted import are present. No source content or hosted
