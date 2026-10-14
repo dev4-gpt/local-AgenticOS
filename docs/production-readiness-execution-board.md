@@ -20,7 +20,7 @@ release verification without deploying or spending beyond approved limits.
 | Authorized Skool archive and graph import | In progress; 60/107 register IDs captured locally; local graph export built, not hosted-imported | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Collect/reconcile the 47 register IDs absent from local v7, resolve the 107-versus-109 lesson count and one uncollected page flagged by both Drive packs, and account for videos/resources; then run a scoped graph import only against the confirmed internal-beta target |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Local gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep offline gate on Node 24; inspect the private MiroFish review file with the owner, then run only a bounded provider pilot after live Free-plan/spend-cap confirmation |
-| MiroFish buyer pilot | Offline persona-frame audit passes; private review aid prepared; human review and cost receipt pending | Reviewed generated posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Owner independently reviews `backend/uploads/simulations/sim_f91504972e42/offline-review-assistance.md` and records official verdicts; correct the under-$50 persona/offer mismatch before any rerun; synthetic results remain hypotheses, not market validation |
+| MiroFish buyer pilot | Human review complete; 2/2 responses assessed, 1/2 fully approved; synthetic pilot-quality gate fails | Reviewed generated posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Correct the budget/offer mismatch in the scenario before any rerun; synthetic results remain hypotheses, not market validation |
 | Release evidence and decision | Not ready | Clean commit; all required evidence attached to release ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Keep the release verifier as the authoritative gate; configure a ledger bucket only after target project and cost implications are confirmed |
 
 ## Verified Snapshot (2026-10-14)
@@ -272,3 +272,27 @@ release verification without deploying or spending beyond approved limits.
   review file was changed. The seeded under-$50 budget versus $2,500 setup plus
   $1,250/month offer remains an unresolved simulation-quality defect; no rerun
   or provider call was made, and no provider-cost receipt exists.
+
+## Continuation Update - 2026-10-14 Current Candidate
+
+- The tested and pushed code candidate is `34f546cdb73f349718a17287f51624545d2c73b3` on
+  `wip/backup-2026-10-03`. The buyer-run auditor now reports assessed and
+  approved responses separately; the pilot gate still requires every response
+  to pass all quality flags.
+- On Node `v24.18.0`, `npm run test:focused` passed 361 tests with one skipped.
+  `npm run verify:ai-evaluation` passed 16/16 deterministic cases with
+  `localGatePassed: true` and `productionReady: false`; the local run includes
+  no LLM or Zep request.
+- The private review for `sim_f91504972e42` records both responses as reviewed:
+  one fully approved and one rejected as not role-faithful or actionable due to
+  the under-$50 budget conflicting with the $1,250/month offer. Technical run
+  evidence passes, but `buyerContentReview`, `pilotEvidencePassed`, and
+  `marketValidation` remain false.
+- `npm run verify:production-readiness` remains `releaseReady: false` on this
+  exact commit. The release-ledger bucket is unconfigured and 37 ledger-backed
+  fields remain unevaluated, including hosted deployment identity, migration
+  receipts, signed-in journey, tenant isolation, source import, UI parity,
+  approvals, and rollback. No deploy, hosted write, import, or provider request
+  was made.
+- Full details are recorded in
+  `docs/verification-refresh-2026-10-14-34f546c.md`.
