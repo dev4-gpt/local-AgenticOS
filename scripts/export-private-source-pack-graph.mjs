@@ -9,6 +9,8 @@ export function buildPrivateSourcePackGraph(manifest, read = readFileSync, proje
   const nodes = new Map();
   const edges = [];
   const batchHashes = [];
+  const expectedSources = manifest.coverage.importedSourceSegments ?? manifest.coverage.outputSources;
+  const expectedLinks = manifest.coverage.importedLinks ?? manifest.coverage.outputLinks;
   let sourceCount = 0;
   let linkCount = 0;
 
@@ -36,6 +38,8 @@ export function buildPrivateSourcePackGraph(manifest, read = readFileSync, proje
         text: source.text,
         url: source.url,
         identifier: source.tab ?? source.title,
+        ...(source.publishedAt ? { datePublished: source.publishedAt } : {}),
+        ...(source.collectedAt ? { dateCreated: source.collectedAt } : {}),
       });
       const sourceUrlId = `url:${sha256(source.url)}`;
       if (!nodes.has(sourceUrlId)) nodes.set(sourceUrlId, { "@id": sourceUrlId, "@type": "URL", url: source.url });
@@ -52,7 +56,7 @@ export function buildPrivateSourcePackGraph(manifest, read = readFileSync, proje
     }
   }
 
-  if (sourceCount !== manifest.coverage.importedSourceSegments || linkCount !== manifest.coverage.importedLinks) {
+  if (sourceCount !== expectedSources || linkCount !== expectedLinks) {
     throw new Error("source_manifest_coverage_mismatch");
   }
   return {

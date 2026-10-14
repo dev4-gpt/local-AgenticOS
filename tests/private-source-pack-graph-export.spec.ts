@@ -24,3 +24,27 @@ test("private source graph export rejects altered source batches", () => {
 test("private source graph export rejects batch paths outside the project root", () => {
   expect(() => buildPrivateSourcePackGraph({ ...manifest, batches: [{ file: "../outside.json", sha256: batchSha }] }, () => batchText, "/private")).toThrow("source_batch_path_invalid");
 });
+
+test("private source graph export supports classroom coverage and preserves dates", () => {
+  const datedBatchText = JSON.stringify({ sources: [{
+    title: "Dated lesson",
+    text: "Captured lesson text",
+    url: "https://example.com/dated-lesson",
+    tab: "dated-lesson",
+    publishedAt: "2026-05-11",
+    collectedAt: "2026-10-14T03:00:00.000Z",
+    links: [{ url: "https://example.com/resource", text: "Resource" }],
+  }] });
+  const classroomManifest = {
+    startUrl: "https://example.com/classroom",
+    batches: [{ file: "batch.json", sha256: createHash("sha256").update(datedBatchText).digest("hex") }],
+    coverage: { outputSources: 1, outputLinks: 1, publicationDates: 1, pendingPages: 1, discoveredQueueExhausted: false },
+  };
+
+  const graph = buildPrivateSourcePackGraph(classroomManifest, () => datedBatchText, "/private");
+  expect(graph["@graph"].find((node) => node["@type"] === "LearningResource")).toMatchObject({
+    datePublished: "2026-05-11",
+    dateCreated: "2026-10-14T03:00:00.000Z",
+  });
+  expect(graph.provenance).toMatchObject({ complete: false, sourceSegments: 1, links: 1 });
+});

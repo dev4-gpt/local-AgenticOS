@@ -334,5 +334,11 @@ release verification without deploying or spending beyond approved limits.
   the focused classroom/client/Markdown/PDF/sanitizer suites passed 32 tests
   with one optional fixture skipped. Two Drive JSON packs for May 11-30 match
   lesson IDs already in the local capture manifest and were not re-imported to
-  avoid duplicate memories. The 18-page batch is still only prepared; hosted
-  import, full archive coverage, and tenant journey verification remain open.
+  avoid duplicate memories. The updated private graph exporter generated an
+  offline JSON-LD snapshot combining the existing PDF batches with the 18-page
+  supplement: 492 nodes, 193 lesson segments, 193 source-at edges, and 7,577
+  outbound-link edges. Hashes, text, edge totals, and all 18 added publication
+  dates reconcile; the file is mode 600, marked incomplete, and contains no
+  video bytes. This is
+  staging evidence, not an AgentOS tenant import. Hosted import, full archive
+  coverage, and tenant journey verification remain open.
