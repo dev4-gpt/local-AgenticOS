@@ -95,3 +95,9 @@ The source-import server boundary verifier passed, and `npm run verify:client-ru
 - The full focused regression suite passed **365/366** tests on commit `304cff2`, with one intentionally skipped; this includes customer-journey/evidence, source-pack, retention, MiroFish evidence, observability, and release-gate suites. This is local fixture/source evidence, not hosted acceptance.
 - `npm run verify:security` passed on the same source tree: local secret-file permission checks; release/security and provider-policy checks; 22 lifecycle/retention tests; 20 notebook provenance/execution tests; 14 runtime/storage/cloud-config tests; and all remaining integration/engineering manifest verifiers. The optional OpenReply live-health check was not run. These checks are local and do not clear the live beta's one-day retention or disabled import-route findings.
 - No hosted deployment, migration, tenant write, Skool import, or provider call occurred. This refresh strengthens current-source build evidence but does not close the customer-journey, hosted-parity, source-import, buyer-validation, or release-ledger gates.
+
+## Private Skool Graph Revalidation - 2026-10-14
+
+- The private v10 PDF source pack passed the production parser check (**1/1**). Its local JSON-LD graph passed `validatePortableKnowledgeGraph` with **442 nodes / 7,712 edges**. The combined PDF-plus-Drive graph passed with **492 nodes / 7,770 edges**; both validators returned `coverage: partial`.
+- The source graph export and portable-graph regression tests passed **8/8**, including hash mismatch, path traversal, dangling-edge, duplicate-node, and unsafe-URL rejection cases.
+- The private combined manifest still records **193 extracted segments**, **7,577 links**, and **25 pending pages**. It is a staged graph artifact, not a complete classroom export or a hosted tenant import. Video bytes/transcripts remain absent, and no hosted write was attempted.
