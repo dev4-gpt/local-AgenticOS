@@ -754,3 +754,23 @@ does not authorize hosted changes, provider calls, or spending.
   journey, hosted project/revision, buyer-pilot approval, operations/legal
   sign-off, and rollback target remain unevaluated. No ledger or hosted change
   was attempted.
+
+## Continuation Update - Standalone Client Artifact Gate (2026-10-14)
+
+- Built the current client runtime as a local standalone artifact on supported
+  Node `24.18.0`, with provider calls disabled. This was a local build only;
+  no image push, cloud deployment, or provider request occurred.
+- The first trace-verifier attempt showed a tooling defect: both prune and
+  verify scripts hardcoded Next's default `.next` directory, while the client
+  runtime uses `.next-client-prod`. Updated both scripts to honor
+  `--dist-dir` or `VELOCE_DIST_DIR`, reject paths outside the checkout, and
+  added a custom-dist regression test.
+- The unpruned build correctly failed verification with disabled route entries
+  present. The artifact pruner then removed **235** disabled entries and kept
+  **120** client entries. `VELOCE_DIST_DIR=.next-client-prod npm run
+  verify:client-build-trace` passed against that pruned standalone output; the
+  existing default-dist and missing-build-identity cases also passed.
+- Focused artifact-boundary tests passed **2/2** and ESLint passed. This proves
+  the local manifest/trace boundary after pruning, not a published image,
+  hosted build identity, deployed route surface, or release approval. The local
+  artifact remains ignored and was not pushed.
