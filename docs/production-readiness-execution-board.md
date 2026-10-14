@@ -1709,3 +1709,19 @@ does not authorize hosted changes, provider calls, or spending.
 - Cloud Test still returns `client_route_not_enabled`; no deployment or hosted
   write was made, so hosted build identity, comparable tenant scope, and
   local/cloud parity remain unverified.
+
+## Continuation Update - Local Source-Import Browser Acceptance (2026-10-14)
+
+- The owner-only local client config passes the launcher's config-only check;
+  provider calls are disabled. The exact pushed source `096fa0a` built as a
+  local production client on port `3955`.
+- The dedicated Playwright client-browser suite passed **8/8** source-import
+  consent, preview, failure, multi-part permission, link-rendering, and
+  permanent-delete confirmation scenarios. It uses a synthetic browser token
+  and intercepts the API boundary, so the passing result proves UI behavior
+  and request ordering, not Supabase writes or a real signed-in customer flow.
+- No provider request, tenant mutation, hosted request, migration, or deployment
+  occurred. The browser-control bridge did not expose Chrome in this turn, so
+  no authenticated local/cloud comparison was made. The running local build at
+  `http://127.0.0.1:3955` is current-source, 127.0.0.1-bound, and has providers
+  disabled; its signed-in journey remains to be verified.
