@@ -73,8 +73,28 @@ marks classroom video downloads incomplete. Its two JSON source-pack rows
 describe 9 pages/132 links/1 pending page for May 11-19 and 10 pages/259 links/
 3 media references/1 pending page for May 11-30; both are explicitly
 incomplete. The spreadsheet's item-level rows identify 9 dated lesson PDFs
-plus the separate System PDF in Drive; the two HTML lesson captures duplicate
-already-listed May sources rather than adding two unique lessons.
+plus the separate System PDF. Of its two HTML captures, the May 19 page
+duplicates an indexed PDF while the May 30 page is a distinct lesson source
+saved as HTML. That May 30 source ID is also in the local v7 pack. All 11
+unique Skool IDs indexed in these Drive rows are already present among the
+local 60; Drive adds no unique lesson ID beyond the local v7 set.
+
+Local v7 coverage by the Drive register's created month is:
+
+| Created month | Captured | Listed | Missing |
+| --- | ---: | ---: | ---: |
+| May 2026 | 35 | 40 | 5 |
+| June 2026 | 20 | 20 | 0 |
+| July 2026 | 5 | 13 | 8 |
+| August 2026 | 0 | 9 | 9 |
+| September 2026 | 0 | 15 | 15 |
+| October 2026 | 0 | 10 | 10 |
+
+The 107-entry Drive register and the spreadsheet's 109-entry classroom count
+remain inconsistent. The checklist of the 47 register IDs missing from local
+v7 is stored privately at
+`tmp/authorized-skool-import/archive-gap-checklist-2026-10-14.json`; it
+contains lesson metadata only and is ignored by Git.
 
 The Drive Markdown link register says it contains 107 lessons and was collected
 October 11, while the spreadsheet says 109 entries total (108 dated plus the
