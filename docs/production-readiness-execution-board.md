@@ -16,7 +16,7 @@ release verification without deploying or spending beyond approved limits.
 
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
-| Local product and customer journey | In progress; unauthenticated checks pass; private config scaffold prepared | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Add the Supabase anon key and the intended signed-in email to `.private-client-kits/internal-beta-parity.env` locally. Its URL and `internal-beta` tenant slug come from the checked-in runtime manifest. Use only read-only, tenant-scoped parity against production-backed project `ppmoqjtmjtfxadsnejqc`; do not run writes or migrations. Provider calls stay disabled |
+| Local product and customer journey | In progress; unauthenticated checks pass; authenticated parity preflight reports missing config | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Privately populate `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `CLIENT_ALLOWED_USER_EMAILS` in `.private-client-kits/internal-beta-parity.env`; keep `CLIENT_PROVIDER_CALLS_ENABLED=0`. Use only the manifest-verified URL and `internal-beta` tenant, read-only against production-backed project `ppmoqjtmjtfxadsnejqc`; no writes or migrations |
 | Authorized Skool archive and graph import | In progress; 60/107 register IDs captured locally; local graph export built, not hosted-imported | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Collect/reconcile the 47 register IDs absent from local v7, resolve the 107-versus-109 lesson count and one uncollected page flagged by both Drive packs, and account for videos/resources; then run a scoped graph import only against the confirmed internal-beta target |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Local gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep offline gate on Node 24; inspect the private MiroFish review file with the owner, then run only a bounded provider pilot after live Free-plan/spend-cap confirmation |
@@ -241,3 +241,16 @@ release verification without deploying or spending beyond approved limits.
   configured, no cloud read/write or publication was attempted, and no hosted
   state changed. Keep the release gate open until these explicit fields have
   current evidence; do not infer readiness from the green local suites.
+
+## Continuation Update - Parity Config Preflight
+
+- `scripts/run-client-runtime-local.mjs --check-config --env-file
+  .private-client-kits/internal-beta-parity.env` reports that
+  `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `CLIENT_ALLOWED_USER_EMAILS` are
+  missing. `CLIENT_PROVIDER_CALLS_ENABLED` remains disabled. The file passed
+  the launcher's owner-only permission check; no values were printed, and no
+  login attempt or Supabase request was made.
+- Update the three missing values locally using the manifest-approved tenant
+  configuration, then rerun this preflight before starting the signed-in
+  parity journey. The target project is production-backed, so the parity run
+  stays read-only and tenant-scoped; this does not authorize a migration.
