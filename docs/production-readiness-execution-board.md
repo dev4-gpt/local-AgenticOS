@@ -25,11 +25,12 @@ release verification without deploying or spending beyond approved limits.
 
 ## Verified Snapshot (2026-10-14)
 
-- Current source commit: `42a4d141bee9aa650419d8858a605783147753c3` on
+- Current source commit: `d86d7116211c0cc6b620e0cbeea9d2c8e517f3a4` on
   `wip/backup-2026-10-03`; branch is pushed. Five existing documentation or
   evidence paths are uncommitted and must be reviewed, not silently discarded.
-- Node 24 local AI evaluation: 14/14 deterministic cases passed; zero model
-  samples and no provider requests. Production readiness is still false.
+- Node 24 local AI evaluation on the current commit: 14/14 deterministic cases
+  passed, `localGatePassed: true`, zero model samples and no provider requests.
+  Production readiness is still false.
 - Current-source standalone client production build completed on Node 24. Fresh
   loopback checks on 2026-10-14 returned `/login` 200, `/memory` 307 to login,
   and protected build identity 401 without a session. This confirms the
@@ -37,6 +38,10 @@ release verification without deploying or spending beyond approved limits.
   disabled. A separate dev-server attempt hit the machine's watcher limit and
   was stopped; the production-mode runtime is already listening on port 3954.
 - Focused local suite: 356 passed, 1 skipped. Security verification passed.
+- Current-head `npm run test:focused`: 356 passed, 1 skipped under Node 24.
+  Current-head `npm run verify:production-readiness`: `releaseReady: false`;
+  the working tree is dirty, no ledger bucket is configured, and hosted/release
+  evidence remains unevaluated.
 - Private Skool v7 source-pack parser: 1/1 passed. A file-level audit found 64
   PDFs (32 May-labeled, 22 June-labeled, 5 July-labeled, 4 ambiguous, and the
   Oct 10 AgentOS System PDF), six top-level HTML pages, and no local video
