@@ -172,3 +172,10 @@ release verification without deploying or spending beyond approved limits.
   contains bonus files, so its 98-PDF count is not lesson coverage. The
   107-register versus 109-spreadsheet lesson total remains unresolved. Details
   are in `docs/skool-archive-local-inventory-2026-10-14.md`.
+- Added `scripts/import-skool-register-graph.mjs` and focused tests to index
+  register metadata into the private content graph. The merged local export
+  has 736 nodes and 8,101 edges, including all 107 lesson records and their
+  date/video/link references. The register contributes no page text or media
+  bytes; `complete` remains false. Focused tests pass 4/4, ESLint and
+  `npm run typecheck` pass. The export is mode `0600`, ignored by Git, and has
+  not been imported to a hosted database.

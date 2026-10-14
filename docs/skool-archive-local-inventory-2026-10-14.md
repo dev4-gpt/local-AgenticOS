@@ -140,3 +140,19 @@ separate. Thus the local 60-page prepared pack is not 60 lesson PDFs in Drive.
 The register's 107 lesson IDs and spreadsheet's 108 dated lessons plus
 standalone System lesson still differ by two entries; resolving this requires
 the authorized classroom index or another owner-verified canonical inventory.
+
+## Local Register Graph Index
+
+The current Markdown register was parsed into a private JSON-LD graph and
+merged with the existing v7 content graph at
+`tmp/authorized-skool-import/agentos-local-graph-with-register-2026-10-13.jsonld`.
+The merged export has 736 nodes and 8,101 edges. The register portion adds 107
+canonical lesson records, 107 video-reference edges (92 public YouTube
+references and 15 Skool-hosted IDs), and 254 outbound-link edges across 178
+unique URLs. The v7 page captures remain the only source of page text.
+
+The importer rejects invalid or secret-bearing URLs and duplicate lesson IDs;
+its focused tests, lint, and repository typecheck pass. The output is mode
+`0600`, ignored by Git, and has `complete: false`, `pageTextIncluded: false`,
+and `videoAssetsIncluded: false`. It is a local graph export, not a hosted graph
+database import receipt or a complete course archive.
