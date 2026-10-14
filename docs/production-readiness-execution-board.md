@@ -834,3 +834,19 @@ does not authorize hosted changes, provider calls, or spending.
   calls, migrations, or deployments were performed. Preserve these boundaries
   in the release evidence; do not treat the browser check as production
   approval.
+
+## Continuation Update - Customer Journey Regression Suite (2026-10-14)
+
+- Fixed a stale Playwright fixture in
+  `tests/client-memory-loading-browser.spec.ts`: the source-pack uploader now
+  mocks the current `/api/client-runtime/source-import/upload` route rather
+  than a retired artifacts endpoint. The previous fixture returned
+  `unexpected_write`, preventing the import confirmation surface from
+  rendering; this was a test-contract mismatch, not an app-code change.
+- The focused local Playwright set passed **20/20** under Node `24.19.0`,
+  covering memory loading/error states, source-import consent and refresh
+  behavior, route/navigation policy, build-identity validation, and customer
+  journey evidence validation. App API and storage traffic was intercepted by
+  synthetic fixtures. This is local regression evidence only; it does not
+  establish hosted parity, a real source import, or completion of the full
+  customer workflow.

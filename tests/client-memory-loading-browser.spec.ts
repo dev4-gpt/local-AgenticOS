@@ -59,8 +59,7 @@ for (const failedRead of ["records", "graph"] as const) {
         if (imports && failedRead === "graph" && path.endsWith("/memory-graph")) return route.fulfill({ status: 200, json: { ok: true, nodes: null, edges: [] } });
         return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
       }
-      if (path.endsWith("/artifacts")) return route.fulfill({ status: 200, json: { artifactId: "synthetic-artifact", uploadUrl: "https://storage.example.invalid/pack" } });
-      if (path.endsWith("/complete")) return route.fulfill({ status: 200, json: { ok: true } });
+      if (path.endsWith("/source-import/upload")) return route.fulfill({ status: 200, json: { artifactId: "synthetic-artifact", uploadUrl: "https://storage.example.invalid/pack" } });
       if (path.endsWith("/source-import")) {
         if (request.postDataJSON().action === "preview") return route.fulfill({ status: 200, json: { packSha256: "a".repeat(64), sourceCount: 1, linkCount: 0, skippedCount: 0, skipped: [], sources: [source] } });
         imports += 1;
