@@ -36,12 +36,14 @@ approvals, and rollback target. It returned no evidence path. This is a
 read-only check; no ledger record was published and no hosted state changed.
 
 The Cloud Test-scoped local runtime configuration passes preflight with
-provider calls disabled. Its existing local port `3985` currently has a Node
-listener, but loopback HTTP requests fail to connect; do not treat that
-listener as a working signed-in mirror. The available Chrome profile has no
-Veloce tabs, so no authenticated browser journey was attempted. The local
-runtime and browser checks remain open; the passing preflight is not parity
-evidence.
+provider calls disabled. A fresh loopback check found the `3985` listener is
+running from this checkout: `/login` returns 200 and the protected build-
+identity route returns 401 without a session. Cloud Test returned 403 for
+build identity; its login request timed out during this check. The available
+Chrome profile is `College` and has no Veloce tabs; no parity cookie file was
+present in the expected temporary locations. Therefore no authenticated
+browser journey or same-tenant comparison was attempted. The local shell and
+passing config preflight are not parity evidence.
 
 ## Latest Drive Archive Manifest Recheck - 2026-10-14
 
