@@ -60,6 +60,22 @@
       "evidenceScope": "embedded PostgreSQL migration test"
     },
     {
+      "id": "private-source-link-sanitization",
+      "behavior": "Private-network, loopback, and secret-bearing URLs are omitted from imported links",
+      "failureLabel": "unsafe_source_link_admitted",
+      "spec": "private-source-pack-sanitizer.spec.ts",
+      "title": "private source sanitizer preserves sources and omits only unsafe link targets",
+      "evidenceScope": "offline source-pack sanitizer test; no network access"
+    },
+    {
+      "id": "buyer-pilot-evidence-binding",
+      "behavior": "Buyer-pilot evidence is replayed, hash-bound, and rejected when reviewer or run inputs fail validation",
+      "failureLabel": "buyer_pilot_evidence_unbound",
+      "spec": "buyer-pilot-release-evidence.spec.ts",
+      "title": "release buyer receipt is replayed and bound to the audited run inputs",
+      "evidenceScope": "local temporary-artifact harness; no provider request"
+    },
+    {
       "id": "trace-redaction",
       "behavior": "Job traces retain stage outcomes without prompt, output, or credentials",
       "failureLabel": "trace_content_leak",
