@@ -182,16 +182,16 @@ release verification without deploying or spending beyond approved limits.
 
 ## Continuation Update - Local Security Gate
 
-- `npm run verify:security` passed on 2026-10-13. The security release gate
-  and client-provider policy checks passed; lifecycle/retention tests passed
-  22/22; notebook execution/provenance checks passed 19/19; runtime and
-  storage configuration fixtures passed 14/14. The remaining declared pilot
-  and integration-manifest checks also returned `ok: true` with no failures.
+- `npm run verify:security` passed on 2026-10-13 under the bundled Node
+  24.19.0 runtime, which satisfies the repository's `>=22 <26` engine range.
+  The security release gate and client-provider policy checks passed;
+  lifecycle/retention tests passed 22/22; notebook execution/provenance checks
+  passed 19/19; runtime and storage configuration fixtures passed 14/14. The
+  remaining declared pilot and integration-manifest checks also returned
+  `ok: true` with no failures.
 - This run was local and made no hosted requests, deployments, database or
   storage changes, or AI-provider calls. It verifies code-level controls and
   test fixtures, not the live Cloud Run revision, live bucket policy, signed-in
   customer journey, or tenant-isolation behavior in a hosted environment.
-- The shell used Node 26.4.0, while `package.json` declares Node `>=22 <26`.
-  All commands exited successfully, but repeat this gate on a supported Node 24
-  runtime before treating it as release evidence. Hosted and release tracks
-  remain open.
+- Hosted and release tracks remain open; this local gate is not evidence of
+  live service configuration or a completed customer journey.
