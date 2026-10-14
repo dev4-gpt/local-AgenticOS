@@ -1232,3 +1232,21 @@ does not authorize hosted changes, provider calls, or spending.
   sources**. This is a fresh read-only observation, not same-user parity: the
   principal and data scope have not been matched to local or Internal Beta.
   No hosted import, tenant mutation, provider request, or deployment occurred.
+
+## Continuation Update - Canonical Checkout and Snapshot Audit (2026-10-14)
+
+- A filesystem audit found one Git checkout under the AgentOS project tree:
+  `source/`, on `wip/backup-2026-10-03` tracking its matching origin branch.
+  The checkout is clean at `4266d2d`.
+- Several non-Git source snapshots also exist: `deployment-e72140e/runtime`,
+  `deployment-e72140e/product`, `deployment-20260910/runtime`,
+  `deployment-20260910/product`, `ecc-rollout`, and two
+  `paperclip-workspaces/*acceptance-snapshot` directories. The deployment
+  snapshots have September timestamps; the paperclip snapshots have July and
+  September timestamps. They must not be treated as independent maintained
+  branches or current runtime truth.
+- The current October changes, browser tests, and release evidence were made
+  and checked in `source/`; no snapshot content was modified in this audit.
+  Filesystem evidence identifies the paths and timestamps but does not establish
+  who originally created each snapshot. Continue using `source/` as the only
+  canonical code checkout; preserve the snapshots unless separately reviewed.
