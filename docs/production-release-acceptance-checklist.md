@@ -25,6 +25,8 @@ bill a customer, or publish a campaign.
 
 Local-only artifact check on 2026-10-09: source `dd6b6cd22c7f8571408eadf34fc41290e300949c` built with the client Docker flags, then `node scripts/prune-client-runtime-artifact.mjs` removed 235 disallowed route entries and retained 118. `npm run verify:client-build-trace` passed on that local artifact. The verifier now requires the build-identity route; its positive and missing-route tests pass. This is not a hosted image digest, deployment, or current-candidate acceptance receipt.
 
+Local-only current-source container check on 2026-10-14: clean source `7a37c03f5bf1f03b895a9e92de7c9024bfb2817f` built under Node 24 / Next.js 16.3.4 with provider calls disabled. The client build compiled, typechecked, and generated all 66 static pages; Next emitted a middleware deprecation notice and an Edge Runtime warning from its internal dynamic-rendering module. Artifact pruning removed 235 disabled routes and retained 120; `npm run verify:client-build-trace -- --dist-dir .next-client-verification-20261014` passed, including the required build-identity route and trace-path checks. The temporary artifact was removed after verification and no immutable image digest was retained. This remains local-only evidence, not a hosted image, deployment, or acceptance receipt.
+
 ## 2. Managed OpenRouter: owner-controlled activation
 
 1. In the OpenRouter workspace that owns the **managed** key, configure a $4
