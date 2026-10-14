@@ -850,3 +850,19 @@ does not authorize hosted changes, provider calls, or spending.
   synthetic fixtures. This is local regression evidence only; it does not
   establish hosted parity, a real source import, or completion of the full
   customer workflow.
+
+## Continuation Update - Container Artifact Gate (2026-10-14)
+
+- On clean source commit `8024ed12e30267687e2cdb64d9e3dd2cb5fdbefd`, TypeScript
+  validation passed and the Next.js `16.3.4` webpack build completed in
+  container/standalone mode using a fresh isolated output directory.
+- The client artifact pruner removed **235** disabled route entries and kept
+  **120** allowed entries. `verify-client-runtime-build-trace.mjs` passed on
+  that pruned standalone output, including route-manifest and trace-path checks.
+  The isolated generated output and temporary Next.js `tsconfig` additions
+  were removed afterward; the source worktree is clean.
+- Build warnings remain for the deprecated Next.js `middleware` convention and
+  an Edge-runtime `process.cwd` import trace. The build still succeeded; these
+  warnings need framework-specific triage before treating them as resolved.
+  This gate does not build or attest a pushed container image, prove a hosted
+  revision, or change the `releaseReady: false` decision.
