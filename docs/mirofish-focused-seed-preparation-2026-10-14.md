@@ -32,13 +32,38 @@ ontology normalizer.
 
 The MiroFish-native dry run passed with 3 entity types, 4 relationships, the
 expected seed and ontology hashes, and `networkCalls: 0`. The focused project
-was then created locally as `proj_6eef37f42493`. A read-back confirmed status
-`ontology_generated`, ten fictional profiles, the focused workflow, and no
-attached graph ID. No Zep or LLM call was made.
+was created locally as `proj_6eef37f42493`. A later read-back confirms
+`graph_completed`, graph `mirofish_bf15aa3aba8e400c`, 52 nodes, and 96 edges.
+Its source remains the fictional v2 seed; the Zep batch is recorded in local
+project metadata. This graph build used no customer data. It is ingestion
+evidence, not a buyer simulation.
 
-The focused pilot is **not yet simulated**. The existing live-smoke runner is
-hash-bound to the earlier broad micro-v1 configuration, not this focused v2
-project. Next, bind a new simulation config and profile CSV to the v2 cohort,
-verify its bounded schedule and provider configuration, then run only within
-the approved `$0` paid-spend limit with graph-memory updates disabled. Preserve
-the current no-deployment hold.
+## Existing Buyer Run Review
+
+The completed run `sim_fe9b23d28531` is the earlier micro-v1 cohort, not the
+focused v2 consultancy cohort. Its local run state reports 10/10 rounds, 10
+profiles, and 2 generated dynamic posts. The technical audit passes, but the
+pilot gate does not:
+
+- Aryaman's hash-bound review approves post 3 and rejects post 4 as not
+  role-faithful or actionable. Post 4 implies pilot interest from a persona
+  with a <$50 monthly budget despite the stated $2,500 setup plus $1,250/month
+  offer.
+- The audit finds no cross-buyer quotes or interactions. Both active personas
+  are listed as missing buyer interactions.
+- The audit reports `technicalEvidencePassed: true`,
+  `pilotEvidencePassed: false`, and `marketValidation: false`.
+
+The original AI-assisted review is preserved beside the canonical human review
+as a private mode-0600 backup. The review is evidence about this synthetic run
+only; it is not evidence of demand. No additional provider call was made while
+updating the assessment.
+
+## Remaining MiroFish Work
+
+The focused v2 buyer simulation remains **not run**. The existing live-smoke
+runner is hash-bound to the earlier v1 configuration, and the completed v1 run
+failed the cross-buyer-interaction gate. Any v2 run needs its own deterministic
+profile/config preparation and preflight, followed by explicit authorization
+for a new provider-backed run under the approved `$0` paid-spend limit. Keep
+graph-memory updates disabled and preserve the no-deployment hold.
