@@ -110,8 +110,8 @@ Drive.
 
 1. Reconcile the spreadsheet's unresolved 109-in-scope summary with the live
    107-link in-scope title match and register using an authoritative roster or
-   course-owner confirmation. The current combined manifest still has 29
-   register IDs without lesson text.
+   course-owner confirmation. The latest combined graph has 28 registered
+   lesson records without linked text segments.
 2. Resolve the four ambiguous filename dates using the visible classroom
    metadata, not title guesses.
 3. For every lesson, record whether HTML/PDF, outbound links, and video
@@ -157,11 +157,14 @@ database import receipt or a complete course archive.
 
 ## Latest Read-Only Refresh
 
-The current Google Drive folder listing still contains 107 direct items:
-98 PDFs, 3 HTML files, 2 JSON source packs, 1 Markdown register, 1 spreadsheet,
-1 Python file, and 1 ZIP. This is an asset count, not course-page coverage.
-The folder also contains `skool_video_links.py` and a dated Markdown lesson
-link register; neither is evidence that video bytes or transcripts were saved.
+The current Google Drive folder listing contains **111 direct items**: 98 PDFs,
+3 HTML files, 2 JSON source packs, 4 JSON-LD graph exports, 1 Markdown register,
+1 spreadsheet, 1 Python file, and 1 ZIP. This is an asset count, not course-page
+coverage. The four graph exports are all marked partial; the newest listed
+export is 6,365,086 bytes. The latest local combined graph below is 6,390,779
+bytes and is not present in the current Drive listing. The folder also contains
+`skool_video_links.py` and a dated Markdown lesson-link register; neither is
+evidence that video bytes or transcripts were saved.
 
 ## Drive Recheck After Partial Graph Export (2026-10-14)
 
@@ -198,7 +201,7 @@ not an accepted tenant import. The later Drive-supplement reconciliation is
 recorded below. No Drive files, tenant records, hosted database, or provider
 settings were changed during this PDF-only refresh.
 
-## Combined Local Archive Reconciliation (2026-10-14)
+## Combined Local Archive Reconciliation (2026-10-14 Snapshot; Superseded Below)
 
 The private combined manifest at
 `tmp/authorized-skool-import/combined-agentos-archive-2026-10-14.manifest.json`
@@ -222,6 +225,22 @@ unique URL nodes). Its provenance remains `complete: false`,
 supplement has 40 outbound links but no media references; the graph's link
 references and the three media references noted in an earlier Drive pack are
 not video bytes or transcripts. No hosted tenant import was made.
+
+## Latest Combined Graph Validation (2026-10-14)
+
+The newest combined private graph is
+`tmp/authorized-skool-import/agentos-combined-with-register-drive-changelog-system-oct10-2026-10-14.jsonld`.
+It is owner-only (`0600`), ignored by Git, and validates as a partial portable
+graph: **819 nodes / 8,711 edges**, including 107 registered lesson records
+and 105 video-reference nodes. Exact lesson-ID crosswalk metadata links text
+segments to **79/107** lessons (**212** segment links); 28 registered lesson
+records have no linked text. The crosswalk explicitly says completeness is
+unverified. Provenance also reports **25 pending pages**, `complete: false`,
+and `videoAssetsIncluded: false`. This graph improves local capture coverage
+over the older 78/107 snapshot but is not a hosted graph import or proof that
+the visible text captures are complete. Its focused source-pack parser test
+passed 1/1 under Node 24; no tenant import, hosted request, or provider call was
+made.
 
 The repository does contain Firecrawl integrations for bounded web research,
 SEO, and outreach. The separate `scripts/fetch-skool-classroom-firecrawl.py`

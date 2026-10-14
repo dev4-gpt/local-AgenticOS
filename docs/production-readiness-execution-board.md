@@ -17,7 +17,7 @@ release verification without deploying or spending beyond approved limits.
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
 | Local product and customer journey | In progress; read-only signed-in browser views now available; full same-principal journey and build identity remain unverified | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Keep provider calls disabled. Complete read-only feature/identity comparison in the already-open sessions; use a private client env for automated Supabase-backed flows only when available. Do not create tenant data or run migrations during parity checks |
-| Authorized Skool archive and graph import | In progress; 78/107 Drive-register IDs have local text captures; signed-in view verified 110 catalog items, but direct collection is held under Skool's current terms/policy; not hosted-imported | Canonical lesson/date inventory; all permitted page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Do not scrape/copy through Skool or forward cookies to Firecrawl. Continue from independently supplied owner-authorized files, or obtain a Skool-approved export/exception; reconcile live 110-item catalog, 107-ID Drive register, and 109-row spreadsheet; then import only after coverage and internal-beta target are verified |
+| Authorized Skool archive and graph import | In progress; latest local combined graph has text segments linked to 79/107 registered lessons; 25 pages remain pending and video bytes are absent; not hosted-imported | Canonical lesson/date inventory; all permitted page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Continue reconciling owner-authorized files and the 107-link in-scope register. Do not forward session cookies or use an unapproved scraper. Reconcile the spreadsheet's unresolved count, then import only after archive coverage and the internal-beta target are verified |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Current-source deterministic gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled under the $0 paid-spend cap; use current offline receipt and trace-redaction tests as local-only evidence until a separately approved zero-cost hosted/model path is verified |
 | MiroFish buyer pilot | Existing synthetic run is audited; 2/2 responses reviewed and hash-bound, 1/2 qualified; synthetic quality gate still fails and market validation is absent. The previously approved repeat remains unused | Reviewed posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Keep the provider-free audit. Before using the prior repeat approval, verify complete run inputs and provider-side paid-spend controls; use real buyer interviews for demand validation |
@@ -1804,3 +1804,24 @@ does not authorize hosted changes, provider calls, or spending.
   unresolved overcount. The live System page says it was updated October 12
   and has a 59:26 player, so its September 11 PDF is stale. No browser cookies
   were exported; lesson progress and account content were not changed.
+
+## Continuation Update - Current Private Graph And Release Gate (2026-10-14)
+
+- Validated the newest owner-only combined graph at
+  `tmp/authorized-skool-import/agentos-combined-with-register-drive-changelog-system-oct10-2026-10-14.jsonld`.
+  The portable-graph validator reports **819 nodes / 8,711 edges**, 107
+  registered lesson records, and text segments linked by exact lesson ID to
+  **79/107** lessons (212 segment links); 28 registered records have no linked
+  text. Its crosswalk says completeness is unverified; 25 pages remain pending,
+  and video assets are not included. The supported Node 24 private source-pack
+  parser test passed **1/1** against the combined manifest.
+- The current Drive listing contains **111** items, including four partial
+  JSON-LD graphs. Its newest graph export is 6,365,086 bytes; the 6,390,779-byte
+  latest local combined graph is absent from that listing. No Drive file was
+  modified or uploaded. The graph remains private and local; no hosted import
+  was attempted.
+- On commit `03d218f`, `node scripts/verify-production-readiness.mjs` returns
+  `releaseReady: false` with `ledger_bucket_not_configured`; hosted and release
+  evidence remains unevaluated. The read-only Veloce Ai Cloud Storage page has
+  no buckets and requires billing to be enabled. No billing, bucket, IAM,
+  database, deployment, tenant, or provider state was changed.
