@@ -73,7 +73,17 @@ def read_posts(simulation_dir: Path) -> list[Post]:
         database.close()
 
 
-def prepare_review_template(simulation_dir: Path) -> Path:
+def review_file_path(simulation_dir: Path, review_file: Path | None = None) -> Path:
+    path = review_file or Path("buyer_review.json")
+    if not path.is_absolute():
+        path = simulation_dir / path
+    path = path.resolve()
+    if path.parent != simulation_dir.resolve():
+        raise ValueError("buyer_review_path_must_be_in_simulation_dir")
+    return path
+
+
+def prepare_review_template(simulation_dir: Path, review_file: Path | None = None) -> Path:
     posts = [post for post in read_posts(simulation_dir) if is_dynamic(post)]
     if not posts:
         raise ValueError("buyer_review_no_dynamic_posts")
@@ -89,7 +99,7 @@ def prepare_review_template(simulation_dir: Path) -> Path:
             "scenarioRelevant": False, "roleFaithful": False, "scopeSafe": False, "actionable": False,
         } for post in posts],
     }
-    path = simulation_dir / "buyer_review.json"
+    path = review_file_path(simulation_dir, review_file)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
         json.dump(template, handle, indent=2, ensure_ascii=False)
@@ -97,8 +107,10 @@ def prepare_review_template(simulation_dir: Path) -> Path:
     return path
 
 
-def review_covers_dynamic_posts(simulation_dir: Path, posts: list[Post]) -> tuple[bool, int]:
-    path = simulation_dir / "buyer_review.json"
+def review_covers_dynamic_posts(
+    simulation_dir: Path, posts: list[Post], review_file: Path | None = None
+) -> tuple[bool, int]:
+    path = review_file_path(simulation_dir, review_file)
     if not path.exists():
         return False, 0
     try:
@@ -139,7 +151,7 @@ def review_covers_dynamic_posts(simulation_dir: Path, posts: list[Post]) -> tupl
         return False, 0
 
 
-def audit(simulation_dir: Path, cohort_path: Path) -> dict:
+def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = None) -> dict:
     cohort = load_json(cohort_path)
     expected_ids = {item["id"] for item in cohort["personas"]}
     if len(expected_ids) != len(cohort["personas"]):
@@ -216,7 +228,7 @@ def audit(simulation_dir: Path, cohort_path: Path) -> dict:
                 "assignedPersona": assigned_id,
                 "mentionedPersonas": mentioned_ids,
             })
-    content_review_passed, reviewed_dynamic_posts = review_covers_dynamic_posts(simulation_dir, posts)
+    content_review_passed, reviewed_dynamic_posts = review_covers_dynamic_posts(simulation_dir, posts, review_file)
     active_buyers = {
         agent.get("entity_name")
         for agent in config.get("agent_configs", [])
@@ -308,14 +320,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--simulation-dir", type=Path, required=True)
     parser.add_argument("--cohort", type=Path, required=True)
+    parser.add_argument("--review-file", type=Path, help="Review JSON filename within the simulation directory")
     parser.add_argument("--prepare-review", action="store_true")
     args = parser.parse_args()
-    result = audit(args.simulation_dir, args.cohort)
+    result = audit(args.simulation_dir, args.cohort, args.review_file)
     if args.prepare_review:
         if not result["technicalEvidencePassed"]:
             raise SystemExit("technical_evidence_failed")
         try:
-            path = prepare_review_template(args.simulation_dir)
+            path = prepare_review_template(args.simulation_dir, args.review_file)
         except FileExistsError:
             raise SystemExit("buyer_review_already_exists")
         print(json.dumps({"reviewTemplate": str(path), "dynamicPosts": result["dynamicPosts"]}, sort_keys=True))

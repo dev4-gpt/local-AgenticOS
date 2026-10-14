@@ -224,7 +224,7 @@ class BuyerRunAuditTest(unittest.TestCase):
         path = self.simulation / "buyer_review.json"
         path.unlink()
         created = AUDITOR.prepare_review_template(self.simulation)
-        self.assertEqual(created, path)
+        self.assertEqual(created.resolve(), path.resolve())
         self.assertEqual(os.stat(path).st_mode & 0o777, 0o600)
         review = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(review["posts"][0]["content"], "A skeptical response")
@@ -235,6 +235,15 @@ class BuyerRunAuditTest(unittest.TestCase):
             AUDITOR.prepare_review_template(self.simulation)
         path.chmod(0o644)
         self.assertFalse(AUDITOR.audit(self.simulation, self.cohort)["checks"]["buyerContentReview"])
+
+        existing = path.read_bytes()
+        alternate = AUDITOR.prepare_review_template(self.simulation, Path("buyer_review.v2.json"))
+        self.assertEqual(path.read_bytes(), existing)
+        self.assertEqual(alternate.resolve(), (self.simulation / "buyer_review.v2.json").resolve())
+        self.assertEqual(os.stat(alternate).st_mode & 0o777, 0o600)
+        self.assertFalse(AUDITOR.audit(self.simulation, self.cohort, Path("buyer_review.v2.json"))["pilotEvidencePassed"])
+        with self.assertRaisesRegex(ValueError, "buyer_review_path_must_be_in_simulation_dir"):
+            AUDITOR.prepare_review_template(self.simulation, Path("../outside.json"))
 
     def test_missing_first_workflow_fails_even_with_complete_telemetry(self):
         profile_path = self.simulation / "twitter_profiles.csv"
