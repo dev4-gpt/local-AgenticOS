@@ -1,7 +1,8 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { createHash } from "node:crypto";
 
-const clientBaseUrl = process.env.CLIENT_RUNTIME_TEST_URL || "http://127.0.0.1:3939";
+const clientPort = Number.parseInt(process.env.CLIENT_RUNTIME_TEST_PORT || "3939", 10);
+const clientBaseUrl = process.env.CLIENT_RUNTIME_TEST_URL || `http://127.0.0.1:${clientPort}`;
 const vaultStatus = { configured: false, activeVault: null, configPath: "", candidates: [] };
 test.use({ baseURL: clientBaseUrl });
 

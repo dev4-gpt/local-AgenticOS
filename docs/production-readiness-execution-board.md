@@ -2848,3 +2848,21 @@ does not authorize hosted changes, provider calls, or spending.
   parity, prove source-import behavior in the hosted service, or make AgentOS
   production-ready. No provider, hosted database, storage, or deployment call
   was made by this verification run.
+
+## Continuation Update - Source Import And Graph Regression (2026-10-14)
+
+- The first source-import browser run exposed a test-harness URL mismatch:
+  Playwright started the isolated current-source server on port `3969`, while
+  the test hard-coded port `3939` and reached a separate stale local server.
+  The browser test now derives its default URL from `CLIENT_RUNTIME_TEST_PORT`,
+  matching the server config.
+- Re-ran the corrected isolated browser suite on port `3969`: **8/8 passed**.
+  The source-pack parser/storage-boundary suite passed **8/8**, and the portable
+  knowledge-graph suite passed **4/4**. The latest local graph validates at
+  **1,138 nodes / 9,029 relations**, with coverage correctly remaining partial.
+- The initial failure was stale-server leakage, not a current-source UI
+  translation defect: current source maps `source_import_cleanup_pending` to
+  the plain-language cleanup warning, and the isolated current-source browser
+  run verified it. No current Chrome profile was redirected or modified; the
+  existing server on `3939` was inspected read-only and not used as parity
+  evidence. No hosted import, provider call, or production action occurred.
