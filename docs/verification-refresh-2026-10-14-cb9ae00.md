@@ -65,3 +65,25 @@ The checked-in local runtime defaults and GCP provisioner include
 that the active hosted configuration does not expose it. A reviewed Cloud Test
 configuration/deployment and authenticated retest are required to close this
 gap. No deployment or configuration change was made.
+
+## Browser Acceptance Follow-Up
+
+The product-experience Playwright server previously used the development
+launcher, which exhausted the machine's file watchers (`EMFILE`). The config
+now builds the isolated client edition in production mode and starts that
+artifact for browser checks. It defaults to one Chrome worker because a
+four-worker run caused the macOS Chrome subprocesses to abort before loading
+pages; `PLAYWRIGHT_WORKERS` remains an explicit override.
+
+Using supported Node `v24.18.0`, installed Chrome, a separate loopback port,
+provider calls disabled, and synthetic API fixtures, the production browser
+suite passed **23/23** cases: login/membership, Notebook Studio source
+provenance, source-import consent/safety, and observability across desktop and
+mobile widths. A separate focused customer-journey/auth/source/retention/
+observability unit run passed **41/41**. `npm run typecheck` passed after the
+configuration change. The browser server was stopped and its generated build
+output removed.
+
+This closes a local browser-test runner gap only. It does not prove hosted
+customer acceptance or Cloud Test parity, and it does not change the release
+gate's `ledger_bucket_not_configured` failure or unevaluated hosted evidence.
