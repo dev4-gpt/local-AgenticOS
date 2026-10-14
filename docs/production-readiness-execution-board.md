@@ -1912,7 +1912,9 @@ does not authorize hosted changes, provider calls, or spending.
   against Drive filenames found no exact page-capture match. A related
   `GROKOPUS` bonus PDF is not linked to a lesson ID and is not counted as a
   page capture. Large Drive JSON-LD exports were not readable inline, so their
-  graph contents and any improvement over the local baseline remain unverified.
+  graph contents and any improvement over the local baseline remain unverified
+  at the time of this snapshot. The later Drive export comparison and exact
+  edge-derived coverage update below supersede those findings.
 - Next: reconcile those four Drive graph exports through an authorized file
   transfer or readable export, while retaining the richer local graph and
   keeping hosted import held until the archive is complete and the internal
@@ -1993,3 +1995,17 @@ does not authorize hosted changes, provider calls, or spending.
   bytes. No Drive file, hosted graph, tenant record, or provider state was
   changed. The downloaded comparison copies are temporary files outside the
   repository.
+
+## Continuation Update - Exact Skool Text-Coverage Recount (2026-10-14)
+
+- Recomputed lesson coverage directly from the current 819-node graph's 107
+  `skool-lesson:*` nodes and `hasTextCaptureSegment` edges: **79 lessons have
+  text; 28 do not**. This matches the graph provenance crosswalk.
+- The older ignored 29-entry gap checklist is stale. It incorrectly lists
+  `10th October: Obsidian + AI Agents Memory System` as missing even though its
+  exact Skool lesson ID is linked to a captured segment. The remaining 28
+  checklist entries agree with the current edge-derived missing set.
+- This is a metadata/link correction only; the captured text was already in
+  the graph. Archive completeness remains unverified, 25 pages remain pending,
+  and no video bytes or hosted import are present. No source content or hosted
+  state was changed.
