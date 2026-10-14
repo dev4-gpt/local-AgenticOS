@@ -702,3 +702,26 @@ does not authorize hosted changes, provider calls, or spending.
 - Provider calls remained disabled; no Supabase or cloud requests, writes,
   migrations, deployment, or paid calls occurred. Same-user persistence,
   hosted parity, and a genuine review/approval step remain unverified.
+
+## Continuation Update - Notebook Draft Review and Evidence Recheck (2026-10-14)
+
+- Added an in-app review action for completed Notebook Studio artifacts. It
+  reads through the existing authenticated same-origin artifact proxy, refuses
+  cross-origin download URLs and non-text content, and caps streamed review
+  content at 200 KB before rendering it as escaped text. Download/export stays
+  a separate action. This does not create or persist an approval decision.
+- Fixed the browser spec so its default base URL follows the test-server port.
+  A prior alternate-port run left the spec pinned to port 3939 and exercised an
+  older local server; those earlier browser-pass claims are superseded. The
+  corrected browser test against matching server/client port 3972 passed
+  **1/1**, including the draft review display and same-origin export handoff.
+- Focused ESLint and TypeScript checks pass on the working changes. At the
+  pre-edit HEAD `c91c54e`, the offline AI release evaluation passed **16/16**
+  under Node `24.19.0` with no provider requests. The current
+  production-readiness verifier remains `releaseReady: false`: no release-ledger
+  bucket is configured, and customer journey, buyer pilot, hosted config,
+  migrations, test receipts, deployment identity, approvals, and rollback
+  remain unevaluated.
+- No hosted requests, writes, migrations, deployment, or paid calls were made.
+  Live persistence and parity, a durable human review/approval record, the
+  approved complete Skool export/import, and release evidence remain open.

@@ -9,7 +9,7 @@
 // with signed downloads. Nothing here claims an output it cannot produce.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Download, FileText, FolderOpen, LoaderCircle, Send, Sparkles, Upload } from "lucide-react";
+import { BookOpen, Download, Eye, FileText, FolderOpen, LoaderCircle, Send, Sparkles, Upload } from "lucide-react";
 import {
   NOTEBOOK_STUDIO_OUTPUTS,
   notebookChatPrompt,
@@ -30,17 +30,19 @@ export default function ClientNotebookWorkspace({ tab, sources, notebookId, note
   const [error, setError] = useState("");
 
   const selected = useMemo(() => sources.filter((source) => selectedIds.includes(source.id)), [sources, selectedIds]);
-  useEffect(() => { setSelectedIds((current) => current.filter((id) => sources.some((source) => source.id === id))); }, [sources]);
 
   function toggle(id: string) {
-    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : current.length < 5 ? [...current, id] : current);
+    setSelectedIds((current) => {
+      const valid = current.filter((item) => sources.some((source) => source.id === item));
+      return valid.includes(id) ? valid.filter((item) => item !== id) : valid.length < 5 ? [...valid, id] : valid;
+    });
   }
 
   return <div className="space-y-4">
     {error && <p className="panel p-3 text-[11px]" style={{ color: "#fda4af" }}>{error}</p>}
     {tab === "research" && <ResearchLane notebookId={notebookId} onError={setError} onImported={onImported} />}
     {tab === "chat" && <ChatLane sources={sources} selected={selected} selectedIds={selectedIds} onToggle={toggle} onError={setError} />}
-    {tab === "studio" && <StudioLane sources={sources} selected={selected} selectedIds={selectedIds} notebookScope={notebookScope} onToggle={toggle} onError={setError} />}
+    {tab === "studio" && <StudioLane sources={sources} selected={selected} notebookScope={notebookScope} onToggle={toggle} onError={setError} />}
     {tab === "assets" && <AssetsLane onError={setError} />}
   </div>;
 }
@@ -174,23 +176,29 @@ function ChatLane({ sources, selected, selectedIds, onToggle, onError }: { sourc
 }
 
 /** Studio: the workspace-execution lane, producing a tenant artifact. */
-function StudioLane({ sources, selected, selectedIds, notebookScope, onToggle, onError }: { sources: NotebookSource[]; selected: NotebookSource[]; selectedIds: string[]; notebookScope: string; onToggle: (id: string) => void; onError: (value: string) => void }) {
+function StudioLane({ sources, selected, notebookScope, onToggle, onError }: { sources: NotebookSource[]; selected: NotebookSource[]; notebookScope: string; onToggle: (id: string) => void; onError: (value: string) => void }) {
   const [output, setOutput] = useState<NotebookStudioOutput>("outline");
   const [instruction, setInstruction] = useState("");
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [busy, setBusy] = useState(false);
+  const [reviewing, setReviewing] = useState<string | null>(null);
+  const [reviewDraft, setReviewDraft] = useState<{ artifactId: string; content: string } | null>(null);
 
   const load = useCallback(async () => {
     const response = await fetch("/api/client-runtime/executions?surface=notebook", { cache: "no-store" }).catch(() => null);
     const data = await response?.json().catch(() => null);
-    if (response?.ok && Array.isArray(data?.executions)) setExecutions(data.executions as Execution[]);
+    return response?.ok && Array.isArray(data?.executions) ? data.executions as Execution[] : null;
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    void load().then((items) => { if (active && items) setExecutions(items); });
+    return () => { active = false; };
+  }, [load]);
 
   const inFlight = executions.some((item) => item.status === "queued" || item.status === "running");
   useEffect(() => {
     if (!inFlight) return;
-    const timer = window.setInterval(() => { void load(); }, 4000);
+    const timer = window.setInterval(() => { void load().then((items) => { if (items) setExecutions(items); }); }, 4000);
     return () => window.clearInterval(timer);
   }, [inFlight, load]);
 
@@ -212,7 +220,11 @@ function StudioLane({ sources, selected, selectedIds, notebookScope, onToggle, o
     }).catch(() => null);
     const data = await response?.json().catch(() => null);
     if (!response?.ok) onError(typeof data?.error === "string" ? data.error : "notebook_studio_queue_failed");
-    else { setInstruction(""); await load(); }
+    else {
+      setInstruction("");
+      const items = await load();
+      if (items) setExecutions(items);
+    }
     setBusy(false);
   }
 
@@ -223,8 +235,45 @@ function StudioLane({ sources, selected, selectedIds, notebookScope, onToggle, o
     window.open(data.downloadUrl, "_blank", "noopener,noreferrer");
   }
 
+  async function review(artifactId: string) {
+    setReviewing(artifactId); onError(""); setReviewDraft(null);
+    try {
+      const lookup = await fetch(`/api/client-runtime/artifacts?id=${encodeURIComponent(artifactId)}`, { cache: "no-store" });
+      const data = await lookup.json().catch(() => null);
+      if (!lookup.ok || typeof data?.downloadUrl !== "string") throw new Error("The saved draft could not be opened for review.");
+      const url = new URL(data.downloadUrl, window.location.origin);
+      if (url.origin !== window.location.origin || !url.pathname.startsWith("/api/client-runtime/artifacts/")) throw new Error("The draft link could not be verified as a private workspace file.");
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error("The saved draft could not be loaded. Try again or download it.");
+      if (!/^text\/(?:markdown|plain)(?:;|$)/i.test(response.headers.get("content-type") ?? "")) throw new Error("This file type cannot be previewed here. Download it to review.");
+      const length = Number(response.headers.get("content-length"));
+      if (Number.isFinite(length) && length > 200_000) throw new Error("This draft is too large for in-app review. Download it to inspect.");
+      if (!response.body) throw new Error("Draft preview is temporarily unavailable.");
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let bytes = 0;
+      let content = "";
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        bytes += chunk.value.byteLength;
+        if (bytes > 200_000) {
+          await reader.cancel();
+          throw new Error("This draft is too large for in-app review. Download it to inspect.");
+        }
+        content += decoder.decode(chunk.value, { stream: true });
+      }
+      content += decoder.decode();
+      setReviewDraft({ artifactId, content });
+    } catch (reviewError) {
+      onError(reviewError instanceof Error ? reviewError.message : "Draft preview failed. Try again or download it.");
+    } finally {
+      setReviewing(null);
+    }
+  }
+
   return <>
-    <SourcePicker sources={sources} selectedIds={selectedIds} onToggle={onToggle}
+    <SourcePicker sources={sources} selectedIds={selected.map((source) => source.id)} onToggle={onToggle}
       hint="The document is written from these sources only." />
     <LanePanel icon={<Sparkles size={17} />} eyebrow="Tenant Notebook · studio" title="Build a document"
       body="Turn selected sources into a document held in tenant storage. Audio and presentation outputs are deliberately absent — they need a media provider this lane does not have.">
@@ -255,8 +304,15 @@ function StudioLane({ sources, selected, selectedIds, notebookScope, onToggle, o
               </span>)}
             </div>}
           </div>
-          {execution.artifactId && <button type="button" onClick={() => void download(execution.artifactId!)}
-            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[10px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Download size={12} />Download</button>}
+          {execution.artifactId && <div className="flex items-center gap-2">
+            <button type="button" onClick={() => void review(execution.artifactId!)} disabled={reviewing === execution.artifactId}
+              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[10px] disabled:opacity-50" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}>
+              {reviewing === execution.artifactId ? <LoaderCircle size={12} className="animate-spin" /> : <Eye size={12} />}Review
+            </button>
+            <button type="button" onClick={() => void download(execution.artifactId!)}
+              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[10px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Download size={12} />Download</button>
+          </div>}
+          {reviewDraft?.artifactId === execution.artifactId && <pre className="basis-full max-h-80 w-full overflow-auto whitespace-pre-wrap rounded-md border p-3 text-[11px] leading-relaxed" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }} aria-label="Draft content for review">{reviewDraft.content}</pre>}
         </div>)}
       </div>
     </LanePanel>

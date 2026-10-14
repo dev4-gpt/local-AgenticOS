@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const clientBaseUrl = process.env.CLIENT_RUNTIME_TEST_URL || "http://127.0.0.1:3939";
+const clientPort = process.env.CLIENT_RUNTIME_TEST_PORT || "3939";
+const clientBaseUrl = process.env.CLIENT_RUNTIME_TEST_URL || `http://127.0.0.1:${clientPort}`;
 const notebookId = "00000000-0000-4000-8000-000000000010";
 const sourceId = "00000000-0000-4000-8000-000000000011";
 
@@ -42,13 +43,13 @@ test("Notebook Studio submits source IDs and renders the saved source register",
     }
     if (request.method() === "GET" && url.pathname.endsWith("/artifacts")) {
       expect(url.searchParams.get("id")).toBe("artifact-1");
-      return route.fulfill({ status: 200, json: { ok: true, downloadUrl: "https://storage.example.test/draft.txt" } });
+      return route.fulfill({ status: 200, json: { ok: true, downloadUrl: "/api/client-runtime/artifacts/artifact-1/download" } });
+    }
+    if (request.method() === "GET" && url.pathname.endsWith("/download")) {
+      return route.fulfill({ status: 200, contentType: "text/markdown", headers: { "content-disposition": "attachment; filename=client-proposal.md" }, body: "# Client proposal\n\nDraft report with reviewed sources." });
     }
     return route.fulfill({ status: 503, json: { ok: false, error: "unexpected_notebook_request" } });
   });
-  await context.route("https://storage.example.test/draft.txt", (route) => route.fulfill({
-    status: 200, contentType: "text/plain", body: "Draft report with reviewed sources.",
-  }));
 
   await page.goto("/notebook");
   await page.getByRole("button", { name: "Client Alpha" }).click();
@@ -66,9 +67,15 @@ test("Notebook Studio submits source IDs and renders the saved source register",
   await expect(page.getByRole("link", { name: "Approved brief" })).toHaveAttribute("href", "https://example.org/brief");
 
   await expect(page.getByText(/^succeeded/)).toBeVisible({ timeout: 8_000 });
-  const downloadPagePromise = context.waitForEvent("page");
+  await page.getByRole("button", { name: "Review" }).click();
+  await expect(page.getByLabel("Draft content for review")).toContainText("Draft report with reviewed sources.");
+  await page.evaluate(() => {
+    window.sessionStorage.removeItem("notebook-download-url");
+    window.open = ((url?: string | URL) => {
+      window.sessionStorage.setItem("notebook-download-url", String(url ?? ""));
+      return null;
+    }) as typeof window.open;
+  });
   await page.getByRole("button", { name: "Download" }).click();
-  const downloadPage = await downloadPagePromise;
-  await expect(downloadPage).toHaveURL("https://storage.example.test/draft.txt");
-  await expect(downloadPage.getByText("Draft report with reviewed sources.")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.sessionStorage.getItem("notebook-download-url"))).toBe("/api/client-runtime/artifacts/artifact-1/download");
 });
