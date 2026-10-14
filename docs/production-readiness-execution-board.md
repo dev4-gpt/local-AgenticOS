@@ -1440,3 +1440,28 @@ does not authorize hosted changes, provider calls, or spending.
 - `npm run verify:production-readiness` on `5233ad5` remains
   `releaseReady: false`, with `ledger_bucket_not_configured` and **37** evidence
   fields unevaluated. No release ledger, deployment, or hosted change occurred.
+
+## Continuation Update - Release Gate And Client Navigation Recheck (2026-10-14)
+
+- Refreshed `npm run verify:production-readiness` on pushed commit `59ff278`.
+  It remains `releaseReady: false`, with the single immediate failure
+  `ledger_bucket_not_configured` and **37** unevaluated evidence fields. The
+  verified `agentos-mvp` bucket inventory contains only the tenant-data and
+  Cloud Build buckets; the Cloud Test service is in the separate
+  `veloce-agenticos-2026` project. No ledger bucket was created or configured.
+- Source review confirms `/classroom-research` and `/social-research` are
+  explicitly operator-only and removed by `clientAllowedRoutes()`, with
+  regression assertions in `tests/client-navigation-policy.spec.ts`. The
+  signed-in Internal Beta sidebar previously showed both links, so the live
+  observation remains a hosted edition/configuration or revision mismatch;
+  the exact cause is not established. Do not enable either route to make the
+  sidebar match.
+- The focused policy test could not be executed in this checkout because the
+  local Vitest binary is absent; an attempted `npm exec` was stopped when it
+  tried to resolve externally. Existing checked-in assertions are source
+  evidence, not a fresh test pass. No dependency was installed and no network,
+  hosted, provider, database, storage, IAM, or billing change was made.
+- Next: verify the Internal Beta effective client-edition/revision settings
+  through a read-only, non-secret configuration check, then compare its route
+  response with the current-source policy. Keep hosted changes held until the
+  exact mismatch and approved target are established.
