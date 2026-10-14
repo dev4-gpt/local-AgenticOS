@@ -1331,3 +1331,22 @@ does not authorize hosted changes, provider calls, or spending.
   Local commit `fbc7590` is on branch `buyer-pilot-telemetry`; that checkout's
   origin has push disabled, so this commit remains local until a valid owner
   remote is configured. No provider request or simulation occurred.
+
+## Continuation Update - Sanitized Skool Graph Merge (2026-10-14)
+
+- The combined graph candidate failed portable validation because the local
+  base graph contained 18 loopback URL nodes (`localhost` / `127.0.0.1`). The
+  importer merge now omits unsafe URL values, marks those nodes with an explicit
+  omission reason while preserving their graph references, and retains
+  `registerIndex` provenance during a sanitization-only merge.
+- Focused importer and portable-graph tests pass **10/10**. The regenerated
+  owner-only artifact
+  `tmp/authorized-skool-import/agentos-combined-with-register-sanitized-2026-10-14.jsonld`
+  passes the portable verifier at **772 nodes / 8,158 edges**, with **18**
+  unsafe URLs omitted. Its provenance still records **107** register lessons,
+  **107** video references, **254** outbound-link edges, `complete: false`, and
+  `videoAssetsIncluded: false`.
+- Commit `64da1ab` is pushed to `origin/wip/backup-2026-10-03`. This is a
+  private local graph artifact, not a hosted import receipt; 29 lesson text
+  captures remain missing and video bytes/transcripts remain uncollected. No
+  hosted database, deployment, provider, or billing action occurred.
