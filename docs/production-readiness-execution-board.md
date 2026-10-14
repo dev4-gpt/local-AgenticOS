@@ -2555,3 +2555,18 @@ does not authorize hosted changes, provider calls, or spending.
   counts are distinct from graph text crosswalk coverage; neither proves full
   classroom completeness. The remaining 25 page gaps and video assets remain
   unresolved, and no hosted graph/database import occurred.
+
+## Continuation Update - Exact-Revision AI And Trace Gates (2026-10-14)
+
+- On clean source commit `fd55ffe7e1a95e0deaa08d027e3201bb9a9147f5`, the
+  supported Node `v24.19.0` offline AI release evaluation passed **16/16**
+  cases (`localGatePassed: true`, `productionReady: false`, zero model samples,
+  no LLM/Zep request). Its ignored mode-600 report is
+  `tmp/ai-release-local-fd55ffe-node24.json`.
+- The observability-accuracy and job-trace suites passed **13/13** on the same
+  source. They validate local pagination, trace completeness/redaction, and
+  tenant boundaries, not hosted analytics or live telemetry.
+- The complete sanitized 88-PDF bonus batch passed the production source-pack
+  parser **1/1** on the same source. This and the graph validation remain local
+  evidence; neither means the Skool classroom archive or production release is
+  complete.
