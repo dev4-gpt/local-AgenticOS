@@ -1699,8 +1699,13 @@ does not authorize hosted changes, provider calls, or spending.
   1 skipped**; the complete `npm run verify:security` gate exits **0**, including
   lifecycle (22/22), notebook provenance (20/20), and runtime/storage fixture
   checks (14/14). `git diff --check` is clean.
-- This change is local and uncommitted at this checkpoint. Cloud Test still
-  returns `client_route_not_enabled`; no deployment or hosted write was made,
-  so hosted build identity, comparable tenant scope, and local/cloud parity
-  remain unverified. The strict release verifier remains blocked on the
-  unconfigured release-ledger bucket and missing hosted evidence.
+- Commit `13c268ee887cf2cc770e46ebbbf3d58fa3321a71` is pushed to
+  `wip/backup-2026-10-03`; the worktree is clean. On that exact commit, the
+  deterministic AI evaluation passes **16/16** with zero model samples and
+  `productionReady: false`. The strict release verifier passes the clean-tree
+  check but remains `releaseReady: false` on
+  `ledger_bucket_not_configured`, with **37** hosted/release categories not
+  evaluated.
+- Cloud Test still returns `client_route_not_enabled`; no deployment or hosted
+  write was made, so hosted build identity, comparable tenant scope, and
+  local/cloud parity remain unverified.
