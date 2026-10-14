@@ -58,3 +58,9 @@ The production build also completed successfully on Node `v24.18.0` on
 `b6c4031504662edc2bc37f0231e17c7a0cc5027b`: compilation, TypeScript, and all
 66 static pages passed. Next reported the existing non-blocking deprecation
 warning for the `middleware` file convention.
+
+The latest local-client configuration preflight on commit
+`4f06f355d0ba6a97e59115bf57919c005899289f` reports
+`SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `CLIENT_ALLOWED_USER_EMAILS` missing
+from the private environment file. Provider calls are disabled. The check reads
+credential names only; no Supabase request or signed-in journey was made.

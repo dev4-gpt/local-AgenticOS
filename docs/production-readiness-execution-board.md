@@ -311,3 +311,7 @@ release verification without deploying or spending beyond approved limits.
 - Production build on Node `v24.18.0` completed on the code in `b6c4031`:
   Next compilation, TypeScript, and 66 static pages succeeded. Next emits a
   non-blocking deprecation warning for the `middleware` convention.
+- Current-source local parity preflight reports `SUPABASE_URL`,
+  `SUPABASE_ANON_KEY`, and `CLIENT_ALLOWED_USER_EMAILS` missing from the
+  private env file. Provider calls remain disabled; no Supabase request was
+  made. The signed-in local journey is still waiting on those private values.
