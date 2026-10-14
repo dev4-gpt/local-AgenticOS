@@ -1296,3 +1296,25 @@ does not authorize hosted changes, provider calls, or spending.
 - This is observed hosted configuration, not authorization to change it.
   Deployment remains held pending the previously recorded retention/recovery
   design and exact release-ledger target.
+
+## Continuation Update - Cloud Test Service Identity (2026-10-14)
+
+- The signed-in Cloud Test URL
+  `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` maps to Cloud Run service
+  `veloce-cloud-test` in project `veloce-agenticos-2026` (project number
+  `1075094991117`), region `asia-south1`. Its live ready revision is
+  `veloce-cloud-test-acceptance-9417c3c`, created 2026-09-23, using image
+  digest `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`.
+  Artifact metadata did not expose a source revision, so current-source
+  identity remains unverified.
+- A filtered read of non-secret revision configuration shows
+  `CLIENT_RETENTION_DAYS=14`; the route allowlist includes `/notebook` and
+  `/memory`, but omits `/api/client-runtime/source-import` and
+  `/api/client-runtime/build-identity`. This differs from the current source
+  and selected 45-day retention policy, and is a different project/runtime from
+  Internal Beta in `agentos-mvp`.
+- This read-only lookup verifies the Cloud Test service/project mapping, not
+  project billing ownership, release-ledger suitability, or permission to
+  deploy. No configuration, IAM, data, or service state was changed. This
+  supersedes the earlier note above that the legacy project had not been queried;
+  that note accurately describes the earlier check only.
