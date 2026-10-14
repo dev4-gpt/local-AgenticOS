@@ -1020,3 +1020,32 @@ does not authorize hosted changes, provider calls, or spending.
   provider call occurred in this refresh. Local fixture tests do not replace
   signed-in same-user hosted evidence; the Skool archive and buyer pilot remain
   incomplete under their existing authorization and $0-spend boundaries.
+
+## Continuation Update - Read-Only Runtime Parity Inspection (2026-10-14)
+
+- In the existing `Aryaman (Work)` Chrome window, the local `3939` Notebook
+  and Internal Beta Notebook both showed an authenticated tenant with **0
+  records / 0 active sources**. Cloud Test showed an authenticated tenant with
+  **9 records / 9 active sources**. The three pages render the same Notebook
+  shell, but these counts differ; account identity was not independently
+  matched, so this is not a same-user data-parity pass.
+- The authenticated build-identity GET returned `client_route_not_enabled`
+  on both Cloud Test and Internal Beta. Local `3939` returned `ok: true` but
+  `sourceCommit: null` and `cloudRunRevision: null`. This confirms the hosted
+  build-identity gap and that the currently running local process cannot prove
+  its source identity. All three tabs were returned to their original Notebook
+  pages after the read-only checks.
+- The owner-only `.private-client-kits/internal-beta-parity.env` passes its
+  permission check and keeps provider calls disabled, but local launcher
+  preflight reports missing `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and
+  `CLIENT_ALLOWED_USER_EMAILS`. Current-source authenticated parity therefore
+  cannot be rerun until those values are supplied privately; this does not
+  justify borrowing production service-role credentials.
+- Source-only file hygiene found `.vercel/.env.production.local` and
+  `product-experience/.env.local` at mode `0644`; both were changed to `0600`
+  without reading or modifying their values. The root `.env.local` and the
+  dedicated parity env were already `0600`.
+- No tenant writes, provider calls, database/storage changes, deployment, or
+  Skool collection occurred. Hosted rollout remains held; do not enable the
+  disabled build-identity route until the exact beta service configuration and
+  deployment identity are reviewed.
