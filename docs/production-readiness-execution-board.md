@@ -1367,3 +1367,19 @@ does not authorize hosted changes, provider calls, or spending.
 - A fresh `npm run verify:production-readiness` on `e8b8641` returns
   `releaseReady: false`, one blocker (`ledger_bucket_not_configured`), and **37**
   unevaluated evidence fields. No bucket/IAM change or deployment was attempted.
+
+## Continuation Update - Security Gate and MiroFish Seed Audit (2026-10-14)
+
+- `npm run verify:security` under supported Node 24 passed on the latest source:
+  secret-file permissions, security release gate, provider policy, **22**
+  lifecycle/retention tests, **20** notebook provenance/source-worker tests,
+  **14** runtime/storage configuration tests, and the declared integration and
+  engineering manifest checks. No hosted requests or provider calls occurred.
+- A fresh AI evaluation on the latest source passes **16/16** deterministic
+  cases, with zero model samples, zero provider requests, and
+  `productionReady: false`.
+- Read-only MiroFish hash reconciliation confirms the unstarted seed's profile
+  CSV matches none of the **7** available profile-preparation receipts. The
+  existing run profiles cannot be substituted without breaking review/input
+  binding. Keep the approved repeat unlaunched until its exact profile set and
+  preparation receipt are restored or regenerated and reviewed.
