@@ -1112,3 +1112,34 @@ does not authorize hosted changes, provider calls, or spending.
 - Local authenticated parity must wait for the exact Supabase Auth login email
   to be added to the allowlist. Until then, no local client server was launched
   for an authenticated test and no Supabase query or write was made.
+
+## Continuation Update - Authenticated Local/Internal-Beta Read-Only Parity (2026-10-14)
+
+- The presence-only config check now passes with provider calls disabled. The
+  user added the public Supabase anon key and signed-in email to the private
+  parity env. The launcher loaded the settings without printing their values.
+- Supabase Dashboard and the Internal Beta Cloud Run revision configuration
+  confirm that Internal Beta uses the Veloce AgenticOS `main` Supabase project;
+  its live Cloud Run revision is `agentos-internal-beta-00034-v69` at 100%
+  traffic. The selected revision's environment metadata identifies tenant slug
+  `internal-beta`. A local-only comparison confirms the parity env has the
+  same tenant slug; no secret key value was read.
+- A production-mode local build succeeded in a separate Next output directory.
+  Its authenticated Notebook page at `127.0.0.1:3976/notebook` reports tenant
+  authenticated, **0 records / 0 active sources**. The authenticated Internal
+  Beta Notebook reports the same counts. Both views use the same Notebook
+  shell. This is a read-only surface/data-count parity pass, but the user
+  identity was not independently compared, so do not label it a same-user
+  parity pass.
+- The local authenticated build-identity GET reports source commit
+  `6e96b2da1a18c89c2924f4ff7b7a3d24154739ae`; its provenance explicitly says
+  the value is reported by the runtime, not independently attested. The
+  Internal Beta build-identity GET still returns
+  `client_route_not_enabled`, so hosted source identity and exact code parity
+  remain unverified.
+- Cloud Test still displays **9 records / 9 active sources**, unlike local and
+  Internal Beta's empty tenant view. It remains a separate data-scope result;
+  account identity and its tenant slug were not matched in this check.
+- The local production-mode server remains running at port `3976` for continued
+  review. No records, tenant data, auth settings, database schema, or hosted
+  configuration were written or changed; provider calls stayed disabled.
