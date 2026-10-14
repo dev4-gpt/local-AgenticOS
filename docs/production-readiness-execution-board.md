@@ -995,3 +995,28 @@ does not authorize hosted changes, provider calls, or spending.
   canonical lesson URL/`md`-ID roster resolving the 107-register, 108-dated,
   109-total spreadsheet, and 110-item sidebar counts, followed by permitted
   owner-supplied page exports and separately verified media/transcripts.
+
+## Continuation Update - Current-Source Readiness Refresh (2026-10-14)
+
+- On pushed source commit `6d08f9e`, `npm run test:focused` passed **364/365**
+  tests with one skipped. Coverage includes customer-journey and release
+  contracts, tenant isolation, source import, observability, buyer-pilot
+  evidence, and the synthetic 10,000-persona frame. The skipped test is not
+  counted as a pass.
+- `npm run verify:security` passed on the same source, including **22** client
+  lifecycle/retention tests, **20** Notebook provenance tests, and **14**
+  runtime/storage/cloud-configuration checks. The source-import cleanup
+  regression is covered by **8/8** unit tests and **8/8** mocked browser tests;
+  typecheck and targeted lint passed.
+- The offline AI evaluation passed **16/16** deterministic cases with zero
+  model samples and zero provider requests. This is not model-quality evidence.
+- `npm run verify:production-readiness` still reports `releaseReady: false`:
+  the release ledger bucket is unconfigured and **37** ledger-backed fields
+  remain unevaluated. They include current customer-journey approval, hosted
+  deployment/build identity, migration and schema receipts, source import,
+  cloud/local parity, buyer simulation, operations/legal approval, and
+  rollback evidence.
+- No hosted request or write, migration, deployment, Skool collection, or paid
+  provider call occurred in this refresh. Local fixture tests do not replace
+  signed-in same-user hosted evidence; the Skool archive and buyer pilot remain
+  incomplete under their existing authorization and $0-spend boundaries.
