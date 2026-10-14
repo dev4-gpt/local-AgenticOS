@@ -1087,3 +1087,28 @@ does not authorize hosted changes, provider calls, or spending.
   typecheck, and `git diff --check` passed. No secret values were read or
   printed, and no hosted request, deployment, tenant write, or provider call
   occurred.
+
+## Continuation Update - Current-Revision Local Acceptance and AI Gate (2026-10-14)
+
+- On commit `f91d769`, `npm run test:focused` passed **365/366** tests with
+  one skipped. This is source-level evidence only, not proof of hosted parity
+  or a completed customer journey.
+- The deterministic offline AI release evaluation passed its gate under the
+  supported Node `24.19.0` runtime: **16/16** cases, zero model samples, zero
+  provider requests, and zero provider cost. Running the same gate under the
+  shell's Node `26.4.0` correctly failed its runtime-support check despite all
+  16 cases passing; the accepted receipt is the Node 24 run.
+- The current production-readiness verifier remains `releaseReady: false` with
+  failure `ledger_bucket_not_configured` and **37** evidence fields
+  unevaluated. No bucket target was guessed or configured. No deployment,
+  migration, tenant write, Skool collection, or provider request occurred.
+
+## Continuation Update - Supabase Client Key Presence (2026-10-14)
+
+- After the user added the public anon key to the private parity env, a
+  presence-only launcher check no longer reports either Supabase credential as
+  missing. It reports only `CLIENT_ALLOWED_USER_EMAILS` as missing. The key
+  value was not read or printed; provider calls remain disabled.
+- Local authenticated parity must wait for the exact Supabase Auth login email
+  to be added to the allowlist. Until then, no local client server was launched
+  for an authenticated test and no Supabase query or write was made.
