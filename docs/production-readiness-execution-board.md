@@ -2288,3 +2288,25 @@ does not authorize hosted changes, provider calls, or spending.
 - Focused classroom source-pack tests passed **12/12**; graph and source-pack
   sanitizer tests passed **10/10**. No hosted graph import, upload,
   deployment, or AI-provider request was made.
+
+## Continuation Update - September 15 Web Scraping Lesson (2026-10-14)
+
+- In the same signed-in Chrome Work profile and existing Skool tab group, the
+  September 15 `Web Scraping!` classroom lesson was read from the visible
+  page. It presents Firecrawl and Apify as two options, gives example setup and
+  research prompts, and links `https://mcp.apify.com/`. The embedded player is
+  9:34; no direct media URL or transcript was exposed. The lesson's example
+  prompt about researching Skool competitors is recorded as lesson text, not
+  treated as authorization to bypass access controls.
+- The owner-only source run and prepared source pack are under ignored
+  `tmp/authorized-skool-import/agentos-2026-09-15-web-scraping.*`. The pack
+  records **1 source, 2 links, 1 media reference, and 1 pending item**; no
+  video bytes or transcript are claimed.
+- Merging with the September 22 graph produces
+  `tmp/authorized-skool-import/agentos-combined-web-scraping-refresh-2026-10-14.jsonld`:
+  **1,136 nodes / 9,025 explicit relations**, with text linked to **82/107**
+  registered lessons and 216 linked text segments. Portable-graph validation
+  passed; coverage remains `partial` and `videoAssetsIncluded` is false.
+- The combined classroom source-pack, graph, and sanitizer suite passed
+  **22/22**. No hosted graph import, upload, deployment, or provider request
+  was made.
