@@ -1664,3 +1664,24 @@ does not authorize hosted changes, provider calls, or spending.
 - This read-only observation identifies the visible GCP project but does not
   validate the historical `veloce-agenticos-2026` release-runbook target. No
   bucket, IAM, billing, deployment, or other cloud setting was changed.
+
+## Continuation Update - Same-Principal Parity Recheck (2026-10-14)
+
+- Read-only `/api/client-auth/session` checks in the existing Chrome tabs
+  returned the same authenticated principal for Cloud Test and local `3943`.
+  The identifiers are intentionally not copied into this log. Local reports
+  `workspaceAuthorized: true`; Cloud Test reports authentication but does not
+  expose a workspace-authorization result in its response.
+- The settled Notebook pages still differ: Cloud Test has **9 records / 9
+  active sources**; local `3943` has **0 / 0**. These counts are not tenant
+  parity evidence because neither surface exposes a comparable tenant ID.
+- Local `/api/client-runtime/build-identity` reports ancestor commit `db1ec0d`
+  with runtime-reported, non-attested provenance. Cloud Test's corresponding
+  endpoint returns `client_route_not_enabled`, so its serving source remains
+  unknown.
+- The active Cloud Console project `agentos-mvp` lists services `agentos` and
+  `agentos-internal-beta`; the `agentos` service URL shown there does not match
+  the open Cloud Test hostname. Do not infer that Cloud Test is deployed from
+  this project or compare its configuration to this project's services until
+  ownership/build identity is established. No tenant, GCP, or hosted data was
+  changed; both browser tabs were returned to their Notebook pages.
