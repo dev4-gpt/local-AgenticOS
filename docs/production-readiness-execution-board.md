@@ -943,3 +943,23 @@ does not authorize hosted changes, provider calls, or spending.
   `release_gate:ledger_bucket_not_configured`, and **37** fields not evaluated.
   No ledger target was guessed; no hosted mutation, deployment, or paid call
   was made.
+
+## Continuation Update - Current-Source Notebook Browser Flow (2026-10-14)
+
+- `npm run verify:notebook-execution-browser` passed **1/1** on a fresh,
+  current-source local client runtime at port `3976` under Node `24.19.0`. The
+  browser test selected a fixture source, submitted its ID (not document text),
+  observed queued-to-succeeded state, checked the source register and citation
+  format audit, opened the saved draft for review, and verified the same-origin
+  artifact download handoff. The API, job completion, artifact metadata, and
+  content were mocked; this is a UI contract check, not live persistence or
+  human approval evidence. Provider calls were disabled.
+- An earlier attempt with `playwright.unit.config.ts` attached to the already
+  running older app on port `3939` and lacked the expected current UI behavior.
+  The current browser config plus a clean test port produced the valid result;
+  do not count the stale-server failure as a regression in the current source.
+- In the signed-in user's existing Chrome session, Local and Cloud Test
+  Notebook views still each have **0 records / 0 active sources**, so the
+  fixture-backed flow cannot be promoted to the real customer journey. No
+  tenant data was created or changed. The browser was left on the page the user
+  selected.
