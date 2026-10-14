@@ -775,3 +775,24 @@ does not authorize hosted changes, provider calls, or spending.
   the local manifest/trace boundary after pruning, not a published image,
   hosted build identity, deployed route surface, or release approval. The local
   artifact remains ignored and was not pushed.
+
+## Continuation Update - Drive Graph Export Audit (2026-10-14)
+
+- Re-inventoried the connected `School Tabs Agent OS` Drive folder: **108
+  files** (98 PDFs, 3 HTML, 2 JSON, 1 JSON-LD graph, 1 Markdown, 1 Python, 1
+  ZIP, and 1 spreadsheet). The folder includes a new
+  `AgentOS-Knowledge-Graph-Partial-2026-10-14.jsonld` export (5,682,442 bytes);
+  the two date-labeled source-pack files are unchanged from the earlier audit.
+- Inspected the JSON-LD export in memory without copying course content into
+  the repository. It contains **193** text-resource nodes and **299** URL
+  nodes, **7,770** edges, no duplicate node IDs, and no dangling edge targets.
+  Its own provenance reports 175 PDF-derived segments plus 18 added Drive
+  segments, **25 pending pages**, `complete: false`,
+  `completeCommunityExport: false`, and `videoAssetsIncluded: false`. This is
+  stronger local/Drive archive evidence, not a complete classroom archive or
+  a hosted graph import receipt.
+- The focused local graph export/register suite passed **9/9** under supported
+  Node `24.19.0`. No Skool network request, cookie transfer, hosted database
+  write/import, deployment, or provider call was made. Continue reconciling the
+  25 pending pages and media inventory from owner-saved files or a Skool-
+  approved export; automated authenticated collection remains disabled.
