@@ -122,6 +122,27 @@ test("source import requires a secret-backed worker verifier", () => {
   expect(JSON.stringify(result)).not.toContain("DO_NOT_PRINT_PRIVATE_VALUE");
 });
 
+test("known secret and provider variables reject inline values without leaking them", () => {
+  const inline = snapshot();
+  inline.spec.template.spec.containers[0].env.push(
+    { name: "CLIENT_CREDENTIAL_INBOX_SECRET", value: "DO_NOT_PRINT_INLINE_SECRET" },
+    { name: "OPENAI_API_KEY", value: "DO_NOT_PRINT_PROVIDER_KEY" },
+  );
+  const result = evaluateClientRuntimeConfig(inline, expected);
+  expect(result.failures).toContain("secret_env_not_secret_manager:CLIENT_CREDENTIAL_INBOX_SECRET");
+  expect(result.failures).toContain("secret_env_not_secret_manager:OPENAI_API_KEY");
+  expect(JSON.stringify(result)).not.toContain("DO_NOT_PRINT_INLINE_SECRET");
+  expect(JSON.stringify(result)).not.toContain("DO_NOT_PRINT_PROVIDER_KEY");
+
+  const secretManager = snapshot();
+  secretManager.spec.template.spec.containers[0].env.push({
+    name: "CLIENT_CREDENTIAL_INBOX_SECRET",
+    valueFrom: { secretKeyRef: { name: "credential-inbox-secret", key: "latest" } },
+  });
+  expect(evaluateClientRuntimeConfig(secretManager, expected).failures)
+    .not.toContain("secret_env_not_secret_manager:CLIENT_CREDENTIAL_INBOX_SECRET");
+});
+
 test("source import preflight requires both upload and preview endpoints", () => {
   const service = snapshot();
   const routes = service.spec.template.spec.containers[0].env.find((entry) => entry.name === "CLIENT_ALLOWED_API_ROUTES")!;

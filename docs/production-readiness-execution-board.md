@@ -2180,3 +2180,12 @@ does not authorize hosted changes, provider calls, or spending.
   three missing API routes (source import, source upload, build identity). It
   no longer reports a false traffic-split failure. No Cloud Run traffic,
   service configuration, or runtime state was changed.
+- Hardened the same checker to reject non-empty values for known provider-key,
+  worker-token, and inbox-secret variables unless Cloud Run sources them from
+  Secret Manager. A fresh live snapshot reports the two inline inbox secrets by
+  variable name only; it does not print their values. The full
+  `verify:client-runtime-config-fixtures` gate passed **16/16**, including
+  Secret Manager acceptance and inline-value redaction cases. The provider
+  key/token variables remain unset in the revision template; credentials
+  stored in Supabase were not inspected. No secret rotation or hosted change
+  was performed.

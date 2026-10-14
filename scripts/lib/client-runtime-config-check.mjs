@@ -6,6 +6,13 @@ const REQUIRED_API_ROUTES = [
 const REQUIRED_PAGES = ["/", "/memory", "/notebook"];
 const FORBIDDEN_PAGES = ["/classroom-research", "/social-research"];
 const REQUIRED_CAPABILITIES = ["tenant-data", "artifacts"];
+const SECRET_RUNTIME_VARIABLES = new Set([
+  "ANTHROPIC_API_KEY", "CLIENT_CREDENTIAL_INBOX_SECRET", "CLIENT_REQUEST_INBOX_SECRET",
+  "CLIENT_WORKER_TOKEN", "ELEVENLABS_API_KEY", "ELEVENLABS_MUSIC_API_KEY",
+  "FIRECRAWL_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY", "HEYGEN_API_KEY",
+  "JINA_WORKER_TOKEN", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "POSTHOG_API_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+]);
 
 export function evaluateClientRuntimeConfig(service, expected) {
   const failures = [];
@@ -46,6 +53,10 @@ export function evaluateClientRuntimeConfig(service, expected) {
     if (!entry || typeof entry.name !== "string") continue;
     if (variables.has(entry.name)) failures.push("duplicate_runtime_variable");
     variables.set(entry.name, typeof entry.value === "string" ? entry.value : null);
+    if (SECRET_RUNTIME_VARIABLES.has(entry.name) && typeof entry.value === "string" && entry.value.length > 0
+        && !entry.valueFrom?.secretKeyRef?.name) {
+      failures.push(`secret_env_not_secret_manager:${entry.name}`);
+    }
   }
   const list = (name) => new Set((variables.get(name) ?? "").split(",").map((item) => item.trim()).filter(Boolean));
   if (variables.get("CLIENT_SLUG") !== expected.tenant) failures.push("tenant_mismatch");
