@@ -1511,3 +1511,21 @@ does not authorize hosted changes, provider calls, or spending.
   It is an external Drive archive copy, not a hosted AgentOS graph import
   receipt. Next reconcile the spreadsheet and register row-by-row, then
   account for the remaining lesson text and media before any hosted import.
+
+## Continuation Update - Exact Lesson/Text Crosswalk (2026-10-14)
+
+- The graph importer now links captured text segments to lesson records only
+  when the canonical Skool classroom lesson ID matches exactly. It marks text
+  as available without claiming that the complete page was captured; capture
+  completeness remains unverified. Repeated merges do not duplicate these
+  crosswalk edges.
+- A fresh local crosswalk of the 107-row register links **193** captured text
+  segments to **78** lessons. The remaining **29** lesson records stay
+  metadata-only. The private candidate
+  `tmp/authorized-skool-import/agentos-combined-with-register-crosswalk-2026-10-14.jsonld`
+  passes portable validation at **772 nodes / 8,351 relations**, retains the
+  18 unsafe-URL omissions, and remains partial with video assets absent.
+- Focused importer tests pass **7/7**. This candidate has not been uploaded to
+  Drive or imported into hosted AgentOS; the previously uploaded private Drive
+  version remains unchanged. No hosted, provider, database, or billing action
+  occurred.

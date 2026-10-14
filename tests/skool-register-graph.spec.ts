@@ -39,6 +39,43 @@ test("Skool register graph merges into the private content graph without claimin
   expect(merged.provenance).toMatchObject({ sourceSegments: 7, complete: false, videoAssetsIncluded: false, registerIndex: { lessonCount: 2, pageTextIncluded: false } });
 });
 
+test("register lessons link only to text segments with the exact Skool lesson identity", () => {
+  const registerGraph = buildSkoolRegisterGraph(register, "A1b2C3d4E5f6G7h8I9j0");
+  const exactUrl = `https://www.skool.com/ai-profit-lab-7462/classroom/9daf24e1?md=${lessonId}`;
+  const unregisteredLessonId = "fedcba9876543210fedcba9876543210";
+  const base = {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@id": "document:capture-1", "@type": "LearningResource", url: exactUrl, text: "captured portion one" },
+      { "@id": "document:capture-2", "@type": "LearningResource", url: exactUrl, text: "captured portion two" },
+      { "@id": "document:other-lesson", "@type": "LearningResource", url: `https://www.skool.com/ai-profit-lab-7462/classroom/9daf24e1?md=${unregisteredLessonId}`, text: "other lesson" },
+    ],
+    edges: [],
+    provenance: { sourceSegments: 3, complete: false },
+  };
+
+  const merged = mergeSkoolRegisterGraph(base, registerGraph);
+  const lesson = merged["@graph"].find((node) => node["@id"] === `skool-lesson:${lessonId}`);
+  expect(lesson).toMatchObject({
+    contentStatus: "text_segments_available",
+    pageTextCaptured: true,
+    textCaptureSegmentCount: 2,
+    textCaptureCompleteness: "unverified",
+  });
+  expect(merged.edges.filter((edge) => edge["@type"] === "hasTextCaptureSegment" && edge.source === lesson["@id"]))
+    .toHaveLength(2);
+  expect(merged["@graph"].find((node) => node["@id"] === `skool-lesson:${videoId}`))
+    .toMatchObject({ contentStatus: "metadata_only", pageTextCaptured: false });
+  expect(merged.provenance.textCaptureCrosswalk).toMatchObject({
+    method: "exact_skool_lesson_id_from_url",
+    lessonsWithTextSegments: 1,
+    completenessVerified: false,
+  });
+
+  const mergedAgain = mergeSkoolRegisterGraph(merged, registerGraph);
+  expect(mergedAgain.edges.filter((edge) => edge["@type"] === "hasTextCaptureSegment")).toHaveLength(2);
+});
+
 test("merge redacts unsafe legacy URLs but preserves their graph references", () => {
   const registerGraph = { "@graph": [], edges: [], provenance: {} };
   const base = {

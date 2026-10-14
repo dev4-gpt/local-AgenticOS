@@ -189,17 +189,63 @@ export function mergeSkoolRegisterGraph(base, registerGraph) {
   const registerIndex = registerGraph.provenance && Object.keys(registerGraph.provenance).length > 0
     ? registerGraph.provenance
     : base.provenance?.registerIndex;
+  const mergedEdges = [...base.edges, ...registerGraph.edges];
+  const captureEdgeKeys = new Set(mergedEdges
+    .filter((edge) => edge?.["@type"] === "hasTextCaptureSegment")
+    .map((edge) => `${edge.source}\u0000${edge.target}`));
+  let lessonsWithText = 0;
+  let linkedTextSegments = 0;
+  for (const lesson of nodes.values()) {
+    if (lesson["@type"] !== "LearningResource" || !lesson["@id"].startsWith("skool-lesson:")) continue;
+    let lessonKey;
+    try {
+      lessonKey = lessonIdentity(lesson.url).lessonKey;
+    } catch {
+      continue;
+    }
+    const segments = [...nodes.values()].filter((candidate) => {
+      if (candidate["@id"] === lesson["@id"] || candidate["@type"] !== "LearningResource"
+          || typeof candidate.text !== "string" || !candidate.text.trim()) return false;
+      try {
+        return lessonIdentity(candidate.url).lessonKey === lessonKey;
+      } catch {
+        return false;
+      }
+    });
+    if (!segments.length) continue;
+    lessonsWithText++;
+    nodes.set(lesson["@id"], {
+      ...lesson,
+      contentStatus: "text_segments_available",
+      pageTextCaptured: true,
+      textCaptureSegmentCount: segments.length,
+      textCaptureCompleteness: "unverified",
+    });
+    for (const segment of segments) {
+      const edgeKey = `${lesson["@id"]}\u0000${segment["@id"]}`;
+      if (captureEdgeKeys.has(edgeKey)) continue;
+      mergedEdges.push({ "@type": "hasTextCaptureSegment", source: lesson["@id"], target: segment["@id"] });
+      captureEdgeKeys.add(edgeKey);
+      linkedTextSegments++;
+    }
+  }
   return {
     ...base,
     "@context": base["@context"] ?? registerGraph["@context"],
     "@graph": [...nodes.values()].sort((a, b) => a["@id"].localeCompare(b["@id"])),
-    edges: [...base.edges, ...registerGraph.edges],
+    edges: mergedEdges,
     provenance: {
       ...(base.provenance ?? {}),
       ...(registerIndex ? { registerIndex } : {}),
       complete: false,
       videoAssetsIncluded: false,
-      omittedUnsafeUrls,
+      omittedUnsafeUrls: Math.max(base.provenance?.omittedUnsafeUrls ?? 0, omittedUnsafeUrls),
+      textCaptureCrosswalk: {
+        method: "exact_skool_lesson_id_from_url",
+        lessonsWithTextSegments: lessonsWithText,
+        linkedTextSegments: [...captureEdgeKeys].length,
+        completenessVerified: false,
+      },
     },
   };
 }
