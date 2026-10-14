@@ -2943,3 +2943,15 @@ does not authorize hosted changes, provider calls, or spending.
   pages**. Matching file size is not a content-hash verification. The archive
   has no verified video downloads or hosted import receipt. This check changed
   no Drive files or hosted graph data.
+
+## Continuation Update - Current-Source Regression Refresh (2026-10-14)
+
+- On clean pushed source commit `3cd4a9bafdb654ee01febe0c431d43ea30d03439`,
+  the supported Node `v24.19.0` focused Playwright/unit suite passed **367/368**
+  with one intentional skip. It includes customer-journey evidence contracts,
+  buyer-pilot receipt validation, tenant isolation, source import, retention,
+  and security regressions. `npm run typecheck` also passed.
+- The deterministic local AI evaluation passed **16/16** and reported
+  `productionReady: false`; it remains local evaluation evidence, not hosted
+  model-quality validation. No provider-backed run, deployment, or customer
+  data mutation occurred.
