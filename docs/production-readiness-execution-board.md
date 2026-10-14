@@ -1049,3 +1049,23 @@ does not authorize hosted changes, provider calls, or spending.
   Skool collection occurred. Hosted rollout remains held; do not enable the
   disabled build-identity route until the exact beta service configuration and
   deployment identity are reviewed.
+
+## Continuation Update - Local Secret-File Guard (2026-10-14)
+
+- Added `verify:local-secret-permissions` and included it in `verify:security`.
+  It checks four known local environment files for owner-only POSIX permissions
+  and does not read or print their contents. The focused test confirms a
+  world/group-readable env file fails without exposing a sentinel value.
+- Typecheck, targeted ESLint, the focused permission test, and the full
+  `npm run verify:security` gate passed. The gate again passed 22 lifecycle,
+  20 Notebook provenance, and 14 runtime/storage/cloud-config tests.
+- Correction to the prior parity note: the user confirms
+  `SUPABASE_URL` is already present in
+  `.private-client-kits/internal-beta-parity.env`; the anon key is absent and
+  `CLIENT_ALLOWED_USER_EMAILS` is blank. The earlier launcher preflight had
+  reported the URL missing. Re-run presence-only preflight after the user
+  privately fills the missing values; do not copy credentials into chat or use
+  a service-role key for the client runtime.
+- No hosted request/write, tenant data change, deployment, migration, or
+  provider call was made. This guard does not change the production-readiness
+  verdict or resolve hosted identity, archive, and beta-rollout blockers.
