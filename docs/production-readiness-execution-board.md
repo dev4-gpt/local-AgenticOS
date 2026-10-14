@@ -2644,3 +2644,26 @@ does not authorize hosted changes, provider calls, or spending.
   views are not at verified feature parity, and the probe does not establish
   production readiness. A Cloud Test code/build attestation and an approved,
   tested source-import rollout remain outstanding.
+
+## Continuation Update - Current Security Gate And Drive Archive Inventory (2026-10-14)
+
+- On clean pushed commit `3bd1e569c8a6850e0cb34b39aa0d24f1422e9ae3`,
+  `npm run verify:security` passed. The lifecycle/retention, notebook
+  execution-provenance, and runtime-config suites passed **22/22**, **20/20**,
+  and **16/16**. Static security-release and provider-policy checks also
+  passed. These are local checks; the gate does not attest hosted IAM, a live
+  upload/import, or a deployed service.
+- The current Google Drive Archive Manifest lists **9 of 108 dated classroom
+  lessons archived** and says video downloads are not verified. The separate
+  validated partial graph entry records **1,138 nodes / 9,029 edges**, with
+  text linked for **82 of 107 lesson/video references** and **25 pending**;
+  it includes PDF-derived text from 88 PDFs (779 pages), but no video assets
+  and no hosted graph import. The May 11-30 source pack is labeled 10 pages,
+  259 links, 3 media references, and 1 pending, so it must not be conflated
+  with complete lesson coverage.
+- The Drive folder and manifest were read, and the graph file metadata was
+  refreshed using a streamed read-only file reference; its contents were not
+  parsed in this check. No files were changed, uploaded, or imported. Skool
+  automation remains held; only platform-approved exports or owner-supplied
+  materials may proceed into the existing consented source-pack workflow. Full
+  archive coverage, media handling, and a hosted import receipt remain open.
