@@ -308,3 +308,6 @@ release verification without deploying or spending beyond approved limits.
   Its supported-runtime AI evaluation passed 16/16 with `localGatePassed: true`;
   production readiness remains false. The latest readiness output names the
   unconfigured release-ledger bucket and 37 unevaluated evidence fields.
+- Production build on Node `v24.18.0` completed on the code in `b6c4031`:
+  Next compilation, TypeScript, and 66 static pages succeeded. Next emits a
+  non-blocking deprecation warning for the `middleware` convention.

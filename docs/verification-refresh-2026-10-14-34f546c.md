@@ -53,3 +53,8 @@ On that clean code commit, the Node `v24.18.0` deterministic AI evaluation
 passed 16/16 with `localGatePassed: true`, zero model samples, and no LLM or
 Zep request. The production-readiness verifier remains false: the release
 ledger bucket is unconfigured and 37 release-evidence fields are unevaluated.
+
+The production build also completed successfully on Node `v24.18.0` on
+`b6c4031504662edc2bc37f0231e17c7a0cc5027b`: compilation, TypeScript, and all
+66 static pages passed. Next reported the existing non-blocking deprecation
+warning for the `middleware` file convention.
