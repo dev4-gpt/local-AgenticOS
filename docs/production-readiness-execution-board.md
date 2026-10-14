@@ -208,11 +208,13 @@ release verification without deploying or spending beyond approved limits.
   24.19.0, including text/link preservation, incomplete provenance, duplicate
   and secret-bearing link rejection, and output-path restrictions. The local
   export remains mode `0600` and ignored by Git; no hosted import was attempted.
-- Archive coverage is still partial: 47 of the 107 registered lesson IDs lack
-  local page captures, the register and spreadsheet counts disagree, and video
-  references do not establish archived video bytes or transcripts. A fresh
-  read-only Drive listing found 107 files, but its filenames alone do not
-  reconcile those 47 lesson IDs against the canonical classroom inventory.
+- At this point in the earlier v7-only audit, 47 of the 107 registered lesson
+  IDs lacked local page captures. The later combined reconciliation below
+  supersedes that count: 18 IDs gained text from the Drive supplement, leaving
+  29 without lesson text. The register and spreadsheet counts still disagree,
+  and video references do not establish archived video bytes or transcripts.
+  A fresh read-only Drive listing found 107 files, but filenames alone did not
+  reconcile lesson IDs against the canonical classroom inventory.
 
 ## Continuation Update - AI Evaluation And Observability
 
@@ -802,5 +804,9 @@ does not authorize hosted changes, provider calls, or spending.
   492 nodes, 7,770 resolved edges, and no unresolved references. The latest
   private Drive-capture manifest records 18/18 sources and 40/40 links
   processed, five skipped pages, 25 pending pages, and zero media references.
-  The separate 107-lesson register still has 47 lesson IDs without local
-  captures; the 18 added sources do not close that lesson-ID gap.
+  The regenerated private checklist joins the combined graph to the 107-ID
+  register: 78 IDs have lesson text and 29 remain without it. It records 107
+  video references and 253 outbound links; neither count means the videos are
+  archived as media or transcripts. The 18 added sources reduce the earlier
+  v7-only gap of 47 to 29. The separate register-versus-spreadsheet count
+  discrepancy and partial archive status remain open.
