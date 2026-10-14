@@ -37,12 +37,32 @@ was created and no IAM or hosted state was changed.
 
 ## Next Checks
 
-1. Establish each environment's user, tenant, project, source-commit, and image
+1. Establish each environment's tenant, project, source-commit, and image
    identity through an approved read-only mechanism before treating record
-   counts as a parity comparison.
+   counts as a same-tenant parity comparison.
 2. Use a known synthetic fixture in a non-production tenant to compare the
    local and Internal Beta source-selection, drafting, provenance, review,
    and export journey. Do not seed or modify the existing signed-in tenants.
 3. Keep Cloud Test data separate unless its tenant identity is proven to match.
 4. Configure a release-ledger bucket only after the exact GCP project and
    associated storage/recovery costs are verified by the owner.
+
+## Same-User Recheck
+
+A later read-only check used the already-open tabs for
+`http://127.0.0.1:3955/notebook` and
+`https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/notebook`:
+
+- Both authenticated session endpoints returned the same user subject ID. The
+  identifier and email are omitted from this repository note.
+- Local showed 0 notebook records and 0 active sources; Cloud Test showed 9 of
+  each. This proves a same-user visible data difference, but not a same-tenant
+  or same-Supabase-project comparison.
+- After navigating away from Cloud Test and back to Notebook, its first render
+  showed 0 records; a browser reload restored 9. This is a transient display
+  observation requiring a fresh-load regression check, not evidence that data
+  was deleted.
+- The local session was workspace-authorized. Cloud Test's session endpoint
+  confirmed authentication, while the visible Notebook showed tenant access.
+  No tenant IDs, project refs, or deployed build identities were verified.
+- No tenant writes, imports, provider calls, or hosted changes were performed.
