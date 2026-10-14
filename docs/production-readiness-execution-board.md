@@ -713,7 +713,7 @@ does not authorize hosted changes, provider calls, or spending.
 - Fixed the browser spec so its default base URL follows the test-server port.
   A prior alternate-port run left the spec pinned to port 3939 and exercised an
   older local server; those earlier browser-pass claims are superseded. The
-  corrected browser test against matching server/client port 3972 passed
+  corrected browser test against matching server/client port 3973 passed
   **1/1**, including the draft review display and same-origin export handoff.
 - Focused ESLint and TypeScript checks pass on the working changes. At the
   pre-edit HEAD `c91c54e`, the offline AI release evaluation passed **16/16**
