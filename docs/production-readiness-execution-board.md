@@ -20,7 +20,7 @@ release verification without deploying or spending beyond approved limits.
 | Authorized Skool archive and graph import | In progress; 78/107 Drive-register IDs have local text captures; signed-in view verified 110 catalog items, but direct collection is held under Skool's current terms/policy; not hosted-imported | Canonical lesson/date inventory; all permitted page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Do not scrape/copy through Skool or forward cookies to Firecrawl. Continue from independently supplied owner-authorized files, or obtain a Skool-approved export/exception; reconcile live 110-item catalog, 107-ID Drive register, and 109-row spreadsheet; then import only after coverage and internal-beta target are verified |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Current-source deterministic gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled under the $0 paid-spend cap; use current offline receipt and trace-redaction tests as local-only evidence until a separately approved zero-cost hosted/model path is verified |
-| MiroFish buyer pilot | Human review complete; 2/2 responses assessed, 1/2 fully approved; synthetic pilot-quality gate fails; no market validation. The separately approved zero-paid-spend repeat is not prepared: the only unstarted seed lacks profile artifacts | Reviewed posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Restore or regenerate the missing reviewed profile inputs for a fresh run, verify the exact hashes with dry preflight, then use the already approved repeat only if the free-tier/$0 constraints still hold. The MiroFish harness now reports missing artifacts clearly; no run or provider call was made |
+| MiroFish buyer pilot | Existing synthetic run is audited; 2/2 responses reviewed and hash-bound, 1/2 qualified; synthetic quality gate still fails and market validation is absent. The previously approved repeat remains unused | Reviewed posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Keep the provider-free audit. Before using the prior repeat approval, verify complete run inputs and provider-side paid-spend controls; use real buyer interviews for demand validation |
 | Release evidence and decision | Not ready | Clean commit; all required evidence attached to release ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Keep the release verifier as the authoritative gate; configure a ledger bucket only after target project and cost implications are confirmed |
 
 ## Historical Verified Snapshot (2026-10-14; superseded by continuation updates below)
@@ -1599,3 +1599,20 @@ does not authorize hosted changes, provider calls, or spending.
   categories are not evaluated. The verifier does not consume the local `tmp/`
   evaluation report as release-ledger evidence; no hosted identity, journey,
   migration, customer approval, or rollback receipt is attached.
+
+## Continuation Update - MiroFish Review Audit (2026-10-14)
+
+- The saved `sim_f91504972e42` review contains two human annotations. Read-only
+  verification against the simulation database confirms both response and
+  quoted-parent hashes; the audit reports `reviewed_with_rejections`, 1
+  qualified and 1 rejected annotation, and 2 distinct synthetic buyer quote
+  responses across the 10-round run. The rejection is the under-$50 budget
+  persona asking for a demo despite a $1,250/month base price; this is a weak
+  affordability observation, not buying intent.
+- The pilot repository's harness previously accepted only review schema v1,
+  silently failing to credit the saved v2 review. The v2 validator now requires
+  a completed review and self-consistent response/parent hashes, then checks
+  those against the run artifacts. Focused tests pass **18/18**; local commit
+  `67e284c` (`fix: validate v2 buyer review evidence`).
+- This remains a synthetic-only result, not market validation. No simulation
+  was rerun, no provider was called, and no spend was incurred in this audit.
