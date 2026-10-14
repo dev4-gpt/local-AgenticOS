@@ -86,14 +86,29 @@ test("candidate config preflight fails for the observed beta blockers and a pend
   expect(cli.stdout).not.toContain("DO_NOT_PRINT_PRIVATE_VALUE");
 });
 
-test("candidate config preflight rejects ambiguous variables and split traffic", () => {
+test("candidate config preflight accepts tag-only URLs without treating them as traffic splits", () => {
+  const service = snapshot();
+  service.status.traffic.push({
+    revisionName: "agentos-internal-beta-00034-old",
+    tag: "previous-check",
+    url: "https://previous-check---agentos-internal-beta.example.invalid",
+  });
+  expect(evaluateClientRuntimeConfig(service, expected).failures).not.toContain("traffic_not_single_expected_revision");
+});
+
+test("candidate config preflight rejects ambiguous variables, actual split traffic, and malformed tag entries", () => {
   const service = snapshot();
   service.spec.template.spec.containers[0].env.push({ name: "CLIENT_RETENTION_DAYS", value: "1" });
-  service.status.traffic.push({ revisionName: "agentos-internal-beta-00034-old", percent: 0, latestRevision: false });
+  service.status.traffic[0].percent = 50;
+  service.status.traffic.push({ revisionName: "agentos-internal-beta-00034-old", percent: 50, latestRevision: false });
   const result = evaluateClientRuntimeConfig(service, expected);
   expect(result.failures).toContain("duplicate_runtime_variable");
   expect(result.failures).toContain("traffic_not_single_expected_revision");
   expect(result.failures).toContain("retention_days_not_45");
+
+  const malformed = snapshot();
+  malformed.status.traffic.push({ revisionName: "agentos-internal-beta-00034-old" });
+  expect(evaluateClientRuntimeConfig(malformed, expected).failures).toContain("traffic_not_single_expected_revision");
 });
 
 test("source import requires a secret-backed worker verifier", () => {

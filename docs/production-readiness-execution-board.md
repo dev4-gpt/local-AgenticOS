@@ -2161,3 +2161,22 @@ does not authorize hosted changes, provider calls, or spending.
   deployments, or cloud configuration changes occurred. Artifact Registry
   build metadata remains unreadable to the active account because its
   `agentos-mvp` service-usage consumer permission is missing.
+
+## Continuation Update - Cloud Run Traffic Verification Gate (2026-10-14)
+
+- Cloud Test's service snapshot contains one 100% default-traffic allocation to
+  `veloce-cloud-test-acceptance-9417c3c` plus 10 tag-only revision URLs whose
+  entries have no traffic percentage. All 11 tagged revisions carry the same
+  tenant slug, 14-day retention, provider-on setting, `$10` app cap, and lack
+  the source-import/build-identity routes; none is a safer parity target.
+- The existing runtime-config checker incorrectly rejected the 10 tag-only
+  URLs as a traffic split. Updated it to ignore valid tag-only entries while
+  still failing real split allocations, malformed tag entries, or a default
+  route that is not 100% on the expected revision. The official client runtime
+  config fixture command passed **15/15** tests, including the added tag-only,
+  50/50 split, and malformed-entry cases; ESLint passed.
+- Re-running the checker on the live Cloud Test snapshot now reports the actual
+  mismatches only: tenant slug, provider-call policy, 14-day retention, and
+  three missing API routes (source import, source upload, build identity). It
+  no longer reports a false traffic-split failure. No Cloud Run traffic,
+  service configuration, or runtime state was changed.

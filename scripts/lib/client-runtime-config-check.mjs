@@ -20,7 +20,22 @@ export function evaluateClientRuntimeConfig(service, expected) {
       || service?.metadata?.generation !== service?.status?.observedGeneration) {
     failures.push("template_not_ready_revision");
   }
-  if (!Array.isArray(traffic) || traffic.length !== 1 || traffic[0]?.revisionName !== expected.revision || traffic[0]?.percent !== 100) {
+  const trafficEntriesValid = Array.isArray(traffic) && traffic.every((entry) => {
+    if (!entry || typeof entry !== "object") return false;
+    if (entry.percent === undefined || entry.percent === null) {
+      return typeof entry.tag === "string" && entry.tag.length > 0
+        && typeof entry.url === "string" && entry.url.length > 0
+        && typeof entry.revisionName === "string" && entry.revisionName.length > 0;
+    }
+    return Number.isFinite(entry.percent) && entry.percent >= 0 && entry.percent <= 100;
+  });
+  const allocatedTraffic = Array.isArray(traffic)
+    ? traffic.filter((entry) => typeof entry?.percent === "number" && entry.percent > 0)
+    : [];
+  const activeRevision = allocatedTraffic[0]?.revisionName
+    ?? (allocatedTraffic[0]?.latestRevision === true ? revision : null);
+  if (!trafficEntriesValid || allocatedTraffic.length !== 1
+      || allocatedTraffic[0]?.percent !== 100 || activeRevision !== expected.revision) {
     failures.push("traffic_not_single_expected_revision");
   }
   if (digest !== expected.digest) failures.push("image_digest_mismatch");
