@@ -2815,3 +2815,20 @@ does not authorize hosted changes, provider calls, or spending.
 - This is synthetic, reviewed product-learning evidence, not buyer demand or
   willingness-to-pay evidence. No additional simulation, provider request,
   or paid spend occurred.
+
+## Continuation Update - Live Cloud Test Configuration Recheck (2026-10-14)
+
+- Read-only Cloud Run inspection confirms `veloce-cloud-test-acceptance-9417c3c`
+  is Ready and receives **100%** of service traffic. Its immutable image is
+  `asia-south1-docker.pkg.dev/veloce-agenticos-2026/veloce/client-runtime@sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`.
+- The active runtime is configured for `veloce-cloud-test`,
+  `CLIENT_RETENTION_DAYS=14`, `CLIENT_PROVIDER_CALLS_ENABLED=1`, and
+  `CLIENT_RUNTIME_WORKER_ENABLED=1`. The route allowlists include the base
+  Memory/Notebook surfaces but omit `/api/client-runtime/build-identity` and
+  `/api/client-runtime/source-import`; `source-import` is also not enabled in
+  the active capability list. Thus this is not the reviewed 45-day,
+  provider-disabled parity target and cannot verify the full local journey.
+- The existing parity-tagged and readiness-tagged revisions also retain
+  14-day retention and provider calls enabled; they are not safe substitutes.
+  No environment values containing credentials were requested, and no traffic,
+  revision, IAM, database, storage, or provider state was changed.
