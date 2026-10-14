@@ -2241,3 +2241,23 @@ does not authorize hosted changes, provider calls, or spending.
 - The refreshed capture passed the production private source-pack parser
   (**1/1**) and the portable-graph integrity suite (**4/4**). No hosted graph
   import, upload, deployment, or provider request was made.
+
+## Continuation Update - October 8 Lesson Capture (2026-10-14)
+
+- In the same signed-in Chrome profile, the October 8 `OpenDots + OpenMuse +
+  OpenBot!` page was read directly. The visible page shows a 12:24 player,
+  OpenMuse/OpenBot repository links, and a community-help link; the OpenMuse
+  link appears twice. The archive register supplies a YouTube video reference,
+  but the embedded Skool player did not expose its transcript or direct media
+  URL. No separate lesson attachment inventory was visible.
+- The owner-only capture and prepared source pack are under ignored
+  `tmp/authorized-skool-import/agentos-2026-10-08-opendots.*`. Merging this
+  page with the prior private graph produces
+  `tmp/authorized-skool-import/agentos-combined-opendots-live-refresh-2026-10-14.jsonld`:
+  **1,133 nodes / 9,017 explicit relations**, with text linked to **80/107**
+  lessons and 214 linked text segments. Coverage remains `partial`; video
+  bytes/transcripts and any hidden attachments are not claimed.
+- The capture passed the production private source-pack parser (**1/1**),
+  private-source sanitizer tests (**2/2**), and portable-graph validation.
+  Nothing was imported into a hosted tenant or uploaded, and no provider call
+  or deployment occurred.
