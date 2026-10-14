@@ -1,11 +1,24 @@
 # Release-evidence ledger deployment runbook
 
-**Historical configuration only.** This runbook names `veloce-agenticos-2026`,
-which is not a currently verified release target. Do not run its bucket or IAM
-commands until project ownership, billing, writer identity, and the intended
-ledger bucket have been freshly reviewed. The current verifier has no default
-bucket; pass `--ledger-bucket <reviewed-ledger-bucket>` explicitly for both
-publication and strict validation.
+**No release-ledger project is currently approved or configured.** Do not
+enable billing, create a bucket or service account, or change IAM until the
+project owner selects and reviews the target project, its billing status,
+writer identity, and bucket name. The verifier has no default bucket; pass
+`--ledger-bucket <reviewed-ledger-bucket>` explicitly for publication and
+strict validation only after that review.
+
+## Current read-only inventory (2026-10-14)
+
+- `Veloce Ai` (`gen-lang-client-0685339364`): Cloud Storage is unavailable
+  until billing is enabled; the bucket list has no rows. No billing or IAM
+  changes were made.
+- `agentos-mvp`: previously inspected buckets are used for other purposes and
+  are not verified release-ledger targets.
+- `veloce-agenticos-2026`: remains an unverified historical project name; do
+  not infer that it is the right project or use it for setup.
+
+The target project must be selected by the owner before setup. A missing bucket
+is a release blocker, not permission to turn on billing.
 
 This runbook creates the one-time, org-wide infrastructure for the release
 evidence ledger. It is a singleton, like the provisioner service accounts and
@@ -15,25 +28,31 @@ the `veloceTenantProvisioner` role in
 
 ## Preconditions
 
-- Project: `veloce-agenticos-2026`
-- Region: `asia-south1`
-- Run all commands with a human Google account that can manage IAM and
-  Cloud Storage (`aryamandev777@gmail.com` holds Owner on this project).
+After the owner selects the target, replace these placeholders only with
+values verified in that project's console:
+
+- `<PROJECT_ID>`: reviewed GCP project ID
+- `<LEDGER_BUCKET>`: reviewed globally unique bucket name
+- `<REGION>`: reviewed storage region
+- `<WRITER_SERVICE_ACCOUNT>`: reviewed writer identity
+- `<OPERATOR_IDENTITY>`: approved operator identity
+
+Confirm the project and billing status directly before running any setup
+command. The commands below are templates, not approval to incur charges or
+change IAM.
 
 ## 1. Create the bucket: private and versioned
 
 ```bash
-gcloud storage buckets create gs://veloce-agenticos-2026-veloce-release-ledger \
-  --project veloce-agenticos-2026 --location asia-south1 --uniform-bucket-level-access
+gcloud storage buckets create gs://<LEDGER_BUCKET> \
+  --project <PROJECT_ID> --location <REGION> --uniform-bucket-level-access
 
-gcloud storage buckets update gs://veloce-agenticos-2026-veloce-release-ledger --versioning
-gcloud storage buckets update gs://veloce-agenticos-2026-veloce-release-ledger --public-access-prevention
+gcloud storage buckets update gs://<LEDGER_BUCKET> --versioning
+gcloud storage buckets update gs://<LEDGER_BUCKET> --public-access-prevention
 ```
 
-Object versioning is genuinely new to this project — no other bucket in this
-repo enables it. It exists here because a release-evidence record must never
-be silently overwritten; the upload path also enforces this at write time
-(see step 3).
+Object versioning prevents release-evidence records from being silently
+overwritten; the upload path also enforces create-only writes (see step 3).
 
 ## 2. Create the writer identity and its custom role
 
@@ -43,15 +62,15 @@ It deliberately excludes `storage.objects.delete` — this is what makes the
 ledger append-only, not just convention.
 
 ```bash
-gcloud iam service-accounts create veloce-release-ledger-writer \
-  --project veloce-agenticos-2026 --display-name="Veloce release ledger writer"
+gcloud iam service-accounts create <WRITER_SERVICE_ACCOUNT> \
+  --project <PROJECT_ID> --display-name="Veloce release ledger writer"
 
 gcloud iam roles create veloceReleaseLedgerWriter \
-  --project veloce-agenticos-2026 --file iam/veloce-release-ledger-writer-role.yaml
+  --project <PROJECT_ID> --file iam/veloce-release-ledger-writer-role.yaml
 
-gcloud storage buckets add-iam-policy-binding gs://veloce-agenticos-2026-veloce-release-ledger \
-  --member=serviceAccount:veloce-release-ledger-writer@veloce-agenticos-2026.iam.gserviceaccount.com \
-  --role=projects/veloce-agenticos-2026/roles/veloceReleaseLedgerWriter
+gcloud storage buckets add-iam-policy-binding gs://<LEDGER_BUCKET> \
+  --member=serviceAccount:<WRITER_SERVICE_ACCOUNT>@<PROJECT_ID>.iam.gserviceaccount.com \
+  --role=projects/<PROJECT_ID>/roles/veloceReleaseLedgerWriter
 ```
 
 Approved human operators impersonate the writer service account rather than
@@ -59,9 +78,9 @@ holding a static key for it:
 
 ```bash
 gcloud iam service-accounts add-iam-policy-binding \
-  veloce-release-ledger-writer@veloce-agenticos-2026.iam.gserviceaccount.com \
-  --project veloce-agenticos-2026 \
-  --member=user:aryamandev777@gmail.com --role=roles/iam.serviceAccountTokenCreator
+  <WRITER_SERVICE_ACCOUNT>@<PROJECT_ID>.iam.gserviceaccount.com \
+  --project <PROJECT_ID> \
+  --member=<OPERATOR_IDENTITY> --role=roles/iam.serviceAccountTokenCreator
 ```
 
 A CI service account can be granted the same `iam.serviceAccountTokenCreator`
@@ -74,8 +93,8 @@ No custom role is needed for reading; the predefined
 `roles/storage.objectViewer` is already minimal (get/list, no write/delete):
 
 ```bash
-gcloud storage buckets add-iam-policy-binding gs://veloce-agenticos-2026-veloce-release-ledger \
-  --member=user:aryamandev777@gmail.com --role=roles/storage.objectViewer
+gcloud storage buckets add-iam-policy-binding gs://<LEDGER_BUCKET> \
+  --member=<OPERATOR_IDENTITY> --role=roles/storage.objectViewer
 ```
 
 ## Object layout
