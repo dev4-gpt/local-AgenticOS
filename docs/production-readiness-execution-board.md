@@ -1725,3 +1725,17 @@ does not authorize hosted changes, provider calls, or spending.
   no authenticated local/cloud comparison was made. The running local build at
   `http://127.0.0.1:3955` is current-source, 127.0.0.1-bound, and has providers
   disabled; its signed-in journey remains to be verified.
+
+## Continuation Update - Read-Only Veloce Ai Storage Inventory (2026-10-14)
+
+- In the existing authenticated Cloud Console session, read-only project
+  selection confirmed `Veloce Ai` maps to
+  `gen-lang-client-0685339364`. Its Cloud Run service list is empty.
+- The Cloud Storage bucket inventory shows **no rows** and displays “You can
+  use Cloud Storage after you enable billing.” No release-ledger bucket exists
+  in this project as currently configured. No billing, bucket, IAM, or other
+  project setting was changed.
+- This is a separate project from `agentos-mvp`; it does not identify the
+  historical `veloce-agenticos-2026` project or establish an approved ledger
+  destination. Do not enable billing or create a bucket without a verified
+  target and cost/retention review.
