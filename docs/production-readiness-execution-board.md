@@ -1793,11 +1793,14 @@ does not authorize hosted changes, provider calls, or spending.
   production source-pack parser passed **1/1**; the private sanitizer passed
   **2/2** and portable graph-integrity checks passed **4/4**. The combined
   graph is still private and partial; no tenant import was performed.
-- Read-only navigation in the existing signed-in Chrome tab confirmed the
-  live Skool classroom index has **111 items**: 108 dated lessons through
-  October 10, the separate AgentOS System lesson, and two newer items dated
-  October 13-14. The 107-ID Markdown register is missing one in-scope dated
-  lesson; its identity still needs resolution. The live System page says it
-  was updated October 12 and has a 59:26 player, so its September 11 PDF is
-  stale. No browser cookies were exported; lesson progress and account content
-  were not changed.
+- Read-only navigation in the existing signed-in Chrome tab found **111
+  virtual-list items**; extracting links from overlapping top/bottom scroll
+  windows produced **109 distinct lesson links**. The two titles absent from
+  the 107-entry Markdown register are exactly the October 13 and October 14
+  lessons, outside scope. All 107 register titles therefore match the visible
+  scope through October 10 (106 dated lessons plus AgentOS System); no requested
+  lesson is missing from the link register. The spreadsheet's claim of 108
+  dated lessons plus System conflicts with this live index and remains an
+  unresolved overcount. The live System page says it was updated October 12
+  and has a 59:26 player, so its September 11 PDF is stale. No browser cookies
+  were exported; lesson progress and account content were not changed.

@@ -64,20 +64,19 @@ lesson-link register, one spreadsheet manifest, one Python file, and one ZIP.
 The 98 PDFs include bonus resources and should not be counted as classroom
 lesson-page coverage.
 
-The Drive spreadsheet says the classroom inventory has 108 dated lessons plus
-the standalone AgentOS System lesson, and reports only 9 of 108 dated lessons
-archived. Its listed complete dates are May 11, 12, 13, 14, and 19. The
-standalone AgentOS System PDF is separately saved as a four-page PDF, but its
-video URLs and attached resources are not saved as media. The spreadsheet also
-marks classroom video downloads incomplete. Its two JSON source-pack rows
-describe 9 pages/132 links/1 pending page for May 11-19 and 10 pages/259 links/
-3 media references/1 pending page for May 11-30; both are explicitly
-incomplete. The spreadsheet's item-level rows identify 9 dated lesson PDFs
-plus the separate System PDF. Of its two HTML captures, the May 19 page
-duplicates an indexed PDF while the May 30 page is a distinct lesson source
-saved as HTML. That May 30 source ID is also in the local v7 pack. All 11
-unique Skool IDs indexed in these Drive rows are already present among the
-local 60; Drive adds no unique lesson ID beyond the local v7 set.
+The spreadsheet's archive-summary row reports 109 in-scope entries (108 dated
+lessons plus the standalone AgentOS System lesson), only 9 dated lessons
+archived, and complete dates May 11, 12, 13, 14, and 19. A fresh read of the
+sheet shows 108 rows total including its header and 107 asset rows; most rows
+are bonus resources, not a lesson roster. Its item-level rows identify 9 dated
+lesson PDFs plus the separate System PDF. The spreadsheet also marks classroom
+video downloads incomplete. Its two JSON source-pack rows describe 9 pages/132
+links/1 pending page for May 11-19 and 10 pages/259 links/3 media references/1
+pending page for May 11-30; both are explicitly incomplete. Of its two HTML
+captures, the May 19 page duplicates an indexed PDF while the May 30 page is a
+distinct lesson source saved as HTML. That May 30 source ID is also in the local
+v7 pack. All 11 unique Skool IDs indexed in these Drive rows are already among
+the local 60; Drive adds no unique lesson ID beyond the local v7 set.
 
 Local v7 coverage by the Drive register's created month is:
 
@@ -90,30 +89,29 @@ Local v7 coverage by the Drive register's created month is:
 | September 2026 | 0 | 15 | 15 |
 | October 2026 | 0 | 10 | 10 |
 
-The 107-entry Drive register and the spreadsheet's 109-entry classroom count
-remain inconsistent. The checklist of the 47 register IDs missing from local
-v7 is stored privately at
+The checklist of the 47 register IDs missing from local v7 is stored privately at
 `tmp/authorized-skool-import/archive-gap-checklist-2026-10-14.json`; it
 contains the page URL, title/date, video reference, and outbound links for each
 gap and is ignored by Git. It records 47 video references (32 external URLs
 and 15 Skool-hosted IDs) plus 80 outbound links across 30 pages; these are
 references, not downloaded media.
 
-The Drive Markdown link register says it contains 107 lessons and was collected
-October 11, while the spreadsheet says 109 entries total (108 dated plus the
-standalone system lesson). These counts disagree and must be reconciled by
-lesson URL and md identifier against the authorized classroom before coverage
-is called complete. The Drive folder count is an asset count, not a lesson
-count. This snapshot does not infer that files absent from the local v7
-directory are absent from Drive.
+The Drive Markdown link register contains 107 lesson IDs, including the
+standalone System page. The direct classroom-index comparison below finds 109
+lesson links in total, of which two are dated after the requested October 10
+cutoff; the remaining 107 in-scope links match the register by title. The
+spreadsheet's 109-in-scope summary therefore conflicts with the current live
+index and register, and remains unresolved as a stale or overinclusive count.
+The Drive folder count is an asset count, not a lesson count. This snapshot
+does not infer that files absent from the local v7 directory are absent from
+Drive.
 
 ## Next Archive Actions
 
-1. Reconcile all lesson URLs and md identifiers in the Drive Markdown register,
-   spreadsheet, and combined local graph; confirm the 78 captured IDs and
-   resolve the 107-versus-109 inventory discrepancy to establish the canonical
-   May 1-October 10 lesson list plus the separate AgentOS System lesson. The
-   current manifest comparison leaves 29 register IDs without lesson text.
+1. Reconcile the spreadsheet's unresolved 109-in-scope summary with the live
+   107-link in-scope title match and register using an authoritative roster or
+   course-owner confirmation. The current combined manifest still has 29
+   register IDs without lesson text.
 2. Resolve the four ambiguous filename dates using the visible classroom
    metadata, not title guesses.
 3. For every lesson, record whether HTML/PDF, outbound links, and video
@@ -134,13 +132,12 @@ register lists one video reference for each lesson: 92 public YouTube URLs and
 15 Skool-hosted video IDs. These are references only; they do not establish
 that video files, transcripts, or attached resources were saved.
 
-The live Drive folder still contains 107 total files (98 PDFs, 3 HTML, 2 JSON,
-1 ZIP, 1 Python file, 1 Markdown register, and 1 spreadsheet). Its spreadsheet
-still says only 9 of 108 dated lesson pages are archived, with the System PDF
-separate. Thus the local 60-page prepared pack is not 60 lesson PDFs in Drive.
-The register's 107 lesson IDs and spreadsheet's 108 dated lessons plus
-standalone System lesson still differ by two entries; resolving this requires
-the authorized classroom index or another owner-verified canonical inventory.
+The Drive folder's asset count is separate from classroom coverage. The
+spreadsheet still reports only 9 dated lesson PDFs archived, with the System
+PDF separate; the local 60-page prepared pack is not 60 lesson PDFs in Drive.
+Its summary count of 108 dated lessons plus System conflicts with the direct
+live-index/title comparison recorded below; do not treat that summary cell as
+the canonical lesson roster.
 
 ## Local Register Graph Index
 
@@ -238,15 +235,17 @@ in source packs, logs, or third-party scraping services.
 ## Live Classroom Recheck (2026-10-14)
 
 The user's selected Chrome Work window was verified signed in to the AI Profit
-Boardroom. The classroom sidebar reports **111 items** and, after scrolling to
-the bottom, shows the oldest entries through May 1. It includes the standalone
-`AGENT OS System!` lesson and two dated lessons after the requested October 10
-cutoff (October 13 and October 14). This reconciles the live index as 108 dated
-lessons from May 1 through October 10 plus the separate System lesson (109
-in-scope items). The Drive Markdown register has 107 dated lesson IDs, so one
-in-scope dated page is still absent from that register; its identity is not yet
-resolved. The Drive spreadsheet's row count is an asset inventory and must not
-be mistaken for the number of classroom lessons.
+Boardroom. The classroom sidebar reports **111 virtual-list items**; extracting
+the link rows from overlapping top and bottom scroll windows yields **109
+distinct lesson links**, with the oldest entries reaching May 1. The lessons
+outside the requested range are the October 13 and October 14 entries. A
+title-by-title set comparison against the 107-entry Drive Markdown register
+shows **no register-only titles**; its two unmatched live titles are precisely
+those October 13-14 lessons. Thus the 107 register entries (106 dated lessons
+plus the separate `AGENT OS System!` page) cover the current visible index
+through October 10. This conflicts with the spreadsheet summary cell claiming
+108 dated lessons plus System; that overcount remains unresolved and should not
+be used as the canonical roster.
 
 The live `AGENT OS System!` page shows a 59:26 player, says `Last update: 12th
 October 2026`, and exposes setup/update text, Descript references, related
@@ -262,8 +261,9 @@ This was a read-only inspection in the user's existing signed-in browser; no
 cookies were exported or sent to a scraper, and no lesson progress, comments,
 or account content were changed. The owner-authorization history is recorded in
 this project conversation. Keep course captures private and out of Git. The
-visible index establishes a canonical count, but does not supply all lesson
-bodies or resolve the missing register ID.
+index/register title match resolves the missing-register-ID question, but does
+not provide all lesson bodies or resolve the spreadsheet's two-entry count
+discrepancy.
 
 ## Offline Verification Refresh (2026-10-14)
 
