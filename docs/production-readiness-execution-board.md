@@ -5,6 +5,49 @@ not treated as hosted, customer, or release evidence. Tracks can move in
 parallel; hosted mutations remain behind explicit environment and approval
 checks.
 
+## Operating Method - 2026-10-14
+
+- This execution board is the project-level source of truth. Keep the Codex goal
+  aligned with it; do not create a second task board in another service.
+- A completion percentage is not currently defined for this goal. Earlier
+  40%/42% figures were estimates with no fixed denominator and must not be
+  interpreted as measured progress or regression. Report track states,
+  blockers, and evidence instead. If a percentage is later requested, first
+  decompose every track's exit evidence into a fixed, versioned checklist and
+  calculate accepted required gates / total required gates; never count
+  unverified or stale evidence as passed.
+- Keep one active implementation item on the critical path. Read-only research
+  may proceed independently when it does not compete for the same files,
+  browser session, tenant, or approval. Do not delegate overlapping changes.
+- Every work item records: current source SHA and environment; preconditions;
+  one bounded action; testable exit evidence; evidence location; and any owner
+  decision or hosted/spend boundary. After each action, verify the effect and
+  update this board before selecting the next item.
+- Recheck evidence against the current candidate before release claims. A local
+  test, synthetic simulation, partial archive, or historical deployment receipt
+  cannot satisfy a hosted, customer, complete-import, or market-validation gate.
+
+### Critical Path
+
+1. Refresh this board and the strict release-verifier result against the current
+   pushed SHA; distinguish current evidence from dated historical receipts.
+2. Close the signed-in customer-journey and local/cloud parity evidence using
+   the same identified tenant and candidate, read-only until a specific write
+   is separately approved.
+3. Reconcile the authorized Skool inventory and graph package; only attempt a
+   hosted import after coverage, destination tenant, and import scope are
+   verified.
+4. Finish offline AI/trace checks and the existing MiroFish review. Do not make
+   another provider request under expired or already-consumed approval; keep
+   synthetic feedback separate from real buyer evidence.
+5. Run the strict release gate on the final clean candidate and report each
+   remaining owner decision. No deploy or paid spend is implied by this plan.
+
+### Work Item Template
+
+`Goal | source SHA/environment | preconditions | bounded action | exit test |
+evidence path | risk/approval boundary | result/next action`
+
 ## Goal
 
 Bring AgentOS toward evidence-backed production readiness by completing the
