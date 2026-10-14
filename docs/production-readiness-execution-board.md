@@ -1542,3 +1542,15 @@ does not authorize hosted changes, provider calls, or spending.
   stochastic reliability, or a complete customer journey. It is stored at
   `tmp/ai-release-local-v1-report.json`; no provider or hosted evidence is
   implied.
+
+## Continuation Update - Focused And Security Gates (2026-10-14)
+
+- On source commit `fe62329c71a6284ef36f628b7d445887d3ae2c4b`,
+  `npm run test:focused` passes **365/366** cases with **1 skipped**. This suite
+  includes tenant boundaries, buyer-evidence binding, source import, retention,
+  provider spending, observability contracts, and release-gate tests.
+- `npm run verify:security` exits **0** on the same commit. Its local checks
+  pass for secret-file permissions, security release policy, provider policy,
+  lifecycle/retention, notebook source provenance, runtime/storage config,
+  and governed integrations. These checks are source/local evidence only; they
+  do not certify a hosted deployment or customer journey.
