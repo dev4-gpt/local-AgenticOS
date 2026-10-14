@@ -686,3 +686,19 @@ does not authorize hosted changes, provider calls, or spending.
 - Same-user signed-in flow remains unverified: the private parity env still
   lacks the Supabase anon key and allowed email. No hosted request, migration,
   database write, or provider call was made.
+
+## Continuation Update - Notebook Draft Completion and Download (2026-10-14)
+
+- Extended `tests/client-notebook-studio-browser.spec.ts` through the complete
+  mocked UI lifecycle: queue a document from selected source IDs, observe the
+  queued-to-succeeded transition, retain source and approved-brief links, ask
+  the authenticated artifact endpoint for the artifact download URL, and
+  follow that URL to the draft content.
+- The focused Playwright browser test passed **1/1** on supported Node
+  `24.19.0`; TypeScript and ESLint checks also passed. Browser APIs and signed
+  storage response were mocked, so this verifies the customer-facing code path,
+  not a real generated document, saved tenant artifact, human review, or live
+  storage permission.
+- Provider calls remained disabled; no Supabase or cloud requests, writes,
+  migrations, deployment, or paid calls occurred. Same-user persistence,
+  hosted parity, and a genuine review/approval step remain unverified.

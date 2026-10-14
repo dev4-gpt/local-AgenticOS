@@ -10,6 +10,7 @@ test("Notebook Studio submits source IDs and renders the saved source register",
   await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
   let submitted: Record<string, unknown> | null = null;
   let executionCreated = false;
+  let executionReads = 0;
 
   await page.route("**/api/client-runtime/**", async (route) => {
     const request = route.request();
@@ -25,8 +26,9 @@ test("Notebook Studio submits source IDs and renders the saved source register",
       return route.fulfill({ status: 200, json: { ok: true, notebooks: [{ id: notebookId, title: "Client Alpha", status: "active" }] } });
     }
     if (request.method() === "GET" && url.pathname.endsWith("/executions")) {
+      const status = executionCreated && executionReads++ > 0 ? "succeeded" : "queued";
       return route.fulfill({ status: 200, json: { ok: true, executions: executionCreated ? [{
-        id: "job-1", status: "queued", title: "Client proposal · 1 source", artifactId: null, errorCode: null,
+        id: "job-1", status, title: "Client proposal · 1 source", artifactId: status === "succeeded" ? "artifact-1" : null, errorCode: null,
         createdAt: "2026-10-10T12:00:00Z", sourceReferences: [{
           id: sourceId, title: "Client discovery", sourceUrl: "https://example.org/discovery",
           links: [{ url: "https://example.org/brief", text: "Approved brief" }],
@@ -38,8 +40,15 @@ test("Notebook Studio submits source IDs and renders the saved source register",
       executionCreated = true;
       return route.fulfill({ status: 202, json: { ok: true, jobId: "job-1", status: "queued" } });
     }
+    if (request.method() === "GET" && url.pathname.endsWith("/artifacts")) {
+      expect(url.searchParams.get("id")).toBe("artifact-1");
+      return route.fulfill({ status: 200, json: { ok: true, downloadUrl: "https://storage.example.test/draft.txt" } });
+    }
     return route.fulfill({ status: 503, json: { ok: false, error: "unexpected_notebook_request" } });
   });
+  await context.route("https://storage.example.test/draft.txt", (route) => route.fulfill({
+    status: 200, contentType: "text/plain", body: "Draft report with reviewed sources.",
+  }));
 
   await page.goto("/notebook");
   await page.getByRole("button", { name: "Client Alpha" }).click();
@@ -55,4 +64,11 @@ test("Notebook Studio submits source IDs and renders the saved source register",
   await expect(page.getByText("Client proposal · 1 source")).toBeVisible();
   await expect(page.getByRole("link", { name: "Source" })).toHaveAttribute("href", "https://example.org/discovery");
   await expect(page.getByRole("link", { name: "Approved brief" })).toHaveAttribute("href", "https://example.org/brief");
+
+  await expect(page.getByText(/^succeeded/)).toBeVisible({ timeout: 8_000 });
+  const downloadPagePromise = context.waitForEvent("page");
+  await page.getByRole("button", { name: "Download" }).click();
+  const downloadPage = await downloadPagePromise;
+  await expect(downloadPage).toHaveURL("https://storage.example.test/draft.txt");
+  await expect(downloadPage.getByText("Draft report with reviewed sources.")).toBeVisible();
 });
