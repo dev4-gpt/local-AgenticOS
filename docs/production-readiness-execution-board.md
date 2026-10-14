@@ -17,7 +17,7 @@ release verification without deploying or spending beyond approved limits.
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
 | Local product and customer journey | In progress; unauthenticated checks pass; authenticated parity preflight reports missing config | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Privately populate `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `CLIENT_ALLOWED_USER_EMAILS` in `.private-client-kits/internal-beta-parity.env`; keep `CLIENT_PROVIDER_CALLS_ENABLED=0`. Use only the manifest-verified URL and `internal-beta` tenant, read-only against production-backed project `ppmoqjtmjtfxadsnejqc`; no writes or migrations |
-| Authorized Skool archive and graph import | In progress; 78/107 Drive-register IDs have local text captures; signed-in classroom view is now verified and shows 110 catalog items; not hosted-imported | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Capture the requested May 1–October 10 lessons plus AgentOS System from the signed-in classroom; reconcile live 110-item catalog, 107-ID Drive register, and 109-row spreadsheet; account separately for links, video references, transcripts, and media bytes; import only after coverage and the internal-beta target are verified |
+| Authorized Skool archive and graph import | In progress; 78/107 Drive-register IDs have local text captures; signed-in view verified 110 catalog items, but direct collection is held under Skool's current terms/policy; not hosted-imported | Canonical lesson/date inventory; all permitted page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Do not scrape/copy through Skool or forward cookies to Firecrawl. Continue from independently supplied owner-authorized files, or obtain a Skool-approved export/exception; reconcile live 110-item catalog, 107-ID Drive register, and 109-row spreadsheet; then import only after coverage and internal-beta target are verified |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
 | AI quality, evaluation, and observability | Current-source deterministic gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled under the $0 paid-spend cap; use current offline receipt and trace-redaction tests as local-only evidence until a separately approved zero-cost hosted/model path is verified |
 | MiroFish buyer pilot | Human review complete; 2/2 responses assessed, 1/2 fully approved; synthetic pilot-quality gate fails; no market validation | Reviewed generated posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Stop spending review time on Post 4; retain it only as a low-value affordability negative control. Any repeat requires separate authorization and a hard cost check |
@@ -422,8 +422,9 @@ release verification without deploying or spending beyond approved limits.
   SEO/outreach tasks. `scripts/fetch-skool-classroom-firecrawl.py` explicitly
   refuses authenticated Skool collection and warns against sending Skool
   session cookies to Firecrawl. This is not a missing Firecrawl API key; it is
-  the current deliberate boundary. Use an owner/platform-approved export or a
-  directly accessible signed-in browser session without exporting cookies.
+  the current deliberate boundary. Use independently supplied owner-authorized
+  files or a Skool-approved export/exception; do not collect from the signed-in
+  page.
 
 ## Acceleration Plan - Reuse Existing Tooling (2026-10-14)
 
@@ -460,8 +461,8 @@ does not authorize hosted changes, provider calls, or spending.
   Its manifest describes 10 captured pages, 3 media references, and 1 pending
   page. This is useful reconciliation input, not complete classroom coverage
   or proof that video bytes/transcripts were saved.
-- Reconcile this existing archive with the local Firecrawl/importer output and
-  graph before considering any new scraping code. The current shortfall is
+- Reconcile this existing archive with the existing importer output and graph
+  before considering any new collection code. The current shortfall is
   source coverage and evidence reconciliation, not the absence of another
   scraper.
 - Keep Promptfoo as an optional evaluation harness, not a project dependency
@@ -492,9 +493,9 @@ does not authorize hosted changes, provider calls, or spending.
    confirmed finding. Keep the live service untouched; dynamic checks remain
    gated on a suitable isolated sandbox and an explicitly approved target.
 4. **Skool archive:** Reconcile the Drive manifest, dated lesson IDs, existing
-   partial graph, and local Firecrawl/importer output before building anything
-   new. Resolve count mismatches and distinguish page text, links, video
-   references, transcripts, and actual media bytes. Do not call the archive
+   partial graph, and independently supplied source-pack/importer output before
+   building anything new. Resolve count mismatches and distinguish page text,
+   links, video references, transcripts, and actual media bytes. Do not call the archive
    complete or hosted-import it while source coverage or the target is
    unresolved.
 5. **AI quality and traces:** Run deterministic offline checks and trace
@@ -538,13 +539,14 @@ does not authorize hosted changes, provider calls, or spending.
   established as the canonical inventory. The October 11-13 items are outside
   the requested May 1-October 10 range, except the separately requested System
   lesson.
-- The signed-in browser is now a viable authorized source for page-by-page
-  capture. Next, reconcile each in-scope classroom `md` ID with the local
-  private graph and capture missing page text, links, media references, and
-  resource metadata. Do not report videos as archived unless bytes or
-  transcripts are actually present. Keep the resulting course content private
-  and out of Git; hosted import remains gated on archive reconciliation and a
-  confirmed internal-beta target.
+- The signed-in browser view confirmed the page/catalog metadata, but is not an
+  approved collection channel. Skool's current terms and platform policy bar
+  scraping/copying or automated extraction from its service. Continue only
+  from independently supplied, owner-authorized files or a Skool-approved
+  export/exception. Do not report videos as archived unless bytes or
+  transcripts are actually present. Keep course content private and out of
+  Git; hosted import remains gated on archive reconciliation and a confirmed
+  internal-beta target.
 - Reviewed `cporter202/social-media-scraping-apis` as a possible future source
   of connector ideas. It is a curated directory of third-party APIs/actors,
   including Skool member/follower/group and post-comment scrapers; it is not
@@ -553,5 +555,49 @@ does not authorize hosted changes, provider calls, or spending.
   in the inspected root listing. Do not add it as a runtime dependency or use
   its member-scraping actors for this archive. Consider a connector only after
   checking platform scope/terms, operator, data collected, cost, credentials,
-  retention, license, and tenant-safe output. The current authorized-browser
-  path is the better fit for lesson capture.
+  retention, license, and tenant-safe output. For this archive, use only
+  independently supplied owner-authorized files or a platform-approved export.
+
+## Continuation Update - Skool Platform-Policy Gate
+
+- A current read of Skool's official [Terms](https://www.skool.com/legal?t=terms)
+  says member access is for personal, non-commercial use and prohibits copying
+  or using manual/automated scraping, extraction software, or devices to scrape
+  or copy service content. Its [Platform Policy](https://help.skool.com/article/179-platform-policy)
+  separately says not to scrape data or make automation requests.
+- Community-owner permission does not evidence an exception from Skool as the
+  platform. Direct browser collection and Firecrawl cookie forwarding are
+  therefore held. The signed-in page is useful for ordinary navigation, not as
+  a bulk-collection authorization.
+- Continue graph work from the independently supplied owner-authorized ZIP and
+  saved files, or resume the full archive only with a Skool-approved export or
+  written platform exception. Existing partial captures remain partial; no
+  completeness or hosted-import claim is made.
+- The independently supplied Agent OS package identifies itself as
+  `2026-09-21`. Its update guide documents a backup-before-replace local updater,
+  preserving settings/keys/vault data, reinstall/rebuild, and a dated rollback
+  copy. These are documented behaviors, not independently verified installer
+  guarantees; no `.command` or updater was run. AgentOS already has tenant
+  export/restore and a loopback development worker, but the native customer
+  installer, durable device identity/revocation, signed upgrades, restart
+  recovery, and tested app rollback remain gaps. Track a behavior-level design
+  and threat review before adapting any reference code.
+- `cporter202/social-media-scraping-apis` is a directory of third-party
+  connectors, not an implementation. Do not add it to the product or use its
+  Skool actors. A future, separately scoped connector catalog may include
+  compliant source adapters only after terms, licensing, cost, collected data,
+  credentials, retention, and tenant isolation are reviewed.
+- Reviewed four additional GitHub references. `EverythingAI-Pro/claude-skool`
+  is a small MIT-licensed CLI/skill for reading and writing classroom courses
+  through Skool's undocumented private API; it asks users to handle a Skool
+  auth cookie and is not appropriate for this read/archive goal. Do not install
+  it or use it against Skool. `lynch-66/skool-community-posts-and-classroom-courses-scraper`
+  is an MIT-licensed scraper project for posts, courses, and
+  nested comments; the code license does not override Skool's platform terms,
+  so do not run or integrate it for Skool collection. `Jellypod-Inc/school-skills`
+  is an MIT-licensed early-alpha bundle of Claude skills for classroom
+  teaching, not a Skool connector or AgentOS production feature. `karanb192/awesome-claude-skills`
+  is a discovery directory: its MIT license covers the
+  list, while each linked skill has its own license and security posture. No
+  runtime dependency or skill was added; selectively evaluate a specific
+  skill only if an AgentOS workflow gap is demonstrated.
