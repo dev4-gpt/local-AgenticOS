@@ -348,3 +348,28 @@ registered lessons (216 linked text segments). It preserves the current
 partial source status; no claim is made that all lesson text, video bytes, or
 transcripts are present. The Drive file is an external backup, not a hosted
 AgentOS graph-import receipt.
+
+## Latest Drive and Release-Gate Reconciliation - 2026-10-14
+
+A fresh metadata listing now returns **113 direct Drive items**, including six
+JSON-LD graph exports. The archive spreadsheet was modified at 22:07 UTC and
+records the newest file, `AgentOS-Knowledge-Graph-Partial-Validated-2026-10-14.jsonld`
+(8,463,080 bytes; Drive file ID `1T65uHPFs4MzzHoHGXu-Apej1m802C_DE`). Its row
+reports 1,138 nodes, 9,029 edges, text linked for 82 of 107 lesson/video
+references, and 25 pages pending. The matching-sized local candidate
+`tmp/authorized-skool-import/agentos-combined-chatgpt-voice-plus-5k-proposal-2026-10-14.jsonld`
+passes `verify-portable-knowledge-graph.mjs` as a partial graph with 1,138
+nodes and 9,029 relations. Equal file size and matching counts do not prove
+byte-for-byte identity; the Drive raw-content transfer closed before a hash
+could be checked. The graph and course captures remain private and ignored by
+Git. No video bytes or transcripts are present, and this is not a hosted graph
+import.
+
+On clean source commit `dad8277d6aacae4ad6383cd7792e07df37925f06`, the
+deterministic offline AI evaluation passed 16/16 cases with zero model
+samples; focused observability and trace tests passed 13/13; and the mocked
+Notebook Studio browser journey passed 1/1. These are local checks only. A
+fresh production-readiness run remains `releaseReady: false`, fails
+`ledger_bucket_not_configured`, and leaves 38 hosted/release evidence fields
+unevaluated. No hosted write, migration, deployment, provider request, or
+release-ledger publication occurred.
