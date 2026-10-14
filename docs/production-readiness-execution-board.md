@@ -1264,3 +1264,17 @@ does not authorize hosted changes, provider calls, or spending.
 - The selected Chrome window remains on signed-in Cloud Test Notebook and shows
   9 records / 9 active sources. This is unchanged observation, not same-user
   local/Internal Beta parity evidence.
+
+## Continuation Update - Current GCP Bucket Inventory (2026-10-14)
+
+- The second already-configured account, `aryamans.dev96@gmail.com`, can list
+  Cloud Storage buckets in the current project `agentos-mvp`. The complete
+  listing contains exactly `agentos-mvp-veloce-internal-beta` and
+  `agentos-mvp_cloudbuild`; neither is a release-ledger bucket. Read-only
+  metadata confirms the first is in `europe-west1` and the second in `US`.
+- This supersedes the earlier inconclusive list attempt made as
+  `aryamandev777@gmail.com`, which lacks `storage.buckets.list`. No bucket
+  contents were listed. No bucket, IAM policy, deployment, or hosted data was
+  changed. Do not reuse the tenant-data or Cloud Build bucket as the append-only
+  release ledger; the historical `veloce-agenticos-2026` target remains
+  unverified and was not queried.
