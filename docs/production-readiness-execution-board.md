@@ -59,6 +59,12 @@ release verification without deploying or spending beyond approved limits.
   migration or customer-content import.
 - MiroFish artifact tests: 23 passed. Human content review is incomplete;
   synthetic simulation is not market validation.
+- Fresh MiroFish buyer smoke suite: 16/16 passed. The artifact audit confirms
+  technical evidence (10/10 rounds, 2 active buyers, 2/2 distinct posts,
+  cross-buyer quotes, and no attribution or workflow coverage errors), while
+  `pilotEvidencePassed` remains false because zero of the two dynamic posts are
+  human-reviewed. Both private review files are mode `0600` with blank
+  reviewer/time fields. No provider request was made in this check.
 - Offline audit of `sim_f91504972e42`: completed 10/10 rounds with two synthetic
   buyers and zero provider calls recorded. Both response annotations remain
   rejected/unqualified with no reviewer identity or timestamp, although their
