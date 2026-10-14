@@ -1650,3 +1650,17 @@ does not authorize hosted changes, provider calls, or spending.
   `ledger_bucket_not_configured` and **37** ledger-backed categories not
   evaluated. The ledger destination and deployment identities remain
   unverified; no bucket, IAM, database, deployment, or hosted state was changed.
+
+## Continuation Update - Read-Only GCP Bucket Inventory (2026-10-14)
+
+- In the already-open Chrome Work profile, Cloud Console identifies the signed-
+  in project as `agentos-mvp`. Its bucket inventory lists only
+  `agentos-mvp-veloce-internal-beta` and `agentos-mvp_cloudbuild`; no release-
+  ledger bucket exists in this project.
+- The first bucket is the internal-beta runtime bucket and has a soft-delete
+  recovery window plus an object lifecycle rule; the second is Cloud Build
+  infrastructure. Neither is a suitable append-only release ledger. Do not
+  repurpose either bucket or change its retention/IAM settings.
+- This read-only observation identifies the visible GCP project but does not
+  validate the historical `veloce-agenticos-2026` release-runbook target. No
+  bucket, IAM, billing, deployment, or other cloud setting was changed.
