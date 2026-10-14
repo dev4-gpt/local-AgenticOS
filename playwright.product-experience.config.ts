@@ -12,7 +12,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   use: { trace: "retain-on-failure", channel: process.env.PLAYWRIGHT_BROWSER_CHANNEL || undefined },
   webServer: {
-    command: `env VELOCE_DIST_DIR=.next-client-browser CLIENT_PROVIDER_CALLS_ENABLED=0 PORT=${clientPort} node scripts/run-client-runtime-local.mjs --build-production --port ${clientPort} && env VELOCE_DIST_DIR=.next-client-browser CLIENT_PROVIDER_CALLS_ENABLED=0 PORT=${clientPort} node scripts/run-client-runtime-local.mjs --production --port ${clientPort}`,
+    command: `env VELOCE_DIST_DIR=.next-client-browser CLIENT_ALLOWED_ROUTES=/,/context,/memory,/hermes,/credentials,/notebook,/integrations CLIENT_PROVIDER_CALLS_ENABLED=0 PORT=${clientPort} node scripts/run-client-runtime-local.mjs --build-production --port ${clientPort} && env VELOCE_DIST_DIR=.next-client-browser CLIENT_ALLOWED_ROUTES=/,/context,/memory,/hermes,/credentials,/notebook,/integrations CLIENT_PROVIDER_CALLS_ENABLED=0 PORT=${clientPort} node scripts/run-client-runtime-local.mjs --production --port ${clientPort}`,
     url: clientBaseUrl,
     reuseExistingServer: process.env.PW_USE_EXISTING_SERVERS === "1",
     timeout: 180_000,

@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-const baseURL = process.env.CLIENT_NAV_BASE_URL || "http://127.0.0.1:3991";
-const allowed = new Set(["/", "/context", "/memory", "/hermes", "/credentials"]);
+const clientPort = process.env.CLIENT_RUNTIME_TEST_PORT || "3939";
+const baseURL = process.env.CLIENT_NAV_BASE_URL || process.env.CLIENT_RUNTIME_TEST_URL || `http://127.0.0.1:${clientPort}`;
+const allowed = new Set(["/", "/context", "/memory", "/hermes", "/credentials", "/notebook", "/integrations"]);
 
 test.use({ baseURL });
 
