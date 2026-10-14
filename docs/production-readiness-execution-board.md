@@ -644,3 +644,24 @@ does not authorize hosted changes, provider calls, or spending.
   customer data was changed or contacted by these checks. Release readiness,
   signed-in journey, hosted parity, archive completion/import, and buyer
   validation remain open.
+
+## Continuation Update - MiroFish Review Receipt Reconciled (2026-10-14)
+
+- The private `sim_f91504972e42` directory had a current schema-v2 review at
+  `buyer_review.v2.json`, while the default `buyer_review.json` was schema v1.
+  The auditor therefore counted zero reviews when invoked with its default
+  filename, despite the human review being present.
+- Preserved the previous primary review as the owner-only
+  `buyer_review.schema-v1.json` backup, then promoted the matching schema-v2
+  record to `buyer_review.json`. The migration required identical reviewer,
+  post IDs, agent IDs, generated-content hashes, and all four human flags; the
+  later `2026-10-14T03:53:20Z` reviewer timestamp was retained. Both files are
+  mode `0600`; the original alternate schema-v2 review remains untouched.
+- The default read-only auditor now reports 2/2 reviewed dynamic posts and 1/2
+  fully approved. Run identity, telemetry, persona attribution, novelty, and
+  cross-buyer interaction pass. `buyerContentReview`, `pilotEvidencePassed`,
+  and `marketValidation` remain false because Post 4 fails role-faithfulness
+  and actionability against the stated $2,500 setup plus $1,250/month offer.
+- The MiroFish artifact/profile/auditor suite passes 23/23. No simulation was
+  rerun, no provider request or billing event was made, and no review flags
+  were changed.
