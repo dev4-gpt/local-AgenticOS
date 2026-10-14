@@ -1201,3 +1201,18 @@ does not authorize hosted changes, provider calls, or spending.
   production route manifest, or any hosted data mutation. The existing local
   authenticated parity server at port `3976` was not changed. Production
   readiness remains false pending the release gates above.
+
+## Continuation Update - AI, Buyer Audit, and Release Gate Recheck (2026-10-14)
+
+- On clean commit `6dcf6c3`, `npm run verify:ai-evaluation` passed **16/16**
+  deterministic local cases (`localGatePassed: true`, `productionReady: false`,
+  zero model samples). The report explicitly excludes hosted behavior, model
+  quality, and stochastic reliability; it made no LLM or Zep request.
+- `npm run verify:mirofish-buyer-artifacts` passed **24/24** audit regressions.
+  This validates the artifact/review guardrails only; it did not launch a
+  simulation or turn the synthetic, mixed-reviewed pilot into buyer demand
+  evidence.
+- A fresh `npm run verify:production-readiness` on the same commit remains
+  `releaseReady: false`, with `release_gate:ledger_bucket_not_configured` and
+  **37** evidence fields unevaluated. The ledger runbook labels its historical
+  GCP target unverified, so no bucket or IAM configuration was attempted.
