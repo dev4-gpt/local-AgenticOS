@@ -65,6 +65,7 @@ export function validBuyerPilotEvidence(receipt, expectedCommit, root) {
     && audit.configuredAgents === audit.expectedPersonas
     && Number.isSafeInteger(audit.dynamicPosts) && audit.dynamicPosts > 0
     && audit.reviewedDynamicPosts === audit.dynamicPosts
+    && audit.approvedDynamicPosts === audit.dynamicPosts
     && Number.isSafeInteger(audit.configuredRounds) && audit.configuredRounds > 0
     && audit.reportedRound === audit.configuredRounds
     && Number.isSafeInteger(audit.actionLogRows) && audit.actionLogRows > 0
@@ -102,6 +103,7 @@ export function captureBuyerPilotEvidence({ root, simulationDir, sourceCommit })
       simulationId: raw.simulationId, expectedPersonas: raw.expectedPersonas,
       generatedProfiles: raw.generatedProfiles, configuredAgents: raw.configuredAgents,
       dynamicPosts: raw.dynamicPosts, reviewedDynamicPosts: raw.reviewedDynamicPosts,
+      approvedDynamicPosts: raw.approvedDynamicPosts,
       actionLogRows: raw.actionLogRows, tracedPosts: raw.tracedPosts,
       completionEvents: raw.completionEvents, configuredRounds: raw.configuredRounds,
       reportedRound: raw.reportedRound, runnerStatus: raw.runnerStatus,

@@ -109,26 +109,26 @@ def prepare_review_template(simulation_dir: Path, review_file: Path | None = Non
 
 def review_covers_dynamic_posts(
     simulation_dir: Path, posts: list[Post], review_file: Path | None = None
-) -> tuple[bool, int]:
+) -> tuple[bool, int, int]:
     path = review_file_path(simulation_dir, review_file)
     if not path.exists():
-        return False, 0
+        return False, 0, 0
     try:
         if path.stat().st_mode & 0o077:
-            return False, 0
+            return False, 0, 0
         review = load_json(path)
         reviewed_at = datetime.fromisoformat(review["reviewedAt"].replace("Z", "+00:00"))
         if (review.get("schemaVersion") != 2 or review.get("simulationId") != simulation_dir.name
                 or not isinstance(review.get("reviewer"), str) or not review["reviewer"].strip()
                 or reviewed_at.tzinfo is None or reviewed_at.utcoffset() is None):
-            return False, 0
+            return False, 0, 0
         expected = {
             (post.post_id, post.agent_id, hashlib.sha256(generated_text(post).encode("utf-8")).hexdigest()): post
             for post in posts if is_dynamic(post)
         }
         entries = review.get("posts")
         if not expected or not isinstance(entries, list) or len(entries) != len(expected):
-            return False, 0
+            return False, 0, 0
         reviewed = set()
         approved = 0
         all_approved = True
@@ -140,15 +140,15 @@ def review_covers_dynamic_posts(
                         entry.get("quotedPostId") != post.original_post_id
                         or entry.get("quotedContent") != post.content
                         or entry.get("quotedContentSha256") != hashlib.sha256(post.content.encode("utf-8")).hexdigest()))):
-                return False, approved
+                return False, 0, 0
             reviewed.add(identity)
             if all(entry.get(key) is True for key in ("scenarioRelevant", "roleFaithful", "scopeSafe", "actionable")):
                 approved += 1
             else:
                 all_approved = False
-        return all_approved and reviewed == set(expected), approved
+        return all_approved and reviewed == set(expected), len(reviewed), approved
     except (AttributeError, KeyError, TypeError, ValueError, json.JSONDecodeError):
-        return False, 0
+        return False, 0, 0
 
 
 def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = None) -> dict:
@@ -228,7 +228,9 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
                 "assignedPersona": assigned_id,
                 "mentionedPersonas": mentioned_ids,
             })
-    content_review_passed, reviewed_dynamic_posts = review_covers_dynamic_posts(simulation_dir, posts, review_file)
+    content_review_passed, reviewed_dynamic_posts, approved_dynamic_posts = review_covers_dynamic_posts(
+        simulation_dir, posts, review_file
+    )
     active_buyers = {
         agent.get("entity_name")
         for agent in config.get("agent_configs", [])
@@ -291,6 +293,7 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
         "initialPosts": len(actual_initial),
         "dynamicPosts": sum(post_counts.values()),
         "reviewedDynamicPosts": reviewed_dynamic_posts,
+        "approvedDynamicPosts": approved_dynamic_posts,
         "dynamicPostPersonas": dict(sorted(post_counts.items())),
         "crossBuyerQuotePostIds": [post.post_id for post in cross_buyer_quotes],
         "selfQuotePostIds": [post.post_id for post in dynamic_posts if post.original_post_id is not None and post.agent_id == post.original_post_agent_id],

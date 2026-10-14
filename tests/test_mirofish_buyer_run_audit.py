@@ -99,6 +99,7 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.assertTrue(result["checks"]["dynamicPostPersonaIdentity"])
         self.assertTrue(result["checks"]["crossBuyerInteraction"])
         self.assertEqual(result["reviewedDynamicPosts"], 1)
+        self.assertEqual(result["approvedDynamicPosts"], 1)
 
     def test_copied_or_wrong_persona_dynamic_post_fails_without_content_review(self):
         database = sqlite3.connect(self.simulation / "twitter_simulation.db")
@@ -160,7 +161,7 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.assertEqual(result["selfQuotePostIds"], [2])
         self.assertEqual(result["missingBuyerInteractions"], ["P00002"])
 
-    def test_partial_content_review_counts_only_approved_posts(self):
+    def test_partial_content_review_distinguishes_assessed_from_approved_posts(self):
         posts = [
             AUDITOR.Post(2, 1, "First response", 1, None, None),
             AUDITOR.Post(3, 1, "Second response", 1, None, None),
@@ -178,7 +179,7 @@ class BuyerRunAuditTest(unittest.TestCase):
                 for index, post in enumerate(posts)
             ],
         })
-        self.assertEqual(AUDITOR.review_covers_dynamic_posts(self.simulation, posts), (False, 1))
+        self.assertEqual(AUDITOR.review_covers_dynamic_posts(self.simulation, posts), (False, 2, 1))
 
     def test_unrestricted_review_or_unscheduled_activity_does_not_pass(self):
         path = self.simulation / "buyer_review.json"
@@ -207,6 +208,7 @@ class BuyerRunAuditTest(unittest.TestCase):
         stale = AUDITOR.audit(self.simulation, self.cohort)
         self.assertFalse(stale["pilotEvidencePassed"])
         self.assertEqual(stale["reviewedDynamicPosts"], 0)
+        self.assertEqual(stale["approvedDynamicPosts"], 0)
 
         review["posts"][0]["contentSha256"] = hashlib.sha256(b"A skeptical response").hexdigest()
         review["posts"][0]["scenarioRelevant"] = False

@@ -24,7 +24,7 @@ test("release buyer receipt is replayed and bound to the audited run inputs", ()
       simulationId: "sim_abcd1234", pilotEvidencePassed: true,
       technicalEvidencePassed: true, marketValidation: false, runnerStatus: "completed",
       expectedPersonas: 2, generatedProfiles: 2, configuredAgents: 2,
-      dynamicPosts: 1, reviewedDynamicPosts: 1, configuredRounds: 1, reportedRound: 1,
+      dynamicPosts: 1, reviewedDynamicPosts: 1, approvedDynamicPosts: 1, configuredRounds: 1, reportedRound: 1,
       actionLogRows: 4, tracedPosts: 2, completionEvents: 1, checks,
       futureUnsafeField: "must not enter the ledger",
     };
