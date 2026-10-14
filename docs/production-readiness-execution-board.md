@@ -1573,3 +1573,23 @@ does not authorize hosted changes, provider calls, or spending.
   source selection through export using an approved synthetic fixture and
   non-production test tenant. Keep Cloud Test data separate until identities
   match. Do not seed the currently open tenant workspaces.
+
+## Continuation Update - Offline Quality And Security Gates (2026-10-14)
+
+- On commit `fc69a5ce80693b91faf4dd05cdf52a9ac414f9cf`, using the supported
+  bundled Node `v24.19.0`, `npm run verify:ai-evaluation` passes **16/16**
+  deterministic cases and records `localGatePassed: true`, zero model samples,
+  and zero provider requests. The receipt remains explicitly
+  `productionReady: false`; it does not establish model quality or hosted
+  behavior. An initial run under unsupported Node 26 correctly failed the gate
+  despite passing all cases; it was rerun under the supported runtime.
+- On the same source commit/runtime, `npm run verify:security` completed its
+  secret-permission, security-release, provider-policy, lifecycle/retention,
+  notebook provenance, runtime/storage configuration, and governed-integration
+  checks without a reported failure.
+- `npm run test:focused` passed **365** tests with **1** skipped. This is local
+  regression evidence only; it is not a hosted customer journey, live tenant
+  isolation proof, model-backed evaluation, or release approval.
+- The AI evaluation receipt is local-only at
+  `tmp/ai-release-local-v1-report.json` (owner-only); no API keys or provider
+  traffic were used. Hosted parity and release gates remain open.
