@@ -1278,3 +1278,21 @@ does not authorize hosted changes, provider calls, or spending.
   changed. Do not reuse the tenant-data or Cloud Build bucket as the append-only
   release ledger; the historical `veloce-agenticos-2026` target remains
   unverified and was not queried.
+
+## Continuation Update - Internal Beta Revision Evidence (2026-10-14)
+
+- Read-only Cloud Run inventory in `agentos-mvp` / `europe-west1` lists
+  `agentos` and `agentos-internal-beta`; the latter's ready revision is
+  `agentos-internal-beta-00034-v69`, created 2026-09-26, using image digest
+  `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`.
+  Artifact metadata returned no source revision, so the image is not tied to a
+  verified current-source commit.
+- A narrowly filtered read of that revision's non-secret environment confirms
+  `CLIENT_RETENTION_DAYS=1`; its API allowlist omits both
+  `/api/client-runtime/source-import` and
+  `/api/client-runtime/build-identity`. The page allowlist includes `/notebook`
+  and `/memory`. This directly contradicts current-source parity and the
+  selected 45-day retention policy. No secret values were read or emitted.
+- This is observed hosted configuration, not authorization to change it.
+  Deployment remains held pending the previously recorded retention/recovery
+  design and exact release-ledger target.
