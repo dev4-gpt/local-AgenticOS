@@ -2883,3 +2883,18 @@ does not authorize hosted changes, provider calls, or spending.
 - This refresh confirms local guard behavior only. It does not supply the
   missing hosted AI-quality, observability, or customer-journey receipts, and
   no release-ledger record was created or published.
+
+## Continuation Update - Observability And Trace Regression (2026-10-14)
+
+- On the current source, client observability accuracy, job-trace, and telemetry
+  boundary suites passed **18/18**. They cover full monthly-ledger pagination,
+  malformed/incomplete and cross-tenant ledger failures, redacted trace fields,
+  bounded parallel job traces, telemetry content stripping, authenticated and
+  rate-limited egress boundaries, and PostHog default-off behavior.
+- The isolated current-source observability UI suite passed **6/6** at 1280px
+  and 390px. It verifies unavailable spend evidence does not leave stale totals,
+  PostHog capture status distinguishes off/on/unknown, and failed job-stage
+  traces render without private output.
+- These are local mocked/source checks, not hosted telemetry, real provider
+  billing, or tenant-visible release receipts. Provider capture remains disabled
+  in the test environment; no hosted or paid request occurred.
