@@ -1,0 +1,74 @@
+# Verification Refresh - 2026-10-13
+
+## Source
+
+- Repository: AgentOS
+- Branch: `wip/backup-2026-10-03`
+- HEAD: `6df77e2153f759a3da335908af94f7391a1fbe7c`
+- Runtime: Node `v24.18.0`, within the repository's declared `>=22 <26` range
+
+## Browser Workflow Preference
+
+For browser work on AgentOS, use only the Chrome window in the `Aryaman (Work)`
+profile that contains the AgentOS/Vercel tab set: Vercel, GCP Cloud Run, local
+AgentOS, current Cloud Test, Internal Beta, and the Skool tabs group. There are
+duplicate Veloce window titles; identify the right window by this tab set, not
+by title alone. Select and keep this window active even when another Chrome
+window is foregrounded or the user is working elsewhere. Do not use the
+separate Oneday or GitHub/research Chrome windows.
+
+## Local Evidence
+
+- `npm run typecheck`: passed on the current checkout.
+- Local client-edition browser suites: 23/23 passed after starting the test
+  server with `VELOCE_CLIENT_EDITION=1`. The suite covered customer-journey
+  evidence, source-import consent, 45-day retention behavior, and observability
+  accuracy. Its test fixtures now return the actual `/api/memory/vault` and
+  `/api/memory/graph` response shapes; the default operator-edition server
+  previously made these customer-surface tests fail before reaching the UI.
+- Current-source deterministic AI report:
+  [AI evaluation JSON](./evidence/ai-release-local-2026-10-13-6df77e2.json),
+  14/14 passed under Node 24, with no model samples or provider requests.
+- `npm run test:focused`: 355 passed, 1 skipped (356 total).
+- `npm run verify:security`: passed, including client lifecycle/retention, notebook execution provenance, runtime/storage configuration fixtures, and the disabled/manual integration policy checks.
+- `npm run verify:ai-evaluation -- --out tmp/ai-release-local-current-2026-10-13.json`: 14/14 deterministic cases passed, `localGatePassed: true`, `productionReady: false`, no model samples.
+- Private Skool source-pack parser: passed for the v6 and v7 manifests. The v7 manifest is built from all 64 local PDFs: 175 source segments, 7,565 links, six batches, zero unresolved PDFs. Four lesson URLs have differing captures; all eight are preserved with distinct hash-labeled source tabs. The v7 pack remains private/local and has not been imported.
+- Local source-import PGlite/guard regressions: 9 passed, including idempotent graph import and the tenant-scoped source/link graph.
+- `npm run verify:mirofish-buyer-artifacts`: 23 passed.
+- Offline audit of existing MiroFish run `sim_f91504972e42`: technical evidence passed (10/10 rounds, 10 profiles, 2 scheduled buyers, 8 action-log rows, 4 traced posts, including 2 buyer-generated posts and 2 cross-buyer quotes). Human review covered 0 generated posts, so pilot acceptance and market validation remain false. The 23 offline audit/profile tests passed; no new provider call was made.
+
+The disposable Docker PostgreSQL wrapper could not run because access to the local Docker daemon socket was denied. The PGlite tests ran successfully and did not contact a hosted database.
+
+## Source-Import Route Follow-up
+
+The live beta route allowlist omits `/api/client-runtime/source-import`. A source review confirmed that client API allowlisting uses prefix matching, so an allowed parent source-import route also covers `/upload`; the provisioner and local defaults already included that parent route. Added an explicit upload entry to the shared, container, local, and GCP config defaults for auditability, and strengthened the cloud-config preflight to require upload, preview, and build-identity entries. The local template now includes the source-import routes as well.
+
+Verification after this change: `npm run verify:client-runtime-config-fixtures` passed 14/14, including a regression proving an allowlist missing the explicit upload entry fails preflight; `npm run verify:client-worker` passed; `npm run verify:client-navigation-policy` passed 4/4, including nested upload authorization by prefix; `npm run typecheck` and targeted ESLint passed. These changes are source-only and uncommitted. They do not change or prove the live Cloud Run configuration.
+
+The source-import browser suite passed 7/7 against the isolated standalone client build. It covered explicit permission, upload and preview handling, multi-batch consent renewal, malformed-pack rejection before upload, safe rendering of imported links, and deletion confirmation. The test now uses the visible JSON-pack picker control and Playwright's file chooser, avoiding a pre-hydration hidden-input race. The local production test server received the static asset directory using the same copy step as the container recipe; provider calls stayed disabled and the suite used synthetic fixtures only. A dev-server attempt hit watcher `EMFILE` limits, so the passing production-build suite is the recorded browser evidence.
+
+## Client Artifact Build
+
+An isolated client-edition production build completed with `VELOCE_CLIENT_EDITION=1`, `VELOCE_CONTAINER_BUILD=1`, and a separate `.next-client-prod` output directory. The post-build route pruner removed 235 disabled route entries and retained 120; the client runtime build-trace verifier passed against that standalone output. This validates the local build and artifact boundary, not an OCI image digest or the deployed revision. No image push or deployment was performed.
+
+The standalone `tsc` check initially collided with generated Next route validators from parallel dist directories. `tsconfig.json` now checks source and the canonical `.next` route types rather than aggregating route types across every stale client/operator build directory. `npm run typecheck` passes after that adjustment; the actual production build independently ran Next's TypeScript route validation before artifact pruning.
+
+## MiroFish Review Refresh
+
+A fresh offline audit of `sim_f91504972e42` still passes technical telemetry but reports `buyerContentReview: false`, `reviewedDynamicPosts: 0`, `pilotEvidencePassed: false`, and `marketValidation: false`. The private review file is mode `0600` and contains two generated posts with blank reviewer/timestamp and all verdicts false. No provider request was made. Human inspection and completion of that private review are still required for the synthetic-content gate; real buyer interviews remain separate evidence.
+
+## Release Status
+
+`npm run verify:production-readiness` remains `releaseReady: false`. The release ledger bucket is not configured, the working tree contains local documentation changes, and hosted-release evidence is not attached. The successful local checks above do not establish a signed-in customer journey, current hosted image identity, hosted migration state, full tenant isolation, completed Skool import, cloud/local feature parity, buyer validation, or release approval.
+
+The read-only Cloud Console revision history shows `agentos-internal-beta-00034-v69`, created 2026-09-26, receiving 100% of traffic (to latest). Its image digest, `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`, matches the digest pinned in the checked-in Internal Beta manifest. The live container configuration shows `CLIENT_RETENTION_DAYS=1`, conflicting with the intended 45-day value, and the complete `CLIENT_ALLOWED_API_ROUTES` value omits both `/api/client-runtime/source-import` and `/api/client-runtime/source-import/upload`. The worker and provider calls are disabled (`CLIENT_RUNTIME_WORKER_ENABLED=0`, `CLIENT_PROVIDER_CALLS_ENABLED=0`). The service is reported healthy, but these configuration gaps mean the approved source import is not ready to run. A direct `gcloud` service describe could not run because the shell lacks access to the local gcloud credential store; the read-only console view supplied the live evidence instead.
+
+No deployment, hosted database/storage mutation, release-ledger publication, or AI-provider request was performed in this refresh. The authorized Skool pack remains local and partial pending a canonical course inventory, video processing, and a reviewed hosted import path. The differing PDF captures are now preserved as explicit snapshots instead of being dropped or silently preferred. Retain the existing deployment hold until 45-day retention is configured and verified alongside the object-recovery policy; then enable only the scoped import route needed for the beta import and test it before considering any broader release.
+
+## Follow-up - Current Commit and Runtime Policy
+
+The source-import snapshot preservation and client runtime configuration fixes are committed and pushed on `wip/backup-2026-10-03` through commits `2df14a5` and `789ee7a`. Current Chrome inspection in the AgentOS/Cloud Run tab set shows the Internal Beta build-identity route still returns `client_route_not_enabled`.
+
+The default shell Node is v26.4.0, outside the repository's declared `>=22 <26` engine range. Its deterministic AI evaluation ran all 14 cases successfully, but its local gate correctly failed the unsupported-engine check. Re-running with installed Node v24.18.0 passed all 14 cases and the local evaluation gate, with zero model samples and no provider requests. That report records the current source commit but `workingTreeClean: false`; it is not valid clean-source release evidence. Production readiness remains false.
+
+Under Node v24.18.0 on current commit `789ee7a`, `npm run verify:security` passed, including 22 lifecycle/configuration tests, 19 notebook provenance tests, and 14 runtime/storage configuration tests. `npm run test:focused` passed 356 of 357 tests, with one skipped. No hosted deployment, tenant mutation, or provider call was part of these checks.

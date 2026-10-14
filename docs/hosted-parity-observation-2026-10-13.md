@@ -72,3 +72,72 @@ No records, settings, credentials, or cloud resources were changed. No import,
 provider call, or deployment was performed. Reconcile tenant identity and
 runtime provenance, then deploy only through an approved controlled rollout;
 parity and the customer journey remain unaccepted.
+
+## Follow-up - Designated Chrome Window, 2026-10-13
+
+The AgentOS/Vercel Chrome window was selected explicitly from Chrome's Window
+menu after the foreground window was found to be a separate GitHub/Gemini
+window. Only existing tabs in the designated AgentOS window were inspected.
+
+| Runtime/tab | Visible memory state | Source-pack UI | Identity signal |
+| --- | --- | --- | --- |
+| Local `127.0.0.1:3941/memory` | 2 memories, 114 nodes, 113 edges | `Review JSON source packs` is present; the two visible records show 84 and 27 source links | `/api/client-runtime/build-identity` reports source commit `8b2b3ee7bbfa994564f6a7f802c1d965bc2e1500`, explicitly not an independent attestation |
+| Internal Beta `agentos-internal-beta-vbimnfseva-ew.a.run.app/memory` | 2 memories, 114 nodes, 113 edges | No JSON source-pack control; Markdown import/export only | `/api/client-runtime/build-identity` returns `client_route_not_enabled` |
+| Cloud Test `veloce-cloud-test-mquo4bf7aq-el.a.run.app/memory` | 24 memories, 33 nodes, 57 edges | No JSON source-pack control; Markdown import/export only | `/api/client-runtime/build-identity` returns `client_route_not_enabled` |
+| Legacy Cloud Test `veloce-cloud-test-1075094991117.asia-south1.run.app/notebook` | 9 notebook records, 9 active sources | Not evaluated for source-pack import | Separate legacy runtime; do not conflate with the current Cloud Test or Internal Beta |
+
+The equal local/Internal Beta counts do not prove that they resolve to the same
+tenant or that the imported records are identical. Account and tenant IDs were
+not inspected. Cloud Test data differs materially. The local JSON review
+control is still not present on either hosted runtime, and the authorized
+56-PDF v6 classroom pack has not been imported through the hosted route.
+
+All observations were read-only. No record, setting, credential, or cloud
+resource was changed; no import, provider call, migration, deployment, or
+release publication was performed.
+
+## Follow-up - Source Import Candidate Versus Live Beta
+
+The checked-in `client-blueprints/agentos-internal-beta.gcp.json` enables both
+`tenant-data` and `artifacts`, and the GCP provisioner includes
+`/api/client-runtime/source-import` in `CLIENT_ALLOWED_API_ROUTES`. The source
+import handlers are gated by the `artifacts` capability. Thus, the checked-in
+candidate configuration is sufficient to expose the route when provisioned
+from a compatible image; adding a new capability name is not the missing
+change.
+
+The live Internal Beta and Cloud Test endpoints still return
+`client_route_not_enabled` for build identity, and Internal Beta does not show
+the JSON source-pack review control. This is evidence that the live runtime is
+not yet verified against the checked-in candidate, but it does not identify
+the exact deployed image or configuration. The candidate manifest pins image
+digest `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`;
+no live service readback was performed in this follow-up. Keep deployment on
+hold until the candidate image is confirmed to contain the storage-proxy
+implementation, the live service configuration and revision can be attested,
+and the existing recovery-window policy is reconciled with the requested
+45-day retention. Do not infer hosted import readiness from the manifest
+alone.
+
+This configuration review was local and read-only. No deployment, cloud
+configuration change, import, provider call, or tenant write was performed.
+
+## Follow-up - Internal Beta Revision Readback
+
+Read the existing Cloud Run revision detail in the already-open Google Cloud
+Console tab for project `agentos-mvp`. The revision shown is
+`agentos-internal-beta-00034-v69`, created `2026-09-26T16:28:31.829772Z`. Its
+image digest is the same digest pinned by the checked-in Internal Beta
+manifest: `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`.
+The revision configuration shows tenant slug `internal-beta`, provider calls
+disabled, capabilities `tenant-data,artifacts,orchestration,quality`, and
+`CLIENT_RETENTION_DAYS=1`; the manifest currently specifies 45 days. The
+revision-detail page alone does not prove that this revision currently receives
+100% of service traffic, so deployment identity and traffic allocation still
+need a service-level readback.
+
+This readback explains a concrete live/candidate discrepancy, but does not
+justify deploying. Keep the existing hold: reconcile the 45-day application
+retention with the bucket's seven-day recovery window and cost/deletion
+semantics first, then verify the source-import image and service traffic under
+an approved controlled rollout. No setting was changed.
