@@ -23,6 +23,7 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/client-runtime/delivery",
   "/api/client-runtime/memory-import",
   "/api/client-runtime/source-import",
+  "/api/client-runtime/source-import/upload",
   "/api/client-runtime/memory-graph",
   "/api/client-runtime/provider-history",
   "/api/client-runtime/telemetry",

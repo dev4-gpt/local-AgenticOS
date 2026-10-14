@@ -1,23 +1,47 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
 import { createHash } from "node:crypto";
 
 const clientBaseUrl = process.env.CLIENT_RUNTIME_TEST_URL || "http://127.0.0.1:3939";
+const vaultStatus = { configured: false, activeVault: null, configPath: "", candidates: [] };
 test.use({ baseURL: clientBaseUrl });
+
+async function fulfillMemorySetupRead(path: string, route: Route) {
+  if (path === "/api/memory/vault") {
+    await route.fulfill({ status: 200, json: vaultStatus });
+    return true;
+  }
+  if (path === "/api/memory/graph") {
+    await route.fulfill({ status: 200, json: { nodes: [], links: [] } });
+    return true;
+  }
+  return false;
+}
+
+async function chooseSourceFiles(page: Page, files: Parameters<import("@playwright/test").FileChooser["setFiles"]>[0]) {
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Review JSON source packs" }).click();
+  await (await chooser).setFiles(files);
+}
 
 test("source pack stays local until permission is confirmed for review", async ({ page, context }) => {
   await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
   const writes: string[] = [];
-  await page.route("**/api/**", (route) => {
-    if (route.request().method() !== "GET") {
+  await page.route("**/api/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (request.method() === "GET") {
+      if (await fulfillMemorySetupRead(path, route)) return;
+      return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
+    }
+    if (request.method() !== "GET") {
       writes.push(route.request().url());
       return route.fulfill({ status: 503, json: { error: "storage_not_configured" } });
     }
-    return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
   });
 
   await page.goto("/memory");
   await expect(page.getByRole("heading", { name: "Community sources" })).toBeVisible();
-  await page.locator('input[type="file"][multiple]').setInputFiles({
+  await chooseSourceFiles(page, {
     name: "synthetic-source-pack.json",
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify({
@@ -50,8 +74,11 @@ test("source pack stays local until permission is confirmed for review", async (
 test("source pack review reports unavailable runtime storage identity", async ({ page, context }) => {
   await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
   const artifactError = "storage_identity_unavailable";
-  await page.route("**/api/**", (route) => {
-    if (route.request().method() === "GET") return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
+  await page.route("**/api/**", async (route) => {
+    if (route.request().method() === "GET") {
+      if (await fulfillMemorySetupRead(new URL(route.request().url()).pathname, route)) return;
+      return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
+    }
     if (new URL(route.request().url()).pathname === "/api/client-runtime/source-import/upload") {
       return route.fulfill({ status: 503, json: { ok: false, error: artifactError } });
     }
@@ -59,7 +86,7 @@ test("source pack review reports unavailable runtime storage identity", async ({
   });
 
   await page.goto("/memory");
-  await page.locator('input[type="file"][multiple]').setInputFiles({
+  await chooseSourceFiles(page, {
     name: "synthetic-source-pack.json",
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify({
@@ -78,14 +105,17 @@ test("source pack review reports unavailable runtime storage identity", async ({
 test("source pack review reports a missing guarded importer before storage", async ({ page, context }) => {
   await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
   const writes: string[] = [];
-  await page.route("**/api/**", (route) => {
-    if (route.request().method() === "GET") return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
+  await page.route("**/api/**", async (route) => {
+    if (route.request().method() === "GET") {
+      if (await fulfillMemorySetupRead(new URL(route.request().url()).pathname, route)) return;
+      return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
+    }
     writes.push(new URL(route.request().url()).pathname);
     return route.fulfill({ status: 503, json: { ok: false, error: "source_import_verifier_unavailable" } });
   });
 
   await page.goto("/memory");
-  await page.locator('input[type="file"][multiple]').setInputFiles({
+  await chooseSourceFiles(page, {
     name: "synthetic-source-pack.json",
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify({
@@ -111,10 +141,13 @@ test("importing one part does not upload the next part without renewed permissio
   });
   const manifest = { version: 1, startUrl, sources: 2, links: 0, skipped: 0, batches: parts.map((part) => ({ file: part.name, sha256: part.sha256, sources: 1, links: 0 })) };
   let artifactCreates = 0;
-  await page.route("**/api/**", (route) => {
+  await page.route("**/api/**", async (route) => {
     const request = route.request();
-    if (request.method() === "GET") return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
     const path = new URL(request.url()).pathname;
+    if (request.method() === "GET") {
+      if (await fulfillMemorySetupRead(path, route)) return;
+      return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
+    }
     if (path === "/api/client-runtime/source-import/upload") {
       artifactCreates += 1;
       expect(request.headers()["content-type"]).toContain("multipart/form-data");
@@ -135,7 +168,7 @@ test("importing one part does not upload the next part without renewed permissio
   });
 
   await page.goto("/memory");
-  await page.locator('input[type="file"][multiple]').setInputFiles([
+  await chooseSourceFiles(page, [
     { name: "synthetic.manifest.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(manifest)) },
     ...parts.map((part) => ({ name: part.name, mimeType: "application/json", buffer: part.buffer })),
   ]);
@@ -161,13 +194,15 @@ test("an invalid later part blocks the entire selection before any upload", asyn
   });
   const manifest = { version: 1, startUrl, sources: 2, links: 1, skipped: 0, batches: parts.map((part) => ({ file: part.name, sha256: part.sha256, sources: 1, links: part.links })) };
   const writes: string[] = [];
-  await page.route("**/api/**", (route) => {
+  await page.route("**/api/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (route.request().method() === "GET" && await fulfillMemorySetupRead(path, route)) return;
     if (route.request().method() !== "GET") writes.push(route.request().url());
     return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
   });
 
   await page.goto("/memory");
-  await page.locator('input[type="file"][multiple]').setInputFiles([
+  await chooseSourceFiles(page, [
     { name: "synthetic.manifest.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(manifest)) },
     ...parts.map((part) => ({ name: part.name, mimeType: "application/json", buffer: part.buffer })),
   ]);
@@ -183,8 +218,10 @@ test("imported source text renders links without loading embedded media", async 
     mediaRequests.push(route.request().url());
     return route.abort();
   });
-  await page.route("**/api/**", (route) => {
-    if (new URL(route.request().url()).pathname.endsWith("/memory-graph")) {
+  await page.route("**/api/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (route.request().method() === "GET" && await fulfillMemorySetupRead(path, route)) return;
+    if (path.endsWith("/memory-graph")) {
       return route.fulfill({ status: 200, json: { ok: true, nodes: [], edges: [] } });
     }
     return route.fulfill({ status: 200, json: { ok: true, records: [{
@@ -224,9 +261,10 @@ test("permanent record deletion requires confirmation", async ({ page, context }
   };
   let deleted = false;
   let deleteRequests = 0;
-  await page.route("**/api/**", (route) => {
+  await page.route("**/api/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
+    if (request.method() === "GET" && await fulfillMemorySetupRead(path, route)) return;
     if (request.method() === "DELETE") {
       deleteRequests += 1;
       expect(path).toBe("/api/client-runtime/records");

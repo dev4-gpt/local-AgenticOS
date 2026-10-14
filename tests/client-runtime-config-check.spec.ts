@@ -42,7 +42,7 @@ function snapshot() {
         { name: "CLIENT_RETENTION_DAYS", value: "45" },
         { name: "CLIENT_NOTEBOOK_RETENTION_DAYS", value: "45" },
         { name: "CLIENT_ALLOWED_ROUTES", value: "/,/memory,/notebook" },
-        { name: "CLIENT_ALLOWED_API_ROUTES", value: "/api/client-runtime/source-import,/api/client-runtime/build-identity" },
+        { name: "CLIENT_ALLOWED_API_ROUTES", value: "/api/client-runtime/source-import,/api/client-runtime/source-import/upload,/api/client-runtime/build-identity" },
         { name: "CLIENT_ENABLED_CAPABILITIES", value: "tenant-data,artifacts" },
         { name: "SUPABASE_ANON_KEY", value: "DO_NOT_PRINT_PRIVATE_VALUE" },
         { name: "CLIENT_WORKER_TOKEN", valueFrom: { secretKeyRef: { name: "reviewed-worker-token", key: "latest" } } },
@@ -105,6 +105,14 @@ test("source import requires a secret-backed worker verifier", () => {
   const result = evaluateClientRuntimeConfig(plaintext, expected);
   expect(result.failures).toContain("source_import_worker_secret_missing");
   expect(JSON.stringify(result)).not.toContain("DO_NOT_PRINT_PRIVATE_VALUE");
+});
+
+test("source import preflight requires both upload and preview endpoints", () => {
+  const service = snapshot();
+  const routes = service.spec.template.spec.containers[0].env.find((entry) => entry.name === "CLIENT_ALLOWED_API_ROUTES")!;
+  routes.value = "/api/client-runtime/source-import,/api/client-runtime/build-identity";
+  expect(evaluateClientRuntimeConfig(service, expected).failures)
+    .toContain("required_api_route_missing:/api/client-runtime/source-import/upload");
 });
 
 test("candidate config requires auth enforcement and the reviewed provider-call policy", () => {

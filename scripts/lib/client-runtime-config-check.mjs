@@ -1,5 +1,6 @@
 const REQUIRED_API_ROUTES = [
   "/api/client-runtime/source-import",
+  "/api/client-runtime/source-import/upload",
   "/api/client-runtime/build-identity",
 ];
 const REQUIRED_PAGES = ["/", "/memory", "/notebook"];
