@@ -2697,3 +2697,27 @@ does not authorize hosted changes, provider calls, or spending.
   or import the archive as-is. A full test-tenant import, independent source
   build attestation, retention/storage behavior, same-tenant journey, and
   rollback proof remain outstanding.
+
+## Continuation Update - Work Chrome Recheck And Release Ledger (2026-10-14)
+
+- In the designated Work Chrome session, Cloud Test's signed-in Memory page
+  showed 24 tenant memories, 33 graph nodes, and 57 edges. The local mirror tab
+  actually open in that session was `127.0.0.1:3945`, not the requested
+  `127.0.0.1:3946`; before the incident below it also showed 24 memories, 33
+  nodes, and 57 edges. The requested 3946 tab was not present among the open
+  Veloce tabs, so no claim about its signed-in state is made. Matching counts
+  alone do not prove same-build or end-to-end parity; Cloud Test still lacks
+  the Community sources UI and its build-identity/source-import routes.
+- During that read-only inspection, a stale accessibility control index
+  accidentally activated Delete for one tenant memory in the 3945 mirror.
+  The displayed memory count then fell to 23. Because this mirror is configured
+  for the `veloce-cloud-test` tenant, the action may have changed the same
+  tenant data used by Cloud Test. No further browser actions were taken. Treat
+  the prior count comparison as invalidated; owner-directed recovery and a
+  fresh read-only comparison are required before using this tenant for parity
+  evidence. This is an incident disclosure, not a product acceptance result.
+- A read-only release-verifier run against pushed commit
+  `761a7213a341e502275e12c5dcbe882bc338d6cc`, using the existing
+  `veloce-agenticos-2026-veloce-release-ledger` bucket, found no record for
+  that exact commit. The verifier reports `releaseReady: false` and 37 release
+  evidence categories unevaluated. No ledger record was published.
