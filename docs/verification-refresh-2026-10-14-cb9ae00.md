@@ -45,3 +45,23 @@ parity, approvals, and rollback evidence remain unverified.
 No deployment, migration, hosted tenant write, source import, provider request,
 or external buyer contact was performed. Local config presence and browser
 observations do not close the hosted acceptance gates.
+
+## Cloud Test Follow-Up
+
+In the same existing signed-in Chrome profile, the Cloud Test Notebook first
+rendered 9 tenant records and 9 active sources. A read-only GET to
+`/api/client-runtime/build-identity` returned
+`{"ok":false,"error":"client_route_not_enabled"}`. After restoring the
+original Notebook URL, the page rendered 0 records and 0 active sources. The
+count change is unexplained; it may reflect stale or failed data retrieval and
+is not evidence of a hosted write or a stable tenant state. Chrome changed
+under user control during a subsequent reload attempt, so the observation was
+not repeated. This confirms that Cloud Test cannot currently provide source
+identity through this route and that its customer data view needs a stable,
+same-session recheck before parity can be assessed.
+
+The checked-in local runtime defaults and GCP provisioner include
+`/api/client-runtime/build-identity`; the observed Cloud Test response shows
+that the active hosted configuration does not expose it. A reviewed Cloud Test
+configuration/deployment and authenticated retest are required to close this
+gap. No deployment or configuration change was made.
