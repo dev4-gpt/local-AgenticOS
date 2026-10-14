@@ -1554,3 +1554,22 @@ does not authorize hosted changes, provider calls, or spending.
   lifecycle/retention, notebook source provenance, runtime/storage config,
   and governed integrations. These checks are source/local evidence only; they
   do not certify a hosted deployment or customer journey.
+
+## Continuation Update - Existing-Tab Notebook Parity (2026-10-14)
+
+- Read-only inspection of the four already-open Veloce tabs found 9 Notebook
+  records/active sources in Cloud Test and 0 in Internal Beta, local `3943`,
+  and local `3965`. Both local listeners use the canonical `source/` checkout
+  as their process working directory; this does not attest to their built
+  source commit. The browser-visible UI does not expose a comparable user,
+  tenant, project, or build identity, so these counts are not yet a valid
+  same-tenant parity result. No tabs were opened and no tenant writes occurred.
+- Current `npm run verify:production-readiness` on
+  `6f13c646701a8250082c8e44f52a9ea441694478` remains `releaseReady: false`:
+  `ledger_bucket_not_configured`, with 38 evidence categories not evaluated.
+  No ledger bucket or IAM changes were made. Detailed evidence and limits are
+  recorded in `docs/local-cloud-parity-observation-2026-10-14.md`.
+- Next: establish user/tenant/project/build identity read-only, then compare
+  source selection through export using an approved synthetic fixture and
+  non-production test tenant. Keep Cloud Test data separate until identities
+  match. Do not seed the currently open tenant workspaces.
