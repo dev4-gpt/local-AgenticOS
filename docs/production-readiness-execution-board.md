@@ -1489,3 +1489,25 @@ does not authorize hosted changes, provider calls, or spending.
   inputs, regenerate the preparation receipt through an approved process, and
   pass dry preflight before any provider call. No simulation or provider
   request was made.
+
+## Continuation Update - Drive Graph Reconciliation (2026-10-14)
+
+- A fresh read-only inventory of the private `School Tabs Agent OS` Drive
+  folder found **108** items before the graph update: 98 PDFs, 3 HTML files,
+  2 JSON packs, 1 JSON-LD graph, 1 Markdown register, 1 Python utility, 1 ZIP,
+  and 1 spreadsheet. The archive spreadsheet has **107** data rows; its
+  classroom status says only **9 of 108 dated lessons** are archived, covering
+  May 11, 12, 13, 14, and 19. The 89 generic `copied` rows include bonus
+  resources and do not establish lesson coverage.
+- The Drive's existing graph was fetched and parsed read-only: **492 nodes /
+  7,770 relations**, with no register index. The current locally validated
+  sanitized graph was uploaded as a new, private Drive file named
+  `AgentOS-Knowledge-Graph-Register-Enriched-Partial-2026-10-14.jsonld`; the
+  older file was preserved. A fetch-back verification confirms **772 nodes /
+  8,158 relations**, a 107-lesson register index, 18 unsafe URLs omitted, and
+  `shared: false`.
+- The enriched graph remains explicitly partial: 25 pages pending, lesson
+  page text not included for the register-only entries, and no video assets.
+  It is an external Drive archive copy, not a hosted AgentOS graph import
+  receipt. Next reconcile the spreadsheet and register row-by-row, then
+  account for the remaining lesson text and media before any hosted import.
