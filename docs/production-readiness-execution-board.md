@@ -1162,3 +1162,26 @@ does not authorize hosted changes, provider calls, or spending.
   checkout commit `51fb237`. No new simulation, provider call, billing check,
   hosted write, or deployment occurred. Provider cost and the provider-side
   $0 cap remain unverified; this smoke test is not market validation.
+
+## Continuation Update - Drive Source-Pack Validation and Local Graph Staging (2026-10-14)
+
+- A fresh read-only inventory of the `School Tabs Agent OS` Drive folder finds
+  **108 files**. Its archive manifest records **9 of 108 dated lessons** as
+  archived and a separate standalone Agent OS System PDF. The nine dated PDFs
+  are from May 11, 12, 13, 14, and 19; sanitized HTML copies exist for May 19
+  and May 30. The dated archive, source-pack, and lesson-roster counts remain
+  distinct and are not reconciled to the full 109-entry inventory.
+- The Drive's May 11-30 v2 source pack contains **10 lesson URLs**, **19 text
+  segments**, **259 outbound-link references**, **3 media references**, and one
+  pending item. The tenant parser initially rejected it because one extracted
+  link targeted `localhost`. A separate mode-600 sanitized copy omits that one
+  unsafe link, retains the source text and 258 remaining links, and records the
+  omission; the Drive original was not changed.
+- The real archived pack passes the optional tenant source-pack parser check
+  (**8/8** tests). Its local graph export passes `validatePortableKnowledgeGraph`
+  with **156 nodes / 277 edges**, `complete: false`, and
+  `videoAssetsIncluded: false`. The graph and sanitized pack remain private
+  ignored staging artifacts; they have **not** been imported into the hosted
+  tenant. Full archive coverage and actual video assets remain incomplete.
+- No Skool session scraping, hosted import/write, provider call, deployment,
+  or billing action occurred.
