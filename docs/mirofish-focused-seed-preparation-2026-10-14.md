@@ -20,18 +20,25 @@ stays local; no customer data or credentials are included.
 - AgentOS buyer-seed tests: **8/8 passed** under Node `v24.19.0`.
 - MiroFish buyer-smoke harness tests: **18/18 passed** using its existing
   isolated Python environment. These tests make no provider calls.
-- No MiroFish project or simulation was created or run in this preparation.
 
-## Remaining Pilot Gate
+## Focused Project Staging
 
-The AgentOS bootstrap expects the pinned MiroFish checkout at
-`/private/tmp/agentos-mirofish-pilot-restored`, but that directory is absent.
-The available MiroFish checkout is at `67e284ce7244258c054a1ee9db9b8107c5a38b3e`,
-not the bootstrap's pinned commit `39d849138ef254f6c737ab4c4705e5545dbe31d4`.
-The existing live-smoke runner is also hash-bound to the earlier broad
-micro-v1 simulation artifacts, not this focused v2 seed. Do not treat the
-focused seed or the prior simulation as a completed focused pilot. Before a
-new run, review and pin the intended runner revision, bind the new run config
-to the v2 cohort and source hashes, and preserve the approved `$0` paid-spend
-limit with graph-memory updates disabled. No provider request or paid spend
-was made in this preparation.
+The bootstrap is now pinned to the audited MiroFish checkout at
+`67e284ce7244258c054a1ee9db9b8107c5a38b3e`; its default path resolves to the
+existing sibling `MiroFish-Buyer-Pilot` checkout. The 18 offline MiroFish
+buyer-smoke tests passed. An explicit `--focused-v2` mode validates the ten
+profile IDs against the canonical v2 cohort before using MiroFish's own
+ontology normalizer.
+
+The MiroFish-native dry run passed with 3 entity types, 4 relationships, the
+expected seed and ontology hashes, and `networkCalls: 0`. The focused project
+was then created locally as `proj_6eef37f42493`. A read-back confirmed status
+`ontology_generated`, ten fictional profiles, the focused workflow, and no
+attached graph ID. No Zep or LLM call was made.
+
+The focused pilot is **not yet simulated**. The existing live-smoke runner is
+hash-bound to the earlier broad micro-v1 configuration, not this focused v2
+project. Next, bind a new simulation config and profile CSV to the v2 cohort,
+verify its bounded schedule and provider configuration, then run only within
+the approved `$0` paid-spend limit with graph-memory updates disabled. Preserve
+the current no-deployment hold.
