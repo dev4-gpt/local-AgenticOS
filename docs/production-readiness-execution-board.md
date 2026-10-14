@@ -48,6 +48,19 @@ checks.
 `Goal | source SHA/environment | preconditions | bounded action | exit test |
 evidence path | risk/approval boundary | result/next action`
 
+### Fresh Strict Release Check - 2026-10-14
+
+On pushed `HEAD` `1a9d81a8671735659cf421829b386e4142cf0098`,
+`npm run verify:production-readiness -- --ledger-bucket
+veloce-agenticos-2026-veloce-release-ledger` returned `releaseReady: false`.
+The only reported failure is `release_gate:release_ledger_record_missing`;
+38 evidence categories remain unevaluated, including customer journey, hosted
+configuration, migrations, tenant isolation, source import, buyer pilot,
+operations/legal approvals, and rollback target. The read-only check found no
+release record for this commit and published nothing. Re-run after attaching
+current candidate evidence; do not interpret the narrower single failure as a
+pass.
+
 ## Goal
 
 Bring AgentOS toward evidence-backed production readiness by completing the
