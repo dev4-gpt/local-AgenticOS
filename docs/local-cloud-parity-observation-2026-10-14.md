@@ -119,9 +119,30 @@ reported `workspaceAuthorized: true`.
   resolve tenant identity.
 
 This confirms a same-user visible data difference, not a same-tenant parity
-failure. The local kit identifies its scope as `internal-beta`, but Cloud Test
-does not expose a comparable tenant/project identity. No tenant writes,
-imports, provider calls, migrations, or deployments occurred.
+failure. The live Cloud Test runtime does not expose a comparable tenant/project
+identity; the checked-in deployment manifest is compared separately below. No
+tenant writes, imports, provider calls, migrations, or deployments occurred.
+
+## Tenant And Manifest Scope Follow-Up - 2026-10-14
+
+The checked-in private Cloud Test deployment manifest and the local private
+parity env were compared without printing credential values:
+
+- Both point at Supabase project ref `ppmoqjtmjtfxadsnejqc`.
+- The local kit uses tenant slug `internal-beta`; the Cloud Test manifest uses
+  `veloce-cloud-test`. The 0-versus-9 record counts therefore reflect separate
+  tenant namespaces and are not a same-tenant data-parity test.
+- The Cloud Test manifest declares 45-day retention and provider calls off. It
+  also declares a capability set different from the local launcher's defaults.
+  This is desired configuration only; the disabled Cloud Test build-identity
+  route means the currently serving revision/configuration is not attested.
+
+A read-only local launch at port 3985 using the Cloud Test slug was attempted
+with provider calls disabled. Next.js exhausted the available file watchers
+(`EMFILE`) and restarted repeatedly; the process was stopped. Its generated
+`tsconfig.json` entries and isolated build directory were removed. No tenant
+write or provider request occurred. A same-tenant live UI parity check remains
+pending until the local runtime can be launched without exhausting watchers.
 
 ## Current-Source Continuation Check - 2026-10-14
 
