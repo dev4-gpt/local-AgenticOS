@@ -96,6 +96,33 @@ designation is also unverified. Do not import, seed, delete records, or apply
 migrations to force parity; first establish the Cloud Test deployment identity
 and the tenant/project scope through an approved read-only mechanism.
 
+## Fresh Signed-In Recheck - 2026-10-14
+
+Using existing tabs in the `Aryaman (Work)` Chrome window, the Cloud Test and
+local `3955` session endpoints both reported the same authenticated user
+subject. The identifier and email are intentionally omitted here. Local also
+reported `workspaceAuthorized: true`.
+
+- A fresh Cloud Test Notebook load showed 9 records and 9 active sources.
+- A full reload of local `http://127.0.0.1:3955/notebook` showed 0 records and
+  0 active sources.
+- Local `GET /api/client-runtime/build-identity` reported source commit
+  `c428639d84c9a6a2fef59312b9c5bd5a9c03d88c`, a tenant-scope digest, and
+  `reported_by_runtime_not_independent_attestation`. The Cloud Test
+  build-identity route remains disabled (`client_route_not_enabled`).
+- The requested `3985` tab remained rendered in Chrome, but port 3985 had no
+  listener. The authenticated live local check therefore used the already-open
+  3955 tab; no duplicate tab or tenant data was created.
+- Compared with the current checkout, the local runtime's reported source
+  revision predates only documentation, test, and helper-script changes; no
+  application `src/` paths differ. This does not attest the built runtime or
+  resolve tenant identity.
+
+This confirms a same-user visible data difference, not a same-tenant parity
+failure. The local kit identifies its scope as `internal-beta`, but Cloud Test
+does not expose a comparable tenant/project identity. No tenant writes,
+imports, provider calls, migrations, or deployments occurred.
+
 ## Current-Source Continuation Check - 2026-10-14
 
 On the pushed checkout at `dd9fa452d5000b902cd4c893e990215317f8847b`, the
