@@ -2310,3 +2310,29 @@ does not authorize hosted changes, provider calls, or spending.
 - The combined classroom source-pack, graph, and sanitizer suite passed
   **22/22**. No hosted graph import, upload, deployment, or provider request
   was made.
+
+## Continuation Update - Exact-Commit Local and Release Recheck (2026-10-14)
+
+- In the user's existing Chrome Work window, the authenticated current-source
+  local runtime at `http://127.0.0.1:3985/notebook` rendered the Notebook
+  successfully with **0 records / 0 active sources** for its current tenant.
+  Its authenticated build-identity route reports commit
+  `1bf9510553c9ccba81ae7d9b9da55e2a1bc41416`; the endpoint labels this as
+  runtime-reported, not independent image attestation. The provider-disabled
+  local config remains in effect.
+- The existing Cloud Test tab is signed in and shows **9 records / 9 active
+  sources**. Its counts are not comparable to local as a parity result because
+  Cloud Test uses a different tenant slug; the hosted build-identity route
+  remains disabled. No tenant write was made.
+- The deterministic AI release suite passed **16/16** under supported bundled
+  Node `24.19.0`, with zero model samples or provider calls. The shell's Node
+  `26.4.0` also ran 16/16, but the evaluator correctly failed its local gate
+  because that runtime is unsupported.
+- A fresh read-only release verifier run against
+  `gs://veloce-agenticos-2026-veloce-release-ledger` reports
+  `releaseReady: false`, `release_ledger_record_missing` for this exact commit,
+  and **38 unevaluated release categories**. No partial release record was
+  published, and no deployment, hosted mutation, or provider request occurred.
+- Local/customer, hosted parity/security, archive completeness/import, and
+  release-evidence tracks remain open. The exact tenant/build evidence above
+  narrows the local comparison but does not satisfy same-tenant hosted parity.
