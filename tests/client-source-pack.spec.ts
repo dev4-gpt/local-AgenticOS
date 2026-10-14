@@ -298,6 +298,52 @@ test("source upload removes partial storage and artifact state when verification
   }
 });
 
+test("source upload preserves its pending artifact record until storage cleanup succeeds", async () => {
+  const savedEnv = { ...process.env };
+  const bytes = Buffer.from(JSON.stringify(examplePack()));
+  try {
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "45", CLIENT_WORKER_TOKEN: workerToken });
+    for (const scenario of [
+      { storageDelete: false, artifactDelete: true, expectedCalls: ["create_client_runtime_artifact", "storage_upload", "storage_delete"] },
+      { storageDelete: true, artifactDelete: false, expectedCalls: ["create_client_runtime_artifact", "storage_upload", "storage_delete", "delete_client_runtime_artifact"] },
+    ]) {
+      const calls: string[] = [];
+      const uploadRoute = loadReviewModule("src/app/api/client-runtime/source-import/upload/route.ts", {
+        "@/lib/clientAuth": { currentClientUser: async () => ({ id: userId }), currentClientMember: async () => true },
+        "@/lib/clientDataPlane": {
+          checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+          clientRpc: async (name: string, body: Record<string, unknown>) => {
+            calls.push(name);
+            if (name === "create_client_runtime_artifact") return { ok: true, value: body.p_artifact_id };
+            return { ok: true, value: scenario.artifactDelete };
+          },
+        },
+        "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
+        "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+        "@/lib/clientRetention": { clientRetentionExpiresAt: () => new Date(Date.now() + 86_400_000).toISOString() },
+        "@/lib/clientStorage": {
+          clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "test-bucket", serviceAccount: null }),
+          clientGcpAccessToken: async () => "runtime-token",
+          clientStorageObjectMetadata: async () => null,
+          deleteClientStorageObject: async () => { calls.push("storage_delete"); return scenario.storageDelete; },
+          safeClientFileName: (name: string) => name,
+          uploadClientStorageObject: async () => { calls.push("storage_upload"); return true; },
+        },
+        "@/lib/clientSourcePack": { parseClientSourcePack },
+      });
+      const form = new FormData();
+      form.set("file", new File([bytes], "source-pack.json", { type: "application/json" }));
+      form.set("permissionConfirmed", "true");
+      const response = await uploadRoute.POST(new Request("https://tenant.example.invalid/api/client-runtime/source-import/upload", { method: "POST", body: form }));
+      expect(response.status).toBe(502);
+      expect((await response.json()).error).toBe("source_import_cleanup_pending");
+      expect(calls).toEqual(scenario.expectedCalls);
+    }
+  } finally {
+    process.env = savedEnv;
+  }
+});
+
 test("tenant memory search validates input and delegates pagination to the database", async () => {
   const priorSlug = process.env.CLIENT_SLUG;
   process.env.CLIENT_SLUG = "tenant-a";

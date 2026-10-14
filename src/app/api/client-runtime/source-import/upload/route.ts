@@ -80,9 +80,8 @@ export async function POST(request: Request) {
   const uploaded = await uploadClientStorageObject({ bucket: config.bucket, objectKey, contentType: "application/json", bytes, token });
   const metadata = uploaded ? await clientStorageObjectMetadata(config.bucket, objectKey, token) : null;
   if (!metadata || metadata.size !== bytes.byteLength || metadata.contentType !== "application/json") {
-    await deleteClientStorageObject(config.bucket, objectKey, token);
-    await clientRpc("delete_client_runtime_artifact", { p_tenant_slug: tenantSlug, p_artifact_id: artifactId });
-    return error("source_import_upload_failed", 502);
+    const cleaned = await cleanupPendingUpload({ bucket: config.bucket, objectKey, token, tenantSlug, artifactId });
+    return error(cleaned ? "source_import_upload_failed" : "source_import_cleanup_pending", 502);
   }
   const confirmed = await clientRpc("confirm_client_runtime_artifact", {
     p_tenant_slug: tenantSlug,
@@ -91,11 +90,30 @@ export async function POST(request: Request) {
     p_content_type: metadata.contentType,
   });
   if (!confirmed.ok || confirmed.value !== true) {
-    await deleteClientStorageObject(config.bucket, objectKey, token);
-    await clientRpc("delete_client_runtime_artifact", { p_tenant_slug: tenantSlug, p_artifact_id: artifactId });
-    return error("artifact_confirm_failed", 502);
+    const cleaned = await cleanupPendingUpload({ bucket: config.bucket, objectKey, token, tenantSlug, artifactId });
+    return error(cleaned ? "artifact_confirm_failed" : "source_import_cleanup_pending", 502);
   }
   return NextResponse.json({ ok: true, artifactId, packSha256 }, { status: 201, headers: { "cache-control": "private, no-store" } });
+}
+
+async function cleanupPendingUpload(input: { bucket: string; objectKey: string; token: string; tenantSlug: string; artifactId: string }) {
+  let objectDeleted = false;
+  try {
+    objectDeleted = await deleteClientStorageObject(input.bucket, input.objectKey, input.token);
+  } catch {
+    return false;
+  }
+  if (!objectDeleted) return false;
+
+  try {
+    const artifactDeleted = await clientRpc("delete_client_runtime_artifact", {
+      p_tenant_slug: input.tenantSlug,
+      p_artifact_id: input.artifactId,
+    });
+    return artifactDeleted.ok && artifactDeleted.value === true;
+  } catch {
+    return false;
+  }
 }
 
 function error(code: string, status: number) {

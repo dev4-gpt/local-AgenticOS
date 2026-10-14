@@ -131,6 +131,41 @@ test("source pack review reports a missing guarded importer before storage", asy
   expect(writes).toEqual(["/api/client-runtime/source-import/upload"]);
 });
 
+test("source pack review explains when failed-upload cleanup is still pending", async ({ page, context }) => {
+  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
+  const writes: string[] = [];
+  await page.route("**/api/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (request.method() === "GET") {
+      if (await fulfillMemorySetupRead(path, route)) return;
+      return route.fulfill({ status: 200, json: { ok: true, records: [], nodes: [], edges: [] } });
+    }
+    writes.push(path);
+    if (path === "/api/client-runtime/source-import/upload") {
+      return route.fulfill({ status: 502, json: { ok: false, error: "source_import_cleanup_pending" } });
+    }
+    return route.fulfill({ status: 503, json: { ok: false, error: "unexpected_write" } });
+  });
+
+  await page.goto("/memory");
+  await chooseSourceFiles(page, {
+    name: "synthetic-source-pack.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({
+      startUrl: "https://example.org/course",
+      skipped: [],
+      sources: [{ title: "Synthetic lesson", url: "https://example.org/course/lesson", text: "Cleanup status check.", links: [] }],
+    })),
+  });
+  await page.getByRole("checkbox", { name: /permission to upload and use this batch/ }).check();
+  await page.getByRole("button", { name: "Review batch 1" }).click();
+  await expect(page.locator('p[role="alert"]')).toContainText("cleanup could not be confirmed");
+  await expect(page.getByRole("button", { name: "Review batch 1" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Import sources" })).toHaveCount(0);
+  expect(writes).toEqual(["/api/client-runtime/source-import/upload"]);
+});
+
 test("importing one part does not upload the next part without renewed permission", async ({ page, context }) => {
   await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
   const startUrl = "https://example.org/course";

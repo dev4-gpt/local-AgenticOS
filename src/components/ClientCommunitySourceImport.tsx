@@ -50,6 +50,7 @@ export default function ClientCommunitySourceImport({ onImported }: { onImported
   const [expected, setExpected] = useState<{ sources: number; links: number; skipped: number } | null>(null);
   const [approved, setApproved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [cleanupPending, setCleanupPending] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState("");
 
@@ -76,7 +77,10 @@ export default function ClientCommunitySourceImport({ onImported }: { onImported
     if (busy || preview || !approved || !batches[batchIndex]) return;
     setBusy(true); setError("");
     try { await reviewBatch(batches[batchIndex]); }
-    catch (reason) { setError(selectionError(reason)); }
+    catch (reason) {
+      if (reason instanceof Error && reason.message === "source_import_cleanup_pending") setCleanupPending(true);
+      setError(selectionError(reason));
+    }
     finally { setBusy(false); }
   }
 
@@ -105,7 +109,7 @@ export default function ClientCommunitySourceImport({ onImported }: { onImported
     </div>
     {batches.length > 0 && <p className="mt-3 text-xs" style={{ color: "var(--cream-dim)" }}>{completed}/{batches.length} batches imported · {totals.sources} sources · {totals.links} links{expected && ` of ${expected.sources} sources and ${expected.links} links in the supplied manifest`}</p>}
     {completed < batches.length && batches[batchIndex] && <label className="mt-3 flex items-start gap-2 text-xs" style={{ color: "var(--cream-dim)" }}><input type="checkbox" checked={approved} disabled={busy} onChange={(event) => setApproved(event.target.checked)} />I have permission to upload and use this batch&apos;s content in this tenant.</label>}
-    {!preview && completed < batches.length && batches[batchIndex] && <button type="button" onClick={() => void retryReview()} disabled={!approved || busy} className="mt-3 text-xs underline disabled:opacity-40" style={{ color: "var(--cream-soft)" }}>Review batch {batchIndex + 1}</button>}
+    {!preview && completed < batches.length && batches[batchIndex] && <button type="button" onClick={() => void retryReview()} disabled={!approved || busy || cleanupPending} className="mt-3 text-xs underline disabled:opacity-40" style={{ color: "var(--cream-soft)" }}>Review batch {batchIndex + 1}</button>}
     {preview && <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--line-soft)" }}>
       <p className="text-xs break-words" style={{ color: "var(--cream-dim)" }}>Batch {batchIndex + 1}/{batches.length}: {batches[batchIndex]?.file.name} · {preview.sourceCount} sources · {preview.linkCount} links · {preview.skippedCount} skipped in export</p>
       {preview.skippedCount > 0 && <details className="mt-3 text-xs" style={{ color: "var(--cream-dim)" }}><summary className="cursor-pointer">Review skipped entries</summary><ul className="mt-2 max-h-36 list-disc overflow-auto pl-5">{preview.skipped.map((item, index) => <li key={`${index}-${item}`} className="py-0.5 break-words">{item}</li>)}</ul></details>}
@@ -134,6 +138,7 @@ function selectionError(reason: unknown) {
   if (code === "source_import_permission_required") return "Confirm permission before uploading this batch.";
   if (code === "source_import_manifest_mismatch") return "The uploaded batch differs from the reviewed manifest.";
   if (code === "source_import_upload_failed") return "The source pack could not be stored and was not imported. Check the workspace storage configuration, then retry.";
+  if (code === "source_import_cleanup_pending") return "The upload failed and cleanup could not be confirmed. It remains pending and was not imported; contact the workspace administrator before retrying.";
   if (code === "source_batch_manifest_required") return "Select the manifest and every numbered part together.";
   if (code === "source_batch_manifest_mismatch" || code === "source_batch_manifest_invalid") return "The selected parts do not match the export manifest.";
   if (code === "source_batch_duplicate_source") return "Two parts describe the same source and tab. Correct the export before importing so one lesson cannot replace another.";
