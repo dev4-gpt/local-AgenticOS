@@ -1756,3 +1756,26 @@ does not authorize hosted changes, provider calls, or spending.
   identity is an independent attestation, and hosted parity remains unproven.
 - Both Veloce tabs were restored to their Notebook pages. This was read-only:
   no tenant write, provider request, migration, or deployment occurred.
+
+## Continuation Update - Exact-Build Browser Rerun (2026-10-14)
+
+- Rebuilt the clean pushed source at `c428639d84c9a6a2fef59312b9c5bd5a9c03d88c`
+  as a local production client on port `3955`; provider calls remained disabled.
+  The local build-identity route reported that source commit, with no Cloud Run
+  revision. Its tenant-scope digest is only a comparison aid, not an independent
+  identity attestation.
+- Repeated the authenticated, read-only Notebook comparison in the existing
+  Chrome profile: the same principal was shown in local and Cloud Test. Local
+  displayed 0 records / 0 active sources; Cloud Test displayed 9 / 9. This is
+  evidence of differing visible data, not proof that the environments target
+  the same Supabase project or tenant. Cloud Test's build-identity route remains
+  disabled (`client_route_not_enabled`).
+- Reran `tests/client-source-import-consent-browser.spec.ts` against this exact
+  local production build: **8/8 passed**. API calls were intercepted with
+  synthetic fixtures; this verifies browser behavior and request ordering, not
+  a real storage upload, graph import, or deletion.
+- The read-only GCP inventory remains as recorded above: project `Veloce Ai`
+  has no Cloud Run services or storage buckets, and Cloud Storage requires
+  billing to be enabled. No billing, bucket, IAM, database, tenant data,
+  provider, or deployment changes were made. The local server is available at
+  `http://127.0.0.1:3955` with provider calls disabled.
