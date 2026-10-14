@@ -21,7 +21,7 @@ release verification without deploying or spending beyond approved limits.
 | Local/cloud parity and hosted security | Read-only Chrome inspection found local `3985` at 0 records / 0 active sources, Cloud Test at 9 / 9, and Internal Beta at 0 / 0; these are not yet a parity result. Local internal-beta config and a new owner-only Cloud Test-scoped local config both pass preflight with provider calls disabled; same Supabase project, different tenant slugs | Same build/artifact identity; same-user, same-tenant feature/data comparison; route allowlist, tenant isolation, storage proxy and 45-day retention verified from the intended live beta configuration | Use `.private-client-kits/cloud-test-parity.env` to start current source read-only for `veloce-cloud-test`; sign in at that local origin and run the authenticated route/data comparison. Do not mutate service, secrets, traffic, Supabase, or retention |
 | AI quality, evaluation, and observability | Current-source deterministic evaluation passes 16/16; focused observability/trace tests passed 13/13. Hosted model quality, provider-side spend cap, and hosted telemetry remain unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled for the $0 pilot. Use offline receipts and trace tests as local-only evidence until provider-side caps and an approved hosted/model path are independently verified |
 | MiroFish buyer pilot | `sim_f91504972e42` has a hash-bound human review (1 qualified, 1 rejected). For v2 `sim_8f4e26a9d170`, two dynamic posts are hash-bound reviewed (0 qualified, 2 rejected as weak); the saved directory lacks `run_state.json` and `profile-preparation.json`, so strict completion/receipt is unverified. Both runs are synthetic, not market validation | Human-reviewed posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Do not make another provider request under the prior one-repeat approval. Keep both v2 replies out of demand evidence and prioritize actual buyer interviews |
-| Release evidence and decision | Not ready; the existing ledger bucket is confirmed and protected, but there is no record for pushed commit `15b61d0`; 37 release evidence categories remain unevaluated. The branch is clean and pushed | Clean pushed commit; all required evidence attached to the ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Continue customer journey, hosted parity, migration, and approval evidence; publish no partial release record |
+| Release evidence and decision | Not ready; the ledger bucket `veloce-agenticos-2026-veloce-release-ledger` exists, but there is no record for current pushed commit `213a6118c539c81348f2699c3c00bc4bef8a8619`; the verifier reports 37 release evidence categories unevaluated. The branch is clean and pushed | Clean pushed commit; all required evidence attached to the ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Continue customer journey, hosted parity, migration, and approval evidence; publish no partial release record |
 
 ## Historical Verified Snapshot (2026-10-14; superseded by continuation updates below)
 
@@ -2918,3 +2918,13 @@ does not authorize hosted changes, provider calls, or spending.
   bounded-run configuration, not this run's missing artifacts. No provider
   request, simulation replay, or paid spend occurred. Strict run evidence and
   real buyer validation remain open.
+
+## Continuation Update - Release Ledger Recheck (2026-10-14)
+
+- Read-only GCP inspection confirms the release-ledger bucket
+  `veloce-agenticos-2026-veloce-release-ledger` exists in `veloce-agenticos-2026`.
+  The release verifier was rerun against the pushed HEAD
+  `213a6118c539c81348f2699c3c00bc4bef8a8619`; it found no ledger record for
+  that exact source commit and reports `releaseReady: false` with **37** gates
+  unevaluated. No object was written and no hosted deployment or configuration
+  was changed.
