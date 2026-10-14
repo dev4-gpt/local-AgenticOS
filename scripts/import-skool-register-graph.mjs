@@ -174,10 +174,21 @@ export function mergeSkoolRegisterGraph(base, registerGraph) {
     throw new Error("graph_merge_input_invalid");
   }
   const nodes = new Map();
+  let omittedUnsafeUrls = 0;
   for (const node of [...base["@graph"], ...registerGraph["@graph"]]) {
     if (!node || typeof node["@id"] !== "string") throw new Error("graph_node_invalid");
-    nodes.set(node["@id"], { ...nodes.get(node["@id"]), ...node });
+    const merged = { ...nodes.get(node["@id"]), ...node };
+    if (merged.url !== undefined && !safePublicUrl(merged.url)) {
+      delete merged.url;
+      merged.urlOmitted = true;
+      merged.urlOmissionReason = "unsafe_or_invalid_url";
+      omittedUnsafeUrls++;
+    }
+    nodes.set(node["@id"], merged);
   }
+  const registerIndex = registerGraph.provenance && Object.keys(registerGraph.provenance).length > 0
+    ? registerGraph.provenance
+    : base.provenance?.registerIndex;
   return {
     ...base,
     "@context": base["@context"] ?? registerGraph["@context"],
@@ -185,9 +196,10 @@ export function mergeSkoolRegisterGraph(base, registerGraph) {
     edges: [...base.edges, ...registerGraph.edges],
     provenance: {
       ...(base.provenance ?? {}),
-      registerIndex: registerGraph.provenance,
+      ...(registerIndex ? { registerIndex } : {}),
       complete: false,
       videoAssetsIncluded: false,
+      omittedUnsafeUrls,
     },
   };
 }

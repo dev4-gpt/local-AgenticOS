@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { buildSkoolRegisterGraph, mergeSkoolRegisterGraph, privateGraphArtifactPath } from "../scripts/import-skool-register-graph.mjs";
+import { validatePortableKnowledgeGraph } from "../scripts/portable-knowledge-graph.mjs";
 
 const lessonId = "0123456789abcdef0123456789abcdef";
 const videoId = "abcdef0123456789abcdef0123456789";
@@ -36,6 +37,30 @@ test("Skool register graph merges into the private content graph without claimin
   expect(merged["@graph"].filter((node) => node["@type"] === "LearningResource")).toHaveLength(2);
   expect(merged.edges).toHaveLength(registerGraph.edges.length);
   expect(merged.provenance).toMatchObject({ sourceSegments: 7, complete: false, videoAssetsIncluded: false, registerIndex: { lessonCount: 2, pageTextIncluded: false } });
+});
+
+test("merge redacts unsafe legacy URLs but preserves their graph references", () => {
+  const registerGraph = { "@graph": [], edges: [], provenance: {} };
+  const base = {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@id": "skool-lesson:legacy", "@type": "LearningResource" },
+      { "@id": "url:local", "@type": "URL", url: "http://127.0.0.1:3000/private" },
+    ],
+    edges: [{ "@type": "links_to", source: "skool-lesson:legacy", target: "url:local" }],
+    provenance: { sourceSegments: 1, complete: false, registerIndex: { lessonCount: 107 } },
+  };
+
+  const merged = mergeSkoolRegisterGraph(base, registerGraph);
+  expect(merged["@graph"].find((node) => node["@id"] === "url:local")).toMatchObject({
+    "@type": "URL",
+    urlOmitted: true,
+    urlOmissionReason: "unsafe_or_invalid_url",
+  });
+  expect(merged.edges).toContainEqual(base.edges[0]);
+  expect(merged.provenance.omittedUnsafeUrls).toBe(1);
+  expect(merged.provenance.registerIndex).toEqual({ lessonCount: 107 });
+  expect(() => validatePortableKnowledgeGraph(merged)).not.toThrow();
 });
 
 test("Skool register rejects duplicate lesson IDs and secret-bearing links", () => {
