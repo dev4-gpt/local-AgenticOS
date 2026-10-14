@@ -94,6 +94,7 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.assertEqual(result["tracedPosts"], 2)
         self.assertEqual(result["completionEvents"], 1)
         self.assertTrue(result["checks"]["profileWorkflowCoverage"])
+        self.assertTrue(result["checks"]["buyerReviewComplete"])
         self.assertTrue(result["checks"]["buyerContentReview"])
         self.assertTrue(result["checks"]["dynamicPostNovelty"])
         self.assertTrue(result["checks"]["dynamicPostPersonaIdentity"])
@@ -179,7 +180,22 @@ class BuyerRunAuditTest(unittest.TestCase):
                 for index, post in enumerate(posts)
             ],
         })
-        self.assertEqual(AUDITOR.review_covers_dynamic_posts(self.simulation, posts), (False, 2, 1))
+        self.assertEqual(AUDITOR.review_covers_dynamic_posts(self.simulation, posts), (True, False, 2, 1))
+
+    def test_complete_review_can_reject_a_low_value_response_without_losing_review_receipt(self):
+        review_path = self.simulation / "buyer_review.json"
+        review = json.loads(review_path.read_text(encoding="utf-8"))
+        review["posts"][0].update({"roleFaithful": False, "actionable": False})
+        self._write("buyer_review.json", review)
+
+        result = AUDITOR.audit(self.simulation, self.cohort)
+
+        self.assertTrue(result["checks"]["buyerReviewComplete"])
+        self.assertFalse(result["checks"]["buyerContentReview"])
+        self.assertTrue(result["technicalEvidencePassed"])
+        self.assertFalse(result["pilotEvidencePassed"])
+        self.assertEqual(result["reviewedDynamicPosts"], 1)
+        self.assertEqual(result["approvedDynamicPosts"], 0)
 
     def test_unrestricted_review_or_unscheduled_activity_does_not_pass(self):
         path = self.simulation / "buyer_review.json"

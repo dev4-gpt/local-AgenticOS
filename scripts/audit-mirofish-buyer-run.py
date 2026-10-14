@@ -109,26 +109,26 @@ def prepare_review_template(simulation_dir: Path, review_file: Path | None = Non
 
 def review_covers_dynamic_posts(
     simulation_dir: Path, posts: list[Post], review_file: Path | None = None
-) -> tuple[bool, int, int]:
+) -> tuple[bool, bool, int, int]:
     path = review_file_path(simulation_dir, review_file)
     if not path.exists():
-        return False, 0, 0
+        return False, False, 0, 0
     try:
         if path.stat().st_mode & 0o077:
-            return False, 0, 0
+            return False, False, 0, 0
         review = load_json(path)
         reviewed_at = datetime.fromisoformat(review["reviewedAt"].replace("Z", "+00:00"))
         if (review.get("schemaVersion") != 2 or review.get("simulationId") != simulation_dir.name
                 or not isinstance(review.get("reviewer"), str) or not review["reviewer"].strip()
                 or reviewed_at.tzinfo is None or reviewed_at.utcoffset() is None):
-            return False, 0, 0
+            return False, False, 0, 0
         expected = {
             (post.post_id, post.agent_id, hashlib.sha256(generated_text(post).encode("utf-8")).hexdigest()): post
             for post in posts if is_dynamic(post)
         }
         entries = review.get("posts")
         if not expected or not isinstance(entries, list) or len(entries) != len(expected):
-            return False, 0, 0
+            return False, False, 0, 0
         reviewed = set()
         approved = 0
         all_approved = True
@@ -140,15 +140,16 @@ def review_covers_dynamic_posts(
                         entry.get("quotedPostId") != post.original_post_id
                         or entry.get("quotedContent") != post.content
                         or entry.get("quotedContentSha256") != hashlib.sha256(post.content.encode("utf-8")).hexdigest()))):
-                return False, 0, 0
+                return False, False, 0, 0
             reviewed.add(identity)
             if all(entry.get(key) is True for key in ("scenarioRelevant", "roleFaithful", "scopeSafe", "actionable")):
                 approved += 1
             else:
                 all_approved = False
-        return all_approved and reviewed == set(expected), len(reviewed), approved
+        review_complete = reviewed == set(expected)
+        return review_complete, all_approved and review_complete, len(reviewed), approved
     except (AttributeError, KeyError, TypeError, ValueError, json.JSONDecodeError):
-        return False, 0, 0
+        return False, False, 0, 0
 
 
 def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = None) -> dict:
@@ -228,8 +229,8 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
                 "assignedPersona": assigned_id,
                 "mentionedPersonas": mentioned_ids,
             })
-    content_review_passed, reviewed_dynamic_posts, approved_dynamic_posts = review_covers_dynamic_posts(
-        simulation_dir, posts, review_file
+    review_complete, content_review_passed, reviewed_dynamic_posts, approved_dynamic_posts = (
+        review_covers_dynamic_posts(simulation_dir, posts, review_file)
     )
     active_buyers = {
         agent.get("entity_name")
@@ -280,6 +281,7 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
         and completion_events[0].get("total_actions") == action_rows,
         "buyerActivity": bool(active_buyers) and all(post_counts.get(buyer, 0) > 0 for buyer in active_buyers),
         "crossBuyerInteraction": bool(active_buyers) and not missing_buyer_interactions,
+        "buyerReviewComplete": review_complete,
         "buyerContentReview": content_review_passed,
     }
     return {
@@ -313,7 +315,7 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
         "reportedRound": run_state.get("current_round"),
         "configuredRounds": run_state.get("total_rounds"),
         "checks": checks,
-        "technicalEvidencePassed": all(value for key, value in checks.items() if key not in {"buyerContentReview", "crossBuyerInteraction"}),
+        "technicalEvidencePassed": all(value for key, value in checks.items() if key not in {"buyerContentReview", "buyerReviewComplete", "crossBuyerInteraction"}),
         "pilotEvidencePassed": all(checks.values()),
         "marketValidation": False,
     }

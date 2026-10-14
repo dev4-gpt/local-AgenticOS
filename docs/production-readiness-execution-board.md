@@ -1143,3 +1143,22 @@ does not authorize hosted changes, provider calls, or spending.
 - The local production-mode server remains running at port `3976` for continued
   review. No records, tenant data, auth settings, database schema, or hosted
   configuration were written or changed; provider calls stayed disabled.
+
+## Continuation Update - Buyer Review Completeness Signal (2026-10-14)
+
+- The read-only audit of MiroFish run `sim_f91504972e42` confirms technical
+  telemetry, persona coverage, and artifact binding. Aryaman's private review
+  covers both generated responses; one is approved and one is rejected because
+  the stated sub-$50 budget conflicts with the $1,250/month offer. The rejected
+  response is not used as pricing evidence.
+- The audit previously conflated a completed review with an all-responses
+  approval. It now reports `buyerReviewComplete` separately from
+  `buyerContentReview`. The saved run reports 2 reviewed, 1 approved,
+  `buyerReviewComplete: true`, `buyerContentReview: false`, and
+  `pilotEvidencePassed: false`; this preserves the strict quality gate while
+  accurately recording the completed human review.
+- The new rejected-response regression and the full buyer-run audit suite pass
+  **17/17**. The isolated MiroFish backend suite passes **154/154** on local
+  checkout commit `51fb237`. No new simulation, provider call, billing check,
+  hosted write, or deployment occurred. Provider cost and the provider-side
+  $0 cap remain unverified; this smoke test is not market validation.

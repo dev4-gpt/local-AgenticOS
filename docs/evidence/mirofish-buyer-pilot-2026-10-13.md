@@ -10,33 +10,33 @@
 
 ## Output quality
 
-The read-only buyer-activity evaluator found two distinct quote responses from
-the two active synthetic profiles, zero distinct posts beyond the opening
-prompts, and eight total simulation actions. The two saved quote annotations
-mark `scenarioRelevant`, `roleFaithful`, `scopeSafe`, and `actionable` false.
-The review file has empty `reviewer` and `reviewedAt` fields, so these
-annotations do not establish a named human review. The original run receipt's
-`distinct_response_activity_observed` status was only a text-difference signal.
-The evaluator now binds each annotation to the saved response post and exact
-response-content hash; quote responses are resolved from the read-only
-simulation SQLite database and checked against agent and parent-post references.
-Re-evaluation returns `unattributed_annotations`, 0 qualified, 2 rejected,
-`reviewerPresent: false`, and `artifactBinding: verified`. The existing review
-file was not modified. The binding fix is committed locally in the MiroFish
-checkout as `33e0f58`; its full backend suite passes 154 tests. That checkout's
-configured Git remote disables push, so the commit is not published upstream.
+The read-only audit found two distinct quote responses from the active
+synthetic profiles, no additional standalone posts, and eight simulation
+actions. The private schema-v2 review identifies Aryaman and is bound to both
+saved response posts, their exact content hashes, and their quoted parent
+posts. Both responses were reviewed; one was approved on all four quality
+flags. The other was relevant and safe, but rejected as role-unfaithful and
+not actionable because a sub-$50 budget did not fit the $1,250/month offer.
+
+The audit now reports review completeness separately from full content
+approval: `buyerReviewComplete: true`, `reviewedDynamicPosts: 2`,
+`approvedDynamicPosts: 1`, and `buyerContentReview: false`. Technical telemetry
+passes, but `pilotEvidencePassed` and `marketValidation` remain false. This is
+the intended result: a complete review can reject a low-value response without
+misreporting that the review itself is missing. The latest AgentOS tests cover
+this distinction, 17/17 audit tests pass, and the isolated MiroFish backend
+suite passes 154 tests on checkout commit `51fb237`. That checkout's configured
+Git remote disables push, so its local commits are not published upstream.
 
 ## Interpretation and limits
 
 This run is an engineering smoke test, not evidence of buyer demand, willingness
-to pay, product fit, or production readiness. Its generated responses were
-rejected by the saved quality annotations and should not be used to make product
-or pricing decisions. The pilot currently lacks a verified provider-cost
-receipt and an attributable human review.
+to pay, product fit, or production readiness. The synthetic response approved
+by review is not a real buyer signal, and the rejected low-budget mismatch
+should not be used as pricing evidence. The pilot still lacks a verified
+provider-cost receipt, and no live-provider free-tier or $0 spend enforcement
+was independently verified.
 
-Next MiroFish work should make the evaluation receipt distinguish raw synthetic
-activity from scenario/role/safety/actionability review, enforce identity and
-quote attribution against stored simulation artifacts, and preserve a reviewed
-human disposition. Any new live run requires a fresh, non-replayed simulation
-configuration and confirmation that the provider-side $0 cap is actually
-enforced; this report does not authorize another run.
+Any new live run requires a fresh, non-replayed simulation configuration and
+confirmation that the provider-side $0 cap is actually enforced; this report
+does not authorize another run.
