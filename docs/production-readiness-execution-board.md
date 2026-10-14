@@ -17,8 +17,8 @@ release verification without deploying or spending beyond approved limits.
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
 | Local product and customer journey | Current-source Notebook browser journey passed 1/1 with fixture APIs; signed-in end-to-end customer journey remains unverified. The visible 0-vs-9 Notebook counts are across different tenant slugs, not a same-tenant parity result | Current-source build; automated journey tests; signed-in same-user, same-tenant journey through workspace, source selection, draft, provenance, review, and export | Keep provider calls disabled. Do not treat cross-tenant record counts as parity evidence. Resolve the intended hosted tenant and then run a read-only same-tenant feature journey before any writes |
-| Authorized Skool archive and graph import | Latest local/Drive graph has 1,136 nodes and text linked to 82/107 registered lessons (25 without linked text); 25 discovered pages remain pending and all 107 have video references. A transcript is visible for one YouTube video but is not yet archived; no video bytes or product graph import | Canonical lesson/date inventory; all permitted page text, links, and available video references/transcripts accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Archive the confirmed transcript as text with its video link and provenance; acquire/reconcile missing lesson bodies. Keep partial provenance explicit; import to a hosted graph only after target project and archive coverage are confirmed |
-| Local/cloud parity and hosted security | Cloud Test and local share Supabase project `ppmoqjtmjtfxadsnejqc` but use different tenant slugs. Cloud Test has provider calls on, a $10/month app cap, 14-day retention, two inline secrets, and lacks source-import/build-identity routes; hosted changes remain held | Same build/artifact identity; same-user, same-tenant feature/data comparison; route allowlist, tenant isolation, storage proxy and 45-day retention verified from the intended live beta configuration | Owner decision pending on whether Cloud Test stays a separate tenant or receives a reviewed change plan. Do not mutate service, secrets, traffic, Supabase, or retention until target and scope are explicitly approved |
+| Authorized Skool archive and graph import | Latest known Drive graph has 1,136 nodes and lesson text linked to 82/107 registered lessons; 25 discovered pages remain pending. The 26th July ChatGPT Voice lesson already has a video reference. A private staging graph adds a separately labeled YouTube-page summary, not a transcript or Skool lesson body; no video bytes or hosted import | Canonical lesson/date inventory; all permitted page text, links, and available video references/transcripts accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Keep video playback on YouTube; do not archive auto-captions by default. Acquire/reconcile missing lesson bodies and preserve explicit summary provenance. Import to a hosted graph only after target project and archive coverage are confirmed |
+| Local/cloud parity and hosted security | Read-only Chrome inspection found local `3985` at 0 records / 0 active sources, Cloud Test at 9 / 9, and Internal Beta at 0 / 0; these are not yet a parity result. Local internal-beta config and a new owner-only Cloud Test-scoped local config both pass preflight with provider calls disabled; same Supabase project, different tenant slugs | Same build/artifact identity; same-user, same-tenant feature/data comparison; route allowlist, tenant isolation, storage proxy and 45-day retention verified from the intended live beta configuration | Use `.private-client-kits/cloud-test-parity.env` to start current source read-only for `veloce-cloud-test`; sign in at that local origin and run the authenticated route/data comparison. Do not mutate service, secrets, traffic, Supabase, or retention |
 | AI quality, evaluation, and observability | Current-source deterministic evaluation passes 16/16; focused observability/trace tests passed 13/13. Hosted model quality, provider-side spend cap, and hosted telemetry remain unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled for the $0 pilot. Use offline receipts and trace tests as local-only evidence until provider-side caps and an approved hosted/model path are independently verified |
 | MiroFish buyer pilot | `sim_f91504972e42` has a hash-bound human review (1 qualified, 1 rejected). Approved v2 run `sim_8f4e26a9d170` completed 10/10 and is now hash-bound reviewed (0 qualified, 2 rejected as weak/self-referential). Both runs are synthetic, not market validation | Human-reviewed posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Do not make another provider request under the prior one-repeat approval. Keep both v2 replies out of demand evidence and prioritize actual buyer interviews |
 | Release evidence and decision | Not ready; the current verifier has no ledger bucket configured (`release_gate:ledger_bucket_not_configured`), no evidence record for the current commit, and 37 evidence fields are unevaluated | Clean commit; all required evidence attached to release ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Reconcile the previously observed private bucket with the verifier's current project/config before configuring it; do not publish a partial record. Complete deployment identities, migrations, test/customer/security receipts, and required approvals first |
@@ -2413,3 +2413,29 @@ does not authorize hosted changes, provider calls, or spending.
 - The selected Chrome tab is a YouTube video with its transcript pane visible.
   The transcript is being viewed in YouTube; this check created no transcript
   archive or video file.
+
+## Continuation Update - Tenant-Scoped Parity Preflight (2026-10-14)
+
+- The current local `internal-beta-parity.env` passes the config preflight and
+  keeps provider calls disabled. Its tenant is `internal-beta`.
+- Local Cloud Test runtime metadata identifies tenant `veloce-cloud-test`
+  and the same Supabase project reference. A separate ignored, mode-600 local
+  config `.private-client-kits/cloud-test-parity.env` was derived without
+  changing the original; it passes the launcher preflight and has provider
+  calls disabled. No credential values were printed.
+- In the existing Work Chrome tabs, the signed-in Cloud Test Notebook showed
+  9 records and 9 active sources, Internal Beta showed 0 and 0, and the local
+  `3985` Notebook showed 0 and 0. These are observations across distinct
+  tenants/runtimes, not same-tenant parity evidence. Browser interaction was
+  stopped when the user changed the active Chrome app.
+- The tenant-boundary verifier passed all 50 routes. The read-only surface-map
+  fixture suite passed 2/2 after allowing its local-only fixture server to
+  bind loopback; no hosted requests, tenant writes, or provider calls occurred.
+- The 26th July ChatGPT Voice gap entry already contained the YouTube link.
+  A private, mode-600 source-pack draft and graph add a concise curator summary
+  of visible YouTube page material and link back to the Skool lesson. They
+  record zero transcript segments, three pending capture items, and
+  `complete: false`; this is not a copied transcript or lesson-page capture.
+  The merged private candidate graph validates at 1,137 nodes and 9,028 edges,
+  with 82/107 lesson IDs still linked to captured lesson text. It was not
+  uploaded, hosted, or imported.
