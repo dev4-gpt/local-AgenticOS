@@ -2721,3 +2721,17 @@ does not authorize hosted changes, provider calls, or spending.
   `veloce-agenticos-2026-veloce-release-ledger` bucket, found no record for
   that exact commit. The verifier reports `releaseReady: false` and 37 release
   evidence categories unevaluated. No ledger record was published.
+
+## Continuation Update - Exact Skool Text-Coverage Crosswalk (2026-10-14)
+
+- Compared all **107 unique page IDs** in the current Drive lesson register to
+  exact `md` page IDs on text-bearing nodes in the locally validated graph.
+  Text is present for **82** pages; the other **25 IDs are explicitly listed**
+  with register titles and created/updated dates in the owner-only,
+  Git-ignored file
+  `tmp/authorized-skool-import/pending-registered-pages-2026-10-14.json`.
+- The graph checked by that crosswalk has SHA-256
+  `69e056cd30c062dcbca4d281a8f34831d16e191f11ad1e44f245f16d2fde3dd7` and
+  validates as **1,138 nodes / 9,029 edges**, with `coverage: partial` and
+  `videoAssetsIncluded: false`. The private gap file is mode `0600`; it holds
+  page metadata only, not lesson text or media. No hosted import was attempted.
