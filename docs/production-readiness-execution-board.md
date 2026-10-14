@@ -19,11 +19,11 @@ release verification without deploying or spending beyond approved limits.
 | Local product and customer journey | In progress; unauthenticated checks pass; authenticated parity preflight reports missing config | Current-source build; automated journey tests; signed-in same-user journey through intake/login, workspace, source selection, draft, provenance, review, and export | Privately populate `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `CLIENT_ALLOWED_USER_EMAILS` in `.private-client-kits/internal-beta-parity.env`; keep `CLIENT_PROVIDER_CALLS_ENABLED=0`. Use only the manifest-verified URL and `internal-beta` tenant, read-only against production-backed project `ppmoqjtmjtfxadsnejqc`; no writes or migrations |
 | Authorized Skool archive and graph import | In progress; 60/107 register IDs captured locally; local graph export built, not hosted-imported | Canonical lesson/date inventory; all authorized page text, links, and available video references/media accounted for; validated private source pack; scoped import receipt; graph counts and link checks | Collect/reconcile the 47 register IDs absent from local v7, resolve the 107-versus-109 lesson count and one uncollected page flagged by both Drive packs, and account for videos/resources; then run a scoped graph import only against the confirmed internal-beta target |
 | Local/cloud parity and hosted security | Hosted changes held; local checks continue | Same build/artifact identity; same-user feature/data comparison; route allowlist, tenant isolation, storage proxy and retention verified from live beta configuration | Resolve the exact beta Supabase project/ref and approved Cloud Run service before any hosted write. Do not mutate the visible production Supabase project or deploy while target is ambiguous |
-| AI quality, evaluation, and observability | Local gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep offline gate on Node 24; inspect the private MiroFish review file with the owner, then run only a bounded provider pilot after live Free-plan/spend-cap confirmation |
+| AI quality, evaluation, and observability | Current-source deterministic gate passed; hosted/model quality unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; end-to-end trace redaction and completeness evidence | Keep provider calls disabled under the $0 paid-spend cap; use current offline receipt and trace-redaction tests as local-only evidence until a separately approved zero-cost hosted/model path is verified |
 | MiroFish buyer pilot | Human review complete; 2/2 responses assessed, 1/2 fully approved; synthetic pilot-quality gate fails; no market validation | Reviewed generated posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Stop spending review time on Post 4; retain it only as a low-value affordability negative control. Any repeat requires separate authorization and a hard cost check |
 | Release evidence and decision | Not ready | Clean commit; all required evidence attached to release ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Keep the release verifier as the authoritative gate; configure a ledger bucket only after target project and cost implications are confirmed |
 
-## Verified Snapshot (2026-10-14)
+## Historical Verified Snapshot (2026-10-14; superseded by continuation updates below)
 
 - Branch `wip/backup-2026-10-03` is pushed through `88f57bd` (local private
   source-pack graph exporter plus three passing focused tests). The ignored,
@@ -358,3 +358,19 @@ release verification without deploying or spending beyond approved limits.
   community-source review control. The private CLI cookie file is absent, so
   no automated parity requests were attempted. This confirms local UI access
   only; same-user cloud parity and the serving build identity remain unverified.
+
+## Continuation Update - Current Source and Browser Evidence
+
+- The current AgentOS branch is clean and pushed at `a6c2876612146b5a60abb6ca889a6843f651e39c`.
+- The deterministic AI release suite was rerun with supported Node `v24.19.0` on
+  that exact commit: 16/16 cases passed, `localGatePassed: true`, zero model
+  samples, and zero provider requests. `productionReady` remains false.
+- The existing signed-in local Chrome tab at `127.0.0.1:3941/memory` visibly
+  reports two tenant memories, 114 graph nodes, 113 edges, and the community
+  source-pack review control. This is local UI evidence only; it does not bind
+  the serving process to current source or prove same-user cloud parity.
+- The production-readiness verifier on this clean commit reports
+  `releaseReady: false`; its immediate blocker is the unconfigured release
+  ledger, and 37 ledger-backed evidence fields remain unevaluated. No browser
+  data was changed, no deployment or hosted write occurred, and no provider
+  call was made.
