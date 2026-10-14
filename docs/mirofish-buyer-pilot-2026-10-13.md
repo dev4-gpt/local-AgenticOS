@@ -16,10 +16,12 @@
 The two active synthetic personas were an AI-consultancy security reviewer and
 a healthcare-administration budget holder. Their generated posts asked for a
 concrete isolated client-document or administrative handoff, an auditable
-draft, and visible costs/access controls before considering a pilot. The
-simulation repeated a `$2,500 setup + $1,250/month` price in both openers; that
-is a prompt-derived scenario detail, not a verified AgentOS price or market
-finding, and must be checked against current positioning before reuse.
+draft, and visible costs/access controls before considering a pilot. Both
+openers repeated the `$2,500 setup + $1,250/month` base price, which is shown
+on the checked-in product-experience Credits page and matches the commercial
+model. This simulation tested reactions to that stated price only; it did not
+test price sensitivity or willingness to pay. The low-budget persona's
+rejection is a synthetic nonbuyer signal, not customer pricing evidence.
 
 ## Interpretation
 
@@ -44,9 +46,10 @@ rounds, the 8 action-log entries reconcile, and the two active buyers each
 generated one novel post quoting the other buyer. Persona attribution and
 completion telemetry pass; there are no duplicate dynamic posts or self-quotes.
 
-The pilot acceptance gate still fails because there is no complete, private
-content-review receipt for both generated posts. Do not treat telemetry or the
-cross-buyer quotes as validated buyer interest. Both buyers' initial posts
-repeat the seeded `$2,500 setup + $1,250/month` figure, so this run cannot test
-price sensitivity; that figure is not verified as AgentOS pricing. No new
-provider request was made for this audit.
+The pilot acceptance gate still fails because only one response was approved;
+the other was reviewed and rejected as role-unfaithful and not actionable for
+the stated low budget. Do not treat telemetry or the cross-buyer quotes as
+validated buyer interest. The repeated `$2,500 setup + $1,250/month` figure is
+the documented public base price, but this single-price synthetic run cannot
+test price sensitivity or willingness to pay. No new provider request was
+made for this audit.

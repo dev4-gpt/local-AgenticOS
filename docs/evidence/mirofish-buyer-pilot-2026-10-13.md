@@ -32,10 +32,13 @@ Git remote disables push, so its local commits are not published upstream.
 
 This run is an engineering smoke test, not evidence of buyer demand, willingness
 to pay, product fit, or production readiness. The synthetic response approved
-by review is not a real buyer signal, and the rejected low-budget mismatch
-should not be used as pricing evidence. The pilot still lacks a verified
-provider-cost receipt, and no live-provider free-tier or $0 spend enforcement
-was independently verified.
+by review is not a real buyer signal. The rejected response is consistent with
+its stated sub-$50 monthly budget and the $1,250/month base price displayed in
+the checked-in product-experience Credits page; treat it as a synthetic
+nonbuyer observation, not evidence of actual price acceptance or rejection by
+the market. The live deployment of that page was not verified in this run. The
+pilot still lacks a verified provider-cost receipt, and no live-provider
+free-tier or $0 spend enforcement was independently verified.
 
 Any new live run requires a fresh, non-replayed simulation configuration and
 confirmation that the provider-side $0 cap is actually enforced; this report

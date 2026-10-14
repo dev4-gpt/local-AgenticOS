@@ -38,9 +38,15 @@ the market.
 
 The frame does not make the population weights, personas, willingness-to-pay,
 or generated opinions empirically representative. It cannot replace customer
-interviews. The October 13 live MiroFish smoke remains a failed quality gate:
-both generated buyer responses were rejected by the saved quality annotations,
-reviewer attribution is absent, and provider usage/billing was not independently
-verified. Do not launch a 10,000-agent run. First disposition the two rejected
-responses, correct the seeded pricing/brief mismatch, and obtain verifiable
-provider-side $0 spend controls before considering another small simulation.
+interviews. The October 13 live MiroFish smoke completed 10/10 rounds and
+generated two buyer responses. The private schema-v2 review identifies Aryaman
+and binds both responses to their saved content hashes and quoted parent posts;
+one response was approved and the low-budget response was rejected as
+role-unfaithful and not actionable. This is a completed human review, but not an
+all-content approval or a market-validation pass. The $2,500 setup / $1,250
+monthly price is displayed on the checked-in product-experience Credits page;
+the smoke tested that one price only, and the live page deployment was not
+verified in this run. Provider usage/billing and enforcement of the $0 spend
+limit remain unverified. Do not launch a 10,000-agent run; real buyer
+interviews and a verified provider-cost receipt remain the appropriate next
+evidence.
