@@ -281,6 +281,28 @@ nodes, 9,029 relations, and `coverage: partial`. Its byte size matches the
 Drive artifact, but no content hash was available to prove the Drive copy is
 identical. No Drive content or hosted graph data was changed.
 
+### Archive and Import Crosswalk Refresh - 2026-10-14
+
+A fresh read-only listing of `School Tabs Agent OS` returned 113 items. The
+latest manifest still says 9/108 dated lesson PDFs archived and no verified
+video downloads. Filename crosswalk against the 25 pending register entries
+found no likely archived page files among the folder's 21 PDF/HTML/JSON/JSON-LD
+items. The checked-in Skool register has 107 distinct lesson IDs: 106 dated
+lessons plus the separate `AGENT OS System!` page. This confirms the register
+count, but does not resolve why the Drive manifest says 108 dated lessons.
+
+The May 11-30 Drive source pack contains 19 text segments across 10 unique
+lesson URLs, with 259 raw links; its sanitized local copy has 258 links after
+omitting one private-address link and contains no video bytes. The standard
+classroom-pack CLI rejects that sanitized file's mixed-type `skipped` metadata
+(`classroom_skipped_entries_invalid`). After normalizing only that metadata in
+memory, the strict coverage gate still rejects it (`classroom_export_incomplete`):
+five skipped entries, no pending-page array, no declared inventory, and no
+exhausted discovery queue. This partial package must not be imported as a
+complete archive. A raw Drive fetch of the 8.46 MB graph artifact still fails
+with a transport error, so remote-byte identity remains unverified. No Drive
+file or hosted graph was changed.
+
 ## Offline MiroFish V1 Audit - 2026-10-14
 
 The current AgentOS auditor was run read-only against the saved synthetic v1
