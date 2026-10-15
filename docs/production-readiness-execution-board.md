@@ -10,6 +10,31 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Current-HEAD Verification - 2026-10-15
+
+On clean pushed HEAD `cd85ded7f87fb179407fee9deb8057e534a9fb67`, supported
+Node `v24.18.0` passed `npm run typecheck`. The offline AI release evaluation
+passed **16/16** deterministic cases, with no model samples/provider calls;
+its local gate passes but `productionReady=false`. The focused suite passed
+**384/385** tests with one intentional skip. The strict release verifier bound
+to this exact HEAD returns `releaseReady=false`, `ledger_bucket_not_configured`,
+and **38 evidence categories not evaluated**. No ledger write, deployment,
+hosted mutation, or provider call occurred.
+
+The exact Skool text-gap report on the current private candidate remains
+**87/107 registered lessons with linked capture text**, **20 without**, and
+**226 linked text segments**. The July 26 ChatGPT Voice curator-summary node is
+already present in the graph, but its provenance explicitly says it is not a
+transcript or captured Skool lesson body; it has no `hasTextCaptureSegment`
+edge and does not close that lesson gap. The separate legacy source-pack field
+`pendingPages=25` remains unreconciled with the exact 20 lesson-body gaps.
+
+The Aryaman (Work) Chrome window is confirmed in the native Chrome view on the
+live local `127.0.0.1:41774/memory` page (23 tenant memories, 32 graph nodes,
+54 edges). This confirms the correct profile/window is accessible; it is not a
+new cloud parity, journey, or tenant-isolation receipt. No UI controls were
+used and no tenant data was changed.
+
 ### Current Checkout and Drive Archive Reconciliation - 2026-10-15
 
 On clean pushed source commit `269176534b047062174e6e5a304a43bbfdd3c1d7`,
