@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Archive, BookOpenText, CalendarDays, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileText, LockKeyhole, Network, Plus, RefreshCw, Save, Tag, Target, Trash2, Upload } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -52,6 +52,7 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   const [graphBusy, setGraphBusy] = useState(false);
   const [selectedGraphNodeId, setSelectedGraphNodeId] = useState<string | null>(null);
   const [selectedGraphRecord, setSelectedGraphRecord] = useState<RecordItem | null>(null);
+  const graphEmptyRetryRef = useRef(false);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -109,7 +110,7 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     setBusy(false);
   }
 
-  async function loadGraph() {
+  const loadGraph = useCallback(async () => {
     if (surface !== "memory") return;
     const response = await fetch("/api/client-runtime/memory-graph", { cache: "no-store" }).catch(() => null);
     const data = await response?.json().catch(() => null);
@@ -123,8 +124,8 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
       setGraphLoadState("error");
     }
     return false;
-  }
-  useEffect(() => { void loadGraph(); }, [surface]);
+  }, [surface]);
+  useEffect(() => { void loadGraph(); }, [loadGraph]);
 
   useEffect(() => {
     const query = memoryQuery.trim();
@@ -259,6 +260,13 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   }
 
   const active = useMemo(() => records.filter((record) => record.status !== "archived"), [records]);
+  useEffect(() => { graphEmptyRetryRef.current = false; }, [surface]);
+  useEffect(() => {
+    if (surface !== "memory" || recordsLoadState !== "loaded" || !active.some((record) => record.status === "active") || graphLoadState !== "loaded" || graphNodes.length > 0 || graphEmptyRetryRef.current) return;
+    graphEmptyRetryRef.current = true;
+    const timer = window.setTimeout(() => { void loadGraph(); }, 350);
+    return () => window.clearTimeout(timer);
+  }, [surface, recordsLoadState, active, graphLoadState, graphNodes.length, loadGraph]);
   const goalStats = useMemo(() => {
     const total = records.length;
     const completed = records.filter((record) => record.status === "done").length;

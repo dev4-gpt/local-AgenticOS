@@ -59,6 +59,32 @@ test("an empty graph with active memories identifies a stale graph index", async
   await expect(page.getByText("No graph links yet. Add two related tenant memories and refresh the map.", { exact: true })).toHaveCount(0);
 });
 
+test("a transient empty graph read is retried once without rebuilding the index", async ({ page, context }) => {
+  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
+  let graphReads = 0;
+  let graphRefreshes = 0;
+  await page.route("**/api/client-runtime/records?**", (route) => route.fulfill({
+    status: 200,
+    json: { ok: true, records: [{ id: "memory-1", title: "Existing memory", content: "Approved content.", status: "active", created_at: "2026-10-14T12:00:00.000Z" }], hasMore: false },
+  }));
+  await page.route("**/api/client-runtime/memory-graph", async (route) => {
+    if (route.request().method() === "POST") {
+      graphRefreshes += 1;
+      return route.fulfill({ status: 200, json: { ok: true } });
+    }
+    graphReads += 1;
+    return route.fulfill({ status: 200, json: graphReads === 1
+      ? { ok: true, nodes: [], edges: [] }
+      : { ok: true, nodes: [{ id: "node-1", record_id: "memory-1", kind: "document", label: "Existing memory", metadata: {} }], edges: [] } });
+  });
+
+  await page.goto("/memory");
+  await page.getByRole("button", { name: /^graph$/i }).click();
+  await expect(page.getByText("Existing memory", { exact: true }).first()).toBeVisible();
+  expect(graphReads).toBe(2);
+  expect(graphRefreshes).toBe(0);
+});
+
 test("creating a tenant memory refreshes its graph index", async ({ page, context }) => {
   await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
   let created = false;

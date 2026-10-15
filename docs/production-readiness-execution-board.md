@@ -22,6 +22,18 @@ reliability remains unresolved. No navigation, reload, map refresh, tenant
 write, provider call, or hosted change was performed. Details:
 [live workspace check](./live-workspace-check-2026-10-15-work-profile.md).
 
+### Empty Graph Read Recovery - 2026-10-15
+
+The Memory UI now performs one delayed, read-only retry when its first graph
+response is empty but the tenant has active memories. It does not call the
+graph rebuild RPC and leaves the existing stale-index message in place if the
+second response is still empty. A new synthetic browser regression asserts
+that the retry recovers a transient empty response and sends zero refresh
+POSTs. The full focused Memory browser file passed **7/7** with mocked APIs;
+`npm run typecheck` passed. These are local code checks, not a hosted fix or
+proof that Cloud Test's intermittent empty graph has the same cause. No hosted
+service or tenant data changed.
+
 ### Current Candidate Checkpoint - 2026-10-14
 
 On current `HEAD` `3d0fbfe9bdb451872d5e4f22351a2f8122f5934c`, supported Node
