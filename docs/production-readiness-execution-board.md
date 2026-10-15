@@ -4316,3 +4316,33 @@ does not authorize hosted changes, provider calls, or spending.
   `docs/retention-data-class-inventory-2026-10-15.md`; use that inventory as
   the retention workstream's checklist instead of assuming the global setting
   covers every table or backup.
+
+## Continuation Update - Local Acceptance Refresh (2026-10-15)
+
+- On pushed source `6561dd56c0a0cc4e6ac137c1ed0ff64d9f8ab467`, the Next.js
+  production build completed successfully. It compiled and emitted the
+  client login, Notebook, memory, client-runtime API, source-import, and
+  build-identity routes. This is a local build artifact, not a deployed image
+  or source/image identity receipt.
+- The isolated source-import consent browser suite passed **8/8** after its
+  first attempt was denied permission to bind port 3939. The approved retry
+  used port 3949, synthetic session state, intercepted APIs, and provider calls
+  disabled. Notebook Studio's source-ID/provenance/review/download browser
+  test passed **1/1** using intercepted fixtures; neither browser suite wrote
+  to a tenant or called an AI provider.
+- `npm run verify:mirofish-buyer-artifacts` passed **29/29** local artifact and
+  audit tests. This validates the audit harness and retained synthetic
+  evidence; it is not new buyer validation and no simulation/provider run was
+  made in this refresh.
+- Read-only production-readiness verification was repeated with the
+  owner-confirmed ledger bucket `veloce-agenticos-2026-veloce-release-ledger`.
+  The local process could not read/list it (`release_ledger_lookup_unavailable`);
+  it did not infer the record is absent and made no write. The default run's
+  `ledger_bucket_not_configured` is therefore a usage/configuration issue, but
+  the known-bucket run demonstrates the remaining local credential/access
+  issue. All ledger-backed deployment, migration, customer-journey and reviewer
+  checks remain unevaluated. No release record, hosted migration, deploy, or
+  provider request occurred.
+- The full focused suite, typecheck, retention/config fixtures, lifecycle
+  suite, and deterministic AI evaluation results from this commit are recorded
+  in the preceding continuation update; those remain local evidence only.
