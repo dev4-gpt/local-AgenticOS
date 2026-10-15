@@ -67,6 +67,22 @@ the existing middleware-convention deprecation warning; it did not prevent the
 build. This is local build evidence only and does not attest a hosted image,
 deployment, customer journey, or release gate.
 
+### Current-Source Local Customer-Workflow Browser Checks - 2026-10-14
+
+On source commit
+`3369fb6e972998c05657ba132bef34c93a14f523`, the isolated client-runtime
+production server ran on dedicated loopback port 3948 with
+`CLIENT_PROVIDER_CALLS_ENABLED=0`. The source-import browser suite passed
+**8/8**, covering upload consent, renewed permission between batches, invalid
+batch rejection, failure cleanup, safe link rendering, and confirmed deletion.
+The Notebook Studio browser test passed **1/1**, covering source-ID submission,
+source-register and citation display, review, and artifact download.
+
+These tests use synthetic auth and mocked APIs in a Playwright-owned browser;
+they do not perform a live import, database write, provider request, or hosted
+customer journey. They strengthen local UI acceptance only; current hosted
+J01-J15 evidence remains open.
+
 ### MiroFish Artifact Recheck - 2026-10-15
 
 On MiroFish checkout `73f9a3b`, the bounded v2/smoke tests pass **25/25**
