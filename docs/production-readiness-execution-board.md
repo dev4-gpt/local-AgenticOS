@@ -3597,3 +3597,7 @@ does not authorize hosted changes, provider calls, or spending.
   hosted migrations, signed-in same-user parity, and release-ledger publication
   remain open. No service configuration, traffic, IAM, database, storage, or
   ledger record was changed.
+- On the pushed current source commit `f53b841`, the focused build-identity
+  tests passed **2/2**. They verify the authenticated, uncached identity route
+  and that image builds stamp only a clean full Git commit. This prepares a
+  verifiable future image; it does not attest the existing Cloud Test image.
