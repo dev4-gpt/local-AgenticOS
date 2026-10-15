@@ -77,13 +77,25 @@ evaluated**. No release-ledger lookup was attempted because no target bucket
 was configured. No deploy, hosted write, tenant write, or provider request was
 made.
 
-The connected Chrome automation inventory currently exposes a single Chrome
-profile labeled **College**, with Colab and unrelated tabs; it does not expose
-the user-designated Aryaman (Work) profile. Per the user's instruction, no
-College tab was opened or used. The Work profile may remain open in Chrome, but
-it is not reachable through this turn's connected browser surface. This does
-not change earlier verified Work-profile observations; it limits new browser
-checks until that profile is exposed to the connector.
+The user-provided appshot confirms the desired **Aryaman (Work)** Chrome window
+is open on the Veloce Memory page. However, the native Chrome automation binding
+resolved to a different **Aryaman (College)** window and displayed a Google
+Drive consent screen. No control was activated there and no consent was given;
+the College profile remains off-limits. The mismatch is window targeting, not
+evidence that Work is closed. Work-profile browser checks remain pending until
+the automation can bind to that exact window.
+
+### MiroFish Offline Pilot Harness - 2026-10-15
+
+In the clean `buyer-pilot-telemetry` checkout of the separate
+`MiroFish-Buyer-Pilot` repository, its existing virtualenv ran the focused v2
+buyer-pilot and bounded-smoke tests: **25 passed**. The tests cover exact
+synthetic cohort/profile count, the two-active-buyer schedule, 10-round bounds,
+hash-bound artifacts, no graph writes, and replay/preflight rejection. They
+are offline contract tests only: no simulation was run and no Groq or Zep
+request was made. This validates the pilot harness, not buyer demand or product
+quality; the weak/self-referential prior simulated replies remain rejected as
+demand evidence.
 
 ### Work-Profile Runtime Identity Recheck - 2026-10-15
 
