@@ -10,19 +10,23 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
-### Current-Checkout Regression Recheck - 2026-10-15
+### Current-Checkout Regression Recheck - 2026-10-15 (commit `6006e53`)
 
-On application source commit `29e6a88da9f5e2daf1f917b6d932dfda37cbed4b`,
-supported Node `v24.19.0` passed `npm run typecheck` and the focused suite passed
-**384/385** tests (one intentional skip). The documentation-only checkout at
-`8b1be3c8659991e95aea4c22fc6a0f5e1a447a42` had one uncommitted readiness-board
-edit during these checks; therefore this is regression evidence for the
-application source, not a clean-commit release receipt. The AI evaluation was
-not accepted from the first attempt because it ran under unsupported Node
-`v26.4.0` on a dirty worktree; a clean supported-runtime rerun is required.
-No provider calls, hosted writes, or deployment occurred.
+The current clean documentation commit is
+`6006e53b8fa0cd16343b3d7ef94fd00190c90fb2`; application code remains unchanged
+from tested source `29e6a88da9f5e2daf1f917b6d932dfda37cbed4b`. Supported Node
+`v24.19.0` passed `npm run typecheck`; the focused suite passed **384/385** tests
+with one intentional skip. The clean-commit offline AI evaluation passed
+**16/16**, `nodeEngineSupported=true`, `localGatePassed=true`,
+`modelSamples=0`, and `productionReady=false`; no provider request was made.
+The strict production verifier returned `releaseReady=false`,
+`ledger_bucket_not_configured`, and **38 required evidence categories not
+evaluated**. The Work Chrome screenshot confirms the Browser MCP extension is
+installed and enabled, but no browser-control MCP tool is exposed to this
+Codex session; no signed-in browser journey was run. No deployment, hosted
+write, or release-ledger publication occurred.
 
-### Fresh Verification - 2026-10-15 (source `29e6a88`, recorded `8b1be3c`)
+### Fresh Verification - 2026-10-15 (source `29e6a88`, recorded `6006e53`)
 
 On clean, pushed source commit `29e6a88da9f5e2daf1f917b6d932dfda37cbed4b`, supported
 Node `v24.18.0` passed `npm run typecheck`. The offline AI release evaluation
