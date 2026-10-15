@@ -10,6 +10,18 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Cloud Test Memory Snapshot - 2026-10-15
+
+The existing Cloud Test app tab in the Aryaman (Work) Chrome window rendered
+23 tenant memories and 32 graph nodes / 54 edges on its Memory page. The local
+mirror's previous visible snapshot had the same counts. This is limited,
+point-in-time UI parity evidence only: same-user/tenant identity, source and
+artifact identity, and configuration were not compared. An earlier fresh
+Cloud Test visit/reload showed 23 memories but 0 graph nodes/edges, so graph
+reliability remains unresolved. No navigation, reload, map refresh, tenant
+write, provider call, or hosted change was performed. Details:
+[live workspace check](./live-workspace-check-2026-10-15-work-profile.md).
+
 ### Current Candidate Checkpoint - 2026-10-14
 
 On current `HEAD` `3d0fbfe9bdb451872d5e4f22351a2f8122f5934c`, supported Node
