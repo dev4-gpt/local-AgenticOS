@@ -293,11 +293,20 @@ if (!publishLedger) {
   if (!ledgerRecordFile && !ledgerBucket) {
     releaseGateFailures.push("ledger_bucket_not_configured");
     warnings.push("Release ledger bucket is not configured; pass --ledger-bucket or set VELOCE_RELEASE_LEDGER_BUCKET after verifying the target project.");
-  } else if (!lookup) {
+  } else if (lookup?.status === "missing") {
     releaseGateFailures.push("release_ledger_record_missing");
     warnings.push(ledgerRecordFile
       ? `No valid release ledger record found in ${ledgerRecordFile}.`
       : `No published release ledger record found for ${releaseKey} in gs://${ledgerBucket}/releases/${releaseKey}/.`);
+  } else if (lookup?.status === "unavailable") {
+    releaseGateFailures.push("release_ledger_lookup_unavailable");
+    warnings.push("Could not verify the release ledger listing or record contents; check Cloud SDK credentials and read access.");
+  } else if (lookup?.status === "invalid") {
+    releaseGateFailures.push("release_ledger_record_invalid");
+    warnings.push("The release ledger record could not be parsed as valid JSON.");
+  } else if (!lookup) {
+    releaseGateFailures.push("release_ledger_lookup_unavailable");
+    warnings.push("Could not verify the release ledger because its bucket configuration is invalid.");
   } else {
     ledgerRecord = lookup.record;
     ledgerRecordPath = lookup.path;
@@ -480,11 +489,6 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function gcloudTextSoft(command) {
-  const result = spawnSync("gcloud", command, { encoding: "utf8" });
-  return result.status === 0 ? result.stdout.trim() : "";
-}
-
 function captureLiveClientCloudConfig(expected, account) {
   if (!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(expected?.project ?? "")
       || !/^[a-z]+-[a-z]+[0-9]+$/.test(expected?.region ?? "")
@@ -531,18 +535,32 @@ function publishToLedger(evidenceRecord) {
 function fetchLatestLedgerRecord(forCommit) {
   const override = ledgerRecordFile;
   if (override) {
-    try { return { record: JSON.parse(readFileSync(resolve(override), "utf8")), path: override }; } catch { return null; }
+    try { return { status: "found", record: JSON.parse(readFileSync(resolve(override), "utf8")), path: override }; }
+    catch { return { status: "invalid" }; }
   }
-  const listing = gcloudTextSoft(["storage", "ls", `gs://${ledgerBucket}/releases/${forCommit}/`]);
-  if (!listing) return null;
-  let objects = listing.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).sort();
+  const listing = runGcloudRead(["storage", "ls", `gs://${ledgerBucket}/releases/${forCommit}/`]);
+  if (!listing.ok) {
+    return /matched no objects|no urls matched/i.test(listing.output)
+      ? { status: "missing" }
+      : { status: "unavailable" };
+  }
+  let objects = listing.stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).sort();
   const environmentFilter = valueAfter("--environment");
   if (environmentFilter) objects = objects.filter((path) => path.includes(`/${environmentFilter}-`));
   const latest = objects[objects.length - 1];
-  if (!latest) return null;
-  const contents = gcloudTextSoft(["storage", "cat", latest]);
-  if (!contents) return null;
-  try { return { record: JSON.parse(contents), path: latest }; } catch { return null; }
+  if (!latest) return { status: "missing" };
+  const contents = runGcloudRead(["storage", "cat", latest]);
+  if (!contents.ok) return { status: "unavailable" };
+  try { return { status: "found", record: JSON.parse(contents.stdout), path: latest }; }
+  catch { return { status: "invalid" }; }
+}
+
+function runGcloudRead(command) {
+  const result = spawnSync("gcloud", command, { encoding: "utf8", timeout: 15_000, maxBuffer: 2_000_000 });
+  if (result.error || result.status !== 0) {
+    return { ok: false, output: `${result.stderr ?? ""}\n${result.stdout ?? ""}` };
+  }
+  return { ok: true, stdout: result.stdout.trim() };
 }
 
 function assertNoSecretLikeValues(value, path = "evidence") {

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolve } from "node:path";
@@ -24,6 +24,40 @@ test("release verifier records the current revision without secrets", () => {
   expect(report.notEvaluated).toContain("legalApproval_approved");
   expect(result.stdout).not.toContain("veloce-agenticos-2026-veloce-release-ledger");
   expect(result.stdout).not.toMatch(/sk-[A-Za-z0-9_-]{16,}|service_role|api[_ -]?key\s*[:=]/i);
+});
+
+test("release ledger lookup distinguishes an absent record from an unavailable check", () => {
+  const dir = mkdtempSync(join(tmpdir(), "veloce-ledger-lookup-"));
+  const bin = join(dir, "bin");
+  const fakeGcloud = join(bin, "gcloud");
+  const script = resolve(process.cwd(), "scripts/verify-production-readiness.mjs");
+  mkdirSync(bin);
+  const inspect = (response: string) => {
+    writeFileSync(fakeGcloud, `#!/bin/sh\n${response}\n`);
+    chmodSync(fakeGcloud, 0o700);
+    const result = spawnSync(process.execPath, [script, "--allow-dirty"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${bin}:${process.env.PATH ?? ""}`,
+        VELOCE_RELEASE_LEDGER_BUCKET: "agentos-release-ledger-test",
+      },
+    });
+    expect(result.status).toBe(0);
+    return JSON.parse(result.stdout);
+  };
+  try {
+    const unavailable = inspect('echo "Unable to initialize credentials database" >&2\nexit 1');
+    expect(unavailable.failures).toContain("release_gate:release_ledger_lookup_unavailable");
+    expect(unavailable.failures).not.toContain("release_gate:release_ledger_record_missing");
+
+    const missing = inspect('echo "CommandException: One or more URLs matched no objects." >&2\nexit 1');
+    expect(missing.failures).toContain("release_gate:release_ledger_record_missing");
+    expect(missing.failures).not.toContain("release_gate:release_ledger_lookup_unavailable");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("strict release acceptance does not trust an unpublished local ledger file", () => {
