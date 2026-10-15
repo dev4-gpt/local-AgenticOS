@@ -6,26 +6,27 @@ const expected = {
   bucket: "agentos-mvp-veloce-internal-beta",
   namespace: "internal-beta",
   origin: "https://agentos-internal-beta-vbimnfseva-ew.a.run.app",
-  retentionDays: 45,
+  retentionDays: 28,
+  recoveryDays: 7,
 };
 
 function snapshot() {
   return {
     name: expected.bucket,
     cors_config: [{ origin: [expected.origin], method: ["GET", "PUT", "OPTIONS"], responseHeader: ["Content-Type", "ETag"] }],
-    lifecycle_config: { rule: [{ action: { type: "Delete" }, condition: { age: 45, matchesPrefix: ["internal-beta/"] } }] },
-    soft_delete_policy: { retentionDurationSeconds: 0 },
+    lifecycle_config: { rule: [{ action: { type: "Delete" }, condition: { age: 28, matchesPrefix: ["internal-beta/"] } }] },
+    soft_delete_policy: { retentionDurationSeconds: 604800 },
   };
 }
 
-test("storage preflight accepts same-origin proxy storage and 45-day object policy", () => {
+test("storage preflight accepts 28-day active storage plus seven-day recovery", () => {
   const result = evaluateClientStorageConfig(snapshot(), expected);
-  expect(result).toMatchObject({ ok: true, failures: [] });
+  expect(result).toMatchObject({ ok: true, maximumRecoverableDays: 35, failures: [] });
   const cli = spawnSync(process.execPath, ["scripts/verify-client-storage-config.mjs",
     "--bucket", expected.bucket, "--namespace", expected.namespace, "--expected-origin", expected.origin,
   ], { input: JSON.stringify(snapshot()), encoding: "utf8" });
   expect(cli.status).toBe(0);
-  expect(JSON.parse(cli.stdout)).toMatchObject({ ok: true, failures: [] });
+  expect(JSON.parse(cli.stdout)).toMatchObject({ ok: true, maximumRecoverableDays: 35, failures: [] });
 });
 
 test("storage preflight checks exact retention and soft-delete policy, not direct-client CORS", () => {
@@ -35,9 +36,9 @@ test("storage preflight checks exact retention and soft-delete policy, not direc
   bucket.soft_delete_policy.retentionDurationSeconds = 604800;
   const result = evaluateClientStorageConfig(bucket, expected);
   expect(result.failures).toEqual(expect.arrayContaining([
-    "overlapping_delete_rule_unreviewed",
-    "exact_retention_delete_rule_missing", "soft_delete_extends_retention",
+    "overlapping_delete_rule_unreviewed", "exact_retention_delete_rule_missing",
   ]));
+  expect(result.failures).not.toContain("recovery_window_not_seven_days");
   expect(result.failures).not.toContain("runtime_origin_not_allowed");
 });
 

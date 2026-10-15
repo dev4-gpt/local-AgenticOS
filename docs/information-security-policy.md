@@ -75,22 +75,31 @@ platform's behalf.
 - Retention periods must be configured per tenant and enforced through the
   offboarding/deletion process, with independent post-deletion verification
   as standard practice, not an occasional check.
-- The owner selected a 45-day customer-data window measured separately from
-  each item's creation time. Financial-record retention still needs a named
-  billing reviewer's approved schedule, and the covered data classes and
-  vendor/backup deletion procedures still need review. The checked-in
+- The owner selected 28 active days from each content item's creation, plus
+  a separate seven-day object recovery window (up to 35 days recoverable).
+  Financial/credit-record retention still needs a named billing reviewer's
+  approved schedule, and the complete data-class inventory plus vendor/backup
+  deletion procedures still need review. The checked-in
   `supabase-client-runtime-record-retention.sql` adds a service-role-only,
-  bounded 45-day runtime-record purge with graph cleanup and audit counts.
+  bounded tenant-runtime-record purge using the configured retention window,
+  with graph cleanup and minimized audit counts. The new
+  `supabase-client-retention-policy-28.sql` caps tenant configuration and
+  existing artifact/source/learning expiry metadata at 28 days; neither file
+  alone proves that every tenant table, export, backup, or vendor copy expires
+  on schedule.
   After that migration and `supabase-v48-ecc-learning-retention-references.sql`
   are deployed and verified, `client-lifecycle --mode retention` previews
-  runtime records and learning items due at least 45 days after creation.
+  runtime records and learning items due at the configured window (maximum 28
+  days after creation).
   Apply requires `--apply --confirm-retention-records --confirm-retention-learning`;
   the CLI checks the hosted learning-reference guard before any purge. This is
-  not scheduled or deployed yet. The two deletion calls are not one database
+  not scheduled or deployed yet. The existing seven-day object recovery is
+  intentionally retained, so storage bytes can remain recoverable through day
+  35. The two deletion calls are not one database
   transaction: review each result and rerun bounded batches after a partial
   failure. Tenant storage lifecycle and offboarding do not prove a
-  45-day purge of all database rows, private exports, backups, and vendor
-  copies. The read-only
+  complete 28-day purge of all in-scope database rows, private exports,
+  backups, and vendor copies. The read-only
   `scripts/audit-client-retention-snapshot.mjs` inventories age from a private
   lifecycle export and counts missing, invalid, expired, and over-window
   artifact/Notebook source expiry metadata without printing content. A missing

@@ -205,7 +205,7 @@ test("source upload requires permission and stores through the authenticated ser
     return uploadRoute.POST(new Request("https://tenant.example.invalid/api/client-runtime/source-import/upload", { method: "POST", body: form }));
   };
   try {
-    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "45", CLIENT_WORKER_TOKEN: "unit-test-worker-token-credential-2026" });
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "28", CLIENT_WORKER_TOKEN: "unit-test-worker-token-credential-2026" });
     const withoutConsent = await post(false);
     expect(withoutConsent.status).toBe(400);
     expect((await withoutConsent.json()).error).toBe("source_import_permission_required");
@@ -244,7 +244,7 @@ test("source upload fails before artifact or storage writes when the guarded imp
     "@/lib/clientSourcePack": { parseClientSourcePack },
   });
   try {
-    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "45", CLIENT_WORKER_TOKEN: "unit-test-worker-token-credential-2026" });
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "28", CLIENT_WORKER_TOKEN: "unit-test-worker-token-credential-2026" });
     delete process.env.CLIENT_WORKER_TOKEN;
     const form = new FormData();
     form.set("file", new File([bytes], "source-pack.json", { type: "application/json" }));
@@ -285,7 +285,7 @@ test("source upload removes partial storage and artifact state when verification
     "@/lib/clientSourcePack": { parseClientSourcePack },
   });
   try {
-    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "45", CLIENT_WORKER_TOKEN: "unit-test-worker-token-credential-2026" });
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "28", CLIENT_WORKER_TOKEN: "unit-test-worker-token-credential-2026" });
     const form = new FormData();
     form.set("file", new File([bytes], "source-pack.json", { type: "application/json" }));
     form.set("permissionConfirmed", "true");
@@ -302,7 +302,7 @@ test("source upload preserves its pending artifact record until storage cleanup 
   const savedEnv = { ...process.env };
   const bytes = Buffer.from(JSON.stringify(examplePack()));
   try {
-    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "45", CLIENT_WORKER_TOKEN: workerToken });
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "28", CLIENT_WORKER_TOKEN: workerToken });
     for (const scenario of [
       { storageDelete: false, artifactDelete: true, expectedCalls: ["create_client_runtime_artifact", "storage_upload", "storage_delete"] },
       { storageDelete: true, artifactDelete: false, expectedCalls: ["create_client_runtime_artifact", "storage_upload", "storage_delete", "delete_client_runtime_artifact"] },

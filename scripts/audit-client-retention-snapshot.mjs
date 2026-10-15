@@ -9,17 +9,17 @@ function record(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : null;
 }
 
-export function auditClientRetentionSnapshot(snapshot, { windowDays = 45, asOf = new Date().toISOString() } = {}) {
+export function auditClientRetentionSnapshot(snapshot, { windowDays = 28, asOf = new Date().toISOString() } = {}) {
   const input = record(snapshot);
   const tables = record(input?.tables);
   const now = Date.parse(asOf);
   if (input?.schemaVersion !== 3 || typeof input.slug !== "string" || !/^[a-z][a-z0-9-]{2,40}$/.test(input.slug)
-    || !tables || !Number.isSafeInteger(windowDays) || windowDays < 1 || windowDays > 3650 || !Number.isFinite(now)
+    || !tables || !Number.isSafeInteger(windowDays) || windowDays < 1 || windowDays > 28 || !Number.isFinite(now)
     || !Number.isFinite(Date.parse(input.exportedAt))) throw new Error("retention_snapshot_invalid");
   const tenant = tables.client_tenants;
   if (!Array.isArray(tenant) || tenant.length !== 1 || tenant[0]?.slug !== input.slug) throw new Error("retention_snapshot_tenant_invalid");
   const configuredDays = tenant[0].retention_days;
-  if (!Number.isSafeInteger(configuredDays) || configuredDays < 1 || configuredDays > 3650) throw new Error("retention_snapshot_tenant_invalid");
+  if (!Number.isSafeInteger(configuredDays) || configuredDays < 1 || configuredDays > 28) throw new Error("retention_snapshot_tenant_invalid");
 
   const cutoff = now - windowDays * DAY_MS;
   const tableInventory = [];
@@ -82,7 +82,7 @@ export function auditClientRetentionSnapshot(snapshot, { windowDays = 45, asOf =
     retentionEnforced: false,
     deletionCandidatesApproved: false,
     limitations: [
-      "Record age is an inventory signal, not deletion eligibility or a 45-day enforcement receipt.",
+      "Record age is an inventory signal, not deletion eligibility or a 28-day enforcement receipt.",
       "Snapshot table and object-store completeness require separate verification.",
       "Expiry diagnostics predict read-guard impact only; they do not prove byte deletion or authorize a blanket backfill.",
       "Managed-credit, billing, refund, backup, and vendor records require separate reviewed retention rules.",

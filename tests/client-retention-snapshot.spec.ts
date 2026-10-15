@@ -8,7 +8,7 @@ import { auditClientRetentionSnapshot } from "../scripts/audit-client-retention-
 const asOf = "2026-10-07T00:00:00.000Z";
 const old = "2026-08-01T00:00:00.000Z";
 const recent = "2026-10-01T00:00:00.000Z";
-const boundary = "2026-08-23T00:00:00.000Z";
+const boundary = "2026-09-09T00:00:00.000Z";
 
 function snapshot() {
   return {
@@ -16,7 +16,7 @@ function snapshot() {
     slug: "tenant-a",
     exportedAt: asOf,
     tables: {
-      client_tenants: [{ slug: "tenant-a", status: "active", retention_days: 45, created_at: old }],
+      client_tenants: [{ slug: "tenant-a", status: "active", retention_days: 28, created_at: old }],
       client_runtime_records: [
         { id: "private-record-id", tenant_slug: "tenant-a", content: "private customer content", created_at: old },
         { id: "new-record-id", tenant_slug: "tenant-a", content: "recent customer content", created_at: recent },
@@ -29,8 +29,8 @@ function snapshot() {
 }
 
 test("retention audit reports age and protected classes without exposing row content", () => {
-  const report = auditClientRetentionSnapshot(snapshot(), { windowDays: 45, asOf });
-  expect(report.configuredTenantRetentionDays).toBe(45);
+  const report = auditClientRetentionSnapshot(snapshot(), { windowDays: 28, asOf });
+  expect(report.configuredTenantRetentionDays).toBe(28);
   expect(report.windowMatchesTenantConfiguration).toBe(true);
   expect(report.clockStart).toBe("item.created_at");
   expect(report.retentionEnforced).toBe(false);
@@ -63,17 +63,17 @@ test("expiry inventory measures legacy read impact without exposing artifact con
   ] } };
   const report = auditClientRetentionSnapshot(input, { asOf });
   expect(report.expiryInventory).toEqual([
-    { table: "client_runtime_artifacts", present: true, rows: 5, missingExpiry: 1, invalidExpiry: 1, expiredStillPresent: 1, expiryAfterWindow: 1, readGuardWouldHide: 3 },
-    { table: "client_notebook_sources", present: true, rows: 3, missingExpiry: 1, invalidExpiry: 0, expiredStillPresent: 1, expiryAfterWindow: 0, readGuardWouldHide: 1 },
+    { table: "client_runtime_artifacts", present: true, rows: 5, missingExpiry: 1, invalidExpiry: 1, expiredStillPresent: 1, expiryAfterWindow: 3, readGuardWouldHide: 3 },
+    { table: "client_notebook_sources", present: true, rows: 3, missingExpiry: 1, invalidExpiry: 0, expiredStillPresent: 1, expiryAfterWindow: 2, readGuardWouldHide: 1 },
   ]);
   expect(report.retentionEnforced).toBe(false);
   expect(JSON.stringify(report)).not.toMatch(/private-document|private-object|tenant-a/);
 });
 
-test("retention audit counts an item due at exactly 45 days from creation", () => {
+test("retention audit counts an item due at exactly 28 days from creation", () => {
   const input = snapshot();
   input.tables.client_runtime_records = [{ id: "boundary-id", tenant_slug: "tenant-a", created_at: boundary }];
-  const report = auditClientRetentionSnapshot(input, { windowDays: 45, asOf });
+  const report = auditClientRetentionSnapshot(input, { windowDays: 28, asOf });
   expect(report.tableInventory.find((item) => item.table === "client_runtime_records")).toMatchObject({
     rows: 1, olderThanWindow: 0, dueAtOrBeyondWindow: 1,
   });

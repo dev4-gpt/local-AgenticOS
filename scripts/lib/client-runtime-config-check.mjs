@@ -63,9 +63,12 @@ export function evaluateClientRuntimeConfig(service, expected) {
   if (variables.get("CLIENT_RUNTIME_ENFORCE_AUTH") !== "1") failures.push("runtime_auth_not_enforced");
   const expectedProviderCalls = expected.providerCallsEnabled === true ? "1" : "0";
   if (variables.get("CLIENT_PROVIDER_CALLS_ENABLED") !== expectedProviderCalls) failures.push("provider_calls_policy_mismatch");
-  if (variables.get("CLIENT_RETENTION_DAYS") !== "45") failures.push("retention_days_not_45");
+  const retentionDays = Number(variables.get("CLIENT_RETENTION_DAYS"));
+  if (!Number.isSafeInteger(retentionDays) || retentionDays < 1 || retentionDays > 28) failures.push("retention_days_out_of_policy");
+  else if (expected.retentionDays !== undefined && retentionDays !== expected.retentionDays) failures.push("retention_days_mismatch");
   const notebookDays = variables.get("CLIENT_NOTEBOOK_RETENTION_DAYS");
-  if (notebookDays !== undefined && notebookDays !== "45") failures.push("notebook_retention_days_not_45");
+  if (notebookDays !== undefined && (!Number.isSafeInteger(Number(notebookDays)) || Number(notebookDays) < 1 || Number(notebookDays) > 28)) failures.push("notebook_retention_days_out_of_policy");
+  else if (notebookDays !== undefined && expected.retentionDays !== undefined && Number(notebookDays) !== expected.retentionDays) failures.push("notebook_retention_days_mismatch");
 
   const apiRoutes = list("CLIENT_ALLOWED_API_ROUTES");
   for (const route of REQUIRED_API_ROUTES) if (!apiRoutes.has(route)) failures.push(`required_api_route_missing:${route}`);

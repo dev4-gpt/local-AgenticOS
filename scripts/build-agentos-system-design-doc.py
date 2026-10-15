@@ -43,7 +43,7 @@ def main() -> None:
         "",
         "OWNER\nAryaman",
         "",
-        "LAST UPDATED\nOctober 14, 2026",
+        "LAST UPDATED\nOctober 15, 2026",
     ]])
     fill_table(doc.tables[1], [
         ["Authors", "AgentOS project team"],
@@ -143,7 +143,7 @@ def main() -> None:
             "Treat documents, URLs, graph imports, retrieved text, and model output as untrusted. Bound parser/input sizes and prevent secrets, raw customer text, or full prompts/results from entering logs and fixtures.",
             "Keep provider/signing keys server-side in the existing secret boundary. Artifacts remain private and are served through an authenticated tenant-checked proxy; do not broaden IAM for convenience.",
             "Migrations, replay, admin/debug access, secret rotation, retention, IAM, traffic shifts, and paid provider use require explicit scope, preflight, evidence, and rollback. Billing alerts are not hard spend caps.",
-            "Reconcile per-item 45-day retention with the documented seven-day object recovery window, database/backups, and vendor copies. Keep recovery behavior unchanged until the complete deletion policy is approved and tested.",
+            "The owner selected 28 active days from item creation plus a separate seven-day object recovery window (up to 35 days recoverable). Inventory every tenant data class and reconcile database, exports, backups, and vendor copies; financial/credit and minimized security/audit evidence require separately approved schedules.",
         ],
     ):
         set_paragraph(doc, prefix, value)
@@ -171,7 +171,7 @@ def main() -> None:
         [
             "Which signed-in Veloce Chrome profile/tab can be connected? Current available browser inventory exposes only the unrelated College profile.",
             "Which exact service, revision, tenant, and Supabase project are authorized for the next read-only parity check? Beta shares a database project with production.",
-            "Does the 45-day rule mean logical inaccessibility or irreversible deletion after the recovery window, and who approves backup/vendor exceptions?",
+            "Who is the billing reviewer for the separate financial/credit schedule, and what backup/vendor deletion terms apply? The selected content policy is 28 active days plus seven days of object recovery; local code does not prove complete coverage or hosted enforcement.",
             "Who owns operations, privacy/legal, billing, rollback, support, and the missing archive exports? Buyer segment/deliverable frequency also needs real interviews.",
         ],
     ):

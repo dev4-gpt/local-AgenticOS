@@ -4,6 +4,11 @@ globalThis.fetch = async (url, options) => {
   if (parsed.pathname.endsWith("/rpc/client_learning_retention_references_ready") && options.method === "POST") {
     return Response.json(process.env.RETENTION_MOCK_REFERENCE_GUARD_FAIL !== "1");
   }
+  if (parsed.pathname.endsWith("/client_tenants") && (!options.method || options.method === "GET")) {
+    if (parsed.searchParams.get("slug") !== "eq.tenant-a" || parsed.searchParams.get("select") !== "retention_days"
+      || parsed.searchParams.get("limit") !== "2") throw new Error("Unexpected tenant retention lookup");
+    return Response.json([{ retention_days: 28 }]);
+  }
   if (parsed.pathname.endsWith("/rpc/purge_expired_client_runtime_records") && options.method === "POST") {
     const payload = JSON.parse(options.body);
     if (payload.p_tenant_slug !== "tenant-a" || payload.p_batch_limit !== 500) throw new Error("Unexpected retention RPC payload");

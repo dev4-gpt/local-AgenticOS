@@ -34,7 +34,7 @@ function uploadRoute() {
   return { post, stored };
 }
 
-test("artifact uploads default to 45 days from creation and honor explicit disposable retention", async () => {
+test("artifact uploads default to 28 days from creation and honor explicit shorter retention", async () => {
   process.env.CLIENT_SLUG = "tenant-a";
   delete process.env.CLIENT_RETENTION_DAYS;
   const fixture = uploadRoute();
@@ -43,8 +43,8 @@ test("artifact uploads default to 45 days from creation and honor explicit dispo
   expect(response.status).toBe(201);
   expect((await response.json()).uploadUrl).toMatch(/^\/api\/client-runtime\/artifacts\/[0-9a-f-]{36}\/upload$/i);
   const expiry = Date.parse(String(fixture.stored[0].p_retention_expires_at));
-  expect(expiry - before).toBeGreaterThanOrEqual(45 * DAY_MS);
-  expect(expiry - before).toBeLessThan(45 * DAY_MS + 2_000);
+  expect(expiry - before).toBeGreaterThanOrEqual(28 * DAY_MS);
+  expect(expiry - before).toBeLessThan(28 * DAY_MS + 2_000);
 
   process.env.CLIENT_RETENTION_DAYS = "1";
   const disposable = Date.now();
@@ -57,13 +57,19 @@ test("artifact uploads default to 45 days from creation and honor explicit dispo
 test("invalid artifact retention fails before proxy allocation or writing", async () => {
   process.env.CLIENT_SLUG = "tenant-a";
   const fixture = uploadRoute();
-  for (const value of ["", "0", "3651", "1e2", " 45 ", "NaN"]) {
+  for (const value of ["", "0", "29", "3651", "1e2", " 28 ", "NaN"]) {
     process.env.CLIENT_RETENTION_DAYS = value;
     const response = await fixture.post();
     expect(response.status).toBe(503);
     expect(await response.json()).toMatchObject({ error: "retention_not_configured" });
   }
   expect(fixture.stored).toHaveLength(0);
+});
+
+test("retention expiry helper enforces the 28-day active-content maximum", () => {
+  const now = Date.now();
+  expect(clientRetentionExpiresAt("28", now)).toBe(new Date(now + 28 * DAY_MS).toISOString());
+  expect(clientRetentionExpiresAt("29", now)).toBeNull();
 });
 
 function artifactUploadBytesRoute() {
@@ -151,14 +157,14 @@ function notebookRoute() {
   return { post, stored };
 }
 
-test("Notebook sources use the 45-day tenant default and an explicit disposable override", async () => {
+test("Notebook sources use the 28-day tenant default and an explicit shorter override", async () => {
   process.env.CLIENT_SLUG = "tenant-a";
   delete process.env.CLIENT_RETENTION_DAYS;
   delete process.env.CLIENT_NOTEBOOK_RETENTION_DAYS;
   const fixture = notebookRoute();
   const before = Date.now();
   expect((await fixture.post()).status).toBe(201);
-  expect(Date.parse(String(fixture.stored[0].retention_expires_at)) - before).toBeGreaterThanOrEqual(45 * DAY_MS);
+  expect(Date.parse(String(fixture.stored[0].retention_expires_at)) - before).toBeGreaterThanOrEqual(28 * DAY_MS);
   process.env.CLIENT_RETENTION_DAYS = "14";
   const tenantDefault = Date.now();
   expect((await fixture.post()).status).toBe(201);

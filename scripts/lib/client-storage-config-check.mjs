@@ -23,7 +23,11 @@ export function evaluateClientStorageConfig(bucket, expected) {
   }
   if (!exactDeleteRule) failures.push("exact_retention_delete_rule_missing");
   if (bucket?.versioning_enabled === true || bucket?.versioning?.enabled === true) failures.push("bucket_versioning_extends_retention");
-  if (bucket?.soft_delete_policy?.retentionDurationSeconds !== 0) failures.push("soft_delete_extends_retention");
+  const recoverySeconds = expected.recoveryDays * 24 * 60 * 60;
+  if (!Number.isSafeInteger(expected.recoveryDays) || expected.recoveryDays !== 7
+      || bucket?.soft_delete_policy?.retentionDurationSeconds !== recoverySeconds) {
+    failures.push("recovery_window_not_seven_days");
+  }
 
   return {
     ok: failures.length === 0,
@@ -31,6 +35,8 @@ export function evaluateClientStorageConfig(bucket, expected) {
     origin: expected.origin,
     namespace: expected.namespace,
     retentionDays: expected.retentionDays,
+    recoveryDays: expected.recoveryDays,
+    maximumRecoverableDays: expected.retentionDays + expected.recoveryDays,
     failures: [...new Set(failures)],
   };
 }

@@ -264,13 +264,13 @@ gcloud storage buckets describe gs://BUCKET --project PROJECT --format=json \
       --bucket BUCKET --namespace TENANT_SLUG --expected-origin https://CLIENT_RUNTIME.run.app
 ```
 
-It requires an exact 45-day namespace Delete rule. The active client origin is
-still provided for the verification receipt, but browser access no longer
-depends on direct-bucket upload/download CORS methods. It also rejects overlapping
-Delete rules, versioning, and nonzero soft-delete retention because those can
-change the effective per-item deletion window. Review recoverability and the
-customer retention policy before changing soft delete; a passing bucket check
-alone does not prove that bytes, backups, or vendor copies were purged.
+It requires an exact 28-day namespace Delete rule and seven-day soft-delete
+recovery. The active client origin is still provided for the verification
+receipt, but browser access no longer depends on direct-bucket upload/download
+CORS methods. It also rejects overlapping Delete rules and versioning. The
+selected recovery window means objects can remain recoverable for up to 35
+days. A passing bucket check alone does not prove that bytes, backups, or
+vendor copies were purged.
 
 The current lifecycle SQL also provides authenticated tenant-scoped artifact
 deletion. The runtime removes the Cloud Storage object first, treats an already
@@ -881,7 +881,7 @@ or incomplete copy stops the offboard. The command rereads the object
 inventory after the backup and after suspending the tenant, and refuses a
 changed set. It also refuses to delete the tenant row if objects remain after
 the cloud delete command. Keep the backup under the separately approved
-45-day per-item retention/deletion procedure; these checks do not make
+28-day active content-retention procedure; these checks do not make
 concurrent writes impossible or prove checksum parity, backup expiry, or
 vendor-copy deletion. A disposable-tenant restore and independent
 post-deletion inventory are still required before accepting the offboarding

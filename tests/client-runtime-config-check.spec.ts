@@ -4,11 +4,11 @@ import { spawnSync } from "node:child_process";
 import { evaluateClientRuntimeConfig } from "../scripts/lib/client-runtime-config-check.mjs";
 
 const digest = "a".repeat(64);
-const expected = { service: "agentos-internal-beta", revision: "agentos-internal-beta-00035-test", digest, tenant: "internal-beta" };
+const expected = { service: "agentos-internal-beta", revision: "agentos-internal-beta-00035-test", digest, tenant: "internal-beta", retentionDays: 28 };
 const internalBetaManifest = JSON.parse(readFileSync("client-blueprints/agentos-internal-beta.gcp.json", "utf8"));
 
-test("internal beta deployment manifest retains customer data for the agreed 45 days", () => {
-  expect(internalBetaManifest.retention.days).toBe(45);
+test("internal beta deployment manifest retains customer data for the approved 28 active days", () => {
+  expect(internalBetaManifest.retention.days).toBe(28);
 });
 
 test("internal beta manifest keeps providers and workers off with secret-backed import credentials", () => {
@@ -39,8 +39,8 @@ function snapshot() {
         { name: "CLIENT_SLUG", value: "internal-beta" },
         { name: "CLIENT_RUNTIME_ENFORCE_AUTH", value: "1" },
         { name: "CLIENT_PROVIDER_CALLS_ENABLED", value: "0" },
-        { name: "CLIENT_RETENTION_DAYS", value: "45" },
-        { name: "CLIENT_NOTEBOOK_RETENTION_DAYS", value: "45" },
+        { name: "CLIENT_RETENTION_DAYS", value: "28" },
+        { name: "CLIENT_NOTEBOOK_RETENTION_DAYS", value: "28" },
         { name: "CLIENT_ALLOWED_ROUTES", value: "/,/memory,/notebook" },
         { name: "CLIENT_ALLOWED_API_ROUTES", value: "/api/client-runtime/source-import,/api/client-runtime/source-import/upload,/api/client-runtime/build-identity" },
         { name: "CLIENT_ENABLED_CAPABILITIES", value: "tenant-data,artifacts" },
@@ -68,13 +68,13 @@ test("candidate config preflight accepts one fully identified revision without l
 test("candidate config preflight fails for the observed beta blockers and a pending template", () => {
   const service = snapshot();
   const env = service.spec.template.spec.containers[0].env;
-  env.find((entry) => entry.name === "CLIENT_RETENTION_DAYS")!.value = "1";
+  env.find((entry) => entry.name === "CLIENT_RETENTION_DAYS")!.value = "29";
   env.find((entry) => entry.name === "CLIENT_ALLOWED_API_ROUTES")!.value = "/api/client-runtime/records";
   service.status.latestCreatedRevisionName = "agentos-internal-beta-00036-pending";
   const result = evaluateClientRuntimeConfig(service, expected);
   expect(result.ok).toBe(false);
   expect(result.failures).toContain("template_not_ready_revision");
-  expect(result.failures).toContain("retention_days_not_45");
+  expect(result.failures).toContain("retention_days_out_of_policy");
   expect(result.failures).toContain("required_api_route_missing:/api/client-runtime/source-import");
   expect(result.failures).toContain("required_api_route_missing:/api/client-runtime/build-identity");
   const cli = spawnSync(process.execPath, [
@@ -104,7 +104,7 @@ test("candidate config preflight rejects ambiguous variables, actual split traff
   const result = evaluateClientRuntimeConfig(service, expected);
   expect(result.failures).toContain("duplicate_runtime_variable");
   expect(result.failures).toContain("traffic_not_single_expected_revision");
-  expect(result.failures).toContain("retention_days_not_45");
+  expect(result.failures).toContain("retention_days_mismatch");
 
   const malformed = snapshot();
   malformed.status.traffic.push({ revisionName: "agentos-internal-beta-00034-old" });

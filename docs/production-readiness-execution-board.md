@@ -4281,3 +4281,38 @@ does not authorize hosted changes, provider calls, or spending.
   No such change is authorized by the earlier approval to disable provider
   calls, so rollout remains held pending explicit approval and a reviewed
   revision plan. No hosted state was changed during this diagnosis.
+
+## Continuation Update - Owner-Selected 28+7 Content Retention (2026-10-15)
+
+- The owner selected **28 active days from each content item's creation**, plus
+  the existing **seven-day object soft-delete recovery window**. Object bytes
+  may therefore remain recoverable for up to 35 days. This supersedes prior
+  45-day planning statements; those dated reports remain unchanged as history.
+- Local source now caps tenant retention settings at 28 days, updates the
+  runtime-record and Notebook-source purge logic to use each tenant's configured
+  window, caps existing artifact/source/learning expiry metadata in the new
+  `supabase-client-retention-policy-28.sql`, and requires the storage preflight
+  to observe the seven-day recovery configuration. The policy migration and
+  hosted cleanup migrations have **not** been applied to Supabase or Cloud
+  Storage. No deployment, tenant mutation, or bucket change occurred.
+- Local focused verification passed: the broader focused suite **371 passed,
+  1 intentionally skipped**; runtime/config fixtures **17/17**; and lifecycle
+  verification **23/23**. Typecheck completed successfully. The deterministic
+  offline AI evaluation passed **16/16** with `productionReady: false`.
+- The strict production-readiness verifier remains not ready: the worktree is
+  dirty and the release-ledger bucket is not configured in this environment;
+  evidence-dependent hosted and reviewer gates remain unevaluated. These
+  failures are not product-test failures and have not been bypassed.
+- This is not yet proof of “all tenant data” retention. The implementation
+  currently has explicit paths for runtime records/graph cleanup, Notebook
+  sources/chunks, learning items/revisions, artifacts, and object lifecycle.
+  Every other tenant table, exports, backups, and vendor copies still needs a
+  data-class disposition and tested expiry/deletion path. Financial/credit
+  records and minimized security/audit evidence remain excluded pending a
+  separately approved schedule and named reviewer. Release remains blocked;
+  keep the seven-day recovery window and hosted deployment hold unchanged.
+- The current table-by-table scope, decisions, evidence, and remaining
+  acceptance gates are captured in
+  `docs/retention-data-class-inventory-2026-10-15.md`; use that inventory as
+  the retention workstream's checklist instead of assuming the global setting
+  covers every table or backup.

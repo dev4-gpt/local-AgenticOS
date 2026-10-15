@@ -99,7 +99,7 @@
     ]
   },
   "retention": {
-    "days": 45
+    "days": 28
   },
   "secretEnv": {
     "ANTHROPIC_API_KEY": "anthropic-api-key",

@@ -1,6 +1,7 @@
 -- Apply after v43 ECC learning and the client runtime control-plane migration.
 -- A source can expire before a learning item created from it. Preserve the
--- learning item's own 45-day clock when a source job or record is removed.
+-- learning item's own configured retention clock (capped at 28 days) when a
+-- source job or record is removed.
 
 alter table public.client_learning_items
   drop constraint if exists client_learning_items_tenant_slug_source_job_id_fkey;

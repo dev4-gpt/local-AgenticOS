@@ -33,6 +33,6 @@ catch {
   console.error("Bucket snapshot is not valid JSON.");
   process.exit(2);
 }
-const result = evaluateClientStorageConfig(snapshot, { bucket, namespace, origin, retentionDays: 45 });
+const result = evaluateClientStorageConfig(snapshot, { bucket, namespace, origin, retentionDays: 28, recoveryDays: 7 });
 console.log(JSON.stringify(result, null, 2));
 if (!result.ok) process.exitCode = 1;

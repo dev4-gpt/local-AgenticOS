@@ -110,16 +110,16 @@ function, under their own respective privacy and security terms.
 
 ## Data retention and deletion
 
-Each tenant workspace has a configured retention period. The owner has
-selected a 45-day window measured from each customer-data item's creation,
-but enforcement across database rows, objects, private exports, backups, and
-vendor copies is not yet certified. Offboarding and deletion requests are
-operator-reviewed, with an export available on request. Managed-credit and
-other financial records require a separate approved retention and
-reconciliation schedule. Historical disposable-tenant drills do not prove
-that every tenant deletion or data class has been verified. This section
-requires legal review and current-release deletion evidence before
-publication.
+The owner-selected content-retention policy is 28 active days measured from
+each item's creation, followed by a separate seven-day object recovery window
+(up to 35 days recoverable). Enforcement across every tenant table, object,
+private export, backup, and vendor copy is not yet certified; this policy is
+not a claim that all data is currently deleted on that schedule. Offboarding
+and deletion requests are operator-reviewed, with an export available on
+request. Managed-credit and other financial records, and minimized
+security/audit evidence, require separately reviewed retention schedules.
+This section requires legal review and current-release deletion evidence
+before publication.
 
 ## Your rights
 

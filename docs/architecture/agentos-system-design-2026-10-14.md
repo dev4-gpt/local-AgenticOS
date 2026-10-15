@@ -2,10 +2,10 @@
 
 **Status:** Proposed design; not a production approval  
 **Owner:** Aryaman  
-**Last updated:** October 14, 2026  
+**Last updated:** October 15, 2026
 **Authors:** AgentOS project team  
 **Reviewers:** Product owner, runtime/security owner, operations/billing owner (to be named)  
-**Related docs:** [Production-readiness execution board](../production-readiness-execution-board.md), [canonical production topology](../production-topology-2026-09-25.md), [production-readiness program](../superpowers/plans/2026-09-26-production-readiness-program.md)  
+**Related docs:** [Production-readiness execution board](../production-readiness-execution-board.md), [retention data-class inventory](../retention-data-class-inventory-2026-10-15.md), [canonical production topology](../production-topology-2026-09-25.md), [production-readiness program](../superpowers/plans/2026-09-26-production-readiness-program.md)
 **Scope:** Establish one architecture and test-led sequence for completing AgentOS readiness without confusing local tests, synthetic studies, partial imports, or historical deployments with release evidence.
 
 ## 1. Abstract
@@ -25,7 +25,7 @@ This design does not add another runtime stack. It sets the boundaries, contract
 | Establish a canonical source-pack and graph-import acceptance process with coverage and provenance. | Use session cookies or bypass platform controls to collect Skool content. Use owner/platform-approved exports or material supplied by the user. |
 | Compare a source-identified local candidate with the exact intended hosted beta revision using read-only checks first. | Treat the marketing site, legacy Cloud Run service, or a single-tenant Cloud Test URL as a shared customer login. |
 | Make release decisions from versioned evidence and explicit human approvals, not subjective percentages. | Treat MiroFish personas as real buyers or run another provider-backed simulation without fresh cost authorization. |
-| Preserve cost, privacy, retention, rollback, and tenant-isolation boundaries through every milestone. | Change production Supabase, IAM, retention, bucket lifecycle, domains, service traffic, or public visibility as part of this design. |
+| Preserve cost, privacy, retention, rollback, and tenant-isolation boundaries through every milestone. The owner-selected content policy is 28 active days from item creation plus a separate seven-day object recovery window (up to 35 days recoverable). | Change production Supabase, IAM, retention, bucket lifecycle, domains, service traffic, or public visibility as part of this design. |
 
 ## 3. Background and Problem Statement
 
@@ -118,7 +118,7 @@ Replays are operator-controlled and scoped to an operation/tenant. A replay must
 - Treat uploaded documents, URLs, graph imports, retrieved text, model output, and browser content as untrusted input. Validate schema, size, MIME/type, URL policy, parser limits, prompt-injection boundaries, and source ownership.
 - Keep provider keys and signing credentials server-side in the existing secret boundary. Do not put key material, session cookies, raw customer text, or complete prompts/results into logs, test fixtures, or screenshots.
 - Store artifacts privately. Serve only through authenticated, tenant-checked routes/proxy; avoid widening IAM solely to simplify signed URL creation.
-- Honor per-item retention and deletion policy only after the effective policy, backup behavior, object soft-delete window, database cleanup, and vendor copies are reconciled. The selected 45-day customer-data period conflicts with a documented seven-day object recovery window if interpreted as permanent deletion exactly at day 45; retain recovery until a compliant end-to-end policy is approved.
+- Enforce the owner-selected content policy as 28 active days from each item's creation, followed by the separately retained seven-day object recovery window (up to 35 days recoverable). This decision does not yet prove that every tenant table, export, backup, or vendor copy follows the window. Financial/credit records and minimized security/audit evidence need a separately approved schedule. Keep release blocked until coverage, hosted behavior, and post-deletion verification are evidenced.
 - Require explicit approval and rollback for hosted database migrations, policy changes, secret rotation, IAM, retention/lifecycle changes, traffic shifts, public launch, and any paid external request. Billing alerts are not a hard spending cap.
 - Use synthetic data in tests. For authorized course/community materials, use user-supplied/platform-approved exports and preserve attribution/provenance; do not inject browser cookies or bypass access controls.
 
@@ -153,7 +153,7 @@ No numerical SLO is approved by the evidence currently available. Define owners,
 
 1. **Customer journey:** The Work-profile session and one Memory view have been matched read-only, but the full signed-in journey through approved-source selection, draft generation, provenance, review, and export still needs current-source acceptance receipts. Reconfirm the exact app revision and tenant at the start of that run.
 2. **Hosted target:** What exact service, revision, tenant, and Supabase project are authorized for the next read-only parity check? The internal-beta tenant shares a Supabase project with production, so beta approval does not imply project-wide migration permission.
-3. **Retention:** Does the 45-day rule mean logical inaccessibility at day 45 or irreversible deletion after the recovery window? Who approves backup/vendor exceptions? Keep the seven-day recovery window until resolved.
+3. **Retention:** The owner selected 28 active days from item creation plus seven days of object recovery (up to 35 days recoverable). Which billing reviewer approves a separate financial/credit-record schedule, and which backup/vendor retention terms apply? The local policy migration and tests do not establish complete coverage or hosted enforcement.
 4. **Archive scope:** Can the user supply or export the remaining authorized lesson pages and video references through a platform-supported path? Current archive counts disagree and are partial; no hosted import should run until reconciled.
 5. **Product wedge and buyer:** Which repeatable client deliverable is most frequent and costly for reachable small AI/dev consultancies? The MiroFish output is synthetic and insufficient; real interviews are needed.
 6. **Release ownership:** Who owns operations, privacy/legal, provider billing, rollback, and customer support approvals? The evidence ledger requires accountable reviewers.
@@ -172,7 +172,7 @@ No numerical SLO is approved by the evidence currently available. Define owners,
 | M4: AI/evaluation operations | Re-run deterministic evaluations and trace tests on final candidate; define model-backed test cases and provider-side hard limits only if a fresh approval is granted. | Offline gate passes; hosted telemetry claims have real receipts; synthetic evidence remains labeled; no unauthorized spend. |
 | M5: Release decision | Strict release verifier, complete evidence bundle, security/operations/privacy/billing approvals, deployment identity, and rollback plan. | Verifier returns ready for the exact candidate and all required reviewers accept. Otherwise record “not ready” with concrete missing gates. |
 
-M0 can be completed locally without external access. M1 should follow immediately. M2/M3 must not mutate hosted data until source coverage, target environment, tenant, and rollback are explicit. M4 does not require another provider run to make progress. M5 is a decision gate, not a deployment authorization.
+M0 can be completed locally without external access. M1 should follow immediately. M2/M3 must not mutate hosted data until source coverage, target environment, tenant, and rollback are explicit. The selected 28+7 retention rule is not a release pass until the table/object data-class inventory, financial/audit exceptions, backup/vendor behavior, and hosted deletion checks are complete. M4 does not require another provider run to make progress. M5 is a decision gate, not a deployment authorization.
 
 ## Appendix A. Evidence Rules
 

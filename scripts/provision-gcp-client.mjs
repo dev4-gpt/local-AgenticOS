@@ -482,7 +482,7 @@ function sanitizeBucket(value) {
 
 function normalizeRetentionDays(value) {
   const days = Number(value);
-  if (!Number.isSafeInteger(days) || days < 1 || days > 3650) fail("retention.days must be an integer between 1 and 3650");
+  if (!Number.isSafeInteger(days) || days < 1 || days > 28) fail("retention.days must be an integer between 1 and the 28-day maximum");
   return days;
 }
 

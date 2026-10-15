@@ -167,8 +167,8 @@ npm run publish:release-ledger -- \
 Use `--client-cloud-account <already-configured-reader-email>` only when the
 default `gcloud` account cannot read the reviewed project. Publication reads
 the Cloud Run service and bucket directly, checks the serving revision/digest,
-tenant, routes, worker-token Secret Manager reference, CORS, and 45-day object
-policy, and stores only a redacted verdict and configuration hashes. Strict
+tenant, routes, worker-token Secret Manager reference, CORS, and 28-day object
+policy plus seven-day recovery, and stores only a redacted verdict and configuration hashes. Strict
 verification re-reads both resources and fails if their relevant configuration
 has drifted. This is a configuration receipt, not proof of source-image commit,
 object-byte deletion, backup cleanup, or the signed-in customer journey.

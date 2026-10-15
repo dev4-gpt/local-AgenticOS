@@ -24,12 +24,12 @@ async function fixture() {
       title text, content text, metadata jsonb, created_at timestamptz
     );
     insert into public.client_tenants values
-      ('tenant-a', 'active', 45, encode(extensions.digest('${workerToken}', 'sha256'), 'hex')),
-      ('tenant-b', 'active', 45, encode(extensions.digest('second-notebook-worker-token-2026', 'sha256'), 'hex'));
+      ('tenant-a', 'active', 28, encode(extensions.digest('${workerToken}', 'sha256'), 'hex')),
+      ('tenant-b', 'active', 28, encode(extensions.digest('second-notebook-worker-token-2026', 'sha256'), 'hex'));
     insert into public.client_notebooks values ('${notebookId}', 'tenant-a', 'active');
     insert into public.client_runtime_records values
       ('${sourceId}', 'tenant-a', 'notebook', 'active', '${notebookId}', 'Current source', 'Approved client evidence', '{"source_url":"https://example.org/source"}', now()),
-      ('${expiredSourceId}', 'tenant-a', 'notebook', 'active', '${notebookId}', 'Expired source', 'Old evidence', '{}', now() - interval '46 days');
+      ('${expiredSourceId}', 'tenant-a', 'notebook', 'active', '${notebookId}', 'Expired source', 'Old evidence', '{}', now() - interval '29 days');
     insert into public.client_runtime_jobs values
       ('${jobId}', 'tenant-a', 'workspace-execution', 'running', jsonb_build_object(
         'surface', 'notebook', 'notebookScope', '${notebookId}', 'sourceIds', jsonb_build_array('${sourceId}'),

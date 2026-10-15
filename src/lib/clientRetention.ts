@@ -1,5 +1,5 @@
-const DEFAULT_RETENTION_DAYS = 45;
-const MAX_RETENTION_DAYS = 3650;
+const DEFAULT_RETENTION_DAYS = 28;
+const MAX_RETENTION_DAYS = 28;
 const DAY_MS = 86_400_000;
 
 export function clientRetentionExpiresAt(rawDays: string | undefined, createdAt = Date.now()): string | null {

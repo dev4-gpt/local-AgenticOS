@@ -214,8 +214,16 @@ if (mode === "retention") {
   if (!referenceCheck.ok || await referenceCheck.json().catch(() => false) !== true) {
     fail("Learning retention reference guard is not applied; refusing record purge");
   }
+  const tenantQuery = new URLSearchParams({ slug: `eq.${slug}`, select: "retention_days", limit: "2" });
+  const tenantResponse = await supabaseRequest(`client_tenants?${tenantQuery}`);
+  if (!tenantResponse.ok) fail(`Tenant retention lookup failed (${tenantResponse.status})`);
+  const tenants = await tenantResponse.json().catch(() => null);
+  const retentionDays = Array.isArray(tenants) && tenants.length === 1 ? Number(tenants[0]?.retention_days) : NaN;
+  if (!Number.isSafeInteger(retentionDays) || retentionDays < 1 || retentionDays > 28) {
+    fail("Tenant retention is missing or exceeds the 28-day content-retention maximum");
+  }
   const now = new Date();
-  const cutoff = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000);
+  const cutoff = new Date(now.getTime() - retentionDays * 24 * 60 * 60 * 1000);
   const filter = new URLSearchParams({ tenant_slug: `eq.${slug}`, created_at: `lte.${cutoff.toISOString()}`, retention_expires_at: `lte.${now.toISOString()}` });
   const learningBatchLimit = 100;
   const selection = await supabaseRequest(`client_learning_items?${filter}&select=id&order=id&limit=${learningBatchLimit}`);
@@ -230,13 +238,13 @@ if (mode === "retention") {
     method: "POST",
     body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 500 }),
   });
-  if (!recordResponse.ok) fail(`Client record retention failed (${recordResponse.status}); verify the retention migration and tenant's 45-day configuration`);
+  if (!recordResponse.ok) fail(`Client record retention failed (${recordResponse.status}); verify the 28-day policy migration and tenant configuration`);
   const records = await recordResponse.json();
   const sourceResponse = await supabaseRequest("rpc/purge_expired_client_notebook_sources", {
     method: "POST",
     body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
   });
-  if (!sourceResponse.ok) fail(`Notebook source retention failed (${sourceResponse.status}); verify the source retention migration and tenant's 45-day configuration`);
+  if (!sourceResponse.ok) fail(`Notebook source retention failed (${sourceResponse.status}); verify the 28-day policy and source-retention migrations`);
   const sources = await sourceResponse.json();
   if (apply && ids.length) {
     const deletion = new URLSearchParams(filter);

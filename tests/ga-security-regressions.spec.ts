@@ -117,7 +117,7 @@ test("provisioning refuses activation when its approved monthly cap cannot persi
       supabaseServiceUpsert: async (table: string, record: Record<string, unknown>) => { writes.push({ table, record }); return { ok: table !== "client_credit_accounts" }; },
     },
   });
-  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test", "Content-Type": "application/json" }, body: JSON.stringify({ runId: "run-a", status: "succeeded", resourceManifest: { phase: "deploy", runtimeUrl: "https://tenant-a.run.app", clientSlug: "tenant-a", clientName: "Tenant A", retentionDays: 30 }, evidenceBundle: { smoke: { ok: true, url: "https://tenant-a.run.app" } } }) }));
+  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test", "Content-Type": "application/json" }, body: JSON.stringify({ runId: "run-a", status: "succeeded", resourceManifest: { phase: "deploy", runtimeUrl: "https://tenant-a.run.app", clientSlug: "tenant-a", clientName: "Tenant A", retentionDays: 28 }, evidenceBundle: { smoke: { ok: true, url: "https://tenant-a.run.app" } } }) }));
   expect(result.status).toBe(502);
   expect(await result.json()).toMatchObject({ error: "managed_credit_cap_persist_failed" });
   expect(writes.find((w) => w.table === "client_credit_accounts")?.record.monthly_cap_micros).toBe(0);
@@ -134,11 +134,33 @@ test("provisioning accepts a validated decimal-string monthly cap and persists i
       supabaseServiceUpsert: async (table: string, record: Record<string, unknown>) => { writes.push({ table, record }); return { ok: true }; },
     },
   });
-  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test", "Content-Type": "application/json" }, body: JSON.stringify({ runId: "run-a", status: "succeeded", resourceManifest: { phase: "deploy", runtimeUrl: "https://tenant-a.run.app", clientSlug: "tenant-a", clientName: "Tenant A", retentionDays: 30 }, evidenceBundle: { smoke: { ok: true, url: "https://tenant-a.run.app" } } }) }));
+  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test", "Content-Type": "application/json" }, body: JSON.stringify({ runId: "run-a", status: "succeeded", resourceManifest: { phase: "deploy", runtimeUrl: "https://tenant-a.run.app", clientSlug: "tenant-a", clientName: "Tenant A", retentionDays: 28 }, evidenceBundle: { smoke: { ok: true, url: "https://tenant-a.run.app" } } }) }));
   expect(result.status).toBe(200);
   expect(await result.json()).toMatchObject({ ok: true, activationReady: true });
   expect(writes.find((w) => w.table === "client_credit_accounts")?.record).toMatchObject({ tenant_slug: "tenant-a", monthly_cap_micros: 250000, warning_threshold_micros: 200000 });
   expect(writes.find((w) => w.table === "client_onboarding_accounts")?.record).toMatchObject({ status: "smoke_testing", tenant_slug: "tenant-a", runtime_url: "https://tenant-a.run.app" });
+});
+
+test("provisioning callback rejects tenant retention above 28 days before tenant activation", async () => {
+  process.env.CONTROL_PLANE_OPERATOR_SECRET = "operator-test";
+  const writes: string[] = [];
+  const mod = loadReviewModule("product-experience/src/app/api/onboarding/provision-result/route.ts", {
+    "@/lib/publicLaunch": {
+      supabaseServiceSelect: async (table: string) => ({ ok: true, rows: table === "client_provisioning_runs" ? [{ onboarding_id: "onboarding-a" }] : [{ approved_manifest: { clientSlug: "tenant-a", budget: { monthlyCap: 0 } } }] }),
+      supabaseServiceUpdate: async (table: string) => { writes.push(table); return { ok: true }; },
+      supabaseServiceUpsert: async (table: string) => { writes.push(table); return { ok: true }; },
+    },
+  });
+  const result = await mod.POST(new Request("https://control.invalid", {
+    method: "POST",
+    headers: { "x-control-plane-secret": "operator-test", "Content-Type": "application/json" },
+    body: JSON.stringify({ runId: "run-a", status: "succeeded", resourceManifest: {
+      phase: "deploy", runtimeUrl: "https://tenant-a.run.app", clientSlug: "tenant-a", clientName: "Tenant A", retentionDays: 29,
+    }, evidenceBundle: { smoke: { ok: true, url: "https://tenant-a.run.app" } } }),
+  }));
+  expect(result.status).toBe(409);
+  expect(await result.json()).toMatchObject({ error: "provisioning_callback_manifest_mismatch" });
+  expect(writes).not.toContain("client_tenants");
 });
 
 test("activation fails closed when its setup email is not accepted", async () => {

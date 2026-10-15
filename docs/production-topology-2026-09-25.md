@@ -95,7 +95,7 @@ that image is not. The service's page allowlist includes `/capabilities` and
 `/api/client-runtime/source-import` and `/api/client-runtime/build-identity`.
 `CLIENT_ENABLED_CAPABILITIES` is `tenant-data,artifacts,orchestration,quality`,
 provider calls remain disabled, and `CLIENT_RETENTION_DAYS` is `1`, not the
-owner-selected 45-day customer-data period. This is an internal-beta setting,
+owner-selected 28-day active-content maximum. This is an internal-beta setting,
 not evidence of a compliant production policy. A new image alone would leave
 the two APIs unreachable under this runtime configuration. Reconcile the
 allowlists and retention setting in a reviewed new revision, then verify its
@@ -108,7 +108,7 @@ Read-only storage-policy follow-up on 2026-10-09: the internal-beta bucket
 and `matchesPrefix: ["internal-beta/"]`. Its reported soft-delete retention is
 604800 seconds (seven days); the bucket description did not report a versioning
 setting. This is consistent with the one-day runtime configuration, but it is
-not the selected 45-day policy and does not prove object-by-object permanent
+not the selected 28-day active plus seven-day recovery policy and does not prove object-by-object permanent
 deletion, database-row cleanup, backup deletion, or vendor-copy deletion. No
 object names or bytes were inspected, and no bucket setting was changed.
 

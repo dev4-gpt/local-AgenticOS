@@ -1,4 +1,5 @@
--- Apply after Notebook lineage and client runtime audit events exist.
+-- Apply after Notebook lineage and client runtime audit events exist. Reapply
+-- after supabase-client-retention-policy-28.sql to activate the 28-day maximum.
 -- This removes source metadata and cascading chunks, not referenced artifact
 -- objects or any financial, backup, or vendor records.
 
@@ -27,7 +28,7 @@ begin
 
   select retention_days into v_retention_days
   from public.client_tenants where slug = new.tenant_slug;
-  if v_retention_days is null or v_retention_days < 1 or v_retention_days > 45
+  if v_retention_days is null or v_retention_days < 1 or v_retention_days > 28
     or new.retention_expires_at is null then
     raise exception 'client_notebook_retention_invalid';
   end if;
@@ -66,7 +67,7 @@ set search_path = public, extensions
 as $$
 declare
   v_retention_days integer;
-  v_cutoff timestamptz := now() - interval '45 days';
+  v_cutoff timestamptz;
   v_candidates integer;
   v_legacy_missing_expiry integer;
   v_legacy_extended_expiry integer;
@@ -86,9 +87,10 @@ begin
   if not found then
     raise exception 'client_notebook_retention_tenant_not_found';
   end if;
-  if v_retention_days <> 45 then
+  if v_retention_days is null or v_retention_days < 1 or v_retention_days > 28 then
     raise exception 'client_notebook_retention_tenant_not_configured';
   end if;
+  v_cutoff := now() - make_interval(days => v_retention_days);
 
   with aged as (
     select source.retention_expires_at,
@@ -131,7 +133,7 @@ begin
     if v_deleted > 0 then
       insert into public.client_runtime_audit_events (tenant_slug, event_type, metadata)
       values (p_tenant_slug, 'tenant.notebook_sources.retention_purged',
-        jsonb_build_object('deleted', v_deleted, 'cutoff', v_cutoff, 'retentionDays', 45));
+        jsonb_build_object('deleted', v_deleted, 'cutoff', v_cutoff, 'retentionDays', v_retention_days));
     end if;
   end if;
 
@@ -146,7 +148,7 @@ begin
     );
 
   return jsonb_build_object(
-    'tenant', p_tenant_slug, 'cutoff', v_cutoff, 'retentionDays', 45,
+    'tenant', p_tenant_slug, 'cutoff', v_cutoff, 'retentionDays', v_retention_days,
     'candidates', v_candidates, 'deleted', v_deleted,
     'remainingCandidates', v_remaining,
     'legacyMissingExpiry', v_legacy_missing_expiry,

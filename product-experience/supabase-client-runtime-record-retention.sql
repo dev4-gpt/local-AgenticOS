@@ -1,4 +1,5 @@
--- Apply after the runtime records and memory graph migrations.
+-- Apply after the runtime records and memory graph migrations. Reapply after
+-- supabase-client-retention-policy-28.sql to activate the 28-day maximum.
 -- This covers runtime records only. Objects, notebooks, backups, and financial
 -- records have separate retention paths and must not be inferred from this RPC.
 
@@ -17,7 +18,7 @@ set search_path = public, extensions
 as $$
 declare
   v_retention_days integer;
-  v_cutoff timestamptz := now() - interval '45 days';
+  v_cutoff timestamptz;
   v_candidates integer;
   v_deleted integer := 0;
   v_orphan_nodes_deleted integer := 0;
@@ -35,9 +36,10 @@ begin
   if not found then
     raise exception 'client_record_retention_tenant_not_found';
   end if;
-  if v_retention_days <> 45 then
+  if v_retention_days is null or v_retention_days < 1 or v_retention_days > 28 then
     raise exception 'client_record_retention_tenant_not_configured';
   end if;
+  v_cutoff := now() - make_interval(days => v_retention_days);
 
   select count(*) into v_candidates
   from public.client_runtime_records
@@ -72,7 +74,7 @@ begin
       insert into public.client_runtime_audit_events (tenant_slug, event_type, metadata)
       values (p_tenant_slug, 'tenant.runtime_records.retention_purged',
         jsonb_build_object('deleted', v_deleted, 'graphOrphanNodesDeleted', v_orphan_nodes_deleted,
-          'cutoff', v_cutoff, 'retentionDays', 45));
+          'cutoff', v_cutoff, 'retentionDays', v_retention_days));
     end if;
   end if;
 
@@ -81,7 +83,7 @@ begin
   where tenant_slug = p_tenant_slug and created_at <= v_cutoff;
 
   return jsonb_build_object(
-    'tenant', p_tenant_slug, 'cutoff', v_cutoff, 'retentionDays', 45,
+    'tenant', p_tenant_slug, 'cutoff', v_cutoff, 'retentionDays', v_retention_days,
     'candidates', v_candidates, 'deleted', v_deleted,
     'remainingCandidates', v_remaining, 'graphOrphanNodesDeleted', v_orphan_nodes_deleted,
     'applied', p_apply, 'scope', 'client_runtime_records'

@@ -7,6 +7,7 @@ const expected = {
   bucket: "agentos-mvp-veloce-internal-beta", namespace: "internal-beta",
   supabaseProjectRef: "ppmoqjtmjtfxadsnejqc",
   revision: "agentos-internal-beta-00035-test", imageDigest: digest,
+  retentionDays: 28, recoveryDays: 7,
 };
 const origin = "https://agentos-internal-beta-vbimnfseva-ew.a.run.app";
 
@@ -23,7 +24,7 @@ function snapshots() {
         { name: "CLIENT_SLUG", value: expected.namespace },
         { name: "CLIENT_RUNTIME_ENFORCE_AUTH", value: "1" },
         { name: "CLIENT_PROVIDER_CALLS_ENABLED", value: "0" },
-        { name: "CLIENT_RETENTION_DAYS", value: "45" },
+        { name: "CLIENT_RETENTION_DAYS", value: "28" },
         { name: "CLIENT_ALLOWED_ROUTES", value: "/,/memory,/notebook" },
         { name: "CLIENT_ALLOWED_API_ROUTES", value: "/api/client-runtime/source-import,/api/client-runtime/source-import/upload,/api/client-runtime/build-identity" },
         { name: "CLIENT_ENABLED_CAPABILITIES", value: "tenant-data,artifacts" },
@@ -38,8 +39,8 @@ function snapshots() {
   const bucket = {
     name: expected.bucket,
     cors_config: [{ origin: [origin], method: ["GET", "PUT"], responseHeader: ["Content-Type", "ETag"] }],
-    lifecycle_config: { rule: [{ action: { type: "Delete" }, condition: { age: 45, matchesPrefix: [`${expected.namespace}/`] } }] },
-    soft_delete_policy: { retentionDurationSeconds: 0 },
+    lifecycle_config: { rule: [{ action: { type: "Delete" }, condition: { age: 28, matchesPrefix: [`${expected.namespace}/`] } }] },
+    soft_delete_policy: { retentionDurationSeconds: 604800 },
   };
   return { service, bucket };
 }

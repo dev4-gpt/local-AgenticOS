@@ -74,7 +74,7 @@ test("notebook source insert policy rejects cross-tenant, foreign, expired, and 
 
 test("Notebook registration checks artifact and notebook ownership before writing", async () => {
   const originalEnv = { ...process.env };
-  Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "45" });
+  Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "28" });
   let actor = userB;
   let artifact: Record<string, unknown> = { id: artifactA, tenant_slug: "tenant-a", created_by: userA, status: "ready", retention_expires_at: new Date(Date.now() + 60_000).toISOString() };
   let notebook: Record<string, unknown> = { id: notebookA, tenant_slug: "tenant-a" };
@@ -90,7 +90,7 @@ test("Notebook registration checks artifact and notebook ownership before writin
     },
     "@/lib/clientInputSafety": { containsClientSecretLike: () => false },
     "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
-    "@/lib/clientRetention": { clientRetentionExpiresAt: () => new Date(Date.now() + 45 * 86400_000).toISOString(), clientRetentionSecondsRemaining },
+    "@/lib/clientRetention": { clientRetentionExpiresAt: () => new Date(Date.now() + 28 * 86400_000).toISOString(), clientRetentionSecondsRemaining },
     "@/lib/v96NotebookContracts": { validateNotebookSource: () => [], validateNotebookDeletionRequest: () => [] },
   };
   try {

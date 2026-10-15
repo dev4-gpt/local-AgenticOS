@@ -11,12 +11,14 @@ export function evaluateClientCloudConfigEvidence(serviceSnapshot, bucketSnapsho
     revision: expected.revision,
     digest: expected.imageDigest?.replace(/^sha256:/, ""),
     tenant: expected.namespace,
+    retentionDays: expected.retentionDays ?? 28,
   });
   const storage = evaluateClientStorageConfig(bucketSnapshot, {
     bucket: expected.bucket,
     namespace: expected.namespace,
     origin,
-    retentionDays: 45,
+    retentionDays: expected.retentionDays ?? 28,
+    recoveryDays: expected.recoveryDays ?? 7,
   });
   const env = serviceSnapshot?.spec?.template?.spec?.containers?.[0]?.env;
   const variable = (name) => Array.isArray(env) ? env.find((entry) => entry?.name === name)?.value : null;

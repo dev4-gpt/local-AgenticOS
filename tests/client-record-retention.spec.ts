@@ -28,11 +28,11 @@ async function retentionDatabase() {
       event_type text not null, metadata jsonb not null
     );
     create table client_runtime_budget_ledger (id integer primary key, tenant_slug text not null);
-    insert into client_tenants values ('tenant-a', 45), ('tenant-b', 45), ('tenant-short', 14);
+    insert into client_tenants values ('tenant-a', 28), ('tenant-b', 28), ('tenant-short', 14), ('tenant-invalid', 29);
     insert into client_runtime_records values
-      ('00000000-0000-4000-8000-000000000001', 'tenant-a', 'memory', now() - interval '45 days 1 second'),
-      ('00000000-0000-4000-8000-000000000002', 'tenant-a', 'journal', now() - interval '45 days'),
-      ('00000000-0000-4000-8000-000000000003', 'tenant-a', 'memory', now() - interval '44 days 23 hours'),
+      ('00000000-0000-4000-8000-000000000001', 'tenant-a', 'memory', now() - interval '28 days 1 second'),
+      ('00000000-0000-4000-8000-000000000002', 'tenant-a', 'journal', now() - interval '28 days'),
+      ('00000000-0000-4000-8000-000000000003', 'tenant-a', 'memory', now() - interval '27 days'),
       ('00000000-0000-4000-8000-000000000004', 'tenant-b', 'memory', now() - interval '50 days'),
       ('00000000-0000-4000-8000-000000000005', 'tenant-short', 'memory', now() - interval '50 days');
     insert into client_runtime_memory_graph_nodes values
@@ -56,7 +56,7 @@ async function retentionDatabase() {
 
 const call = "select public.purge_expired_client_runtime_records($1,$2,$3) as result";
 
-test("45-day record retention is a bounded, tenant-scoped dry run before apply", async () => {
+test("28-day record retention is a bounded, tenant-scoped dry run before apply", async () => {
   const db = await retentionDatabase();
   try {
     const preview = await db.query<{ result: Record<string, unknown> }>(call, ["tenant-a", false, 1]);
@@ -79,7 +79,7 @@ test("45-day record retention is a bounded, tenant-scoped dry run before apply",
     expect((await db.query("select id from client_runtime_budget_ledger")).rows).toHaveLength(1);
     const audit = await db.query<{ event_type: string; metadata: { deleted: number; retentionDays: number } }>("select event_type, metadata from client_runtime_audit_events order by id");
     expect(audit.rows).toHaveLength(2);
-    expect(audit.rows[0]).toMatchObject({ event_type: "tenant.runtime_records.retention_purged", metadata: { deleted: 1, retentionDays: 45 } });
+    expect(audit.rows[0]).toMatchObject({ event_type: "tenant.runtime_records.retention_purged", metadata: { deleted: 1, retentionDays: 28 } });
   } finally {
     await db.close();
   }
@@ -94,7 +94,8 @@ test("record retention rejects unconfigured tenants and rolls back on audit fail
         has_function_privilege('service_role', 'public.purge_expired_client_runtime_records(text,boolean,integer)', 'EXECUTE') as operator
     `);
     expect(privileges.rows[0]).toEqual({ unauthenticated: false, member: false, operator: true });
-    await expect(db.query(call, ["tenant-short", true, 500])).rejects.toThrow(/client_record_retention_tenant_not_configured/);
+    expect((await db.query(call, ["tenant-short", false, 500])).rows[0].result).toMatchObject({ retentionDays: 14, candidates: 1, applied: false });
+    await expect(db.query(call, ["tenant-invalid", false, 500])).rejects.toThrow(/client_record_retention_tenant_not_configured/);
     await expect(db.query(call, ["tenant-a", true, 1001])).rejects.toThrow(/client_record_retention_invalid_input/);
     await db.exec(`
       create function reject_retention_audit() returns trigger language plpgsql as $$
