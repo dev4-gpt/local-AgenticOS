@@ -49,3 +49,20 @@ export async function readBoundedResponseBytes(response: Response, maxBytes: num
   }
   return Buffer.concat(chunks, total);
 }
+
+export async function readBoundedJsonObject(request: Request, maxBytes: number) {
+  let bytes: Buffer | null;
+  try {
+    bytes = await readBoundedResponseBytes(new Response(request.body, { headers: request.headers }), maxBytes);
+  } catch {
+    return { ok: false as const, reason: "invalid" as const };
+  }
+  if (!bytes) return { ok: false as const, reason: "too_large" as const };
+  try {
+    const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false as const, reason: "invalid" as const };
+    return { ok: true as const, value: value as Record<string, unknown> };
+  } catch {
+    return { ok: false as const, reason: "invalid" as const };
+  }
+}

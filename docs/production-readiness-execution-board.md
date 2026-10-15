@@ -10,6 +10,23 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Text-Job Request-Boundary Hardening - 2026-10-15
+
+A focused source audit found that the client `jobs` and `provider-chat` routes
+parsed request JSON without a byte limit, then trimmed the prompt and selected
+recent history messages. Both routes now use a bounded JSON reader (64 KiB),
+reject malformed/non-object bodies, cap prompts and history count, and reject
+oversized history entries before enqueue. The targeted Playwright regression
+passes **2/2**; the full focused suite passes **368/369** (one intentional
+skip), `npx tsc --noEmit` and targeted ESLint pass, and `npm run build`
+successfully compiled and generated **66** static pages. The route test verifies
+oversized requests and excessive history are rejected before any job is
+enqueued.
+
+This is local source evidence only. No provider request, hosted configuration,
+customer-data write, deployment, or cloud mutation was made. The route audit
+does not establish hosted parity or a complete application security review.
+
 ### Current-Checkout and Archive Coverage Refresh - 2026-10-14
 
 On clean pushed source commit `2e227d00622a02e5533ffa337b912403de55d64d`,
