@@ -4110,11 +4110,21 @@ does not authorize hosted changes, provider calls, or spending.
   `127.0.0.1:3985/memory` with **2 records / 114 nodes / 113 edges**, local
   `127.0.0.1:41774/memory` with **23 records / 32 nodes / 54 edges**, and the
   hosted Internal Beta app with **0 notebook records / 0 active sources**.
-  These are distinct states and do not prove same-user parity. The Cloud Test
-  app itself is not among the app tabs in this Work window; its Cloud Run
-  revision details are open instead. The active revision remains
-  `veloce-cloud-test-00208-5hk`, provider calls disabled, 14-day retention, and
-  the older image digest recorded above. A same-user Cloud Test UI comparison
-  remains unverified until the app tab/session is available in this profile.
+  These remain distinct states; `3985` does not match the Cloud Test snapshot.
+- Opened the missing Cloud Test app in this same Work profile. Its read-only
+  `/api/client-auth/session` response was authenticated and contained the same
+  user identifier as the existing local `127.0.0.1:3945` session endpoint,
+  which also reported `workspaceAuthorized: true`. Cloud Test Memory then
+  showed **23 records / 32 nodes / 54 edges**, matching local `41774`; the
+  visible recent record titles and text also matched. This is strong
+  same-user/data-snapshot parity evidence for Cloud Test and `41774`, not proof
+  of full route, build, or workflow parity. No raw account identifier is
+  retained in this report.
+- The active Cloud Test revision remains `veloce-cloud-test-00208-5hk`,
+  provider calls disabled, 14-day retention, and the older image digest
+  recorded above. Its build identity was not successfully verified, so source
+  code parity is still open. No import, graph refresh, tenant write, provider
+  request, deployment, ledger publication, or cloud configuration change
+  occurred.
 - No browser form, tenant write, graph refresh, import, provider request,
   deployment, ledger publication, or cloud configuration change occurred.
