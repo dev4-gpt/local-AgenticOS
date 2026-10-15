@@ -6,11 +6,13 @@ import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientRetentionSecondsRemaining } from "@/lib/clientRetention";
 import { safeClientFileName } from "@/lib/clientStorage";
+import { readBoundedJsonObject } from "@/lib/clientNetworkSafety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_CONTENT_CHARS = 30_000;
+const MAX_IMPORT_REQUEST_BYTES = 128 * 1024;
 const EXPORT_PAGE_SIZE = 100;
 const MAX_EXPORT_RECORDS = 1000;
 const MARKDOWN_EXTENSIONS = new Set(["md", "markdown", "txt"]);
@@ -80,7 +82,9 @@ export async function POST(request: Request) {
   if (!rateLimit.ok) return jsonError("runtime_limit_unavailable", 503);
   if (!rateLimit.allowed) return jsonError("runtime_rate_limited", 429);
 
-  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const parsed = await readBoundedJsonObject(request, MAX_IMPORT_REQUEST_BYTES);
+  if (!parsed.ok) return jsonError(parsed.reason === "too_large" ? "memory_import_request_too_large" : "memory_import_input_invalid", parsed.reason === "too_large" ? 413 : 400);
+  const body = parsed.value;
   const fileName = typeof body.fileName === "string" ? safeClientFileName(body.fileName) : null;
   const content = typeof body.content === "string" ? body.content.replace(/\r\n?/g, "\n").trim() : "";
   const artifactId = typeof body.artifactId === "string" ? body.artifactId.trim() : "";

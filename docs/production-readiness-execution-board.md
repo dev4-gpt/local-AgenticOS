@@ -10,6 +10,26 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Tenant JSON Request Bounds and Retention Decision - 2026-10-15
+
+The source-only security pass found unbounded JSON parsing in tenant record
+create/update, Markdown memory import, and credential revocation. These routes
+now use the streamed bounded JSON reader after their existing authentication,
+authorization, and rate-limit checks. Record and Markdown-import bodies are
+capped at 128 KiB; credential-revocation bodies at 4 KiB. Malformed input
+returns a controlled 400 and oversized input returns 413 before any write or
+revocation. Targeted tests passed **37/37**; ESLint and TypeScript checks passed.
+The full focused suite passed **371/372** with one intentional skip on a serial
+rerun. Its first parallel run had one temporary Git-fixture failure; that test
+passed when rerun alone and in the serial suite.
+
+The owner selected **28 active days plus 7 days of object recovery** (35 days
+maximum elapsed time) for all tenant data and files. This is a policy decision,
+not yet an implementation or hosted setting. The retention inventory,
+versioning/soft-delete behavior, backups, and per-item deletion must be shown to
+enforce this exact window before it can be treated as a release control. No
+hosted configuration, tenant data, provider, or deployment was changed here.
+
 ### Cloud Test Revision and Configuration Audit - 2026-10-15
 
 Read-only GCP inspection in project `veloce-agenticos-2026` confirms Cloud Test

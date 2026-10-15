@@ -67,3 +67,63 @@ test("provider-bound routes reject oversized bodies and chat endpoints reject ex
   }
   expect(enqueues).toBe(0);
 });
+
+test("tenant record, Markdown import, and credential revoke routes bound JSON before side effects", async () => {
+  let writes = 0;
+  let revokes = 0;
+  const sharedAuth = {
+    currentClientUser: async () => ({ id: "user-a" }),
+    currentClientMember: async () => true,
+    currentClientCredentialManager: async () => true,
+  };
+  const routeMocks = {
+    "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
+    "@/lib/clientAuth": sharedAuth,
+    "@/lib/clientDataPlane": {
+      checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+      countClientRecords: async () => ({ ok: true, count: 0 }),
+      insertClientRecord: async () => { writes++; return { ok: true }; },
+      updateClientRecord: async () => { writes++; return { ok: true }; },
+      selectClientRecords: async () => ({ ok: true, records: [] }),
+      clientRpc: async () => { revokes++; return { ok: true, value: true }; },
+      recordClientAudit: async () => ({ ok: true }),
+    },
+    "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+    "@/lib/clientNetworkSafety": { readBoundedJsonObject },
+    "@/lib/clientInputSafety": { containsClientSecretLike: () => false },
+    "@/lib/clientRetention": { clientRetentionSecondsRemaining: () => 3600 },
+    "@/lib/clientStorage": { safeClientFileName: (name: string) => name },
+    "@/lib/clientCredentialCatalog": { clientCredentialOption: (key: string) => key === "GROQ_API_KEY" ? { key, label: "Groq" } : null },
+  };
+  process.env.CLIENT_SLUG = "tenant-a";
+  const records = loadReviewModule("src/app/api/client-runtime/records/route.ts", routeMocks);
+  const memoryImport = loadReviewModule("src/app/api/client-runtime/memory-import/route.ts", routeMocks);
+  const credentialRevoke = loadReviewModule("src/app/api/client-runtime/credentials/revoke/route.ts", routeMocks);
+
+  const oversized = (size: number) => new Request("https://tenant.invalid", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ content: "x".repeat(size) }),
+  });
+  const recordOversized = await records.POST(oversized(129 * 1024));
+  expect(recordOversized.status).toBe(413);
+  expect(await recordOversized.json()).toMatchObject({ error: "record_request_too_large" });
+  const recordUpdateOversized = await records.PATCH(oversized(129 * 1024));
+  expect(recordUpdateOversized.status).toBe(413);
+  expect(await recordUpdateOversized.json()).toMatchObject({ error: "record_request_too_large" });
+
+  const importOversized = await memoryImport.POST(oversized(129 * 1024));
+  expect(importOversized.status).toBe(413);
+  expect(await importOversized.json()).toMatchObject({ error: "memory_import_request_too_large" });
+
+  const revokeOversized = await credentialRevoke.POST(oversized(5 * 1024));
+  expect(revokeOversized.status).toBe(413);
+  expect(await revokeOversized.json()).toMatchObject({ error: "credential_revoke_request_too_large" });
+
+  for (const malformed of [
+    await records.POST(new Request("https://tenant.invalid", { method: "POST", body: "{" })),
+    await records.PATCH(new Request("https://tenant.invalid", { method: "PATCH", body: "{" })),
+    await memoryImport.POST(new Request("https://tenant.invalid", { method: "POST", body: "{" })),
+    await credentialRevoke.POST(new Request("https://tenant.invalid", { method: "POST", body: "{" })),
+  ]) expect(malformed.status).toBe(400);
+  expect(writes).toBe(0);
+  expect(revokes).toBe(0);
+});
