@@ -83,6 +83,16 @@ they do not perform a live import, database write, provider request, or hosted
 customer journey. They strengthen local UI acceptance only; current hosted
 J01-J15 evidence remains open.
 
+### Local Observability Browser Checks - 2026-10-14
+
+On the same clean source commit and isolated provider-disabled client runtime,
+the observability status browser suite passed **6/6** at desktop and mobile
+viewports. It verifies that stale spend totals disappear when budget evidence
+fails, telemetry capture states render as off/on/unknown, and job-stage traces
+remain visible without exposing private job output. The APIs and auth are
+synthetic/mocked; these results do not establish hosted telemetry delivery,
+alerting, or tenant-scoped observability in production.
+
 ### MiroFish Artifact Recheck - 2026-10-15
 
 On MiroFish checkout `73f9a3b`, the bounded v2/smoke tests pass **25/25**
