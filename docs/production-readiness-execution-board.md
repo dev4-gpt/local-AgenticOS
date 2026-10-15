@@ -35,6 +35,15 @@ live local `127.0.0.1:41774/memory` page (23 tenant memories, 32 graph nodes,
 new cloud parity, journey, or tenant-isolation receipt. No UI controls were
 used and no tenant data was changed.
 
+A fresh read-only scan of the `School Tabs Agent OS` Drive folder returned 115
+items and the current manifest contains 110 asset rows. The 98 PDFs are not 98
+classroom lessons: the item rows identify 9 dated lesson PDFs, 88 bonus-resource
+PDFs, and the standalone AgentOS System PDF; the separate May 30 sanitized HTML
+adds a tenth dated lesson ID. The available `agentOS` tab document's July 26
+entry records the Skool link and 12:03 duration, but no lesson body or
+transcript. The folder therefore provides no newly verified body capture for
+the current missing lesson IDs and no evidence of video-byte downloads.
+
 ### Current Checkout and Drive Archive Reconciliation - 2026-10-15
 
 On clean pushed source commit `269176534b047062174e6e5a304a43bbfdd3c1d7`,
