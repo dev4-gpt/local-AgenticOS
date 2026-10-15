@@ -12,30 +12,34 @@ tracker.
 
 ### Current Candidate Checkpoint - 2026-10-14
 
-On pushed clean `HEAD` `93b548ac7c98ca693f7e7749164f119e84913475` (Node
+On pushed clean `HEAD` `27d5637c4abbfa569617bb68edd8e7928263a3a4` (Node
 `v24.19.0`), the focused regression suite passed **367/368** (one skipped,
 zero failed), `npm run typecheck` passed, and the focused trace/observability
 suite passed **13/13**. The deterministic AI evaluation passed **16/16** with
 `localGatePassed: true` and `productionReady: false`; its ignored local receipt
-is `tmp/ai-release-local-v1-report.json`. These are local regression and
+is `tmp/ai-release-local-v1-report.json`. The two isolated browser suites
+passed **9/9** with synthetic authentication and mocked APIs. The production
+dependency audit reports zero vulnerabilities; the full-tree dev-only
+`braces` advisory remains documented below. These are local regression and
 deterministic-evaluation results only, not hosted, customer, or model-backed
 proof.
 
 The strict read-only verifier was run against the exact same pushed commit with
-the configured release-ledger bucket. It returned `releaseReady: false`, no
-ledger record for this SHA, and **37 required categories not evaluated**. No
-ledger record or hosted state was changed. This checkpoint resolves the stale
-candidate reference at the top of the board; older dated notes below remain
-historical. The immediate external dependency remains access to the intended
-signed-in Veloce browser for same-user local/cloud parity; the connected
-browser still exposes only the unrelated College profile. Continue independent
-local work, but do not count it as a substitute for that acceptance evidence.
+the configured release-ledger bucket. It returned `releaseReady: false` because
+no ledger record exists for this SHA, with **37 required categories not
+evaluated**. No ledger record or hosted state was changed. Older dated notes
+below remain historical. The immediate external dependency remains access to
+the intended signed-in Veloce browser for same-user local/cloud parity; the
+connected browser still exposes only the unrelated College profile. Continue
+independent local work, but do not count it as a substitute for that acceptance
+evidence.
 
 ### Dependency Security Refresh - 2026-10-14
 
-On the current local working-tree candidate, production dependencies were
-updated to patched releases: Next.js `16.3.8`, `@modelcontextprotocol/sdk`
-`1.32.1` (minimum requested range `^1.31.0`), and Sharp `0.35.5`. The
+On pushed commit `27d5637c4abbfa569617bb68edd8e7928263a3a4`, production
+dependencies were updated to patched releases: Next.js `16.3.8`,
+`@modelcontextprotocol/sdk` `1.32.1` (minimum requested range `^1.31.0`), and
+Sharp `0.35.5`. The
 production-only audit (`npm audit --omit=dev --audit-level=high`) reports **0
 vulnerabilities**. The full dependency audit still reports five high-severity
 entries in one development-only lint chain (`eslint-config-next` ->
