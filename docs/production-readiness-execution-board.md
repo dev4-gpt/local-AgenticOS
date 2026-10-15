@@ -10,6 +10,33 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Current Checkout and Drive Archive Reconciliation - 2026-10-15
+
+On clean pushed source commit `269176534b047062174e6e5a304a43bbfdd3c1d7`,
+the supported local Node `v24.18.0` passed `npm run typecheck`, the focused
+Playwright/unit suite passed **384/385** (one intentional skip), and the
+offline AI release evaluation passed **16/16** with zero model samples or
+provider requests. The local evaluation gate passes; it does not mark the
+product production-ready.
+
+The strict production-readiness verifier on that same commit returns
+`releaseReady=false`: no release-ledger bucket is configured, and **38 release
+evidence categories remain unevaluated**. This includes customer-journey,
+buyer-pilot, migration, hosted deployment/configuration, approved result, and
+rollback evidence. No deployment, hosted data/configuration change, or paid
+provider call was made.
+
+Read-only Drive inspection under the verified `aryamans.dev96@gmail.com`
+account found the `School Tabs Agent OS` archive manifest. It describes the
+classroom capture as **9 of 108 dated lessons archived**, with the standalone
+Agent OS System PDF saved separately and video downloads incomplete. The
+current local graph crosswalk independently reports **87 of 107 registered
+lessons with text** (226 linked text segments, 20 without text). These are
+different measures and currently do not reconcile; neither can stand in for
+the other or establish complete archive/import coverage. The exact-ID local
+gap report reproduces the 87/107 result. No Drive files were changed and no
+hosted graph import was run.
+
 ### Current Candidate Evidence Refresh - 2026-10-15
 
 On clean pushed source commit `48873ee1283a9651304ba6aafd426097a4b35a59`,
