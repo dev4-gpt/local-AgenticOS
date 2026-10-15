@@ -75,6 +75,17 @@ test results, approvals, and rollback target. The configured ledger bucket
 was readable; no record was published and no hosted state changed. The later
 commit that follows this evidence note is documentation-only.
 
+### Private Skool Pack Revalidation - 2026-10-14
+
+On the current checkout, the production selector/parser accepted the seven
+declared private batches (**193 source segments, 7,577 links, 18 publication
+dates, 11 skipped entries**; 1/1 test passed). The corresponding local JSON-LD
+graph validates at **1,138 nodes / 9,029 relations** with `coverage: partial`.
+The manifest still records **25 pending pages**, `completeCommunityExport:
+false`, and `discoveredQueueExhausted: false`; the Drive supplement records
+zero media references. This is an integrity/preflight pass, not complete
+archive coverage or a hosted import receipt. No tenant or Drive data changed.
+
 ### Current-Head Offline AI and Trace Checks - 2026-10-14
 
 On the same pushed source commit `99c719fdb23a3435d52a51473bef565addc86a7c`,
