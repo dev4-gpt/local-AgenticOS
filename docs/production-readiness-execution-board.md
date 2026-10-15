@@ -85,30 +85,32 @@ passed 1/1 on a dedicated loopback test port under Node 24. It verifies the UI
 submits source IDs rather than source text, renders the source register and
 citation state, and supports review/download. Its Supabase cookie and all API
 responses are synthetic Playwright fixtures; this is not a signed-in customer
-journey, real source import, or hosted parity receipt. The current browser
-inventory exposes the `College` Chrome profile and no Veloce tabs. The user
-confirmed this is the same Chrome window to use; no Veloce tab was opened or
-altered during this fixture-only test.
+journey, real source import, or hosted parity receipt. The browser-control
+extension was attached to the `College` Chrome profile, which is not the
+user's intended Veloce window. The foreground native Chrome window is
+`Aryaman (Work)`. Its existing tab is signed in at
+`http://127.0.0.1:41774/memory` and renders 23 tenant memories, 32 graph nodes,
+and 54 edges. This is current-source local UI evidence only; it does not prove
+Cloud Test is the same user/tenant or that the two data sets are in parity. Do
+not use the `College` profile for Veloce checks.
 
 The browser build caused Next.js to add `.next-client-browser/types` and
 `.next-client-browser/dev/types` to `tsconfig.json`, matching the existing
 custom build directories. `npm run typecheck` passed under Node 24 after that
-generated config update. Preserve this change with the browser evidence; the
-strict verifier correctly rejected the interim dirty checkout and must be
-rerun after the update is committed.
+generated config update. The type-path update was committed with the board on
+`3ebc0b8`.
 
 ### Fresh Strict Release Check - 2026-10-14
 
-On pushed `HEAD` `1a9d81a8671735659cf421829b386e4142cf0098`,
+On pushed `HEAD` `3ebc0b88fc50318fb264fc82abab6c12966aff9f`,
 `npm run verify:production-readiness -- --ledger-bucket
 veloce-agenticos-2026-veloce-release-ledger` returned `releaseReady: false`.
 The only reported failure is `release_gate:release_ledger_record_missing`;
-38 evidence categories remain unevaluated, including customer journey, hosted
+37 evidence categories remain unevaluated, including customer journey, hosted
 configuration, migrations, tenant isolation, source import, buyer pilot,
 operations/legal approvals, and rollback target. The read-only check found no
-release record for this commit and published nothing. Re-run after attaching
-current candidate evidence; do not interpret the narrower single failure as a
-pass.
+release record for this commit and published nothing. Do not interpret the
+narrower single failure as a pass.
 
 ## Goal
 
@@ -121,12 +123,12 @@ release verification without deploying or spending beyond approved limits.
 
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
-| Local product and customer journey | Notebook Studio browser journey passed 1/1 on the build initiated from `4e45dea`, with synthetic auth and mocked APIs; `npm run typecheck` passed after Next added custom build type paths. Signed-in end-to-end customer journey remains unverified. The visible 0-vs-9 Notebook counts are across different tenant slugs, not a same-tenant parity result | Current-source build; automated journey tests; signed-in same-user, same-tenant journey through workspace, source selection, draft, provenance, review, and export | Keep provider calls disabled. Do not treat mock fixtures or cross-tenant record counts as parity evidence. Use the designated signed-in Work Chrome session for a read-only same-tenant feature journey before any writes |
+| Local product and customer journey | Current-source local Memory page is signed in in the `Aryaman (Work)` Chrome window and renders 23 memories, 32 graph nodes, and 54 edges. Notebook Studio browser journey passed 1/1 with synthetic auth and mocked APIs; typecheck passes. Full signed-in journey through source selection, draft, provenance, review, and export remains unverified | Current-source build; automated journey tests; signed-in same-user, same-tenant journey through workspace, source selection, draft, provenance, review, and export | Continue from the existing Work Chrome session. Keep provider calls disabled; do not treat mock fixtures or the local Memory view as full customer-journey evidence |
 | Authorized Skool archive and graph import | The Drive manifest (updated 2026-10-14 22:07 UTC) still marks coverage partial: it reports 9/108 dated lesson PDFs archived, no verified video downloads, and a validated graph with 1,138 nodes / 9,029 edges, text linked for 82/107 lesson references, 25 pages pending, and 96 PDF-derived segments from 88 PDFs (779 pages). The newer live-index audit reports 106 dated lessons plus the separate System page, so the manifest's 108-date count remains unresolved. No hosted graph import receipt | Canonical lesson/date inventory; all permitted page text, links, and available video references accounted for; validated source pack; scoped import receipt; graph counts and link checks | Reconcile the 25 pending pages and spreadsheet/index count discrepancy; inspect the latest graph artifact independently before import; import to a hosted graph only after coverage and target tenant are confirmed |
-| Local/cloud parity and hosted security | Read-only Chrome inspection found local `3985` at 0 records / 0 active sources, Cloud Test at 9 / 9, and Internal Beta at 0 / 0; these are not yet a parity result. Owner-only Cloud Test-scoped local config passes sanitized preflight and provider calls are disabled; same Supabase project, different tenant slugs. Current preflight cannot attest to build identity while checkout is dirty | Same build/artifact identity; same-user, same-tenant feature/data comparison; route allowlist, tenant isolation, storage proxy and 45-day retention verified from the intended live beta configuration | Commit the board update, then start current source read-only for `veloce-cloud-test`; use the confirmed Chrome profile to sign in at that local origin and run authenticated route/data comparison. Do not mutate service, secrets, traffic, Supabase, or retention |
+| Local/cloud parity and hosted security | Current-source local Memory view in Work Chrome renders 23 memories / 32 nodes / 54 edges; the earlier Cloud Test observation was 9 / 9. These counts are not a parity result and may be stale or tenant-mismatched. Cloud Test-scoped local config passes sanitized preflight with provider calls disabled | Same build/artifact identity; same-user, same-tenant feature/data comparison; route allowlist, tenant isolation, storage proxy and 45-day retention verified from the intended live beta configuration | Use the existing Work Chrome Cloud Test tab to verify its signed-in identity/tenant and compare read-only with local. Do not use the College profile, open duplicate tabs, or mutate service, secrets, traffic, Supabase, or retention |
 | AI quality, evaluation, and observability | On pushed commit `aeb96c8ff5e08af36fc17dbd0f3ae1f1d3fcac6d`, supported Node `v24.18.0` deterministic evaluation passed 16/16 (`localGatePassed: true`, `productionReady: false`, no model samples); receipt: `tmp/ai-release-local-v1-report.json` (ignored local evidence). Focused current-source trace/observability tests passed 13/13; tests are mock-backed and do not prove live PostHog or hosted telemetry. Hosted model quality and provider-side spend cap remain unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; live hosted trace delivery/completeness evidence | Keep provider calls disabled for the $0 pilot. Advance to the signed-in same-tenant journey and retain these as local-only evidence until provider-side caps and an approved hosted/model path are independently verified |
 | MiroFish buyer pilot | Fresh offline audit of v1 `sim_f91504972e42`: 10 profiles, 2 active buyers, 10/10 rounds, both active buyers interacted, and action/completion telemetry plus all technical checks pass. Its pilot-quality gate remains false because 1 of 2 reviewed posts was rejected. V2 `sim_8f4e26a9d170` has 0 qualified of 2; `run_state.json` and `profile-preparation.json` are missing, so strict completion/receipt is unverified. Both are synthetic, not market validation; provider billing receipts are absent | Human-reviewed posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Do not make another provider request under the prior one-repeat approval. Keep rejected v2 replies out of demand evidence and prioritize actual buyer interviews |
-| Release evidence and decision | Not ready. The latest read-only gate check on `aeb96c8ff5e08af36fc17dbd0f3ae1f1d3fcac6d` found no matching ledger record and 37 evidence categories unevaluated. No release evidence was published | Clean pushed commit; all required evidence attached to the ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Continue customer journey, hosted parity, migration, and approval evidence; publish no partial release record |
+| Release evidence and decision | Not ready. The latest read-only gate check on `3ebc0b88fc50318fb264fc82abab6c12966aff9f` found no matching ledger record and 37 evidence categories unevaluated. No release evidence was published | Clean pushed commit; all required evidence attached to the ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Continue customer journey, hosted parity, migration, and approval evidence; publish no partial release record |
 
 ## Current-Head Gate Recheck - 2026-10-14
 
