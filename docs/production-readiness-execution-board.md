@@ -4371,3 +4371,17 @@ does not authorize hosted changes, provider calls, or spending.
   transcripts. Page completeness and the separate System-page denominator
   remain unverified. The source inventory is updated in
   `docs/skool-archive-local-inventory-2026-10-14.md`.
+
+## Continuation Update - Retention Schema Coverage Gate (2026-10-15)
+
+- Added `docs/retention-table-map-2026-10-15.json` to classify every tenant table
+  declared in the product Supabase migrations and added
+  `scripts/verify-client-retention-inventory.mjs` to compare that map against
+  schema declarations. The check covers **62/62** `client_*` tables across 67
+  SQL migrations and rejects missing, duplicate, or stale classifications.
+- Wired the verifier into `npm run verify:client-lifecycle`. The lifecycle
+  verifier passed and the retention/lifecycle Playwright suite passed **23/23**.
+- This is a coverage guard, not an expiry implementation. The map marks tenant
+  content as partially implemented, identifies control/identity, ephemeral,
+  audit, and financial classes needing separate lifecycle work, and reports
+  `hostedEnforcementVerified: false`. No hosted data or policy changed.

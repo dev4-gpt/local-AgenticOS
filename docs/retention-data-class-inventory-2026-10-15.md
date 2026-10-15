@@ -12,6 +12,13 @@ evidence require separately approved schedules; a billing reviewer is not yet
 named. Historical reports describing 45 days remain historical and are
 superseded by this decision.
 
+The exhaustive schema-level classification is maintained in
+[`retention-table-map-2026-10-15.json`](./retention-table-map-2026-10-15.json).
+Its verifier scans the checked-in Supabase SQL migrations and currently
+reconciles all **62** declared `public.client_*` tables across 67 migration
+files. The check detects missing, duplicate, or stale classifications; it does
+not prove that any class is purged or that hosted configuration matches.
+
 | Data class | Representative tables or storage | Intended disposition | Local implementation/evidence | Remaining gate |
 |---|---|---|---|---|
 | User-authored records and graph | `client_runtime_records`, graph nodes/edges | Active up to 28 days; derived graph rows removed with eligible source records | Bounded tenant-scoped purge, graph orphan cleanup, audit counts; local SQL tests pass | Apply approved migration only to a named target; prove scheduled/operated cleanup and post-delete reads |
@@ -23,6 +30,19 @@ superseded by this decision.
 | Financial and credit records | `client_runtime_budget_ledger`, managed-credit accounts/transactions, Stripe dispositions | Excluded from the 28-day content purge pending an approved financial schedule | Financial-offboard guards intentionally prevent unsafe deletion; reconciliation/history protections exist | Name billing reviewer and approve schedule, access controls, export and reconciliation procedure |
 | Security and audit evidence | `client_runtime_audit_events`, worker failures, security/operational findings | Retain only minimized evidence under a separate approved schedule; do not retain customer payloads merely for audit | Some paths store aggregate/redacted metadata; no single schedule or complete minimization audit exists | Define fields, access, expiry, incident/legal hold exceptions and reviewer; test payload minimization |
 | Exports, backups and vendor copies | Private lifecycle exports/object backups; Supabase/GCP backups; model/search/other subprocessors | Customer content should not remain beyond 28 active + approved recovery unless a documented exception applies | Export/offboarding creates local backup material; no automatic expiry or vendor-wide deletion proof | Establish encrypted storage, expiry job, restore test, backup/vendor terms, deletion attestations and legal holds |
+
+## Exact Table Coverage
+
+The machine-checked map classifies every tenant-prefixed table found in the
+current product migration set. The 28-day class is only partially implemented:
+runtime records and graph cleanup, Notebook sources/chunks, learning items and
+revisions, artifact expiry metadata, and object lifecycle have local paths.
+Notebook parent rows and the other workflow/content tables still need explicit
+expiry, read rejection, and bounded deletion behavior. Tenant identity/control,
+one-time tokens/rate limits, audit evidence, and financial/credit records have
+separate dispositions in the map rather than being treated as ordinary content.
+New `client_*` table declarations must be classified before the lifecycle gate
+passes.
 
 ## Environment Evidence
 
