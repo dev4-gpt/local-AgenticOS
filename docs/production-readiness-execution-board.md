@@ -10,6 +10,21 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Memory Loading Race Regression - 2026-10-14
+
+The signed-in Work-window comparison found that Cloud Test could briefly show
+an empty graph before tenant records settled. The current local candidate now
+keeps an empty graph provisional while records are loading and shows
+`Checking graph...` instead of a misleading `0 nodes · 0 edges`. A focused
+Playwright regression reproducing the out-of-order graph/record responses
+passes with the memory-loading browser suite (**9/9**); `npm run typecheck`
+passes under Node `v24.19.0`, and the changed browser test passes ESLint.
+Component-wide ESLint still reports existing React-effect-rule findings in
+other parts of `ClientDataWorkspace.tsx`. The fix is pushed as `faf7369`.
+This is local UI behavior only: it has not been deployed, and does not close
+Cloud Test build identity, feature parity, hosted-data, or release evidence
+gates.
+
 ### Production-Readiness Timebox - 2026-10-14
 
 - Target: reach an evidence-backed decision on controlled real-user onboarding
