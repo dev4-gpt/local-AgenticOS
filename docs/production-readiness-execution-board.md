@@ -4102,10 +4102,12 @@ does not authorize hosted changes, provider calls, or spending.
   `v24.19.0`. The deterministic offline AI evaluation passed **16/16** on the
   same commit with `localGatePassed: true`, zero model samples, and no provider
   requests. The report records `productionReady: false`.
-- The strict release verifier reports `releaseReady: false` because no release
-  ledger bucket is configured in the local verifier environment; **37 release
-  evidence categories** remain unevaluated. This is not evidence that a hosted
-  ledger record is absent.
+- The strict release verifier on current commit `76abe54` was run with the
+  known bucket name `veloce-agenticos-2026-veloce-release-ledger`. It reports
+  `releaseReady: false` and `release_ledger_lookup_unavailable`; the local
+  Cloud SDK credentials/read-access context could not verify the listing or
+  record contents. **37 release evidence categories** remain unevaluated. This
+  is not evidence that a hosted ledger record is absent.
 - Read-only inspection of the Aryaman (Work) Chrome window found local
   `127.0.0.1:3985/memory` with **2 records / 114 nodes / 113 edges**, local
   `127.0.0.1:41774/memory` with **23 records / 32 nodes / 54 edges**, and the
