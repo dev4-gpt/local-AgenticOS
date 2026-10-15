@@ -37,6 +37,19 @@ the other or establish complete archive/import coverage. The exact-ID local
 gap report reproduces the 87/107 result. No Drive files were changed and no
 hosted graph import was run.
 
+Read-only UI comparison in the Aryaman (Work) Chrome profile confirms the
+current-source local app is `http://127.0.0.1:41774/memory`; after reloading,
+it renders without the previously visible build-error overlay. Local and
+Cloud Test both show **23 tenant memories, 32 graph nodes, and 54 edges** at
+inspection time. However, local exposes the **Community sources** upload and
+JSON review controls that are absent in Cloud Test, so counts align but UI
+feature parity does not. Internal Beta is a distinct runtime/dataset at
+`agentos-internal-beta-vbimnfseva-ew.a.run.app`: it shows **2 memories, 114
+nodes, and 113 edges**. Existing local tabs on ports `3985` and `3945` refuse
+connections and are stale; `41774` is the live local checkout. This is a
+read-only UI/configuration observation, not proof of full journey, tenant
+isolation, or source-build parity. No controls or tenant records were changed.
+
 ### Current Candidate Evidence Refresh - 2026-10-15
 
 On clean pushed source commit `48873ee1283a9651304ba6aafd426097a4b35a59`,
