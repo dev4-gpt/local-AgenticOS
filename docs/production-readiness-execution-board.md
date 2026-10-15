@@ -4183,3 +4183,24 @@ does not authorize hosted changes, provider calls, or spending.
   Cloud Test `/api/client-runtime/build-identity` endpoint still returns
   `client_route_not_enabled`, so hosted build identity and source/image parity
   remain unverified. No hosted state or account settings were changed.
+
+## Continuation Update - Current Release and Archive Recheck (2026-10-15)
+
+- On pushed commit `c4a2947`, `npm run test:focused` passed **368/369**, with
+  one intentional skip. This is the configured focused regression suite, not
+  the full repository test inventory or hosted acceptance.
+- The strict release verifier without an explicit ledger target returns
+  `ledger_bucket_not_configured`. With the previously inspected bucket name
+  `veloce-agenticos-2026-veloce-release-ledger`, the same verifier returns
+  `release_ledger_lookup_unavailable` in this environment. It cannot establish
+  whether a record exists, and leaves **37** evidence categories unevaluated.
+- Rechecking the current partial Skool graph shows 107 registered lessons,
+  327 text-bearing source segments, and exact lesson-ID links for 87 lessons;
+  20 remain unlinked. None of those 20 has an exact normalized-title match in
+  the available text segments, so title-based auto-linking is not safe. The
+  pending-page list has 25 title/date entries with no canonical lesson URLs.
+  No source graph was changed and no hosted import was attempted.
+- Browser-control inventory currently exposes the College profile, not the
+  user's designated Aryaman (Work) profile. No College page was interacted
+  with; Work-profile Skool and hosted checks remain pending a controllable Work
+  window. No account, hosted, tenant, provider, or deployment state changed.
