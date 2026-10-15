@@ -4265,3 +4265,19 @@ does not authorize hosted changes, provider calls, or spending.
   linked Drive documents, videos, or other bonus resources themselves have been
   captured or imported. No source graph, Drive file, or hosted tenant was
   changed during this check.
+
+## Continuation Update - Cloud Test Route-Allowlist Diagnosis (2026-10-15)
+
+- Current source includes `/api/client-runtime/build-identity` in the client
+  API-route defaults and in the GCP provisioning template. The strict deployed
+  runtime checker also requires that route plus source-import and upload routes.
+- The active Cloud Test revision `veloce-cloud-test-00208-5hk` rejects
+  build-identity with `client_route_not_enabled`; the live revision is therefore
+  using an allowlist that differs from current source/provisioning defaults.
+  This is consistent with a stale hosted revision/configuration, but the image
+  itself cannot be proven stale until build identity is exposed.
+- Adding the missing routes and correcting Cloud Test's 14-day retention to
+  the agreed 45 days requires a new Cloud Run revision and traffic rollout.
+  No such change is authorized by the earlier approval to disable provider
+  calls, so rollout remains held pending explicit approval and a reviewed
+  revision plan. No hosted state was changed during this diagnosis.
