@@ -10,9 +10,9 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
-### Current-HEAD Verification - 2026-10-15 (`29e6a88`)
+### Fresh Verification - 2026-10-15 (source `29e6a88`, recorded `deb76e9`)
 
-On clean, pushed HEAD `29e6a88da9f5e2daf1f917b6d932dfda37cbed4b`, supported
+On clean, pushed source commit `29e6a88da9f5e2daf1f917b6d932dfda37cbed4b`, supported
 Node `v24.18.0` passed `npm run typecheck`. The offline AI release evaluation
 passed **16/16** deterministic cases, with no model samples/provider calls;
 its local gate passes but `productionReady=false`. The focused suite passed
