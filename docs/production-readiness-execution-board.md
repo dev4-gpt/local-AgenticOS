@@ -3577,3 +3577,23 @@ does not authorize hosted changes, provider calls, or spending.
   migration, customer-journey, and other release evidence remains unevaluated;
   no ledger record was published, no deployment occurred, and no provider was
   called.
+
+## Continuation Update - Current AI, Observability, and Cloud Revision (2026-10-15)
+
+- On current source commit `68c9e92edbc2518fabef128b3e1d3a1a8f7193f7`, the
+  deterministic AI evaluation passed **16/16**, with `localGatePassed: true`,
+  `productionReady: false`, and zero model samples. Focused tenant observability
+  and trace regressions passed **13/13**. No provider call was made.
+- Read-only Cloud Run inspection found Cloud Test on revision
+  `veloce-cloud-test-acceptance-9417c3c`, serving image digest
+  `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`.
+  Its successful Cloud Build is dated September 23 and tagged
+  `acceptance-9417c3c`; Cloud Build metadata does not independently attest the
+  source commit. Current branch code is hundreds of commits beyond that named
+  tag. The revision enables provider calls, so no live provider test is safe
+  under the zero-paid-spend pilot constraint until this is reviewed.
+- Re-running the read-only release verifier against the existing ledger bucket
+  on the current commit reports `release_ledger_record_missing`; deployment,
+  hosted migrations, signed-in same-user parity, and release-ledger publication
+  remain open. No service configuration, traffic, IAM, database, storage, or
+  ledger record was changed.
