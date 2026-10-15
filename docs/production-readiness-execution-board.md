@@ -28,6 +28,23 @@ tracker.
 - The timebox is measured by dated, current-candidate evidence and the board's
   exit criteria, not by an estimated completion percentage.
 
+### Current Pushed Candidate Checkpoint - 2026-10-15
+
+On clean pushed `HEAD` `23b1869fc7ce794d3f9a079c6fee2efe548b6dcf`, supported
+Node `v24.18.0` passed `npm run typecheck`, `npm run test:focused` (**367
+passed, 1 skipped, 0 failed**), and `npm run verify:ai-evaluation` (**16/16**
+deterministic cases). The ignored local AI receipt binds this source commit and
+reports `localGatePassed: true`, `productionReady: false`, and zero model
+samples/provider requests.
+
+The fresh read-only strict release check remains `releaseReady: false`: no
+release-ledger record exists for this commit, and **37 evidence categories**
+remain unevaluated, including the signed-in journey, hosted deployment and
+identity, migrations, tenant isolation, source import, buyer pilot, approvals,
+and rollback. No release record, deployment, hosted change, tenant write, or
+provider request was made. These results refresh local regression evidence
+only; they do not satisfy hosted or customer-facing exit criteria.
+
 ### Current Continuation Verification - 2026-10-14
 
 - On clean source commit `8424ba15e69af98684488566614d4296e21fac23`, the
