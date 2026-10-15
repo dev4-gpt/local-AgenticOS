@@ -178,6 +178,18 @@ present in the expected temporary locations. Therefore no authenticated
 browser journey or same-tenant comparison was attempted. The local shell and
 passing config preflight are not parity evidence.
 
+## Current-Head Regression Refresh - 2026-10-14
+
+On pushed commit `d0481c45bbf37b161cd40e735395c0a7da323780`, using the
+project-supported Node `v24.19.0`, `npm run test:focused` passed **367/368**
+(one skipped, zero failed). The deterministic AI release evaluation passed
+**16/16**, with `productionReady: false` and no provider requests. Focused
+trace/observability tests passed **13/13**, and `npm run typecheck` passed.
+These are local regression/evaluation receipts; they do not establish a real
+signed-in customer journey, live provider quality, hosted telemetry, or
+production readiness. The available Chrome profile is still not the intended
+Veloce window, so no browser parity check was attempted.
+
 ## Latest Drive Archive Manifest Recheck - 2026-10-14
 
 The `School Tabs Agent OS` Drive folder contains 113 items at this recheck. Its
