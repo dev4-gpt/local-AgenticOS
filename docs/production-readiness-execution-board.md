@@ -10,6 +10,30 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Current Evidence Update - 2026-10-14
+
+On `HEAD` `5002dc570c8006d93ab7524e30a5117d2902661d`, five locally saved
+Skool lesson captures (May 22, 25, 26, 27, and 29) were validated through the
+production source selector/parser and merged into a new owner-only private
+graph snapshot at `tmp/authorized-skool-import/agentos-may29-local-graph-2026-10-14.jsonld`.
+The graph validates at **1,153 nodes / 9,677 relations** and its exact-ID
+crosswalk now has text for **87/107** registered lessons. The source archive
+is still partial: 20 lesson entries lack linked text, video files are not
+included, and completeness is unverified. The snapshot is ignored/private;
+no classroom text or video was added to Git, Drive, Supabase, or Cloud Test.
+
+On supported Node `v24.18.0`, the deterministic AI release evaluation passed
+**16/16** with zero model samples/provider requests, and the offline customer-
+journey, buyer-evidence, and MiroFish-repeat-smoke tests passed **7/7**. The
+portable-graph checks passed **4/4**, HTML-source-pack checks **5/5**, and
+production selector/parser validation passed for all five new packs. These
+checks validate local contracts only, not a real customer journey, model
+quality, buyer demand, or hosted behavior. The read-only readiness verifier
+still returns `releaseReady: false`: no verified ledger target is configured,
+and hosted deployment, migrations, customer-journey, buyer-pilot, and other
+release evidence remain unevaluated. No ledger was published and no hosted or
+provider state changed.
+
 ### Local Parity Configuration Recheck - 2026-10-14
 
 The private `.private-client-kits/internal-beta-parity.env` now contains the
