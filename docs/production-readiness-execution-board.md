@@ -37,6 +37,26 @@ under `~/.config/gcloud`; the verifier soft-fails that lookup. Therefore the
 ledger's actual object state is **unverified**, not proven empty. No cloud
 object was written and no IAM or deployment change was made.
 
+### Release Ledger Lookup Error Semantics - 2026-10-14
+
+Pushed source commit
+`a8995c9d887def0d384ac01799ac170ca60c930f` updates the strict release
+verifier so an explicit empty object listing reports
+`release_ledger_record_missing`, while Cloud SDK, credential, permission, or
+record-read failures report `release_ledger_lookup_unavailable`. Invalid JSON
+records are reported separately. The regression suite covers both a simulated
+credentials failure and an explicit empty-prefix response; it does not require
+cloud credentials.
+
+On that commit, targeted readiness tests passed **13/13**, the focused suite
+passed **368/369** (one intentional skip), typecheck and targeted lint passed,
+and the offline AI evaluation passed **16/16** with zero model samples and
+`productionReady: false`. With the known ledger bucket configured, the
+read-only verifier now accurately reports `release_ledger_lookup_unavailable`
+in this environment; **37 release categories** remain unevaluated. No hosted
+object, tenant data, configuration, or deployment was changed, and no
+provider request was made.
+
 ### MiroFish Artifact Recheck - 2026-10-15
 
 On MiroFish checkout `73f9a3b`, the bounded v2/smoke tests pass **25/25**
