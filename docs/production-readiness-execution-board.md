@@ -10,6 +10,23 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Current-Checkout and Archive Coverage Refresh - 2026-10-14
+
+On clean pushed source commit `2e227d00622a02e5533ffa337b912403de55d64d`,
+`npm run typecheck` passed under the supported bundled Node runtime. The
+focused suite passed **367/368** (one intentional skip), and
+`npm run verify:ai-evaluation` passed **16/16** deterministic cases with
+`productionReady: false`; no model samples or provider requests were used.
+
+A local structured crosscheck of the 25 pending registered lesson IDs against
+three available private graph candidates found all 25 present as lesson
+metadata, but **0/25 with linked text-capture segments**. This resolves the
+ambiguity in the earlier “pending page” wording: the gap is lesson-body
+captures, not missing catalog IDs. No new lesson body or video bytes were
+added, and no hosted graph import, customer-data write, deployment, or provider
+request occurred. The signed-in customer journey, hosted parity, and strict
+release evidence were not refreshed in this local-only check.
+
 ### MiroFish Artifact Recheck - 2026-10-15
 
 On MiroFish checkout `73f9a3b`, the bounded v2/smoke tests pass **25/25**
