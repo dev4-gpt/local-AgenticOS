@@ -44,6 +44,34 @@ separate dispositions in the map rather than being treated as ordinary content.
 New `client_*` table declarations must be classified before the lifecycle gate
 passes.
 
+### Per-Item Expiry and Foreign-Key Safety
+
+The selected clock is per item, not per tenant and not inherited automatically
+from a parent. This matters because many workflow tables use `ON DELETE CASCADE`:
+deleting an old run, conversation, task, report, or source can delete a newer
+child before its own 28-day deadline. A generic parent-table purge would
+therefore violate the policy even if it were tenant-scoped and batch-limited.
+The V48 learning-reference migration already demonstrates one mitigation by
+nulling old source references instead of deleting a newer learning item.
+
+Before a table family receives a purge path, its design must identify the
+retention owner row, every referencing row, each row's own creation/expiry
+clock, and whether the relationship can be nulled without breaking the product.
+Eligible children should be expired first; a parent must not be removed while
+it would cascade-delete a younger row. Where a reference is required, preserve
+the child and defer parent deletion only if that exception is explicitly
+accepted, or redesign the reference with a tested tombstone/minimized snapshot.
+The implementation must also make expired content unreadable at day 28 even
+when physical deletion is delayed for dependency safety. Never solve the
+conflict by extending the child's expiry or by silently shortening it.
+
+Generated object bytes have a separate lifecycle: deny normal reads at the
+28-day expiry, retain only the approved seven-day recovery copy, then verify
+permanent deletion. SQL metadata cleanup must not claim object deletion, and
+object cleanup must not erase billing or minimized audit evidence. Hosted
+bucket configuration remains unchanged until the exact target, lifecycle, and
+recovery behavior are verified.
+
 ## Environment Evidence
 
 - Local policy work is in the working tree and has not been applied to hosted
