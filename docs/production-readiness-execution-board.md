@@ -10,14 +10,26 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
-### Fresh Verification - 2026-10-15 (source `29e6a88`, recorded `deb76e9`)
+### Current-Checkout Regression Recheck - 2026-10-15
+
+On application source commit `29e6a88da9f5e2daf1f917b6d932dfda37cbed4b`,
+supported Node `v24.19.0` passed `npm run typecheck` and the focused suite passed
+**384/385** tests (one intentional skip). The documentation-only checkout at
+`8b1be3c8659991e95aea4c22fc6a0f5e1a447a42` had one uncommitted readiness-board
+edit during these checks; therefore this is regression evidence for the
+application source, not a clean-commit release receipt. The AI evaluation was
+not accepted from the first attempt because it ran under unsupported Node
+`v26.4.0` on a dirty worktree; a clean supported-runtime rerun is required.
+No provider calls, hosted writes, or deployment occurred.
+
+### Fresh Verification - 2026-10-15 (source `29e6a88`, recorded `8b1be3c`)
 
 On clean, pushed source commit `29e6a88da9f5e2daf1f917b6d932dfda37cbed4b`, supported
 Node `v24.18.0` passed `npm run typecheck`. The offline AI release evaluation
 passed **16/16** deterministic cases, with no model samples/provider calls;
 its local gate passes but `productionReady=false`. The focused suite passed
 **384/385** tests with one intentional skip. The strict release verifier bound
-to this exact HEAD returns `releaseReady=false`, `ledger_bucket_not_configured`,
+to this exact source commit returns `releaseReady=false`, `ledger_bucket_not_configured`,
 and **38 evidence categories not evaluated**. No ledger write, deployment,
 hosted mutation, or provider call occurred.
 
@@ -47,6 +59,15 @@ adds a tenth dated lesson ID. The available `agentOS` tab document's July 26
 entry records the Skool link and 12:03 duration, but no lesson body or
 transcript. The folder therefore provides no newly verified body capture for
 the current missing lesson IDs and no evidence of video-byte downloads.
+
+A structural read of the authorized native Google Doc `agentOS` at revision
+`AHj4eMSRSkQG9QMPrsvHatE1necLRGj0WGjXn6eMjEo65FZ2ccRGXzO-k_sCSD8aHx2rBbMH4f1I4ecp3d1dk0vW2FMgXwSRpMIbE38DIlA` matched four of the 20
+missing lesson titles (July 26, August 28, September 5, and September 6). Each
+matching section is only 158-170 characters across three paragraphs and has a
+Skool lesson URL, but no lesson body or direct video URL. The other 16 missing
+titles do not occur in that document. This rules out treating those stubs as
+captured lesson text; no doc text was copied into the graph, and no Drive or
+hosted data was changed.
 
 ### Current Checkout and Drive Archive Reconciliation - 2026-10-15
 
