@@ -28,14 +28,19 @@ provider call was made.
 
 Read-only Drive inspection under the verified `aryamans.dev96@gmail.com`
 account found the `School Tabs Agent OS` archive manifest. It describes the
-classroom capture as **9 of 108 dated lessons archived**, with the standalone
-Agent OS System PDF saved separately and video downloads incomplete. The
-current local graph crosswalk independently reports **87 of 107 registered
-lessons with text** (226 linked text segments, 20 without text). These are
-different measures and currently do not reconcile; neither can stand in for
-the other or establish complete archive/import coverage. The exact-ID local
-gap report reproduces the 87/107 result. No Drive files were changed and no
-hosted graph import was run.
+classroom capture summary as **9 of 108 dated lessons archived**. The
+item-level rows show 9 dated PDFs plus a distinct May 30 HTML lesson; the May
+19 HTML is a second copy of a lesson PDF. The standalone AgentOS System PDF is
+separate. This gives **10 dated lesson IDs plus the System lesson** represented
+in Drive, with no video downloads verified. Exact-ID matching confirms all
+**11/11 Drive lesson IDs have linked text in the local graph**. The full local
+graph crosswalk is **87/107 registered lessons with text** (226 linked
+segments, 20 without text), so the Drive and graph totals measure different
+scopes rather than contradicting each other. The summary's “9 of 108” is
+incomplete relative to the item rows because it omits the distinct dated HTML
+capture. Full classroom coverage remains incomplete, and video
+bytes/transcripts remain absent. No Drive files were changed and no hosted
+graph import was run.
 
 Read-only UI comparison in the Aryaman (Work) Chrome profile confirms the
 current-source local app is `http://127.0.0.1:41774/memory`; after reloading,

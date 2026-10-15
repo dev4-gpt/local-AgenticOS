@@ -22,6 +22,18 @@ the current folder listing. This is a Drive/manifest inventory check only; it
 does not verify full lesson-page completeness or establish a hosted graph
 import. No file was modified or imported during this read.
 
+An exact-ID crosscheck of the 12 classroom-URL cells resolves the overlap:
+they represent **11 unique page IDs**, because the May 19 PDF and sanitized
+HTML are duplicate copies. There are **10 dated IDs** (9 PDF captures plus the
+distinct May 30 HTML capture) and the separately captured AgentOS System
+lesson. All **11/11** are registered in the local graph and have linked text
+segments. The manifest's “9 of 108” summary is incomplete relative to its
+item rows because it omits the distinct dated HTML capture. It does not mean
+the graph has only nine lesson texts: the local graph has text for 87/107
+registered lessons, while the remaining 20 lesson bodies are not captured in
+that graph. The counts now have a verified overlap; complete classroom
+coverage and video assets/transcripts remain unverified/incomplete.
+
 ## Files Found
 
 | Local item | Count | Evidence / limits |
