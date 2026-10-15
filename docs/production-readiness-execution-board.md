@@ -64,15 +64,16 @@ that the created memory appears as a graph node; `npm run typecheck` passed
 under Node 24. These are local regressions only: no hosted graph was refreshed,
 and Cloud Test's empty graph still needs an authenticated read-only diagnosis.
 
-### Current-Head Strict Release Gate - 2026-10-14
+### Candidate Strict Release Gate - 2026-10-14
 
-The read-only release verifier was rerun on pushed commit
-`44a935337a493b84dfffa32c7b6373b935535443`. It reports
+The read-only release verifier was rerun on pushed source candidate
+`c3b124216dc1a207eab1d7386fe9036c0308f092`. It reports
 `releaseReady: false`, no ledger record for this SHA, and **38 required
 categories not evaluated**. These include customer journey, buyer pilot,
 migrations, deployment/artifact identity, tenant isolation, source import,
 test results, approvals, and rollback target. The configured ledger bucket
-was readable; no record was published and no hosted state changed.
+was readable; no record was published and no hosted state changed. The later
+commit that follows this evidence note is documentation-only.
 
 ### Current-Head Offline AI and Trace Checks - 2026-10-14
 
