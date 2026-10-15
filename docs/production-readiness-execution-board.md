@@ -4204,3 +4204,15 @@ does not authorize hosted changes, provider calls, or spending.
   user's designated Aryaman (Work) profile. No College page was interacted
   with; Work-profile Skool and hosted checks remain pending a controllable Work
   window. No account, hosted, tenant, provider, or deployment state changed.
+
+## Continuation Update - Work-Profile Hosted Tenant Snapshot (2026-10-15)
+
+- Superseding the browser-access note above: the Aryaman (Work) Chrome window
+  was available for a read-only check. Cloud Test `/memory`, after its initial
+  loading state settled, showed **23 tenant memories / 32 nodes / 54 edges**.
+  Internal Beta `/memory` showed **0 / 0 / 0**; its Notebook showed **0 records
+  / 0 active sources**. These are different hosted tenants and different data
+  states, so they must not be presented as content parity. The Cloud Test
+  build-identity endpoint still returned `client_route_not_enabled` in this
+  profile. No graph refresh, tenant write, import, or hosted configuration
+  change occurred.
