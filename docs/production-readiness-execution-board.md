@@ -10,9 +10,9 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
-### Current-HEAD Verification - 2026-10-15
+### Current-HEAD Verification - 2026-10-15 (`29e6a88`)
 
-On clean pushed HEAD `cd85ded7f87fb179407fee9deb8057e534a9fb67`, supported
+On clean, pushed HEAD `29e6a88da9f5e2daf1f917b6d932dfda37cbed4b`, supported
 Node `v24.18.0` passed `npm run typecheck`. The offline AI release evaluation
 passed **16/16** deterministic cases, with no model samples/provider calls;
 its local gate passes but `productionReady=false`. The focused suite passed
@@ -29,11 +29,15 @@ transcript or captured Skool lesson body; it has no `hasTextCaptureSegment`
 edge and does not close that lesson gap. The separate legacy source-pack field
 `pendingPages=25` remains unreconciled with the exact 20 lesson-body gaps.
 
-The Aryaman (Work) Chrome window is confirmed in the native Chrome view on the
-live local `127.0.0.1:41774/memory` page (23 tenant memories, 32 graph nodes,
-54 edges). This confirms the correct profile/window is accessible; it is not a
-new cloud parity, journey, or tenant-isolation receipt. No UI controls were
-used and no tenant data was changed.
+The user-provided Aryaman (Work) Chrome snapshots show local
+`127.0.0.1:41774/memory` and Cloud Test
+`veloce-cloud-test-mquo4bf7aq-el.a.run.app/memory` with the same visible totals
+(23 tenant memories, 32 graph nodes, 54 edges). The local screenshot includes
+Community Sources upload/review controls that are absent in Cloud Test. This is
+useful read-only UI parity evidence and confirms the Work window was open at
+snapshot time; it does not establish source-build parity, an interactive
+customer journey, or tenant isolation. No UI controls were used and no tenant
+data was changed.
 
 A fresh read-only scan of the `School Tabs Agent OS` Drive folder returned 115
 items and the current manifest contains 110 asset rows. The 98 PDFs are not 98
