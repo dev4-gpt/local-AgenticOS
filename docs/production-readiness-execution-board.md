@@ -72,6 +72,16 @@ migrations, deployment/artifact identity, tenant isolation, source import,
 test results, approvals, and rollback target. The configured ledger bucket
 was readable; no record was published and no hosted state changed.
 
+### Current-Head Offline AI and Trace Checks - 2026-10-14
+
+On the same pushed source commit `99c719fdb23a3435d52a51473bef565addc86a7c`,
+the deterministic local AI evaluation passed **16/16** (`localGatePassed: true`,
+`productionReady: false`, `modelSamples: 0`). The report states that no LLM or
+Zep request is part of the suite. Trace/observability regression tests passed
+**13/13** with mock-backed tenant, pagination, and redaction coverage. These
+checks refresh local evidence only; live model quality, provider-side spend,
+and hosted telemetry remain unverified.
+
 ### Earlier Candidate Checkpoint - 2026-10-14
 
 On pushed clean `HEAD` `27d5637c4abbfa569617bb68edd8e7928263a3a4` (Node
