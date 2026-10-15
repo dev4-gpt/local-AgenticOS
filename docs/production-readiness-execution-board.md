@@ -3249,3 +3249,8 @@ does not authorize hosted changes, provider calls, or spending.
   and mocked APIs; they do not substitute for the signed-in live journey.
   TypeScript `tsc --noEmit` also passed. No hosted calls or data writes were
   made.
+- The latest owner-authorized Drive graph was streamed through the portable
+  graph verifier and passed at **1,138 nodes / 9,029 relations**. Its SHA-256
+  exactly matches the local candidate (`69e056cd30c062dcbca4d281a8f34831d16e191f11ad1e44f245f16d2fde3dd7`),
+  closing the Drive/local artifact-identity gap for this **partial** graph.
+  The 25 missing pages, unverified videos, and hosted import remain open.

@@ -387,6 +387,11 @@ the 100-source limit; the largest is 999,208 bytes. On pushed `HEAD`
 parser then accepted the seven declared batches, matching the manifest's 193
 sources, 7,577 links, 18 publication dates, and 11 skipped entries. The
 sanitizer tests passed 2/2, portable graph tests 4/4, and source-pack, artifact
-boundary, build-identity, and schema-evidence tests 14/14. These checks do not
-confirm Drive/local byte identity, resolve the 25 pending pages, or create a
-hosted import receipt. No file, Drive object, or hosted data changed.
+boundary, build-identity, and schema-evidence tests 14/14. The latest Drive
+graph (`1T65uHPFs4MzzHoHGXu-Apej1m802C_DE`) was streamed directly through the
+portable graph validator and passed at 1,138 nodes / 9,029 relations. Its
+SHA-256 exactly matches the local candidate:
+`69e056cd30c062dcbca4d281a8f34831d16e191f11ad1e44f245f16d2fde3dd7`. This
+proves byte identity for that partial graph only; it does not resolve the 25
+pending pages or create a hosted import receipt. No Drive or hosted data
+changed.
