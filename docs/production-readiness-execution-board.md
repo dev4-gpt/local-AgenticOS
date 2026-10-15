@@ -29,11 +29,19 @@ journey, buyer-evidence, and MiroFish-repeat-smoke tests passed **7/7**. The
 portable-graph checks passed **4/4**, HTML-source-pack checks **5/5**, and
 production selector/parser validation passed for all five new packs. These
 checks validate local contracts only, not a real customer journey, model
-quality, buyer demand, or hosted behavior. The read-only readiness verifier
-still returns `releaseReady: false`: no verified ledger target is configured,
-and hosted deployment, migrations, customer-journey, buyer-pilot, and other
-release evidence remain unevaluated. No ledger was published and no hosted or
-provider state changed.
+quality, buyer demand, or hosted behavior. The latest local MiroFish audit now
+accepts the v2 cohort schema and reports absent run-state as failed evidence
+instead of aborting. The actual reviewed run fails: both dynamic posts are
+self-quotes, there is no cross-buyer interaction, profile/workflow coverage is
+unproven, run-state is absent, telemetry does not reconcile, and **0/2** posts
+were approved. Its manifest records 10 synthetic profiles, 10 rounds, a $0
+paid-spend limit, and no real customer data; market validation remains false.
+The MiroFish fixture suite passes **29/29**, including the new v2 and missing-
+run-state regressions. The read-only readiness verifier still returns
+`releaseReady: false`: no verified ledger target is configured, and hosted
+deployment, migrations, customer-journey, and other release evidence remain
+unevaluated. No ledger was published and no provider request was made during
+this verification.
 
 ### Local Parity Configuration Recheck - 2026-10-14
 

@@ -102,6 +102,37 @@ class BuyerRunAuditTest(unittest.TestCase):
         self.assertEqual(result["reviewedDynamicPosts"], 1)
         self.assertEqual(result["approvedDynamicPosts"], 1)
 
+    def test_v2_cohort_workflow_applies_to_each_persona(self):
+        self.cohort.write_text(json.dumps({
+            "schemaVersion": 2,
+            "firstWorkflow": "review an intake handoff",
+            "personas": [{"id": "P00001"}, {"id": "P00002"}],
+        }), encoding="utf-8")
+        profiles_path = self.simulation / "twitter_profiles.csv"
+        with profiles_path.open(encoding="utf-8", newline="") as handle:
+            profiles = list(csv.DictReader(handle))
+        profiles[1]["user_char"] = "compare approval evidence and review an intake handoff"
+        with profiles_path.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=profiles[0].keys())
+            writer.writeheader()
+            writer.writerows(profiles)
+
+        result = AUDITOR.audit(self.simulation, self.cohort)
+
+        self.assertEqual(result["cohortSchemaVersion"], 2)
+        self.assertTrue(result["checks"]["profileWorkflowCoverage"])
+        self.assertTrue(result["pilotEvidencePassed"])
+
+    def test_missing_run_state_is_reported_as_failed_evidence(self):
+        (self.simulation / "run_state.json").unlink()
+
+        result = AUDITOR.audit(self.simulation, self.cohort)
+
+        self.assertFalse(result["runStatePresent"])
+        self.assertFalse(result["checks"]["runIdentity"])
+        self.assertFalse(result["checks"]["completionTelemetry"])
+        self.assertFalse(result["pilotEvidencePassed"])
+
     def test_copied_or_wrong_persona_dynamic_post_fails_without_content_review(self):
         database = sqlite3.connect(self.simulation / "twitter_simulation.db")
         database.execute("UPDATE post SET quote_content = 'P00001 evaluates this tool' WHERE post_id = 2")

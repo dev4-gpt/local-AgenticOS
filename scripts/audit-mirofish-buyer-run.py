@@ -154,14 +154,30 @@ def review_covers_dynamic_posts(
 
 def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = None) -> dict:
     cohort = load_json(cohort_path)
-    expected_ids = {item["id"] for item in cohort["personas"]}
-    if len(expected_ids) != len(cohort["personas"]):
+    personas = cohort.get("personas")
+    if not isinstance(personas, list) or not personas:
+        raise ValueError("cohort must specify personas")
+    if any(
+        not isinstance(item, dict)
+        or not isinstance(item.get("id"), str)
+        or not item["id"].strip()
+        for item in personas
+    ):
+        raise ValueError("cohort persona IDs must be non-empty strings")
+    expected_ids = {item["id"] for item in personas}
+    if len(expected_ids) != len(personas):
         raise ValueError("cohort contains duplicate persona IDs")
-    if any(not isinstance(item.get("firstWorkflow"), str) or not item["firstWorkflow"].strip() for item in cohort["personas"]):
+    shared_workflow = cohort.get("firstWorkflow")
+    workflows = {
+        item["id"]: item.get("firstWorkflow") or shared_workflow
+        for item in personas
+    }
+    if any(not isinstance(workflow, str) or not workflow.strip() for workflow in workflows.values()):
         raise ValueError("cohort must specify each buyer's first workflow")
 
     config = load_json(simulation_dir / "simulation_config.json")
-    run_state = load_json(simulation_dir / "run_state.json")
+    run_state_path = simulation_dir / "run_state.json"
+    run_state = load_json(run_state_path) if run_state_path.is_file() else {}
     with (simulation_dir / "twitter_profiles.csv").open(encoding="utf-8", newline="") as handle:
         profiles = list(csv.DictReader(handle))
 
@@ -183,9 +199,9 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
     profile_ids = set(profile_by_agent.values())
     configured_ids = set(configured_by_agent.values())
     missing_workflow_profiles = sorted(
-        item["id"] for item in cohort["personas"]
-        if normalized_words(item["firstWorkflow"])
-        not in normalized_words(" ".join((profile_by_name.get(item["id"]) or {}).get(key, "") for key in ("user_char", "description")))
+        persona_id for persona_id, workflow in workflows.items()
+        if normalized_words(workflow)
+        not in normalized_words(" ".join((profile_by_name.get(persona_id) or {}).get(key, "") for key in ("user_char", "description")))
     )
 
     posts = read_posts(simulation_dir)
@@ -286,6 +302,7 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
     }
     return {
         "simulationId": config.get("simulation_id"),
+        "cohortSchemaVersion": cohort.get("schemaVersion"),
         "expectedPersonas": len(expected_ids),
         "generatedProfiles": len(profiles),
         "configuredAgents": len(configured_by_agent),
@@ -312,6 +329,7 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
         "reportedTwitterActions": reported_actions,
         "loopCompletedInLog": loop_completed,
         "runnerStatus": status,
+        "runStatePresent": run_state_path.is_file(),
         "reportedRound": run_state.get("current_round"),
         "configuredRounds": run_state.get("total_rounds"),
         "checks": checks,
