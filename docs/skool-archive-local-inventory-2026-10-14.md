@@ -5,6 +5,23 @@ October 10, plus the AgentOS System lesson. This began as a local-file
 inventory; a read-only audit of the owner's Drive archive and manifest is now
 included below. Counts do not replace lesson-by-lesson reconciliation.
 
+## Drive Recheck - 2026-10-15
+
+A read-only listing now finds **115 direct items** in `School Tabs Agent OS`,
+up from the previous 113-item inventory. The two additional direct items are
+partial JSON-LD graph exports, not new lesson captures. The updated archive
+manifest contains **110 asset rows**; 12 rows point to classroom pages, but
+only **11 unique `md` page IDs** are represented because the May 19 page has
+both PDF and sanitized-HTML copies. The unique-ID count includes the separately
+identified AgentOS System lesson.
+
+The newest graph row remains partial at **87/107** registered lessons with
+linked text, **20** without linked text, `pendingPages=25` unreconciled, and no
+video bytes or transcripts. No newly saved dated lesson capture appeared in
+the current folder listing. This is a Drive/manifest inventory check only; it
+does not verify full lesson-page completeness or establish a hosted graph
+import. No file was modified or imported during this read.
+
 ## Files Found
 
 | Local item | Count | Evidence / limits |

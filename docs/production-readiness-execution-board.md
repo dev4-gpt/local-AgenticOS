@@ -28,6 +28,21 @@ tracker.
 - The timebox is measured by dated, current-candidate evidence and the board's
   exit criteria, not by an estimated completion percentage.
 
+### Skool Drive Inventory Recheck - 2026-10-15
+
+A fresh read-only listing of the authorized `School Tabs Agent OS` Drive folder
+found **115 direct items**, up from the prior 113-item audit. The two added
+items are partial graph exports, not lesson captures. The latest archive
+manifest has **110 asset rows**, including 12 classroom-page rows representing
+11 distinct `md` page IDs (the May 19 lesson has both PDF and sanitized-HTML
+copies; the unique-ID count includes the separately identified AgentOS System
+lesson). The latest graph remains
+partial: text for **87/107** registered lessons, 20 without linked text,
+`pendingPages=25` unresolved, and no video bytes/transcripts. No new dated lesson
+capture was present. This recheck did not modify Drive files or import to a
+hosted graph. Details are in
+[the local archive inventory](./skool-archive-local-inventory-2026-10-14.md).
+
 ### Current Pushed Candidate Checkpoint - 2026-10-15
 
 On clean pushed `HEAD` `23b1869fc7ce794d3f9a079c6fee2efe548b6dcf`, supported
