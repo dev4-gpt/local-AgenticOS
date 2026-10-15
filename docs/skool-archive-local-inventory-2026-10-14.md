@@ -408,3 +408,23 @@ confirms that the local archived material currently on hand does not close the
 pending roster; new owner-saved captures or an approved platform export are
 needed. No Skool request, cookie transfer, Drive write, or hosted import was
 performed.
+
+## Local HTML Capture Refresh (2026-10-14, 22:00 UTC)
+
+Five additional owner-saved classroom HTML captures (May 22, 25, 26, 27, and
+29) were prepared as private source packs and merged into
+`tmp/authorized-skool-import/agentos-may29-local-graph-2026-10-14.jsonld`.
+The graph validator passes at **1,153 nodes / 9,677 relations**. Its exact
+lesson-ID text crosswalk now links text segments for **87/107** registered
+lessons (226 linked segments), up from 82/107 in the prior Drive-backed graph.
+The source records are non-empty page text, but no independent completeness
+check confirms that each capture contains every page section.
+
+This refresh adds five text-backed lesson pages; it does not close the archive:
+20 registered lessons still lack linked text in this graph. The graph's
+`coverage.pendingPages: 25` field is stale relative to its updated text
+crosswalk and should not be used as the current missing-text count. Video
+references remain metadata only: no video bytes or transcripts were added.
+The export remains `complete: false` and `videoAssetsIncluded: false`, is
+owner-only, and has not been imported into a hosted tenant. No Skool scraping,
+Drive write, hosted request, migration, deployment, or provider call occurred.
