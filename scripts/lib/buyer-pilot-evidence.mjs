@@ -13,9 +13,28 @@ const REQUIRED_CHECKS = [
   "completionTelemetry", "buyerActivity", "buyerContentReview",
 ];
 const MAX_ARTIFACT_BYTES = 50_000_000;
+const APPROVED_COHORT_FILES = [
+  "mirofish-buyer-micro-v1.json",
+  "mirofish-buyer-micro-v2.json",
+];
 
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+function approvedCohort(root, expectedHash, expectedFile = null) {
+  if (expectedFile && !APPROVED_COHORT_FILES.includes(expectedFile)) return null;
+  for (const file of APPROVED_COHORT_FILES) {
+    if (expectedFile && file !== expectedFile) continue;
+    try {
+      const path = resolve(root, "evaluations", file);
+      const bytes = readFileSync(path);
+      if (sha256(bytes) === expectedHash) return { file, path, bytes };
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 function artifactHashes(directory) {
@@ -40,9 +59,9 @@ export function validBuyerPilotEvidence(receipt, expectedCommit, root) {
     || !Number.isFinite(Date.parse(receipt.capturedAt))
     || !/^sim_[0-9a-z]{4,}$/.test(receipt.simulationId ?? "")) return false;
   const auditor = readFileSync(resolve(root, "scripts/audit-mirofish-buyer-run.py"));
-  const cohort = readFileSync(resolve(root, "evaluations/mirofish-buyer-micro-v1.json"));
   const productBrief = readFileSync(resolve(root, "docs/mirofish-buyer-pilot-seed.md"));
-  if (receipt.auditorSha256 !== sha256(auditor) || receipt.cohortSha256 !== sha256(cohort)) return false;
+  const cohort = approvedCohort(root, receipt.cohortSha256, receipt.cohortFile ?? null);
+  if (!cohort || receipt.auditorSha256 !== sha256(auditor)) return false;
   const hashes = receipt.artifactSha256;
   if (!hashes || typeof hashes !== "object" || Array.isArray(hashes)
     || REQUIRED_ARTIFACTS.some((name) => !/^[0-9a-f]{64}$/.test(hashes[name] ?? ""))
@@ -52,7 +71,7 @@ export function validBuyerPilotEvidence(receipt, expectedCommit, root) {
   if (preparation?.schemaVersion !== 2 || preparation.preparation !== "canonical-buyer-scenarios-v2"
     || !/^[0-9a-f]{64}$/.test(preparation.sourceSha256 ?? "")
     || preparation.reviewedSha256 !== hashes["twitter_profiles.csv"]
-    || preparation.cohortSha256 !== sha256(cohort)
+    || preparation.cohortSha256 !== sha256(cohort.bytes)
     || preparation.productBriefSha256 !== sha256(productBrief)
     || preparation.providerCalls !== 0) return false;
   const audit = receipt.audit;
@@ -81,20 +100,21 @@ export function captureBuyerPilotEvidence({ root, simulationDir, sourceCommit })
     const before = artifactHashes(directory);
     if (!before) return null;
     const script = resolve(root, "scripts/audit-mirofish-buyer-run.py");
-    const cohort = resolve(root, "evaluations/mirofish-buyer-micro-v1.json");
-    const productBrief = resolve(root, "docs/mirofish-buyer-pilot-seed.md");
     const profileBytes = readFileSync(join(directory, "twitter_profiles.csv"));
     const preparation = JSON.parse(readFileSync(join(directory, "profile-preparation.json"), "utf8"));
+    const cohort = approvedCohort(root, preparation?.cohortSha256);
+    if (!cohort) return null;
+    const productBrief = resolve(root, "docs/mirofish-buyer-pilot-seed.md");
     if (preparation?.schemaVersion !== 2 || preparation.preparation !== "canonical-buyer-scenarios-v2"
       || !/^[a-zA-Z0-9._-]+\.csv$/.test(preparation.file ?? "")
       || !/^[0-9a-f]{64}$/.test(preparation.sourceSha256 ?? "")
       || preparation.reviewedSha256 !== sha256(profileBytes)
-      || preparation.cohortSha256 !== sha256(readFileSync(cohort))
+      || preparation.cohortSha256 !== sha256(cohort.bytes)
       || preparation.productBriefSha256 !== sha256(readFileSync(productBrief))
       || !Number.isSafeInteger(preparation.profileCount) || preparation.profileCount < 2
       || preparation.providerCalls !== 0) return null;
     const env = { PATH: process.env.PATH || "/usr/bin:/bin", PYTHONIOENCODING: "utf-8" };
-    const run = spawnSync("python3", [script, "--simulation-dir", directory, "--cohort", cohort], {
+    const run = spawnSync("python3", [script, "--simulation-dir", directory, "--cohort", cohort.path], {
       cwd: root, encoding: "utf8", timeout: 30_000, maxBuffer: 1_000_000, env,
     });
     if (run.status !== 0) return null;
@@ -116,7 +136,8 @@ export function captureBuyerPilotEvidence({ root, simulationDir, sourceCommit })
     const receipt = {
       schemaVersion: 2, sourceCommit, capturedAt: new Date().toISOString(),
       simulationId: audit.simulationId,
-      auditorSha256: sha256(readFileSync(script)), cohortSha256: sha256(readFileSync(cohort)),
+      auditorSha256: sha256(readFileSync(script)), cohortFile: cohort.file,
+      cohortSha256: sha256(cohort.bytes),
       profilePreparation: {
         schemaVersion: preparation.schemaVersion, preparation: preparation.preparation,
         sourceSha256: preparation.sourceSha256, reviewedSha256: preparation.reviewedSha256,

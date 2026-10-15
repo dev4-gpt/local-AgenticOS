@@ -31,9 +31,11 @@ test("release buyer receipt is replayed and bound to the audited run inputs", ()
     const script = join(root, "scripts/audit-mirofish-buyer-run.py");
     writeFileSync(script, `print(${JSON.stringify(JSON.stringify(audit))})\n`);
     const cohort = "{}\n";
+    const cohortV2 = JSON.stringify({ schemaVersion: 2, cohort: "micro-v2" }) + "\n";
     const brief = "Reviewed synthetic AgentOS scenario.\n";
     const profiles = "fixture:twitter_profiles.csv\n";
     writeFileSync(join(root, "evaluations/mirofish-buyer-micro-v1.json"), cohort);
+    writeFileSync(join(root, "evaluations/mirofish-buyer-micro-v2.json"), cohortV2);
     writeFileSync(join(root, "docs/mirofish-buyer-pilot-seed.md"), brief);
     for (const name of [
       "simulation_config.json", "run_state.json", "twitter_profiles.csv",
@@ -49,6 +51,7 @@ test("release buyer receipt is replayed and bound to the audited run inputs", ()
     const receipt = captureBuyerPilotEvidence({ root, simulationDir, sourceCommit: commit });
     expect(receipt).not.toBeNull();
     expect(receipt?.audit).not.toHaveProperty("futureUnsafeField");
+    expect(receipt?.cohortFile).toBe("mirofish-buyer-micro-v1.json");
     expect(validBuyerPilotEvidence(receipt, commit, root)).toBe(true);
     expect(validBuyerPilotEvidence({ ...receipt, schemaVersion: 1 }, commit, root)).toBe(false);
     expect(validBuyerPilotEvidence({ ...receipt, profilePreparation: { ...receipt?.profilePreparation, reviewedSha256: "c".repeat(64) } }, commit, root)).toBe(false);
@@ -58,6 +61,22 @@ test("release buyer receipt is replayed and bound to the audited run inputs", ()
     expect(validBuyerPilotEvidence({ ...receipt, audit: { ...audit, checks: { ...checks, dynamicPostPersonaIdentity: false } } }, commit, root)).toBe(false);
     expect(validBuyerPilotEvidence({ ...receipt, audit: { ...audit, tracedPosts: 0 } }, commit, root)).toBe(false);
     expect(validBuyerPilotEvidence({ ...receipt, audit: { ...audit, tracedPosts: 5 } }, commit, root)).toBe(false);
+    writeFileSync(join(simulationDir, "profile-preparation.json"), JSON.stringify({
+      schemaVersion: 2, preparation: "canonical-buyer-scenarios-v2", file: "reviewed.csv",
+      sourceSha256: "b".repeat(64), reviewedSha256: sha256(profiles),
+      cohortSha256: sha256(cohortV2), productBriefSha256: sha256(brief),
+      profileCount: 2, providerCalls: 0,
+    }));
+    const v2Receipt = captureBuyerPilotEvidence({ root, simulationDir, sourceCommit: commit });
+    expect(v2Receipt?.cohortFile).toBe("mirofish-buyer-micro-v2.json");
+    expect(validBuyerPilotEvidence(v2Receipt, commit, root)).toBe(true);
+    expect(validBuyerPilotEvidence({ ...v2Receipt, cohortFile: "../../package.json" }, commit, root)).toBe(false);
+    writeFileSync(join(simulationDir, "profile-preparation.json"), JSON.stringify({
+      schemaVersion: 2, preparation: "canonical-buyer-scenarios-v2", file: "reviewed.csv",
+      sourceSha256: "b".repeat(64), reviewedSha256: sha256(profiles),
+      cohortSha256: sha256(cohort), productBriefSha256: sha256(brief),
+      profileCount: 2, providerCalls: 0,
+    }));
     writeFileSync(join(root, "docs/mirofish-buyer-pilot-seed.md"), "Changed product scenario.\n");
     expect(validBuyerPilotEvidence(receipt, commit, root)).toBe(false);
     expect(captureBuyerPilotEvidence({ root, simulationDir, sourceCommit: commit })).toBeNull();
