@@ -4350,7 +4350,7 @@ does not authorize hosted changes, provider calls, or spending.
 ## Continuation Update - Skool Bonus-PDF Graph Reconciliation (2026-10-15)
 
 - Read-only listing of the owner-authorized `School Tabs Agent OS` Drive folder
-  found 115 direct children, including 98 PDFs. The PDF inventory separates
+  found 115 direct children, including 98 PDFs and one ZIP archive. The PDF inventory separates
   into 88 bonus-resource PDFs, nine dated lesson PDFs, and one standalone
   Agent OS System PDF; this reconciles the folder's nine dated lesson PDFs
   against its much larger bonus-resource collection.

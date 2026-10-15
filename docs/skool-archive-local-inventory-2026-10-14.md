@@ -470,7 +470,8 @@ and the graph crosswalk describe different evidence and remain unreconciled.
 
 The owner-authorized `School Tabs Agent OS` Drive folder currently lists 115
 direct children: 98 PDFs, eight JSON-LD graphs, three HTML captures, two JSON
-packs, one spreadsheet, one Markdown link register, and one video-link script.
+packs, one ZIP archive, one spreadsheet, one Markdown link register, and one
+video-link script.
 The PDF set separates into 88 bonus-resource PDFs, nine dated lesson PDFs, and
 one standalone Agent OS System PDF. This reconciles the earlier `9/108` lesson
 PDF count: the 88 bonus PDFs are not dated classroom lessons.
