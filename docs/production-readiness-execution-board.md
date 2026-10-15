@@ -4056,3 +4056,38 @@ does not authorize hosted changes, provider calls, or spending.
   inability to list the ledger is not evidence that a record is absent.
 - No browser form was submitted, no tenant or graph write was made, no hosted
   configuration changed, and no provider request or deployment occurred.
+
+## Continuation Update - Exact-Commit AI Gate and Active Cloud Test Revision (2026-10-15)
+
+- On clean source commit `3190d6e7913a4ac858db884474397326a9f90df6`, the
+  deterministic offline AI evaluation passed **16/16** under the supported
+  bundled Node runtime. `localGatePassed: true`, `productionReady: false`,
+  and no live model samples/provider requests were used. Running the same
+  command under the shell's unsupported Node `v26.4.0` kept all 16 cases green
+  but correctly failed the local gate; the supported-runtime result is the
+  valid receipt.
+- Signed-in read-only inspection in the Aryaman (Work) Cloud Console shows
+  Cloud Test service `veloce-cloud-test` in `asia-south1`, project
+  `veloce-agenticos-2026`, serving revision `veloce-cloud-test-00208-5hk` at
+  **100% traffic**. Its image digest remains
+  `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`;
+  the displayed environment has `CLIENT_PROVIDER_CALLS_ENABLED=0` and
+  `CLIENT_RETENTION_DAYS=14`.
+- The older `veloce-cloud-test-acceptance-9417c3c` revision has **0% traffic**
+  and still displays `CLIENT_PROVIDER_CALLS_ENABLED=1`. This reconciles the
+  earlier apparent conflict: the enabled setting belongs to the retired
+  revision, while the active revision has provider calls disabled. No provider
+  request was made. The active revision still uses the older image digest and
+  its displayed release label is `acceptance-9417c3c`; current-source build
+  provenance and signed-in hosted acceptance remain unverified.
+- The GCP console displayed an organization/project warning about unrestricted
+  Gemini API keys. No key values were inspected and no credentials or API-key
+  settings were changed; inventory and restriction review remain an open
+  security task.
+- The strict release verifier on this exact commit returned
+  `releaseReady: false`, `release_ledger_lookup_unavailable`, and
+  `release_environment`; **37 evidence categories** remain unevaluated. A
+  read-only Cloud Storage console attempt could not resolve the project in its
+  project picker, so the ledger record remains unverified. No object, service,
+  traffic, IAM, database, or storage state was changed; no deployment,
+  provider request, or tenant write occurred.
