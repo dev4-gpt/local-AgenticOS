@@ -3243,3 +3243,9 @@ does not authorize hosted changes, provider calls, or spending.
 - The connected Chrome profile still exposes only `College`, not the intended
   signed-in Veloce session. No browser parity or live customer journey is
   claimed from the user's login confirmation alone.
+- The isolated local browser suites then passed **9/9** under Node `v24.19.0`
+  on the same source code: Notebook Studio draft/review/download (1) and source
+  import consent, batching, and cleanup flows (8). These use synthetic auth
+  and mocked APIs; they do not substitute for the signed-in live journey.
+  TypeScript `tsc --noEmit` also passed. No hosted calls or data writes were
+  made.
