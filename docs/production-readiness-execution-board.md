@@ -4154,3 +4154,18 @@ does not authorize hosted changes, provider calls, or spending.
   credential files; **37** ledger-backed categories remain unevaluated. This
   is an unavailable check, not proof that the ledger record is absent. No
   hosted database/storage/IAM/service change or ledger write occurred.
+
+## Continuation Update - MiroFish Pilot Artifact Reconciliation (2026-10-15)
+
+- Rechecked the separate MiroFish checkout at `c99f64d` without launching a
+  simulation or contacting a provider. Its project virtualenv passes the
+  smoke/v2 buyer-pilot suites **26/26**.
+- The existing v2 run `sim_8f4e26a9d170` has 10 `round_end` events, one
+  `simulation_end` event, and 8 logged actions. The simulation directory still
+  lacks `run_state.json` and `profile-preparation.json`, so it does not satisfy
+  the runner's completed-run receipt or canonical profile-hash evidence gates.
+  The hash-bound human review has two reviewed replies; both are marked
+  non-actionable, yielding zero qualified responses. This is rejected synthetic
+  feedback, not demand or willingness-to-pay evidence.
+- No simulation was replayed, no Groq/Zep request was made, and no pilot files
+  or provider configuration were changed.
