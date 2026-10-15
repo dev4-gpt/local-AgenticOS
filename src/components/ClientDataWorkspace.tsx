@@ -164,7 +164,7 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     setBusy(true); setError("");
     const response = await fetch("/api/client-runtime/records", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: copy.kind, title, content, notebookId: surface === "notebook" && activeNotebook !== "all" && activeNotebook !== "unfiled" ? activeNotebook : null, category: surface === "goals" ? category : undefined }) }).catch(() => null);
     if (!response?.ok) setError((await response?.json().catch(() => null))?.error || "The tenant record could not be saved.");
-    else { setTitle(""); setContent(""); setCategory(""); await load(); if (surface === "memory") setSearchRevision((current) => current + 1); }
+    else { setTitle(""); setContent(""); setCategory(""); await load(); if (surface === "memory") { await refreshGraph(); setSearchRevision((current) => current + 1); } }
     setBusy(false);
   }
 

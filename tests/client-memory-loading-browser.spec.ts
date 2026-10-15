@@ -59,6 +59,36 @@ test("an empty graph with active memories identifies a stale graph index", async
   await expect(page.getByText("No graph links yet. Add two related tenant memories and refresh the map.", { exact: true })).toHaveCount(0);
 });
 
+test("creating a tenant memory refreshes its graph index", async ({ page, context }) => {
+  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
+  let created = false;
+  let graphRefreshes = 0;
+  await page.route("**/api/client-runtime/records**", async (route) => {
+    const request = route.request();
+    if (request.method() === "POST") {
+      created = true;
+      return route.fulfill({ status: 201, json: { ok: true } });
+    }
+    return route.fulfill({ status: 200, json: { ok: true, records: created ? [{ id: "memory-2", title: "New memory", content: "Created in this tenant.", status: "active", created_at: "2026-10-14T12:00:00.000Z" }] : [], hasMore: false } });
+  });
+  await page.route("**/api/client-runtime/memory-graph", async (route) => {
+    if (route.request().method() === "POST") {
+      graphRefreshes += 1;
+      return route.fulfill({ status: 200, json: { ok: true } });
+    }
+    return route.fulfill({ status: 200, json: { ok: true, nodes: created ? [{ id: "node-1", record_id: "memory-2", kind: "document", label: "New memory", metadata: {} }] : [], edges: [] } });
+  });
+
+  await page.goto("/memory");
+  await page.getByPlaceholder("Name this decision or memory").fill("New memory");
+  await page.getByPlaceholder("Write the approved project memory here...").fill("Created in this tenant.");
+  await page.getByRole("button", { name: "Save to tenant" }).click();
+  await expect.poll(() => graphRefreshes).toBe(1);
+  await page.getByRole("button", { name: /^graph$/i }).click();
+  await expect(page.getByText("0 relationships · 1 nodes", { exact: true })).toBeVisible();
+  await expect(page.getByText("New memory", { exact: true }).first()).toBeVisible();
+});
+
 for (const failedRead of ["records", "graph"] as const) {
   test(`a saved import reports a failed ${failedRead} refresh without inviting a duplicate import`, async ({ page, context }) => {
     await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
