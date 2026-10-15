@@ -10,6 +10,24 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Pushed-Candidate Regression and Release Recheck - 2026-10-15
+
+On pushed commit `e798f7f6007ef897d2fdb18881e392aafce9d55d`, supported Node
+`v24.19.0` passed the focused suite: **384 passed, 1 intentional skip, 0
+failed** (385 total). The deterministic offline AI release evaluation passed
+**16/16**, is bound to this commit with a clean worktree, has
+`modelSamples=0`, `localGatePassed=true`, and `productionReady=false`; its
+limitations explicitly exclude hosted behavior, stochastic model quality, and
+a complete customer journey. The mocked local browser acceptance run passed
+15/15; no provider requests or tenant writes occurred.
+
+The strict readiness verifier on this exact commit remains
+`releaseReady=false`, with `ledger_bucket_not_configured` and **38 evidence
+categories not evaluated**. This includes the customer journey, hosted image
+and configuration identity, migrations, tenant isolation, source import,
+buyer pilot, and rollback. No ledger record, deployment, hosted change, or
+provider request was made.
+
 ### Existing-Server Browser Acceptance Recheck - 2026-10-15
 
 The product-experience Playwright config now treats
