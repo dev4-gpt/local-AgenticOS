@@ -4013,3 +4013,27 @@ does not authorize hosted changes, provider calls, or spending.
   tests passed **2/2**. They verify the authenticated, uncached identity route
   and that image builds stamp only a clean full Git commit. This prepares a
   verifiable future image; it does not attest the existing Cloud Test image.
+
+## Continuation Update - Current-Source and Work-Browser Recheck (2026-10-15)
+
+- On current commit `4f9a15d04b056d4ed7c3e5885fcc5bb0c6295633`, supported
+  Node `v24.18.0` passed the deterministic AI release evaluation **16/16**
+  (`localGatePassed: true`, `productionReady: false`, zero model samples) and
+  `npm run test:focused` **368/369** (one intentional skip). TypeScript
+  typecheck passed. No provider call was made.
+- Read-only inspection in the Aryaman (Work) Chrome profile found distinct
+  visible tenant states: local `127.0.0.1:3985/memory` showed 2 tenant records,
+  114 graph nodes, and 113 edges; local `127.0.0.1:41774/memory` showed 23
+  tenant records, 32 nodes, and 54 edges. The hosted Internal Beta page
+  `agentos-internal-beta-vbimnfseva-ew.a.run.app/notebook` showed 0 notebook
+  records and 0 active sources. No identity/session endpoint was read, and
+  these observations do not prove the tabs belong to the same user or tenant.
+  The visible Cloud Test tab was its Cloud Run console, not the live application,
+  so same-user local/Cloud Test parity remains unverified. No import, graph
+  refresh, tenant write, or hosted change was made.
+- The strict release verifier on this exact commit returned
+  `releaseReady: false` and `release_ledger_lookup_unavailable`; the local
+  environment could not verify the ledger listing or record contents. **37**
+  evidence categories remain unevaluated. This is an unavailable lookup, not
+  proof that the record is absent. No ledger object or cloud resource was
+  written.
