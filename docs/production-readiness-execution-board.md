@@ -5,6 +5,11 @@ not treated as hosted, customer, or release evidence. Tracks can move in
 parallel; hosted mutations remain behind explicit environment and approval
 checks.
 
+The architecture, trust boundaries, evidence rules, and gated milestone design
+are documented in [AgentOS System Design](./architecture/agentos-system-design-2026-10-14.md).
+This document complements the board; the board remains the only execution
+tracker.
+
 ## Operating Method - 2026-10-14
 
 - This execution board is the project-level source of truth. Keep the Codex goal
