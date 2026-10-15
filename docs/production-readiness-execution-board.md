@@ -3534,3 +3534,25 @@ does not authorize hosted changes, provider calls, or spending.
   Therefore I did not re-audit the actual run artifacts in this turn. Existing
   reviews still reject the replies as demand evidence; no real-buyer
   interviews or provider billing receipt are recorded.
+
+## Continuation Update - V2 Buyer Evidence Chain (2026-10-14)
+
+- AgentOS buyer-pilot release capture now recognizes only the checked-in v1 and
+  v2 synthetic cohort fixtures by SHA-256, audits against the matching cohort,
+  and records its exact filename in the release receipt. The focused Playwright
+  receipt test passed **1/1**, including v1/v2 acceptance and rejection of an
+  unapproved cohort path. AgentOS MiroFish artifact/audit tests passed **29/29**.
+- The separate MiroFish runner now includes the v2 shared workflow in every
+  profile, writes the profile-preparation hash manifest, and derives run state
+  from complete round/action telemetry. Its focused tests passed **7/7** and
+  were saved in local commit `73f9a3b`; that checkout's push remote is disabled.
+  No simulation was run and no provider was called.
+- AgentOS commit `e20b3da` containing the receipt-capture fix was pushed to
+  `origin/wip/backup-2026-10-03`. The offline AI evaluation on that exact commit
+  passed **16/16** under supported Node `v24.19.0` with `localGatePassed: true`,
+  zero model samples, and `productionReady: false`. Default Node `v26.4.0` is
+  outside the declared engine range and correctly makes the local gate fail.
+- A strict verifier invocation without configuring the ledger bucket reports
+  `releaseReady: false` and `ledger_bucket_not_configured`; it leaves hosted,
+  customer-journey, migration, and release-evidence checks unevaluated. No
+  ledger record, deployment, hosted data mutation, or provider spend occurred.
