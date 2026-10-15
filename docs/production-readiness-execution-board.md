@@ -49,18 +49,19 @@ independently bound build provenance is captured.
 
 ### Current Candidate Evaluation and Release Gate - 2026-10-15
 
-On pushed candidate `c6f46d1be57bc02f7b3c60176f162f0000c6b047`, the offline
-deterministic AI evaluation ran with supported Node `v24.19.0` and passed
-**16/16** cases, with `modelSamples=0`, `localGatePassed=true`, and
-`productionReady=false`. A first attempt under unsupported Node `v26.4.0`
+On clean pushed candidate `69720c9198e0fc65f81f41d732fb2c111addfd36`, the
+offline deterministic AI evaluation ran with supported Node `v24.19.0` and
+passed **16/16** cases, with `modelSamples=0`, `localGatePassed=true`, and
+`productionReady=false`. The supported-runtime receipt is bound to this commit
+and records a clean worktree. A first attempt under unsupported Node `v26.4.0`
 reported a failed local gate despite all cases passing; that receipt was
-superseded by the supported-runtime run.
+superseded.
 
-The strict release verifier binds to the same commit and remains
-`releaseReady=false`: release-ledger listing is unavailable in this local
-environment, and **37 evidence categories** remain unevaluated. This is not
-evidence that the ledger is empty. No deployment, hosted mutation, tenant-data
-write, or provider request was made.
+With read-only GCP credentials available, the strict verifier successfully
+listed the configured ledger prefix and found **no published record** for this
+commit: `releaseReady=false`, with **37 evidence categories** unevaluated. This
+is now a confirmed missing record, not an unavailable lookup. No ledger object,
+deployment, hosted mutation, tenant-data write, or provider request was made.
 
 ### Client API Request-Boundary Hardening - 2026-10-15
 
