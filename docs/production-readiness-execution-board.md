@@ -31,6 +31,32 @@ signed-in Veloce browser for same-user local/cloud parity; the connected
 browser still exposes only the unrelated College profile. Continue independent
 local work, but do not count it as a substitute for that acceptance evidence.
 
+### Dependency Security Refresh - 2026-10-14
+
+On the current local working-tree candidate, production dependencies were
+updated to patched releases: Next.js `16.3.8`, `@modelcontextprotocol/sdk`
+`1.32.1` (minimum requested range `^1.31.0`), and Sharp `0.35.5`. The
+production-only audit (`npm audit --omit=dev --audit-level=high`) reports **0
+vulnerabilities**. The full dependency audit still reports five high-severity
+entries in one development-only lint chain (`eslint-config-next` ->
+`@next/eslint-plugin-next` -> `fast-glob` -> `micromatch` -> `braces`). The
+`braces` advisory has no published patched release; npm's proposed remediation
+is a semver-major downgrade of `eslint-config-next` to `14.2.35`, which was not
+applied because it would cross the project's Next.js major version. This
+residual is not in the production dependency tree, but the full audit is not
+clean and remains recorded rather than suppressed.
+
+Verification on this patched local candidate: `npm run test:focused` passed
+**367/368** (one skipped, zero failed); TypeScript typecheck passed; the
+deterministic AI evaluation passed **16/16** (`localGatePassed: true`,
+`productionReady: false`, no provider calls); and the isolated browser suites
+for Notebook Studio and source-import consent passed **9/9** with synthetic
+authentication and mocked APIs. These results do not establish hosted parity,
+live customer behavior, a hosted import, or production readiness. No hosted
+service, production configuration, tenant data, or external model provider was
+changed or called. The dependency updates and local tests are supporting work;
+all other release gates remain open.
+
 ### Source-Import Security Recheck - 2026-10-14
 
 On the same code candidate, the full focused suite includes the source-pack
