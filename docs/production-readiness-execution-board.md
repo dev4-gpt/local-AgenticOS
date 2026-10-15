@@ -51,6 +51,17 @@ the `3945` mirror is healthy, but does not prove the `41774` tab recovered or
 explain Cloud Test's empty graph. No navigation, tenant write, or graph refresh
 was performed.
 
+### Empty-Graph Diagnostic UX - 2026-10-14
+
+The Memory graph empty state now distinguishes a confirmed tenant with no
+active memories from an empty graph index despite active memories, and avoids
+claiming records are missing while their read is still pending or failed. The
+existing `Refresh map` action remains unchanged. Focused browser tests passed
+**5/5** against the existing local dev runtime with synthetic auth and mocked
+API responses; `npm run typecheck` passed under Node 24. These are local UI
+regressions only: no hosted graph was refreshed, and Cloud Test's empty graph
+still needs an authenticated read-only diagnosis.
+
 ### Earlier Candidate Checkpoint - 2026-10-14
 
 On pushed clean `HEAD` `27d5637c4abbfa569617bb68edd8e7928263a3a4` (Node

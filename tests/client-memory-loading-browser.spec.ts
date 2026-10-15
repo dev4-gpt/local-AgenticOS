@@ -29,7 +29,7 @@ test("tenant memory distinguishes pending data from a confirmed empty workspace"
   releaseGraph();
   await expect(page.getByText("No tenant records yet.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /^graph$/i }).click();
-  await expect(page.getByText("No graph links yet. Add two related tenant memories and refresh the map.", { exact: true })).toBeVisible();
+  await expect(page.getByText("No active memories are available to map. Add an active memory, then refresh the map.", { exact: true })).toBeVisible();
 });
 
 test("tenant memory reports failed reads instead of presenting them as empty", async ({ page, context }) => {
@@ -42,6 +42,20 @@ test("tenant memory reports failed reads instead of presenting them as empty", a
   await expect(page.getByText("No tenant records yet.", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: /^graph$/i }).click();
   await expect(page.getByRole("alert").filter({ hasText: "The tenant knowledge map could not be loaded." })).toBeVisible();
+  await expect(page.getByText("No graph links yet. Add two related tenant memories and refresh the map.", { exact: true })).toHaveCount(0);
+});
+
+test("an empty graph with active memories identifies a stale graph index", async ({ page, context }) => {
+  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
+  await page.route("**/api/client-runtime/records?**", (route) => route.fulfill({
+    status: 200,
+    json: { ok: true, records: [{ id: "memory-1", title: "Existing memory", content: "Approved content.", status: "active", created_at: "2026-10-14T12:00:00.000Z" }], hasMore: false },
+  }));
+  await page.route("**/api/client-runtime/memory-graph", (route) => route.fulfill({ status: 200, json: { ok: true, nodes: [], edges: [] } }));
+
+  await page.goto("/memory");
+  await page.getByRole("button", { name: /^graph$/i }).click();
+  await expect(page.getByText("The graph index is empty despite active memories. Refresh the map to rebuild it.", { exact: true })).toBeVisible();
   await expect(page.getByText("No graph links yet. Add two related tenant memories and refresh the map.", { exact: true })).toHaveCount(0);
 });
 
