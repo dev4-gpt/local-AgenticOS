@@ -4239,10 +4239,13 @@ does not authorize hosted changes, provider calls, or spending.
   No receipt is present under either commit prefix, and the strict release
   verifier remains not ready. No object was uploaded and no access or IAM
   permission was requested or changed.
-- The Cloud Console displayed an action-required warning that at least one
-  Gemini API key in the project is unrestricted. This is a security/cost risk
-  requiring owner review in APIs & Services > Credentials; no key or credential
-  was opened, changed, or disclosed.
+- Cloud Console displayed an action-required warning that one or more projects
+  with the Gemini API have unrestricted API keys. However, the Credentials page
+  for `veloce-agenticos-2026` showed **no API keys to display**, and the warning
+  says it can persist for 24 hours after remediation. The alert is therefore
+  unresolved but not attributable to a live key in this project from the
+  evidence available. The owner should verify the warning across the account's
+  projects; no key or credential was opened, changed, or disclosed.
 - The console showed **$293.02** of free-trial credit and **6 days** remaining
   at inspection time. This is a point-in-time billing indicator, not a forecast
   or guarantee that future usage will remain free.
