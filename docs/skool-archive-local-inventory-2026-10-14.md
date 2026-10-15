@@ -466,6 +466,33 @@ byte-level identity remains unverified. The spreadsheet's broader classroom
 summary still says only 9 of 108 dated lesson PDFs are archived; that count
 and the graph crosswalk describe different evidence and remain unreconciled.
 
+## Bonus PDF Text Reconciliation - 2026-10-15
+
+The owner-authorized `School Tabs Agent OS` Drive folder currently lists 115
+direct children: 98 PDFs, eight JSON-LD graphs, three HTML captures, two JSON
+packs, one spreadsheet, one Markdown link register, and one video-link script.
+The PDF set separates into 88 bonus-resource PDFs, nine dated lesson PDFs, and
+one standalone Agent OS System PDF. This reconciles the earlier `9/108` lesson
+PDF count: the 88 bonus PDFs are not dated classroom lessons.
+
+The sanitized bonus-PDF manifest records all **88/88** PDFs prepared without
+parse failures, yielding **96 text segments**, 185 links, and 779 pages. A
+current-source exact-identity comparison against
+`agentos-may29-crosswalk-v2-2026-10-15.jsonld` found **96/96** matching text
+segments, and the graph provenance contains the matching batch hashes and
+coverage receipt. A private candidate merge validated with the same **1,153
+nodes / 9,677 edges** and is idempotent for these resources; no replacement
+graph was uploaded to Drive or imported into a hosted tenant. The sanitized
+manifest reports five credential-like values redacted and five skipped link
+references; those exclusions remain part of the provenance.
+
+This closes the bonus-PDF text gap only. The classroom graph remains partial:
+20 of 107 registered dated lessons have no linked text, video URLs/references
+are metadata rather than video bytes or transcripts, and the standalone System
+page must be tracked separately from the dated lesson denominator. The graph
+does not establish that each PDF includes every page section or that every
+outbound resource is available.
+
 ## Importer Crosswalk Coverage Fields - 2026-10-15
 
 The graph merge now emits `registeredLessons` and

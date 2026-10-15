@@ -4346,3 +4346,28 @@ does not authorize hosted changes, provider calls, or spending.
 - The full focused suite, typecheck, retention/config fixtures, lifecycle
   suite, and deterministic AI evaluation results from this commit are recorded
   in the preceding continuation update; those remain local evidence only.
+
+## Continuation Update - Skool Bonus-PDF Graph Reconciliation (2026-10-15)
+
+- Read-only listing of the owner-authorized `School Tabs Agent OS` Drive folder
+  found 115 direct children, including 98 PDFs. The PDF inventory separates
+  into 88 bonus-resource PDFs, nine dated lesson PDFs, and one standalone
+  Agent OS System PDF; this reconciles the folder's nine dated lesson PDFs
+  against its much larger bonus-resource collection.
+- The sanitized bonus-PDF manifest reports **88/88** prepared with no parse
+  failures, producing 96 text segments, 185 links, and 779 pages. Current-source
+  exact document-identity checks matched all **96/96** text segments in
+  `agentos-may29-crosswalk-v2-2026-10-15.jsonld`; its provenance receipt also
+  matches the sanitized batches' hashes and counts. A private candidate merge
+  validated at **1,153 nodes / 9,677 edges** with no count increase, confirming
+  these resources were already represented in the current graph.
+- The sanitized pack records five credential-like values redacted and five
+  skipped link references. The merge candidate remains owner-only under
+  ignored `tmp/authorized-skool-import`; no Drive upload or hosted tenant
+  import occurred.
+- This resolves bonus-PDF text coverage, not classroom coverage. The graph
+  remains partial with **20/107** registered dated lessons lacking linked text;
+  video references remain metadata, with no verified video bytes or
+  transcripts. Page completeness and the separate System-page denominator
+  remain unverified. The source inventory is updated in
+  `docs/skool-archive-local-inventory-2026-10-14.md`.
