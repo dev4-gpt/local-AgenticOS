@@ -10,6 +10,23 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Current Candidate Evidence Refresh - 2026-10-15
+
+On clean pushed source commit `48873ee1283a9651304ba6aafd426097a4b35a59`,
+the offline deterministic AI release evaluation passed **16/16** using the
+supported Node `v24.18.0`: `nodeEngineSupported=true`,
+`localGatePassed=true`, and `productionReady=false`. The earlier run under
+unsupported Node `v26.4.0` is superseded. The evaluation used zero model samples
+and made no LLM, Zep, or provider requests.
+
+Read-only inspection of the signed-in Aryaman (Work) Chrome session on the
+Internal Beta `/memory` page shows **2 tenant memory records, 114 graph nodes,
+and 113 relationships**. This confirms that the signed-in page and tenant data
+are reachable in the Work profile at inspection time. It does not establish
+which source commit the service runs, verify graph-import provenance or
+completeness, or exercise the end-to-end customer journey. No controls were
+clicked and no tenant data was changed.
+
 ### Tenant JSON Request Bounds and Retention Decision - 2026-10-15
 
 The source-only security pass found unbounded JSON parsing in tenant record
