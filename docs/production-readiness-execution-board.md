@@ -10,6 +10,17 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Local Parity Configuration Recheck - 2026-10-14
+
+The private `.private-client-kits/internal-beta-parity.env` now contains the
+required setting names for Supabase URL/key, tenant slug, and allowed-user
+email; its file mode is `600`, and provider calls are explicitly disabled. No
+values were printed or copied. The separate CLI session-cookie file expected
+by the read-only surface-map verifier is absent, so that authenticated CLI
+check remains unavailable. This configuration preflight is not a successful
+runtime login or local/cloud parity receipt; no session credential was
+extracted from Chrome and no tenant or hosted state changed.
+
 ### Memory Graph Empty-Index Regression - 2026-10-14
 
 On working tree based on pushed `HEAD` `2edbc7f510aefee00637a649f8ab7ca74e0d7eb6`,
