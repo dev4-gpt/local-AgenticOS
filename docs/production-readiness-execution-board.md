@@ -34,6 +34,25 @@ POSTs. The full focused Memory browser file passed **7/7** with mocked APIs;
 proof that Cloud Test's intermittent empty graph has the same cause. No hosted
 service or tenant data changed.
 
+### Current Pushed Candidate Checkpoint - 2026-10-15
+
+On clean pushed `HEAD` `72e9270ad57496070b0f53002971d22f44f94729`, supported
+Node `v24.19.0` checks passed: `npm run test:focused` **367/368** (one
+skipped), Memory browser regression **7/7** with synthetic auth/mocked APIs,
+trace and observability tests **13/13**, and `npm run typecheck`. The
+deterministic AI evaluation passed **16/16** with `localGatePassed: true`,
+`productionReady: false`, and zero model samples/provider requests. Its local
+receipt is ignored at `tmp/ai-release-local-v1-report.json` and binds this
+exact SHA.
+
+The fresh strict release verifier on the same pushed SHA returned
+`releaseReady: false`: no matching release-ledger record and **38 required
+evidence categories not evaluated**, including customer journey, buyer pilot,
+hosted deployment identity, migrations, tenant isolation, source import,
+approvals, and rollback. This read-only check published nothing. These local
+passes do not establish hosted parity, complete archive import, live model
+quality, buyer demand, or production readiness.
+
 ### Current Candidate Checkpoint - 2026-10-14
 
 On current `HEAD` `3d0fbfe9bdb451872d5e4f22351a2f8122f5934c`, supported Node
