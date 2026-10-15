@@ -45,8 +45,12 @@ graph snapshot at `tmp/authorized-skool-import/agentos-may29-local-graph-2026-10
 The graph validates at **1,153 nodes / 9,677 relations** and its exact-ID
 crosswalk now has text for **87/107** registered lessons. The source archive
 is still partial: 20 lesson entries lack linked text, video files are not
-included, and completeness is unverified. The snapshot is ignored/private;
-no classroom text or video was added to Git, Drive, Supabase, or Cloud Test.
+included, and completeness is unverified. The local snapshot is ignored and
+owner-only. A separate partial JSON-LD graph backup containing captured lesson
+text/link data is in the owner-authorized Drive folder (file ID
+`1o4Igl2i6tM4L6kt79adO7CMYJJLtLLQA`); its size matches local, but byte identity
+was not independently verified. No classroom data was added to Git, Supabase,
+or Cloud Test, and no video bytes or transcripts were added anywhere.
 
 On supported Node `v24.18.0`, the deterministic AI release evaluation passed
 **16/16** with zero model samples/provider requests, and the offline customer-

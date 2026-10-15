@@ -433,3 +433,16 @@ backup was uploaded to the owner-authorized Drive folder as
 matching the local file size; byte-for-byte identity was not independently
 verified. No Skool scraping, hosted request, migration, deployment, or provider
 call occurred.
+
+## Drive Manifest Graph Entry - 2026-10-15
+
+The archive spreadsheet now has a separate row for the HTML-refresh partial
+graph at Drive file ID `1o4Igl2i6tM4L6kt79adO7CMYJJLtLLQA`; the prior graph row
+was preserved as historical evidence. The row records 1,153 nodes, 9,677
+edges, text linked to 87/107 registered lessons (226 text segments), 20
+lessons without linked text, and the graph's stale `pendingPages: 25` field.
+It explicitly says coverage is incomplete, video assets are absent, and no
+hosted graph import has run. Drive's 8,808,928-byte size matches local, but
+byte-level identity remains unverified. The spreadsheet's broader classroom
+summary still says only 9 of 108 dated lesson PDFs are archived; that count
+and the graph crosswalk describe different evidence and remain unreconciled.
