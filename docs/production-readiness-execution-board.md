@@ -78,12 +78,12 @@ was configured. No deploy, hosted write, tenant write, or provider request was
 made.
 
 The user-provided appshot confirms the desired **Aryaman (Work)** Chrome window
-is open on the Veloce Memory page. However, the native Chrome automation binding
-resolved to a different **Aryaman (College)** window and displayed a Google
-Drive consent screen. No control was activated there and no consent was given;
-the College profile remains off-limits. The mismatch is window targeting, not
-evidence that Work is closed. Work-profile browser checks remain pending until
-the automation can bind to that exact window.
+is open on the Veloce Memory page. The initial native Chrome binding resolved
+to a different **Aryaman (College)** window, so no control was activated there
+and the College profile remains off-limits. After the user enabled Chrome's
+remote debugging in Work, Browser Use connected to the correct Chrome session
+and enumerated the already-open Veloce tabs. The current parity observations
+below come from that Work session.
 
 ### MiroFish Offline Pilot Harness - 2026-10-15
 
@@ -97,18 +97,53 @@ request was made. This validates the pilot harness, not buyer demand or product
 quality; the weak/self-referential prior simulated replies remain rejected as
 demand evidence.
 
-### Work-Profile Runtime Identity Recheck - 2026-10-15
+### Work-Window Local/Cloud Parity Check - 2026-10-15
 
-The Aryaman (Work) Chrome profile was verified against the user-designated
-Google account; the address is intentionally not retained in this repository.
-The already-open Cloud Test session endpoint reports a different Veloce
-runtime email, so the browser's Google profile must not be treated as proof of
-the app's authenticated subject or same-user parity. No authentication state
-was changed. The Internal Beta Notebook page showed an authenticated workspace
-with 0 notebook records and 0 active sources at inspection time; this is a
-point-in-time observation, not evidence that the full customer journey passed.
-The Cloud Test/Local same-user journey remains open pending confirmation of the
-intended runtime account and a read-only comparison in the Work profile.
+Using the exact Aryaman (Work) window, read-only session requests returned
+authenticated sessions in `127.0.0.1:41774`, `127.0.0.1:3945`, and Cloud Test.
+The subject comparison was performed in memory and matched across all three;
+no email address was retained. Both local responses also reported
+`workspaceAuthorized: true`; Cloud Test's session schema does not expose that
+field.
+
+The Work-window local `41774` Memory screen showed **23 tenant memories, 32
+graph nodes, 54 edges**, and the `Community sources` / `Review JSON source
+packs` controls. Cloud Test's existing session tab was reused for a read-only
+Memory view and restored afterward. It first rendered 0/0 counts, then settled
+to the same **23 / 32 / 54** after five seconds without a reload or graph
+refresh. Cloud Test did not expose either community-source control. This
+confirms same-user and settled data-count parity, but leaves a transient loading
+race and feature/UI parity gap; no import or write was attempted.
+
+The local build-identity endpoint reported source commits
+`3ebc0b88fc50318fb264fc82abab6c12966aff9f` (`41774`) and
+`18e70cf02d1a7b590f987ebcc6b8e530b61cd9fc` (`3945`). Both runtime-reported
+stamps predate current branch commits `44a9353`, `c3b1242`, and `72e9270`, which
+update empty-memory guidance, refresh the graph after record creation, and
+retry an initially empty graph read. Cloud Test's build-identity endpoint
+returns HTTP 403 `client_route_not_enabled`, so its code version cannot be
+verified. These observations do not authorize or perform a deployment.
+
+### Release-Ledger Bucket Visibility - 2026-10-15
+
+The existing Work-profile Cloud Console tab was used for a read-only Storage
+browser check of `veloce-agenticos-2026`. The project page returned
+`storage.buckets.list (Missing)` and exposed no bucket inventory. The local
+Cloud CLI's configured project is `agentos-mvp`; its read-only bucket listing
+for the approved target could not initialize the local credential database
+under the current filesystem permissions. No credential value was displayed,
+no IAM role was requested or changed, and no cloud resource was modified. The
+release-ledger bucket therefore remains unverified and the local release gate
+remains blocked on a known ledger target.
+
+### Earlier Work-Profile Runtime Identity Recheck - 2026-10-15 (Superseded)
+
+An earlier Chrome connection reported a different Cloud Test app subject and
+could not complete same-user parity. The controlled Work-window comparison
+above supersedes that identity observation: the app subject matched across
+Cloud Test and both local instances without retaining the email. The earlier
+Internal Beta Notebook observation of 0 notebook records and 0 active sources
+remains a point-in-time result and does not prove the full customer journey.
 
 The strict read-only release verifier was rerun after archive commit
 `96b24e88cc7feac703700ce174e19446de0fdd56`: `releaseReady: false`, no matching
