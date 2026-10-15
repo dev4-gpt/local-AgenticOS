@@ -60,6 +60,31 @@ and rollback. No release record, deployment, hosted change, tenant write, or
 provider request was made. These results refresh local regression evidence
 only; they do not satisfy hosted or customer-facing exit criteria.
 
+### Current Continuation Verification - 2026-10-15
+
+On clean pushed candidate `28d2f89ae86e05f05c9217e8bb6eaf1e31b379e4`, the
+supported bundled Node `v24.19.0` reran `npm run test:focused` with **367
+passed, 1 skipped, 0 failed**. `npm run verify:ai-evaluation` passed **16/16**
+deterministic cases with `localGatePassed: true`, zero model samples, and no
+provider requests. The shell's default Node `v26.4.0` is outside the project's
+`>=22 <26` engine range; its otherwise passing 16-case evaluation correctly
+failed the runtime gate, so only the Node 24 result is accepted.
+
+A fresh read-only `node scripts/verify-production-readiness.mjs` on the same
+candidate remains `releaseReady: false`; the immediate failure is
+`ledger_bucket_not_configured`, with **37 release-evidence categories not
+evaluated**. No release-ledger lookup was attempted because no target bucket
+was configured. No deploy, hosted write, tenant write, or provider request was
+made.
+
+The connected Chrome automation inventory currently exposes a single Chrome
+profile labeled **College**, with Colab and unrelated tabs; it does not expose
+the user-designated Aryaman (Work) profile. Per the user's instruction, no
+College tab was opened or used. The Work profile may remain open in Chrome, but
+it is not reachable through this turn's connected browser surface. This does
+not change earlier verified Work-profile observations; it limits new browser
+checks until that profile is exposed to the connector.
+
 ### Work-Profile Runtime Identity Recheck - 2026-10-15
 
 The Aryaman (Work) Chrome profile was verified against the user-designated
