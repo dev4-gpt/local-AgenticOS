@@ -13,9 +13,11 @@ tracker.
 ### Current-Checkout and Archive Coverage Refresh - 2026-10-14
 
 On clean pushed source commit `2e227d00622a02e5533ffa337b912403de55d64d`,
-`npm run typecheck` passed under the supported bundled Node runtime. The
-focused suite passed **367/368** (one intentional skip), and
-`npm run verify:ai-evaluation` passed **16/16** deterministic cases with
+the supported bundled Node runtime passed `npm run typecheck`, and the focused
+suite passed **367/368** (one intentional skip). After the evidence note was
+pushed as `d3ebb7e0df37fff50aab3af897d74807296fcb07`, those checks were rerun
+on that exact commit: typecheck passed, the focused suite again passed **367/368**,
+and `npm run verify:ai-evaluation` passed **16/16** deterministic cases with
 `productionReady: false`; no model samples or provider requests were used.
 
 A local structured crosscheck of the 25 pending registered lesson IDs against
@@ -26,6 +28,14 @@ captures, not missing catalog IDs. No new lesson body or video bytes were
 added, and no hosted graph import, customer-data write, deployment, or provider
 request occurred. The signed-in customer journey, hosted parity, and strict
 release evidence were not refreshed in this local-only check.
+
+On `d3ebb7e`, the read-only release verifier was given the documented ledger
+bucket name and returned `release_ledger_record_missing` with **37 categories
+not evaluated**. A direct read-only `gcloud storage ls` could not initialize
+the local Cloud SDK credentials database because this environment cannot write
+under `~/.config/gcloud`; the verifier soft-fails that lookup. Therefore the
+ledger's actual object state is **unverified**, not proven empty. No cloud
+object was written and no IAM or deployment change was made.
 
 ### MiroFish Artifact Recheck - 2026-10-15
 
