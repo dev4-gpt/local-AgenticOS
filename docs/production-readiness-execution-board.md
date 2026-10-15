@@ -4216,3 +4216,30 @@ does not authorize hosted changes, provider calls, or spending.
   build-identity endpoint still returned `client_route_not_enabled` in this
   profile. No graph refresh, tenant write, import, or hosted configuration
   change occurred.
+
+## Continuation Update - Work-Profile Cloud Revision and Release Ledger (2026-10-15)
+
+- Read-only inspection in the Aryaman (Work) Chrome window confirmed the GCP
+  project `veloce-agenticos-2026` under `aryamandev777@gmail.com`. Cloud Test's
+  active revision is `veloce-cloud-test-00208-5hk`, using image digest
+  `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`.
+  Its visible configuration has `CLIENT_PROVIDER_CALLS_ENABLED=0` and
+  `CLIENT_RETENTION_DAYS=14`. This confirms those values on that revision only;
+  it does not prove image/source parity or full customer-journey acceptance.
+- In the same GCP account, the bucket
+  `veloce-agenticos-2026-veloce-release-ledger` is confirmed in `asia-south1`,
+  not public, with Soft Delete and Object versioning enabled. The account can
+  list objects under `releases/`; the exact current HEAD
+  `abbc77bb93b441c38571925afb3ed49d1c7ce935` has a prefix folder but no objects.
+  Therefore no receipt is present under that commit prefix, and the strict
+  release verifier remains not ready. No object was uploaded and no access or
+  IAM permission was requested or changed.
+- The Cloud Console displayed an action-required warning that at least one
+  Gemini API key in the project is unrestricted. This is a security/cost risk
+  requiring owner review in APIs & Services > Credentials; no key or credential
+  was opened, changed, or disclosed.
+- The console showed **$293.02** of free-trial credit and **6 days** remaining
+  at inspection time. This is a point-in-time billing indicator, not a forecast
+  or guarantee that future usage will remain free.
+- No deployment, service configuration change, bucket mutation, release-ledger
+  write, database mutation, provider request, or paid action occurred.
