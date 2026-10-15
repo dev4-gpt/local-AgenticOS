@@ -4169,3 +4169,17 @@ does not authorize hosted changes, provider calls, or spending.
   feedback, not demand or willingness-to-pay evidence.
 - No simulation was replayed, no Groq/Zep request was made, and no pilot files
   or provider configuration were changed.
+
+## Continuation Update - Notebook Studio Customer-Deliverable Journey (2026-10-15)
+
+- The existing `tests/client-notebook-studio-browser.spec.ts` passed **1/1** on
+  an isolated local port (`49238`). The browser flow selected a tenant notebook
+  source, submitted source IDs and scope, observed job/citation state and the
+  saved source register, reviewed the draft, and downloaded the artifact.
+- All backend/model requests were intercepted with synthetic fixtures. This
+  verifies the local UI workflow contract only; it is not evidence of live
+  model quality, hosted customer acceptance, or a real tenant write.
+- Work Chrome was confirmed as the Aryaman (Work) profile, not College. The
+  Cloud Test `/api/client-runtime/build-identity` endpoint still returns
+  `client_route_not_enabled`, so hosted build identity and source/image parity
+  remain unverified. No hosted state or account settings were changed.
