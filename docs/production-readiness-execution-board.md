@@ -3234,6 +3234,10 @@ does not authorize hosted changes, provider calls, or spending.
   bounded-run configuration, not this run's missing artifacts. No provider
   request, simulation replay, or paid spend occurred. Strict run evidence and
   real buyer validation remain open.
+- A fresh no-run preflight against MiroFish commit `384e471` refuses the
+  existing simulation ID with `pilot_already_started` because its SQLite
+  database already exists. It made no provider request and changed no run
+  files; do not replay this ID or infer completion from its manifest.
 
 ## Continuation Update - Release Ledger Recheck (2026-10-14)
 
