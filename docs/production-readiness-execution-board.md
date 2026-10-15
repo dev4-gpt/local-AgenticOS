@@ -30,6 +30,25 @@ versioning/soft-delete behavior, backups, and per-item deletion must be shown to
 enforce this exact window before it can be treated as a release control. No
 hosted configuration, tenant data, provider, or deployment was changed here.
 
+### Skool Lesson-Gap Queue - 2026-10-15
+
+Added `scripts/report-skool-text-gaps.mjs` to derive the capture queue from
+exact lesson IDs and non-empty `hasTextCaptureSegment` edges. On the latest
+private graph it reports **107 registered lessons, 87 with linked text, 20
+without text, and 226 linked segments**. The imported source-pack field still
+reports `pendingPages=25`; the tool preserves that separate value and marks it
+unreconciled rather than assuming it means lesson gaps. The report includes
+each missing lesson's title, classroom URL, dates, and public or Skool-hosted
+video reference where available. Its tests verify exact-ID matching, malformed
+identity rejection, and the unresolved counter distinction; graph/gap tests
+passed **10/10**, ESLint and typecheck passed.
+
+Reproduce from the private graph with:
+`node scripts/report-skool-text-gaps.mjs tmp/authorized-skool-import/agentos-may29-crosswalk-v2-2026-10-15.jsonld`.
+This identifies pages to capture; it does not fetch Skool content or video,
+change Drive, or import into a hosted graph. The remaining 20 lesson captures,
+video bytes/transcripts, and hosted import remain open.
+
 ### Cloud Test Revision and Configuration Audit - 2026-10-15
 
 Read-only GCP inspection in project `veloce-agenticos-2026` confirms Cloud Test

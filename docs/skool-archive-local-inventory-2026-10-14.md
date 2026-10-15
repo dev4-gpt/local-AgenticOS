@@ -519,3 +519,17 @@ transcripts. It was uploaded as a new Drive version
 (file ID `1Iu0MTF14ugMz1E6L1YF4uMifdmv-ZAmM`), and the manifest has a separate
 row 111. Drive and local sizes both report 8,809,125 bytes; byte-level identity
 is not verified. No hosted graph import was performed.
+
+## Reproducible Lesson-Gap Queue - 2026-10-15
+
+The new `scripts/report-skool-text-gaps.mjs` command derives missing lesson
+captures from exact `skool-lesson:<page-id>` nodes and non-empty linked text
+segments. Against the current private graph it reports **20/107 lessons without
+text** (87 with text, 226 linked segments), matching the Drive row's exact-ID
+crosswalk. The graph's `coverage.pendingPages=25` is retained as a separate,
+unreconciled source-pack metric; the queue does not relabel it as 20. The JSON
+report lists each missing title, lesson URL, publication/update dates, and video
+reference (including Skool-hosted video IDs when available). It can be
+reproduced from
+`tmp/authorized-skool-import/agentos-may29-crosswalk-v2-2026-10-15.jsonld`.
+No new page or video was fetched, and no Drive write or hosted import occurred.
