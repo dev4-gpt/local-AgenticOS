@@ -62,6 +62,16 @@ API responses; `npm run typecheck` passed under Node 24. These are local UI
 regressions only: no hosted graph was refreshed, and Cloud Test's empty graph
 still needs an authenticated read-only diagnosis.
 
+### Current-Head Strict Release Gate - 2026-10-14
+
+The read-only release verifier was rerun on pushed commit
+`44a935337a493b84dfffa32c7b6373b935535443`. It reports
+`releaseReady: false`, no ledger record for this SHA, and **38 required
+categories not evaluated**. These include customer journey, buyer pilot,
+migrations, deployment/artifact identity, tenant isolation, source import,
+test results, approvals, and rollback target. The configured ledger bucket
+was readable; no record was published and no hosted state changed.
+
 ### Earlier Candidate Checkpoint - 2026-10-14
 
 On pushed clean `HEAD` `27d5637c4abbfa569617bb68edd8e7928263a3a4` (Node
