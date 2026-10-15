@@ -25,6 +25,8 @@ __pycache__/
 /.next-client-prod/
 /.next-client-prod-*/
 /.next-client-parity-*/
+/.next-client-e2e/
+/.next-client-e2e-*/
 /.next-local-*/
 
 # Standalone public-site build output

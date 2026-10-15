@@ -37,7 +37,9 @@
     ".next-client-prod/types/**/*.ts",
     ".next-client-prod/dev/types/**/*.ts",
     ".next-client-browser/types/**/*.ts",
-    ".next-client-browser/dev/types/**/*.ts"
+    ".next-client-browser/dev/types/**/*.ts",
+    ".next-client-e2e/types/**/*.ts",
+    ".next-client-e2e/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
@@ -49,6 +51,7 @@
     ".next-client-test",
     ".next-client",
     ".next-client-prod",
-    ".next-client-browser"
+    ".next-client-browser",
+    ".next-client-e2e"
   ]
 }
