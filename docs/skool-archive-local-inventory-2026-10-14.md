@@ -373,3 +373,16 @@ fresh production-readiness run remains `releaseReady: false`, fails
 `ledger_bucket_not_configured`, and leaves 38 hosted/release evidence fields
 unevaluated. No hosted write, migration, deployment, provider request, or
 release-ledger publication occurred.
+
+## Source-Pack Batch Preflight - 2026-10-14
+
+On pushed `HEAD` `071a0894c739dda8113b834b7512a8c36c3f5ef7`, a read-only local
+preflight checked the six `pdf-batch-2026-10-13-v10` parts and
+`combined-agentos-archive-2026-10-14.part-007.json`. Across seven parts, all
+**193 sources** have distinct importer identities derived from normalized
+`startUrl`, source URL, and tab; no duplicate identity was found within or
+between parts. Each part is below the upload route's 1,000,000-byte limit and
+the 100-source limit; the largest is 999,208 bytes. This checks packaging and
+idempotency only. It does not validate every item through the production
+parser, confirm Drive/local byte identity, resolve the 25 pending pages, or
+create a hosted import receipt. No file, Drive object, or hosted data changed.
