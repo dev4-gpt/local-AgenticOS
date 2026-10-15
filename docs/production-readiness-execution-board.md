@@ -31,6 +31,22 @@ signed-in Veloce browser for same-user local/cloud parity; the connected
 browser still exposes only the unrelated College profile. Continue independent
 local work, but do not count it as a substitute for that acceptance evidence.
 
+### Source-Import Security Recheck - 2026-10-14
+
+On the same code candidate, the full focused suite includes the source-pack
+consent, artifact-owner, byte-hash, retention, and tenant-boundary contracts.
+The dedicated PGlite source-guard evidence tests passed **2/2**: they verify
+that the legacy four-argument import RPC is not callable by member/service
+roles, the guarded RPC requires the expected evidence, and stale or failed
+read-only schema evidence fails closed. No hosted schema was queried or
+changed.
+
+The stronger disposable PostgreSQL smoke (`npm run
+verify:source-import-postgres`) could not start because this environment denied
+access to the Docker daemon socket. This is an execution-environment limit, not
+a passing smoke. Do not use the PGlite result as proof that the migration is
+installed in Supabase; the migration remains an explicit hosted release gate.
+
 ## Operating Method - 2026-10-14
 
 - This execution board is the project-level source of truth. Keep the Codex goal
