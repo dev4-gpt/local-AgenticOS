@@ -16,7 +16,7 @@ branch `wip/backup-2026-10-03`, `HEAD`
 | Environment | Observed state |
 | --- | --- |
 | Cloud Test `veloce-cloud-test-mquo4bf7aq-el.a.run.app` | Memory loaded 23 tenant records, 32 graph nodes, and 54 edges. Notebook settled at 9 records and 9 active sources, with the `Acceptance notebook 2026-09-23` and `Competitor notes 1786309980617` notebooks. The displayed `Scoped acceptance source · Cedar Lantern` content was visible. |
-| Local current-source mirror `127.0.0.1:3945` | Memory loaded the same counts: 23 records, 32 graph nodes, and 54 edges. Notebook settled at 9 records and 9 active sources with the same two notebooks and matching visible Cedar Lantern acceptance-source text. |
+| Local mirror `127.0.0.1:3945` | Memory loaded the same counts: 23 records, 32 graph nodes, and 54 edges. Notebook settled at 9 records and 9 active sources with the same two notebooks and matching visible Cedar Lantern acceptance-source text. |
 | Local session endpoint `127.0.0.1:3945/api/client-auth/session` | Returned `authenticated: true` and `workspaceAuthorized: true`. The user identifier and email are deliberately not recorded in this document. The Cloud Test session endpoint was not checked, so same-user identity across environments remains unproven. |
 | Local build identity `127.0.0.1:3945/api/client-runtime/build-identity` | Reported source SHA `18e70cf02d1a7b590f987ebcc6b8e530b61cd9fc`, no Cloud Run revision, and provenance `reported_by_runtime_not_independent_attestation`. This is a runtime self-report, not artifact attestation. A Git comparison from that SHA to current `HEAD` finds no `src/` differences; `package.json` and `package-lock.json` differ. |
 
@@ -29,8 +29,8 @@ needs a dedicated regression check, not as proof of data loss.
 
 After returning to Cloud Test Memory, a fresh visit initially showed 0 records
 and 0 graph nodes/edges. A read-only reload restored all 23 memory records but
-left the graph at 0 nodes/0 edges, while the local mirror showed 23 records and
-32 nodes/54 edges both before and after its own reload. Therefore the earlier
+left the graph at 0 nodes/0 edges, while revisiting the local mirror's Memory
+route showed 23 records and 32 nodes/54 edges. Therefore the earlier
 Cloud Test 32/54 graph observation is not stable and must not be accepted as
 parity proof. The local mirror tab was restored to Memory after checking its
 session endpoint; Cloud Test was left on Memory for inspection.
