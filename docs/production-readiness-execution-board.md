@@ -10,6 +10,21 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Current Candidate Evaluation and Release Gate - 2026-10-15
+
+On pushed candidate `c6f46d1be57bc02f7b3c60176f162f0000c6b047`, the offline
+deterministic AI evaluation ran with supported Node `v24.19.0` and passed
+**16/16** cases, with `modelSamples=0`, `localGatePassed=true`, and
+`productionReady=false`. A first attempt under unsupported Node `v26.4.0`
+reported a failed local gate despite all cases passing; that receipt was
+superseded by the supported-runtime run.
+
+The strict release verifier binds to the same commit and remains
+`releaseReady=false`: release-ledger listing is unavailable in this local
+environment, and **37 evidence categories** remain unevaluated. This is not
+evidence that the ledger is empty. No deployment, hosted mutation, tenant-data
+write, or provider request was made.
+
 ### Client API Request-Boundary Hardening - 2026-10-15
 
 A focused source audit found unbounded JSON parsing in provider-bound routes.
