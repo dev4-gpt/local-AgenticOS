@@ -3260,3 +3260,17 @@ does not authorize hosted changes, provider calls, or spending.
   pages. Bonus PDFs, embedded mentions, and links do not substitute for the
   missing lesson bodies; new owner-saved captures or an approved platform
   export are required before claiming complete coverage.
+
+## Continuation Update - Offline MiroFish Revalidation (2026-10-14)
+
+- AgentOS's MiroFish artifact/audit suite passed **27/27** with built-in
+  `unittest`. The isolated MiroFish checkout at clean commit
+  `384e4716b487367dd14b0fb46186b9c43f31de90` passed its focused v2 setup tests
+  **3/3**, covering the exact 10-profile fixture, two active profiles, and
+  refusing to replay the completed simulation. These are deterministic local
+  checks with no provider requests.
+- The simulation run directories are not present in the current shared
+  workspace; only source/tests and the recorded reviews are available here.
+  Therefore I did not re-audit the actual run artifacts in this turn. Existing
+  reviews still reject the replies as demand evidence; no real-buyer
+  interviews or provider billing receipt are recorded.
