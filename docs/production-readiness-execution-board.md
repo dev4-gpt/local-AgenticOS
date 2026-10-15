@@ -27,6 +27,22 @@ The production build was not rerun because `.next` occupies 3.6 GB while only
 2.6 GB is free. The existing local development page recovered after the
 dependency reinstall; this is not build evidence.
 
+### Local Memory and Dev-Overlay Recheck - 2026-10-14
+
+The user-provided Work Chrome capture at `http://127.0.0.1:41774/memory`
+shows 23 tenant memories and a local graph of 32 nodes / 54 edges, alongside
+a Next.js overlay reporting that `next/package.json` could not be found. In
+the current AgentOS checkout (`2a35e450065730daa4fa028b788e518339720364`),
+`node_modules/next/package.json` exists and reports Next.js `16.3.8`. A
+read-only local HTTP check found the existing listener on port 41774: `/memory`
+redirects to `/login?next=%2Fmemory`, and the login page returns HTTP 200.
+This supports a transient/stale dev overlay, but the intended Work Chrome tab
+could not be reloaded from the connected browser profile, so visual recovery
+is not confirmed. No source code or tenant data changed. The hosted Cloud Test
+graph discrepancy (0 nodes / 0 edges after reload) remains unresolved; next
+diagnostic must inspect its authenticated GET response in the intended Work
+browser without calling the graph-refresh POST.
+
 ### Earlier Candidate Checkpoint - 2026-10-14
 
 On pushed clean `HEAD` `27d5637c4abbfa569617bb68edd8e7928263a3a4` (Node
