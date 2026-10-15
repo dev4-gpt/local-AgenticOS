@@ -22,7 +22,7 @@ test("tenant memory distinguishes pending data from a confirmed empty workspace"
 
   await page.goto("/memory");
   await expect(page.getByText("Loading tenant records...", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("Loading graph...", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Checking graph...", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("No tenant records yet.", { exact: true })).toHaveCount(0);
 
   releaseRecords();
@@ -30,6 +30,33 @@ test("tenant memory distinguishes pending data from a confirmed empty workspace"
   await expect(page.getByText("No tenant records yet.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /^graph$/i }).click();
   await expect(page.getByText("No active memories are available to map. Add an active memory, then refresh the map.", { exact: true })).toBeVisible();
+});
+
+test("an empty graph response stays provisional until tenant records finish loading", async ({ page, context }) => {
+  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
+  let releaseRecords!: () => void;
+  const recordsGate = new Promise<void>((resolve) => { releaseRecords = resolve; });
+  let graphReads = 0;
+  await page.route("**/api/client-runtime/records?**", async (route) => {
+    await recordsGate;
+    return route.fulfill({ status: 200, json: { ok: true, records: [{ id: "memory-1", title: "Existing memory", content: "Approved content.", status: "active", created_at: "2026-10-14T12:00:00.000Z" }], hasMore: false } });
+  });
+  await page.route("**/api/client-runtime/memory-graph", (route) => {
+    graphReads += 1;
+    return route.fulfill({ status: 200, json: graphReads === 1
+      ? { ok: true, nodes: [], edges: [] }
+      : { ok: true, nodes: [{ id: "node-1", record_id: "memory-1", kind: "document", label: "Existing memory", metadata: {} }], edges: [] } });
+  });
+
+  await page.goto("/memory");
+  await expect(page.getByText("Checking graph...", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("0 nodes · 0 edges", { exact: true })).toHaveCount(0);
+
+  releaseRecords();
+  await expect(page.getByText("Existing memory", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("0 relationships · 1 nodes", { exact: true })).toBeVisible();
+  await expect(page.getByText("Checking graph...", { exact: true })).toHaveCount(0);
+  expect(graphReads).toBe(2);
 });
 
 test("tenant memory reports failed reads instead of presenting them as empty", async ({ page, context }) => {
