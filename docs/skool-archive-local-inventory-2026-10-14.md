@@ -382,7 +382,11 @@ preflight checked the six `pdf-batch-2026-10-13-v10` parts and
 **193 sources** have distinct importer identities derived from normalized
 `startUrl`, source URL, and tab; no duplicate identity was found within or
 between parts. Each part is below the upload route's 1,000,000-byte limit and
-the 100-source limit; the largest is 999,208 bytes. This checks packaging and
-idempotency only. It does not validate every item through the production
-parser, confirm Drive/local byte identity, resolve the 25 pending pages, or
-create a hosted import receipt. No file, Drive object, or hosted data changed.
+the 100-source limit; the largest is 999,208 bytes. On pushed `HEAD`
+`31965b44e6eca94fde3f6771c7ab2edc4f6fa2ec`, the actual production selector and
+parser then accepted the seven declared batches, matching the manifest's 193
+sources, 7,577 links, 18 publication dates, and 11 skipped entries. The
+sanitizer tests passed 2/2, portable graph tests 4/4, and source-pack, artifact
+boundary, build-identity, and schema-evidence tests 14/14. These checks do not
+confirm Drive/local byte identity, resolve the 25 pending pages, or create a
+hosted import receipt. No file, Drive object, or hosted data changed.

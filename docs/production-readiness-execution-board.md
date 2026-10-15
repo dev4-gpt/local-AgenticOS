@@ -3219,3 +3219,27 @@ does not authorize hosted changes, provider calls, or spending.
   `productionReady: false`; it remains local evaluation evidence, not hosted
   model-quality validation. No provider-backed run, deployment, or customer
   data mutation occurred.
+
+## Continuation Update - Source Import And Release Gate (2026-10-14)
+
+- On pushed `HEAD` `31965b44e6eca94fde3f6771c7ab2edc4f6fa2ec`, the actual
+  production source-pack selector/parser accepted all seven private batches:
+  **193 sources, 7,577 links, 18 publication dates**, matching the private
+  manifest. Sanitizer tests passed **2/2**, portable graph integrity tests
+  **4/4**, and source-pack, source-guard, artifact-boundary, and build-identity
+  tests **14/14**. The packages are structurally acceptable; archive coverage
+  remains partial (25 pages pending), videos are unverified, and no hosted
+  import was made.
+- The deterministic AI release evaluation passed **16/16** under bundled Node
+  `v24.19.0`; `localGatePassed: true`, `productionReady: false`, zero model
+  samples, and no provider/Zep requests. Running the same gate under default
+  Node `v26.4.0` correctly fails because that runtime is outside the supported
+  range. The report is ignored local evidence at
+  `tmp/ai-release-local-v1-report.json`.
+- A read-only production-readiness check against
+  `gs://veloce-agenticos-2026-veloce-release-ledger` found no record for this
+  exact commit. It reports `releaseReady: false` and **37** required evidence
+  fields unevaluated. No ledger record was published.
+- The connected Chrome profile still exposes only `College`, not the intended
+  signed-in Veloce session. No browser parity or live customer journey is
+  claimed from the user's login confirmation alone.
