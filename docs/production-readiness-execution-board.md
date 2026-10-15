@@ -86,6 +86,17 @@ false`, and `discoveredQueueExhausted: false`; the Drive supplement records
 zero media references. This is an integrity/preflight pass, not complete
 archive coverage or a hosted import receipt. No tenant or Drive data changed.
 
+### Current Candidate Local Verification - 2026-10-14
+
+On clean pushed candidate `18d9dfd9d55de9ab12c0049b8e42788871e7fb45`,
+`npm run test:focused` passed **367/368** (one skipped), `npm run typecheck`
+passed, the deterministic AI release evaluation passed **16/16** with zero
+model samples (`localGatePassed: true`, `productionReady: false`), and focused
+trace/observability tests passed **13/13**. The AI report is bound to this
+SHA, records Node `v24.18.0`, and states no LLM or Zep request was made. These
+are local regression receipts only; they do not satisfy hosted, buyer, or
+end-to-end customer-journey acceptance.
+
 ### Current-Head Offline AI and Trace Checks - 2026-10-14
 
 On the same pushed source commit `99c719fdb23a3435d52a51473bef565addc86a7c`,
