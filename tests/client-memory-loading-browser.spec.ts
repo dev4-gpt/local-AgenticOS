@@ -85,6 +85,33 @@ test("a transient empty graph read is retried once without rebuilding the index"
   expect(graphRefreshes).toBe(0);
 });
 
+test("a persistently empty graph read remains flagged as stale after one read-only retry", async ({ page, context }) => {
+  await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
+  const graphReadAt: number[] = [];
+  let graphRefreshes = 0;
+  await page.route("**/api/client-runtime/records?**", (route) => route.fulfill({
+    status: 200,
+    json: { ok: true, records: [{ id: "memory-1", title: "Existing memory", content: "Approved content.", status: "active", created_at: "2026-10-14T12:00:00.000Z" }], hasMore: false },
+  }));
+  await page.route("**/api/client-runtime/memory-graph", async (route) => {
+    if (route.request().method() === "POST") {
+      graphRefreshes += 1;
+      return route.fulfill({ status: 200, json: { ok: true } });
+    }
+    graphReadAt.push(Date.now());
+    return route.fulfill({ status: 200, json: { ok: true, nodes: [], edges: [] } });
+  });
+
+  await page.goto("/memory");
+  await page.getByRole("button", { name: /^graph$/i }).click();
+  await expect(page.getByText("The graph index is empty despite active memories. Refresh the map to rebuild it.", { exact: true })).toBeVisible();
+  await expect.poll(() => graphReadAt.length).toBeGreaterThanOrEqual(2);
+  await page.waitForTimeout(500);
+  const delayedRetries = graphReadAt.slice(1).filter((time, index) => time - graphReadAt[index] >= 300);
+  expect(delayedRetries).toHaveLength(1);
+  expect(graphRefreshes).toBe(0);
+});
+
 test("creating a tenant memory refreshes its graph index", async ({ page, context }) => {
   await context.addCookies([{ name: "veloce_access_token", value: "synthetic-browser-test", url: clientBaseUrl }]);
   let created = false;

@@ -10,6 +10,26 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Memory Graph Empty-Index Regression - 2026-10-14
+
+On working tree based on pushed `HEAD` `2edbc7f510aefee00637a649f8ab7ca74e0d7eb6`,
+the isolated provider-disabled local dev runtime passed the Memory browser
+suite **8/8** with synthetic authentication and mocked API responses. Coverage
+includes a persistent empty graph after active memories are loaded: the UI
+continues to identify a stale graph index after the bounded read retry, and the
+retry sends no graph-refresh POST. `npm run typecheck` passed with Node
+`v24.19.0`.
+
+The same suite against the already-running local port 3939 failed **5/8**;
+captured UI state showed the older generic empty-graph message and no retry.
+Its process working directory is this checkout, but that alone does not prove
+the served bundle is fresh. This is a local-runtime freshness issue to resolve
+before using 3939 for acceptance or parity evidence. The isolated test server
+was stopped and its generated cache removed. No existing server was restarted,
+and no tenant, hosted, or provider state changed. This closes only a local
+synthetic regression gate, not Cloud Test graph reliability or customer
+journey acceptance.
+
 ### Cloud Test Memory Snapshot - 2026-10-15
 
 The existing Cloud Test app tab in the Aryaman (Work) Chrome window rendered
