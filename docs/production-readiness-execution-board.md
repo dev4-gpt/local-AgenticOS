@@ -10,6 +10,17 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Current Candidate Gate Recheck - 2026-10-14
+
+On pushed `HEAD` `cfd24757f065be6a22c08e7313a316477d6ad715`, the strict
+production-readiness verifier returns `releaseReady: false` because
+`ledger_bucket_not_configured`; **37 release-evidence categories** remain
+unevaluated. The offline deterministic AI evaluation passes **16/16** with its
+local gate passed and `productionReady: false`; it used zero model samples and
+made no provider requests. No ledger record, deployment, hosted mutation,
+tenant write, or provider call was made. This updates local evaluation evidence
+only; hosted/customer/release acceptance remains open.
+
 ### Memory Loading Race Regression - 2026-10-14
 
 The signed-in Work-window comparison found that Cloud Test could briefly show
