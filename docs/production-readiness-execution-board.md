@@ -10,6 +10,24 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Production-Readiness Timebox - 2026-10-14
+
+- Target: reach an evidence-backed decision on controlled real-user onboarding
+  no later than **2026-10-28** (14 calendar days from this decision).
+- This is a delivery deadline, not permission to waive release gates or label
+  the product production-ready without evidence. If a critical gate is still
+  open on the target date, report the specific blocker and keep onboarding
+  restricted until it is resolved.
+- Work stays within this board's existing scope: customer journey, authorized
+  source/graph import, local/cloud parity and hosted security, AI evaluation and
+  observability, cost-controlled buyer validation, and strict release evidence.
+  Log external access, human-review, and environment constraints as blockers;
+  do not count them as completed work.
+- This timebox does **not** change the approved 45-day per-item customer-data
+  retention policy or authorize any hosted mutation, provider spend, or release.
+- The timebox is measured by dated, current-candidate evidence and the board's
+  exit criteria, not by an estimated completion percentage.
+
 ### Current Continuation Verification - 2026-10-14
 
 - On clean source commit `8424ba15e69af98684488566614d4296e21fac23`, the
