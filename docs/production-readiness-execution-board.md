@@ -21,12 +21,29 @@ tracker.
 - `npm run typecheck` passed under Node 24. Focused journey-evidence,
   buyer-pilot-receipt, MiroFish-fixture, source-graph, and observability tests
   passed **38/38** under the same runtime.
-- The existing signed-in Aryaman (Work) Chrome tab for Cloud Test rendered
-  **23 tenant memories, 32 graph nodes, and 54 edges**. This is a point-in-time
-  read-only UI observation. It does not verify same-user local/cloud identity,
-  source/artifact identity, graph reliability after reload, customer workflow
-  completion, or production readiness. No page action or hosted mutation was
-  made.
+- In the same Aryaman (Work) Chrome window, Cloud Test and the existing local
+  mirror at `127.0.0.1:3945` each rendered **23 tenant memories, 32 graph nodes,
+  and 54 edges**, with matching visible recent records. The local page exposed
+  `Community sources` / `Review JSON source packs`; Cloud Test did not. This is
+  limited point-in-time UI/data evidence: account identity and deployed source
+  identity are not matched, and the feature difference may reflect build or
+  route configuration.
+- Cloud Test's read-only `/api/client-runtime/build-identity` returned
+  `client_route_not_enabled`. Local `3945` reported source SHA
+  `18e70cf02d1a7b590f987ebcc6b8e530b61cd9fc`, explicitly runtime-reported and
+  not independently attested. Compared with current `HEAD`, that SHA differs
+  in `ClientDataWorkspace.tsx` (graph empty-response retry and graph refresh on
+  successful memory save) and package manifests. A second existing local
+  runtime, `127.0.0.1:3985`, showed a separate dataset (2 records, 114 nodes,
+  113 edges); it is not a Cloud Test parity comparator.
+- Returning Cloud Test from the identity response briefly rendered 0 records
+  and a 0/0 graph; the page then repopulated to 23 records and 32/54 without a
+  reload or graph-refresh action. This reinforces the intermittent initial
+  loading/race concern. Both app tabs were restored to Memory afterward.
+- No graph refresh, tenant write, import, provider request, deployment, or
+  hosted configuration change was made. Same-user identity, artifact/image
+  identity, graph reliability after reload, customer workflow completion, and
+  production readiness remain unverified.
 - The strict release gate, hosted source import, full customer journey, full
   Skool page/video coverage, live model-quality evidence, and qualified human
   buyer evidence remain open. No release-ledger record was published.
