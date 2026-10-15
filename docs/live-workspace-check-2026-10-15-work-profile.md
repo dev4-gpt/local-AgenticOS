@@ -2,11 +2,11 @@
 
 ## Scope
 
-Read-only inspection of the already-open Cloud Test app tab in the user's
-Aryaman (Work) Chrome window. The active URL was
-`veloce-cloud-test-mquo4bf7aq-el.a.run.app/memory`. No tab was created, no
-page navigation or reload was performed, and no tenant write, graph refresh,
-import, provider request, deployment, or hosted configuration change was made.
+Read-only inspection of already-open Cloud Test and local mirror tabs in the
+Aryaman (Work) Chrome window. No tab was created. Follow-up navigation was
+limited to the two apps' read-only identity endpoints and returning to their
+Memory pages. No reload, tenant write, graph refresh, import, provider request,
+deployment, or hosted configuration change was made.
 
 ## Observed State
 
@@ -48,27 +48,37 @@ The existing local `127.0.0.1:3985` tab is a separate test surface, not the
 two source-pack records, while Notebook showed no notebook records or active
 sources. Do not use `3985` for same-tenant Cloud Test comparison.
 
+The read-only local and Cloud Test session endpoints returned the same
+authenticated subject. Only the local endpoint reported
+`workspaceAuthorized: true`; Cloud Test returned `authenticated: true` without
+that separate field. The identifiers were compared transiently and are not
+retained here. This closes same-subject identity only, not same-tenant identity
+or hosted workspace authorization.
+
 All checks were read-only. No account identifiers, emails, cookies, or tenant
-IDs were inspected or recorded. No reload, graph refresh, import, provider
-request, tenant write, or hosted change occurred. Matching `3945`/Cloud Test
-counts are limited snapshot evidence, not same-user or source-artifact parity.
+IDs were retained in this note. Matching `3945`/Cloud Test counts are limited
+snapshot evidence, not same-tenant or source-artifact parity.
 
 After navigating back from Cloud Test's identity response, its first rendered
 Memory snapshot briefly showed 0 records and 0 graph nodes/edges. On the next
 observation, the same page populated to 23 records and 32 nodes / 54 edges
 without a reload or graph-refresh action. This is evidence of transient
 initial-load inconsistency, not data deletion. The Cloud Test and local tabs
-were left on their Memory pages.
+were not both restored: Cloud Test remained on Memory, while the local tab was
+left on its read-only session-status response when Chrome switched to the
+College profile. No further browser interaction occurred.
 
 ## Readiness Impact
 
 - Record this as limited positive UI parity evidence for Memory counts only.
 - Keep local/cloud parity and graph reliability open.
-- Do not infer production readiness, same-user parity, or build identity from
-  matching counts.
-- Next diagnostic should capture the authenticated session identity and the
-  read-only graph GET response in both intended environments, then correlate
-  with request timing/loading/error state. Do not call the graph-refresh POST.
+- Same authenticated subject is confirmed, but same tenant and hosted workspace
+  authorization are not.
+- Do not infer production readiness, build identity, or full feature parity
+  from matching counts.
+- Next diagnostic should capture the read-only graph GET response in both
+  intended environments, then correlate response data with loading/error
+  state. Do not call the graph-refresh POST.
 
 ## Read-Only Cloud Run Deployment Check
 

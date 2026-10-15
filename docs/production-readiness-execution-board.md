@@ -25,9 +25,10 @@ tracker.
   mirror at `127.0.0.1:3945` each rendered **23 tenant memories, 32 graph nodes,
   and 54 edges**, with matching visible recent records. The local page exposed
   `Community sources` / `Review JSON source packs`; Cloud Test did not. This is
-  limited point-in-time UI/data evidence: account identity and deployed source
-  identity are not matched, and the feature difference may reflect build or
-  route configuration.
+  limited point-in-time UI/data evidence. Read-only session endpoints confirmed
+  the same authenticated subject in both environments; only the local response
+  also reported `workspaceAuthorized: true`. No identifier was retained. The
+  feature difference may reflect build or route configuration.
 - Cloud Test's read-only `/api/client-runtime/build-identity` returned
   `client_route_not_enabled`. Local `3945` reported source SHA
   `18e70cf02d1a7b590f987ebcc6b8e530b61cd9fc`, explicitly runtime-reported and
@@ -39,11 +40,13 @@ tracker.
 - Returning Cloud Test from the identity response briefly rendered 0 records
   and a 0/0 graph; the page then repopulated to 23 records and 32/54 without a
   reload or graph-refresh action. This reinforces the intermittent initial
-  loading/race concern. Both app tabs were restored to Memory afterward.
+  loading/race concern. Cloud Test was restored to Memory. The Work-profile
+  local tab remained on its read-only session-status response after Chrome
+  switched to the College profile, so no further browser interaction occurred.
 - No graph refresh, tenant write, import, provider request, deployment, or
-  hosted configuration change was made. Same-user identity, artifact/image
-  identity, graph reliability after reload, customer workflow completion, and
-  production readiness remain unverified.
+  hosted configuration change was made. Same-tenant identity, hosted workspace
+  authorization, artifact/image identity, graph reliability after reload,
+  customer workflow completion, and production readiness remain unverified.
 - The strict release gate, hosted source import, full customer journey, full
   Skool page/video coverage, live model-quality evidence, and qualified human
   buyer evidence remain open. No release-ledger record was published.
