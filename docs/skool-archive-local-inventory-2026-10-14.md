@@ -395,3 +395,16 @@ SHA-256 exactly matches the local candidate:
 proves byte identity for that partial graph only; it does not resolve the 25
 pending pages or create a hosted import receipt. No Drive or hosted data
 changed.
+
+## Pending-Page Source Crosswalk - 2026-10-14
+
+A fresh read-only listing of the authorized Drive folder returned 113 items and
+no newer lesson archive than the manifest snapshot above. An exact `md` page-ID
+crosswalk against the source URLs in 123 local JSON archive/pack versions
+(1,980 source entries, including historical variants) found **0 of 25 pending
+page IDs** represented as a source page. Text mentions, outbound links, and
+similarly named bonus PDFs were not counted as lesson-body captures. This
+confirms that the local archived material currently on hand does not close the
+pending roster; new owner-saved captures or an approved platform export are
+needed. No Skool request, cookie transfer, Drive write, or hosted import was
+performed.

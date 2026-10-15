@@ -3254,3 +3254,9 @@ does not authorize hosted changes, provider calls, or spending.
   exactly matches the local candidate (`69e056cd30c062dcbca4d281a8f34831d16e191f11ad1e44f245f16d2fde3dd7`),
   closing the Drive/local artifact-identity gap for this **partial** graph.
   The 25 missing pages, unverified videos, and hosted import remain open.
+- A current read-only Drive listing returned 113 items with no newer lesson
+  archive. An exact page-ID crosswalk across 123 local JSON archive/pack
+  versions (1,980 source entries) found **0/25 pending lesson IDs** as source
+  pages. Bonus PDFs, embedded mentions, and links do not substitute for the
+  missing lesson bodies; new owner-saved captures or an approved platform
+  export are required before claiming complete coverage.
