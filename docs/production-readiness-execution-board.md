@@ -3556,3 +3556,24 @@ does not authorize hosted changes, provider calls, or spending.
   `releaseReady: false` and `ledger_bucket_not_configured`; it leaves hosted,
   customer-journey, migration, and release-evidence checks unevaluated. No
   ledger record, deployment, hosted data mutation, or provider spend occurred.
+
+## Continuation Update - Local Release Gate and Source Import Journey (2026-10-14)
+
+- On commit `b69207e1d02b149608b096ca3868143b340522f5`, `npm run build`
+  passed with supported Node 24, including TypeScript and route generation.
+  The build still emits Next.js middleware-deprecation and Edge-runtime
+  dependency warnings; neither prevents the build.
+- Focused customer onboarding, auth callback, membership, and journey-evidence
+  tests passed **27/27**. The source-import consent browser suite passed
+  **8/8** on an isolated local runtime at port 4199, with provider calls
+  disabled and tenant APIs mocked. It verifies consent, preview gating,
+  explicit permission per batch, cleanup failure handling, and confirmation
+  before permanent deletion. These are local contract/UI tests, not a signed-in
+  live-tenant import receipt or same-user local/cloud comparison.
+- Read-only GCP inspection confirmed the existing release-ledger bucket
+  `gs://veloce-agenticos-2026-veloce-release-ledger`; no bucket or IAM changes
+  were made. The read-only production verifier, pointed at that bucket, reports
+  `release_ledger_record_missing` for commit `b69207e`. Hosted deployment,
+  migration, customer-journey, and other release evidence remains unevaluated;
+  no ledger record was published, no deployment occurred, and no provider was
+  called.
