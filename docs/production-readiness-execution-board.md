@@ -10,6 +10,43 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Cloud Test Revision and Configuration Audit - 2026-10-15
+
+Read-only GCP inspection in project `veloce-agenticos-2026` confirms Cloud Test
+is Ready on revision `veloce-cloud-test-00208-5hk`, with image digest
+`sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`.
+The revision has no `VELOCE_BUILD_SOURCE_COMMIT` runtime variable or commit
+annotation. Cloud Build history maps that image digest to a successful build
+from **2026-09-23**, sourced from a Cloud Storage archive rather than a Git
+commit. Thus the newly Ready revision is not evidence that current source was
+deployed; it appears to be a configuration revision on an older image.
+
+The deployed non-secret runtime settings are tenant `veloce-cloud-test`,
+`CLIENT_RETENTION_DAYS=14`, provider calls disabled, and storage bucket
+`veloce-agenticos-2026-veloce-cloud-test` with namespace `veloce-cloud-test`.
+Both `.private-client-kits/cloud-test-parity.env` and the deployed service point
+to the same Supabase project, and the local env has the same tenant slug and
+provider calls disabled. However, that local env omits retention and storage:
+the source default therefore yields **45 days**, and `clientStorageConfig()`
+returns unavailable. The private `.private-client-kits/veloce-cloud-test.gcp.json`
+manifest also declares **45 days**, not the live revision's 14. This is a
+verified local/manifest/hosted configuration mismatch. The Cloud Test bucket was
+not added to local config because doing so would enable local requests to write
+to that hosted bucket. The build-identity endpoint itself requires an
+authenticated app session and was not queried. No service, database, storage,
+IAM, or tenant state was changed; no deployment or provider request was made.
+
+The separate `.private-client-kits/internal-beta-parity.env` is a different
+tenant (`internal-beta`) in the same Supabase project; it also disables
+provider calls and defaults to 45-day retention. It is not the local
+Cloud-Test-parity environment.
+
+The separate `veloce-agenticos-site` service in `europe-west1` also has no
+`VELOCE_BUILD_SOURCE_COMMIT`; its resource metadata alone is insufficient to
+identify it as the customer-runtime service. Neither Cloud Run service should
+be treated as source-parity proof until a signed-in build-identity receipt or
+independently bound build provenance is captured.
+
 ### Current Candidate Evaluation and Release Gate - 2026-10-15
 
 On pushed candidate `c6f46d1be57bc02f7b3c60176f162f0000c6b047`, the offline
