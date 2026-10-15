@@ -10,6 +10,27 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Current Candidate Checkpoint - 2026-10-14
+
+On pushed clean `HEAD` `93b548ac7c98ca693f7e7749164f119e84913475` (Node
+`v24.19.0`), the focused regression suite passed **367/368** (one skipped,
+zero failed), `npm run typecheck` passed, and the focused trace/observability
+suite passed **13/13**. The deterministic AI evaluation passed **16/16** with
+`localGatePassed: true` and `productionReady: false`; its ignored local receipt
+is `tmp/ai-release-local-v1-report.json`. These are local regression and
+deterministic-evaluation results only, not hosted, customer, or model-backed
+proof.
+
+The strict read-only verifier was run against the exact same pushed commit with
+the configured release-ledger bucket. It returned `releaseReady: false`, no
+ledger record for this SHA, and **37 required categories not evaluated**. No
+ledger record or hosted state was changed. This checkpoint resolves the stale
+candidate reference at the top of the board; older dated notes below remain
+historical. The immediate external dependency remains access to the intended
+signed-in Veloce browser for same-user local/cloud parity; the connected
+browser still exposes only the unrelated College profile. Continue independent
+local work, but do not count it as a substitute for that acceptance evidence.
+
 ## Operating Method - 2026-10-14
 
 - This execution board is the project-level source of truth. Keep the Codex goal
