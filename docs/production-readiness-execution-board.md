@@ -10,18 +10,21 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
-### Text-Job Request-Boundary Hardening - 2026-10-15
+### Client API Request-Boundary Hardening - 2026-10-15
 
-A focused source audit found that the client `jobs` and `provider-chat` routes
-parsed request JSON without a byte limit, then trimmed the prompt and selected
-recent history messages. Both routes now use a bounded JSON reader (64 KiB),
-reject malformed/non-object bodies, cap prompts and history count, and reject
-oversized history entries before enqueue. The targeted Playwright regression
-passes **2/2**; the full focused suite passes **368/369** (one intentional
+A focused source audit found unbounded JSON parsing in provider-bound routes.
+The client `jobs` and `provider-chat` routes now cap request bodies at 64 KiB,
+prompts at 20,000 characters, history at 16 messages, and each history message
+at 12,000 characters. The `research` route caps request bodies at 8 KiB, and
+`hosted-jobs` caps them at 32 KiB. All four use a shared bounded JSON reader
+that rejects malformed and non-object bodies before routing or enqueue.
+
+The targeted Playwright regression passes **2/2**, verifying oversized-body
+rejection across all four routes and history rejection before enqueue on the
+two chat/job routes. The full focused suite passes **368/369** (one intentional
 skip), `npx tsc --noEmit` and targeted ESLint pass, and `npm run build`
-successfully compiled and generated **66** static pages. The route test verifies
-oversized requests and excessive history are rejected before any job is
-enqueued.
+successfully compiled and generated **66** static pages. The broader suite's
+fixed test list does not include the new boundary test; it was run separately.
 
 This is local source evidence only. No provider request, hosted configuration,
 customer-data write, deployment, or cloud mutation was made. The route audit
