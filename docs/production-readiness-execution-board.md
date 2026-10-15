@@ -102,7 +102,7 @@ generated config update. The type-path update was committed with the board on
 
 ### Fresh Strict Release Check - 2026-10-14
 
-On pushed `HEAD` `3ebc0b88fc50318fb264fc82abab6c12966aff9f`,
+On pushed `HEAD` `0440693812dae7ddfd83e75f26ca6f4e545bc72b`,
 `npm run verify:production-readiness -- --ledger-bucket
 veloce-agenticos-2026-veloce-release-ledger` returned `releaseReady: false`.
 The only reported failure is `release_gate:release_ledger_record_missing`;
@@ -111,6 +111,16 @@ configuration, migrations, tenant isolation, source import, buyer pilot,
 operations/legal approvals, and rollback target. The read-only check found no
 release record for this commit and published nothing. Do not interpret the
 narrower single failure as a pass.
+
+### Offline Verification Refresh - 2026-10-14
+
+On the same pushed source revision, the supported Node 24 offline AI
+evaluation passed 16/16 deterministic cases (`localGatePassed: true`,
+`productionReady: false`, no model samples or provider requests). The local
+receipt is `tmp/ai-release-local-v1-report.json` and is ignored by Git. Focused
+trace/observability tests passed 13/13, and `npm run typecheck` passed. These
+checks exercise local deterministic and mock-backed behavior; they do not
+prove live provider quality, hosted telemetry, or the customer journey.
 
 ## Goal
 
@@ -126,9 +136,9 @@ release verification without deploying or spending beyond approved limits.
 | Local product and customer journey | Current-source local Memory page was observed in a Chrome window the user confirmed is not the intended one; exclude its 23-memory/32-node/54-edge display from accepted evidence. Notebook Studio browser journey passed 1/1 with synthetic auth and mocked APIs; typecheck passes. Signed-in customer journey remains unverified | Current-source build; automated journey tests; signed-in same-user, same-tenant journey through workspace, source selection, draft, provenance, review, and export | Wait for the intended Chrome window/profile to be identified before browser checks. Keep provider calls disabled; do not treat fixtures or the unconfirmed local view as customer-journey evidence |
 | Authorized Skool archive and graph import | The Drive manifest (updated 2026-10-14 22:07 UTC) still marks coverage partial: it reports 9/108 dated lesson PDFs archived, no verified video downloads, and a validated graph with 1,138 nodes / 9,029 edges, text linked for 82/107 lesson references, 25 pages pending, and 96 PDF-derived segments from 88 PDFs (779 pages). The newer live-index audit reports 106 dated lessons plus the separate System page, so the manifest's 108-date count remains unresolved. No hosted graph import receipt | Canonical lesson/date inventory; all permitted page text, links, and available video references accounted for; validated source pack; scoped import receipt; graph counts and link checks | Reconcile the 25 pending pages and spreadsheet/index count discrepancy; inspect the latest graph artifact independently before import; import to a hosted graph only after coverage and target tenant are confirmed |
 | Local/cloud parity and hosted security | The 23/32/54 local Memory observation came from a Chrome window the user says is not the intended one and is excluded from parity evidence. Earlier Cloud Test observation was 9 / 9. Cloud Test-scoped local config passes sanitized preflight with provider calls disabled | Same build/artifact identity; same-user, same-tenant feature/data comparison; route allowlist, tenant isolation, storage proxy and 45-day retention verified from the intended live beta configuration | Identify the intended Chrome window/profile before browser comparison; then compare existing local and Cloud Test tabs read-only. Do not open duplicate tabs or mutate service, secrets, traffic, Supabase, or retention |
-| AI quality, evaluation, and observability | On pushed commit `aeb96c8ff5e08af36fc17dbd0f3ae1f1d3fcac6d`, supported Node `v24.18.0` deterministic evaluation passed 16/16 (`localGatePassed: true`, `productionReady: false`, no model samples); receipt: `tmp/ai-release-local-v1-report.json` (ignored local evidence). Focused current-source trace/observability tests passed 13/13; tests are mock-backed and do not prove live PostHog or hosted telemetry. Hosted model quality and provider-side spend cap remain unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; live hosted trace delivery/completeness evidence | Keep provider calls disabled for the $0 pilot. Advance to the signed-in same-tenant journey and retain these as local-only evidence until provider-side caps and an approved hosted/model path are independently verified |
+| AI quality, evaluation, and observability | On pushed commit `0440693812dae7ddfd83e75f26ca6f4e545bc72b`, supported Node 24 deterministic evaluation passed 16/16 (`localGatePassed: true`, `productionReady: false`, no model samples or provider requests); receipt: `tmp/ai-release-local-v1-report.json` (ignored local evidence). Focused trace/observability tests passed 13/13, and typecheck passed. Tests are local/mock-backed and do not prove live PostHog or hosted telemetry. Hosted model quality and provider-side spend cap remain unverified | Supported-runtime deterministic suite; reviewed model samples with quality and cost telemetry; live hosted trace delivery/completeness evidence | Keep provider calls disabled for the $0 pilot. Advance to the signed-in same-tenant journey and retain these as local-only evidence until provider-side caps and an approved hosted/model path are independently verified |
 | MiroFish buyer pilot | Fresh offline audit of v1 `sim_f91504972e42`: 10 profiles, 2 active buyers, 10/10 rounds, both active buyers interacted, and action/completion telemetry plus all technical checks pass. Its pilot-quality gate remains false because 1 of 2 reviewed posts was rejected. V2 `sim_8f4e26a9d170` has 0 qualified of 2; `run_state.json` and `profile-preparation.json` are missing, so strict completion/receipt is unverified. Both are synthetic, not market validation; provider billing receipts are absent | Human-reviewed posts bound to run inputs; audited completed run; documented limitations; real buyer interviews recorded separately from synthetic results | Do not make another provider request under the prior one-repeat approval. Keep rejected v2 replies out of demand evidence and prioritize actual buyer interviews |
-| Release evidence and decision | Not ready. The latest read-only gate check on `3ebc0b88fc50318fb264fc82abab6c12966aff9f` found no matching ledger record and 37 evidence categories unevaluated. No release evidence was published | Clean pushed commit; all required evidence attached to the ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Continue customer journey, hosted parity, migration, and approval evidence; publish no partial release record |
+| Release evidence and decision | Not ready. The latest read-only gate check on `0440693812dae7ddfd83e75f26ca6f4e545bc72b` found no matching ledger record and 37 evidence categories unevaluated. No release evidence was published | Clean pushed commit; all required evidence attached to the ledger; hosted deployment/revision/image verified; customer, security, operations, legal, and rollback gates approved | Continue customer journey, hosted parity, migration, and approval evidence; publish no partial release record |
 
 ## Current-Head Gate Recheck - 2026-10-14
 
