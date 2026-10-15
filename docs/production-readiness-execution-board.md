@@ -4080,10 +4080,13 @@ does not authorize hosted changes, provider calls, or spending.
   request was made. The active revision still uses the older image digest and
   its displayed release label is `acceptance-9417c3c`; current-source build
   provenance and signed-in hosted acceptance remain unverified.
-- The GCP console displayed an organization/project warning about unrestricted
-  Gemini API keys. No key values were inspected and no credentials or API-key
-  settings were changed; inventory and restriction review remain an open
-  security task.
+- The APIs & Services credentials page for **Veloce AgenticOS** lists
+  `No API keys to display`. The console still shows a broader warning that one
+  or more projects enabled with the Gemini API have unrestricted keys, but the
+  warning does not identify those projects; it is not evidence that this
+  project has an unrestricted key. No key values were viewed and no credentials
+  or API-key settings were changed. Identifying the project(s) behind the
+  broader warning remains open.
 - The strict release verifier on this exact commit returned
   `releaseReady: false`, `release_ledger_lookup_unavailable`, and
   `release_environment`; **37 evidence categories** remain unevaluated. A
