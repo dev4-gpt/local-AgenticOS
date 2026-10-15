@@ -237,6 +237,14 @@ not a Veloce tab; despite the user's note that the correct Chrome is signed in,
 that window is not available to this session, so no signed-in journey or
 parity test was attempted.
 
+The MiroFish buyer-review unit suite passed **18/18** under its existing
+project virtual environment on MiroFish commit `384e471`. This verifies the
+local review/audit logic only; no simulation was run. A fresh offline audit of
+v2 `sim_8f4e26a9d170` still cannot run to a verdict because its `run_state.json`
+is absent (and `profile-preparation.json` is also missing), despite other run
+artifacts and a review file being present. No attempt was made to reconstruct
+those missing files or re-run the simulation.
+
 ## Historical Verified Snapshot (2026-10-14; superseded by continuation updates below)
 
 - Branch `wip/backup-2026-10-03` is pushed through `88f57bd` (local private
