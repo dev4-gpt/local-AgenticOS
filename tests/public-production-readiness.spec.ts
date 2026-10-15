@@ -55,6 +55,10 @@ test("release ledger lookup distinguishes an absent record from an unavailable c
     const missing = inspect('echo "CommandException: One or more URLs matched no objects." >&2\nexit 1');
     expect(missing.failures).toContain("release_gate:release_ledger_record_missing");
     expect(missing.failures).not.toContain("release_gate:release_ledger_lookup_unavailable");
+
+    const invalid = inspect('if [ "$2" = "ls" ]; then echo "gs://agentos-release-ledger-test/releases/test/record.json"; else echo "not-json"; fi');
+    expect(invalid.failures).toContain("release_gate:release_ledger_record_invalid");
+    expect(invalid.failures).not.toContain("release_gate:release_ledger_record_missing");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
