@@ -4130,3 +4130,27 @@ does not authorize hosted changes, provider calls, or spending.
   occurred.
 - No browser form, tenant write, graph refresh, import, provider request,
   deployment, ledger publication, or cloud configuration change occurred.
+
+## Continuation Update - Current Source-Import Browser Gate and Cloud Identity Route (2026-10-15)
+
+- On application code candidate `902ee5d334582ee64dd73e2e9fe8688206ea56f8`
+  (subsequent commits are documentation-only), the deterministic offline AI
+  evaluation passed **16/16**, with `localGatePassed: true`, zero model samples,
+  and `productionReady: false`. The focused suite passed **368/369**, with one
+  intentional skip.
+- The isolated source-import browser suite passed **8/8** on that same
+  application code using test APIs/intercepts on a separate local port after
+  its default port `3939` was found occupied. It exercised consent, per-batch
+  authorization, invalid-pack blocking, cleanup failure, link rendering, and
+  delete confirmation. It made no tenant writes, hosted requests, or provider
+  calls; this remains local UI acceptance, not a hosted import receipt.
+- In the Aryaman (Work) Chrome profile, the direct Cloud Test endpoint
+  `/api/client-runtime/build-identity` returned `client_route_not_enabled`.
+  Current source and the GCP provisioner include this API route, so the active
+  hosted revision/configuration still does not expose the identity check needed
+  to attest source/image parity. No route/config change or deployment was made.
+- The strict release verifier remains unable to read the known release-ledger
+  bucket from this shell because the sandbox cannot access Google Cloud
+  credential files; **37** ledger-backed categories remain unevaluated. This
+  is an unavailable check, not proof that the ledger record is absent. No
+  hosted database/storage/IAM/service change or ledger write occurred.
