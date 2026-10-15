@@ -4226,14 +4226,19 @@ does not authorize hosted changes, provider calls, or spending.
   Its visible configuration has `CLIENT_PROVIDER_CALLS_ENABLED=0` and
   `CLIENT_RETENTION_DAYS=14`. This confirms those values on that revision only;
   it does not prove image/source parity or full customer-journey acceptance.
+- A direct read-only request to that revision's
+  `/api/client-runtime/build-identity` returned
+  `{"ok":false,"error":"client_route_not_enabled"}`. The deployed image/source
+  identity therefore remains unattested.
 - In the same GCP account, the bucket
   `veloce-agenticos-2026-veloce-release-ledger` is confirmed in `asia-south1`,
   not public, with Soft Delete and Object versioning enabled. The account can
-  list objects under `releases/`; the exact current HEAD
-  `abbc77bb93b441c38571925afb3ed49d1c7ce935` has a prefix folder but no objects.
-  Therefore no receipt is present under that commit prefix, and the strict
-  release verifier remains not ready. No object was uploaded and no access or
-  IAM permission was requested or changed.
+  list objects under `releases/`; both the inspected HEAD
+  `abbc77bb93b441c38571925afb3ed49d1c7ce935` and the subsequently pushed HEAD
+  `41ee8e8b7329e7d32358a78e578324d44aa4ee98` have prefix folders but no objects.
+  No receipt is present under either commit prefix, and the strict release
+  verifier remains not ready. No object was uploaded and no access or IAM
+  permission was requested or changed.
 - The Cloud Console displayed an action-required warning that at least one
   Gemini API key in the project is unrestricted. This is a security/cost risk
   requiring owner review in APIs & Services > Credentials; no key or credential
