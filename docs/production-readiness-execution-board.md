@@ -10,6 +10,18 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### MiroFish Artifact Recheck - 2026-10-15
+
+On MiroFish checkout `73f9a3b`, the bounded v2/smoke tests pass **25/25**
+offline. A read-only audit of existing run `sim_8f4e26a9d170` observes two
+distinct quote responses but **zero distinct buyer posts**; its bound human
+review has **0 qualified / 2 rejected**. The run directory is missing both
+`run_state.json` and `profile-preparation.json`, so the ten-round manifest is
+intent only and this run cannot satisfy completed-run receipt criteria. No
+simulation was replayed and no Groq or Zep request was made. Treat the output
+as rejected synthetic product-feedback, not demand or willingness-to-pay
+evidence.
+
 ### Focused Regression Suite - 2026-10-14
 
 After the Memory loading-race fix, `npm run test:focused` passed on the
