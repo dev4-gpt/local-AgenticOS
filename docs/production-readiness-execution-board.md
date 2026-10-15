@@ -12,7 +12,8 @@ tracker.
 
 ### Current Evidence Update - 2026-10-14
 
-On `HEAD` `5002dc570c8006d93ab7524e30a5117d2902661d`, five locally saved
+Using the private graph base from source commit
+`5002dc570c8006d93ab7524e30a5117d2902661d`, five locally saved
 Skool lesson captures (May 22, 25, 26, 27, and 29) were validated through the
 production source selector/parser and merged into a new owner-only private
 graph snapshot at `tmp/authorized-skool-import/agentos-may29-local-graph-2026-10-14.jsonld`.
