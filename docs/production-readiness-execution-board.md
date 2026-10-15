@@ -60,6 +60,24 @@ and rollback. No release record, deployment, hosted change, tenant write, or
 provider request was made. These results refresh local regression evidence
 only; they do not satisfy hosted or customer-facing exit criteria.
 
+### Work-Profile Runtime Identity Recheck - 2026-10-15
+
+The Aryaman (Work) Chrome profile was verified against the user-designated
+Google account; the address is intentionally not retained in this repository.
+The already-open Cloud Test session endpoint reports a different Veloce
+runtime email, so the browser's Google profile must not be treated as proof of
+the app's authenticated subject or same-user parity. No authentication state
+was changed. The Internal Beta Notebook page showed an authenticated workspace
+with 0 notebook records and 0 active sources at inspection time; this is a
+point-in-time observation, not evidence that the full customer journey passed.
+The Cloud Test/Local same-user journey remains open pending confirmation of the
+intended runtime account and a read-only comparison in the Work profile.
+
+The strict read-only release verifier was rerun after archive commit
+`96b24e88cc7feac703700ce174e19446de0fdd56`: `releaseReady: false`, no matching
+release-ledger record, and **37 categories not evaluated**. No ledger record,
+hosted state, tenant data, or provider state was written.
+
 ### Current Continuation Verification - 2026-10-14
 
 - On clean source commit `8424ba15e69af98684488566614d4296e21fac23`, the
