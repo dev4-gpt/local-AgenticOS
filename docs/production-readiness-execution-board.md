@@ -10,6 +10,27 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Existing-Server Browser Acceptance Recheck - 2026-10-15
+
+The product-experience Playwright config now treats
+`PW_USE_EXISTING_SERVERS=1` as an explicit instruction to skip its managed
+web-server startup. Previously it still tried to start a helper on the
+configured port, which failed when the port was unavailable and risked
+colliding with the user's existing local runtime. With the flag enabled, the
+source-import, Notebook Studio, and observability browser suites ran against
+`http://127.0.0.1:41774`: **15/15 passed**. `tsc --noEmit` and ESLint on the
+config passed. These tests use synthetic auth and mocked API responses; they
+do not write tenant data or call providers. The local runtime's source commit
+was not independently bound during this run, so this is UI acceptance evidence,
+not current-source parity, hosted acceptance, or a completed customer journey.
+
+The user-provided Aryaman (Work) appshot confirms Internal Beta was open in
+that profile at inspection time, showing 2 tenant memories, 114 graph nodes,
+and 113 edges. The browser automation surface available to this task currently
+enumerates only the Aryaman (College) Chrome profile, so it was not used; the
+Work screenshot remains user-provided point-in-time evidence. No hosted app
+controls or tenant records were changed.
+
 ### Current-Checkout Regression Recheck - 2026-10-15 (commit `6006e53`)
 
 The current clean documentation commit is

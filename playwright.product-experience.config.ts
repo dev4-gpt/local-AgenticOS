@@ -6,6 +6,7 @@ if (!Number.isInteger(clientPort) || clientPort < 1024 || clientPort > 65535) {
 }
 const clientDistDir = ".next-client-e2e";
 const clientBaseUrl = process.env.CLIENT_RUNTIME_TEST_URL || `http://127.0.0.1:${clientPort}`;
+const useExistingServer = process.env.PW_USE_EXISTING_SERVERS === "1";
 
 export default defineConfig({
   testDir: "tests",
@@ -15,10 +16,10 @@ export default defineConfig({
   timeout: 45_000,
   expect: { timeout: 10_000 },
   use: { trace: "retain-on-failure", channel: process.env.PLAYWRIGHT_BROWSER_CHANNEL || undefined },
-  webServer: {
+  webServer: useExistingServer ? undefined : {
     command: `env VELOCE_DIST_DIR=${clientDistDir} CLIENT_ALLOWED_ROUTES=/,/context,/memory,/hermes,/credentials,/notebook,/integrations CLIENT_PROVIDER_CALLS_ENABLED=0 PORT=${clientPort} node scripts/run-client-runtime-local.mjs --build-production --port ${clientPort} && env VELOCE_DIST_DIR=${clientDistDir} CLIENT_ALLOWED_ROUTES=/,/context,/memory,/hermes,/credentials,/notebook,/integrations CLIENT_PROVIDER_CALLS_ENABLED=0 PORT=${clientPort} node scripts/run-client-runtime-local.mjs --production --port ${clientPort}`,
     url: clientBaseUrl,
-    reuseExistingServer: process.env.PW_USE_EXISTING_SERVERS === "1",
+    reuseExistingServer: false,
     timeout: 180_000,
     stdout: "ignore",
     stderr: "pipe",
