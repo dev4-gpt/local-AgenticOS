@@ -837,7 +837,7 @@ release verification without deploying or spending beyond approved limits.
 
 ## Tracks
 
-**Current snapshot:** October 15, 2026, AgentOS `d01b1b554f98a8c004189b31fdcbda8b6f0bc61f` (`wip/backup-2026-10-03`, clean and pushed). The rows below are the active status; older dated entries in this board are historical evidence and are not current-state claims.
+**Current snapshot:** October 15, 2026. The application code and local gates were checked at `d01b1b554f98a8c004189b31fdcbda8b6f0bc61f`; this board refresh is a documentation-only commit (`b1c36a4`). Exact-commit release evidence must be rerun against the final candidate. The rows below are the active status; older dated entries in this board are historical evidence and are not current-state claims.
 
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
