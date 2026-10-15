@@ -10,6 +10,14 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+### Focused Regression Suite - 2026-10-14
+
+After the Memory loading-race fix, `npm run test:focused` passed on the
+supported Node `v24.19.0`: **367 passed, 1 skipped** (368 tests total). This is
+local regression evidence across the configured focused suite; it does not
+replace the separate browser run, hosted parity, customer-journey receipts, or
+strict release gate. No provider requests or hosted mutations were made.
+
 ### Current Candidate Gate Recheck - 2026-10-14
 
 On pushed `HEAD` `cfd24757f065be6a22c08e7313a316477d6ad715`, the strict
