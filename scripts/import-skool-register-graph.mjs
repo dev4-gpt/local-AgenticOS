@@ -203,9 +203,11 @@ export function mergeSkoolRegisterGraph(base, registerGraph) {
   const captureEdgeKeys = new Set(mergedEdges
     .filter((edge) => edge?.["@type"] === "hasTextCaptureSegment")
     .map((edge) => `${edge.source}\u0000${edge.target}`));
+  const registeredLessonIds = new Set();
   let lessonsWithText = 0;
   for (const lesson of nodes.values()) {
     if (lesson["@type"] !== "LearningResource" || !lesson["@id"].startsWith("skool-lesson:")) continue;
+    registeredLessonIds.add(lesson["@id"]);
     let lessonKey;
     try {
       lessonKey = lessonIdentity(lesson.url).lessonKey;
@@ -250,8 +252,10 @@ export function mergeSkoolRegisterGraph(base, registerGraph) {
       omittedUnsafeUrls: Math.max(base.provenance?.omittedUnsafeUrls ?? 0, omittedUnsafeUrls),
       textCaptureCrosswalk: {
         method: "exact_skool_lesson_id_from_url",
+        registeredLessons: registeredLessonIds.size,
         lessonsWithTextSegments: lessonsWithText,
-        linkedTextSegments: [...captureEdgeKeys].length,
+        lessonsWithoutTextSegments: Math.max(0, registeredLessonIds.size - lessonsWithText),
+        linkedTextSegments: [...captureEdgeKeys].filter((key) => registeredLessonIds.has(key.slice(0, key.indexOf("\u0000")))).length,
         completenessVerified: false,
       },
     },

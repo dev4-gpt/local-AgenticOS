@@ -49,8 +49,10 @@ test("register lessons link only to text segments with the exact Skool lesson id
       { "@id": "document:capture-1", "@type": "LearningResource", url: exactUrl, text: "captured portion one" },
       { "@id": "document:capture-2", "@type": "LearningResource", url: exactUrl, text: "captured portion two" },
       { "@id": "document:other-lesson", "@type": "LearningResource", url: `https://www.skool.com/ai-profit-lab-7462/classroom/9daf24e1?md=${unregisteredLessonId}`, text: "other lesson" },
+      { "@id": "document:unregistered-page", "@type": "LearningResource", url: "https://example.com/unregistered", text: "unregistered page" },
+      { "@id": "document:unregistered-segment", "@type": "LearningResource", url: "https://example.com/unregistered#segment", text: "unregistered segment" },
     ],
-    edges: [],
+    edges: [{ "@type": "hasTextCaptureSegment", source: "document:unregistered-page", target: "document:unregistered-segment" }],
     provenance: { sourceSegments: 3, complete: false },
   };
 
@@ -68,12 +70,15 @@ test("register lessons link only to text segments with the exact Skool lesson id
     .toMatchObject({ contentStatus: "metadata_only", pageTextCaptured: false });
   expect(merged.provenance.textCaptureCrosswalk).toMatchObject({
     method: "exact_skool_lesson_id_from_url",
+    registeredLessons: 2,
     lessonsWithTextSegments: 1,
+    lessonsWithoutTextSegments: 1,
+    linkedTextSegments: 2,
     completenessVerified: false,
   });
 
   const mergedAgain = mergeSkoolRegisterGraph(merged, registerGraph);
-  expect(mergedAgain.edges.filter((edge) => edge["@type"] === "hasTextCaptureSegment")).toHaveLength(2);
+  expect(mergedAgain.edges.filter((edge) => edge["@type"] === "hasTextCaptureSegment")).toHaveLength(3);
 });
 
 test("source-pack merge preserves source identifiers, exact lesson links, and register provenance", () => {
