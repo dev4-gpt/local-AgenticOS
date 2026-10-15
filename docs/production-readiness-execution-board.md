@@ -36,12 +36,20 @@ the current AgentOS checkout (`2a35e450065730daa4fa028b788e518339720364`),
 `node_modules/next/package.json` exists and reports Next.js `16.3.8`. A
 read-only local HTTP check found the existing listener on port 41774: `/memory`
 redirects to `/login?next=%2Fmemory`, and the login page returns HTTP 200.
-This supports a transient/stale dev overlay, but the intended Work Chrome tab
-could not be reloaded from the connected browser profile, so visual recovery
-is not confirmed. No source code or tenant data changed. The hosted Cloud Test
+This supports a transient/stale dev overlay, but the `41774` tab itself was
+not reloaded, so visual recovery there is not confirmed. No source code or
+tenant data changed. The hosted Cloud Test
 graph discrepancy (0 nodes / 0 edges after reload) remains unresolved; next
 diagnostic must inspect its authenticated GET response in the intended Work
 browser without calling the graph-refresh POST.
+
+Follow-up desktop inspection found the Aryaman (Work) Chrome window and its
+selected existing local mirror tab at `http://127.0.0.1:3945/memory`. That tab
+currently renders 23 memories and 32 nodes / 54 edges with no build overlay.
+This is a different local port from the user's `41774` capture; it confirms
+the `3945` mirror is healthy, but does not prove the `41774` tab recovered or
+explain Cloud Test's empty graph. No navigation, tenant write, or graph refresh
+was performed.
 
 ### Earlier Candidate Checkpoint - 2026-10-14
 
