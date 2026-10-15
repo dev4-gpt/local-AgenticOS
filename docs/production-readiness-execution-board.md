@@ -57,6 +57,16 @@ in this environment; **37 release categories** remain unevaluated. No hosted
 object, tenant data, configuration, or deployment was changed, and no
 provider request was made.
 
+### Production Build - 2026-10-14
+
+On clean source commit
+`bd4ee43b4a30618233ce7702859488039fe72d2c`, supported bundled Node ran
+`npm run build` successfully. Next.js compiled the production bundle, completed
+TypeScript validation, and generated all **66** static pages. The build emitted
+the existing middleware-convention deprecation warning; it did not prevent the
+build. This is local build evidence only and does not attest a hosted image,
+deployment, customer journey, or release gate.
+
 ### MiroFish Artifact Recheck - 2026-10-15
 
 On MiroFish checkout `73f9a3b`, the bounded v2/smoke tests pass **25/25**
