@@ -426,5 +426,10 @@ This refresh adds five text-backed lesson pages; it does not close the archive:
 crosswalk and should not be used as the current missing-text count. Video
 references remain metadata only: no video bytes or transcripts were added.
 The export remains `complete: false` and `videoAssetsIncluded: false`, is
-owner-only, and has not been imported into a hosted tenant. No Skool scraping,
-Drive write, hosted request, migration, deployment, or provider call occurred.
+owner-only locally, and has not been imported into a hosted tenant. A separate
+backup was uploaded to the owner-authorized Drive folder as
+`AgentOS-Knowledge-Graph-HTML-Refresh-Partial-87-of-107-2026-10-14.jsonld`
+(Drive ID `1o4Igl2i6tM4L6kt79adO7CMYJJLtLLQA`). Drive reports 8,808,928 bytes,
+matching the local file size; byte-for-byte identity was not independently
+verified. No Skool scraping, hosted request, migration, deployment, or provider
+call occurred.
