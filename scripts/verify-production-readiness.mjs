@@ -4,12 +4,16 @@ import { chmodSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "n
 import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { validCustomerJourneyReport } from "./lib/customer-journey-evidence.mjs";
-import { captureBuyerPilotEvidence, validBuyerPilotEvidence } from "./lib/buyer-pilot-evidence.mjs";
+import { captureBuyerPilotEvidence, validBuyerPilotCostEvidence, validBuyerPilotEvidence } from "./lib/buyer-pilot-evidence.mjs";
 import { evaluateClientCloudConfigEvidence, validClientCloudConfigEvidence } from "./lib/client-cloud-config-evidence.mjs";
+import { validClientStorageObjectInventoryReport } from "./lib/client-storage-object-inventory.mjs";
 import { captureSourceGuardSchemaEvidence, validSourceGuardSchemaEvidence } from "./lib/source-guard-schema-evidence.mjs";
+import { workingTreeFingerprintSha256 } from "./lib/working-tree-fingerprint.mjs";
+import { validNotebookJourneyReceipt } from "./lib/notebook-journey-evidence.mjs";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const args = process.argv.slice(2);
+let currentFingerprint;
 const strict = args.includes("--strict") || args.includes("--publish-ledger");
 const allowDirty = args.includes("--allow-dirty");
 const publishLedger = args.includes("--publish-ledger");
@@ -48,6 +52,13 @@ const requiredFiles = [
   "scripts/run-ai-release-evaluation.mjs",
   "scripts/lib/offline-test-environment.mjs",
   "scripts/lib/client-cloud-config-evidence.mjs",
+  "src/lib/clientRuntimeConfigDigest.mjs",
+  "src/lib/clientStorageRetentionClock.mjs",
+  "scripts/lib/client-storage-object-inventory.mjs",
+  "scripts/lib/client-storage-artifact-inventory.mjs",
+  "scripts/lib/notebook-journey-evidence.mjs",
+  "scripts/run-notebook-journey-evaluation.mjs",
+  "scripts/verify-client-storage-object-inventory.mjs",
   "scripts/lib/source-guard-schema-evidence.mjs",
   "scripts/verify-client-storage-config.mjs",
   "evaluations/ai-release-local-v1.json",
@@ -68,13 +79,25 @@ const requiredFiles = [
   "product-experience/supabase-v46-onboarding-setup-token.sql",
   "product-experience/supabase-v47-financial-offboard-guard.sql",
   "product-experience/supabase-v48-ecc-learning-retention-references.sql",
+  "product-experience/supabase-v49-managed-credit-retention.sql",
   "product-experience/supabase-client-retention-policy-28.sql",
   "product-experience/supabase-client-runtime-source-pack-graph.sql",
   "product-experience/supabase-client-runtime-source-pack-rpc-guard.sql",
   "product-experience/supabase-client-runtime-source-pack-published-date.sql",
   "product-experience/supabase-client-runtime-record-retention.sql",
+  "product-experience/supabase-client-research-retention-28.sql",
+  "product-experience/supabase-client-notebook-retention-28.sql",
   "product-experience/supabase-client-notebook-source-retention.sql",
+  "product-experience/supabase-client-runtime-request-retention-28.sql",
+  "product-experience/supabase-client-runtime-job-retention-28.sql",
+  "product-experience/supabase-client-room-retention-28.sql",
+  "product-experience/supabase-client-visual-qa-retention-28.sql",
+  "product-experience/supabase-client-support-retention-28.sql",
+  "product-experience/supabase-client-pipeline-retention-28.sql",
+  "product-experience/supabase-client-hermes-content-factory-retention-28.sql",
+  "product-experience/supabase-client-ruflo-retention-28.sql",
   "product-experience/supabase-client-runtime-artifact-owner-guard.sql",
+  "product-experience/supabase-client-notebook-artifact-review.sql",
   "product-experience/supabase-client-notebook-source-reference-guard.sql",
   "product-experience/supabase-client-notebook-execution-sources.sql",
   "src/app/api/client-runtime/source-import/route.ts",
@@ -118,13 +141,26 @@ const sourceChecks = [
   ["transactional onboarding verification", "product-experience/supabase-v45-onboarding-verify-token.sql", "consume_client_onboarding_verify_token"],
   ["transactional onboarding setup", "product-experience/supabase-v46-onboarding-setup-token.sql", "consume_client_onboarding_setup_token"],
   ["financial offboarding deletion guard", "product-experience/supabase-v47-financial-offboard-guard.sql", "client_tenants_financial_delete_guard"],
+  ["managed-credit financial retention", "product-experience/supabase-v49-managed-credit-retention.sql", "purge_expired_client_credit_records"],
   ["28-day tenant retention cap", "product-experience/supabase-client-retention-policy-28.sql", "client_tenants_retention_days_max_28"],
   ["tenant source graph import", "product-experience/supabase-client-runtime-source-pack-graph.sql", "import_client_runtime_source_pack"],
   ["tenant source RPC guard", "product-experience/supabase-client-runtime-source-pack-rpc-guard.sql", "source_pack_owned_by_other_member"],
   ["tenant source publication-date persistence", "product-experience/supabase-client-runtime-source-pack-published-date.sql", "source_published_at"],
   ["server-verified source import", "product-experience/supabase-client-runtime-source-pack-rpc-guard.sql", "p_worker_token"],
   ["tenant runtime-record retention", "product-experience/supabase-client-runtime-record-retention.sql", "purge_expired_client_runtime_records"],
+  ["tenant research retention", "product-experience/supabase-client-research-retention-28.sql", "purge_expired_client_research"],
+  ["tenant notebook-container retention", "product-experience/supabase-client-notebook-retention-28.sql", "purge_expired_client_notebooks"],
   ["tenant notebook-source retention", "product-experience/supabase-client-notebook-source-retention.sql", "purge_expired_client_notebook_sources"],
+  ["tenant runtime-request and delivery-action retention", "product-experience/supabase-client-runtime-request-retention-28.sql", "purge_expired_client_runtime_requests"],
+  ["tenant runtime-job retention", "product-experience/supabase-client-runtime-job-retention-28.sql", "purge_expired_client_runtime_jobs"],
+  ["tenant Agent Room retention", "product-experience/supabase-client-room-retention-28.sql", "purge_expired_client_room_records"],
+  ["tenant Visual QA retention", "product-experience/supabase-client-visual-qa-retention-28.sql", "purge_expired_client_visual_qa"],
+  ["tenant support-request retention", "product-experience/supabase-client-support-retention-28.sql", "purge_expired_client_support_requests"],
+  ["tenant Pipeline retention", "product-experience/supabase-client-pipeline-retention-28.sql", "purge_expired_client_pipeline_items"],
+  ["tenant board and Loop retention", "product-experience/supabase-client-board-loop-retention-28.sql", "purge_expired_client_board_loop_records"],
+  ["tenant Paperclip retention", "product-experience/supabase-client-paperclip-retention-28.sql", "purge_expired_client_paperclip_records"],
+  ["tenant Hermes Content Factory retention", "product-experience/supabase-client-hermes-content-factory-retention-28.sql", "purge_expired_client_hermes_content_factory_records"],
+  ["tenant Ruflo retention", "product-experience/supabase-client-ruflo-retention-28.sql", "purge_expired_client_ruflo_records"],
   ["member notebook-source retention guard", "product-experience/supabase-client-notebook-source-retention.sql", "guard_client_notebook_source_retention"],
   ["tenant artifact owner guard", "product-experience/supabase-client-runtime-artifact-owner-guard.sql", "created_by = auth.uid()"],
   ["tenant notebook reference guard", "product-experience/supabase-client-notebook-source-reference-guard.sql", "client_notebook_source_reference_allowed"],
@@ -132,6 +168,11 @@ const sourceChecks = [
   ["reviewed source import API", "src/app/api/client-runtime/source-import/route.ts", "permissionConfirmed"],
   ["source import storage proxy", "src/app/api/client-runtime/source-import/upload/route.ts", "uploadClientStorageObject"],
   ["authenticated client build identity", "src/app/api/client-runtime/build-identity/route.ts", "currentClientMember"],
+  ["shared runtime configuration digest", "src/lib/clientRuntimeConfigDigest.mjs", "CLIENT_RUNTIME_CONFIG_KEYS"],
+  ["runtime identity reports configuration digest", "src/app/api/client-runtime/build-identity/route.ts", "clientRuntimeConfigDigest"],
+  ["cloud release evidence binds runtime configuration digest", "scripts/lib/client-cloud-config-evidence.mjs", "runtimeConfigDigest"],
+  ["release verifier validates local Notebook journey evidence", "scripts/verify-production-readiness.mjs", "validNotebookJourneyReceipt"],
+  ["Notebook journey evidence is collected across the whole run", "scripts/run-notebook-journey-evaluation.mjs", "collectNotebookJourneyResults"],
   ["clean client image build", "scripts/build-client-image.mjs", "status"],
   ["public-launch refund classification", "product-experience/src/app/api/billing/webhook/route.ts", "public_launch_review_required"],
   ["operator refund review boundary", "product-experience/src/app/api/internal/billing/webhook-review/route.ts", "public_launch_refund_reviewed"],
@@ -182,20 +223,36 @@ const requiredMigrations = [
   { file: "product-experience/supabase-v46-onboarding-setup-token.sql", gate: "setup_migration_attached" },
   { file: "product-experience/supabase-v47-financial-offboard-guard.sql", gate: "financial_offboard_guard_migration_attached" },
   { file: "product-experience/supabase-v48-ecc-learning-retention-references.sql", gate: "learning_retention_reference_migration_attached" },
+  { file: "product-experience/supabase-v49-managed-credit-retention.sql", gate: "managed_credit_retention_migration_attached" },
   { file: "product-experience/supabase-client-retention-policy-28.sql", gate: "tenant_retention_policy_migration_attached" },
   { file: "product-experience/supabase-client-runtime-source-pack-graph.sql", gate: "source_graph_migration_attached" },
   { file: "product-experience/supabase-client-runtime-source-pack-rpc-guard.sql", gate: "source_rpc_guard_migration_attached" },
   { file: "product-experience/supabase-client-runtime-source-pack-published-date.sql", gate: "source_published_date_migration_attached" },
   { file: "product-experience/supabase-client-runtime-record-retention.sql", gate: "record_retention_migration_attached" },
+  { file: "product-experience/supabase-client-onboarding-token-retention.sql", gate: "onboarding_token_retention_migration_attached" },
+  { file: "product-experience/supabase-client-runtime-rate-limit-retention.sql", gate: "runtime_rate_limit_retention_migration_attached" },
+  { file: "product-experience/supabase-client-research-retention-28.sql", gate: "research_retention_migration_attached" },
+  { file: "product-experience/supabase-client-notebook-retention-28.sql", gate: "notebook_retention_migration_attached" },
   { file: "product-experience/supabase-client-notebook-source-retention.sql", gate: "notebook_source_retention_migration_attached" },
+  { file: "product-experience/supabase-client-runtime-request-retention-28.sql", gate: "runtime_request_retention_migration_attached" },
+  { file: "product-experience/supabase-client-runtime-job-retention-28.sql", gate: "runtime_job_retention_migration_attached" },
+  { file: "product-experience/supabase-client-room-retention-28.sql", gate: "room_retention_migration_attached" },
+  { file: "product-experience/supabase-client-visual-qa-retention-28.sql", gate: "visual_qa_retention_migration_attached" },
+  { file: "product-experience/supabase-client-support-retention-28.sql", gate: "support_retention_migration_attached" },
+  { file: "product-experience/supabase-client-pipeline-retention-28.sql", gate: "pipeline_retention_migration_attached" },
+  { file: "product-experience/supabase-client-board-loop-retention-28.sql", gate: "board_loop_retention_migration_attached" },
+  { file: "product-experience/supabase-client-paperclip-retention-28.sql", gate: "paperclip_retention_migration_attached" },
+  { file: "product-experience/supabase-client-hermes-content-factory-retention-28.sql", gate: "hermes_content_factory_retention_migration_attached" },
+  { file: "product-experience/supabase-client-ruflo-retention-28.sql", gate: "ruflo_retention_migration_attached" },
   { file: "product-experience/supabase-client-runtime-artifact-owner-guard.sql", gate: "artifact_owner_guard_migration_attached" },
+  { file: "product-experience/supabase-client-notebook-artifact-review.sql", gate: "notebook_artifact_review_migration_attached" },
   { file: "product-experience/supabase-client-notebook-source-reference-guard.sql", gate: "notebook_reference_guard_migration_attached" },
   { file: "product-experience/supabase-client-notebook-execution-sources.sql", gate: "notebook_execution_sources_migration_attached" },
 ];
 const deploymentIdentityKeys = ["vercelDeployment", "cloudRunRevision", "imageDigest", "supabaseProjectRef"];
 const releaseOutcomeKeys = ["publicJourneyResult", "stripeSmokeResult", "providerCatalogResult", "byokLifecycleResult", "tenantIsolationResult", "sourceImportResult", "uiParityResult", "buyerSimulationResult", "aiEngineeringResult", "managedOpenRouterResult", "operationsApproval", "legalApproval"];
 const ledgerOnlyGates = [
-  "ai_evaluation_local_evidence", "buyer_pilot_evidence", "customer_journey_evidence", "migration_evidence_attached",
+  "ai_evaluation_local_evidence", "buyer_pilot_evidence", "buyer_pilot_cost_evidence", "customer_journey_evidence", "notebook_execution_journey_local_evidence", "migration_evidence_attached",
   "client_cloud_config_evidence", "source_guard_schema_evidence",
   ...requiredMigrations.map(({ gate }) => gate), "test_results_attached", "all_tests_passed",
   ...deploymentIdentityKeys, ...releaseOutcomeKeys.map((key) => `${key}_approved`), "rollback_target",
@@ -236,34 +293,56 @@ const rollbackTarget = {
   imageDigest: valueAfter("--rollback-image-digest") || process.env.VELOCE_ROLLBACK_IMAGE_DIGEST || null,
   note: valueAfter("--rollback-note") || process.env.VELOCE_ROLLBACK_NOTE || null,
 };
+const releaseGateFailures = [];
 const customerJourneyReportFile = valueAfter("--customer-journey-report");
 let customerJourneyReport = null;
 if (publishLedger && customerJourneyReportFile) {
   try { customerJourneyReport = JSON.parse(readFileSync(resolve(root, customerJourneyReportFile), "utf8")); }
   catch { warnings.push(`No readable customer journey report at ${customerJourneyReportFile}.`); }
 }
+const notebookJourneyReceiptFile = valueAfter("--notebook-journey-receipt") || "tmp/customer-journey/local-browser-receipt.json";
+let notebookExecutionJourney = null;
+try { notebookExecutionJourney = JSON.parse(readFileSync(resolve(root, notebookJourneyReceiptFile), "utf8")); }
+catch {
+  if (publishLedger) warnings.push(`No readable local Notebook journey receipt at ${notebookJourneyReceiptFile}.`);
+}
+const candidateFingerprint = currentCandidateFingerprint();
+const notebookJourneyValid = validNotebookJourneyReceipt(notebookExecutionJourney, commit, candidateFingerprint);
+if (publishLedger) {
+  if (!notebookJourneyValid) {
+    releaseGateFailures.push("notebook_execution_journey_local_evidence");
+  }
+}
 if (publishLedger) {
   for (const [key, value] of Object.entries(deployment)) if (key !== "environment" && !value) warnings.push(`Ledger record is missing deployment.${key}`);
   if (!rollbackTarget.cloudRunRevision && !rollbackTarget.vercelDeploymentId) warnings.push("Ledger record is missing a rollback target");
 }
 
-const releaseGateFailures = [];
 if (dirtyFiles.length) releaseGateFailures.push("working_tree_clean");
 if (ledgerRecordFile) releaseGateFailures.push("published_ledger_required");
 if (!strict && ledgerRecordFile) warnings.push("Local ledger record file is for inspection only; it is not published release evidence.");
 
 const aiEvaluationReportFile = valueAfter("--ai-evaluation-report") || "tmp/ai-release-local-v1-report.json";
 let aiEvaluationLocal = null;
+try { aiEvaluationLocal = JSON.parse(readFileSync(resolve(root, aiEvaluationReportFile), "utf8")); }
+catch {
+  if (publishLedger) warnings.push(`No readable AI evaluation report at ${aiEvaluationReportFile}.`);
+}
+const aiEvaluationCandidateValid = validLocalAiEvaluation(aiEvaluationLocal, commit, { requireCleanTree: false });
 if (publishLedger) {
-  try { aiEvaluationLocal = JSON.parse(readFileSync(resolve(root, aiEvaluationReportFile), "utf8")); }
-  catch { warnings.push(`No readable AI evaluation report at ${aiEvaluationReportFile}.`); }
   if (!validLocalAiEvaluation(aiEvaluationLocal, commit)) releaseGateFailures.push("ai_evaluation_local_evidence");
 }
 const buyerSimulationDir = valueAfter("--buyer-simulation-dir");
+const buyerAuthorizationEvidenceFile = valueAfter("--buyer-authorization-evidence-file");
+const buyerCostEvidenceFile = valueAfter("--buyer-cost-evidence-file");
 const buyerPilot = publishLedger && buyerSimulationDir
-  ? captureBuyerPilotEvidence({ root, simulationDir: buyerSimulationDir, sourceCommit: commit })
+  ? captureBuyerPilotEvidence({
+    root, simulationDir: buyerSimulationDir, sourceCommit: commit,
+    authorizationEvidenceFile: buyerAuthorizationEvidenceFile, costEvidenceFile: buyerCostEvidenceFile,
+  })
   : null;
 if (publishLedger && !validBuyerPilotEvidence(buyerPilot, commit, root)) releaseGateFailures.push("buyer_pilot_evidence");
+if (publishLedger && !validBuyerPilotCostEvidence(buyerPilot, commit)) releaseGateFailures.push("buyer_pilot_cost_evidence");
 const supabaseReadOnlyToken = process.env.VELOCE_SUPABASE_READ_ONLY_TOKEN?.trim() || null;
 const sourceGuardSchema = publishLedger ? await captureSourceGuardSchemaEvidence({
   projectRef: deployment.supabaseProjectRef, token: supabaseReadOnlyToken,
@@ -273,16 +352,23 @@ if (publishLedger && !validSourceGuardSchemaEvidence(sourceGuardSchema, null, de
   if (sourceGuardSchema?.failures?.length) warnings.push(`Source guard schema check failed: ${sourceGuardSchema.failures.join(", ")}`);
 }
 const clientCloudAccount = valueAfter("--client-cloud-account") || process.env.VELOCE_CLIENT_CLOUD_ACCOUNT || null;
+const clientStorageInventoryFile = valueAfter("--client-storage-object-inventory");
+let clientStorageInventory = null;
+if (clientStorageInventoryFile) {
+  try { clientStorageInventory = JSON.parse(readFileSync(resolve(root, clientStorageInventoryFile), "utf8")); }
+  catch { warnings.push(`No readable client storage object inventory at ${clientStorageInventoryFile}.`); }
+}
 const clientCloudConfig = publishLedger ? captureLiveClientCloudConfig({
   project: valueAfter("--client-cloud-project"),
   region: valueAfter("--client-cloud-region"),
   service: valueAfter("--client-cloud-service"),
   bucket: valueAfter("--client-storage-bucket"),
   namespace: valueAfter("--client-storage-namespace"),
+  account: clientCloudAccount,
   revision: deployment.cloudRunRevision,
   imageDigest: deployment.imageDigest,
   supabaseProjectRef: deployment.supabaseProjectRef,
-}, clientCloudAccount) : null;
+}, clientCloudAccount, clientStorageInventory) : null;
 if (publishLedger && !validClientCloudConfigEvidence(clientCloudConfig, null, deployment)) {
   releaseGateFailures.push("client_cloud_config_evidence");
   if (clientCloudConfig?.failures?.length) warnings.push(`Client cloud config failed: ${clientCloudConfig.failures.join(", ")}`);
@@ -318,10 +404,33 @@ if (!publishLedger) {
     if (!valueAfter("--release-id") && ledgerRecord.source?.commit !== commit) releaseGateFailures.push("release_ledger_commit_mismatch");
     if (!validLocalAiEvaluation(ledgerRecord.aiEvaluationLocal, ledgerRecord.source?.commit)) releaseGateFailures.push("ai_evaluation_local_evidence");
     if (!validBuyerPilotEvidence(ledgerRecord.buyerPilot, ledgerRecord.source?.commit, root)) releaseGateFailures.push("buyer_pilot_evidence");
+    if (!validBuyerPilotCostEvidence(ledgerRecord.buyerPilot, ledgerRecord.source?.commit)) releaseGateFailures.push("buyer_pilot_cost_evidence");
     if (!validCustomerJourneyReport(ledgerRecord.customerJourneyReport, ledgerRecord.source?.commit, ledgerRecord.deployment, evidenceBytes)) releaseGateFailures.push("customer_journey_evidence");
+    if (!validNotebookJourneyReceipt(ledgerRecord.notebookExecutionJourney, ledgerRecord.source?.commit, currentCandidateFingerprint())) {
+      releaseGateFailures.push("notebook_execution_journey_local_evidence");
+    }
     const storedCloudConfig = ledgerRecord.clientCloudConfig;
+    if (ledgerRecordFile) {
+      const inventoryIdentity = {
+        project: storedCloudConfig?.project,
+        bucket: storedCloudConfig?.bucket,
+        namespace: storedCloudConfig?.namespace,
+        account: clientCloudAccount,
+        supabaseProjectRef: ledgerRecord.deployment?.supabaseProjectRef,
+      };
+      if (!validClientStorageObjectInventoryReport(clientStorageInventory, inventoryIdentity)
+          || clientStorageInventory.objectInventorySha256 !== storedCloudConfig?.objectInventorySha256
+          || clientStorageInventory.liveListingSha256 !== storedCloudConfig?.liveListingSha256
+          || clientStorageInventory.softDeletedListingSha256 !== storedCloudConfig?.softDeletedListingSha256
+          || clientStorageInventory.artifactSnapshotSha256 !== storedCloudConfig?.artifactSnapshotSha256
+          || clientStorageInventory.artifactCrosswalk !== storedCloudConfig?.artifactCrosswalk
+          || clientStorageInventory.artifactRows !== storedCloudConfig?.artifactRows
+          || clientStorageInventory.account !== storedCloudConfig?.objectInventoryAccount) {
+        releaseGateFailures.push("client_storage_object_inventory_evidence");
+      }
+    }
     const currentCloudConfig = !ledgerRecordFile && validClientCloudConfigEvidence(storedCloudConfig, null, ledgerRecord.deployment)
-      ? captureLiveClientCloudConfig(storedCloudConfig, clientCloudAccount) : null;
+      ? captureLiveClientCloudConfig({ ...storedCloudConfig, account: clientCloudAccount }, clientCloudAccount, clientStorageInventory) : null;
     if (!validClientCloudConfigEvidence(storedCloudConfig, ledgerRecordFile ? null : currentCloudConfig,
       ledgerRecord.deployment, { requireCurrent: !ledgerRecordFile })) {
       releaseGateFailures.push("client_cloud_config_evidence");
@@ -406,6 +515,26 @@ const evidence = {
   aiEvaluationLocal: publishLedger ? aiEvaluationLocal : (ledgerRecord?.aiEvaluationLocal ?? null),
   buyerPilot: publishLedger ? buyerPilot : (ledgerRecord?.buyerPilot ?? null),
   customerJourneyReport: publishLedger ? customerJourneyReport : (ledgerRecord?.customerJourneyReport ?? null),
+  notebookExecutionJourney: publishLedger ? notebookExecutionJourney : (ledgerRecord?.notebookExecutionJourney ?? null),
+  localCandidateChecks: publishLedger || ledgerRecord ? null : {
+    candidateFingerprintSchema: "agentos-working-tree-v1",
+    candidateFingerprintSha256: candidateFingerprint,
+    workingTreeClean: dirtyFiles.length === 0,
+    aiEvaluation: {
+      status: aiEvaluationCandidateValid
+        ? (aiEvaluationLocal.workingTreeClean ? "passed_candidate_bound" : "passed_candidate_bound_dirty_tree")
+        : (aiEvaluationLocal ? "failed_or_stale" : "missing"),
+      productionReady: aiEvaluationLocal?.productionReady ?? null,
+      cases: aiEvaluationLocal?.metrics?.cases ?? null,
+      passed: aiEvaluationLocal?.metrics?.passed ?? null,
+      modelSamples: aiEvaluationLocal?.metrics?.modelSamples ?? null,
+    },
+    notebookExecutionJourney: {
+      status: notebookJourneyValid ? "passed_candidate_bound" : (notebookExecutionJourney ? "failed_or_stale" : "missing"),
+      scenarios: notebookExecutionJourney?.scenarios?.length ?? null,
+      passed: notebookJourneyValid ? notebookExecutionJourney.scenarios.length : null,
+    },
+  },
   clientCloudConfig: publishLedger ? clientCloudConfig : (ledgerRecord?.clientCloudConfig ?? null),
   sourceGuardSchema: publishLedger ? sourceGuardSchema : (ledgerRecord?.sourceGuardSchema ?? null),
   configurationHash,
@@ -438,23 +567,52 @@ console.log(JSON.stringify({
   branch,
   evidencePath: outputPath ? resolve(outputPath) : null,
   failures: [...failures, ...releaseGateFailures.map((gate) => `release_gate:${gate}`)],
+  localCandidateChecks: evidence.localCandidateChecks,
   notEvaluated,
   warnings,
 }, null, 2));
 if (strict && failures.length) process.exit(1);
 
-function validLocalAiEvaluation(report, expectedCommit) {
-  if (!report || report.schemaVersion !== 1 || report.suite !== "ai-release-local-v1" || report.localGatePassed !== true
-    || report.productionReady !== false || report.workingTreeClean !== true || report.nodeEngineSupported !== true
-    || report.runnerExitCode !== 0 || report.sourceCommit !== expectedCommit || !/^[0-9a-f]{64}$/.test(report.fixtureSha256 ?? "")) return false;
+function validLocalAiEvaluation(report, expectedCommit, { requireCleanTree = true } = {}) {
+  if (!report || report.schemaVersion !== 2 || report.suite !== "ai-release-local-v1" || report.localGatePassed !== true
+    || report.runnerStatus !== "passed" || !Array.isArray(report.failures) || report.failures.length !== 0
+    || report.productionReady !== false || typeof report.workingTreeClean !== "boolean" || typeof report.workingTreeCleanAfter !== "boolean"
+    || (requireCleanTree && (report.workingTreeClean !== true || report.workingTreeCleanAfter !== true)) || report.nodeEngineSupported !== true
+    || !/^v(?:22|23|24|25)\.\d+\.\d+$/.test(report.nodeVersion ?? "")
+    || report.runnerExitCode !== 0 || report.sourceCommit !== expectedCommit || report.sourceCommitAfter !== expectedCommit
+    || report.candidateFingerprintSchema !== "agentos-working-tree-v1"
+    || !/^[0-9a-f]{64}$/.test(report.candidateFingerprintSha256 ?? "")
+    || report.candidateFingerprintSha256 !== currentCandidateFingerprint()
+    || report.candidateFingerprintAfterSha256 !== report.candidateFingerprintSha256
+    || ![report.startedAt, report.checkedAt].every((value) => typeof value === "string"
+      && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value) && Number.isFinite(Date.parse(value)))
+    || Date.parse(report.startedAt) > Date.parse(report.checkedAt)
+    || report.unitConfigSha256 !== sha256(readFileSync(resolve(root, "playwright.unit.config.ts")))
+    || report.playwrightVersion !== JSON.parse(readFileSync(resolve(root, "node_modules/playwright/package.json"), "utf8")).version
+    || report.playwrightVersionAfter !== report.playwrightVersion
+    || report.runnerConfiguration?.workers !== 1 || report.runnerConfiguration.retries !== 0
+    || report.runnerConfiguration.reporter !== "json" || report.runnerConfiguration.timeoutMs !== 600000
+    || report.runnerConfiguration.environment !== "allowlisted-offline-v1"
+    || Object.keys(report.runnerConfiguration).length !== 5
+    || !/^[0-9a-f]{64}$/.test(report.fixtureSha256 ?? "")) return false;
   const fixture = readFileSync(resolve(root, "evaluations/ai-release-local-v1.json"));
   if (sha256(fixture) !== report.fixtureSha256 || !Array.isArray(report.cases)) return false;
-  const expectedCases = JSON.parse(fixture.toString("utf8")).cases;
-  return report.metrics?.cases === expectedCases.length && report.metrics?.passed === expectedCases.length && report.metrics?.failed === 0
+  const expectedFixture = JSON.parse(fixture.toString("utf8"));
+  const expectedCases = expectedFixture.cases;
+  return report.mode === expectedFixture.mode && report.cases.length === expectedCases.length
+    && report.metrics?.cases === expectedCases.length && report.metrics?.passed === expectedCases.length && report.metrics?.failed === 0
     && report.metrics?.modelSamples === 0 && expectedCases.every((expected, index) => {
       const actual = report.cases[index];
       return actual?.id === expected.id && actual.spec === expected.spec && actual.title === expected.title && actual.status === "passed";
     });
+}
+
+function currentCandidateFingerprint() {
+  if (currentFingerprint === undefined) {
+    try { currentFingerprint = workingTreeFingerprintSha256(root); }
+    catch { currentFingerprint = null; }
+  }
+  return currentFingerprint;
 }
 
 function evidenceBytes(ref) {
@@ -492,7 +650,7 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function captureLiveClientCloudConfig(expected, account) {
+function captureLiveClientCloudConfig(expected, account, objectInventory) {
   if (!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(expected?.project ?? "")
       || !/^[a-z]+-[a-z]+[0-9]+$/.test(expected?.region ?? "")
       || !/^[a-z][a-z0-9-]{2,62}$/.test(expected?.service ?? "")
@@ -507,7 +665,7 @@ function captureLiveClientCloudConfig(expected, account) {
   const bucket = gcloudJson(["storage", "buckets", "describe", `gs://${expected.bucket}`,
     "--project", expected.project, "--format=json", ...accountArg]);
   if (!service || !bucket) return null;
-  return evaluateClientCloudConfigEvidence(service, bucket, expected, new Date().toISOString());
+  return evaluateClientCloudConfigEvidence(service, bucket, { ...expected, account: account ?? null }, new Date().toISOString(), objectInventory);
 }
 
 function gcloudJson(command) {

@@ -1,4 +1,6 @@
 import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
+import { clientStorageRetentionClock } from "./clientStorageRetentionClock.mjs";
 import { clientRuntimeAccessToken } from "./clientGcpIdentity";
 import { readBoundedResponseBytes } from "./clientNetworkSafety";
 
@@ -100,12 +102,36 @@ export async function uploadClientStorageObject(input: {
   contentType: string;
   bytes: Buffer;
   token: string;
+  retentionExpiresAt: string;
 }) {
-  const response = await fetch(`https://storage.googleapis.com/upload/storage/v1/b/${encodeURIComponent(input.bucket)}/o?uploadType=media&name=${encodeURIComponent(input.objectKey)}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${input.token}`, "Content-Type": input.contentType },
+  const clock = clientStorageRetentionClock(input.retentionExpiresAt, process.env.CLIENT_RETENTION_DAYS);
+  if (!clock) return false;
+  const md5 = createHash("md5").update(input.bytes).digest("base64");
+  // XML PUT sets the bytes and original-deadline metadata in one create-only write.
+  const response = await fetch(`https://storage.googleapis.com/${encodeURIComponent(input.bucket)}/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${input.token}`, "Content-Type": input.contentType,
+      "Content-MD5": md5,
+      "Cache-Control": "private, no-store", "x-goog-if-generation-match": "0",
+      "x-goog-custom-time": clock.customTime,
+      "x-goog-meta-agentos-retention-expires-at": clock.retentionExpiresAt,
+      "x-goog-meta-agentos-retention-clock": clock.policy },
     body: new Uint8Array(input.bytes) as unknown as BodyInit,
     cache: "no-store",
+    signal: AbortSignal.timeout(120_000),
   }).catch(() => null);
-  return Boolean(response?.ok);
+  if (response?.ok) return true;
+  if (response?.status !== 412) return false;
+  // Reconcile an unknown previous upload without replacing its bytes or clock.
+  const existing = await fetch(`https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(input.bucket)}/o/${encodeURIComponent(input.objectKey)}?fields=size,contentType,md5Hash,customTime,metadata`, {
+    headers: { Authorization: `Bearer ${input.token}` }, cache: "no-store", signal: AbortSignal.timeout(30_000),
+  }).catch(() => null);
+  if (!existing?.ok) return false;
+  const metadata = await existing.json().catch(() => null) as {
+    size?: string; contentType?: string; md5Hash?: string; customTime?: string; metadata?: Record<string, string>;
+  } | null;
+  return metadata?.size === String(input.bytes.byteLength) && metadata.contentType === input.contentType
+    && metadata.md5Hash === md5 && Date.parse(metadata.customTime ?? "") === Date.parse(clock.customTime)
+    && metadata.metadata?.["agentos-retention-clock"] === clock.policy
+    && Date.parse(metadata.metadata?.["agentos-retention-expires-at"] ?? "") === Date.parse(clock.retentionExpiresAt);
 }

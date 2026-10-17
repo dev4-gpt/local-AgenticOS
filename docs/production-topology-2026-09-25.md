@@ -8,6 +8,36 @@ runbooks. It describes what was directly verified in the connected Vercel and
 Google Cloud accounts. It does not authorize a deployment to a new cloud
 target.
 
+## User-selected default runtime
+
+On 2026-10-17, the owner selected
+`https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in the **Aryaman (Work)**
+Chrome profile as the default Veloce workspace. Use `/memory` as the entry
+page. Do not silently substitute Internal Beta, another Cloud Test origin,
+the public editorial site, or the College Chrome profile.
+
+This selection is a navigation preference, not build/tenant identity evidence
+or authorization to deploy, change hosted data, or spend. The dated service
+receipts below remain historical observations, not a replacement for fresh
+verification of this exact runtime.
+
+Read-only refresh on 2026-10-17 confirmed the selected origin maps to service
+`veloce-cloud-test` in project `veloce-agenticos-2026`, region `asia-south1`.
+Revision `veloce-cloud-test-00208-5hk` receives 100% of service traffic and
+resolves to image digest
+`sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`.
+Authentication is enforced and provider calls are disabled. The service has
+no valid `VELOCE_BUILD_SOURCE_COMMIT` stamp and excludes the build-identity,
+source-import and source-import/upload APIs. Runtime retention and the bucket
+Delete lifecycle are both **14 days**, not the selected 28. The bucket reports
+`604800` seconds of soft delete (seven days); this is configuration evidence,
+not a recovery/deletion demonstration. The preflight also flags inline
+`CLIENT_CREDENTIAL_INBOX_SECRET` and `CLIENT_REQUEST_INBOX_SECRET`; no secret
+values were printed or retained. Secret Manager remediation requires a
+separately approved hosted change. No same-member comparison, source/image
+attestation, object listing, deployment or hosted mutation was performed.
+Minimized timestamped receipts are referenced in the execution board.
+
 ## Verified current state
 
 | Surface | Verified target | Current state | Role |

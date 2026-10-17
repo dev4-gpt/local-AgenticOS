@@ -47,12 +47,13 @@ export function logClientRuntimeEvent(event: string, fields: Record<string, unkn
     ...safeFields,
     timestamp: new Date().toISOString(),
   };
-  console.info(JSON.stringify(payload));
+  // Optional sinks must not turn completed business operations into retries.
+  try { console.info(JSON.stringify(payload)); } catch {}
   const vendorFields = safeFields.tenant
     ? { ...safeFields, tenant: `tenant:${createHash("sha256").update(String(safeFields.tenant)).digest("hex").slice(0, 24)}` }
     : safeFields;
-  void capturePostHogEvent(event, vendorFields, String(vendorFields.tenant ?? "veloce-runtime"));
-  if (payload.severity === "WARNING") void captureSentryEvent(event, vendorFields);
+  void capturePostHogEvent(event, vendorFields, String(vendorFields.tenant ?? "veloce-runtime")).catch(() => false);
+  if (payload.severity === "WARNING") void captureSentryEvent(event, vendorFields).catch(() => false);
 }
 
 export async function captureClientProductEvent(input: {

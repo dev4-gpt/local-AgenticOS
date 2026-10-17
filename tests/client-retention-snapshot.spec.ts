@@ -28,7 +28,7 @@ function snapshot() {
   };
 }
 
-test("retention audit reports age and protected classes without exposing row content", () => {
+test("retention audit reports age and special schedules without exposing row content", () => {
   const report = auditClientRetentionSnapshot(snapshot(), { windowDays: 28, asOf });
   expect(report.configuredTenantRetentionDays).toBe(28);
   expect(report.windowMatchesTenantConfiguration).toBe(true);
@@ -36,15 +36,16 @@ test("retention audit reports age and protected classes without exposing row con
   expect(report.retentionEnforced).toBe(false);
   expect(report.deletionCandidatesApproved).toBe(false);
   expect(report.tableInventory.find((item) => item.table === "client_runtime_records")).toEqual({
-    table: "client_runtime_records", rows: 2, olderThanWindow: 1, dueAtOrBeyondWindow: 1, undated: 0, protected: false,
+    table: "client_runtime_records", rows: 2, olderThanWindow: 1, dueAtOrBeyondWindow: 1, undated: 0, specialRetention: false,
   });
-  expect(report.tableInventory.find((item) => item.table === "client_runtime_budget_ledger")?.protected).toBe(true);
-  expect(report.tableInventory.find((item) => item.table === "client_runtime_audit_events")?.protected).toBe(true);
+  expect(report.tableInventory.find((item) => item.table === "client_runtime_budget_ledger")?.specialRetention).toBe(true);
+  expect(report.tableInventory.find((item) => item.table === "client_runtime_audit_events")?.specialRetention).toBe(true);
   expect(report.tableInventory.find((item) => item.table === "client_visual_qa_findings")?.undated).toBe(1);
-  expect(report.expiryInventory).toEqual([
+  expect(report.expiryInventory.slice(0, 2)).toEqual([
     { table: "client_runtime_artifacts", present: false, rows: null, missingExpiry: null, invalidExpiry: null, expiredStillPresent: null, expiryAfterWindow: null, readGuardWouldHide: null },
     { table: "client_notebook_sources", present: false, rows: null, missingExpiry: null, invalidExpiry: null, expiredStillPresent: null, expiryAfterWindow: null, readGuardWouldHide: null },
   ]);
+  expect(report.expiryInventory).toHaveLength(23);
   expect(JSON.stringify(report)).not.toMatch(/private|tenant-a|record-id/);
 });
 
@@ -62,12 +63,30 @@ test("expiry inventory measures legacy read impact without exposing artifact con
     { tenant_slug: "tenant-a", created_at: old, retention_expires_at: null, deleted_at: "2026-09-01T00:00:00.000Z" },
   ] } };
   const report = auditClientRetentionSnapshot(input, { asOf });
-  expect(report.expiryInventory).toEqual([
+  expect(report.expiryInventory.slice(0, 2)).toEqual([
     { table: "client_runtime_artifacts", present: true, rows: 5, missingExpiry: 1, invalidExpiry: 1, expiredStillPresent: 1, expiryAfterWindow: 3, readGuardWouldHide: 3 },
     { table: "client_notebook_sources", present: true, rows: 3, missingExpiry: 1, invalidExpiry: 0, expiredStillPresent: 1, expiryAfterWindow: 2, readGuardWouldHide: 1 },
   ]);
   expect(report.retentionEnforced).toBe(false);
   expect(JSON.stringify(report)).not.toMatch(/private-document|private-object|tenant-a/);
+});
+
+test("expiry inventory covers workflow tables exported with retention boundaries", () => {
+  const tables = ["client_learning_items", "client_pipeline_items", "client_board_tasks", "client_board_comments", "client_board_events", "client_loop_runs", "client_loop_rounds",
+    "client_paperclip_companies", "client_paperclip_projects", "client_paperclip_agents", "client_paperclip_issues", "client_paperclip_comments", "client_paperclip_runs",
+    "client_hermes_content_factory_runs", "client_hermes_content_factory_stage_outputs", "client_hermes_content_factory_citations", "client_hermes_content_factory_quality_reports",
+    "client_hermes_content_factory_approvals", "client_hermes_content_factory_deliveries", "client_ruflo_swarms", "client_ruflo_agents"];
+  const base = snapshot();
+  const input = { ...base, tables: { ...base.tables,
+    ...Object.fromEntries(tables.map((table) => [table, [
+      { tenant_slug: "tenant-a", created_at: old, retention_expires_at: "2026-09-01T00:00:00.000Z", content: "private workflow data" },
+    ]])),
+  } };
+  const report = auditClientRetentionSnapshot(input, { asOf });
+  expect(report.expiryInventory.filter(({ table }) => tables.includes(table))).toEqual(tables.map((table) => ({
+    table, present: true, rows: 1, missingExpiry: 0, invalidExpiry: 0, expiredStillPresent: 1, expiryAfterWindow: 1, readGuardWouldHide: 1,
+  })));
+  expect(JSON.stringify(report)).not.toMatch(/private workflow data|tenant-a/);
 });
 
 test("retention audit counts an item due at exactly 28 days from creation", () => {

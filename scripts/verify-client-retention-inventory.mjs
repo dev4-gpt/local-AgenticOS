@@ -6,7 +6,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const migrationRoot = path.join(root, "product-experience");
 const inventoryPath = path.join(root, "docs/retention-table-map-2026-10-15.json");
 const inventory = JSON.parse(readFileSync(inventoryPath, "utf8"));
-const expectedPolicy = "28 active days from each in-scope content item's creation plus seven days of object recovery";
+const expectedPolicy = "All tenant data and files: per-item active retention up to 28 days, followed by 7 recovery-only days; purge at active expiry plus 7 days";
 const fail = (message) => {
   console.error(`Retention inventory verification failed: ${message}`);
   process.exit(1);

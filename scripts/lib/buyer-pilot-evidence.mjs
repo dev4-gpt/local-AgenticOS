@@ -94,7 +94,83 @@ export function validBuyerPilotEvidence(receipt, expectedCommit, root) {
     && REQUIRED_CHECKS.every((name) => audit.checks?.[name] === true);
 }
 
-export function captureBuyerPilotEvidence({ root, simulationDir, sourceCommit }) {
+export function validBuyerPilotCostEvidence(receipt, expectedCommit) {
+  const evidence = receipt?.providerCostEvidence;
+  const authorization = evidence?.authorization;
+  const approvalTime = Date.parse(authorization?.approvedAt);
+  const runStart = Date.parse(evidence?.runStartedAt);
+  const runEnd = Date.parse(evidence?.runCompletedAt);
+  const reviewTime = Date.parse(evidence?.reviewedAt);
+  if (!evidence || evidence.schemaVersion !== 2 || evidence.status !== "verified"
+    || evidence.simulationId !== receipt.simulationId
+    || evidence.sourceCommit !== expectedCommit || receipt.sourceCommit !== expectedCommit
+    || evidence.currency !== "USD"
+    || !Number.isFinite(evidence.approvedMaximumUsd) || evidence.approvedMaximumUsd < 0
+    || !Number.isFinite(evidence.actualCostUsd) || evidence.actualCostUsd < 0
+    || evidence.actualCostUsd > evidence.approvedMaximumUsd
+    || !/^[0-9a-f]{64}$/.test(evidence.billingEvidenceSha256 ?? "")
+    || !/^[0-9a-f]{64}$/.test(evidence.receiptSha256 ?? "")
+    || !/^[0-9a-f]{64}$/.test(evidence.authorizationEvidenceSha256 ?? "")
+    || evidence.costAuthorizationEvidenceSha256 !== evidence.authorizationEvidenceSha256
+    || !authorization || authorization.schemaVersion !== 1 || authorization.status !== "approved"
+    || authorization.simulationId !== receipt.simulationId || authorization.sourceCommit !== expectedCommit
+    || typeof authorization.approvedBy !== "string" || !authorization.approvedBy.trim()
+    || typeof authorization.purpose !== "string" || !authorization.purpose.trim()
+    || typeof authorization.stopCondition !== "string" || !authorization.stopCondition.trim()
+    || !Number.isFinite(authorization.maximumUsd) || authorization.maximumUsd < 0
+    || authorization.maximumUsd !== evidence.approvedMaximumUsd
+    || !Array.isArray(authorization.providers) || authorization.providers.length === 0
+    || authorization.providers.some((provider) => typeof provider !== "string" || !provider.trim())
+    || new Set(authorization.providers).size !== authorization.providers.length
+    || !Number.isFinite(approvalTime) || !Number.isFinite(runStart) || !Number.isFinite(runEnd)
+    || !Number.isFinite(reviewTime) || approvalTime >= runStart || runStart > runEnd || runEnd > reviewTime
+    || typeof evidence.reviewedBy !== "string" || !evidence.reviewedBy.trim()
+    || !Array.isArray(evidence.providerCosts) || evidence.providerCosts.length === 0) return false;
+  const providers = new Set();
+  let total = 0;
+  for (const row of evidence.providerCosts) {
+    if (typeof row?.provider !== "string" || !row.provider.trim() || providers.has(row.provider)
+      || !authorization.providers.includes(row.provider)
+      || !Number.isFinite(row.costUsd) || row.costUsd < 0) return false;
+    providers.add(row.provider);
+    total += row.costUsd;
+  }
+  return Number.isFinite(total) && Math.abs(total - evidence.actualCostUsd) < 0.000001;
+}
+
+function providerCostEvidence(simulationId, sourceCommit, authorizationFile, costFile) {
+  if (!authorizationFile || !costFile) return { schemaVersion: 2, status: "unverified", simulationId, sourceCommit };
+  try {
+    const authorizationBytes = readFileSync(resolve(authorizationFile));
+    const costBytes = readFileSync(resolve(costFile));
+    const authorization = JSON.parse(authorizationBytes.toString("utf8"));
+    const evidence = JSON.parse(costBytes.toString("utf8"));
+    return {
+      schemaVersion: evidence.schemaVersion, status: "verified",
+      simulationId: evidence.simulationId, sourceCommit: evidence.sourceCommit,
+      currency: evidence.currency, approvedMaximumUsd: evidence.approvedMaximumUsd,
+      actualCostUsd: evidence.actualCostUsd, billingEvidenceSha256: evidence.billingEvidenceSha256,
+      receiptSha256: sha256(costBytes), authorizationEvidenceSha256: sha256(authorizationBytes),
+      costAuthorizationEvidenceSha256: evidence.authorizationEvidenceSha256,
+      authorization: {
+        schemaVersion: authorization.schemaVersion, status: authorization.status,
+        simulationId: authorization.simulationId, sourceCommit: authorization.sourceCommit,
+        approvedBy: authorization.approvedBy, approvedAt: authorization.approvedAt,
+        purpose: authorization.purpose,
+        providers: Array.isArray(authorization.providers) ? [...authorization.providers] : authorization.providers,
+        maximumUsd: authorization.maximumUsd, stopCondition: authorization.stopCondition,
+      },
+      runStartedAt: evidence.runStartedAt, runCompletedAt: evidence.runCompletedAt,
+      reviewedAt: evidence.reviewedAt, reviewedBy: evidence.reviewedBy,
+      providerCosts: Array.isArray(evidence.providerCosts)
+        ? evidence.providerCosts.map(({ provider, costUsd }) => ({ provider, costUsd })) : evidence.providerCosts,
+    };
+  } catch {
+    return { schemaVersion: 2, status: "unverified", simulationId, sourceCommit };
+  }
+}
+
+export function captureBuyerPilotEvidence({ root, simulationDir, sourceCommit, authorizationEvidenceFile = null, costEvidenceFile = null }) {
   try {
     const directory = resolve(simulationDir);
     const before = artifactHashes(directory);
@@ -136,6 +212,7 @@ export function captureBuyerPilotEvidence({ root, simulationDir, sourceCommit })
     const receipt = {
       schemaVersion: 2, sourceCommit, capturedAt: new Date().toISOString(),
       simulationId: audit.simulationId,
+      providerCostEvidence: providerCostEvidence(audit.simulationId, sourceCommit, authorizationEvidenceFile, costEvidenceFile),
       auditorSha256: sha256(readFileSync(script)), cohortFile: cohort.file,
       cohortSha256: sha256(cohort.bytes),
       profilePreparation: {

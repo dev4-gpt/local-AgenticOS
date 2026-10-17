@@ -2,8 +2,32 @@
 import { readFileSync, statSync } from "node:fs";
 
 const DAY_MS = 86_400_000;
-const FINANCIAL_OR_AUDIT = new Set(["client_runtime_budget_ledger", "client_runtime_audit_events"]);
-const EXPIRING_READS = ["client_runtime_artifacts", "client_notebook_sources"];
+const SPECIAL_RETENTION = new Set(["client_runtime_budget_ledger", "client_runtime_audit_events"]);
+const EXPIRING_READS = [
+  "client_runtime_artifacts",
+  "client_notebook_sources",
+  "client_learning_items",
+  "client_pipeline_items",
+  "client_board_tasks",
+  "client_board_comments",
+  "client_board_events",
+  "client_loop_runs",
+  "client_loop_rounds",
+  "client_paperclip_companies",
+  "client_paperclip_projects",
+  "client_paperclip_agents",
+  "client_paperclip_issues",
+  "client_paperclip_comments",
+  "client_paperclip_runs",
+  "client_hermes_content_factory_runs",
+  "client_hermes_content_factory_stage_outputs",
+  "client_hermes_content_factory_citations",
+  "client_hermes_content_factory_quality_reports",
+  "client_hermes_content_factory_approvals",
+  "client_hermes_content_factory_deliveries",
+  "client_ruflo_swarms",
+  "client_ruflo_agents",
+];
 
 function record(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : null;
@@ -40,7 +64,7 @@ export function auditClientRetentionSnapshot(snapshot, { windowDays = 28, asOf =
         if (createdAt <= cutoff) dueAtOrBeyondWindow += 1;
       }
     }
-    tableInventory.push({ table, rows: rows.length, olderThanWindow, dueAtOrBeyondWindow, undated, protected: FINANCIAL_OR_AUDIT.has(table) });
+    tableInventory.push({ table, rows: rows.length, olderThanWindow, dueAtOrBeyondWindow, undated, specialRetention: SPECIAL_RETENTION.has(table) });
   }
   tableInventory.sort((a, b) => a.table.localeCompare(b.table));
   const expiryInventory = EXPIRING_READS.map((table) => {

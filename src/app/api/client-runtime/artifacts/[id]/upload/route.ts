@@ -50,7 +50,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   const token = await clientGcpAccessToken();
   if (!token) return error("storage_identity_unavailable", 503);
-  const uploaded = await uploadClientStorageObject({ bucket: config.bucket, objectKey, contentType: expectedType, bytes, token });
+  const uploaded = await uploadClientStorageObject({ bucket: config.bucket, objectKey, contentType: expectedType, bytes, token,
+    retentionExpiresAt: String(artifact.retention_expires_at) });
   if (!uploaded) return error("artifact_upload_failed", 502);
   return NextResponse.json({ ok: true, artifactId: id, status: "uploaded" }, { headers: { "cache-control": "private, no-store" } });
 }

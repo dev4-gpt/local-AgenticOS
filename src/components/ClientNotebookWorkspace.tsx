@@ -9,7 +9,7 @@
 // with signed downloads. Nothing here claims an output it cannot produce.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Download, Eye, FileText, FolderOpen, LoaderCircle, Send, Sparkles, Upload } from "lucide-react";
+import { BookOpen, Check, Download, Eye, FileText, FolderOpen, LoaderCircle, Send, Sparkles, Upload, X } from "lucide-react";
 import {
   NOTEBOOK_STUDIO_OUTPUTS,
   notebookChatPrompt,
@@ -20,8 +20,8 @@ import {
 
 type Tab = "research" | "chat" | "studio" | "assets";
 type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
-type Execution = { id: string; status: string; title: string | null; artifactId: string | null; errorCode: string | null; createdAt: string | null; sourceReferences?: Array<{ id: string; title: string; sourceUrl: string | null; links: Array<{ url: string; text: string }> }>; citationAudit?: { ok: true; citedSourceIds: string[] } | { ok: false; reason: "citation_missing" | "citation_unknown_source" | "source_register_missing" } | null };
-type Artifact = { id: string; original_name: string | null; content_type: string | null; byte_size: number | null; status: string | null; created_at: string | null };
+type Execution = { id: string; status: string; title: string | null; artifactId: string | null; errorCode: string | null; createdAt: string | null; reviewDecision?: string | null; reviewAvailable?: boolean; sourceReferences?: Array<{ id: string; title: string; sourceUrl: string | null; links: Array<{ url: string; text: string }> }>; citationAudit?: { ok: true; citedSourceIds: string[] } | { ok: false; reason: "citation_missing" | "citation_unknown_source" | "source_register_missing" } | null };
+type Artifact = { id: string; original_name: string | null; content_type: string | null; byte_size: number | null; status: string | null; created_at: string | null; review_required?: boolean; review_available?: boolean; job_released?: boolean; review_decision?: string | null };
 
 const FIELD = { color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" } as const;
 
@@ -181,13 +181,18 @@ function StudioLane({ sources, selected, notebookScope, onToggle, onError }: { s
   const [instruction, setInstruction] = useState("");
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [busy, setBusy] = useState(false);
-  const [reviewing, setReviewing] = useState<string | null>(null);
-  const [reviewDraft, setReviewDraft] = useState<{ artifactId: string; content: string } | null>(null);
 
   const load = useCallback(async () => {
     const response = await fetch("/api/client-runtime/executions?surface=notebook", { cache: "no-store" }).catch(() => null);
     const data = await response?.json().catch(() => null);
-    return response?.ok && Array.isArray(data?.executions) ? data.executions as Execution[] : null;
+    if (!response?.ok || !Array.isArray(data?.executions)) return null;
+    const artifacts = await fetch("/api/client-runtime/artifacts", { cache: "no-store" }).catch(() => null);
+    const saved = await artifacts?.json().catch(() => null);
+    const items: Artifact[] = artifacts?.ok && Array.isArray(saved?.artifacts) ? saved.artifacts : [];
+    return (data.executions as Execution[]).map((execution) => ({ ...execution,
+      reviewDecision: items.find((artifact) => artifact.id === execution.artifactId)?.review_decision ?? null,
+      reviewAvailable: items.find((artifact) => artifact.id === execution.artifactId)?.review_available === true,
+    }));
   }, []);
   useEffect(() => {
     let active = true;
@@ -226,50 +231,6 @@ function StudioLane({ sources, selected, notebookScope, onToggle, onError }: { s
       if (items) setExecutions(items);
     }
     setBusy(false);
-  }
-
-  async function download(artifactId: string) {
-    const response = await fetch(`/api/client-runtime/artifacts?id=${encodeURIComponent(artifactId)}`, { cache: "no-store" }).catch(() => null);
-    const data = await response?.json().catch(() => null);
-    if (!response?.ok || typeof data?.downloadUrl !== "string") { onError(typeof data?.error === "string" ? data.error : "artifact_download_failed"); return; }
-    window.location.assign(data.downloadUrl);
-  }
-
-  async function review(artifactId: string) {
-    setReviewing(artifactId); onError(""); setReviewDraft(null);
-    try {
-      const lookup = await fetch(`/api/client-runtime/artifacts?id=${encodeURIComponent(artifactId)}`, { cache: "no-store" });
-      const data = await lookup.json().catch(() => null);
-      if (!lookup.ok || typeof data?.downloadUrl !== "string") throw new Error("The saved draft could not be opened for review.");
-      const url = new URL(data.downloadUrl, window.location.origin);
-      if (url.origin !== window.location.origin || !url.pathname.startsWith("/api/client-runtime/artifacts/")) throw new Error("The draft link could not be verified as a private workspace file.");
-      const response = await fetch(url, { cache: "no-store" });
-      if (!response.ok) throw new Error("The saved draft could not be loaded. Try again or download it.");
-      if (!/^text\/(?:markdown|plain)(?:;|$)/i.test(response.headers.get("content-type") ?? "")) throw new Error("This file type cannot be previewed here. Download it to review.");
-      const length = Number(response.headers.get("content-length"));
-      if (Number.isFinite(length) && length > 200_000) throw new Error("This draft is too large for in-app review. Download it to inspect.");
-      if (!response.body) throw new Error("Draft preview is temporarily unavailable.");
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let bytes = 0;
-      let content = "";
-      while (true) {
-        const chunk = await reader.read();
-        if (chunk.done) break;
-        bytes += chunk.value.byteLength;
-        if (bytes > 200_000) {
-          await reader.cancel();
-          throw new Error("This draft is too large for in-app review. Download it to inspect.");
-        }
-        content += decoder.decode(chunk.value, { stream: true });
-      }
-      content += decoder.decode();
-      setReviewDraft({ artifactId, content });
-    } catch (reviewError) {
-      onError(reviewError instanceof Error ? reviewError.message : "Draft preview failed. Try again or download it.");
-    } finally {
-      setReviewing(null);
-    }
   }
 
   return <>
@@ -311,15 +272,7 @@ function StudioLane({ sources, selected, notebookScope, onToggle, onError }: { s
               </span>)}
             </div>}
           </div>
-          {execution.artifactId && <div className="flex items-center gap-2">
-            <button type="button" onClick={() => void review(execution.artifactId!)} disabled={reviewing === execution.artifactId}
-              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[10px] disabled:opacity-50" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}>
-              {reviewing === execution.artifactId ? <LoaderCircle size={12} className="animate-spin" /> : <Eye size={12} />}Review
-            </button>
-            <button type="button" onClick={() => void download(execution.artifactId!)}
-              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[10px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Download size={12} />Download</button>
-          </div>}
-          {reviewDraft?.artifactId === execution.artifactId && <pre className="basis-full max-h-80 w-full overflow-auto whitespace-pre-wrap rounded-md border p-3 text-[11px] leading-relaxed" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }} aria-label="Draft content for review">{reviewDraft.content}</pre>}
+          {execution.artifactId && <ArtifactActions artifactId={execution.artifactId} ready={execution.reviewAvailable === true} requiresReview initialDecision={execution.reviewDecision} onError={onError} />}
         </div>)}
       </div>
     </LanePanel>
@@ -344,13 +297,6 @@ function AssetsLane({ onError }: { onError: (value: string) => void }) {
     return () => { cancelled = true; };
   }, [onError]);
 
-  async function download(artifactId: string) {
-    const response = await fetch(`/api/client-runtime/artifacts?id=${encodeURIComponent(artifactId)}`, { cache: "no-store" }).catch(() => null);
-    const data = await response?.json().catch(() => null);
-    if (!response?.ok || typeof data?.downloadUrl !== "string") { onError(typeof data?.error === "string" ? data.error : "artifact_download_failed"); return; }
-    window.location.assign(data.downloadUrl);
-  }
-
   return <LanePanel icon={<FolderOpen size={17} />} eyebrow="Tenant Notebook · assets" title="Tenant artifacts"
     body="Everything you have imported here or produced through a run, with signed, time-limited downloads. Retention follows the tenant's storage lifecycle.">
     {loading ? <p className="text-[11px]" style={{ color: "var(--cream-mute)" }}>Loading tenant artifacts…</p>
@@ -360,10 +306,65 @@ function AssetsLane({ onError }: { onError: (value: string) => void }) {
           <p className="truncate text-[12px]" style={{ color: "var(--cream)" }}>{artifact.original_name || "Untitled artifact"}</p>
           <p className="text-[10px]" style={{ color: "var(--cream-mute)" }}>{artifact.content_type || "unknown type"}{typeof artifact.byte_size === "number" ? ` · ${formatBytes(artifact.byte_size)}` : ""}{artifact.status ? ` · ${artifact.status}` : ""}</p>
         </div>
-        <button type="button" onClick={() => void download(artifact.id)} disabled={artifact.status !== "ready"}
-          className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[10px] disabled:opacity-40" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Download size={12} />Download</button>
+        <ArtifactActions artifactId={artifact.id} ready={artifact.status === "ready" && artifact.job_released !== false && (artifact.review_required !== true || artifact.review_available === true)} requiresReview={artifact.review_required === true} initialDecision={artifact.review_decision} onError={onError} />
       </div>)}</div>}
   </LanePanel>;
+}
+
+function ArtifactActions({ artifactId, requiresReview, initialDecision, ready = true, onError }: { artifactId: string; requiresReview: boolean; initialDecision?: string | null; ready?: boolean; onError: (value: string) => void }) {
+  const [draft, setDraft] = useState<{ content: string; sha256: string } | null>(null);
+  const [decision, setDecision] = useState(initialDecision ?? null);
+  const [busy, setBusy] = useState(false);
+  const buttonClass = "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[10px] disabled:opacity-40";
+  const style = { borderColor: "var(--line-soft)", color: "var(--cream-dim)" };
+
+  async function review() {
+    setBusy(true); onError(""); setDraft(null);
+    try {
+      const response = await fetch(`/api/client-runtime/artifacts/${encodeURIComponent(artifactId)}/review`, { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok || typeof data.content !== "string" || typeof data.sha256 !== "string") throw new Error(data.error || "artifact_review_unavailable");
+      setDraft({ content: data.content, sha256: data.sha256 });
+      setDecision(data.decision ?? null);
+    } catch (error) { onError(error instanceof Error ? error.message : "artifact_review_unavailable"); }
+    finally { setBusy(false); }
+  }
+
+  async function decide(next: "approved" | "rejected") {
+    if (!draft) return;
+    setBusy(true); onError("");
+    try {
+      const response = await fetch(`/api/client-runtime/artifacts/${encodeURIComponent(artifactId)}/review`, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ decision: next, sha256: draft.sha256 }),
+      });
+      const data = await response.json();
+      if (!response.ok) { setDecision(null); setDraft(null); throw new Error(data.error || "artifact_review_not_saved"); }
+      setDecision(data.decision);
+    } catch (error) { onError(error instanceof Error ? error.message : "artifact_review_not_saved"); }
+    finally { setBusy(false); }
+  }
+
+  async function download() {
+    const response = await fetch(`/api/client-runtime/artifacts?id=${encodeURIComponent(artifactId)}`, { cache: "no-store" }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    if (!response?.ok || typeof data?.downloadUrl !== "string") { setDecision(null); onError(data?.error || "artifact_download_failed"); return; }
+    const url = new URL(data.downloadUrl, window.location.origin);
+    if (url.origin !== window.location.origin || url.pathname !== `/api/client-runtime/artifacts/${artifactId}/download`) { onError("artifact_download_link_invalid"); return; }
+    window.location.assign(url.href);
+  }
+
+  return <div className="flex min-w-0 basis-full flex-wrap items-center gap-2">
+    {requiresReview && <>
+      <span className="text-[10px]" style={style} role="status">{!ready ? "Unavailable" : decision === "approved" ? "Approved" : decision === "rejected" ? "Rejected" : "Awaiting review"}</span>
+      <button type="button" onClick={() => void review()} disabled={!ready || busy} className={buttonClass} style={style}>{busy ? <LoaderCircle size={12} className="animate-spin" /> : <Eye size={12} />}Review</button>
+    </>}
+    <button type="button" onClick={() => void download()} disabled={!ready || busy || (requiresReview && decision !== "approved")} className={buttonClass} style={style}><Download size={12} />Download</button>
+    {draft && <>
+      <pre className="basis-full max-h-80 w-full min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-md border p-3 text-[11px] leading-relaxed" style={style} aria-label="Draft content for review">{draft.content}</pre>
+      <button type="button" onClick={() => void decide("approved")} disabled={busy} className={buttonClass} style={style}><Check size={12} />Approve export</button>
+      <button type="button" onClick={() => void decide("rejected")} disabled={busy} className={buttonClass} style={style}><X size={12} />Reject draft</button>
+    </>}
+  </div>;
 }
 
 function SourcePicker({ sources, selectedIds, onToggle, hint }: { sources: NotebookSource[]; selectedIds: string[]; onToggle: (id: string) => void; hint: string }) {

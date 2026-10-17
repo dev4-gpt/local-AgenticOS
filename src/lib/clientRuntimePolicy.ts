@@ -171,9 +171,18 @@ export function clientRouteAllowed(pathname: string) {
   return routes.some((route) => route === "/" ? pathname === "/" : pathname === route || pathname.startsWith(`${route}/`));
 }
 
+export function clientRouteIsOperatorOnly(pathname: string) {
+  return [...OPERATOR_ONLY_CLIENT_ROUTES].some((blocked) => pathname === blocked || pathname.startsWith(`${blocked}/`));
+}
+
+export function clientNavigationRoutes(routes: string[], allowedRoutes: string[]) {
+  const allowed = new Set(allowedRoutes);
+  return routes.filter((route) => allowed.has(route) && !clientRouteIsOperatorOnly(route));
+}
+
 export function clientAllowedRoutes() {
   return configuredList("CLIENT_ALLOWED_ROUTES", DEFAULT_CLIENT_ROUTES)
-    .filter((route) => ![...OPERATOR_ONLY_CLIENT_ROUTES].some((blocked) => route === blocked || route.startsWith(`${blocked}/`)));
+    .filter((route) => !clientRouteIsOperatorOnly(route));
 }
 
 export function clientApiRouteAllowed(pathname: string) {

@@ -143,6 +143,7 @@ test("classroom transcripts stay separate from missing lesson-page text", () => 
       url: "https://www.youtube.com/watch?v=abc123",
       title: "Voice update transcript",
       text: "First transcript segment. Second transcript segment.",
+      captureScope: "excerpt",
       collectedAt: "2026-10-14T21:00:00.000Z",
     }],
   };
@@ -162,9 +163,25 @@ test("classroom transcripts stay separate from missing lesson-page text", () => 
     text: lesson.transcripts[0].text,
     segment: 1,
     segmentCount: 1,
+    captureScope: "excerpt",
     collectedAt: lesson.transcripts[0].collectedAt,
   }]);
   expect(prepared.batches[0].skipped).toContain("1 source(s) have transcript text but no captured lesson-page text; review pageTextMissingSourceIds in the private manifest");
+});
+
+test("classroom transcript capture scope is validated and omitted legacy scope defaults to unknown", () => {
+  const base = {
+    title: "Voice lesson",
+    url: `${startUrl}?md=voice-scope`,
+    transcripts: [{ url: "https://www.youtube.com/watch?v=abc123", text: "Transcript text" }],
+  };
+  const prepared = prepareClassroomSourcePack({ startUrl, sources: [base], skipped: [], pending: [] });
+  expect(prepared.batches[0].sources[0].transcripts[0].captureScope).toBe("unknown");
+  expect(() => prepareClassroomSourcePack({
+    startUrl,
+    sources: [{ ...base, transcripts: [{ ...base.transcripts[0], captureScope: "mostly-full" }] }],
+    skipped: [], pending: [],
+  })).toThrow("classroom_transcript_invalid");
 });
 
 test("large media-only exports keep a bounded warning and every missing-transcript ID", () => {

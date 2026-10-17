@@ -86,6 +86,7 @@ for (const [membership, authorized, error] of [
 ] as const) {
   test(`session distinguishes authentication from workspace authorization: ${error || "allowed"}`, async () => {
     const route = loadReviewModule("src/app/api/client-auth/session/route.ts", {
+      "@/lib/clientRuntimeConfigDigest.mjs": { clientTenantScopeDigest: () => "tenant-scope-digest" },
       "@/lib/clientAuth": {
         currentClientUser: async () => user,
         currentClientAccessToken: async () => session.access_token,
@@ -94,27 +95,29 @@ for (const [membership, authorized, error] of [
     });
     const response: Response = await route.GET();
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(await response.json()).toEqual({ ok: true, authenticated: true, workspaceAuthorized: authorized, accessError: error, user });
+    expect(await response.json()).toEqual({ ok: true, authenticated: true, workspaceAuthorized: authorized, accessError: error, tenantScopeDigest: authorized ? "tenant-scope-digest" : null, user });
   });
 }
 
 test("unauthenticated session does not query or reveal tenant membership", async () => {
   const route = loadReviewModule("src/app/api/client-auth/session/route.ts", {
+    "@/lib/clientRuntimeConfigDigest.mjs": { clientTenantScopeDigest: () => "must-not-compute" },
     "@/lib/clientAuth": {
       currentClientUser: async () => null,
       clientMembershipForToken: async () => { throw new Error("must not check membership"); },
     },
   });
-  expect(await (await route.GET()).json()).toEqual({ ok: true, authenticated: false, workspaceAuthorized: false, accessError: null, user: null });
+  expect(await (await route.GET()).json()).toEqual({ ok: true, authenticated: false, workspaceAuthorized: false, accessError: null, tenantScopeDigest: null, user: null });
 });
 
 test("operator session does not acquire a new client-tenant requirement", async () => {
   process.env.VELOCE_CLIENT_EDITION = "0";
   const route = loadReviewModule("src/app/api/client-auth/session/route.ts", {
+    "@/lib/clientRuntimeConfigDigest.mjs": { clientTenantScopeDigest: () => "must-not-compute" },
     "@/lib/clientAuth": {
       currentClientUser: async () => user,
       clientMembershipForToken: async () => { throw new Error("must not check client membership"); },
     },
   });
-  expect(await (await route.GET()).json()).toMatchObject({ authenticated: true, workspaceAuthorized: true, accessError: null });
+  expect(await (await route.GET()).json()).toMatchObject({ authenticated: true, workspaceAuthorized: true, accessError: null, tenantScopeDigest: null });
 });

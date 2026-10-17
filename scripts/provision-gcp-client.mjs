@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { clientStorageLifecycleRules } from "../src/lib/clientStorageRetentionClock.mjs";
 import { normalizeCapabilityProviderAllowlist, normalizeHostAllowlist, normalizeModelPricing, normalizeResearchWorkerConfig, validateProviderActivation, validateResearchWorkerConfig } from "./client-provider-policy.mjs";
 
 const args = process.argv.slice(2);
@@ -97,10 +98,7 @@ writeFileSync(storageCorsFile, JSON.stringify([{
 }], null, 2), { mode: 0o600 });
 const storageLifecycleFile = `/tmp/veloce-${slug}-storage-lifecycle.json`;
 writeFileSync(storageLifecycleFile, JSON.stringify({
-  rule: [{
-    action: { type: "Delete" },
-    condition: { age: retentionDays, matchesPrefix: [`${slug}/`] },
-  }],
+  rule: clientStorageLifecycleRules(slug, retentionDays),
 }, null, 2), { mode: 0o600 });
 process.on("exit", () => {
   try { unlinkSync(storageCorsFile); } catch {}

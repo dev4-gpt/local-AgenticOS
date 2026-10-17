@@ -5,6 +5,7 @@ import { checkClientRuntimeRateLimit, clientRpc, selectClientRecords } from "@/l
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientRetentionExpiresAt, clientRetentionSecondsRemaining } from "@/lib/clientRetention";
 import { clientStorageConfig, safeClientFileName, safeClientObjectKey } from "@/lib/clientStorage";
+import { artifactJobReleased, artifactReviewApproved, notebookArtifactReviewRequired } from "@/lib/clientArtifactReview";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,7 +71,11 @@ export async function GET(request: Request) {
   const result = {
     records: [...merged.values()].sort((left, right) => String(right.created_at ?? "").localeCompare(String(left.created_at ?? ""))).slice(0, 100),
   };
-  const artifacts = result.records.map((record) => ({
+  const artifacts = result.records.map((record) => {
+    const job = jobs.ok ? jobs.records.find((job) => job.id === record.job_id && job.tenant_slug === tenantSlug && job.requested_by === user.id) : undefined;
+    const required = typeof record.job_id === "string" && (!job || notebookArtifactReviewRequired(job));
+    const available = typeof record.job_id !== "string" || (!!job && artifactJobReleased(job, String(record.id)));
+    return {
     id: typeof record.id === "string" ? record.id : "",
     original_name: typeof record.original_name === "string" ? record.original_name : null,
     content_type: typeof record.content_type === "string" ? record.content_type : null,
@@ -79,7 +84,12 @@ export async function GET(request: Request) {
     created_at: typeof record.created_at === "string" ? record.created_at : null,
     retention_expires_at: typeof record.retention_expires_at === "string" ? record.retention_expires_at : null,
     job_id: typeof record.job_id === "string" ? record.job_id : null,
-  })).filter((artifact) => artifact.id);
+    review_required: required,
+    review_available: available,
+    job_released: available,
+    review_decision: available && artifactReviewApproved(record, user.id) ? "approved" : record.review_decision === "rejected" ? "rejected" : null,
+    };
+  }).filter((artifact) => artifact.id);
   return NextResponse.json({ ok: true, artifacts }, { headers: { "cache-control": "private, no-store" } });
 }
 
@@ -96,7 +106,9 @@ async function downloadProxyPath(userId: string, tenantSlug: string, artifactId:
   if (!artifactResult.ok || !artifact || artifact.tenant_slug !== tenantSlug || artifact.status !== "ready" || !expiresInSeconds || !safeClientObjectKey(objectKey, config.namespace)) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
   if (jobId) {
     const job = await selectClientRecords("client_runtime_jobs", { id: `eq.${jobId}`, tenant_slug: `eq.${tenantSlug}`, requested_by: `eq.${userId}`, limit: "1" });
-    if (!job.ok || job.records[0]?.tenant_slug !== tenantSlug || job.records[0]?.requested_by !== userId) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+    if (!job.ok || job.records[0]?.id !== jobId || job.records[0]?.tenant_slug !== tenantSlug || job.records[0]?.requested_by !== userId) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+    if (!artifactJobReleased(job.records[0], artifactId)) return NextResponse.json({ ok: false, error: "artifact_job_not_released" }, { status: 409 });
+    if (notebookArtifactReviewRequired(job.records[0]) && !artifactReviewApproved(artifact, userId)) return NextResponse.json({ ok: false, error: "artifact_review_required" }, { status: 409 });
   } else if (createdBy !== userId) {
     return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
   }

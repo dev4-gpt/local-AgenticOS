@@ -27,16 +27,16 @@ async function sourceRetentionDatabase() {
     );
     insert into client_tenants values ('tenant-a', 28), ('tenant-b', 28), ('tenant-short', 14), ('tenant-invalid', 29);
     insert into client_notebook_sources values
-      ('00000000-0000-4000-8000-000000000001', 'tenant-a', now() - interval '29 days', now() - interval '1 day'),
-      ('00000000-0000-4000-8000-000000000002', 'tenant-a', now() - interval '30 days', now() - interval '2 days'),
+      ('00000000-0000-4000-8000-000000000001', 'tenant-a', now() - interval '36 days', now() - interval '8 days'),
+      ('00000000-0000-4000-8000-000000000002', 'tenant-a', now() - interval '30 days', now() - interval '8 days'),
       ('00000000-0000-4000-8000-000000000003', 'tenant-a', now() - interval '29 days', null),
       ('00000000-0000-4000-8000-000000000004', 'tenant-a', now() - interval '29 days', now() + interval '1 day'),
       ('00000000-0000-4000-8000-000000000005', 'tenant-a', now() - interval '10 days', now() - interval '1 day'),
       ('00000000-0000-4000-8000-000000000006', 'tenant-b', now() - interval '29 days', now() - interval '1 day'),
-      ('00000000-0000-4000-8000-000000000007', 'tenant-short', now() - interval '15 days', now() - interval '1 day'),
-      ('00000000-0000-4000-8000-000000000008', 'tenant-a', now() - interval '29 days', now() - interval '1 day');
+      ('00000000-0000-4000-8000-000000000007', 'tenant-short', now() - interval '22 days', now() - interval '8 days'),
+      ('00000000-0000-4000-8000-000000000008', 'tenant-a', now() - interval '29 days', now() - interval '8 days');
     insert into client_notebook_chunks values
-      ('00000000-0000-4000-8000-000000000011', 'tenant-a', '00000000-0000-4000-8000-000000000001', 'old chunk', now() - interval '29 days'),
+      ('00000000-0000-4000-8000-000000000011', 'tenant-a', '00000000-0000-4000-8000-000000000001', 'old chunk', now() - interval '36 days'),
       ('00000000-0000-4000-8000-000000000012', 'tenant-a', '00000000-0000-4000-8000-000000000003', 'legacy chunk', now() - interval '29 days'),
       ('00000000-0000-4000-8000-000000000013', 'tenant-b', '00000000-0000-4000-8000-000000000006', 'other tenant', now() - interval '29 days'),
       ('00000000-0000-4000-8000-000000000014', 'tenant-a', '00000000-0000-4000-8000-000000000008', 'newer chunk', now() - interval '1 day');
@@ -54,7 +54,8 @@ test("source retention is tenant-scoped, batched and cascades only eligible chun
   try {
     const preview = await db.query<{ result: Record<string, unknown> }>(call, ["tenant-a", false, 1]);
     expect(preview.rows[0].result).toMatchObject({ candidates: 2, deleted: 0, remainingCandidates: 2,
-      legacyMissingExpiry: 1, legacyExtendedExpiry: 1, deferredNewerChunks: 1, applied: false });
+      legacyMissingExpiry: 1, legacyExtendedExpiry: 1, deferredNewerChunks: 1, inRecovery: 1,
+      recoveryDays: 7, purgeAfterDays: 35, applied: false });
     expect((await db.query("select id from client_runtime_audit_events")).rows).toHaveLength(0);
 
     const first = await db.query<{ result: Record<string, unknown> }>(call, ["tenant-a", true, 1]);
@@ -87,7 +88,7 @@ test("source retention rejects unconfigured tenants and rolls back when audit fa
         has_function_privilege('service_role', 'public.purge_expired_client_notebook_sources(text,boolean,integer)', 'EXECUTE') as operator
     `);
     expect(privileges.rows[0]).toEqual({ anonymous: false, member: false, operator: true });
-    expect((await db.query(call, ["tenant-short", false, 1])).rows[0].result).toMatchObject({ retentionDays: 14, candidates: 1, applied: false });
+    expect((await db.query(call, ["tenant-short", false, 1])).rows[0].result).toMatchObject({ retentionDays: 14, candidates: 1, recoveryDays: 7, purgeAfterDays: 21, applied: false });
     await expect(db.query(call, ["tenant-invalid", false, 1])).rejects.toThrow(/client_notebook_retention_tenant_not_configured/);
     await expect(db.query(call, ["tenant-a", true, 101])).rejects.toThrow(/client_notebook_retention_invalid_input/);
     await db.exec(`
@@ -99,6 +100,27 @@ test("source retention rejects unconfigured tenants and rolls back when audit fa
     await expect(db.query(call, ["tenant-a", true, 1])).rejects.toThrow(/audit_unavailable/);
     expect((await db.query("select id from client_notebook_sources where tenant_slug='tenant-a'")).rows).toHaveLength(6);
     expect((await db.query("select id from client_notebook_chunks where tenant_slug='tenant-a'")).rows).toHaveLength(3);
+  } finally {
+    await db.close();
+  }
+});
+
+test("source stays recoverable until seven full days after its active expiry", async () => {
+  const db = await sourceRetentionDatabase();
+  try {
+    await db.exec("select set_config('request.jwt.claim.role', 'service_role', false)");
+    await db.exec(`
+      insert into client_notebook_sources (id, tenant_slug, created_at, retention_expires_at) values
+        ('00000000-0000-4000-8000-000000000021', 'tenant-a', now() - interval '35 days', now() - interval '6 days 23 hours'),
+        ('00000000-0000-4000-8000-000000000022', 'tenant-a', now() - interval '36 days', now() - interval '8 days');
+    `);
+    const preview = await db.query<{ result: Record<string, unknown> }>(call, ["tenant-a", false, 100]);
+    expect(preview.rows[0].result).toMatchObject({ candidates: 3, inRecovery: 2, recoveryDays: 7 });
+    const apply = await db.query<{ result: Record<string, unknown> }>(call, ["tenant-a", true, 100]);
+    expect(apply.rows[0].result).toMatchObject({ deleted: 3, remainingCandidates: 0 });
+    const retained = await db.query<{ id: string }>(`select id from client_notebook_sources where id in
+      ('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000022') order by id`);
+    expect(retained.rows.map((row) => row.id)).toEqual(["00000000-0000-4000-8000-000000000021"]);
   } finally {
     await db.close();
   }

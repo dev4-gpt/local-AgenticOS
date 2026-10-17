@@ -68,9 +68,12 @@ as $$
 declare
   v_retention_days integer;
   v_cutoff timestamptz;
+  v_purge_cutoff timestamptz;
+  v_child_purge_cutoff timestamptz;
   v_candidates integer;
   v_legacy_missing_expiry integer;
   v_legacy_extended_expiry integer;
+  v_in_recovery integer;
   v_deferred_newer_chunks integer;
   v_deleted integer := 0;
   v_remaining integer;
@@ -91,33 +94,35 @@ begin
     raise exception 'client_notebook_retention_tenant_not_configured';
   end if;
   v_cutoff := now() - make_interval(days => v_retention_days);
+  v_purge_cutoff := now() - interval '7 days';
+  v_child_purge_cutoff := now() - make_interval(days => v_retention_days + 7);
 
   with aged as (
-    select source.retention_expires_at,
+    select source.retention_expires_at, source.created_at,
       exists (
         select 1 from public.client_notebook_chunks as chunk
         where chunk.source_id = source.id and chunk.tenant_slug = p_tenant_slug
-          and chunk.created_at > v_cutoff
+          and chunk.created_at > v_child_purge_cutoff
       ) as has_newer_chunks
     from public.client_notebook_sources as source
-    where source.tenant_slug = p_tenant_slug and source.created_at <= v_cutoff
+    where source.tenant_slug = p_tenant_slug
   )
-  select count(*) filter (where retention_expires_at <= now() and not has_newer_chunks),
-    count(*) filter (where retention_expires_at is null),
-    count(*) filter (where retention_expires_at > now()),
-    count(*) filter (where retention_expires_at <= now() and has_newer_chunks)
-  into v_candidates, v_legacy_missing_expiry, v_legacy_extended_expiry, v_deferred_newer_chunks
+  select count(*) filter (where retention_expires_at <= v_purge_cutoff and not has_newer_chunks),
+    count(*) filter (where retention_expires_at is null and created_at <= v_cutoff),
+    count(*) filter (where retention_expires_at > now() and created_at <= v_cutoff),
+    count(*) filter (where retention_expires_at <= now() and retention_expires_at > v_purge_cutoff),
+    count(*) filter (where retention_expires_at <= v_purge_cutoff and has_newer_chunks)
+  into v_candidates, v_legacy_missing_expiry, v_legacy_extended_expiry, v_in_recovery, v_deferred_newer_chunks
   from aged;
 
   if p_apply then
     with selected as (
       select id from public.client_notebook_sources
-      where tenant_slug = p_tenant_slug and created_at <= v_cutoff
-        and retention_expires_at <= now()
+      where tenant_slug = p_tenant_slug and retention_expires_at <= v_purge_cutoff
         and not exists (
           select 1 from public.client_notebook_chunks as chunk
           where chunk.source_id = client_notebook_sources.id and chunk.tenant_slug = p_tenant_slug
-            and chunk.created_at > v_cutoff
+            and chunk.created_at > v_child_purge_cutoff
         )
       order by created_at, id
       limit p_batch_limit
@@ -133,26 +138,29 @@ begin
     if v_deleted > 0 then
       insert into public.client_runtime_audit_events (tenant_slug, event_type, metadata)
       values (p_tenant_slug, 'tenant.notebook_sources.retention_purged',
-        jsonb_build_object('deleted', v_deleted, 'cutoff', v_cutoff, 'retentionDays', v_retention_days));
+        jsonb_build_object('deleted', v_deleted, 'activeRetentionDays', v_retention_days,
+          'recoveryDays', 7, 'purgeAfterDays', v_retention_days + 7,
+          'purgeCutoff', v_purge_cutoff));
     end if;
   end if;
 
   select count(*) into v_remaining
   from public.client_notebook_sources
-  where tenant_slug = p_tenant_slug and created_at <= v_cutoff
-    and retention_expires_at <= now()
+  where tenant_slug = p_tenant_slug and retention_expires_at <= v_purge_cutoff
     and not exists (
       select 1 from public.client_notebook_chunks as chunk
       where chunk.source_id = client_notebook_sources.id and chunk.tenant_slug = p_tenant_slug
-        and chunk.created_at > v_cutoff
+        and chunk.created_at > v_child_purge_cutoff
     );
 
   return jsonb_build_object(
     'tenant', p_tenant_slug, 'cutoff', v_cutoff, 'retentionDays', v_retention_days,
+    'recoveryDays', 7, 'purgeAfterDays', v_retention_days + 7,
     'candidates', v_candidates, 'deleted', v_deleted,
     'remainingCandidates', v_remaining,
     'legacyMissingExpiry', v_legacy_missing_expiry,
     'legacyExtendedExpiry', v_legacy_extended_expiry,
+    'inRecovery', v_in_recovery,
     'deferredNewerChunks', v_deferred_newer_chunks,
     'applied', p_apply, 'scope', 'client_notebook_sources_and_chunks'
   );

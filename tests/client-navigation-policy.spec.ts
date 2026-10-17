@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { clientAllowedRoutes, clientApiRouteAllowed, clientRouteAllowed } from "../src/lib/clientRuntimePolicy";
+import { clientAllowedRoutes, clientApiRouteAllowed, clientNavigationRoutes, clientRouteAllowed, clientRouteIsOperatorOnly } from "../src/lib/clientRuntimePolicy";
 
 const originalRoutes = process.env.CLIENT_ALLOWED_ROUTES;
 const originalApiRoutes = process.env.CLIENT_ALLOWED_API_ROUTES;
@@ -40,6 +40,14 @@ test("operator-only research routes stay unavailable even if a manifest lists th
   process.env.CLIENT_ALLOWED_ROUTES = "/,/context,/classroom-research,/classroom-research/archive,/social-research,/memory";
 
   expect(clientAllowedRoutes()).toEqual(["/", "/context", "/memory"]);
+  expect(clientRouteIsOperatorOnly("/classroom-research")).toBe(true);
+  expect(clientRouteIsOperatorOnly("/classroom-research/archive")).toBe(true);
+  expect(clientRouteIsOperatorOnly("/social-research/results")).toBe(true);
+  expect(clientRouteIsOperatorOnly("/memory")).toBe(false);
+  expect(clientNavigationRoutes(
+    ["/", "/classroom-research", "/classroom-research/archive", "/social-research", "/memory"],
+    ["/", "/classroom-research", "/classroom-research/archive", "/social-research", "/memory"],
+  )).toEqual(["/", "/memory"]);
   expect(clientRouteAllowed("/classroom-research")).toBe(false);
   expect(clientRouteAllowed("/classroom-research/archive")).toBe(false);
   expect(clientRouteAllowed("/social-research/results")).toBe(false);

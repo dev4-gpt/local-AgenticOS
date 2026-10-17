@@ -16,6 +16,68 @@ For a directory of locally saved PDFs with a printed, exact page URL, use `npm r
 
 For a local `ClassroomRun` JSON from a site that permits automated collection, or an equivalent owner-provided JSON export, use `node scripts/prepare-classroom-source-pack.mjs input-run.json /private/tmp/source-pack.json`. This splits long text, large link lists, and more than 100 source views into tenant-import-compatible parts. Its mode-600 manifest records the input hash, part hashes, source/link/media-reference counts, skipped pages, pending pages, and whether the **discovered queue** was exhausted. An optional owner-declared `expected` inventory checks page/tab identities and publication-date bounds, recording missing, undeclared, undated, or out-of-window pages in that private manifest. This only checks the supplied export against the supplied inventory; neither is an independent census of the community. The terminal prints counts, not the missing-page URLs. It does not download video bytes, transcribe videos, or upload anything. A Skool-hosted page is not an allowed collector target under current platform rules; use a platform-approved or owner-hosted export instead.
 
+## Companion Manual Coverage
+
+The local private-graph merger links registered lessons to captured companion
+text only when a lesson's direct outbound resource URL exactly matches that
+text segment's safe, external source URL. The relation is
+`hasCompanionTextCaptureSegment`, not `hasTextCaptureSegment`; title similarity
+does not establish a match. Skool page links are excluded from this companion
+join. The gap reporter checks those relations against the outbound URL evidence
+and reports companion coverage separately, including companions available for
+lessons that still lack body text. A manual, a video reference, a player
+observation and a transcript remain separate source types. None alone proves
+complete community coverage or a hosted tenant import.
+
+## Public YouTube Transcript Enrichment Lane
+
+AgentOS has source-pack transcript ingestion and graph-linking, but no automated
+YouTube transcript fetcher. The existing video automation creates video
+scripts/assemblies; speech-to-text accepts supplied audio. Neither is a
+YouTube research crawler or a way around platform controls. Do not install or
+run a third-party scraper, use browser cookies, download video bytes, or claim
+that transcript access is authorized merely because a video is public.
+
+For an in-scope lesson with an owner-registered public YouTube reference:
+
+1. Match the watch-page URL to the exact registered lesson ID before capture.
+   Open only the public video page and use its ordinary **Show transcript** UI
+   when available. This is a bounded, manual observation, not browser
+   automation. Check once. If the panel does not expose text, record
+   `unavailable_or_unresolved` with the check time and move to the next lesson;
+   do not poll, retry-loop, or substitute the description, chapters, or an AI
+   summary for a transcript.
+2. If transcript text is exposed and its use is within the approved scope,
+   copy only the needed transcript text into a local `ClassroomRun` source.
+   Keep lesson-page text separate (`text: ""` when none was captured), and put
+   the transcript in `transcripts` with the exact watch URL, descriptive title,
+   segment number/count, and `collectedAt`. Preserve a note that wording and
+   ASR accuracy are unverified unless independently checked. Do not include
+   cookies, account data, or unrelated page content.
+3. Prepare and validate locally, without importing to a tenant:
+
+   ```sh
+   node scripts/prepare-classroom-source-pack.mjs tmp/authorized-skool-import/authorized-run.json tmp/authorized-skool-import/authorized-pack.json
+   node scripts/export-private-source-pack-graph.mjs tmp/authorized-skool-import/authorized-pack.json tmp/authorized-skool-import/authorized-pack.jsonld
+   node scripts/merge-private-source-pack-graph.mjs tmp/authorized-skool-import/current-register-graph.jsonld tmp/authorized-skool-import/authorized-pack.jsonld tmp/authorized-skool-import/updated-graph.jsonld
+   node scripts/report-skool-text-gaps.mjs tmp/authorized-skool-import/updated-graph.jsonld
+   ```
+
+   Keep private artifacts in `tmp/authorized-skool-import/`; the graph tools
+   reject absolute paths and artifacts outside that directory. Validate the graph and confirm
+   the transcript links to the exact lesson ID. Transcript coverage is
+   reported separately from `hasTextCaptureSegment`: it does not increase
+   full lesson-page-text coverage or make the archive complete. Preserve the
+   gap report and provenance counts as local evidence. Hosted tenant import
+   remains a separate action requiring verified scope and explicit approval.
+
+This lane is intentionally resumable by lesson ID and has a stop condition:
+one permitted UI check per video per pass, then either record the available
+transcript or record unresolved/unavailable and continue. A future automated
+connector would require a documented platform-permitted interface, access
+scope, rate limits, provenance contract, and a separate approval before
+implementation or operation.
+
 For a page already saved locally as HTML, use `python3 scripts/prepare-html-classroom-run.py lesson.html https://www.example.com/original-page /private/tmp/lesson-run.json --title "Lesson title" --published-date YYYY-MM-DD --safe-html-output /private/tmp/lesson-sanitized.html` and then pass the JSON to `node scripts/prepare-classroom-source-pack.mjs /private/tmp/lesson-run.json /private/tmp/lesson-pack.json`. The HTML parser runs no page scripts, makes no network requests, ignores hidden/script/style/template content, and preserves ordinary links and media references. The optional sanitized HTML is a text-and-link reading copy; it excludes page scripts, hidden content, and media bytes. The supplied source URL is authoritative; the saved page does not set it. Dates are included only when supplied explicitly. This processes one saved page and does not establish course-wide completeness or reuse rights. Review the private pack and its skipped-reference count before uploading through the tenant workflow below.
 
 Add `--require-complete` when preparing a pack that will be described as a

@@ -2,7 +2,7 @@
 
 **Status:** Proposed design; not a production approval  
 **Owner:** Aryaman  
-**Last updated:** October 15, 2026
+**Last updated:** October 16, 2026
 **Authors:** AgentOS project team  
 **Reviewers:** Product owner, runtime/security owner, operations/billing owner (to be named)  
 **Related docs:** [Production-readiness execution board](../production-readiness-execution-board.md), [retention data-class inventory](../retention-data-class-inventory-2026-10-15.md), [canonical production topology](../production-topology-2026-09-25.md), [production-readiness program](../superpowers/plans/2026-09-26-production-readiness-program.md)
@@ -12,7 +12,7 @@
 
 AgentOS is a governed AI workspace with a public intake surface, tenant-scoped workspaces, asynchronous agent jobs, provider controls, artifacts, memory/graph capabilities, and operator tooling. The intended workflow is: a team submits an approved request and sources; AgentOS checks identity, tenant membership, capability, policy, and budget; a bounded job runs; the result is stored with provenance and review state; a human decides whether it can be used or exported.
 
-The system has substantial local implementation and regression coverage, but it is not accepted as production-ready. The current strict verifier still lacks a release-ledger record and reports 37 required evidence categories unevaluated on the last documented candidate. A same-user signed-in journey and local/cloud parity are not verified against the intended browser session. The Skool archive is partial and has not been imported to a confirmed hosted graph target. MiroFish evidence is synthetic and its quality gate failed; it is not buyer validation.
+The system has substantial local implementation and regression coverage, but it is not accepted as production-ready. The local readiness verifier reports a dirty working tree, no configured release-ledger bucket, and unevaluated release-evidence categories. Current counts and candidate-bound results belong in the generated readiness report and execution board. The Notebook journey's earlier synthetic acceptance was reopened after a regression proved that preview did not enforce durable approval before download. The same-user hosted customer journey and local/cloud parity are not verified. The Skool archive is partial and has not been imported to a confirmed tenant graph. MiroFish evidence is synthetic and is not buyer validation; no additional provider run is authorized by these results.
 
 This design does not add another runtime stack. It sets the boundaries, contracts, tests, and ordered milestones for completing the existing system. A local green test is evidence only for the behavior it actually exercised. Hosted mutation, paid provider use, public rollout, and destructive data actions remain separately approved operations.
 
@@ -35,7 +35,11 @@ The readiness problem is not a lack of features or tools. It is that several evi
 
 **Design invariant:** Every claim of readiness must be tied to one immutable source candidate, one named environment/tenant, a bounded test or operation, a timestamped result, and an evidence artifact. A failed or unknown critical gate blocks release regardless of the number of passing local tests.
 
-**Current evidence snapshot (2026-10-15):** The application code candidate is `902ee5d334582ee64dd73e2e9fe8688206ea56f8` on `wip/backup-2026-10-03`; subsequent commits have only refreshed readiness documentation. On that code candidate, the deterministic offline AI evaluation passes **16/16** with `localGatePassed: true`, zero model samples, and `productionReady: false`; the focused suite passes **368/369** with one intentional skip. The isolated source-import browser suite also passes **8/8** on the same application code, using intercepted APIs and no tenant writes. These are local checks, not hosted acceptance. A read-only Work-profile check verified the same authenticated user at Cloud Test and local runtime, and the Cloud Test/local `41774` Memory views matched at **23 records, 32 graph nodes, and 54 edges**. This is limited route/data parity, not an end-to-end customer-journey or image/source parity proof: local `3985` shows a different state and Internal Beta Notebook shows zero records/sources. In the Work-profile Cloud Test tab, a direct request to `/api/client-runtime/build-identity` returned `client_route_not_enabled`, so the hosted source/image identity is currently unreadable through that route. The latest local Skool graph validates at **1,153 nodes / 9,677 relationships**, but remains partial: text is linked for **87/107** registered lessons, no video assets are included, and no hosted import receipt exists. The strict release verifier cannot currently read the known ledger bucket from this runtime because its Google Cloud credential files are outside the filesystem sandbox; **37** ledger-backed categories remain unevaluated. MiroFish evidence remains synthetic and failed its quality gate; it is not buyer validation. No hosted mutation or deployment is authorized by these results.
+**Current evidence snapshot (2026-10-16):** AgentOS HEAD is `7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87` on `wip/backup-2026-10-03`, using supported Node `v24.18.0`. The exact dirty-path count, source/config fingerprints, AI and Notebook results, and remaining release categories are recorded in `/private/tmp/agentos-production-readiness-current.json`; tracked documentation edits themselves change the candidate fingerprint. Notebook approval/rejection is durable and hash-bound. A ready storage object alone is insufficient: preview, approval and export also require a successful producing job naming that artifact and a passing citation audit. Post-storage settlement/completion failure cases are included in the six-scenario browser contract. Current evidence is `tmp/notebook-job-release-evidence-2026-10-16.json`; earlier passes are historical until rebound. No local result substitutes for ledger-backed review, hosted telemetry/billing, migration grants, real-customer acceptance or production readiness.
+
+The focused suite passes **421/422** (one optional private-package skip); `verify:security` passes, including **84** lifecycle/retention, **29** Notebook provenance, and **25** runtime/storage configuration tests. Typecheck and the standard production build pass. A separate local standalone build was pruned to the client surface (**235** disabled routes removed, **120** retained) and passed the build-trace verifier. This is local artifact evidence only: no Cloud Build, deployment, hosted identity check, or remote image digest was run or established.
+
+The owner-reconciled private Skool graph now accounts for **110** exact lesson IDs, **107** with linked page text and **three** without. Authorized Work Chrome inspection added 15 inline captures consisting of resource labels, community CTA and a ZIP usage note, not video contents or transcripts; three pages have a player but no inline body. The full main-player audit found **93** YouTube embeds and **17** Skool-native players; 112 sidebar items reconcile to 110 lessons plus heading/progress. Player presence is not full playback, transcript capture, video backup, or source completeness. The legacy **25** pending-page counter is overlapping/non-comparable; **3** transcript links remain one excerpt and two unknown scope, none declared full. No complete or hosted import receipt exists. See the execution board and coverage audit for current artifact identities rather than treating these counts as a release gate. Historical Internal Beta evidence observed one-day retention; the selected Cloud Test runtime and bucket instead report 14 days, also contrary to the selected 28-day active plus seven-day recovery policy. Bucket metadata reports seven-day soft delete, not behavioral recovery proof. Hosted source/image identity, same-member tenant parity, two-tenant isolation, applied migrations, and behavioral deletion/recovery remain unverified. MiroFish review and harness tests do not establish provider spend or buyer demand. No deployment, hosted mutation, provider request, or spend is authorized by these results.
 
 ## 4. Proposed Architecture
 
@@ -97,6 +101,60 @@ Use the repository's existing schemas and route contracts as the authority; this
 
 **Contract guarantees:** authorization precedes enqueue and storage access; the job record and reservation precede provider side effects; identifiers are stable across retries; version/config/source references are captured; telemetry is not the system of record for money, permissions, or job state. Keep versioned schemas/tests alongside the implementation and update compatibility tests on contract changes.
 
+**Required accounting invariant:** Ruflo, Loop and Room must not publish
+successful job completion when required settlement returns false. Preserve
+actual usage without clipping to the reservation; an overrun is a blocked
+accounting outcome, not permission to hide usage. Generated-file downloads
+require a durably successful, error-free, nonblocked producing job; Notebook
+citations and hash-bound human approval remain additional gates. Direct
+uploads retain uploader ownership checks. Metadata/state rejection does not
+prove quote adequacy, an external spend cap, atomic domain reconciliation or
+physical deletion; retain those separate acceptance requirements.
+
+**Observation invariant:** A trace outcome observer or optional log/vendor
+sink must not turn a successful operation into a retry or replace an actual
+operation error. Version-2 local traces use bounded early/recent span detail
+plus fixed stage outcome totals, unknown outcomes, in-flight and truncation
+markers. Readers validate timing and summary consistency. These observations
+are not durable completion/settlement, cross-attempt execution, sink-delivery
+or provider-quality attestations; preserve those separate acceptance gates.
+
+**Unknown usage invariant:** Missing/unpriceable usage and an unverified
+provider failure are not proof of a free call. Ruflo, Loop and Room stop at
+that boundary, leave the reservation unsettled and record bounded
+reconciliation metadata without successful completion or automatic replay.
+Known prior subtotals are not the total invoice. Valid numeric zero usage and
+explicit free pricing remain distinct from unknown usage. Earlier persisted
+inline output, other worker fallbacks, quote adequacy, real invoices and
+provider-side hard caps remain separate acceptance requirements.
+
+**Multi-agent envelope invariant:** Ruflo, Loop and Room price their bounded
+future prompts at each stage's model rate, reject invalid/overflowing totals,
+and reprice the real next prompt against the reservation minus known usage.
+An unfundable call is not dispatched. Known earlier usage still requires
+settlement before blocked completion; unknown usage remains unsettled for
+reconciliation. These configured prompt-price projections are not a provider
+hard cap, complete protocol-token estimate or invoice attestation.
+
+**Artifact/object evidence invariant:** Object expiry annotations cannot attest
+to their own original deadline. Bind every generation to the exact tenant's
+database artifact identity and original expiry, with complete artifact reads
+bracketing complete object listings and no observed drift. The schema-4
+receipt hashes the minimized artifact projection alongside object metadata;
+it fails on missing, ambiguous or mismatched references. This is metadata
+evidence, not byte integrity, transactional consistency, deletion or recovery
+proof. Missing recovery references do not authorize longer active retention.
+
+**File-clock invariant:** Copying or delaying a file upload must not renew its
+original artifact deadline. Native uploads and restores carry an expiry-derived
+Cloud Storage Custom-Time clock, while the bucket has both age fallback and
+Custom-Time deletion eligibility rules for the exact tenant prefix. Restores
+bind the destination window to a reviewed manifest, not the backup tenant's
+window. Configuration and metadata receipts do not prove physical deletion:
+[Cloud Storage lifecycle actions are asynchronous](https://docs.cloud.google.com/storage/docs/lifecycle#lifecycle_behavior).
+The selected 28+7 bound still requires operated deletion/recovery evidence;
+the policy is not relaxed to accommodate lifecycle lag.
+
 ### 4.5 Consistency, idempotency, and replay
 
 The database ledger and job state are authoritative for admission, budget, and terminal status. Queue delivery is at-least-once in practice, so workers must claim through a durable compare-and-set/lease pattern and use idempotency at provider-adapter and artifact-write boundaries where supported. Exactly-once external provider execution must not be claimed unless the provider offers and the adapter verifies that guarantee.
@@ -118,7 +176,7 @@ Replays are operator-controlled and scoped to an operation/tenant. A replay must
 - Treat uploaded documents, URLs, graph imports, retrieved text, model output, and browser content as untrusted input. Validate schema, size, MIME/type, URL policy, parser limits, prompt-injection boundaries, and source ownership.
 - Keep provider keys and signing credentials server-side in the existing secret boundary. Do not put key material, session cookies, raw customer text, or complete prompts/results into logs, test fixtures, or screenshots.
 - Store artifacts privately. Serve only through authenticated, tenant-checked routes/proxy; avoid widening IAM solely to simplify signed URL creation.
-- Enforce the owner-selected content policy as 28 active days from each item's creation, followed by the separately retained seven-day object recovery window (up to 35 days recoverable). This decision does not yet prove that every tenant table, export, backup, or vendor copy follows the window. Financial/credit records and minimized security/audit evidence need a separately approved schedule. Keep release blocked until coverage, hosted behavior, and post-deletion verification are evidenced.
+- Enforce the owner-selected policy across all tenant data and files: up to 28 active days from each item's creation, followed by a seven-day recovery-only window, then permanent deletion. This decision does not yet prove that every tenant table, export, backup, or vendor copy follows the window. Any statutory or contractual exception must be narrowly justified, owner-approved, minimized, and represented as an explicit deviation; financial/credit and security/audit records are not silently exempt. Keep release blocked until coverage, hosted behavior, recovery, and post-deletion verification are evidenced.
 - Require explicit approval and rollback for hosted database migrations, policy changes, secret rotation, IAM, retention/lifecycle changes, traffic shifts, public launch, and any paid external request. Billing alerts are not a hard spending cap.
 - Use synthetic data in tests. For authorized course/community materials, use user-supplied/platform-approved exports and preserve attribution/provenance; do not inject browser cookies or bypass access controls.
 
@@ -153,7 +211,7 @@ No numerical SLO is approved by the evidence currently available. Define owners,
 
 1. **Customer journey:** The Work-profile session and one Memory view have been matched read-only, but the full signed-in journey through approved-source selection, draft generation, provenance, review, and export still needs current-source acceptance receipts. Reconfirm the exact app revision and tenant at the start of that run.
 2. **Hosted target:** What exact service, revision, tenant, and Supabase project are authorized for the next read-only parity check? The internal-beta tenant shares a Supabase project with production, so beta approval does not imply project-wide migration permission.
-3. **Retention:** The owner selected 28 active days from item creation plus seven days of object recovery (up to 35 days recoverable). Which billing reviewer approves a separate financial/credit-record schedule, and which backup/vendor retention terms apply? The local policy migration and tests do not establish complete coverage or hosted enforcement.
+3. **Retention:** The owner selected 28 active days plus seven recovery-only days for all tenant data and files. Do verified legal, billing, backup, or vendor obligations require a narrowly approved exception? The local policy migrations and tests do not establish complete coverage or hosted enforcement.
 4. **Archive scope:** Can the user supply or export the remaining authorized lesson pages and video references through a platform-supported path? Current archive counts disagree and are partial; no hosted import should run until reconciled.
 5. **Product wedge and buyer:** Which repeatable client deliverable is most frequent and costly for reachable small AI/dev consultancies? The MiroFish output is synthetic and insufficient; real interviews are needed.
 6. **Release ownership:** Who owns operations, privacy/legal, provider billing, rollback, and customer support approvals? The evidence ledger requires accountable reviewers.
@@ -172,7 +230,7 @@ No numerical SLO is approved by the evidence currently available. Define owners,
 | M4: AI/evaluation operations | Re-run deterministic evaluations and trace tests on final candidate; define model-backed test cases and provider-side hard limits only if a fresh approval is granted. | Offline gate passes; hosted telemetry claims have real receipts; synthetic evidence remains labeled; no unauthorized spend. |
 | M5: Release decision | Strict release verifier, complete evidence bundle, security/operations/privacy/billing approvals, deployment identity, and rollback plan. | Verifier returns ready for the exact candidate and all required reviewers accept. Otherwise record “not ready” with concrete missing gates. |
 
-M0 can be completed locally without external access. M1 should follow immediately. M2/M3 must not mutate hosted data until source coverage, target environment, tenant, and rollback are explicit. The selected 28+7 retention rule is not a release pass until the table/object data-class inventory, financial/audit exceptions, backup/vendor behavior, and hosted deletion checks are complete. M4 does not require another provider run to make progress. M5 is a decision gate, not a deployment authorization.
+M0 can be completed locally without external access. M1 should follow immediately. M2/M3 must not mutate hosted data until source coverage, target environment, tenant, and rollback are explicit. The selected all-tenant 28+7 retention rule is not a release pass until table/object coverage, any explicitly approved exceptions, backup/vendor behavior, recovery, and hosted deletion checks are complete. M4 does not require another provider run to make progress. M5 is a decision gate, not a deployment authorization.
 
 ## Appendix A. Evidence Rules
 

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { loadReviewModule } from "./helpers/load-review-module";
 import { clientRetentionExpiresAt, clientRetentionSecondsRemaining } from "../src/lib/clientRetention";
 import { proxyClientStorageObject } from "../src/lib/clientStorage";
+import * as artifactReview from "../src/lib/clientArtifactReview";
 
 const savedEnv = { ...process.env };
 const DAY_MS = 86_400_000;
@@ -11,6 +12,7 @@ test.afterEach(() => { process.env = { ...savedEnv }; });
 function uploadRoute() {
   const stored: Record<string, unknown>[] = [];
   const route = loadReviewModule("src/app/api/client-runtime/artifacts/route.ts", {
+    "@/lib/clientArtifactReview": artifactReview,
     "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
     "@/lib/clientAuth": { currentClientUser: async () => ({ id: "member-a" }), currentClientMember: async () => true },
     "@/lib/clientDataPlane": {
@@ -106,7 +108,10 @@ function artifactUploadBytesRoute() {
       clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "fixture-bucket" }),
       safeClientObjectKey: (key: string, namespace: string) => key.startsWith(`${namespace}/`),
       clientGcpAccessToken: async () => "fixture-token",
-      uploadClientStorageObject: async (input: { bucket: string; objectKey: string; contentType: string; bytes: Buffer }) => { uploads.push(input); return true; },
+      uploadClientStorageObject: async (input: { bucket: string; objectKey: string; contentType: string; bytes: Buffer; retentionExpiresAt: string }) => {
+        expect(input.retentionExpiresAt).toBe(artifact.retention_expires_at);
+        uploads.push(input); return true;
+      },
     },
   });
   const put = (body = "hello", contentType = "text/plain") => route.PUT(new Request(`https://tenant.invalid/api/client-runtime/artifacts/${artifactId}/upload`, {
@@ -241,7 +246,7 @@ test("artifact list and both download routes enforce expiry and owner or request
   const data = {
     checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
     selectClientRecords: async (table: string, filters: Record<string, string>) => {
-      if (table === "client_runtime_jobs") return { ok: true, records: filters.requested_by === "eq.member-a" ? [{ id: jobId, tenant_slug: "tenant-a", requested_by: "member-a" }] : [] };
+      if (table === "client_runtime_jobs") return { ok: true, records: filters.requested_by === "eq.member-a" ? [{ id: jobId, tenant_slug: "tenant-a", requested_by: "member-a", status: "succeeded", error_code: null, output_metadata: {} }] : [] };
       if (filters.id) return { ok: true, records: [artifact] };
       listFilters.push(filters);
       return { ok: true, records: [artifact] };
@@ -255,6 +260,7 @@ test("artifact list and both download routes enforce expiry and owner or request
     proxyClientStorageObject: async (input: { maxBytes: number; expectedBytes: number }) => { proxied++; expect(input.maxBytes).toBeGreaterThan(0); expect(input.expectedBytes).toBe(5); return { body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode("file!")); controller.close(); } }), contentType: "text/plain", contentLength: "5" }; },
   };
   const common = {
+    "@/lib/clientArtifactReview": artifactReview,
     "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init), redirect: (url: string, init?: ResponseInit) => Response.redirect(url, init?.status) } },
     "@/lib/clientAuth": auth,
     "@/lib/clientDataPlane": data,

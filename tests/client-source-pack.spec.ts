@@ -174,6 +174,7 @@ test("source import commits only the exact artifact bytes reviewed with permissi
 test("source upload requires permission and stores through the authenticated server proxy", async () => {
   const savedEnv = { ...process.env };
   const calls: string[] = [];
+  let recordedExpiry: unknown;
   const bytes = Buffer.from(JSON.stringify(examplePack()));
   const uploadRoute = loadReviewModule("src/app/api/client-runtime/source-import/upload/route.ts", {
     "@/lib/clientAuth": { currentClientUser: async () => ({ id: userId }), currentClientMember: async () => true },
@@ -181,7 +182,7 @@ test("source upload requires permission and stores through the authenticated ser
       checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
       clientRpc: async (name: string, body: Record<string, unknown>) => {
         calls.push(name);
-        if (name === "create_client_runtime_artifact") return { ok: true, value: body.p_artifact_id };
+        if (name === "create_client_runtime_artifact") { recordedExpiry = body.p_retention_expires_at; return { ok: true, value: body.p_artifact_id }; }
         return { ok: true, value: true };
       },
     },
@@ -194,7 +195,10 @@ test("source upload requires permission and stores through the authenticated ser
       clientStorageObjectMetadata: async () => ({ size: bytes.byteLength, contentType: "application/json" }),
       deleteClientStorageObject: async () => { calls.push("storage_delete"); return true; },
       safeClientFileName: (name: string) => name,
-      uploadClientStorageObject: async (input: { bytes: Buffer }) => { expect(input.bytes).toEqual(bytes); calls.push("storage_upload"); return true; },
+      uploadClientStorageObject: async (input: { bytes: Buffer; retentionExpiresAt: string }) => {
+        expect(input.bytes).toEqual(bytes); expect(input.retentionExpiresAt).toBe(recordedExpiry);
+        calls.push("storage_upload"); return true;
+      },
     },
     "@/lib/clientSourcePack": { parseClientSourcePack },
   });
@@ -385,6 +389,7 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
       create table client_tenants (slug text primary key, status text not null, worker_token_hash text not null);
       create table client_memberships (tenant_slug text, user_id uuid, status text);
       create function client_member(p_tenant_slug text) returns boolean language sql as $$ select exists(select 1 from client_memberships where tenant_slug=p_tenant_slug and user_id=auth.uid() and status='active') $$;
+      create function client_tenant_retention_days(p_tenant_slug text) returns integer language sql stable as $$ select 28 $$;
       create table client_runtime_records (
         id uuid primary key default gen_random_uuid(), tenant_slug text not null references client_tenants(slug),
         created_by uuid not null, kind text not null, title text not null, content text not null,
@@ -478,6 +483,18 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
       .toEqual([{ content: "Transcript: A lesson", links: [{ url: "https://video.example.org/watch/1", text: "Media: Lesson playback" }], publishedAt: "2026-05-01" }]);
     expect((await db.query<{ url: string }>("select metadata ->> 'url' as url from client_runtime_memory_graph_nodes where tenant_slug='tenant-a' and kind='url' and metadata ->> 'url' = 'https://video.example.org/watch/1'")).rows)
       .toEqual([{ url: "https://video.example.org/watch/1" }]);
+    const searchSql = "select search_client_runtime_memories($1,$2,$3,$4) as value";
+    await db.exec(`
+      insert into client_runtime_records (tenant_slug, created_by, kind, title, content, metadata, created_at)
+      values ('tenant-a', '${userId}', 'memory', 'Expired retention sentinel #expiredtag', 'expired-search-marker',
+        '{"source_url":"https://expired.example.org/secret"}', now() - interval '29 days');
+      select refresh_client_runtime_memory_graph('tenant-a');
+    `);
+    const expiredSearch = await db.query<{ value: { records: Array<{ title: string }> } }>(searchSql, ["tenant-a", "expired-search-marker", 0, 50]);
+    expect(expiredSearch.rows[0].value.records).toHaveLength(0);
+    expect((await db.query("select id from client_runtime_memory_graph_nodes where tenant_slug='tenant-a' and (label ilike '%expired%' or graph_key like 'record:%')")).rows)
+      .toHaveLength(2);
+    await db.exec("delete from client_runtime_records where title='Expired retention sentinel #expiredtag'; select refresh_client_runtime_memory_graph('tenant-a')");
     const second = await db.query<{ value: { imported: number; duplicates: number } }>(sql, args);
     expect(second.rows[0].value).toEqual({ imported: 0, updated: 0, duplicates: 2, graphRefreshed: false });
     expect((await db.query("select id from client_runtime_audit_events")).rows).toHaveLength(2);
@@ -524,7 +541,6 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
       select 'tenant-a', '${userId}', 'memory', 'Archive memory ' || n, 'Archived course text', now() + n * interval '1 minute'
       from generate_series(1, 125) as n;
     `);
-    const searchSql = "select search_client_runtime_memories($1,$2,$3,$4) as value";
     const firstPage = await db.query<{ value: { records: Array<{ title: string }>; hasMore: boolean } }>(searchSql, ["tenant-a", "archive", 0, 50]);
     expect(firstPage.rows[0].value.records).toHaveLength(50);
     expect(firstPage.rows[0].value.hasMore).toBe(true);

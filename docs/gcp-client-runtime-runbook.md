@@ -265,12 +265,15 @@ gcloud storage buckets describe gs://BUCKET --project PROJECT --format=json \
 ```
 
 It requires an exact 28-day namespace Delete rule and seven-day soft-delete
-recovery. The active client origin is still provided for the verification
+recovery. It also rejects overlapping Delete rules, object versioning, default
+event-based holds, and bucket retention periods that extend beyond the 28-day
+active window. The active client origin is still provided for the verification
 receipt, but browser access no longer depends on direct-bucket upload/download
-CORS methods. It also rejects overlapping Delete rules and versioning. The
-selected recovery window means objects can remain recoverable for up to 35
-days. A passing bucket check alone does not prove that bytes, backups, or
-vendor copies were purged.
+CORS methods. The selected recovery window means objects can remain recoverable
+for up to 35 days. A bucket snapshot does not reveal every existing object's
+individual hold or retention configuration; inspect the complete tenant object
+inventory as a separate release check. A passing bucket check alone does not
+prove that bytes, backups, or vendor copies were purged.
 
 The current lifecycle SQL also provides authenticated tenant-scoped artifact
 deletion. The runtime removes the Cloud Storage object first, treats an already
@@ -801,6 +804,86 @@ duration; do not rerun this check unless the channel or policy changes.
 The event payload contains only tenant slug, bucket/provider label, status, and
 reason-safe fields; it never contains prompts, keys, or file contents.
 
+Local trace contract (not a hosted delivery receipt): newly recorded job traces
+use version 2, retaining the first 24 and latest eight completed spans and up to
+seven stage summaries. Counts distinguish `ok`, `error` and `unknown` and cap
+at 1,000,000 per outcome with `summaryTruncated`; `inFlight` marks work without
+a recorded outcome. `truncated` means detail is incomplete. Timing caps at
+24 hours. An outcome-observer exception records unknown without replacing the
+operation result; actual operation exceptions still propagate. Snapshot/read
+validation isolates copies and rejects inconsistent summaries/timelines.
+Historical version-1 traces remain redacted but have no invented summary.
+Their independently rounded offset/duration may overrun the rounded total by
+one millisecond only; start offsets still cannot exceed the total. Version 2
+uses rounded relative endpoints and has no such allowance.
+
+Console and detached vendor sink failures cannot force a business retry.
+That isolation does not prove telemetry arrived or that missing events were
+detected. A persisted pre-completion trace does not attest to completion RPC
+success, queue delay, retries in other invocations or every provider adapter.
+Use the durable job/ledger state and separately operated alert/sink receipts.
+Do not enable a sink, change retention or run a live drill without approval.
+Trace metadata inherits its job's retention and recovery/deletion obligations.
+
+Required multi-agent settlement (local source, not deployed): Ruflo, Loop and
+Room use the same required-settlement guard as other artifact-producing lanes.
+A false settlement blocks successful completion and attempts a failed domain
+state. Room submits unclipped actual usage. Review unknown responses against
+the durable ledger before replaying; do not repeat provider work or invent a
+refund from a failed/uncertain response. Domain and job writes are separate,
+so reconciliation failures remain an operations concern.
+
+Both generated-file download paths require a successful, error-free,
+nonblocked producing job. Assets exposes `job_released` and disables an
+unreleased artifact's actions. This flag is not human approval: Notebook
+citation/hash/approval gates still apply. Non-Notebook downloads recheck the
+job/artifact after storage responds and cancel a denied stream before returning
+bytes. They do not promise mid-stream revocation. Direct member uploads keep
+their existing owner checks. Rejected ready objects remain private and keep
+their original expiry; no cleanup or retention extension is implied.
+These guards do not establish quote sufficiency, missing-usage accuracy,
+hosted grants, provider hard caps, invoice reconciliation or recovery. No
+deployment, provider enablement or hosted cleanup is authorized here.
+
+## Unknown Multi-Agent Usage (Local Contract Only)
+
+Ruflo, Loop and Room stop on missing/unpriceable usage, unsafe subtotals or a
+provider failure whose charge is unverified. Successful blocked completion
+records `budget_usage_unverified`, `failureDisposition=blocked` and bounded
+`budgetAccounting` metadata. `knownCostMicros` covers only earlier priced
+calls, not the unknown call's charge. `reservationDisposition=unsettled` means
+this worker did not settle/refund it, not a fresh hosted ledger attestation.
+If completion persistence fails, the job can remain running; do not replay it.
+
+Reconcile the exact job, original reservation and provider operation against
+approved authoritative evidence before any explicit correction. Do not turn
+absent usage into zero, refill budget to bypass a hold, rerun a possibly charged
+call, or renew retention. No automatic reconciliation, operator mutation or
+provider request is authorized by local tests. Preflight failures also remain
+conservative because the current adapter does not distinguish no-charge
+failures. Other worker lanes and earlier inline Room/Ruflo output need separate
+acceptance; generated-file denial is not blanket quarantine of those rows.
+
+## Multi-Agent Prompt Envelopes (Local Contract Only)
+
+Ruflo admission prices each specialist prompt plus bounded coordinator
+findings. Loop separately prices the first/later builder prompts and the
+judge's own model for every permitted round. Room includes the bounded growth
+of later agents' transcript prompts. Invalid or overflowing totals fail before
+reservation or provider work. The existing pricing heuristic is not proof of
+the provider's protocol overhead, token invoice or account-level spending cap.
+
+Every stage reprices its actual next prompt against the reservation minus the
+known prior cost. If it cannot fit, do not dispatch it. Required settlement of
+the unmodified known subtotal precedes `budget_envelope_exceeded` completion;
+`budgetAccounting.status=settled_prior_usage` distinguishes that case from
+`reconciliation_required` after failed accounting. A false settlement retains
+`budget_settlement_failed`. Missing usage remains on the separate unsettled
+path above. Unknown settlement/completion outcomes must be inspected, not
+replayed. These markers inherit the job's original retention, with no new
+clock or permission to extend it. Hosted ledger/grants and the remaining
+worker lanes, earlier inline output and external limits still need acceptance.
+
 ## Export, Restore, and Offboarding
 
 Lifecycle actions are operator-only and require the Supabase service-role key
@@ -837,14 +920,93 @@ restore Cloud Storage objects too:
 npm run client:lifecycle -- \
   --mode restore \
   --slug veloce-cloud-test \
-  --input .private-client-kits/exports/EXPORT.json \
-  --objects .private-client-kits/exports/EXPORT-objects \
+  --config .private-client-kits/veloce-cloud-test.gcp.json \
+  --manifest-sha256 "$REVIEWED_MANIFEST_SHA256" \
+  --input .private-client-kits/exports/veloce-cloud-test-EXPORT.json \
+  --objects .private-client-kits/exports/veloce-cloud-test-EXPORT-objects \
   --apply --confirm-restore
 ```
 
 An applied restore requires `--confirm-restore`. If the snapshot contains
-artifact metadata, the matching `--objects` backup is also required so the
-database cannot advertise files that are missing from Cloud Storage.
+artifact metadata, the matching `--objects` backup is required in both dry-run
+and apply modes. Object exports now create a private sibling sidecar named
+`OBJECT_BACKUP_DIRECTORY.manifest.json`; keep it with the exact metadata JSON
+and object directory. It binds the snapshot SHA-256, namespace, layout, and
+every local object's path, size, SHA-256, and MD5. Restore rejects a missing
+sidecar, changed snapshot, added/missing/changed files, unsafe paths, symlinks,
+ambiguous layouts, missing ready-artifact bytes, and artifact-size mismatch
+before any cloud or database write. Pending artifacts can lack bytes; deleted
+artifact bytes cannot be restored. Legacy backups without a sidecar are not
+silently trusted: use a new verified export where possible, or obtain an
+independent review of original source digests before any legacy recovery.
+
+Restore copies each verified file to its exact tenant object key before
+writing metadata. It passes a create-only generation precondition and the
+verified file's MD5 to `gcloud storage cp`; transfer failure stops before
+metadata writes. Existing destination objects require an explicit recovery
+decision, not a blind overwrite or unchecked retry. See Google's
+[copy flags](https://docs.cloud.google.com/sdk/gcloud/reference/storage/cp)
+and [generation-zero precondition](https://docs.cloud.google.com/storage/docs/request-preconditions#the_0_value_in_a_generation-match_precondition).
+These local checks do not establish hosted recovery, remote source-checksum
+parity, signature authenticity, backup expiry/encryption, or recovery-only
+access. Ordinary restore refuses expired artifact backups, missing original
+clocks, expiry beyond the tenant's capped window, and files without matching
+ready-artifact metadata. It does not renew an original retention deadline.
+
+Before an applied metadata restore, separately review and install
+`product-experience/supabase-client-lifecycle-restore.sql` **after** the client
+tables and their retention migrations. No installation is authorized here.
+The CLI requires its service-role-only `restore_client_lifecycle_metadata`
+RPC; there is no sequential-write fallback. It sends ordered batches of at
+most 500 rows inside **one** metadata transaction, capped at 50,000 rows and
+32 MiB of batch JSON. Original clocks are restored after ordinary insert
+guards, then verified on returned rows. Typed insert, retention or clock-drift
+failure rolls back the metadata transaction. The 49 table projections match
+the credential-safe export allowlist. Existing tenants/rows are not upserted;
+restore requires a reviewed empty target, not an overwrite decision inferred
+from `--confirm-restore`.
+Both `retention_expires_at` and ECC revision `expires_at` are checked against
+their original clocks. Learning items must be proposed without old approvals;
+revisions must remain revoked evidence. Restore does not reactivate a previous
+learning approval or extend a revision's own deadline.
+
+These semantics are tested against local PostgreSQL-compatible fixtures,
+including the actual record, Pipeline and Notebook source retention guards;
+hosted grants, all-family constraints and a complete hosted restore remain
+unverified. A dry run performs local validation, not database constraint or
+migration verification. Copy failure can leave private transferred objects,
+and a lost/unverified RPC response requires target inspection before retry.
+There is no cross-resource transaction or automatic object cleanup; quiesce
+writes and use a reviewed recovery procedure and target.
+
+File-copy clock update (local source, not applied): Native member, source-pack
+and worker uploads now set bytes and deadline metadata in one create-only XML
+PUT. The `Custom-Time` anchor is the original artifact expiry minus the bucket's
+configured retention days; this also handles shorter per-item deadlines.
+A create-only conflict triggers a read-only metadata check. Reuse requires
+matching checksum, size, content type, anchor, expiry and clock-policy tag;
+it never overwrites the existing object or advances its clock.
+Restore uses the reviewed destination manifest's window, which can differ
+from the backup tenant's window. Applied object transfers now require
+`--config` and matching `--manifest-sha256`, with the client, bucket, namespace
+and 1-28-day destination window checked before copying. Local source hashes
+do not establish that a live bucket matches that manifest.
+
+The proposed bucket configuration has two tenant-prefixed Delete rules:
+`age` and `daysSinceCustomTime`, both using the configured window. The age
+rule remains a fallback for legacy objects; legacy/missing clock metadata
+still fails the schema-4 inventory gate. A minimum bucket retention period
+can block a copied/shorter-lived object's original deadline and is rejected.
+Keep seven-day soft delete; do not disable recovery or silently rewrite
+existing objects to pass the checks. Review migration, IAM, original artifact
+crosswalk and rollback separately before any hosted change.
+
+References: [atomic XML upload headers](https://docs.cloud.google.com/storage/docs/xml-api/put-object-upload),
+[copy metadata flags](https://docs.cloud.google.com/sdk/gcloud/reference/storage/cp),
+[lifecycle conditions and asynchronous behavior](https://docs.cloud.google.com/storage/docs/lifecycle).
+These define eligibility, not a guaranteed deletion time. Exact 28+7 behavior,
+recovery-only access, backup/vendor expiry, and private orphan cleanup remain
+unverified. This runbook update authorizes no hosted write or spend.
 Worker credentials are deliberately not restored. After a successful restore,
 run `npm run provision:client-worker-token` with operator credentials and
 redeploy the approved revision before enabling queued work.
@@ -877,7 +1039,8 @@ When tenant objects exist, `--include-objects` is required. The command creates
 a new private object-backup directory, copies the reviewed namespace, and
 checks that each inventoried object has a local file before changing tenant
 status or deleting cloud objects. An existing backup directory, failed copy,
-or incomplete copy stops the offboard. The command rereads the object
+or incomplete copy stops the offboard. Snapshot-bound local file hashes are
+also rechecked before suspension and before object deletion. The command rereads the object
 inventory after the backup and after suspending the tenant, and refuses a
 changed set. It also refuses to delete the tenant row if objects remain after
 the cloud delete command. Keep the backup under the separately approved
@@ -947,6 +1110,67 @@ For a second client dry run, create a new manifest with different values for
 `gcp.storageBucket`, `storage.namespace`, `access.allowedUserEmails`, and every
 Secret Manager reference. A second deployment must not be able to read
 `veloce-cloud-test` storage or secrets.
+
+## Verify Existing Tenant File Retention
+
+The bucket lifecycle and seven-day soft-delete settings do not prove that
+existing object generations are free of holds or longer per-object retention.
+Before release evidence is collected, obtain separate approval for the exact
+project, bucket, tenant, Supabase project and bounded listing/read cost. The
+collector does not authorize itself. Configure `SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY` through the existing operator secret boundary;
+never paste their values into evidence or command arguments. The URL must
+exactly match the reviewed `--supabase-project-ref` before any request. Then
+run a current inventory:
+
+```bash
+npm run prepare:client-storage-object-inventory -- \
+  --project YOUR_PROJECT_ID \
+  --bucket YOUR_CLIENT_BUCKET \
+  --namespace YOUR_TENANT_NAMESPACE \
+  --supabase-project-ref YOUR_SUPABASE_PROJECT_REF \
+  --account YOUR_OPERATOR_EMAIL \
+  --output tmp/client-storage-object-inventory.json
+```
+
+The collector brackets an all-versions listing and an exhaustive soft-deleted
+listing with complete, stable artifact GETs using an eight-column projection
+(IDs, tenant, object key, size/type, status and original clocks). Each sample
+has a 101-request bound, 500 rows/page, a 4-MiB response bound and 50,000 accepted
+rows maximum. Every generation must match its artifact's original expiry and
+size/type. Orphans, missing active ready files, live bytes for deleted records,
+ambiguous generations, incomplete samples and observed drift fail closed.
+No object writes or deletes are performed. It writes a mode-0600 schema-4
+receipt only if the output path does not already exist. The receipt contains
+counts and hashes, not object names, artifact IDs or credentials. Review the
+receipt and its `ok` result, then pass the same account and target identity
+when collecting release evidence:
+
+```bash
+npm run publish:release-ledger -- \\
+  --client-cloud-project YOUR_PROJECT_ID \\
+  --client-cloud-region YOUR_REGION \\
+  --client-cloud-service YOUR_SERVICE \\
+  --client-storage-bucket YOUR_CLIENT_BUCKET \\
+  --client-storage-namespace YOUR_TENANT_NAMESPACE \\
+  --client-cloud-account YOUR_OPERATOR_EMAIL \\
+  --client-storage-object-inventory tmp/client-storage-object-inventory.json
+```
+
+For a later readiness recheck, provide a newly generated receipt with the same
+`--client-storage-object-inventory` flag; the inventory must be less than 24
+hours old and match the current object-generation and artifact-snapshot hashes,
+Supabase project and tenant. Schema-3 and older receipts are not accepted.
+Collect on a reviewed quiescent target: bracketed reads detect observed drift,
+not every possible concurrent change or a cross-resource transaction. This
+compares metadata, not byte hashes or a cryptographic database attestation.
+Unmatched soft-deleted generations remain a failed gate until their permitted
+recovery references are reviewed; do not recreate or retain expired active
+database rows just to produce a passing crosswalk. Recovery-only access and
+physical deletion still require operated evidence.
+These listings are read-only but may incur Cloud Storage listing charges.
+Never treat a bucket-only configuration snapshot as proof of object-level
+retention.
 
 ## Rollback
 

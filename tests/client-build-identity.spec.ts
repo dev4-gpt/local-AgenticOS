@@ -4,6 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { clientImageBuildArgs } from "../scripts/lib/client-image-build.mjs";
+import { workingTreeFingerprintSha256 } from "../scripts/lib/working-tree-fingerprint.mjs";
+import { CLIENT_RUNTIME_CONFIG_KEYS, clientRuntimeConfigDigest, clientTenantScopeDigest } from "../src/lib/clientRuntimeConfigDigest.mjs";
 import { clientApiRouteAllowed } from "../src/lib/clientRuntimePolicy";
 import { loadReviewModule } from "./helpers/load-review-module";
 
@@ -20,6 +22,22 @@ test("build identity is tenant-authenticated, uncached, and rejects malformed st
   process.env.K_REVISION = "revision?secret=unsafe";
   process.env.SUPABASE_URL = "https://project-ref.supabase.co";
   process.env.CLIENT_SLUG = "private-tenant-slug";
+  process.env.CLIENT_RUNTIME_DATA_MODE = "supabase";
+  process.env.CLIENT_RUNTIME_ENFORCE_AUTH = "1";
+  process.env.CLIENT_RUNTIME_WORKER_ENABLED = "0";
+  process.env.CLIENT_PROVIDER_CALLS_ENABLED = "0";
+  process.env.CLIENT_RETENTION_DAYS = "28";
+  process.env.CLIENT_STORAGE_BUCKET = "tenant-bucket-a";
+  process.env.CLIENT_STORAGE_NAMESPACE = "private-tenant-slug";
+  process.env.CLIENT_MODEL_PRICING_JSON = '{"model-b":{"input":2},"model-a":{"input":1}}';
+  process.env.CLIENT_ALLOWED_API_ROUTES = "/api/client-runtime/build-identity, /api/a, /api/b";
+  process.env.CLIENT_ENABLED_CAPABILITIES = "tenant-data,artifacts";
+  process.env.CLIENT_INTENT_ROUTING_ENABLED = "1";
+  process.env.CLIENT_RESEARCH_PROVIDER = "firecrawl";
+  process.env.CLIENT_APPROVAL_POLICY = "draft-only";
+  process.env.CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON = '{"openrouter":["model-a"]}';
+  process.env.CLIENT_PREVIEW_CAPABILITIES = "research,delivery";
+  process.env.OPENAI_API_KEY = "must-not-be-included";
   const denied = await route.GET();
   expect(denied.status).toBe(401);
   expect(await denied.json()).toEqual({ ok: false, error: "not_authenticated" });
@@ -27,10 +45,15 @@ test("build identity is tenant-authenticated, uncached, and rejects malformed st
 
   authorized = true;
   const unknown = await route.GET();
-  expect(await unknown.json()).toEqual({
+  const unknownBody = await unknown.json();
+  expect(unknownBody).toEqual({
     ok: true, sourceCommit: null, cloudRunRevision: null, tenantScopeDigest: "24caff626c01fb157da8991cd41f9056f3ffe7dd80d74066a553424aa3d15685",
+    runtimeConfigDigest: expect.stringMatching(/^[0-9a-f]{64}$/),
     provenance: "reported_by_runtime_not_independent_attestation",
   });
+  expect(unknownBody.runtimeConfigDigest).toBe(clientRuntimeConfigDigest(
+    Object.fromEntries(CLIENT_RUNTIME_CONFIG_KEYS.map((key) => [key, process.env[key]])),
+  ));
   process.env.VELOCE_BUILD_SOURCE_COMMIT = "A".repeat(40);
   process.env.K_REVISION = "agentos-internal-beta-00042-abcd";
   const stamped = await route.GET();
@@ -40,9 +63,50 @@ test("build identity is tenant-authenticated, uncached, and rejects malformed st
     sourceCommit: "a".repeat(40),
     cloudRunRevision: "agentos-internal-beta-00042-abcd",
     tenantScopeDigest: "24caff626c01fb157da8991cd41f9056f3ffe7dd80d74066a553424aa3d15685",
+    runtimeConfigDigest: unknownBody.runtimeConfigDigest,
   });
   expect(JSON.stringify(stampedBody)).not.toContain("private-tenant-slug");
   expect(JSON.stringify(stampedBody)).not.toContain("project-ref.supabase.co");
+  expect(JSON.stringify(stampedBody)).not.toContain("must-not-be-included");
+
+  process.env.CLIENT_ALLOWED_API_ROUTES = "/api/b, /api/a, /api/client-runtime/build-identity";
+  expect((await route.GET().then((response: Response) => response.json())).runtimeConfigDigest)
+    .toBe(unknownBody.runtimeConfigDigest);
+  process.env.CLIENT_ALLOWED_API_ROUTES = "/api/a, /api/c, /api/client-runtime/build-identity";
+  const changedRoutePolicy = await route.GET();
+  const changedRouteBody = await changedRoutePolicy.json();
+  expect(changedRouteBody.runtimeConfigDigest).not.toBe(unknownBody.runtimeConfigDigest);
+  process.env.CLIENT_ALLOWED_API_ROUTES = "/api/a, /api/b, /api/client-runtime/build-identity";
+  process.env.CLIENT_RETENTION_DAYS = "21";
+  const changedRetention = await route.GET();
+  expect((await changedRetention.json()).runtimeConfigDigest).not.toBe(unknownBody.runtimeConfigDigest);
+  process.env.CLIENT_RETENTION_DAYS = "28";
+  process.env.CLIENT_INTENT_ROUTING_ENABLED = "0";
+  expect((await route.GET().then((response: Response) => response.json())).runtimeConfigDigest)
+    .not.toBe(unknownBody.runtimeConfigDigest);
+  process.env.CLIENT_INTENT_ROUTING_ENABLED = "1";
+  process.env.CLIENT_RESEARCH_PROVIDER = "brave";
+  expect((await route.GET().then((response: Response) => response.json())).runtimeConfigDigest)
+    .not.toBe(unknownBody.runtimeConfigDigest);
+  process.env.CLIENT_RESEARCH_PROVIDER = "firecrawl";
+  process.env.CLIENT_APPROVAL_POLICY = "draft-review-export";
+  expect((await route.GET().then((response: Response) => response.json())).runtimeConfigDigest)
+    .not.toBe(unknownBody.runtimeConfigDigest);
+  process.env.CLIENT_APPROVAL_POLICY = "draft-only";
+  process.env.CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON = '{"openrouter":["model-b"]}';
+  expect((await route.GET().then((response: Response) => response.json())).runtimeConfigDigest)
+    .not.toBe(unknownBody.runtimeConfigDigest);
+  process.env.CLIENT_PROVIDER_MODEL_ALLOWLIST_JSON = '{"openrouter":["model-a"]}';
+  const previewPolicyDigest = (await route.GET().then((response: Response) => response.json())).runtimeConfigDigest;
+  process.env.CLIENT_PREVIEW_CAPABILITIES = "delivery,research,research";
+  expect((await route.GET().then((response: Response) => response.json())).runtimeConfigDigest).toBe(previewPolicyDigest);
+  process.env.OPENAI_API_KEY = "rotated-secret-value";
+  process.env.CLIENT_MODEL_PRICING_JSON = '{ "model-a": { "input": 1 }, "model-b": { "input": 2 } }';
+  expect((await route.GET().then((response: Response) => response.json())).runtimeConfigDigest)
+    .toBe(unknownBody.runtimeConfigDigest);
+  process.env.CLIENT_STORAGE_NAMESPACE = "another-tenant";
+  expect((await route.GET().then((response: Response) => response.json())).runtimeConfigDigest)
+    .not.toBe(unknownBody.runtimeConfigDigest);
 
   process.env.SUPABASE_URL = "https://project-ref.supabase.co:5443/custom-base";
   const separateProject = await route.GET();
@@ -106,5 +170,42 @@ test("client image build stamps only a clean exact Git commit", () => {
   expect(dockerfile).toContain("LABEL org.opencontainers.image.revision=${VELOCE_SOURCE_COMMIT}");
   for (const runbook of ["docs/public-beta-runbook.md", "docs/v3.3-managed-credit-lifecycle-runbook.md"]) {
     expect(readFileSync(runbook, "utf8")).toContain("_SOURCE_COMMIT=$SOURCE_COMMIT");
+  }
+});
+
+test("tenant scope digest is stable across runtime surfaces and hides malformed configuration", () => {
+  const digest = clientTenantScopeDigest("https://project-ref.supabase.co/", "private-tenant-slug");
+  expect(digest).toBe("24caff626c01fb157da8991cd41f9056f3ffe7dd80d74066a553424aa3d15685");
+  expect(clientTenantScopeDigest("https://project-ref.supabase.co/?ignored=1", "private-tenant-slug")).toBe(digest);
+  expect(clientTenantScopeDigest("not-a-url", "private-tenant-slug")).toBeNull();
+  expect(clientTenantScopeDigest("https://project-ref.supabase.co", " ")).toBeNull();
+});
+
+test("candidate fingerprint changes with tracked and untracked source without exposing bytes", () => {
+  const temp = mkdtempSync(path.join(os.tmpdir(), "candidate-fingerprint-"));
+  try {
+    const git = (...args: string[]) => spawnSync("git", args, { cwd: temp, encoding: "utf8" });
+    expect(git("init", "-q").status).toBe(0);
+    writeFileSync(path.join(temp, "tracked.txt"), "baseline\n");
+    expect(git("add", ".").status).toBe(0);
+    expect(git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "fixture").status).toBe(0);
+
+    const clean = workingTreeFingerprintSha256(temp);
+    writeFileSync(path.join(temp, "tracked.txt"), "candidate A\n");
+    writeFileSync(path.join(temp, "untracked.txt"), "private candidate bytes\n");
+    const candidateA = workingTreeFingerprintSha256(temp);
+    expect(candidateA).toMatch(/^[0-9a-f]{64}$/);
+    expect(candidateA).not.toBe(clean);
+    expect(workingTreeFingerprintSha256(temp)).toBe(candidateA);
+    expect(candidateA).not.toContain("private");
+
+    writeFileSync(path.join(temp, "untracked.txt"), "different private bytes\n");
+    const candidateWithChangedUntracked = workingTreeFingerprintSha256(temp);
+    expect(candidateWithChangedUntracked).not.toBe(candidateA);
+
+    writeFileSync(path.join(temp, "tracked.txt"), "candidate B\n");
+    expect(workingTreeFingerprintSha256(temp)).not.toBe(candidateWithChangedUntracked);
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
   }
 });

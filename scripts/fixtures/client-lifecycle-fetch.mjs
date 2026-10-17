@@ -39,16 +39,26 @@ globalThis.fetch = async (url, options) => {
   if (parsed.origin !== "https://example.supabase.co" || options.method !== "POST") {
     throw new Error(`Unexpected lifecycle request: ${options.method} ${url}`);
   }
-  const rows = JSON.parse(options.body);
-  if (!Array.isArray(rows) || !rows.length || rows.length > 500 || rows.some((row) => row.tenant_slug !== "test-client" && row.slug !== "test-client")) {
-    throw new Error(`Unexpected lifecycle restore payload: ${parsed.pathname}`);
+  if (!parsed.pathname.endsWith("/rpc/restore_client_lifecycle_metadata")) throw new Error("Direct metadata inserts are not an atomic restore");
+  const payload = JSON.parse(options.body);
+  if (payload.p_tenant_slug !== "test-client" || !Array.isArray(payload.p_batches)) throw new Error("Invalid restore transaction");
+  console.log("MOCK_ATOMIC_RESTORE");
+  const tables = {};
+  let restoredRows = 0;
+  for (const { table, rows } of payload.p_batches) {
+    if (!Array.isArray(rows) || !rows.length || rows.length > 500 || rows.some((row) => row.tenant_slug !== "test-client" && row.slug !== "test-client")) {
+      throw new Error(`Unexpected lifecycle restore payload: ${table}`);
+    }
+    if (table === "client_manifest_proposals" && rows.some((row) => row.status !== "submitted" || row.manifest_hash !== null)) {
+      throw new Error("Restore must not revive manifest approval");
+    }
+    if (table === "client_provider_connections" && rows.some((row) => row.status !== "submitted" || row.manifest_version !== null || row.last_validated_at !== null || "secret_resource" in row)) {
+      throw new Error("Restore must not revive provider access");
+    }
+    console.log(`MOCK_RESTORE_TABLE:${table}:${rows.length}`);
+    tables[table] = (tables[table] ?? 0) + rows.length;
+    restoredRows += rows.length;
   }
-  if (parsed.pathname.endsWith("/client_manifest_proposals") && rows.some((row) => row.status !== "submitted" || row.manifest_hash !== null)) {
-    throw new Error("Restore must not revive manifest approval");
-  }
-  if (parsed.pathname.endsWith("/client_provider_connections") && rows.some((row) => row.status !== "submitted" || row.manifest_version !== null || row.last_validated_at !== null || "secret_resource" in row)) {
-    throw new Error("Restore must not revive provider access");
-  }
-  console.log(`MOCK_RESTORE_TABLE:${parsed.pathname.split("/").at(-1)}:${rows.length}`);
-  return new Response(null, { status: 201 });
+  if (process.env.LIFECYCLE_MOCK_RESTORE === "failure") return Response.json({ error: "fixture_failure" }, { status: 409 });
+  return Response.json({ atomicMetadata: process.env.LIFECYCLE_MOCK_RESTORE !== "bad-receipt", tables, restoredRows });
 };

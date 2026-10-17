@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { LayoutGrid, Brain, Sparkles as SparklesIcon, TrendingUp, Columns3, NotebookText, Film, Building2, Workflow, MessagesSquare, Image as ImageIcon, Gamepad2, Music2, Network, Clapperboard, Repeat, Cpu, LayoutDashboard, Palette, GripVertical, Eye, EyeOff, SlidersHorizontal, Check, SquareTerminal, Globe2, PlugZap, Orbit, Mountain, Blocks, Target, BookOpenText, RadioTower, ContactRound, GitBranch, Mic2, ChevronDown, KeyRound, ListChecks, Link2, Search } from "lucide-react";
 import { useState, useEffect, type ReactNode } from "react";
 import AgentAvatar from "./AgentAvatar";
+import { clientNavigationRoutes } from "@/lib/clientRuntimePolicy";
 
 interface NavItem {
   href: string;
@@ -157,7 +158,9 @@ export default function Sidebar({ clientEdition = false, allowedClientRoutes = [
     ...order.filter((h) => BY_HREF[h]),
     ...DEFAULT_ORDER.filter((h) => !order.includes(h)),
   ];
-  const allowedOrder = clientEdition ? fullOrder.filter((href) => allowedClientRoutes.includes(href)) : fullOrder.filter((href) => !CLIENT_ONLY_ROUTES.has(href));
+  const allowedOrder = clientEdition
+    ? clientNavigationRoutes(fullOrder, allowedClientRoutes)
+    : fullOrder.filter((href) => !CLIENT_ONLY_ROUTES.has(href));
   const visible = customize ? allowedOrder : allowedOrder.filter((h) => !hidden.includes(h));
 
   function move(from: string, to: string) {

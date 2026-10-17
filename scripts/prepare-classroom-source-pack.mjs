@@ -89,6 +89,7 @@ export function prepareClassroomSourcePack(run) {
     const transcripts = (source.transcripts ?? []).flatMap((item) => {
       if (!item || typeof item !== "object" || typeof item.text !== "string" || !item.text.trim()
         || item.text.length > 500_000 || SECRET_LIKE.test(item.text)
+        || (item.captureScope !== undefined && !["full", "excerpt", "unknown"].includes(item.captureScope))
         || (item.title !== undefined && (typeof item.title !== "string" || !item.title.trim() || item.title.length > 280 || SECRET_LIKE.test(item.title)))
         || (item.collectedAt !== undefined && (typeof item.collectedAt !== "string" || Number.isNaN(Date.parse(item.collectedAt))))) {
         throw new Error("classroom_transcript_invalid");
@@ -103,6 +104,7 @@ export function prepareClassroomSourcePack(run) {
         text,
         segment: index + 1,
         segmentCount: segments.length,
+        captureScope: item.captureScope ?? "unknown",
         ...(item.collectedAt ? { collectedAt: item.collectedAt } : {}),
       }));
     });

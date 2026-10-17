@@ -12,6 +12,8 @@ const provisioner = await readFile(join(root, "scripts/provision-gcp-client.mjs"
 const artifactRoute = await readFile(join(root, "src/app/api/client-runtime/artifacts/[id]/route.ts"), "utf8");
 const lifecycleSql = await readFile(join(root, "product-experience/supabase-client-runtime-lifecycle.sql"), "utf8");
 const sourceRetentionSql = await readFile(join(root, "product-experience/supabase-client-notebook-source-retention.sql"), "utf8");
+const rateLimitRetentionSql = await readFile(join(root, "product-experience/supabase-client-runtime-rate-limit-retention.sql"), "utf8");
+const auditBudgetRetentionSql = await readFile(join(root, "product-experience/supabase-client-runtime-audit-budget-retention.sql"), "utf8");
 const failures = [];
 
 function expect(condition, message) {
@@ -25,17 +27,25 @@ expect(lifecycle.includes("client_tenants: \"slug,name,status,retention_days,cre
 expect(lifecycle.includes("client_provider_connections: \"id,tenant_slug,catalog_id,provider_key,credential_mode,status,pricing_snapshot_id,manifest_version,last_validated_at,revoked_at,created_at,updated_at\""), "provider connection exports must omit secret references and validation payloads");
 expect(lifecycle.includes("worker_token_hash"), "lifecycle verifier must reject worker token hashes if supplied by an old snapshot");
 expect(lifecycle.includes("pickExportColumns(table, row)"), "restore must use the same approved column boundary as export");
+expect(lifecycle.includes("rpc/restore_client_lifecycle_metadata") && !lifecycle.includes("async function supabaseInsert"), "restore must use one atomic metadata RPC without a direct-insert fallback");
 expect(lifecycle.includes("secretLikeValue") && lifecycle.includes("assertSnapshotSafe"), "lifecycle must reject secret-like values in metadata backups");
 expect(lifecycle.includes("confirm-restore") && lifecycle.includes("confirm-offboard"), "destructive lifecycle actions must require explicit confirmation");
 expect(lifecycle.includes("--delete-queue") && lifecycle.includes("--destroy-secrets"), "offboarding must require queue and secret deletion consent");
 expect(lifecycle.includes("--notification-channel") && lifecycle.includes("--delete-notification-channel") && lifecycle.includes("Refusing to delete a notification channel that is not owned by this client"), "offboarding must explicitly and safely delete the client notification channel");
 expect(lifecycle.includes("deleteRuntimeAlerts") && lifecycle.includes("listSecretNames"), "offboarding must remove client alert and secret resources");
-expect(provisioner.includes("storageLifecycleFile") && provisioner.includes("matchesPrefix: [`${slug}/`]") && provisioner.includes('action: { type: "Delete" }'), "GCP provisioner must apply tenant-prefixed Cloud Storage retention");
+expect(provisioner.includes("storageLifecycleFile") && provisioner.includes("clientStorageLifecycleRules(slug, retentionDays)"), "GCP provisioner must use the verified age and original-deadline lifecycle rules");
 expect(provisioner.includes("normalizeRetentionDays") && provisioner.includes("retentionDays"), "GCP provisioner must derive storage retention from the validated manifest");
 expect(artifactRoute.includes("deleteClientStorageObject") && artifactRoute.includes('clientRpc("delete_client_runtime_artifact"'), "artifact deletion must remove the tenant object before metadata");
 expect(lifecycleSql.includes("delete_client_runtime_artifact") && lifecycleSql.includes("grant execute on function public.delete_client_runtime_artifact(text, uuid)"), "artifact deletion must use an authenticated, tenant-scoped RPC");
 expect(lifecycle.includes("--confirm-retention-sources") && lifecycle.includes("rpc/purge_expired_client_notebook_sources"), "Notebook source retention must require confirmation and call the scoped purge RPC");
 expect(sourceRetentionSql.includes("retention_expires_at <= now()") && sourceRetentionSql.includes("created_at <= v_cutoff") && sourceRetentionSql.includes("to service_role"), "Notebook source retention must enforce age, expiry, and service-role access");
+expect(lifecycle.includes("--confirm-retention-rate-limits") && lifecycle.includes("rpc/purge_expired_client_runtime_rate_limits"), "runtime rate-limit retention must require a separate confirmation and invoke its bounded purge RPC");
+expect(rateLimitRetentionSql.includes("window_started_at + make_interval(secs => window_seconds) + interval '7 days'") && rateLimitRetentionSql.includes("to service_role"), "runtime rate-limit hashes must retain the stored limiter window plus seven days and restrict purge to service role");
+expect(lifecycle.includes("--confirm-retention-audit-budget") && lifecycle.includes("rpc/purge_expired_client_runtime_audit_and_budget"), "audit and budget retention must require explicit confirmation and invoke its bounded purge RPC");
+expect(auditBudgetRetentionSql.includes("make_interval(days => public.client_tenant_retention_days(tenant_slug))")
+  && auditBudgetRetentionSql.includes("v_audit_cutoff := now() - make_interval(days => v_days + 7)")
+  && auditBudgetRetentionSql.includes("v_budget_cutoff := now() - interval '35 days'")
+  && auditBudgetRetentionSql.includes("to service_role"), "audit and runtime-budget details must enforce active read expiry, seven-day audit recovery, monthly-cap-safe 35-day budget cleanup, and service-role-only purge");
 
 const tempDir = await mkdtemp(join(tmpdir(), "veloce-client-lifecycle-"));
 const safeSnapshot = join(tempDir, "safe.json");

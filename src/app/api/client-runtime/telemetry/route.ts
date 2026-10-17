@@ -17,6 +17,9 @@ const MAX_TELEMETRY_BODY_BYTES = 16 * 1024;
 export async function POST(request: Request) {
   const user = await currentClientUser();
   if (!user || !(await currentClientMember())) return error("not_authenticated", 401);
+  const tenant = process.env.CLIENT_SLUG?.trim();
+  if (!tenant) return error("runtime_configuration_unavailable", 503);
+
   const limit = await checkClientRuntimeRateLimit("telemetry-write", 120, 900);
   if (!limit.ok) return error("runtime_limit_unavailable", 503);
   if (!limit.allowed) return error("runtime_rate_limited", 429);
@@ -48,11 +51,19 @@ export async function POST(request: Request) {
     && properties.messageCount >= 0 && properties.messageCount <= 999) safeProperties.messageCount = properties.messageCount;
   if (event === "client_runtime_provider_workspace_opened") safeProperties.result = "ready";
   if (event.endsWith("_failed")) safeProperties.result = "failed";
-  const tenant = process.env.CLIENT_SLUG?.trim() || "client";
   const distinctId = createHash("sha256").update(`${tenant}:${user.id}`).digest("hex");
   const tenantId = createHash("sha256").update(tenant).digest("hex").slice(0, 24);
-  await captureClientProductEvent({ event, distinctId, properties: { ...safeProperties, tenant: `tenant:${tenantId}` } });
-  await recordClientAudit(event, { ...safeProperties, source: "client-telemetry" });
+  const auditMetadata = { ...safeProperties, source: "client-telemetry" };
+  try {
+    if (!(await recordClientAudit(event, auditMetadata))) return error("telemetry_audit_write_failed", 502);
+  } catch {
+    return error("telemetry_audit_write_failed", 502);
+  }
+  try {
+    await captureClientProductEvent({ event, distinctId, properties: { ...safeProperties, tenant: `tenant:${tenantId}` } });
+  } catch {
+    // Durable tenant audit evidence is authoritative; vendor analytics is best-effort.
+  }
   return NextResponse.json({ ok: true }, { headers: { "cache-control": "no-store" } });
 }
 

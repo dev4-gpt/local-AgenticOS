@@ -41,20 +41,25 @@ test("PDF text cleanup and hyperlink parsing reject malformed/non-web targets", 
     "   1  Annotation    https://example.org/good",
     "   2  Annotation    javascript:alert(1)",
     "   3  Annotation    https://user:pass@example.org/private",
+    "   4  Annotation    https://api.hunter.io/v2/account?api_key=YOUR_KEY",
   ].join("\n"))).toEqual({
     links: [{ url: "https://example.org/good", text: "PDF link on page 1" }],
     skipped: [
       "PDF page 2: unsupported or invalid link omitted",
       "PDF page 3: unsupported or invalid link omitted",
+      "PDF page 4: unsupported or invalid link omitted",
     ],
   });
 });
 
 test("plain-text URL extraction trims sentence punctuation and omits URLs containing credentials", () => {
-  expect(parsePdfTextLinks("Read https://example.org/guide. Do not use https://user:pass@example.org/private."))
+  expect(parsePdfTextLinks("Read https://example.org/guide. Do not use https://user:pass@example.org/private or https://api.hunter.io/v2/account?api_key=YOUR_KEY."))
     .toEqual({
       links: [{ url: "https://example.org/guide", text: "PDF text URL" }],
-      skipped: ["PDF text contains a credential-bearing or invalid URL omitted"],
+      skipped: [
+        "PDF text contains a credential-bearing or invalid URL omitted",
+        "PDF text contains a credential-bearing or invalid URL omitted",
+      ],
     });
 });
 
@@ -79,6 +84,32 @@ test("PDF source preparation can redact credential-like text before building a s
     expect(result.metadata.redactedCredentialLikeValues).toBe(1);
     expect(parsed.sources[0].text).toContain("API key: ***");
     expect(parsed.sources[0].text).not.toContain("sk-abcdefghijklmnop1234");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("PDF source preparation omits URLs with sensitive query parameters before pack validation", () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "agentos-pdf-pack-"));
+  const pdfPath = path.join(directory, "lesson.pdf");
+  writeFileSync(pdfPath, "%PDF synthetic fixture");
+  try {
+    const result = pdfSourcePack({
+      pdfPath,
+      pageUrl: "https://www.skool.com/community/classroom/lesson",
+      sanitizeCredentialLikeText: true,
+      runCommand: (command, args) => {
+        if (command === "pdfinfo" && args[0] === "-url") return "";
+        if (command === "pdfinfo") return "Pages: 1\n";
+        if (command === "pdftotext") return 'Run curl "https://api.hunter.io/v2/account?api_key=YOUR_KEY" for account status.';
+        throw new Error("unexpected_command");
+      },
+    });
+    const parsed = parseClientSourcePack(result.batches[0]);
+    expect(result.metadata.redactedCredentialLikeValues).toBe(1);
+    expect(parsed.sources[0].text).toContain("[URL omitted: sensitive query parameter]");
+    expect(parsed.sources[0].text).not.toContain("api_key");
+    expect(parsed.sources[0].links).toEqual([]);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

@@ -36,6 +36,54 @@
       "evidenceScope": "local lifecycle harness, not a hosted ledger receipt"
     },
     {
+      "id": "multi-agent-required-settlement",
+      "behavior": "Multi-agent work cannot complete successfully when required accounting settlement fails",
+      "failureLabel": "multi_agent_settlement_false_success",
+      "spec": "client-multi-agent-settlement.spec.ts",
+      "title": "ruflo-swarm cannot succeed when required budget settlement fails",
+      "evidenceScope": "real worker handler with synthetic provider, database and storage; not hosted accounting acceptance"
+    },
+    {
+      "id": "multi-agent-envelope-admission",
+      "behavior": "Multi-model Loop admission prices the bounded judge and later builder prompts instead of multiplying the initial builder quote",
+      "failureLabel": "multi_agent_envelope_underquoted",
+      "spec": "client-multi-agent-settlement.spec.ts",
+      "title": "Loop reserves repeated builder prompts and the judge at its own rate",
+      "evidenceScope": "real worker with synthetic pricing/provider boundaries; not provider-side invoice or hard-cap proof"
+    },
+    {
+      "id": "multi-agent-next-call-budget",
+      "behavior": "An unfundable next call stops before the provider and settles only the known prior subtotal",
+      "failureLabel": "unfunded_next_call_dispatched",
+      "spec": "client-multi-agent-settlement.spec.ts",
+      "title": "room-round stops before a call that no longer fits the reserved envelope",
+      "evidenceScope": "real worker with synthetic services; not hosted ledger acceptance"
+    },
+    {
+      "id": "unknown-text-usage",
+      "behavior": "Missing multi-agent usage stops later calls and cannot settle an unknown charge as zero",
+      "failureLabel": "unknown_usage_refunded_as_zero",
+      "spec": "client-multi-agent-settlement.spec.ts",
+      "title": "room-round stops without zero settlement when missingUsageAt is unresolved",
+      "evidenceScope": "real worker handler with synthetic provider and ledger boundaries; not hosted reconciliation"
+    },
+    {
+      "id": "strict-provider-usage",
+      "behavior": "Null and nonnumeric token fields cannot be coerced to zero usage",
+      "failureLabel": "provider_usage_coerced_to_zero",
+      "spec": "client-text-accounting.spec.ts",
+      "title": "openai usage normalization never coerces absent or nonnumeric fields to free tokens",
+      "evidenceScope": "real provider adapter with synthetic HTTP responses; no model or provider request"
+    },
+    {
+      "id": "generated-artifact-job-release",
+      "behavior": "Accounting-blocked generated output cannot bypass the job release gate through either artifact download path",
+      "failureLabel": "unsettled_artifact_released",
+      "spec": "client-multi-agent-settlement.spec.ts",
+      "title": "generated artifacts from accounting-blocked jobs cannot use either download path",
+      "evidenceScope": "real artifact handlers with synthetic storage; not hosted grants, byte deletion or recovery proof"
+    },
+    {
       "id": "artifact-integrity",
       "behavior": "Import commits only the exact reviewed artifact bytes with permission",
       "failureLabel": "artifact_integrity_regression",
@@ -82,6 +130,22 @@
       "spec": "client-job-trace.spec.ts",
       "title": "job trace records bounded stages without prompt, output, or credential data",
       "evidenceScope": "local trace unit test"
+    },
+    {
+      "id": "trace-observer-isolation",
+      "behavior": "A failed trace outcome observer cannot replace a successful operation result or cause replay",
+      "failureLabel": "trace_observer_corrupts_operation",
+      "spec": "client-observability-resilience.spec.ts",
+      "title": "trace outcome-observer failure cannot replace a successful operation result",
+      "evidenceScope": "local async trace test; no provider or hosted settlement"
+    },
+    {
+      "id": "trace-late-settlement",
+      "behavior": "Bounded traces preserve late settlement outcomes and aggregate observed stage counts",
+      "failureLabel": "late_settlement_trace_missing",
+      "spec": "client-observability-resilience.spec.ts",
+      "title": "bounded traces retain settlement outcomes after the detailed span limit",
+      "evidenceScope": "local bounded-trace test; not durable ledger reconciliation"
     },
     {
       "id": "observability-completeness",

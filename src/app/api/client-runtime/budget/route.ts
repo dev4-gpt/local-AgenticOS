@@ -33,10 +33,9 @@ export async function GET() {
 
   // The ledger is the same source the reservation check uses, so the meter and
   // the guard cannot disagree about how much has been spent.
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
-  const ledger = await readMonthlyLedger(tenantSlug, monthStart.toISOString());
+  const asOf = new Date();
+  const monthStart = new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), 1));
+  const ledger = await readMonthlyLedger(tenantSlug, `(created_at.gte.${monthStart.toISOString()},created_at.lte.${asOf.toISOString()})`);
   if (!ledger.ok) return fail("budget_read_failed", 502);
   if (ledger.records.some((record) => record.tenant_slug !== tenantSlug)) return fail("budget_scope_mismatch", 502);
 
@@ -74,13 +73,13 @@ export async function GET() {
   }, { headers: { "cache-control": "private, no-store" } });
 }
 
-async function readMonthlyLedger(tenantSlug: string, monthStart: string) {
+async function readMonthlyLedger(tenantSlug: string, monthWindow: string) {
   const records: Record<string, unknown>[] = [];
   let beforeId: string | null = null;
   for (let page = 0; page <= LEDGER_MAX_ROWS / LEDGER_PAGE_SIZE; page++) {
     const result = await selectClientRecords("client_runtime_budget_ledger", {
       tenant_slug: `eq.${tenantSlug}`,
-      created_at: `gte.${monthStart}`,
+      and: monthWindow,
       order: "id.desc",
       limit: String(LEDGER_PAGE_SIZE),
       ...(beforeId ? { id: `lt.${beforeId}` } : {}),

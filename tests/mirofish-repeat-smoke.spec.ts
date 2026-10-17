@@ -51,13 +51,14 @@ test("repeat smoke accepts only a reviewed profile file bound to the original co
   const brief = "current product evidence";
   const manifest = {
     schemaVersion: 2, preparation: "canonical-buyer-scenarios-v2", file: "profiles.csv",
-    sourceSha256: "e47a927cb0b8e83cc16993388a8ab223ac35099ef8c31bb0e41ea916b113db0d",
+    sourceSha256: "6ef07dc0fec27cc15f30dc5afe71ad1a6b855c6fd6e6f9e90ef2075f7d0e704c",
     reviewedSha256: sha256(reviewed), cohortSha256: sha256(cohort), productBriefSha256: sha256(brief), profileCount: 10, providerCalls: 0,
   };
   const check = (candidate = manifest, profiles = reviewed, product = brief) => validReviewedProfileManifest(candidate, Buffer.from(profiles), Buffer.from(cohort), Buffer.from(product));
   expect(check()).toBe(true);
   expect(check({ ...manifest, file: "../secrets.csv" })).toBe(false);
   expect(check({ ...manifest, profileCount: 9 })).toBe(false);
+  expect(check({ ...manifest, sourceSha256: "e47a927cb0b8e83cc16993388a8ab223ac35099ef8c31bb0e41ea916b113db0d" })).toBe(false);
   expect(check(manifest, "changed")).toBe(false);
   expect(check(manifest, reviewed, "new product evidence")).toBe(false);
   expect(check({ ...manifest, schemaVersion: 1, preparation: "canonical-buyer-scenarios-v1" })).toBe(false);

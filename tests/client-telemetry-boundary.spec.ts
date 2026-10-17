@@ -6,6 +6,7 @@ import { loadReviewModule } from "./helpers/load-review-module";
 
 const originalEnv = { ...process.env };
 const originalFetch = globalThis.fetch;
+test.beforeEach(() => { process.env.CLIENT_SLUG = "test-tenant"; });
 test.afterEach(() => { process.env = { ...originalEnv }; globalThis.fetch = originalFetch; });
 
 test("product telemetry accepts only shipped events and strips caller content", async () => {
@@ -75,6 +76,84 @@ test("telemetry rejects unauthenticated and rate-limited requests before egress"
   allowed = false;
   expect((await route.POST(request())).status).toBe(429);
   expect(captures).toBe(0);
+});
+
+test("telemetry fails closed on missing tenant scope before data-plane or vendor calls", async () => {
+  let rateChecks = 0;
+  let audits = 0;
+  let captures = 0;
+  const route = loadReviewModule("src/app/api/client-runtime/telemetry/route.ts", {
+    "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
+    "@/lib/clientAuth": { currentClientUser: async () => ({ id: "user-123" }), currentClientMember: async () => true },
+    "@/lib/clientDataPlane": {
+      checkClientRuntimeRateLimit: async () => { rateChecks++; return { ok: true, allowed: true }; },
+      recordClientAudit: async () => { audits++; return true; },
+    },
+    "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
+    "@/lib/clientRuntimeObservability": {
+      CLIENT_PRODUCT_EVENTS,
+      captureClientProductEvent: async () => { captures++; return true; },
+    },
+  });
+  const request = () => route.POST(new Request("https://client.invalid/api/client-runtime/telemetry", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ event: "client_runtime_provider_prompt_submitted" }),
+  }));
+
+  for (const scope of [undefined, " \t "]) {
+    if (scope === undefined) delete process.env.CLIENT_SLUG;
+    else process.env.CLIENT_SLUG = scope;
+    const response = await request();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ ok: false, error: "runtime_configuration_unavailable" });
+  }
+  expect({ rateChecks, audits, captures }).toEqual({ rateChecks: 0, audits: 0, captures: 0 });
+});
+
+test("telemetry fails closed on audit persistence failure before vendor egress", async () => {
+  let captures = 0;
+  const route = loadReviewModule("src/app/api/client-runtime/telemetry/route.ts", {
+    "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
+    "@/lib/clientAuth": { currentClientUser: async () => ({ id: "user-123" }), currentClientMember: async () => true },
+    "@/lib/clientDataPlane": {
+      checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+      recordClientAudit: async () => false,
+    },
+    "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
+    "@/lib/clientRuntimeObservability": {
+      CLIENT_PRODUCT_EVENTS,
+      captureClientProductEvent: async () => { captures++; return true; },
+    },
+  });
+  const response = await route.POST(new Request("https://client.invalid/api/client-runtime/telemetry", {
+    method: "POST", body: JSON.stringify({ event: "client_runtime_provider_prompt_submitted" }),
+  }));
+  expect(response.status).toBe(502);
+  expect(await response.json()).toEqual({ ok: false, error: "telemetry_audit_write_failed" });
+  expect(captures).toBe(0);
+});
+
+test("telemetry keeps the durable audit success when optional vendor capture fails", async () => {
+  let audits = 0;
+  const route = loadReviewModule("src/app/api/client-runtime/telemetry/route.ts", {
+    "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
+    "@/lib/clientAuth": { currentClientUser: async () => ({ id: "user-123" }), currentClientMember: async () => true },
+    "@/lib/clientDataPlane": {
+      checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+      recordClientAudit: async () => { audits++; return true; },
+    },
+    "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
+    "@/lib/clientRuntimeObservability": {
+      CLIENT_PRODUCT_EVENTS,
+      captureClientProductEvent: async () => false,
+    },
+  });
+  const response = await route.POST(new Request("https://client.invalid/api/client-runtime/telemetry", {
+    method: "POST", body: JSON.stringify({ event: "client_runtime_provider_prompt_submitted" }),
+  }));
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ ok: true });
+  expect(audits).toBe(1);
 });
 
 test("telemetry bounds request bytes before parsing or egress", async () => {

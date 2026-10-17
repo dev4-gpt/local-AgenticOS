@@ -1,10 +1,40 @@
 import { expect, test } from "@playwright/test";
 import { buildSkoolRegisterGraph, mergeSkoolRegisterGraph, mergeSkoolSourcePackGraph, privateGraphArtifactPath } from "../scripts/import-skool-register-graph.mjs";
 import { validatePortableKnowledgeGraph } from "../scripts/portable-knowledge-graph.mjs";
+import { reportSkoolTextGaps } from "../scripts/report-skool-text-gaps.mjs";
 
 const lessonId = "0123456789abcdef0123456789abcdef";
 const videoId = "abcdef0123456789abcdef0123456789";
 const register = `# Classroom register\n\n## May lesson\n- Lesson: https://www.skool.com/ai-profit-lab-7462/classroom/9daf24e1?md=${lessonId}\n- Date: created 2026-05-01, updated 2026-05-02\n- Video: https://youtu.be/AbCd1234\n- Link: https://example.com/docs\n\n## System lesson\n- Lesson: https://www.skool.com/ai-profit-lab-7462/classroom/9daf24e1?md=${videoId}\n- Date: created 2026-05-16, updated 2026-10-11\n- Video: (Skool-hosted ${lessonId})\n- Link: https://example.com/docs\n`;
+
+test("exact outbound resource URLs link companion captures without closing lesson-body gaps", () => {
+  const registerGraph = buildSkoolRegisterGraph(register, "A1b2C3d4E5f6G7h8I9j0");
+  const base = { "@context": "https://schema.org", "@graph": [
+    { "@id": "document:manual", "@type": "LearningResource", name: "Manual", url: "https://example.com/docs", text: "Manual text" },
+    { "@id": "document:manual-part", "@type": "LearningResource", url: "https://example.com/docs#part", text: "Second manual segment" },
+    { "@id": "document:wrong-url", "@type": "LearningResource", name: "Manual", url: "https://example.com/not-linked", text: "Same title is insufficient" },
+    { "@id": "document:empty", "@type": "LearningResource", url: "https://example.com/docs", text: " " },
+    { "@id": "document:unsafe", "@type": "LearningResource", url: "https://example.com/docs?session=private", text: "Unsafe URL" },
+  ], edges: [], provenance: { complete: false } };
+  const merged = mergeSkoolRegisterGraph(base, registerGraph);
+  const edges = merged.edges.filter((edge) => edge["@type"] === "hasCompanionTextCaptureSegment");
+  expect(edges).toHaveLength(4);
+  expect(new Set(edges.map((edge) => edge.target))).toEqual(new Set(["document:manual", "document:manual-part"]));
+  expect(reportSkoolTextGaps(merged)).toMatchObject({
+    lessonsWithText: 0, lessonsWithoutText: 2, lessonsWithCompanionText: 2,
+    lessonsWithoutPageTextWithCompanionText: 2, linkedCompanionTextSegments: 4,
+    completenessVerified: false,
+    missing: [{ hasCompanionText: true, companionTextSegments: 2 }, { hasCompanionText: true, companionTextSegments: 2 }],
+  });
+  expect(mergeSkoolRegisterGraph(merged, registerGraph)).toEqual(merged);
+  expect(validatePortableKnowledgeGraph(merged).coverage).toBe("partial");
+  expect(() => reportSkoolTextGaps({ ...merged, provenance: { ...merged.provenance,
+    textCaptureCrosswalk: { ...merged.provenance.textCaptureCrosswalk, linkedCompanionTextSegments: 0 },
+  } })).toThrow("crosswalk_mismatch");
+  expect(() => reportSkoolTextGaps({ ...merged, edges: [...merged.edges,
+    { "@type": "hasCompanionTextCaptureSegment", source: `skool-lesson:${lessonId}`, target: "document:wrong-url" },
+  ] })).toThrow("companion_capture_reference_invalid");
+});
 
 test("Skool link register becomes an explicitly metadata-only graph", () => {
   const graph = buildSkoolRegisterGraph(register, "A1b2C3d4E5f6G7h8I9j0");
@@ -125,6 +155,32 @@ test("source-pack merge preserves source identifiers, exact lesson links, and re
   expect(repeated["@graph"]).toHaveLength(merged["@graph"].length);
   expect(repeated.edges).toHaveLength(merged.edges.length);
   expect(repeated.provenance.sourcePackImports).toHaveLength(1);
+});
+
+test("source-pack transcript remains distinct and links to its exact registered Skool lesson", () => {
+  const registerGraph = buildSkoolRegisterGraph(register, "A1b2C3d4E5f6G7h8I9j0");
+  const base = mergeSkoolRegisterGraph({ "@context": "https://schema.org", "@graph": [], edges: [], provenance: {} }, registerGraph);
+  const lessonUrl = `https://www.skool.com/ai-profit-lab-7462/classroom/9daf24e1?md=${lessonId}`;
+  const pack = {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@id": "document:transcript-source", "@type": "LearningResource", url: lessonUrl, contentStatus: "metadata_only", pageTextCaptured: false },
+      { "@id": "video:transcript", "@type": "VideoObject", url: "https://youtu.be/AbCd1234" },
+      { "@id": "transcript:segment-1", "@type": "Transcript", text: "Visible official transcript text", contentStatus: "transcript_available" },
+    ],
+    edges: [
+      { "@type": "hasTranscript", source: "video:transcript", target: "transcript:segment-1" },
+      { "@type": "transcript_of", source: "transcript:segment-1", target: "document:transcript-source" },
+    ],
+    provenance: { format: "agentos-private-source-graph-v1", complete: false, coverage: {}, batchSha256: [] },
+  };
+
+  const merged = mergeSkoolSourcePackGraph(base, pack);
+  const lesson = merged["@graph"].find((node) => node["@id"] === `skool-lesson:${lessonId}`);
+  expect(lesson).toMatchObject({ contentStatus: "metadata_only", pageTextCaptured: false, transcriptCaptureSegmentCount: 1 });
+  expect(merged.edges).toContainEqual({ "@type": "hasTranscriptCaptureSegment", source: lesson["@id"], target: "transcript:segment-1" });
+  expect(merged.edges).not.toContainEqual({ "@type": "hasTextCaptureSegment", source: lesson["@id"], target: "transcript:segment-1" });
+  expect(mergeSkoolSourcePackGraph(merged, pack).edges.filter((edge) => edge["@type"] === "hasTranscriptCaptureSegment")).toHaveLength(1);
 });
 
 test("merge redacts unsafe legacy URLs but preserves their graph references", () => {

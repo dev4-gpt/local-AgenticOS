@@ -86,6 +86,7 @@ export function buildPrivateSourcePackGraph(manifest, read = readFileSync, proje
       for (const transcript of source.transcripts ?? []) {
         if (!transcript || typeof transcript.url !== "string" || typeof transcript.title !== "string"
           || typeof transcript.text !== "string" || !transcript.text.trim()
+          || (transcript.captureScope !== undefined && !["full", "excerpt", "unknown"].includes(transcript.captureScope))
           || !Number.isInteger(transcript.segment) || !Number.isInteger(transcript.segmentCount)
           || transcript.segment < 1 || transcript.segment > transcript.segmentCount) {
           throw new Error("source_transcript_invalid");
@@ -104,7 +105,9 @@ export function buildPrivateSourcePackGraph(manifest, read = readFileSync, proje
           "@type": "Transcript",
           name: transcript.title,
           text: transcript.text,
-          contentStatus: "transcript_available",
+          contentStatus: `transcript_${transcript.captureScope ?? "unknown"}`,
+          captureScope: transcript.captureScope ?? "unknown",
+          captureScopeVerified: false,
           segment: transcript.segment,
           segmentCount: transcript.segmentCount,
           ...(transcript.collectedAt ? { dateCreated: transcript.collectedAt } : {}),

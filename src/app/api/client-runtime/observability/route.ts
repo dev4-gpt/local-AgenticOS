@@ -21,25 +21,26 @@ export async function GET() {
   if (!rateLimit.allowed) return jsonError("runtime_rate_limited", 429);
 
   const tenantSlug = process.env.CLIENT_SLUG?.trim() ?? "";
-  const since = new Date(Date.now() - WINDOW_HOURS * 60 * 60 * 1000).toISOString();
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
+  const asOf = new Date();
+  const since = new Date(asOf.getTime() - WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+  const activityWindow = `(created_at.gte.${since},created_at.lte.${asOf.toISOString()})`;
+  const monthStart = new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), 1));
+  const monthWindow = `(created_at.gte.${monthStart.toISOString()},created_at.lte.${asOf.toISOString()})`;
   const [audit, jobs, budget, artifacts] = await Promise.all([
     selectClientRecords("client_runtime_audit_events", {
       tenant_slug: `eq.${tenantSlug}`,
-      created_at: `gte.${since}`,
+      and: activityWindow,
       event_type: "like.client_runtime_*",
       order: "created_at.desc",
       limit: String(SAMPLE_LIMIT),
     }),
     selectClientRecords("client_runtime_jobs", {
       tenant_slug: `eq.${tenantSlug}`,
-      created_at: `gte.${since}`,
+      and: activityWindow,
       order: "created_at.desc",
       limit: String(SAMPLE_LIMIT),
     }),
-    readMonthlyLedger(tenantSlug, monthStart.toISOString()),
+    readMonthlyLedger(tenantSlug, monthWindow),
     countClientRecords("client_runtime_artifacts", { tenant_slug: `eq.${tenantSlug}` }),
   ]);
 
@@ -65,6 +66,7 @@ export async function GET() {
   const counts = countEvents(events.map((event) => event.event));
   const providerCounts = countJobs(jobRecords);
   const monthlyUsage = summarizeBudget(budget.records);
+  if (!monthlyUsage) return jsonError("observability_ledger_invalid", 502);
 
   return NextResponse.json({
     ok: true,
@@ -81,13 +83,13 @@ export async function GET() {
   }, { headers: { "cache-control": "private, no-store" } });
 }
 
-async function readMonthlyLedger(tenantSlug: string, monthStart: string) {
+async function readMonthlyLedger(tenantSlug: string, monthWindow: string) {
   const records: Record<string, unknown>[] = [];
   let beforeId: string | null = null;
   for (let page = 0; page <= LEDGER_MAX_ROWS / LEDGER_PAGE_SIZE; page++) {
     const result = await selectClientRecords("client_runtime_budget_ledger", {
       tenant_slug: `eq.${tenantSlug}`,
-      created_at: `gte.${monthStart}`,
+      and: monthWindow,
       order: "id.desc",
       limit: String(LEDGER_PAGE_SIZE),
       ...(beforeId ? { id: `lt.${beforeId}` } : {}),
@@ -134,20 +136,30 @@ function countJobs(jobs: Array<{ provider: string | null; model: string | null; 
 function summarizeBudget(records: Record<string, unknown>[]) {
   const summary = { totalCostMicros: 0, inputTokens: 0, outputTokens: 0, byProvider: {} as Record<string, { costMicros: number; inputTokens: number; outputTokens: number; model: string | null }> };
   for (const record of records) {
+    if (typeof record.amount_micros !== "number" || !Number.isSafeInteger(record.amount_micros) || record.amount_micros < 0) return null;
     const provider = safeCode(record.provider) ?? "unknown";
-    const amount = safeNonNegativeInteger(record.amount_micros);
-    const usage = record.usage_metadata && typeof record.usage_metadata === "object" && !Array.isArray(record.usage_metadata) ? record.usage_metadata as Record<string, unknown> : {};
-    const inputTokens = safeNonNegativeInteger(usage.inputTokens ?? usage.promptTokens);
-    const outputTokens = safeNonNegativeInteger(usage.outputTokens ?? usage.completionTokens);
+    const usage = record.usage_metadata && typeof record.usage_metadata === "object" && !Array.isArray(record.usage_metadata) ? record.usage_metadata as Record<string, unknown> : null;
+    if (!usage) return null;
+    const inputTokens = ledgerCount(usage.inputTokens ?? usage.promptTokens);
+    const outputTokens = ledgerCount(usage.outputTokens ?? usage.completionTokens);
+    if (inputTokens === null || outputTokens === null) return null;
     const entry = summary.byProvider[provider] ?? { costMicros: 0, inputTokens: 0, outputTokens: 0, model: safeCode(record.model) };
-    entry.costMicros += amount;
-    entry.inputTokens += inputTokens;
-    entry.outputTokens += outputTokens;
+    const entryCost = safeAdd(entry.costMicros, record.amount_micros);
+    const entryInputTokens = safeAdd(entry.inputTokens, inputTokens);
+    const entryOutputTokens = safeAdd(entry.outputTokens, outputTokens);
+    const totalCost = safeAdd(summary.totalCostMicros, record.amount_micros);
+    const totalInputTokens = safeAdd(summary.inputTokens, inputTokens);
+    const totalOutputTokens = safeAdd(summary.outputTokens, outputTokens);
+    if (entryCost === null || entryInputTokens === null || entryOutputTokens === null
+      || totalCost === null || totalInputTokens === null || totalOutputTokens === null) return null;
+    entry.costMicros = entryCost;
+    entry.inputTokens = entryInputTokens;
+    entry.outputTokens = entryOutputTokens;
     if (!entry.model) entry.model = safeCode(record.model);
     summary.byProvider[provider] = entry;
-    summary.totalCostMicros += amount;
-    summary.inputTokens += inputTokens;
-    summary.outputTokens += outputTokens;
+    summary.totalCostMicros = totalCost;
+    summary.inputTokens = totalInputTokens;
+    summary.outputTokens = totalOutputTokens;
   }
   return summary;
 }
@@ -174,9 +186,14 @@ function safeId(value: unknown) {
   return typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value) ? value : null;
 }
 
-function safeNonNegativeInteger(value: unknown) {
-  const number = typeof value === "number" ? value : Number(value);
-  return Number.isSafeInteger(number) && number >= 0 ? number : 0;
+function ledgerCount(value: unknown) {
+  if (value === undefined) return 0;
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function safeAdd(left: number, right: number) {
+  const total = left + right;
+  return Number.isSafeInteger(total) && total >= 0 ? total : null;
 }
 
 function jsonError(error: string, status: number) {

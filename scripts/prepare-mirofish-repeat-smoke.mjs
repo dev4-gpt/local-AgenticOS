@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 
 const SOURCE_CONFIG_SHA256 = "b6c926b80225faaacaad1929a999ddf20a804d101e01e51f510a1d99eb6fa09d";
-const SOURCE_PROFILES_SHA256 = "e47a927cb0b8e83cc16993388a8ab223ac35099ef8c31bb0e41ea916b113db0d";
+const SOURCE_PROFILES_SHA256 = "6ef07dc0fec27cc15f30dc5afe71ad1a6b855c6fd6e6f9e90ef2075f7d0e704c";
 const SELECTED = new Set(["P00603", "P04949"]);
 const ACTIVE_HOURS = new Map([["P00603", [8]], ["P04949", [8]]]);
 

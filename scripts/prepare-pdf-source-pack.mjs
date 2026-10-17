@@ -9,10 +9,21 @@ const MAX_PDF_BYTES = 100 * 1024 * 1024;
 const MAX_TEXT_BYTES = 20 * 1024 * 1024;
 const CREDENTIAL_ASSIGNMENT = /(api[_ -]?key|secret|password|private[_ -]?key|access[_ -]?token)(\s*[:=]\s*)(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s"'`]{4,})/gi;
 const CREDENTIAL_TOKEN = /\b(?:sk|rk|ghp|xai)-[A-Za-z0-9_-]{16,}\b/gi;
+const SENSITIVE_QUERY_KEY = /^(?:api_?key|access_?token|refresh_?token|id_?token|token|secret|password|code|signature|sig|auth|authorization|jwt|session|session_?id|awsaccesskeyid|googleaccessid|key_pair_id|x_(?:amz|goog)_(?:algorithm|credential|date|expires|security_token|signature|signedheaders))$/i;
 
 function redactCredentialLikeText(text) {
   let redacted = 0;
-  let clean = text.replace(CREDENTIAL_ASSIGNMENT, (_match, label, separator) => {
+  let clean = text.replace(/https?:\/\/[^\s<>"'`]+/gi, (candidate) => {
+    try {
+      const url = new URL(candidate.replace(/[.,;:!?]+$/, "").replace(/[)\]}]+$/, ""));
+      if ([...url.searchParams.keys()].some((key) => SENSITIVE_QUERY_KEY.test(key.replace(/[-\s]/g, "_")))) {
+        redacted += 1;
+        return "[URL omitted: sensitive query parameter]";
+      }
+    } catch { /* Keep malformed URLs for the link parser to reject. */ }
+    return candidate;
+  });
+  clean = clean.replace(CREDENTIAL_ASSIGNMENT, (_match, label, separator) => {
     redacted += 1;
     return `${label}${separator}***`;
   });
@@ -31,7 +42,10 @@ export function parsePdfLinks(output) {
     if (!match) continue;
     try {
       const url = new URL(match[2].trim());
-      if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("unsupported_link");
+      if (!["http:", "https:"].includes(url.protocol) || url.username || url.password
+        || [...url.searchParams.keys()].some((key) => SENSITIVE_QUERY_KEY.test(key.replace(/[-\s]/g, "_")))) {
+        throw new Error("unsupported_link");
+      }
       links.push({ url: url.toString(), text: `PDF link on page ${Number(match[1])}` });
     } catch {
       skipped.push(`PDF page ${Number(match[1])}: unsupported or invalid link omitted`);
@@ -51,7 +65,9 @@ export function parsePdfTextLinks(text) {
     const candidate = match[0].replace(/[.,;:!?]+$/, "").replace(/[)\]}]+$/, "");
     try {
       const url = new URL(candidate);
-      if (url.username || url.password) throw new Error("credentials_in_url");
+      if (url.username || url.password || [...url.searchParams.keys()].some((key) => SENSITIVE_QUERY_KEY.test(key.replace(/[-\s]/g, "_")))) {
+        throw new Error("credentials_in_url");
+      }
       links.push({ url: url.toString(), text: "PDF text URL" });
     } catch {
       skipped.push("PDF text contains a credential-bearing or invalid URL omitted");

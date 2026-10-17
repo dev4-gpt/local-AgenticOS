@@ -34,6 +34,11 @@ function lessonIdentity(value) {
   return { url, lessonKey: ids[0].toLowerCase() };
 }
 
+export function companionResourceUrl(value) {
+  const url = safePublicUrl(value);
+  return url && !["skool.com", "www.skool.com"].includes(new URL(url).hostname) ? url : null;
+}
+
 function dedupeEdges(edges) {
   const seen = new Set();
   return edges.filter((edge) => {
@@ -203,6 +208,9 @@ export function mergeSkoolRegisterGraph(base, registerGraph) {
   const captureEdgeKeys = new Set(mergedEdges
     .filter((edge) => edge?.["@type"] === "hasTextCaptureSegment")
     .map((edge) => `${edge.source}\u0000${edge.target}`));
+  const transcriptCaptureEdgeKeys = new Set(mergedEdges
+    .filter((edge) => edge?.["@type"] === "hasTranscriptCaptureSegment")
+    .map((edge) => `${edge.source}\u0000${edge.target}`));
   const registeredLessonIds = new Set();
   let lessonsWithText = 0;
   for (const lesson of nodes.values()) {
@@ -239,6 +247,52 @@ export function mergeSkoolRegisterGraph(base, registerGraph) {
       captureEdgeKeys.add(edgeKey);
     }
   }
+  for (const edge of mergedEdges) {
+    if (edge?.["@type"] !== "transcript_of") continue;
+    const transcript = nodes.get(edge.source);
+    const source = nodes.get(edge.target);
+    if (transcript?.["@type"] !== "Transcript" || typeof transcript.text !== "string" || !transcript.text.trim()
+      || source?.["@type"] !== "LearningResource" || typeof source.url !== "string") continue;
+    let lessonKey;
+    try {
+      lessonKey = lessonIdentity(source.url).lessonKey;
+    } catch {
+      continue;
+    }
+    const lessonId = `skool-lesson:${lessonKey}`;
+    if (!registeredLessonIds.has(lessonId)) continue;
+    const edgeKey = `${lessonId}\u0000${transcript["@id"]}`;
+    if (transcriptCaptureEdgeKeys.has(edgeKey)) continue;
+    mergedEdges.push({ "@type": "hasTranscriptCaptureSegment", source: lessonId, target: transcript["@id"] });
+    transcriptCaptureEdgeKeys.add(edgeKey);
+  }
+  for (const lessonId of registeredLessonIds) {
+    const transcriptCaptureSegmentCount = mergedEdges.filter((edge) => edge?.["@type"] === "hasTranscriptCaptureSegment"
+      && edge.source === lessonId && nodes.get(edge.target)?.["@type"] === "Transcript").length;
+    if (!transcriptCaptureSegmentCount) continue;
+    nodes.set(lessonId, { ...nodes.get(lessonId), transcriptCaptureSegmentCount });
+  }
+  // Companion manuals retain their own source identity; they are not lesson bodies.
+  const companionCaptures = new Map();
+  for (const node of nodes.values()) {
+    if (node["@type"] !== "LearningResource" || registeredLessonIds.has(node["@id"])
+      || typeof node.text !== "string" || !node.text.trim()) continue;
+    const url = companionResourceUrl(node.url);
+    if (!url) continue;
+    companionCaptures.set(url, [...(companionCaptures.get(url) ?? []), node["@id"]]);
+  }
+  const companionEdges = new Set(mergedEdges.filter((edge) => edge["@type"] === "hasCompanionTextCaptureSegment" && registeredLessonIds.has(edge.source))
+    .map((edge) => `${edge.source}\u0000${edge.target}`));
+  for (const edge of [...mergedEdges]) {
+    if (edge["@type"] !== "links_to" || !registeredLessonIds.has(edge.source)) continue;
+    const resourceUrl = companionResourceUrl(nodes.get(edge.target)?.url);
+    for (const target of companionCaptures.get(resourceUrl) ?? []) {
+      const key = `${edge.source}\u0000${target}`;
+      if (companionEdges.has(key)) continue;
+      mergedEdges.push({ "@type": "hasCompanionTextCaptureSegment", source: edge.source, target });
+      companionEdges.add(key);
+    }
+  }
   return {
     ...base,
     "@context": base["@context"] ?? registerGraph["@context"],
@@ -256,6 +310,10 @@ export function mergeSkoolRegisterGraph(base, registerGraph) {
         lessonsWithTextSegments: lessonsWithText,
         lessonsWithoutTextSegments: Math.max(0, registeredLessonIds.size - lessonsWithText),
         linkedTextSegments: [...captureEdgeKeys].filter((key) => registeredLessonIds.has(key.slice(0, key.indexOf("\u0000")))).length,
+        linkedTranscriptSegments: mergedEdges.filter((edge) => edge?.["@type"] === "hasTranscriptCaptureSegment"
+          && registeredLessonIds.has(edge.source) && nodes.get(edge.target)?.["@type"] === "Transcript").length,
+        linkedCompanionTextSegments: companionEdges.size,
+        lessonsWithCompanionTextSegments: new Set([...companionEdges].map((key) => key.slice(0, key.indexOf("\u0000")))).size,
         completenessVerified: false,
       },
     },

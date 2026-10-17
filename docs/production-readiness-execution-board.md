@@ -10,6 +10,1225 @@ are documented in [AgentOS System Design](./architecture/agentos-system-design-2
 This document complements the board; the board remains the only execution
 tracker.
 
+## Operating Plan And Control Rules
+
+This is the live control layer for the goal. The system-design document defines
+the architecture and milestone intent; the release checklist defines the
+release evidence contract; this board owns current status, blockers, next
+actions, and evidence references. Do not create a second tracker or treat an
+old continuation note as current status.
+
+### Hard Boundaries
+
+- Work locally and read-only by default. Do not deploy, change hosted
+  configuration/schema/traffic/IAM/retention, write tenant data, publish, or
+  perform destructive cleanup without a separate, explicit approval naming
+  the exact target and action.
+- Do not make paid provider calls or incur infrastructure spend without a fresh
+  approval naming the provider, purpose, maximum total cost, and stop condition.
+  Offline evaluation and synthetic local tests remain the default.
+- Use only owner/platform-authorized Skool material. No session-cookie
+  collection, access-control bypass, or claim of complete coverage while any
+  in-scope source is missing, ambiguous, summary-only, or unverified.
+- Never inspect, copy, print, or move credentials, cookies, private keys, or
+  raw secret-bearing configuration. Evidence must be redacted and minimized.
+- Preserve all pre-existing/uncommitted work. A dirty tree is development
+  state, not a release candidate; do not clean or overwrite it to manufacture a
+  green gate.
+- A local/mock/synthetic pass proves only the tested local behavior. It cannot
+  satisfy hosted parity, tenant isolation, real customer acceptance, provider
+  quality, retention enforcement, buyer demand, or release approval.
+- No subjective completion percentage is used for release decisions. A gate
+  is accepted only when its stated evidence is current, candidate-bound where
+  applicable, independently reviewable, and within the gate's environment and
+  scope.
+
+### Status Vocabulary And Update Protocol
+
+Use only these states in the live summary: `OPEN` (work not started or no
+current evidence), `IN_PROGRESS` (a bounded action is underway), `BLOCKED`
+(specific external dependency prevents that gate), `ACCEPTED` (all exit
+criteria for the named scope have evidence), and `NOT_AUTHORIZED` (the action
+would cross a boundary without fresh approval). A blocked gate does not block
+independent local work.
+
+At the start of each continuation: record the current branch/HEAD, dirty-path
+count, supported runtime, strict verifier result, candidate fingerprint, and
+which receipts match it. At the end: update the live summary and append a dated
+evidence note with baseline, exact action, result, evidence path/hash, limits,
+and whether the candidate changed. If any code or evidence-contract change
+changes the candidate, mark dependent receipts stale and refresh them before
+using them. Never copy a historical result into the live summary without
+rechecking it.
+
+Each action should answer: **which gate does this close; what exact baseline
+and acceptance check applies; what artifact proves it; what does it not prove;
+what dependency/approval is required; what is the next single action?** Keep
+one active critical-path action. Parallel work is allowed only when independent
+and it does not contend for the same browser, tenant, environment, or files.
+
+### Dependency-Ordered Gate Plan
+
+| Gate | State (2026-10-17) | Depends on | Required work and exit evidence | Boundary / next action |
+| --- | --- | --- | --- | --- |
+| M0 - Candidate and evidence baseline | `IN_PROGRESS` during candidate refresh | None | Reconcile branch/HEAD, dirty work, supported-runtime checks, fingerprints and each receipt's candidate/environment/scope. Source/evidence-contract edits invalidate dependent receipts until refreshed. | Last verified usage-integrity candidate: HEAD `7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`, Node `v24.19.0`, fingerprint `b21ca83d047ba666e240a6d182b2216af88fa9563fb061c12e80da8a105ed6e2`; 438 regressions, AI 22/22 and synthetic Notebook 6/6 passed. Budget-envelope changes invalidate those receipts. Accept only matching fingerprints in `/private/tmp/agentos-production-readiness-current.json` and `tmp/multi-agent-envelope-release-evidence-2026-10-17.json`. Clean source, ledger, hosted acceptance and all-copy retention remain open. |
+| M1 - Customer journey | `ACCEPTED` for synthetic local scope only when the current six-scenario receipt passes; hosted acceptance `OPEN` | M0 candidate | Prove current-source journey from member/tenant fixture through approved sources, bounded job, grounded draft, provenance, durable human decision and approved export; include post-storage failure, deny and retention cases. Separate synthetic evidence from hosted acceptance. | Preview is distinct from explicit hash-bound approval/rejection. Ready bytes from failed settlement or an unfinished job now remain unavailable: review and export additionally require durable successful completion naming the exact artifact and a passing citation audit. SQL permission/state tests, real handler denies, desktop/mobile review, reload persistence, and Studio/Assets exports are bound in `tmp/notebook-job-release-evidence-2026-10-16.json`. Accept only its matching passing final receipt in the strict report. Local checks do not establish hosted migration/grants, real reviewer quality, retention/recovery or the 15-stage hosted journey. |
+| M2 - Authorized Skool archive/import | `IN_PROGRESS` | M0; M1 source/provenance contracts inform import | Reconcile the canonical lesson inventory and all authorized source material; identify full text, summary-only, transcript-only, missing, duplicate, and video-reference coverage separately; validate a dry-run pack and idempotency; then require post-import graph/source-link evidence for an explicitly verified tenant. | Current private graph `tmp/authorized-skool-import/agentos-page-text-reconciled-2026-10-17.jsonld` validates at **1,471 nodes / 10,735 relations**. All 18 earlier gap pages were observed in authorized Work Chrome: 15 now have captured inline page text and three are video-only with no body. **107/110** lessons have page-text segments; the new captures are resource labels/community CTA and a ZIP usage note, not lesson video contents. The three remaining no-body pages are July 26 ChatGPT Voice, August 28 Claude Watermarks and September 23 Claude Opus 5.5; their YouTube references are known. All previous text, 12 companion-text links and three transcript segments are preserved. Main-player audit remains 93 YouTube / 17 Skool-native, not video bytes. Production parser accepts all 18 records, including three media-only; portable validation, repeat merge and complete-export rejection pass. The 12 PDFs, four pinned READMEs and extracted Codex README remain included; BWC is excluded. `completenessVerified=false`, with one excerpt/two unknown transcripts and none declared full. No hosted import or new Drive upload occurred. Next: obtain permitted full transcript/video exports, review omissions and confirm the destination tenant before separately authorized import. |
+| M3 - Local/cloud parity and security | `BLOCKED` | M0 candidate; M1 local acceptance | Identify exact local candidate and hosted service/revision/image/config/migrations; read-only compare same authenticated member and tenant; then prove two-member/two-tenant isolation, route allowlist, storage proxy, and 28-day active + seven-day recovery behavior with hosted receipts. | Owner-selected default is `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in Aryaman (Work) Chrome. Fresh read-only service/revision metadata confirms project `veloce-agenticos-2026`, region `asia-south1`, revision `veloce-cloud-test-00208-5hk` at 100% traffic and image `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`. Auth is enforced; provider calls are disabled. No source stamp exists, identity/import APIs are excluded, runtime and bucket retention are 14 days, and two inbox secrets are inline rather than Secret Manager references. Bucket metadata reports seven-day soft delete; behavioral recovery/deletion is unverified. Historical Internal Beta findings do not describe this selected tenant. Same-member/tenant comparison, independent source attestation, migrations, isolation and 28+7 behavior remain open. Hosted remediation requires separate target-specific approval. |
+| M4 - Evaluation and observability | `IN_PROGRESS` | M0; M1 job lifecycle contract; M3 for hosted claims | Keep deterministic offline evaluation candidate-bound; test trace redaction, lifecycle completeness, alerts, and budget/ledger reconciliation. Any model-backed evaluation requires explicit hard-cap approval and must bind outputs/costs to candidate and test case. | Offline/local tests are allowed. No model/provider call by default. Synthetic MiroFish output is not demand evidence; prioritize documented real buyer interviews before proposing another simulation. |
+| M5 - Release decision | `OPEN` | M0-M4 plus retention/privacy/operations/legal decisions | On one clean committed candidate, pass the strict verifier with all required ledger categories, hosted/customer/import/retention evidence, reviewer approvals, immutable deployment identity, and tested rollback. Record `ready` only from the verifier and approvals for that exact candidate. | Decision gate only, not deployment authorization. Current verifier is `releaseReady=false`; dirty tree, ledger configuration, hosted evidence, and many categories remain open. |
+
+**Dependency graph:** `M0 -> M1 -> M3 -> M5`; `M0 -> M2 -> M3 -> M5`;
+`M0 -> M4 -> M5`. Retention inventory and 28+7 lifecycle evidence are
+cross-cutting prerequisites for M3 and M5. Real buyer discovery is a separate
+validation stream under M4 and cannot be inferred from MiroFish. A gate may be
+accepted only for the exact scope shown; acceptance does not silently accept
+downstream gates.
+
+### Gate Evidence Map
+
+- **Architecture and contracts:** [system design](./architecture/agentos-system-design-2026-10-14.md)
+  and its diagram; use the request lifecycle, trust boundaries, M0-M5 exits,
+  and appendix evidence taxonomy as the implementation/test map.
+- **Local/current-source journey:** `tests/client-notebook-execution-journey.spec.ts`,
+  `tests/client-notebook-handler-browser.spec.ts`, and the candidate-bound
+  Notebook receipt; local-only until tied to the exact authorized hosted
+  identity and reviewed acceptance evidence.
+- **Skool inventory/import:** `docs/skool-coverage-audit-2026-10-15.md`,
+  [community source-pack import and YouTube transcript enrichment lane](./community-source-pack-import.md),
+  `scripts/report-skool-text-gaps.mjs`, source-pack validation receipts, and a
+  separately approved tenant import/post-import receipt. The project has
+  transcript ingestion/linking, not automated YouTube transcript fetching.
+  Summary-only and transcript-only records do not count as linked full lesson
+  text.
+- **Parity, isolation, storage, retention:**
+  [production acceptance checklist](./production-release-acceptance-checklist.md),
+  `docs/retention-data-class-inventory-2026-10-15.md`, hosted identity/config
+  receipts, two-member/two-tenant tests, and post-expiry/deletion evidence.
+- **Evaluation/observability and buyer pilot:** candidate-bound AI receipt,
+  trace/alert/budget reconciliation evidence, and the MiroFish audit plus
+  separately documented real interviews. Keep engineering quality, synthetic
+  scenario quality, and market validation as distinct claims.
+- **Final release:** [release ledger runbook](./release-evidence-ledger-runbook.md)
+  and the strict verifier. The ledger/checklist, not this narrative board,
+  decides whether all mandatory evidence and approvals are present.
+
+**Current critical-path action:** Quote complete bounded multi-agent prompt
+envelopes at each model's own rate and recheck remaining budget before every
+call. Refresh candidate-bound regressions, offline AI, browser and strict
+receipts. The last verified usage-integrity candidate
+`b21ca83d047ba666e240a6d182b2216af88fa9563fb061c12e80da8a105ed6e2`
+passed 438 regressions, 22 offline AI cases and six synthetic browser scenarios.
+Its receipts become historical after these envelope changes.
+Current authority is
+`tmp/multi-agent-envelope-release-evidence-2026-10-17.json` and the strict report once
+their fingerprints match. Hosted retention/recovery remediation still needs
+separate target-specific approval. Also reconcile missing source material and
+per-lesson content capture/export availability separately from player presence.
+The current graph accounts for 110 exact lesson IDs, with 107 page-text
+captures and three pages observed as video-only without a body. Captured
+boilerplate/resource links are not the video contents. All 110 main players have been classified
+(93 YouTube, 17 Skool-native); the 112-item UI count is reconciled. Its production pack parser passes and local merges
+are idempotent; it remains partial and has not been imported to a tenant.
+M1 remains accepted only for synthetic local scope. Hosted identity,
+two-tenant isolation, build/config parity, 28+7 deletion/recovery behavior,
+full customer acceptance, real buyer evidence, and release-ledger approval
+remain open. Existing MiroFish simulations remain synthetic and cannot prove
+market validation. Managed-credit detail now has a local day-35 bounded purge,
+balance preservation, replay-key tombstones, and late-refund review handling;
+hosted application, legal/accounting review, and scheduled operation remain
+open.
+The local strict report at `/private/tmp/agentos-production-readiness-current.json`
+is authoritative for current candidate fingerprints and gate results; old
+dated receipts below are historical unless their fingerprints match.
+No deployment, hosted tenant mutation, provider call, or spend is authorized.
+
+### Multi-Agent Budget Envelope - 2026-10-17
+
+**Baseline:** HEAD `7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`, branch
+`wip/backup-2026-10-03`, Node `v24.19.0`, 159 dirty paths. Strict matched
+`b21ca83d...05ed6e2`: 438 regressions, 22 offline AI cases and six browser
+scenarios. Release stayed not ready (dirty tree, ledger bucket, environment;
+56 unevaluated categories). The previous turn made concrete progress by
+recording a real prospect's identity, owner/operator distinction and free-client
+terms in a private ignored discovery record; this was not an interview or paid
+demand. The workflow remains unselected and no contact/spend was authorized.
+
+Six new checks reproduced missing next-call guards and underquoted full
+prompts: Ruflo reserved 65,000 synthetic units against 84,772; Loop reserved
+30,000 against 449,546 for a differently priced judge and three-round envelope;
+Room reserved 3,952 against 23,945 after transcript growth. These are synthetic
+pricing units, not currency or provider invoices. Preserve
+`tmp/multi-agent-envelope-baseline-2026-10-17.json` (six failures, zero passes).
+
+**Acceptance:** Price actual specialist/first-builder prompts, bounded future
+coordinator/builder/judge/transcript prompts and each stage's model separately.
+Reject invalid/overflowing totals before reservation and calls. Before each
+provider call, reprice its real prompt and require it to fit the reservation
+minus the known measured subtotal. Stop without a new call if it does not fit;
+settle only known prior usage through required accounting, then durably fail.
+False/unknown settlement or failed completion writes must not manufacture
+success/replay. Preserve unknown-usage holds and explicit zero-priced work.
+
+**Implementation/evidence:** The worker now builds those bounded envelopes
+from the existing prompt functions and current pricing helper, uses checked
+integer totals, and checks every named multi-agent stage before dispatch.
+`budget_envelope_exceeded` is a blocked job; `budgetAccounting` distinguishes
+`settled_prior_usage` from `reconciliation_required`. A failed required
+settlement retains `budget_settlement_failed`. The first development run
+passed 107 checks and typecheck before extra zero/invalid/fault cases. The
+earlier unsafe-subtotal test is strengthened: once a measured call already
+exhausts the envelope, the next call is denied rather than waiting to overflow
+the sum. Submit its unmodified actual subtotal to settlement; do not clip it.
+Final candidate results/hashes belong only in the receipt named above.
+
+A secondary check found that a fully zero-priced Loop stopped with a false
+`budget-exhausted` reason. Preserve
+`tmp/multi-agent-envelope-free-stop-baseline-2026-10-17.json` (one failure,
+two passes). For an explicitly zero envelope with zero estimated/actual cost,
+the worker now skips only that exhaustion decision, retaining the real zero
+ledger and every next-call guard. Free verdict and quality-streak tests, plus
+a newly nonzero next-quote denial, exercise this bounded exception. No generic
+ledger policy or provider entitlement is loosened.
+
+**Limits/next action:** Configured prompt-price projections are not external
+provider hard caps or invoice attestation. Token estimation, provider protocol
+overhead, real pricing/usage, all other worker lanes, inline earlier output,
+domain/job atomicity and hosted ledger/grants still need acceptance. This
+does not authorize deployment, provider calls, spend or prospect contact.
+Existing job/accounting retention is unchanged; local client planning deadlines
+are metadata, not operated deletion/recovery proof. Continue safe local closure
+and obtain the operator's real workflow example before selecting a client pilot.
+
+### Text Usage Integrity - 2026-10-17
+
+**Baseline:** Branch `wip/backup-2026-10-03`, HEAD
+`7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`, Node `v24.19.0`, 157 dirty paths.
+The prior turn completed local verification, not just a status restatement.
+Strict and the multi-agent receipt matched `c45098e9...8c393fc`: 368
+regressions, 20 offline AI cases, six synthetic browser scenarios. Strict was
+not ready (dirty tree, ledger bucket, release environment; 56 unevaluated
+categories). Twelve new checks reproduced missing/unpriceable usage as zero
+settlement or successful work, a timeout refunded as zero, malformed pricing
+exceptions and null-token coercion. Preserve
+`tmp/text-usage-baseline-2026-10-17.json` (12 failures, zero passes).
+
+**Acceptance:** Ruflo agents/coordinator, Loop builder/judge and Room agents
+must stop on missing/unpriceable usage, unsafe subtotals or unverified provider
+failure, without another provider call or automatic settlement/refund. Persist
+failed/blocked completion and bounded reconciliation metadata with only the
+known prior subtotal; attempt the matching failed domain state. Failed writes
+must not manufacture success or replay. Preserve valid measured zero usage
+and explicit free pricing. Reject malformed/negative/unsafe prices and null
+or nonnumeric token fields without coercion or exceptions. Refresh wider
+regressions, offline AI and browser receipts on the same candidate.
+
+**Implementation and evidence:** Shared text pricing requires an object with
+an own, nonnegative finite rate and safe-integer resulting cost. All three
+provider protocols leave invalid usage unknown. The named worker stages stop
+with `budget_usage_unverified`, `failureDisposition=blocked` and
+`budgetAccounting.status=reconciliation_required`, known subtotal, stage,
+reason and `reservationDisposition=unsettled`; they do not release the
+reservation. Preflight failures are conservative too: the adapter failure
+contract does not attest to no charge. The first development run passed 35
+checks before later-stage, free-work and failed-completion additions. The
+Assets browser test now scrolls the disabled control into view and asserts
+desktop/mobile visibility and mobile bounds; the prior clipped screenshots
+cannot prove that control visually. Final counts/hashes belong only in the
+named candidate-bound receipt.
+
+**Limits and next action:** No automatic invoice reconciliation, provider hard
+cap or operated alert is proved. An unsettled reservation can reduce available
+budget until an authorized operator reconciles the exact provider/job/ledger
+outcome; do not replay a potentially charged call to discover it. Other worker
+fallbacks, quote adequacy, earlier inline Room replies/directives and Ruflo
+findings, domain/job atomicity, hosted schema/RLS, deletion/recovery and real
+buyer validation remain open. This is not quarantine of earlier inline output.
+The bounded marker inherits its job's original retention. No deployment,
+hosted mutation, provider call, spend or new retention exception occurred.
+Next: close remaining worker/output-release gaps locally; any real-provider
+inspection/correction or hosted acceptance requires separate authorization.
+
+### Multi-Agent Required Settlement - 2026-10-17
+
+**Baseline:** Branch `wip/backup-2026-10-03`, HEAD
+`7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`, Node `v24.19.0`, 156 dirty paths.
+The observability receipt and strict report matched candidate `c035664b...40711ebb`;
+strict remained not ready (clean-tree, ledger, release-environment gates and
+56 unevaluated categories). The prior turn made concrete verified progress.
+Five new regressions then reproduced success after false settlement in Ruflo,
+Loop and Room, Room clipping actual usage to its quote, and non-Notebook
+generated files downloadable despite failed accounting. Preserve the failed
+run `tmp/multi-agent-settlement-baseline-2026-10-17.json`.
+
+**Acceptance:** Each named multi-agent success path must use the existing
+required-settlement guard, preserve unclipped actual usage and durably mark
+failed/blocked completion when settlement returns false. Attempt the matching
+domain's failed state without claiming cross-resource atomicity. No duplicate
+delivery may repeat provider work once the synthetic claim is no longer queued.
+Unknown settlement responses or failed completion writes cannot manufacture
+success or release stored files. All job-produced downloads require durable
+successful, error-free, nonblocked job metadata, plus the existing Notebook
+citation/hash/approval gates where applicable. Recheck non-Notebook release
+after storage responds and cancel denied streams. Keep direct uploads' owner
+checks intact, expose the job-release flag to Assets, and verify disabled
+controls at desktop/mobile widths. Named offline AI cases remain synthetic.
+
+**Implementation and local evidence:** Ruflo/Loop/Room now call
+`settleRequiredBudget`; Room no longer clips the settlement amount. Both
+artifact download paths share the producing-job release predicate; Assets uses
+`job_released` as a prerequisite, not as human approval. Nineteen new tests
+exercise the real handlers with synthetic services and the complete current
+runtime-controls SQL on a minimal PGlite schema. The SQL test applies the
+migration twice, checks token/tenant scope, rejects an overrun without changing
+the reservation, and proves running/terminal jobs cannot be reclaimed. The
+57-test development run passed before the SQL addition. Browser coverage
+extends the existing settlement-failure scenario with a non-Notebook job
+fixture and disabled Assets controls, not a real Ruflo provider run. Final
+candidate results/hashes belong only in the receipt named above.
+
+**Limits and next action:** This does not settle real invoices or prove current
+hosted migrations, full schema/RLS, provider idempotency or a hard external
+spend cap. Existing quote estimation, missing/invalid-usage fallbacks, inline
+Room transcripts/directives, domain-write reconciliation and uncertain remote
+outcomes still need separate acceptance. A failed job may retain private
+ready bytes until their original retention deadline; these changes neither
+delete them nor extend retention. A pre-stream recheck cannot revoke bytes
+already delivered later in a stream. General job release is not a new blanket
+human approval policy. No deployment, hosted mutation, external provider call
+or spend occurred. Refresh candidate-bound local receipts; continue operating
+and hosted acceptance only with separate target/budget approval.
+
+### Observability Failure Isolation - 2026-10-17
+
+**Baseline:** Branch `wip/backup-2026-10-03`, HEAD
+`7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`, Node `v24.19.0`, 152 dirty paths.
+The crosswalk receipt and strict report matched `1a3e5375...e8e6f6db` and
+remained not ready (clean-tree, ledger, release-environment failures; 56
+unevaluated categories). The prior goal turn made concrete implementation and
+verification progress. Three added regressions then proved that trace outcome
+observers and console failures escaped into business control flow, while the
+32-span cap lost later settlement outcomes. Preserve their failed report:
+`tmp/observability-resilience-baseline-2026-10-17.json`.
+
+**Acceptance:** An observer failure must preserve the operation's return value
+and record `unknown`, not manufacture success or repeat work. Actual operation
+exceptions must retain their identity. Optional console/vendor sink failures
+must not change durable completion or escape as unhandled rejections. Keep
+traces content-free and bounded while preserving admission and recent details,
+stage outcome totals, in-flight work and explicit truncation. Isolate parallel
+jobs and copied snapshots. Reject impossible timelines or inconsistent totals
+when reading persisted evidence. Retain redacted version-1 historical traces
+without inventing their missing summary. Add named deterministic AI cases and
+refresh all dependent candidate-bound receipts; no model samples are implied.
+
+**Implementation and scope:** Version-2 traces retain the first 24 and latest
+eight completed spans, at most seven fixed stage summaries, counters capped at
+1,000,000 per outcome with an explicit saturation flag, and a bounded in-flight
+count. Timing is capped at 24 hours. Snapshot copies cannot mutate the stored
+context. Predicate failures become unknown; work exceptions still propagate.
+The log sink is isolated and detached vendor promises have rejection handlers.
+Worker-handler, API-reader, concurrency, malformed-evidence, redaction and
+late-settlement tests use synthetic fixtures. Two cases expand the offline AI
+fixture from 16 to 18; this is contract evaluation, not model quality.
+The first candidate passed 278 regressions, 18 offline cases and six browser
+scenarios, but a direct synthetic timing probe reproduced an overly strict
+reader for version-1 independently rounded milliseconds. Its evidence is
+preserved as `tmp/observability-resilience-before-rounding-evidence-2026-10-17.json`
+and `tmp/observability-legacy-rounding-baseline-2026-10-17.json`. A regression
+now accepts only the one-millisecond version-1 allowance, still rejecting a
+start beyond the trace and longer overruns; version 2 remains exact. These
+edits invalidate the first candidate's receipts until the final rerun.
+
+**Limits and next action:** These are process-local observations, not durable
+ledger truth or delivery attestations. Existing worker completion persists its
+trace before the completion RPC returns, so it does not attest to that RPC,
+queue delay, later reconciliation, retries across invocations or uninstrumented
+adapters. Truncated/saturated data is partial; `unknown` is not a business
+failure or approval. Optional sink isolation may lose telemetry; hosted loss
+detection and alert delivery still need operated evidence. Traces inherit job
+retention; no new persistent data class, vendor enablement, hosted mutation or
+spend is authorized. Final results/hashes belong in the current receipt above.
+
+### Artifact-To-Object Crosswalk - 2026-10-17
+
+**Baseline:** Continuation started on branch `wip/backup-2026-10-03`, HEAD
+`7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`, Node `v24.19.0`, 150 dirty paths.
+The file-clock receipt and strict report matched candidate `c5f3e7b...1459eb`;
+strict remained not ready with clean-tree, ledger and release-environment
+failures plus 56 unevaluated categories. Three subsequently added regressions
+proved that self-consistent but renewed object deadlines, unreferenced bytes
+and a ready artifact with missing bytes all passed the earlier inventory.
+The failed baseline is `tmp/storage-artifact-crosswalk-baseline-2026-10-17.json`.
+The previous turn is classified as progress, not a blocked or waiting turn.
+
+**Acceptance:** Require complete, stable, bounded artifact reads before and
+after the all-version and exhaustive soft-deleted object listings. Bind them
+to the exact tenant and Supabase project. Match every generation's reference,
+size/type and original deadline; reject deleted artifacts with live bytes,
+missing active ready objects, duplicate references and ambiguous live
+generations. Fail on drift, incomplete/foreign/stale samples, malformed rows,
+oversized responses or pagination limits. Emit only hashes/counts/identity;
+schema-4 storage/cloud receipts must invalidate earlier contracts and bind the
+same artifact snapshot through release verification.
+
+**Implementation and verification:** The collector uses the existing paginated
+export helper with an eight-column projection, GET-only exact-project URL,
+redirect refusal, per-request timeout, 4-MiB page bound and 101-request bound
+per sample (at most 50,000 accepted artifacts). A CLI integration test uses
+synthetic fetches and a Cloud SDK shim to verify the bracket order, drift
+rejection, mode-0600 output and redaction. The focused 44-test development
+run passed; final candidate results and hashes belong only in the current
+receipt named above. Code/evidence edits invalidate earlier candidate-bound
+results until refreshed.
+
+**Limits and next action:** Metadata equality is not byte/hash equality,
+cryptographic source attestation, a cross-resource transaction or proof of
+deletion/recovery. Bracketing detects observed drift, not every concurrent
+change; hosted acceptance needs a reviewed quiescent collection and identity.
+An unmatched soft-deleted generation fails; do not extend or recreate expired
+active records merely to satisfy this gate. A permitted recovery reference
+design and all-copy deletion proof remain open. No hosted API read/write,
+deployment, collection charge or provider spend occurred. Refresh the final
+candidate-bound suite, then seek separate target/budget approval before any
+live collection or remediation. Do not infer authorization from this note.
+
+### Original-Deadline File Clocks - 2026-10-17
+
+**Baseline:** Last verified local candidate
+`a22b3ffbbe20c06ee86876b5f7133cf3bd6c99766451b8e8e1a7b1ee2f19c2f2`
+had passing metadata-restore tests, but three added regressions reproduced
+missing upload clock headers, acceptance of an age-only bucket, and acceptance
+of expired original content with a fresh object creation time. The failed run
+is `tmp/storage-retention-clock-baseline-2026-10-17.json`. A second regression
+in `tmp/storage-destination-clock-baseline-2026-10-17.json` showed the restore
+path incorrectly using a 14-day source tenant window for a reviewed 28-day
+destination bucket. Both tests were added after the earlier verified candidate.
+
+**Acceptance:** Preserve the original artifact expiry on native member,
+source-pack, worker and restored uploads; atomically set bytes and deadline
+metadata with create-only/checksum protection; reject invalid/expired clocks
+before writing. Use the reviewed destination window and reject missing/altered
+target review before copies. Require exact age fallback and Custom-Time rules,
+seven-day soft delete and no blocking minimum retention. Object/cloud receipts
+must reject legacy evidence and hash original clock metadata without exposing
+object names. Preserve the policy's 28+7 bound; configuration cannot stand in
+for observed physical deletion or recovery.
+
+**Implementation:** A shared pure clock helper derives Custom-Time from the
+artifact expiry minus bucket days. Native uploads use one XML PUT, and all
+three route call sites forward their artifact's expiry. Restore uses checksum-
+protected `gcloud storage cp` with the original expiry anchor, requiring a
+hash-matching manifest for client/bucket/namespace/destination-window scope.
+Upload retries reconcile a create-only conflict through read-only metadata;
+only matching bytes/type and original deadline metadata permit reuse, with
+no overwrite or clock renewal.
+The provisioner proposes both prefix-scoped rules without applying them.
+Configuration/inventory checks flag missing anchors, stale expiry, blocking
+holds/minimum retention and late hard-delete deadlines. Inventory and cloud
+evidence use schema 3; schema-2 receipts cannot accept this candidate. Targeted
+tests check each native handoff, exact copy flags, different source/destination
+windows, no-write invalid cases and immutable evidence hashes. Final results
+belong in the matching receipt above.
+
+**Limits:** No GCS request, bucket change, deployment, object backfill, deletion,
+hosted mutation or provider spend occurred. These are local contract/fixture
+results, not actual Cloud Storage acceptance. The live bucket/configuration,
+IAM/XML behavior, artifact-to-object crosswalk, metadata authenticity, recovery,
+legacy objects, deletion scheduling/latency, orphan cleanup and backup/vendor
+expiry remain open. Cloud Storage lifecycle work is asynchronous; no exact
+28+7 enforcement claim follows from the proposed rules.
+
+### Atomic Metadata Restore And Original Clocks - 2026-10-17
+
+**Baseline:** The last verified artifact-window candidate was
+`acc6e3178fce13904e36ac1c888523baed2170de92c0d6dbe348deda5232f560`.
+An actual SQL regression reproduced the record insert trigger changing the
+original creation time from September 27 to October 17. Its failed expectation
+is preserved in `tmp/restore-clock-database-baseline-2026-10-17.json`.
+The prior CLI performed separate metadata upserts; a later failure could
+leave earlier tables committed. File-integrity checks did not address either
+problem. The baseline test was added after the last verified candidate.
+
+**Acceptance:** Use one service-role-only metadata transaction with no
+sequential fallback; preserve original clocks through actual retention
+triggers; reject expired/future/missing clocks and invalid tenant/column/order
+inputs; roll back earlier rows on later typed or clock-drift failure; reject
+existing-target conflicts instead of overwriting; retain bounded 500-row
+subsets and a bounded whole request; bind final results to the exact candidate.
+
+**Implementation and local scope:** New migration
+`product-experience/supabase-client-lifecycle-restore.sql` defines the protected
+metadata RPC and final insert-clock guard. It must be applied after the client
+tables/retention guards, but has not been applied to a hosted project. The CLI
+sends one request (maximum 50,000 rows / 32 MiB) and verifies returned aggregate
+counts. Its dry-run output explicitly excludes database acceptance. The SQL
+tests exercise real record, Pipeline and Notebook source retention migrations,
+rollback, ordinary server dating, forged member context, existing-target
+conflicts and 501-row batching; all 49 SQL projections match the CLI allowlist.
+Fixture CLI tests reject RPC failure or an unverified receipt without fallback.
+Full local results belong in the final matching
+`tmp/restore-transaction-eligibility-release-evidence-2026-10-17.json`.
+
+**Limits:** This is a local metadata transaction, not a complete recovery
+implementation or hosted acceptance. File copies occur first and can leave
+private orphaned bytes on later failure. Remote object clocks, cleanup,
+recovery-only access, all-family hosted constraints/grants, backup/vendor
+expiry and encryption, cross-resource recovery, and 28+7 behavior remain open.
+There was no deployment, hosted mutation, external provider call or spend.
+
+**ECC eligibility follow-up:** The first atomic candidate
+`c91f20735d9a1943096a35adee765f342ef5aaf9e8f94e8f62107d9cdaf3b01b`
+passed 161 local checks but an added SQL regression showed that a revoked
+revision past its own `expires_at` deadline could still be restored.
+`tmp/restore-ecc-expiry-baseline-2026-10-17.json` preserves that failed
+expectation. Both expiry column names are now validated; the SQL RPC also
+requires learning items to be proposed without old approvals and revisions
+to remain revoked evidence. Fourteen transaction-specific SQL tests pass.
+The original 161-check receipt is historical, not acceptance of this change;
+the final authority is the matching eligibility receipt referenced above.
+
+### Ordinary Artifact Restore Expiry Barrier - 2026-10-17
+
+**Baseline:** Candidate `f5a336d663cf88101c6a64ae4b0b2046412b6144f93d47c2bbd8e28aa4ec010b`
+accepted a hash-valid backup containing a 36-day-old ready artifact in ordinary
+restore dry-run. The regression expected rejection but observed exit zero;
+`tmp/restore-expiry-baseline-2026-10-17.json` preserves that failure. Backup
+integrity and tenant scope did not establish retention eligibility.
+
+**Acceptance:** Before cloud or metadata writes, reject expired artifacts,
+missing/invalid/future clocks, expiry beyond the verified tenant window (up to
+28 days), and files not matching ready artifact metadata exactly. Preserve
+original timestamps, allow still-active content, and stop metadata insertion
+if expiry occurs during transfer. Recovery-only content must not be silently
+reactivated by ordinary restore. Test both dry-run and mocked apply without
+hosted access, and refresh candidate-bound release evidence after all edits.
+
+**Implementation and local scope:** The CLI now calls the artifact-window
+guard after snapshot/object integrity preflight and before every metadata
+insert batch. The 30 targeted tests pass, including the original expired-file
+regression, day-28/29/34/35/36 boundaries, shorter tenant policies, original
+clock preservation, unsafe file/metadata matches, and deterministic expiry
+during transfer. The new tests are part of the standard lifecycle command.
+Full lifecycle, typecheck/lint, AI, Notebook and strict results must be read
+from the final matching `tmp/restore-expiry-release-evidence-2026-10-17.json`.
+
+**Limits:** This prevents ordinary restore from reactivating expired artifact
+content; it does not implement recovery-only access or prove seven-day
+recovery. Original metadata clocks are preserved, but remote object creation
+clocks and post-transfer cleanup are not verified. A failed transfer or later
+database insert can still leave partial state. Atomic rollback, other table
+families, backup expiry/encryption, deployed grants and 28+7 deletion across
+all copies remain open. No deployment, hosted write, external provider call
+or spend occurred.
+
+### Companion Text and Player Graph Reconciliation - 2026-10-16
+
+**Baseline and acceptance:** The prior private graph had 1,453 nodes / 10,663
+relations, 92/110 lessons with page-text segments, three transcript segments,
+and captured manuals that were not explicitly linked as companion text.
+Require exact outbound-resource URL matches (not title guesses), separate
+coverage types, unchanged source text/body/transcript coverage, an exact
+110-lesson player-audit crosswalk, rejected altered audit evidence, valid
+portable output and repeat-merge idempotency.
+
+**Result:** The new private snapshot validates at **1,453 nodes / 10,675
+relations**: 12 companion-text links across nine lessons, including eight
+of the 18 missing-body lessons. Source text, 92/110 body coverage and three
+transcript segments are unchanged. All 110 player observations retain their
+audit hash and main-player-only scope. 25/25 graph/export/gap tests and focused
+lint pass; negative checks reject duplicate lesson identities, count drift,
+unsupported video-capture claims and inventory mismatch. No source body is
+manufactured and the graph remains partial. Evidence:
+`tmp/authorized-skool-import/player-and-companion-reconciliation-2026-10-16.evidence.json`;
+readable gaps: `tmp/authorized-skool-import/graph-coverage-status-2026-10-16.md`.
+Final candidate receipts are refreshed after documentation and retained in
+`tmp/companion-graph-release-evidence-2026-10-16.json`. The new graph has not
+been uploaded to Drive or imported into a hosted tenant. No Docker, hosted
+mutation, deployment, provider call or spend was used. Hosted parity, full
+customer acceptance, 28+7 behavior and real buyer validation remain open.
+
+### Run-Level Notebook Journey Evidence - 2026-10-16
+
+**Baseline and acceptance:** The previous browser refresh could not find its
+bundled Chromium. Worker-local `afterAll` hooks could overwrite the receipt
+with only the restarted worker's results. Require all four scenarios in one
+run, no retry/skip/flaky/duplicate acceptance, an explicit browser channel,
+actual runtime versions, stable before/after source identity, and invalidation
+of prior passing evidence before build/launch.
+
+**Implementation and observed result:** The run-level evaluator replaces
+worker-local receipt writing; schema 2 validates runtime/configuration and both
+source identities. The existing `PLAYWRIGHT_BROWSER_CHANNEL` convention can
+select installed Chrome without downloading a browser or reading a user
+profile. 21/21 receipt/verifier tests and typecheck/lint pass. An isolated
+production-build browser run passed 4/4 on Chrome 155.0.8059.82 / Playwright
+1.62.1 / Node 24.18.0. The CLI regression also reproduces failed/malformed runs
+after a pass and source changes during a run, requiring failure rather than
+retaining the old pass. Final candidate evidence is refreshed after these
+documentation edits and stored in
+`tmp/notebook-run-level-evidence-2026-10-16.json`; the strict report is the
+current authority. No hosted identity, RLS, provider-quality, customer, retention
+enforcement, deployment, or market-validation claim follows from these fixtures.
+
+**Archive follow-up:** The nine open manual titles were matched to existing
+Drive PDFs, with filename/size matches and nonempty readable text; the Hermes
+Cloud reference is also present. Inventory Markdown/CSV and the archive status
+note were uploaded to the existing authorized folder and read back. This was
+an explicitly requested Codex Drive operation, not a demonstrated product
+workflow or hosted tenant import. Video bytes are not backed up by those
+inventories. Private local note:
+`tmp/authorized-skool-import/manuals-and-video-save-status-2026-10-16.md`.
+
+### Complete Lesson Player Inventory - 2026-10-16
+
+**Baseline and acceptance:** Earlier evidence sampled three players and left
+the 112-item UI count and three direct references unresolved. Check every main
+lesson player in authorized Work Chrome and match every exact lesson ID to the
+register, without equating hosting with captured content.
+
+**Result:** 110/110 lesson IDs matched; 93 YouTube embeds, 17 Skool-native
+players, zero missing main players, zero unresolved hosts. Four ambiguous
+thumbnails were rechecked. The sidebar has 110 lesson links plus heading and
+progress, explaining 112 items. Evidence:
+`tmp/authorized-skool-import/video-player-audit-2026-10-16.md`, with JSON/CSV
+companions. The private graph is unchanged at 92/110 linked page-text coverage.
+No full-playback, download, transcript, worldwide exclusivity, or video-backup
+claim is made; supplementary video links were not exhaustively audited. No
+completion button, College inspection, hosted write, or Drive upload occurred.
+Tracked documentation changes require the candidate receipts to be refreshed;
+the strict report above remains authoritative after that refresh.
+The subsequent offline AI refresh passed 16/16 cases. The synthetic Notebook
+refresh could not launch any of its four cases because the installed Playwright
+expects an absent `chromium_headless_shell-1234` executable. This is a local
+test-runtime limitation, not a Skool browser-access failure; the earlier
+Notebook pass must not be treated as current-candidate evidence.
+
+### Object Backup Integrity and Video-Access Correction - 2026-10-16
+
+**Baseline and acceptance:** The preceding candidate
+`e7c3cf3980f8d9ff45522ba75ea345c2ec4bf2ade08d720d79f71d2147d5752c`
+had matching local receipts but accepted an empty object folder for a snapshot
+containing ready artifacts; the new empty-backup regression reproduced this.
+Require exact snapshot-bound local inventories and hashes, ready-artifact
+byte/size coverage, safe paths/layouts, checksum-constrained create-only
+transfers to exact object keys, and no metadata writes after a copy failure.
+The final code passes **95/95** lifecycle tests, the mocked CLI verifier,
+and **62/62** tenant-table classification across **82** SQL migrations.
+Evidence after final receipt refresh:
+`tmp/object-backup-integrity-release-evidence-2026-10-16.json`.
+No hosted recovery, remote-source checksum parity, atomic rollback,
+backup expiry/encryption, or signed provenance is claimed.
+
+**Source-access correction:** Work Chrome exposes the full 112-entry lesson
+navigation down to May 1, but only three players were sampled: October 10
+Obsidian played in Skool, May 1 Codex played in a YouTube embed, and the
+Agent OS introduction loaded a playing YouTube player without a recorded
+numeric time advance. No full video or new transcript was captured. Existing
+watch URLs, hosted IDs, and PDFs are not verified all-video access.
+Downloads has 16 video-extension candidate files with no verified per-lesson
+matches. See the private video-access sample audit and the corrected coverage
+audit. No College browser, lesson completion button, AgentOS hosted mutation,
+deployment, or paid provider was used. Complete per-lesson access/content
+accounting and all hosted release gates remain open.
+
+### Restore Preflight - 2026-10-16
+
+**Baseline and acceptance:** A mocked restore inserted `client_tenants` before
+rejecting a later cross-tenant audit row; dry runs also accepted invalid
+tenant rows and missing object-backup inputs. Require all snapshot row shapes,
+tenant scopes, artifact-backup requirements, and requested local directory
+checks to pass before the first metadata or cloud write, in dry-run and apply
+modes. Preserve safe metadata restoration, confirmation, credential redaction,
+parent-first ordering, and 500-row batching.
+
+**Result:** Moved tenant/row and backup-directory checks into preflight.
+`npm run verify:client-lifecycle` passed **90/90** local tests, the existing
+mocked restore verifier, and classification of **62/62** tenant tables across
+**82** SQL migrations under Node `v24.18.0`. The two new regression tests
+exercise invalid later rows, missing backup options/directories, file-valued
+directories, wrong-tenant directory names, and a non-mutating valid dry run.
+Evidence: `tmp/restore-preflight-release-evidence-2026-10-16.json`, generated
+after the candidate-bound AI/Notebook and strict receipt refresh.
+
+**Limits:** Local fixture evidence only. This is not a transactional restore,
+object completeness/hash verification, backup expiry/encryption proof, or
+hosted recovery verification. A later database or cloud-copy failure can
+still leave a partial restore. No hosted mutation, provider call, or spend
+occurred. The goal and release gates remain open.
+
+### Downloaded Manuals and Repository Intake - 2026-10-16
+
+**Baseline and acceptance:** The latest pre-intake private graph contained
+1,185 nodes / 10,073 relations, with text for 90/107 registered lessons.
+Accept only PDFs matching the owner's recorded hashes, repository READMEs
+matching pinned Git blobs, valid production import batches, an idempotent
+local merge, and separate accounting for companion documents, lesson bodies,
+and video references. BWC work is outside AgentOS scope.
+
+**Result:** Restored the 12 remaining PDFs from their authorized Drive backups
+into the private workspace cache and matched every original SHA-256. Added
+four unique pinned repository READMEs (OpenMuse deduplicated) and the extracted
+Codex README without executing third-party code. The 85-segment / 510-link
+pack passes the actual production selector/parser. Preserved 29 skipped-entry
+notices and omitted five unsafe/local URL references. Exact owner evidence
+adds the October 13-15 lesson IDs; the resulting partial graph validates at
+1,453 nodes / 10,663 relations, with page text for 92/110 lessons. Both local
+merges are idempotent. Its SHA-256 is
+`039329e053ccc5f916cb97b8a201ee94d87837f631037a4a61a9e26558ef2629`.
+Private receipts are `tmp/authorized-skool-import/downloads-and-repositories-2026-10-16.evidence.json`
+and `tmp/authorized-skool-import/owner-reconciliation-2026-10-16.evidence.json`.
+
+**Limits and next step:** This is local source preparation, not tenant import,
+repository integration, complete coverage, or validation of the sources'
+claims. Eighteen bodies, the 112-item inventory, legacy pending counts, and
+omission review remain open. There are 92 watch URLs, 15 Skool-hosted IDs, and
+three missing video references (October 13-15). Orca's watch URL was already
+registered; the earlier request for it was incorrect. BWC's five backed-up
+documents were moved to a separate My Drive folder and never imported.
+The Drive backup-manifest upload was not executed because automatic approval
+review hit a usage limit; no alternate upload route was used. Refresh local
+candidate receipts after this note, then continue authorized source intake.
+No deployment, hosted tenant mutation, provider call, or spend occurred.
+
+### Supported Runtime Recheck - 2026-10-16
+
+**Baseline:** `package.json` declares Node `>=22 <26`. The machine's Node
+`v26.4.0` is outside that range. The official Node `v24.21.0` macOS ARM64
+archive was fetched into `/tmp` and matched the SHA-256 published in Node's
+release checksum list; no project runtime policy was changed.
+
+**Result:** On Node `v24.21.0`, the offline AI evaluation passed **16/16** with
+zero model samples, and the synthetic Notebook handler journey passed **4/4**.
+The latest verifier recognizes both receipts on the same candidate fingerprint.
+It still reports `releaseReady=false`; the working tree is dirty, no release
+ledger bucket is configured, and 50 release categories are not evaluated.
+The earlier Node 26 attempt remains invalid historical evidence. No source code,
+cloud state, tenant data, provider, or browser session was changed to resolve
+the runtime mismatch.
+
+**Evidence and limits:** `tmp/ai-release-local-v1-report.json`,
+`tmp/customer-journey/local-browser-receipt.json`, and
+`tmp/production-readiness-current.json` are local candidate evidence. They
+establish only these deterministic local checks, not hosted runtime behavior,
+market validation, or production readiness.
+
+### Public YouTube Transcript Capture - Claude Watermarks - 2026-10-16
+
+**Baseline and acceptance:** The owner-registered Claude Watermarks lesson
+(`7c194f6af4e549959327e9df21309180`) had a public video pointer but no linked
+transcript. Use only its visible public YouTube transcript panel; preserve the
+lesson/video IDs and capture provenance; keep page text empty; and confirm the
+result with the normal private-pack graph linker and exact-ID gap reporter.
+
+**Result:** The panel exposed 108 timestamped English transcript entries. A
+15,678-character transcript-only capture was prepared locally with an explicit
+ASR wording/accuracy caveat. The private source graph links to the exact lesson
+ID, and the merged candidate now includes this and the prior September Hermes
+VPS transcript. Full lesson-text coverage remains 87/107 with 20 exact-ID gaps;
+the reporter counts two transcript-only lessons and keeps
+`completenessVerified=false`. Transcript text is not treated as lesson-page
+text or verified factual evidence. Evidence paths and hashes are recorded in
+`docs/skool-coverage-audit-2026-10-15.md`. No video download, Skool scrape,
+hosted import, provider call, or spend occurred.
+
+### Candidate-Bound Local Receipt Refresh - 2026-10-16
+
+**Baseline and acceptance:** Following the local retention-audit change and
+read-only hosted identity recheck, the prior AI and Notebook receipts no
+longer described the current worktree. Refresh both on one identical
+candidate fingerprint: the deterministic offline AI suite must pass all 16
+cases with zero model samples, the synthetic Notebook browser journey must
+pass all four scenarios with non-loopback traffic blocked, and the strict
+local verifier must recognize both receipts as bound to that candidate.
+
+**Result:** Under bundled Node `v24.19.0`, the offline AI suite passed **16/16**
+and the isolated Notebook browser journey passed **4/4** (`cited-draft`,
+`citations-outside-file`, `source-changed`, `budget-denied`). Both receipts
+record the same working-tree fingerprint. The strict verifier recognizes
+`passed_candidate_bound_dirty_tree` for AI and `passed_candidate_bound` for
+Notebook. The verifier was run with release-ledger lookup disabled; it still
+reports `releaseReady=false`, with `working_tree_clean` and
+`ledger_bucket_not_configured` failures and **49 evidence categories not
+evaluated**. The first sandboxed browser attempt was denied permission to bind
+`127.0.0.1`; the successful rerun used the narrowly approved local listener.
+No hosted, provider, or infrastructure call or spend occurred.
+
+This is local synthetic evidence only. It does not close the signed-in
+customer journey, hosted identity/parity, or release-ledger gates.
+
+### Work-Profile Identity and Build-Identity Recheck - 2026-10-16
+
+**Baseline:** The prior board evidence recorded an authenticated same-user
+comparison for Cloud Test and local port `3945`, while deployed Cloud Test
+build identity returned `client_route_not_enabled`. Acceptance for this
+recheck was to compare read-only Cloud Test and local session responses for
+authentication, the same user, and tenant-scope digest, and to verify whether
+the hosted build-identity route is exposed. Keep raw account identifiers out
+of evidence.
+
+**Result:** In the authorized Aryaman (Work) Chrome profile, Cloud Test
+`/api/client-auth/session` returned `authenticated: true`; its payload did not
+include the tenant-scope digest introduced in the current local source. The
+Cloud Test `/api/client-runtime/build-identity` route still returned
+`client_route_not_enabled`. Both local comparison endpoints on `127.0.0.1`
+ports `41774` and `3945` refused connections, so current same-user and
+tenant-scope parity could not be re-established. The user's original Internal
+Beta Memory tab was restored after the check. No local service was started,
+hosted data was changed, or credential/configuration value was read or changed.
+
+This check confirms the hosted identity/build-identity gate remains open; it
+does not prove the hosted revision's source or image identity. The next
+read-only parity attempt requires an intentionally running local candidate on
+the expected port(s); resolving the disabled hosted route still requires a
+separately authorized rollout.
+
+### Tenant-Scope Evidence on Authenticated Session - 2026-10-16
+
+**Baseline:** Candidate fingerprint before this change was
+`cf724ca847153ca62c12065b1fa4474aba2744179ad5f166af9a22a9d4f19aff`. The
+authenticated session endpoint reported workspace membership but no tenant
+scope identifier. The separate build-identity route already returned a
+SHA-256 digest of the configured Supabase project endpoint and tenant slug, but
+the route is disabled on the observed hosted revisions.
+
+**Acceptance:** Return that same opaque digest from the always-available
+session endpoint only after an authenticated client member check succeeds.
+Unauthenticated users, non-members, and operator-mode sessions receive `null`;
+malformed or missing project/tenant configuration also yields `null`. The
+digest must not reveal the project URL or tenant slug and must be identical to
+the build-identity digest for the same configured scope.
+
+The digest implementation is now shared between both endpoints. The focused
+identity and membership suite passed **16/16**, `npm run typecheck` passed,
+and targeted ESLint plus `git diff --check` passed. This adds a tenant-scope
+comparison signal for a future approved read-only hosted check; it does not
+prove equal tenant contents, row-level isolation, deployed code/image
+identity, or hosted parity while the endpoint change remains local. No
+hosted request, tenant write, deployment, provider call, or spend occurred.
+Candidate-bound AI and Notebook receipts are refreshed after this board entry.
+
+### MiroFish Buyer Pilot Workflow-Coverage Preflight - 2026-10-16
+
+**Baseline:** On MiroFish buyer-pilot repository commit
+`c99f64d12615b82e905229606df18f6527a814b5`, the v2 profile generator appended
+the shared workflow to profile prose, but preflight only checked cohort IDs,
+schedules, and artifact hashes. The current failed synthetic run remains
+non-evidence: its generated profile CSV omitted the workflow, replies were
+self-quotes, and no new provider-backed run has fresh authorization.
+
+**Acceptance:** Before any future run, each of the ten synthetic profiles must
+contain the exact canonical first-workflow statement in both `user_char` and
+`description`; the config, preparation receipt, and pilot manifest must agree
+on that statement; preflight must reject omissions even when file hashes have
+been recomputed. No provider call is part of this acceptance test.
+
+The v2 runner now records the workflow in its config and both preparation
+receipts, normalizes whitespace/case for coverage checks, and rejects missing
+or inconsistent workflow evidence. A tamper regression removes the workflow
+from every profile while updating the dependent hashes and verifies preflight
+still fails. The MiroFish buyer smoke/v2 suites passed **27/27** with that
+repository's virtualenv; `git diff --check` passed. The exact changed-file
+SHA-256 values are `1ad409269851ea2789a64dd04981b0a959d5bbef2c18619661f2a429aa0754f4`
+for `backend/scripts/run_buyer_pilot_v2.py` and
+`eee3d405272cd45f4d5b8d519b6b2f0695aff9105071d339d994be8be9766995` for
+`backend/tests/test_buyer_pilot_v2.py`. This establishes a local preflight
+guard only; it does not repair or validate the historical simulation, prove
+buyer demand, or authorize another run. No provider, graph, hosted, or
+infrastructure request or spend occurred. Candidate-bound local AgentOS
+receipts are refreshed after this board entry.
+
+### M1 Local Notebook Journey Receipt Refresh - 2026-10-16
+
+**Baseline:** Candidate `7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87` was dirty.
+The pre-run working-tree fingerprint was
+`d6e307c9ddb84300c153e825882e8d7607fca69ee55311ce9dc6b59a87bf6d9d`. The
+journey acceptance contract requires all four synthetic browser scenarios to
+pass on supported Node: cited draft reaches provenance, review, and download;
+citations outside the artifact are rejected; changed sources are rejected; and
+budget denial prevents provider/artifact side effects. Browser requests to
+non-loopback origins are aborted.
+
+**Result:** Under Node `v24.19.0`, the isolated current-checkout browser suite
+passed **4/4** in 53.1 seconds. The strict local verifier accepted the AI
+evaluation (**16/16**, zero model samples) and Notebook journey receipt as
+candidate-bound on that fingerprint. This is synthetic local behavior only;
+it does not prove a real signed-in customer journey, hosted identity, tenant
+isolation, RLS, storage, provider quality, or customer acceptance. This board
+edit changes the candidate fingerprint, so both local receipts and the strict
+verifier are refreshed after this entry. No hosted data, deployment, external
+action, browser profile/session, or paid provider was used or changed.
+
+### Exact-ID Hermes VPS Video Summary Import - 2026-10-16
+
+**Baseline:** The current private graph reports **87/107** registered lessons
+with linked text, **20** without, **226** linked segments, and
+`completenessVerified=false`. Lesson
+`61958b509c8a4ed1b4fea5f88019e2f1` had only its Skool page and public-video
+reference. Acceptance required matching the viewed video to that exact lesson
+ID, keeping transcript provenance explicit, adding useful graph context without
+representing a summary as a full transcript, and preserving the incomplete
+archive status.
+
+**Result:** The official YouTube transcript panel for *How to Run Hermes Agent
+OS on a VPS* exposed English auto-generated captions. A concise summary-only
+node was added to a new local graph candidate with `hasSummary` and
+`derived_from` edges, the exact Skool lesson URL, video URL, caption language
+and provenance, and a recognition-error caveat. No transcript text or video
+bytes were copied. The candidate validated as partial at **1,155 nodes / 9,679
+edges**. The exact-ID report correctly remains **87/107**, **20** missing,
+**226** linked text segments, and `completenessVerified=false`; the new summary
+does not masquerade as a captured lesson body. `tests/skool-register-graph.spec.ts`
+and `tests/skool-text-gaps.spec.ts` passed **11/11**. This is local graph work
+only; no hosted import, video download, Drive edit, deployment, provider call,
+or spend occurred. Candidate-bound AI and Notebook receipts are refreshed after
+this board update.
+
+### Retention Policy-Bound Object and Cloud Receipts - 2026-10-16
+
+**Baseline:** The prior candidate fingerprint was
+`6212123d73e5ff9b87632f7f6410065e76422920b22ad8b5bc4089be2c1a54dc`. The
+object inventory evaluator applied 28 active and seven recovery days, but its
+schema-v1 receipt omitted both values and its validator accepted a report
+without proving which policy was evaluated. Cloud-config evidence likewise
+did not carry those policy values.
+
+**Acceptance:** A valid object inventory receipt must explicitly bind
+`retentionDays: 28` and `recoveryDays: 7`; missing or altered values must fail
+validation. Cloud-config evidence must carry the same policy and compare it
+when checking current evidence. Older schema-v1 receipts must not silently
+satisfy the revised contract.
+
+Implemented schema-v2 policy-bound object-inventory and cloud-config evidence,
+with negative regressions for missing/changed policy and propagation into the
+cloud receipt. The focused storage, cloud-config, and production-readiness
+suite passed **23/23**; the repository `test:focused` suite passed **415/416**
+(one skipped, zero failed). This verifies local evidence contracts and fixtures;
+it does not verify the live bucket lifecycle, hosted deletion, backup recovery,
+vendor copies, or scheduled purge behavior. No cloud inventory command, hosted
+read, mutation, deployment, provider call, or spend occurred. Existing schema-v1
+receipts are intentionally invalid under the new contract and must be
+re-collected before a release gate can use them.
+
+### MiroFish Numeric-Claim Grounding Gate - 2026-10-16
+
+**Baseline:** Before this change, candidate fingerprint
+`c734743362bac82d692eb2d790c0c44a004cb1148c73415da4881b1659ff4570` had a
+MiroFish buyer-run auditor with **19/19** focused tests but no automated check
+that a generated buyer's precise money claim was grounded in that buyer's
+profile or cited post. The recorded `sim_49b3a7426c50` review says one of two
+replies invented a `$2k+` budget from an open-ended “over $1000” band and the
+pilot did not pass. That historical run was not re-opened or modified here.
+
+**Acceptance:** A generated monetary amount must be present in the speaking
+persona's profile or the specific post being quoted; equivalent notation such
+as `$2k+` and a sourced `$2,000` is accepted. Unsupported claims fail the pilot
+evidence gate, while technical telemetry may still pass. Market validation
+must remain false.
+
+Implemented the deterministic audit check and added fail/pass regression
+fixtures. The focused auditor suite passed **21/21** and the full AgentOS
+MiroFish artifact suite passed **31/31**. This is a source-level guard, not a
+new MiroFish run or proof that model-generated claims are otherwise accurate.
+No historical simulation artifact was changed, and no provider request or
+spend occurred. Candidate-bound AI and Notebook receipts must be refreshed
+after this board update.
+
+### Candidate-Bound Local Evidence Refresh - 2026-10-16
+
+**Baseline and acceptance:** Before rerunning, the current candidate was
+`7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87` with 94 uncommitted paths and
+working-tree fingerprint `f16f3abdd9a75fbea1f1a03dcc45e7d8900410cba71095e626972d6d4ae7d665`.
+The prior AI report was stale for that fingerprint; the local Notebook receipt
+also required refresh. Acceptance for this step was both zero-provider local
+receipts passing and binding to the same exact candidate, with the strict
+release verifier still authoritative for release readiness.
+
+Under bundled Node `v24.19.0`, the offline AI evaluation passed **16/16**
+deterministic cases with zero model samples, provider requests, tokens, or
+provider cost. The isolated Notebook browser journey passed **4/4** scenarios
+(`cited-draft`, `citations-outside-file`, `source-changed`, `budget-denied`);
+it used synthetic identity/data and aborted all non-loopback browser traffic.
+These results cover local candidate behavior only, not hosted identity, model
+quality, real users, or customer acceptance. The first sandboxed browser launch
+was denied by macOS; the successful rerun used the permitted local-test process
+and loopback access, with no hosted endpoint involved.
+
+The strict `verify-production-readiness.mjs --allow-dirty` check confirms both
+local receipts as `passed_candidate_bound_dirty_tree` / `passed_candidate_bound`
+on the fingerprint above. It remains `releaseReady=false`, with
+`working_tree_clean` and `ledger_bucket_not_configured` failures and **49
+evidence categories not evaluated**. No hosted data, deployment, external
+action, or provider/infrastructure spend occurred. The ledger target is not
+configured, so no evidence was published. Since this board update itself
+changes the candidate fingerprint, refresh candidate-bound receipts after this
+edit before relying on their SHA for a later gate.
+
+The same candidate's `npm run verify:client-lifecycle` passed **83/83** local
+tests under Node `v24.19.0`. Its inventory scanned **81** SQL migrations and
+classified **62/62** declared tenant tables, while correctly retaining
+`hostedEnforcementVerified=false`. This verifies local retention contracts and
+fixtures only; it does not prove the 28-day active / seven-day recovery policy
+has been applied to hosted tables, objects, backups, or vendor copies.
+
+### Fresh Local Evidence and Browser Access Recheck - 2026-10-15 ET
+
+The current checkout is still source commit
+`7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87` on
+`wip/backup-2026-10-03`, with 70 uncommitted paths at the strict-verifier
+check. Under bundled Node `v24.19.0`, `npm run verify:client-lifecycle` passed
+**72/72** tests and classified **62/62** declared tenant tables across **79**
+migrations; the inventory explicitly reports
+`hostedEnforcementVerified=false`. `npm run verify:client-runtime-config-fixtures`
+passed **24/24**, including storage-object inventory and 28+7 fixture checks.
+`npm run typecheck` passed. The offline AI evaluation passed **16/16**
+deterministic cases with zero model samples or provider requests; its report
+has SHA-256
+`415aa8d98c0d87558474527c61f970f892c69f9c2972d2003e838db3e01c3851`, binds to
+the source commit, records a dirty tree, and sets `productionReady=false`.
+Focused observability and job-trace tests passed **13/13**. These are local
+checks, not hosted enforcement, model-quality, or telemetry-delivery evidence.
+
+The strict production verifier on this candidate returns `releaseReady=false`:
+it reports **70 uncommitted paths**, no release-ledger bucket, and **49
+evidence categories not evaluated**. The browser extension inventory exposes
+only
+the College profile, and the enabled local debugging endpoint returned 404 for
+the DevTools target and version paths; `browser-use` reports zero active
+connections. However, the native Chrome app surface does expose the user's
+Aryaman (Work) window read-only. Its selected tab is Internal Beta `/memory`,
+showing **2 memories / 114 nodes / 113 edges** at the latest recheck. This is
+a UI observation; the same-user finding and build-identity limitations are
+recorded in the read-only API comparison below. The Work window remains open.
+No deployment, hosted mutation, tenant write, provider call, or spend occurred.
+
+Read-only comparison of the three already-open Veloce tabs in that same Work
+window found Local `127.0.0.1:41774/memory` and Cloud Test
+`veloce-cloud-test-mquo4bf7aq-el.a.run.app/memory` each showing **23 memories /
+32 nodes / 54 edges**, while Internal Beta
+`agentos-internal-beta-vbimnfseva-ew.a.run.app/memory` showed **2 / 114 / 113**.
+The Internal Beta tab was restored as the selected page afterward. This
+initial count comparison alone was only UI-level evidence and established no
+principal, tenant, source commit, image digest, or live build identity. The
+same-user API finding is recorded in the following check. No memory controls
+were activated.
+
+Read-only GETs to each surface's `/api/client-auth/session` returned an
+authenticated Veloce application session with the same principal across Local,
+Cloud Test, and Internal Beta. The response does not expose a tenant slug, so
+this establishes same application user, not same tenant. The Chrome Work
+profile's Google identity and the Veloce application's own login are distinct
+identity layers and were not conflated; no account identifier or email was
+copied into this record. Local `/api/client-runtime/build-identity` reported
+source commit `37c9e814dee3df425116929a89623344d256f967`; Git confirms it is an
+ancestor of checkout `7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`, but the API
+labels its value runtime-reported, not independently attested. Internal Beta
+and Cloud Test build-identity routes both return `client_route_not_enabled`.
+Thus same-user parity is now supported, while same-tenant, exact-source/image,
+and full feature/data parity remain unverified. On Internal Beta, the first
+accessibility snapshot after navigation showed 0/0/0 while the rendered page
+settled at 2/114/113; treat that initial zero as a loading-state observation,
+not a confirmed empty tenant. No app session credentials were accessed.
+
+### Current Candidate and Archive Reconciliation - 2026-10-15
+
+Reran `npm run verify:production-readiness` on `7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`
+(`wip/backup-2026-10-03`). It remains `releaseReady=false`: the working tree
+has **73 uncommitted paths**, no evidence path or release-ledger bucket is
+configured, and **49 categories are not evaluated**. Its failures are the
+dirty-tree and unconfigured-ledger gates; the run reported no
+release-environment failure. No deployment or external mutation was attempted.
+
+Recomputed exact lesson coverage from the owner-only May 29 graph and compared
+all seven locally readable graph candidates. The two richest candidates tie at
+**87/107 lessons with text and 226 linked segments**; the five older register
+graphs have no linked lesson text. The exact-ID gap remains **20 lessons** and
+`completenessVerified=false`. No local candidate closes the gaps, so the graph
+was not merged or imported.
+
+On the same dirty checkout, using supported Node `v24.19.0`, `npm run
+test:focused` passed **408/409** tests (one skipped, zero failed), and `npm run
+typecheck` passed. This broad local regression includes the customer-
+journey evidence contract, exact-ID Skool coverage, MiroFish buyer-evidence
+checks, tenant-isolation probes, retention suites, and release-gate tests. It
+does not replace the 49 missing release evidence categories or constitute
+hosted/customer acceptance.
+
+The offline AI evaluation records a candidate fingerprint using schema
+`agentos-working-tree-v1`, hashing the tracked diff from `HEAD` plus the bytes
+and modes of non-ignored untracked files without exposing paths or contents.
+Ignored files and runtime configuration are outside that fingerprint and must
+be verified separately. Its refreshed 16/16 deterministic run uses Node
+`v24.19.0`, with zero model samples, provider requests, tokens, or cost. The
+ignored report at `tmp/ai-release-local-2026-10-15-current.json` binds the
+source commit and fingerprint but marks `workingTreeClean=false` and
+`productionReady=false`; it is diagnostic evidence, not a release receipt.
+
+### Aryaman Work Chrome Hosted Surface Recheck - 2026-10-15
+
+Read-only inspection used the open Chrome window titled
+`Veloce AgenticOS - Mission Control - Google Chrome - Aryaman (Work)`; the
+College profile was not used. Internal Beta `/classroom-research` resolves to
+`/client-unavailable?route=%2Fclassroom-research` and displays “This capability
+is not enabled for this runtime,” describing it as an operator-only surface.
+The route is therefore a confirmed hosted capability gap for this runtime,
+even though Classroom Research appears in its navigation. Current source filters
+operator-only routes from `clientAllowedRoutes()` even when an environment
+manifest lists them, and `tests/client-navigation-policy.spec.ts` passed 4/4.
+Since the hosted build identity is still unavailable, this source/host mismatch
+cannot yet be attributed to a specific deployed revision or configuration. The
+Work Chrome tab was restored to `/memory` and left open.
+
+The Memory page has produced different read-only totals in this browser history:
+**2 memories / 114 nodes / 113 edges**, then **0 / 0 / 0**, and most recently
+**2 / 114 / 113** again in the Aryaman (Work) Chrome profile. A fresh native
+Chrome recheck on October 15 still shows **2 / 114 / 113**. Treat the changing
+totals as unresolved tenant/session or backend-data variance; none of these
+observations establish deletion or which dataset is authoritative. Reconcile
+authenticated tenant identity and backend read results before relying on the
+graph or attempting an import. The original `/memory` tab remains open in the
+Work window; the College profile was not used. No memory or graph controls were
+activated and no tenant data was changed.
+
+At 20:53 ET on 2026-10-15, the selected Work-profile `/memory` tab again
+displayed **2 tenant memories / 114 nodes / 113 edges**. This is a current
+read-only observation, not a backend identity or isolation check.
+
+The user-provided lesson-link register points to a public Claude artifact for
+the 5 October Starnet lesson. Read-only inspection found an explicitly
+user-generated, unverified product field manual with general descriptions of
+rooms as permission groups, hallways as handoff lanes, tool grants, approvals,
+and spend visibility. It is supporting reference material only: it is not a
+lesson transcript or captured lesson-body source, and closes none of the 20
+exact-ID text gaps. Private install details were excluded from the readiness
+record. No artifact was duplicated or edited.
+
+The earlier hosted home-dashboard observation reported `$0.00` metered usage,
+zero provider runs, and no hosted activity; no provider request was made.
+
+After recording this recheck, `tests/skool-text-gaps.spec.ts` passed **3/3**
+under the supported bundled Node 24 runtime; the exact-archive report remains
+87/107 lessons with text, 20 gaps, 226 linked segments, and
+`completenessVerified=false`.
+
+### Offline AI Release Evaluation - 2026-10-15
+
+Ran the declared local evaluation suite with the bundled Node 24 runtime, which
+matches the repository engine range (`>=22 <26`). All **16/16** deterministic
+cases passed; the report records zero model samples, provider calls, tokens, or
+provider cost. The report is local evidence only and explicitly sets
+`productionReady=false`; it does not establish stochastic model quality,
+hosted observability, or the buyer/customer outcomes.
+
+### Skool Master-Document Gap Check - 2026-10-15
+
+Read-only inspection of the connected Drive account's native `agentOS` Google
+Doc found four of the 20 currently missing lesson IDs. All four sections are
+indexes (lesson heading, Skool URL, duration), not lesson bodies; one adds only
+a generic question-post CTA. The remaining 16 IDs do not occur in this
+document. This closes no lesson-text gap and does not prove the content is
+absent from other Drive files. The graph remains at 87/107 lessons with linked
+text, 20 without, and `completenessVerified=false`. No Drive edits, video
+downloads, transcript captures, hosted imports, or tenant writes occurred.
+
+### Cross-Track Local Regression - 2026-10-15
+
+Under supported Node `v24.19.0`, the customer-journey evidence,
+buyer-pilot evidence, read-only surface-map harness, observability accuracy,
+and MiroFish seed/repeat fixtures passed **26/26** tests. The lifecycle gate
+passed **68/68** tests and classified all **62/62** declared tenant tables
+across **78** SQL migrations. A refreshed offline AI evaluation passed
+**16/16** deterministic cases with zero model samples or provider cost; its
+report binds to source commit `7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`,
+records a dirty worktree, and explicitly sets `productionReady=false`.
+
+The strict release verifier was rerun against this checkout: it remains
+`releaseReady=false`, with the dirty-tree and missing release-ledger bucket
+gates failing, and **49 evidence categories not evaluated**. This run returned
+no evidence path and reported no release-environment gate among its failures.
+These checks are local evidence only; no provider calls, external requests,
+hosted changes, tenant writes, or spend occurred.
+
+### Current-Checkout Broad Regression Recheck - 2026-10-15
+
+`npm run test:focused` passed **385/386** tests (one skipped, zero failed)
+under bundled Node 24. The run includes customer-journey evidence contracts,
+MiroFish seed/repeat and buyer-pilot evidence checks, tenant-isolation probes,
+source import, observability, provider bounds, and the production-readiness
+verifier. `npm run typecheck` also passed. These are local source-level checks;
+they do not supply hosted deployment receipts, approved customer-run evidence,
+or the buyer pilot itself. No deployment, provider call, or tenant write
+occurred.
+
+### Client Navigation Fail-Closed Hardening - 2026-10-15
+
+The live Work-profile Internal Beta surface showed Classroom Research and
+Social Research links even though opening Classroom Research returns the
+operator-only unavailable page. Source route policy already rejects those
+routes, but the client sidebar trusted its `allowedClientRoutes` prop. The
+sidebar now uses shared `clientNavigationRoutes()` policy to reject
+operator-only route families in client mode; private/local navigation is
+unchanged. The test supplies an overbroad manifest and verifies the exact
+remaining client route list.
+Focused navigation policy tests passed **4/4**, `npm run typecheck` passed,
+`npm run build` passed, and `git diff --check` passed. The production build
+reported the existing Next.js middleware-convention deprecation warning. This
+is source-only hardening: no deployment was performed, so the hosted mismatch
+remains open until exact-image parity is verified on an authorized release.
+
+### Local Hermes Content Factory Retention Coverage - 2026-10-15
+
+Added a local 28-day-maximum active expiry plus seven recovery days for Hermes
+Content Factory runs and normalized child records. Expired content is hidden
+from tenant/API reads, idempotency retries cannot replay expired payloads, and
+worker, approval, and delivery RPCs reject expired runs. Child inserts inherit
+the earlier of their own limit and parent expiry; bounded service-role purge
+deletes children before parents and records aggregate audit metadata. Lifecycle
+exports include expiry fields and the retention CLI requires the explicit
+`--confirm-retention-hermes` flag before applying cleanup. Synthetic SQL tests
+cover backfill idempotence, tenant isolation, immutable expiry, worker/action
+rejection, purge bounds, grants, and audit rollback.
+
+`npm run verify:client-lifecycle` passed **68/68** tests; `npm run typecheck`,
+targeted ESLint, JSON parsing, and `git diff --check` passed. The inventory
+classifies all **62** declared tenant tables across **78** migrations, but
+`hostedEnforcementVerified=false`. No hosted migration, purge, deployment,
+provider call, or tenant write occurred. Strict readiness remains false: the
+working tree is dirty, the release-ledger bucket and release environment are
+not configured, and customer journey, Skool completeness, local/cloud parity,
+AI evaluation, and buyer-pilot release evidence remain unverified. Ruflo,
+financial/control-plane disposition, and export/backup/vendor deletion are
+still open retention work.
+
+### Local Board and Loop Retention Coverage - 2026-10-15
+
+Added local 28-day-maximum active expiry plus seven recovery days for Kanban,
+Agent Kanban, and Loop runs, including comments, events, and rounds. Child rows
+cannot outlive their parent; expired content is hidden from member queries and
+worker updates, and bounded child-first purge writes aggregate-only audit
+metadata. Route queries also filter expired records. Synthetic SQL tests cover
+tenant separation, immutable expiry, non-backdatable creation time, worker
+rejection, purge bounds, service-role grants, and audit rollback. This is
+unapplied local migration evidence only; no hosted migration or scheduled purge
+has been verified. Paperclip, Hermes Content Factory, Ruflo, exports/backups,
+and administrative/financial retention still remain open.
+
+### Local Paperclip Retention Coverage - 2026-10-15
+
+Added local 28-day-maximum active expiry plus seven recovery days for Paperclip
+projects, agents, issues, comments, and runs. Member RLS and application reads
+hide expired rows; immutable expiry, clamped creation time, parent-bound child
+expiry, worker completion checks, and tenant-scoped bounded child-first purge
+are covered by synthetic SQL tests. The Paperclip migration is included in the
+lifecycle CLI and strict readiness migration inventory. `npm run
+verify:client-lifecycle` passed **63/63** tests; `npm run typecheck`, targeted
+ESLint, and `git diff --check` passed. The inventory now scans 77 migrations
+and classifies all 62 declared tenant tables. Strict release verification
+still returns `releaseReady=false`: working tree is dirty, release ledger
+bucket and release environment are missing, and hosted/migration/test evidence
+is not attached. No hosted migration, deployment, provider call, or tenant
+write occurred.
+
 ### Pushed-Candidate Regression and Release Recheck - 2026-10-15
 
 On pushed commit `e798f7f6007ef897d2fdb18881e392aafce9d55d`, supported Node
@@ -187,12 +1406,13 @@ The full focused suite passed **371/372** with one intentional skip on a serial
 rerun. Its first parallel run had one temporary Git-fixture failure; that test
 passed when rerun alone and in the serial suite.
 
-The owner selected **28 active days plus 7 days of object recovery** (35 days
-maximum elapsed time) for all tenant data and files. This is a policy decision,
-not yet an implementation or hosted setting. The retention inventory,
-versioning/soft-delete behavior, backups, and per-item deletion must be shown to
-enforce this exact window before it can be treated as a release control. No
-hosted configuration, tenant data, provider, or deployment was changed here.
+The owner selected **up to 28 active days plus 7 recovery-only days** for all
+tenant data and files (purge at each item's active expiry + 7; at most 35 days
+from creation). This policy is only partially implemented locally and is not a
+verified hosted setting. The inventory, database/object paths, backups, and
+vendor copies must all enforce this window before it can be treated as a release
+control. No hosted configuration, tenant data, provider, or deployment was
+changed here.
 
 ### Skool Lesson-Gap Queue - 2026-10-15
 
@@ -1038,18 +2258,44 @@ customer journey, authorized Skool-to-graph import, local/cloud parity, AI
 evaluation and observability, a cost-controlled MiroFish buyer pilot, and
 release verification without deploying or spending beyond approved limits.
 
-## Tracks
+## Track History Snapshot (Superseded)
 
-**Current snapshot:** October 15, 2026. The last test-bound application source is `37c9e814dee3df425116929a89623344d256f967`; the next board refresh is documentation-only, so app code remains unchanged. On `37c9e81`, the focused suite passed 371/372 (one intentional skip), deterministic evaluation passed 16/16, and installed-Chrome local acceptance passed 15/15 using synthetic auth and intercepted APIs. The strict release gate remains not ready: ledger lookup unavailable and 38 categories unevaluated. Regenerate exact-commit release evidence for any release candidate. Older dated entries in this board are historical evidence, not current-state claims.
+The following snapshot is retained for its historical evidence and scope notes,
+but its status wording, path count, and next actions are not live. Use
+**Operating Plan And Control Rules** above as the only source for current gate
+state and sequencing. The snapshot below predates the current checkout
+reconciliation and must not be used to choose work.
+
+**Current snapshot:** October 16, 2026. Checkout `HEAD` is
+`7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`; the working tree has **98
+uncommitted paths**, so it is not a release candidate. The exact candidate
+fingerprint is recorded in the ignored local verifier receipt. On this
+candidate, supported Node
+`v24.19.0` offline AI evaluation passed **16/16** with zero model samples or
+cost, and the provider-disabled synthetic Notebook browser journey passed
+**4/4**. Identity/membership tests passed **16/16**, typecheck and targeted
+ESLint passed, and the separate MiroFish buyer-pilot smoke/v2 suites passed
+**27/27** after adding workflow-coverage preflight. The strict verifier remains
+`releaseReady=false`: the worktree is dirty, no release-ledger bucket is
+configured, and **49 evidence categories** are unevaluated. The October 15
+Work-profile UI comparison showed Local and Cloud Test at 23/32/54 and
+Internal Beta at 2/114/113; read-only sessions identified the same Veloce
+principal but did not expose same-tenant proof. The current local session API
+now emits a tenant-scope digest only for authenticated members; this change is
+not deployed, and both observed hosted build-identity routes remain disabled.
+Exact hosted source/image identity, same-tenant data, full feature parity, and
+the end-to-end signed-in customer journey remain unverified. Skool graph
+coverage remains partial at 87/107 lessons with linked text. Older dated
+observations below are historical evidence, not current-state claims.
 
 | Track | Status | Exit evidence | Next action |
 | --- | --- | --- | --- |
-| Local product and customer journey | On `37c9e81`, installed-Chrome local acceptance passed 15/15: source-import consent, Notebook Studio draft/provenance/review/download, and observability views at desktop/mobile sizes. Tests used a temporary browser profile, synthetic auth, and intercepted APIs. The provider-disabled current-source app is running at `http://127.0.0.1:41774`; `/login` returns 200 and unauthenticated build-identity returns 401. A real signed-in customer session and live tenant journey remain unverified. | Current-source signed-in journey through login, approved-source selection, draft, citations/provenance, human review, and export, with same-user identity and no unintended writes | Use the intended Work Chrome profile; verify the real test tenant and current app build, then record read-only journey receipts before any live write or provider call |
-| Authorized Skool archive and graph import | Bonus-resource coverage is strong locally: 88/88 PDFs parsed and all 96 text segments match the candidate graph. The archive remains incomplete: 20/107 dated lessons lack linked body text; page/system-page reconciliation is unresolved; video references are metadata, not verified video bytes/transcripts. No hosted graph import receipt exists. | Complete authorized page/text/link inventory; clear provenance and duplicate identities; validate the source pack; scoped tenant import receipt and post-import graph/link checks | Reconcile the remaining lesson pages from the owner-authorized archive and current Drive roster; account for missing text and media without session-cookie bypass; keep hosted import held until coverage and tenant are verified |
-| Local/cloud parity and hosted security | Cloud Test is Ready on revision `veloce-cloud-test-00208-5hk`, built from a 2026-09-23 Cloud Storage source archive with no source-commit identity. Provider calls are disabled, but the live tenant retention is 14 days; current local policy is 28 active + 7 recovery. Build identity is not enabled. Same-user, same-tenant parity and hosted 28+7 enforcement are unverified. | Verified same-user/same-tenant feature and data parity; source/image identity; tenant isolation; current storage proxy, route allowlist, provider-off state, and 28-day active plus seven-day recovery behavior | Keep hosted changes held; obtain a current-source preview/revision plan and owner-approved target, then verify identity and parity read-only before requesting any rollout approval |
-| AI quality, evaluation, and observability | On last test-bound commit `37c9e81`, supported Node `v24.19.0` deterministic AI evaluation passed 16/16 (`localGatePassed: true`, `productionReady: false`, zero model samples); focused suite passed 371/372 (one intentional skip); browser observability checks are included in 15/15. These are offline/local evidence; live model quality, hosted trace delivery, and provider-side spend reconciliation are unverified. | Reproducible supported-runtime evaluation; reviewed model outputs with cost/quality evidence under an approved cap; hosted tenant-scoped trace delivery and alert verification | Keep the $0 provider gate; do not run additional MiroFish/provider calls without fresh spend authorization and a confirmed no-paid-overage configuration; continue offline evaluation coverage |
-| MiroFish buyer pilot | Existing run evidence is not buyer validation: the last audited run had 0 qualified / 2 rejected posts, lacked run-state and profile-preparation receipts, and cannot establish completed-run criteria. No real buyer interviews are recorded. | Audited completed run with human-reviewed, non-duplicative outputs, or preferably real interviews and a documented workflow/price test; synthetic evidence clearly separated from demand | Do not replay provider simulation under the consumed approval; prioritize real buyer conversations and preserve the synthetic run as rejected exploratory evidence |
-| Release evidence and decision | Not ready. On `37c9e81`, the strict verifier returned `releaseReady: false`, `release_ledger_lookup_unavailable`, and 38 required categories unevaluated. Local evaluation/test receipts are not attached to a release ledger record. No release evidence was published. | Clean pushed candidate; all required receipts attached; deployed revision/image and migrations verified; customer, security, operations, legal, financial, and rollback gates approved | Restore read-only ledger access; attach exact-commit local evidence through the approved workflow; close hosted, customer-journey, source-import, reviewer, and rollback gates before any release decision |
+| Local product and customer journey | The current-checkout synthetic browser journey covers sign-in, approved-source selection, draft/provenance, review, and export; latest receipt passed 4/4. It does not establish a real signed-in customer journey. The October 15 Work-profile Memory comparison is historical; exact hosted build identity and customer acceptance remain unverified. | Current-source signed-in journey through login, approved-source selection, draft, citations/provenance, human review, and export, with same-user identity and no unintended writes | Use the visible Work-profile page for read-only tenant/runtime identification, then capture journey receipts before any live write or provider call |
+| Authorized Skool archive and graph import | The local graph is still partial: 87/107 lessons have linked text; 20 do not. A read-only `agentOS` Drive-doc check found four of the 20 as index-only lesson stubs and the other 16 absent from that document. This closes no text gap. Bonus PDFs were parsed locally, but no hosted graph import receipt exists; page and video coverage remain unresolved. | Complete authorized page/text/link inventory; clear provenance and duplicate identities; validate the source pack; scoped tenant import receipt and post-import graph/link checks | Reconcile the missing lesson pages from owner-authorized material and the current Drive roster; account for missing text/media without session-cookie bypass; hold hosted import until coverage and destination tenant are verified |
+| Local/cloud parity and hosted security | Same authenticated Veloce application principal was verified across Local, Cloud Test, and Internal Beta by the October 15 read-only check. The local session API now returns an opaque tenant-scope digest only after membership succeeds, but this candidate is not deployed. Both observed hosted build-identity routes remain disabled; same-tenant data, exact source/image identity, and full parity are still unverified. The prior UI counts and Classroom Research navigation mismatch are historical observations. Hosted 28+7 retention enforcement is unverified. | Verified same-user/same-tenant feature and data parity; source/image identity; tenant isolation; storage proxy, route allowlist, provider-off state, and 28-day active plus seven-day recovery behavior | Keep hosted changes held; establish tenant scope and exact runtime/image identity, then obtain a current-source preview/revision plan before requesting any rollout approval |
+| AI quality, evaluation, and observability | Current supported Node `v24.19.0` offline deterministic evaluation passed 16/16 with zero model samples or cost and `productionReady=false`; cross-track local regression passed 26/26. These do not establish live model quality, hosted trace delivery, or provider-side spend reconciliation. | Reproducible supported-runtime evaluation; reviewed model outputs with cost/quality evidence under an approved cap; hosted tenant-scoped trace delivery and alert verification | Keep the $0 provider gate; do not run additional MiroFish/provider calls without fresh spend authorization and confirmed no-paid-overage configuration; continue offline evaluation and telemetry-contract coverage |
+| MiroFish buyer pilot | Existing run evidence is not buyer validation: the last audited run had 0 qualified / 2 rejected posts, lacked run-state and profile-preparation receipts, and cannot establish completed-run criteria. A local v2 preflight now rejects cohorts whose profiles omit the canonical workflow, but it does not repair or validate that run. No new provider run has fresh authorization; no real buyer interviews are recorded. | Audited completed run with human-reviewed, non-duplicative outputs, or preferably real interviews and a documented workflow/price test; synthetic evidence clearly separated from demand | Do not replay provider simulation under the consumed approval; prioritize real buyer conversations and preserve the synthetic run as rejected exploratory evidence |
+| Release evidence and decision | Not ready. The current strict verifier returns `releaseReady=false`; the worktree is dirty, release-ledger bucket and release environment are unavailable, and 49 evidence categories remain unevaluated. Local receipts are not attached to a release-ledger record. No release evidence was published. | Clean pushed candidate; all required receipts attached; deployed revision/image and migrations verified; customer, security, operations, legal, financial, and rollback gates approved | Restore read-only ledger access; attach exact-commit local evidence through the approved workflow; close hosted, customer-journey, source-import, reviewer, and rollback gates before any release decision |
 
 ## Current-Head Gate Recheck - 2026-10-14
 
@@ -4592,3 +5838,2784 @@ does not authorize hosted changes, provider calls, or spending.
   content as partially implemented, identifies control/identity, ephemeral,
   audit, and financial classes needing separate lifecycle work, and reports
   `hostedEnforcementVerified: false`. No hosted data or policy changed.
+
+## Continuation Update - Structured Research Retention (2026-10-15)
+
+- Added a local migration for structured research runs, records, citations, and
+  worker-failure rows. Member reads now have an age boundary using the tenant's
+  configured retention window (validated at no more than 28 days); legacy
+  retrieval timestamps are capped at migration time so a future-dated source
+  timestamp cannot extend retention.
+- Added a service-role-only dry-run/apply RPC with per-table batch limits. It
+  removes citations before records and runs, and defers parent deletion while
+  any child remains, preventing a parent cascade from deleting younger content.
+  The operator `retention` flow now includes this RPC and requires the explicit
+  `--confirm-retention-research` flag before apply.
+- Synthetic SQL tests cover tenant visibility, 14/28-day behavior, future-date
+  backfill, bounded batches, child preservation, audit rollback, and RPC
+  privileges. `npm run verify:client-lifecycle` passed **26/26** tests and
+  confirmed **62/62** tenant tables remain classified across 68 migration
+  files.
+- The production-readiness verifier now requires this migration to be attached
+  to release evidence. Its current run remains `releaseReady: false`; the
+  worktree is dirty, the ledger bucket is not configured in this environment,
+  and hosted migration/reviewer evidence is unevaluated. No hosted change,
+  deployment, provider call, or spend occurred. Research retention is one
+  locally implemented family, not proof of global 28+7 enforcement.
+
+## Continuation Update - Notebook Container Retention (2026-10-15)
+
+- Added a tenant-window read boundary for notebook metadata and a bounded,
+  service-role-only purge. Member-created notebook timestamps are set by the
+  database, updates cannot extend the original clock, and writes cannot attach
+  a runtime record or source to an expired or foreign notebook.
+- Notebook relationships use existing `ON DELETE SET NULL` semantics, so
+  cleanup removes the expired title/summary container but preserves live source
+  rows, extracted text, and runtime records in the unfiled workspace. Purge
+  results are recorded as minimized audit counts.
+- The shared tenant-retention lookup now lives in the 28-day policy migration;
+  research and notebook read policies use it without exposing tenant settings
+  to non-members. Lifecycle apply now separately requires
+  `--confirm-retention-notebooks`, and the release gate requires this migration.
+- Synthetic SQL tests cover 14/28-day reads, timestamp backdating, expired
+  reference rejection, child preservation, tenant scoping, batch limits,
+  audit rollback, and operator privileges. Hosted enforcement remains
+  unverified; no migration, tenant data, deployment, provider request, or
+  spending changed.
+- `npm run verify:client-lifecycle` passed **29/29** tests and reconciled
+  **62/62** tenant tables across 69 SQL migration files. The required-migration
+  release check passed its negative case, confirming the new notebook migration
+  must be attached before a candidate can pass.
+
+## Current Checkout Verification - 2026-10-15 (`7344a7d`)
+
+The focused suite passed **384/385** tests with one intentional skip on the
+current checkout. The deterministic offline AI evaluation passed **16/16** on
+supported Node `v24.18.0` (`localGatePassed=true`, `modelSamples=0`,
+`productionReady=false`). Running first under Node `v26.4.0` correctly failed
+the engine gate despite all 16 cases passing; the supported-runtime rerun
+passed. `npm run verify:client-lifecycle` passed **29/29**, with **62/62**
+tenant tables classified across 69 migrations and
+`hostedEnforcementVerified=false`.
+
+The strict production verifier remains `releaseReady=false`: the worktree is
+dirty, no release-ledger bucket is configured, and **40 evidence categories
+remain unevaluated**, including current deployment identity, migrations,
+approved customer journey, tenant isolation, source import, and buyer evidence.
+The local `41774` listener was not reachable during this recheck, so no live
+customer journey was run. These results validate local contracts only; no
+provider request, tenant write, hosted change, or deployment occurred.
+
+### Isolated Current-Source Browser Acceptance - 2026-10-15
+
+The source-import, Notebook Studio, and observability status browser suites
+passed **15/15** against an isolated production-mode local runtime on port
+`3993`, using synthetic auth and mocked API responses. Provider calls were
+disabled; no tenant data or hosted service was changed. The observability
+browser spec previously hard-coded port `3939` while the harness supported a
+configurable port; it now honors `CLIENT_RUNTIME_TEST_PORT` and
+`CLIENT_RUNTIME_TEST_URL`, matching the other specs. This is current-checkout
+UI/contract acceptance, not the J01-J15 signed-in customer journey, hosted
+build identity, or local/cloud parity proof.
+
+### Runtime Request Retention - 2026-10-15
+
+Added a local migration for tenant runtime requests and delivery actions. Their
+member reads now stop at each tenant's configured maximum 28-day age; inserts
+cannot backdate creation time, and delivery actions cannot target an expired or
+foreign request. A service-role-only bounded purge deletes eligible actions
+first and defers an old request while a younger action still references it.
+Minimized purge counts are written to the tenant audit stream.
+
+The operator retention flow now includes this RPC and requires the explicit
+`--confirm-retention-runtime` flag before apply. Release evidence also requires
+the migration to be attached. Synthetic SQL and CLI tests cover tenant expiry,
+batching, child preservation, immutable timestamps, privileges, and audit
+rollback. The complete lifecycle suite passed **33/33** and classifies **62/62**
+tenant tables across **70** SQL migration files. Hosted enforcement remains
+unverified; no migration, tenant data, deployment, browser session, provider
+request, or spend was changed.
+
+### Tenant Support Retention - 2026-10-15
+
+Added a local 28-day cleanup path for support tickets linked to a tenant. New
+timestamps are server-set and immutable; the bounded service-role-only RPC
+removes only the selected tenant's expired tickets and writes minimized audit
+counts. Unlinked public inquiries remain outside this tenant-content path, and
+member reads remain denied. The lifecycle CLI now includes the RPC with a
+separate `--confirm-retention-support` apply confirmation, and release evidence
+requires this migration.
+
+Synthetic SQL tests passed **3/3** for tenant scoping, unlinked inquiry
+preservation, timestamp protection, privileges, batching, and audit rollback.
+The expanded lifecycle suite passed **36/36** and still reconciles **62/62**
+tenant tables across **71** SQL migration files. Hosted enforcement remains
+unverified; no hosted database, tenant data, deployment, browser session,
+provider request, or spend was changed.
+
+### Skool Coverage Counter Reconciliation - 2026-10-15
+
+Rechecked the newest private graph including the bonus-resource merge. Exact-ID
+coverage remains **87/107** lessons with non-empty linked text, **20** without,
+and **226** linked segments. The graph has **16** source-pack receipts; **10**
+contain a pending-page count, **9** are nonzero, and their sum is **14**. The
+legacy top-level `pendingPages=25` is an aggregate field, not a unique-lesson
+count. No receipt is a single complete run with a declared inventory matching
+the 107 lesson register.
+
+Updated `report-skool-text-gaps.mjs` to expose the receipt-level scope and mark
+pending counts comparable only when one complete receipt declares the matching
+register size. This fixes the prior misleading direct comparison without
+changing the underlying archive or claiming new lesson coverage. The Skool gap
+report suite passed **3/3**, lint passed, and the full focused suite passed
+**385** with one intentional skip. Archive completion and hosted import remain
+open; no source pack, tenant data, browser session, provider, or hosted service
+was changed.
+
+### Skool Local Capture Recheck - 2026-10-15
+
+A strict read-only scan of 186 JSON/JSON-LD files (261,205,503 bytes) under
+`tmp/authorized-skool-import` counted only top-level source capture records or
+`LearningResource` nodes with non-empty `text` and an exact matching classroom
+`md` ID. It found **0 of 20** missing lesson captures. A prior recursive URL
+scan included nested link-reference objects, which are not lesson bodies; those
+matches are explicitly excluded. This only characterizes the scanned local
+directory and does not prove that no separate Drive or owner-supplied export
+contains the missing content. No content was fetched or imported, and no hosted
+or tenant state changed.
+
+### Current Checkout Verification - 2026-10-15
+
+On current checkout `7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`,
+`npm run test:focused` passed **385/386** with one intentional skip.
+`npm run verify:client-lifecycle` passed its lifecycle checks and **36/36**
+focused tests; the inventory classified **62/62** declared tenant tables across
+**71** migration files. It reports `hostedEnforcementVerified=false`.
+
+The deterministic offline AI release evaluation passed **16/16** under
+supported Node `v24.18.0`, with `modelSamples=0`, `localGatePassed=true`, and
+`productionReady=false`. Its report is
+`tmp/ai-release-local-v1-current-2026-10-15.json`; it does not claim live model
+quality or hosted evaluation.
+
+The strict readiness verifier remains false on this dirty worktree. Its current
+blocking failures are the clean-tree requirement, unconfigured release-ledger
+bucket, and missing release environment. Hosted/customer receipts and attached
+migration/test evidence remain unevaluated. No deployment, hosted write,
+provider request, spend, or release-ledger publication occurred.
+
+### MiroFish Evidence Recheck - 2026-10-15
+
+On AgentOS `7344a7d` the MiroFish artifact suite passed **29/29**. The separate
+MiroFish runner checkout `c99f64d` passed its buyer-pilot v2 setup suite
+**7/7**. No simulation was launched. Read-only inspection of the existing
+synthetic run confirms sequential round telemetry for rounds 1-10, one
+simulation-end event reporting 10 rounds and 8 actions, and four database
+posts. The saved human review is marked complete; both assessed responses have
+`actionable=false`.
+
+This still is not a valid completed-run receipt: `run_state.json` and
+`profile-preparation.json` are missing, and no authoritative process exit code
+is recorded. The telemetry-derived facts cannot substitute for those gates, so
+the run remains unverified and provides no positive buyer-demand evidence. No
+provider call, replay, paid spend, or MiroFish artifact mutation occurred.
+
+### Retention Recovery-Window Recheck - 2026-10-15
+
+Aligned the local policy inventory with the owner's decision: all tenant data
+and files have per-item active retention up to 28 days, followed by seven
+recovery-only days, with purge due at active expiry + 7. Corrected the learning
+cleanup CLI so it selects rows by `retention_expires_at <= now() - 7 days`, and
+corrected Notebook-source purge to honor each source's stored expiry and defer
+parent deletion while its chunks remain inside their own recovery window.
+Updated the policy inventory and security-policy wording to describe the
+all-data decision while explicitly keeping uncovered classes and hosted state
+unverified.
+
+`npm run verify:client-lifecycle` passed **37/37** tests; the retention
+inventory classified **62/62** tenant tables across **71** SQL migration files.
+The verifier still reports `hostedEnforcementVerified=false`. Many table
+families, backups, exports, vendor copies, financial/audit disposition, and
+scheduled deletion remain incomplete; this does not establish production
+retention compliance. The strict release verifier remains false: it lacks a
+clean tree, configured release-ledger bucket, and release environment; its
+customer, hosted, and approval receipts are not evaluated. No hosted migration,
+tenant data, deployment, browser session, provider request, credential, or
+spend was changed or accessed.
+
+### Skool Video-Reference Reconciliation - 2026-10-15
+
+Read the owner-provided lesson-link register from the authorized Drive folder
+and reconciled it against the exact-ID gap report. Of the 20 lesson records
+without linked body text, 11 have direct YouTube video references and 9
+identify Skool-hosted videos. Some also list Descript or Claude artifact links.
+These pointers make some source material viewable without importing lesson
+text, but they are not transcript captures. No video was downloaded or
+transcribed and no hosted tenant import occurred. The audit is in
+`docs/skool-coverage-audit-2026-10-15.md`.
+
+The current gap report still reads **87/107** lessons with linked text,
+**20** without, **226** linked segments, and `completenessVerified=false`.
+`npm run test:focused` passed **385/386** with one intentional skip;
+`npm run verify:client-lifecycle` passed **37/37** and classifies **62/62**
+tenant tables across **71** migrations, with hosted enforcement unverified.
+The strict release verifier remains false on the dirty worktree, missing release
+ledger bucket, and missing release environment. Hosted/customer receipts and
+migration/test evidence remain unevaluated. No credentials were read or copied
+in this work; no deployment, hosted write, provider request, or spend occurred.
+
+### Runtime Job Retention Gap - 2026-10-15
+
+Added a local migration for `client_runtime_jobs`: member reads now stop at
+the tenant's active retention age, new rows cannot be backdated, and a
+service-role-only bounded purge removes rows only after the additional
+seven-day recovery interval. Purge writes minimized tenant audit evidence in
+the same transaction; the migration also refuses to apply before the ECC
+learning-source foreign-key guard is present and valid. Added three PGlite
+tests for tenant/age isolation, 28+7 purge boundaries, idempotent migration,
+backdating, service-role privileges, invalid settings, and rollback on audit
+failure.
+
+`npm run verify:client-lifecycle` passed **40/40** tests and classified **62/62**
+tenant tables across **72** SQL files. This closes only the local runtime-job
+gap: hosted enforcement is still false, and room, Paperclip, pipeline, board,
+loop, Hermes, Ruflo, Visual QA, and export/backup disposition remain open.
+The strict release verifier now requires this migration's hash-attached ledger
+evidence; its regression suite passed **16/16**. The strict gate remains false
+with **43** categories not evaluated and the dirty-tree, ledger-bucket, and
+release-environment gates missing. No hosted migration, scheduler, data
+deletion, deployment, provider call, or spend occurred.
+
+### Offline AI Evaluation Runtime Recheck - 2026-10-15
+
+The default shell resolves Node `v26.4.0`, outside the evaluation runner's
+supported `v22`-`v25` range. Under that runtime all 16 selected cases passed,
+but the runner correctly marked `localGatePassed=false`. Re-running the same
+offline suite with the already-installed Node `v24.18.0` passed **16/16** and
+set `localGatePassed=true`; the report is
+`tmp/ai-release-local-v1-current-2026-10-15-node24.json` for source commit
+`7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`. It records `modelSamples=0`,
+`productionReady=false`, and a dirty worktree. No model, Zep, or provider call
+was made. This is local deterministic evidence only, not live-model quality or
+hosted readiness. The retention inventory's migration count was corrected from
+69 to the verifier's current 71.
+
+### Strict Gate and Artifact Recheck - 2026-10-15
+
+Re-ran `node scripts/verify-production-readiness.mjs --strict --allow-dirty`
+against checkout `7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`. It remains
+`releaseReady=false`: **42 evidence categories are not evaluated**, including
+the current AI evaluation receipt, buyer pilot, J01-J15 customer journey,
+migration/test attachments, hosted deployment and Supabase identity, tenant
+isolation, source import, UI parity, operations/legal approval, and rollback
+target. The three release-gate failures are a dirty worktree, no verified
+release-ledger bucket, and no declared release environment. This is a local
+read-only gate check; no ledger record was published.
+
+The 28+7 lifecycle gate passed **37/37** focused tests and classified **62/62**
+tenant tables across **71** migrations. The verifier explicitly reports
+`hostedEnforcementVerified=false`; this does not establish that every table,
+backup, export, or vendor copy is already subject to the owner's policy.
+
+The existing MiroFish v2 artifact was re-audited read-only. It fails technical
+verification: `run_state.json` and `profile-preparation.json` are absent; action
+telemetry does not reconcile (8 log rows, 4 traced posts, no runner-reported
+action count); all ten profiles fail current shared-workflow coverage; and the
+two active buyers have self-quotes but no cross-buyer interaction. The human
+review is complete and correctly rejects both replies (0/2 approved). The
+historical run was not repaired or rerun. Local runner tests passed 7/7 and
+AgentOS MiroFish audit/bootstrap tests passed 29/29; these validate harness
+behavior, not the historical pilot. No provider call, spend, deployment,
+hosted write, browser action, or credential access occurred.
+
+### Agent Room Retention Coverage - 2026-10-15
+
+Added the local 28+7 lifecycle for `client_room_conversations`,
+`client_room_messages`, and `client_room_rounds`. Conversations age from last
+activity; individual messages and rounds keep their own clocks. Expired parents
+cannot be revived through member updates or appended-to, cleanup deletes
+eligible children first, and a conversation with a younger child is deferred.
+The operator retention flow now includes a separate `--confirm-retention-room`
+apply gate; the strict release verifier requires hash-attached migration
+evidence. Four synthetic SQL tests passed, including batch bounds, tenant
+specific policy, invalid settings, backdating, idempotency, and audit rollback.
+
+`npm run verify:client-lifecycle` passed **44/44** tests and classified **62/62**
+tenant tables across **73** migrations. The release-verifier suite passed
+**13/13**. Strict release verification remains false with **44 categories not
+evaluated** and missing clean-tree, verified ledger-bucket, and release
+environment gates. `hostedEnforcementVerified=false`; Paperclip, pipeline,
+board, loop, Hermes, Ruflo, Visual QA, storage/export, backups, vendor copies,
+and scheduled deletion remain incomplete. No hosted migration or purge was
+run; no deployment, provider call, or spend occurred.
+
+### Visual QA Retention Coverage - 2026-10-15
+
+Added local 28+7 retention for Visual QA reports and findings. Findings use
+their report's creation clock, tenant reads stop at active expiry, and the
+worker cannot refresh an expired report or create one from an expired or
+foreign artifact. The bounded purge removes findings before their reports and
+records minimized audit counts atomically. The lifecycle operator now invokes
+the purge only after a separate `--confirm-retention-visual-qa` confirmation;
+the release ledger requires a hash-attached migration record.
+
+The full lifecycle/retention suite passed **48/48**; the inventory classified
+**62/62** tenant tables across **74** SQL files. The local strict release gate
+remains false with **45 categories not evaluated**, plus the missing
+clean-worktree, verified-ledger-bucket, and release-environment gates.
+Hosted enforcement remains false; Paperclip, pipeline, board, loop, Hermes,
+Ruflo, exports/backups/vendor copies, and scheduled deletion still need work.
+No hosted SQL, cloud data, deployment, browser state, provider call, or spend
+was changed.
+
+### Pipeline Retention Coverage - 2026-10-15
+
+Added local 28+7 retention for `client_pipeline_items`: the database assigns a
+fixed per-item expiry using the tenant's configured period (capped at 28 days),
+RLS hides expired rows, API reads and updates filter expired rows, and the
+worker cannot write into an expired item. Foreign-key cleanup may detach old
+artifact/job references without changing expired content. The bounded
+service-role purge deletes only after seven recovery days and writes aggregate
+audit evidence atomically. The lifecycle CLI includes a separate
+`--confirm-retention-pipeline` apply gate; the strict release verifier requires
+the migration attachment.
+
+Four synthetic SQL tests pass, including per-tenant active boundaries,
+backdating/expiry immutability, worker rejection, FK detachment, bounded purge,
+tenant isolation, service-role grants, and audit rollback. The full lifecycle
+suite passed **52/52**; the inventory classified **62/62** tenant tables across
+**75** migration files. `hostedEnforcementVerified=false`; the migration has
+not been applied, and the broader Paperclip/Board/Loop/Hermes/Ruflo,
+exports/backups/vendor-copy, financial/audit schedules, and scheduled cleanup
+gates remain open. No hosted changes, deployment, provider call, spend, or
+credential access occurred.
+
+### Ruflo Retention Coverage - 2026-10-15
+
+Added local 28+7 retention for `client_ruflo_swarms` and
+`client_ruflo_agents`. Both tables now have immutable per-item expiry, member
+read/write barriers after active expiry, and a bounded service-role purge after
+seven recovery days. Each agent result retains its own clock; the purge removes
+eligible agents first and defers a swarm while a younger agent row remains.
+The Ruflo API reads filter by expiry, lifecycle exports include the expiry
+fields, and the operator purge requires `--confirm-retention-ruflo` on apply.
+The release verifier expects a hash-attached Ruflo migration record.
+
+The full lifecycle/retention suite passed **72/72**, TypeScript passed, and the
+inventory classified **62/62** tenant tables across **79** SQL files. The
+readiness verifier still reports `releaseReady=false` and
+`hostedEnforcementVerified=false`: the worktree is dirty, no release-ledger
+bucket is configured, and hosted migration, scheduled purge, storage/export,
+backup/vendor, financial/audit and other release evidence remain outstanding.
+No hosted migration, tenant deletion, deployment, provider request, or spend
+was performed. Chrome remains on the Aryaman (Work) Memory page; no page
+controls were used.
+
+### MiroFish Repeat-Artifact Provenance Recheck - 2026-10-16
+
+Corrected the repeat-smoke manifest validator to compare the receipt's
+`sourceSha256` against the pinned original-source digest, separately from the
+reviewed CSV digest. Added a regression assertion that rejects conflating
+those two hashes. The focused MiroFish seed/repeat/GTM/release-evidence suite
+passed **16/16**, and `git diff --check` passed.
+
+The retained receipt is still unusable for a new preparation: its named
+`mirofish-reviewed-profiles-brief-v2-2026-10-04.csv` is absent from the
+authorized Codex workspace, and its product-brief digest differs from the
+current seed brief. A derived CSV in a prior run matches the reviewed digest,
+but was not substituted for the missing named source or used to mint a fresh
+receipt. No run was prepared or launched, no simulation/provider was called,
+and no MiroFish run artifact was changed. The Cloud Console identity mismatch
+also remains unresolved, so cloud deployment evidence is still not collected.
+
+### Continuation Recheck - 2026-10-16
+
+Re-ran the current focused regression suite: **385/386 passed**, with one
+intentional skip. `npm run verify:client-lifecycle` passed **72/72** tests and
+classified **62/62** tenant tables across **79** migrations; `npm run
+typecheck` passed. The strict release verifier remains false with **49
+categories not evaluated**, a dirty worktree, no configured release-ledger
+bucket, and no declared release environment.
+
+Refreshed the offline AI evaluation at
+`tmp/ai-release-local-v1-current-2026-10-16.json`: **16/16** selected local
+cases passed under supported Node 24, with zero model samples and
+`productionReady=false`. This is current local deterministic coverage only;
+it does not establish live model quality, hosted observability, or production
+readiness, and the strict release gate still has no attached AI-evaluation
+receipt.
+
+Attempted a non-secret, read-only Cloud Run identity lookup for the documented
+Cloud Test project/service/region. The local sandbox denied `gcloud`'s attempt
+to initialize its credentials database; no credentials were read, and no
+permission escalation or cloud mutation was attempted. The current Cloud Test
+revision, image, and provider-call flag therefore remain unverified in this
+continuation. The Aryaman (Work) Chrome window stayed on Internal Beta Memory;
+no page controls or other Chrome profile were used.
+
+### Current Readiness Recheck - 2026-10-16
+
+The strict local release verifier on `7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`
+still reports `releaseReady=false`: the worktree is dirty, the release-ledger
+bucket is unconfigured, and 49 evidence categories are not evaluated. The
+current lifecycle verification passed **72/72** tests and classified **62/62**
+tenant tables across **79** migration files; its report explicitly keeps
+`hostedEnforcementVerified=false`. The current focused suite passed **385/386**
+with one intentional skip. These results are local-only and do not approve a
+hosted retention migration or establish a signed-in customer journey.
+
+The native Google Chrome window is confirmed as Aryaman (Work), still open on
+Internal Beta `/memory`; its read-only view displays **2 tenant memories, 114
+nodes, 113 edges**. This updates the latest browser observation but does not
+resolve the earlier zero-count observation or prove the authenticated tenant
+and backend identity. No Memory controls were used. No deployment, hosted
+write, provider request, simulation, or spend occurred in this recheck.
+
+### Cloud Storage Retention Preflight Hardening - 2026-10-16
+
+The documented `gcloud storage buckets describe --format=json` output uses the
+Cloud Storage API field names. Updated the local storage/config evidence
+preflight to normalize those names as well as existing snake-case snapshots,
+include default event-based holds and bucket retention policy in the hashed
+receipt, reject default holds, and reject bucket minimum-retention periods
+longer than the 28-day active window. The focused runtime/storage/cloud
+configuration suite passed **19/19**.
+
+This is a local verifier improvement, not a live bucket check. A bucket
+snapshot does not inventory individual objects' holds or retention settings;
+the complete tenant object inventory, scheduled deletion, backups, exports,
+and vendor copies remain open release gates. Cloud Storage documents that
+objects with holds cannot be deleted and that a default event-based hold is
+applied to newly added objects. No cloud configuration was read or changed in
+this check.
+
+After the preflight change, the full focused suite passed **385/386** with one
+intentional skip, TypeScript passed, and the strict verifier still returned
+`releaseReady=false` with **49** categories unevaluated. The worktree contains
+**66** uncommitted paths, and the release-ledger bucket is not configured.
+
+### Object-Level Cloud Storage Retention Receipt - 2026-10-16
+
+Added a scoped collector for all object generations and exhaustive soft-deleted
+objects under one tenant prefix. Its report checks object holds, per-object
+retention deadlines, 28-day active expiry, and seven-day recovery/35-day total
+deletion deadlines; it emits only counts and hashes. Cloud readiness now
+requires a fresh (<24 hour) report bound to the exact project, bucket,
+namespace, and account, and binds its canonical inventory/listing hashes into
+cloud evidence. The current-readiness path requires a newly generated report
+and compares its live object inventory with the published receipt.
+
+The collector was deliberately not run: actual bucket inventory remains
+unverified and the two read-only listings may incur Cloud Storage charges.
+The focused runtime/storage/cloud-config suite passed **24/24**. The local
+production-readiness check still returns `releaseReady=false`, because the
+worktree is dirty and no release-ledger bucket is configured; **49** release
+evidence categories remain unevaluated. No cloud access, deployment, tenant
+write, provider call, or spend occurred.
+
+### Cross-Goal Continuation - 2026-10-16
+
+Added the runtime, bucket, and object-inventory retention fixtures to the
+primary `test:focused` command so the new 28+7 file-retention guard is part of
+the regular release regression gate. The expanded suite passed **408/409**
+with one intentional skip; `typecheck` passed. `verify:client-lifecycle`
+passed **72/72** tests and classified **62/62** tenant tables across **79**
+migrations, while keeping `hostedEnforcementVerified=false`.
+
+Rechecked Skool exact IDs against the current checkout and the ignored
+authorized-import archive. The current Drive lesson-link register and
+`agentOS` document provide pointers/headings for the ChatGPT Voice gap, not a
+body capture; the full connected-Drive query surfaced no exact MiroFish
+reviewed-profiles CSV, and no matching source CSV exists under the Codex
+workspace. The 20 Skool lesson gaps and MiroFish source/brief digest mismatch
+remain open. No derived artifact was substituted, no Skool import or MiroFish
+run was performed, and no customer journey or same-tenant parity claim is
+made.
+
+The current production-readiness check still reports `releaseReady=false`:
+the worktree has **69** uncommitted paths, the release-ledger bucket is not
+configured, and **49** evidence categories remain unevaluated. No deployment,
+hosted write, provider request, or spend occurred in this continuation.
+
+### Candidate-Bound AI Evidence Recheck - 2026-10-16
+
+Applied the canonical system-design invariant that release claims bind to one
+immutable source candidate. The AI receipt validator now recomputes the
+`agentos-working-tree-v1` fingerprint and requires an exact match, rather than
+accepting any syntactically valid SHA-256. The regression test accepts a
+matching receipt and rejects a tampered digest. This covers tracked diffs and
+non-ignored untracked file bytes/modes; ignored runtime configuration remains
+outside the fingerprint and requires separate verification.
+
+On supported Node `v24.19.0`, the readiness and build-identity suites passed
+**16/16**, including the candidate-fingerprint mutation test, and TypeScript
+typecheck passed. The lifecycle/retention run passed **72/72** tests and the
+inventory classified **62/62** declared tenant tables across **79** migrations.
+The inventory explicitly reports `hostedEnforcementVerified=false`; backup,
+vendor-copy, and hosted deletion/recovery behavior remain release gates. The
+offline AI evaluation at `tmp/ai-release-local-v1-report.json` passed **16/16**
+deterministic cases under supported Node `v24.19.0`, with zero model samples,
+provider requests, tokens, or cost. It records the exact current-tree
+fingerprint, but also `workingTreeClean=false` and `productionReady=false`; it
+is candidate-bound local evidence, not a clean release receipt. The strict
+verifier remains `releaseReady=false`: the worktree is dirty, no release-ledger
+bucket or release environment is configured, and **49** ledger-backed
+categories remain unevaluated. After this board update, the AI receipt is
+regenerated once more so its fingerprint covers the recorded state. No
+deployment, hosted write, external provider request, simulation, or spend
+occurred.
+
+### M1 Notebook Artifact Citation Boundary - 2026-10-16
+
+Canonical mapping: `docs/architecture/agentos-system-design-2026-10-14.md`
+and its architecture diagram's M1 local customer journey: sign-in fixture,
+approved sources, draft, provenance, review, and export. Baseline:
+the existing browser journey substitutes API responses, and the worker audits
+the complete provider response before extracting the downloadable artifact.
+Acceptance: exercise the real execution POST, worker POST, execution GET, and
+download GET against shared local service state; permit a cited download, but
+create no artifact on changed sources, denied budget, or invalid citations.
+Reject foreign-member, foreign-tenant, and expired downloads before storage.
+
+The new `tests/client-notebook-execution-journey.spec.ts` reproduced two real
+failures: citations outside the extracted Markdown fence, and a source register
+outside that fence, both allowed an invalid artifact to succeed. Before the
+fix, seven cases passed and these two failed. The worker now audits the exact
+artifact bytes before creating or uploading it, and persists that same audit.
+The nine journey cases and related provenance, SQL worker-source, notebook,
+trace, and artifact-boundary checks passed **35/35** on Node **v24.19.0**.
+TypeScript typecheck passed. The journey suite is included in
+`verify:notebook-execution-provenance`, also invoked by `verify:security`.
+
+The browser-plus-handler suite now runs in a temporary production build at
+localhost with synthetic sign-in, records, budget, queue, storage, and provider
+boundaries; all non-local browser traffic is blocked. The browser drives the
+actual notebook UI and execution POST/status GET, then invokes the actual worker
+and artifact download handlers over shared synthetic state. The successful
+scenario verifies review and repeated Markdown export; three negative
+scenarios verify citation failure, source mutation, and budget denial. All
+four browser scenarios passed. Run with
+`npm run verify:notebook-execution-browser:handlers`.
+
+Evidence boundary: authentication, database/storage services, queue dispatch,
+pricing/budget services, and provider output are synthetic in the new handler
+journey. Network fetches fail immediately. Separate SQL source tests exercise
+local PGlite, not hosted Supabase. This verifies the client-side UI and
+cross-handler behavior under fixtures, not semantic accuracy, live identity,
+hosted RLS, real provider behavior, or the complete customer journey. M1 and
+production readiness remain open.
+No Chrome window was changed, no credentials were read, and no hosted write,
+deployment, provider request, or spend occurred. Earlier candidate-bound AI
+receipts predate this change and must not be reused for this candidate.
+
+### Local Runtime Configuration Parity Digest - 2026-10-16
+
+Canonical mapping: `docs/architecture/agentos-system-design-2026-10-14.md`,
+runtime identity and M3 local/cloud parity. Baseline: the authenticated build
+identity endpoint reported source commit, Cloud Run revision, and tenant-scope
+digest, but no compact runtime-configuration comparison value. Added
+`runtimeConfigDigest`, a SHA-256 over an explicit allowlist of non-secret
+runtime controls: edition and tenant slug, data mode, auth and
+worker/provider-call switches, retention, storage bucket/namespace, budget and
+warning threshold, model pricing, page/API routes, capabilities/traits, and
+provider/model policy. Comma-separated lists are sorted and deduplicated;
+provider-policy and model-pricing JSON object keys are canonicalized. Raw
+values and credentials are not returned.
+
+The endpoint remains tenant-authenticated, `private, no-store`, and explicitly
+labels provenance as runtime-reported rather than independent attestation.
+Regression coverage confirms deterministic output, list-order normalization,
+digest changes for API-route and retention changes, and no digest change when a
+secret value rotates. The focused build-identity suite passed **3/3**, targeted
+ESLint passed, and TypeScript typecheck passed. This is source-level local
+evidence only. The live service still reports the build-identity route as
+disabled, so hosted digest comparison and local/cloud parity remain unverified;
+the new source was not deployed. No credentials were read, and no hosted write,
+deployment, provider request, or spend occurred.
+
+### Retention Gate Includes Object-Version Checks - 2026-10-16
+
+Baseline: `verify:client-lifecycle` exercised 72 database/lifecycle tests and
+classified 62/62 declared tenant tables across 79 migration files, but did not
+run the fixture suite for the Cloud Storage object-version inventory validator.
+Acceptance: the normal local lifecycle gate also runs offline fixtures for
+28-day active expiry, the seven-day recovery window (35 days maximum total),
+exact tenant-prefix scope, hold rejection, and complete live/soft-deleted
+listings, without invoking `gcloud` or touching hosted objects.
+
+Added `tests/client-storage-object-inventory.spec.ts` to that gate. The updated
+`npm run verify:client-lifecycle` passed **76/76**; it again classified 62/62
+tenant tables across 79 migrations and reported
+`hostedEnforcementVerified=false`. This verifies local policy and validator
+coverage only. A fresh owner-authorized hosted object listing, soft-delete
+behavior, backup disposition, and deletion/recovery test remain outstanding.
+No cloud command, credential access, hosted write, deployment, provider call,
+or spend occurred.
+
+### Shared Runtime-Configuration Parity Digest - 2026-10-16
+
+Canonical mapping: system design runtime identity and M3 local/cloud parity.
+Baseline: the authenticated identity endpoint exposed an opaque runtime-config
+digest, while the Cloud Run evidence evaluator only produced a whole-service
+config hash; the two tools had no shared comparison contract. Acceptance: both
+consume one shared canonicalizer over the same explicit non-secret config
+allowlist, normalize list ordering identically, emit only a SHA-256 digest, and
+reject candidate receipts whose runtime digest is missing, malformed, or
+different from current evidence.
+
+Extracted the canonicalizer to `src/lib/clientRuntimeConfigDigest.mjs`; the
+identity route and offline Cloud Run receipt evaluator now use it. The focused
+build-identity and cloud-config-evidence suites passed **6/6**; targeted ESLint
+and TypeScript typecheck passed. The broader runtime-config/storage/evidence
+fixture command passed **24/24**. Tests cover shared digest agreement, route
+order and JSON-key normalization, storage/retention drift, invalid digest
+rejection, and secret non-disclosure. This makes future authenticated
+local-vs-hosted comparison possible, but does not supply a live hosted receipt:
+the deployed route remains disabled and nothing was deployed. No cloud
+command, credential access, hosted write, provider call, or spend occurred.
+
+### Release Verifier Requires Shared Parity Digest - 2026-10-16
+
+Baseline: the production-readiness verifier consumed the cloud-config evidence
+validator, which now requires `runtimeConfigDigest`, but its required-artifact
+and source-contract lists did not explicitly require the shared digest helper
+or its use in both the authenticated identity endpoint and cloud evidence
+receipt. Acceptance: readiness source checks fail if any of those three links
+is removed, while the normal local offline verification path continues to
+avoid Cloud Storage access.
+
+Added required-file/source checks and a regression assertion for the shared
+digest helper and both consumers. The targeted source-contract test passed
+**1/1**. Offline `verify-production-readiness --allow-dirty` with the ledger
+bucket explicitly empty reported `releaseReady=false`, **82** uncommitted
+paths, no configured release-ledger bucket, and **50** ledger-backed evidence
+items unevaluated. No Cloud Storage query ran. These are current release gates,
+not readiness passes; live build identity, hosted tenant isolation and
+28+7-day enforcement, authorized Skool completeness, MiroFish buyer evidence,
+and the complete customer journey remain unverified.
+
+### Candidate-Bound Offline AI Evaluation - 2026-10-16
+
+Canonical mapping: system-design evaluation and observability gates. Baseline:
+the previous 16-case deterministic report predated the current runtime-digest
+and release-contract changes. Acceptance: rerun the exact fixture suite on the
+current full working-tree fingerprint under a supported Node release; all cases
+pass with zero model samples and no LLM/Zep request, while token and provider
+cost fields remain explicitly unmeasured and the report says
+`productionReady=false`.
+
+The default shell run selected Node **v26.4.0**: all **16/16** fixture cases
+passed, but the evaluator correctly rejected the unsupported engine and set
+`localGatePassed=false`. Re-running the same candidate with bundled Node
+**v24.19.0** passed **16/16** and `localGatePassed=true`; it recorded zero model
+samples, with token and provider-cost metrics `null` (not measured), and
+`productionReady=false`. No LLM/Zep request is part of the evaluator. Its
+`workingTreeClean=false` is expected for this checkout and means this is
+candidate-bound local evaluation evidence, not a clean release receipt. The
+report is `tmp/ai-release-local-v1-report.json`; it is ignored local evidence
+and must be regenerated after any source-tree change. No LLM/Zep call or hosted
+action occurred. On the same candidate, the focused observability-accuracy and
+job-trace suites passed **13/13** under Node **v24.19.0**. These exercise
+complete-page ledger handling, malformed/incomplete data rejection, tenant
+isolation, stage trace bounds, and prompt/output/credential redaction; service
+and provider interactions are fixtures, not hosted telemetry or paid calls.
+
+### M1 Current-Source Browser And Handler Journey - 2026-10-16
+
+Canonical mapping: the system-design M1 local customer journey. Baseline and
+acceptance remain as recorded in **M1 Notebook Artifact Citation Boundary**:
+drive the notebook UI through sign-in fixture, approved-source selection,
+draft, provenance, review, and export; reject invalid citations, changed
+sources, or denied budget without creating an artifact.
+
+Re-ran `npm run verify:notebook-execution-browser:handlers` on Node
+**v24.19.0** against the current dirty worktree using its isolated temporary
+production build. ESLint passed and all **4/4** browser scenarios passed:
+cited draft/repeated Markdown export, citation failure, changed source, and
+budget denial. The harness aborted every browser request outside its local
+origin; it loaded no signed-in Chrome session. Auth, records, queue, storage,
+budget, and provider adapter are synthetic fixtures. No actual provider
+request, tenant write, hosted action, deployment, or spend occurred.
+
+This revalidates the local UI-to-handler flow only. It does not prove live
+identity, Supabase RLS, production storage, provider quality, or hosted parity;
+the full signed-in customer journey and M1 release gate remain open. The first
+attempt was denied localhost bind by the default sandbox; the successful run
+used explicit permission for this test only.
+
+### Candidate-Bound M1 Journey Receipt - 2026-10-16
+
+Baseline: the M1 browser journey passed locally, but its result was only
+summarized in this board and did not produce a machine-readable receipt bound
+to the exact dirty candidate or the isolated runner's effective settings.
+Acceptance: every run records the source commit, full-tree fingerprint,
+fingerprint and values of the safe journey-test configuration, all expected
+scenario outcomes, and explicit fixture limitations; missing or failed cases
+must not produce a passing result.
+
+Centralized the synthetic server environment and evidence config in
+`scripts/lib/notebook-journey-evidence.mjs`. The browser suite now emits
+`tmp/customer-journey/local-browser-receipt.json` with a candidate fingerprint,
+test-config fingerprint, timestamps, and four scenario outcomes. The regular
+`verify:notebook-execution-browser:handlers` command runs the receipt contract
+tests before the isolated browser suite. The contract tests verify pass only
+for the complete expected set and fail closed for missing, duplicate, or
+failed cases. The latest local browser and offline-AI results are rerun after
+this board update so their receipts bind to the resulting candidate.
+
+Evidence remains local and synthetic: the receipt explicitly does not prove
+hosted identity, Supabase RLS, production storage, provider quality, or customer
+acceptance. No Chrome session, hosted data, provider request, deployment, or
+spend is used.
+
+### Release Verifier Consumes Local Notebook Journey Evidence - 2026-10-16
+
+Baseline: the release verifier required a candidate-bound local AI receipt and
+a separate 15-stage signed-in customer-journey report, but ignored the new M1
+Notebook browser receipt. Acceptance: ledger inspection and publication validate
+that the local receipt matches the source commit, current full-tree fingerprint,
+recorded test configuration, and all four passed scenarios; missing, stale,
+wrong-config, or incomplete receipts fail their own gate and never satisfy the
+separate 15-stage customer-journey gate.
+
+Added `validNotebookJourneyReceipt` and integrated the receipt as the separate
+`notebook_execution_journey_local_evidence` release gate. The verifier records
+the validated receipt in release evidence; validation is independent of the
+verifier process's chosen loopback port. The targeted release and receipt tests
+passed **17/17**, targeted ESLint passed, and TypeScript typecheck passed.
+
+This is a release-evidence integrity improvement, not a customer acceptance or
+hosted-journey pass. The full signed-in 15-stage report, hosted parity, and
+release-ledger approvals remain required. The final local journey and AI
+evaluation receipts are regenerated after this board update for the final tree.
+
+### Paperclip Company Retention Barrier - 2026-10-16
+
+Baseline: `client_paperclip_companies` is a tenant-keyed singleton without
+`retention_expires_at`; its member RLS policies can expose settings indefinitely,
+and `purge_expired_client_paperclip_records` does not remove it. Acceptance:
+backfill and cap expiry at the earlier of tenant policy and 28 days from creation;
+prevent expired settings from being read or changed; keep fresh inserts server-
+dated and expiry immutable; purge only after the additional seven-day recovery
+window, scoped to one tenant and bounded per table; and audit the operation
+atomically. Verify the boundary with synthetic SQL fixtures and preserve the
+existing no-member-delete policy.
+
+Extended `supabase-client-paperclip-retention-28.sql` with the singleton expiry
+column, validated constraint, index, insert/update guard, expiry-filtered member
+policies, and service-only purge handling for a row keyed by `tenant_slug`.
+Purge remains child-first, reports company counts, and rolls back the deletion
+if its audit insert fails. Updated the local retention map to record this
+coverage and leave export/copy behavior, hosted migration, and scheduled
+operation open.
+
+The focused synthetic database suite passed **6/6** under Node **v24.19.0**.
+It verifies expiry backfill/capping, hidden and non-revivable expired settings,
+fresh server-dated inserts, 32-day recovery hold versus 40-day purge, other-
+tenant isolation, bounded purge, and audit rollback/service-role grants. This
+is local SQL-contract evidence only; the migration was not applied to hosted
+data. It does not verify production scheduling, exports/backups/vendor copies,
+or end-to-end hosted deletion and recovery.
+
+### Runtime Records Active-Expiry Read Barrier - 2026-10-16
+
+Baseline: `client_runtime_records` member RLS permitted reads through the full
+recovery interval, its owner-update/delete policies had no age condition, and
+the runtime-record retention migration only purged after active expiry plus
+seven days. The Markdown export route also queried the server data plane
+without applying tenant retention. Acceptance: stop ordinary access at each
+tenant's configured 1-28-day active expiry; retain rows through the following
+seven-day recovery period; reject backdated inserts and changes to ownership or
+creation time; keep purge tenant-scoped and delayed until recovery ends; and
+make export fail closed if policy is unavailable, exclude expired rows, and
+abort if included content crosses expiry during assembly.
+
+Added a database trigger and active-expiry predicates to record read, insert,
+owner-update, and owner-delete policies. The existing bounded purge continues
+to use the tenant's active expiry plus seven days. The Markdown export now
+loads the tenant retention RPC, filters against one fixed active-window
+snapshot, and rechecks expiry before returning content. Updated the inventory
+and table map to distinguish these local controls from hosted enforcement and
+from files downloaded outside the service's control.
+
+Synthetic SQL and route suites passed **10/10** under Node **v24.19.0**. They
+cover a day-27 visible row, a day-34 recovery-only row still present in storage,
+server-dated/immutable inserts, day-36 purge eligibility, tenant-specific
+retention, fail-closed export-policy lookup, expired-row exclusion, and an
+expiry crossing during export assembly. No migration was applied to hosted
+data. Hosted RLS, scheduled purge, backup restore, user-downloaded copies,
+vendor copies, and post-delete recovery remain unverified.
+
+### Runtime Memory Search and Graph Active-Expiry Barrier - 2026-10-16
+
+Baseline: the `SECURITY DEFINER` memory search and graph-refresh functions read
+`client_runtime_records` without the age predicate, bypassing record RLS. Graph
+node/edge member policies also authorized all tenant graph rows until purge or
+manual refresh. Acceptance: no record past its tenant's active expiry can be
+returned by privileged search, re-indexed by graph refresh, or read through
+existing graph rows; fresh records and tenant boundaries remain intact during
+the seven-day recovery window.
+
+Added the tenant active-expiry predicate to all memory graph and source-link
+indexing queries and to memory search. Added read-time graph RLS for documents,
+derived tags/URLs, and edges so expired graph material is hidden immediately,
+without waiting for refresh or hard purge. Synthetic SQL tests cover an
+expired search sentinel and graph rebuild, plus live RLS visibility of an
+expired document/tag/edge alongside an unexpired document, tag, URL, and edges.
+The focused source-pack and record-retention suites pass **13/13** after a
+fixture correction; the direct record-retention suite passes **5/5**.
+
+This is local SQL-contract evidence only. The migrations have not been applied
+to hosted data, and scheduler execution, backups/vendor copies, and downloaded
+exports remain unverified.
+
+Follow-up verification on the latest local candidate: the retention inventory
+classified **62/62** tenant tables across **79** migrations and the lifecycle
+suite passed **78/78**. Runtime retention plus source-pack SQL suites passed
+**13/13**; typecheck, targeted ESLint, JSON parsing, and `git diff --check`
+passed. The offline AI suite passed **16/16** with zero model samples/cost, and
+the provider-disabled local Notebook browser journey passed **4/4**. Both
+receipts were regenerated against this candidate. The isolated production
+build completed with existing Edge Runtime compatibility warnings.
+
+The local release verifier still returns `releaseReady=false`: the tree has
+**89** uncommitted paths, no release-ledger bucket is configured, and **49**
+release evidence categories are not evaluated in this inspection-only run.
+No hosted migration, deployment, external provider request, or spend occurred.
+
+The inspection-only verifier now reports candidate-bound local receipts
+separately from release-ledger evidence. This preserves useful results from a
+dirty development tree without treating them as release approval: matching
+AI and Notebook receipts are visible for the exact candidate fingerprint,
+while the release gate remains false until the worktree is clean, a ledger
+bucket is configured, and the unevaluated release evidence is supplied.
+
+Latest local retention increment: one-time onboarding token hashes are already
+unusable at `expires_at`; the new idempotent SQL migration adds a service-role
+only, bounded dry-run/apply purge after seven recovery days and the retention
+CLI requires `--confirm-retention-onboarding-tokens` before apply. PGlite tests
+cover the seven-day boundary, batching, reruns, bounds, role grants, and CLI
+confirmation/failure behavior. The inventory now marks this class partial:
+`client_runtime_rate_limits` still has no expiry/deletion path, and hosted
+migration/scheduler operation remains unverified. The complete lifecycle suite
+passed **80/80** before the final CLI failure-path assertion; the focused
+retention and production-readiness suites passed **29/29** after it. TypeScript,
+the 80-file/62-table retention inventory, and `git diff --check` passed. No
+hosted migration, deployment, external request, or spend occurred.
+
+October 16 follow-up closes that local rate-limit gap. The new
+`supabase-client-runtime-rate-limit-retention.sql` migration persists each
+limiter's active window (bounded to the one-hour maximum used by current
+callers), preserves the active window on increments, and supplies a bounded,
+service-role-only purge after that window plus seven recovery days. Retention
+CLI apply requires the separate `--confirm-retention-rate-limits` flag, and
+release evidence now requires the migration. Synthetic PGlite tests cover
+legacy rows, active-window behavior, recovery timing, batch bounds, privileges,
+and invalid inputs. The local inventory now classifies all **62/62** tenant
+tables across **81** migrations; hosted enforcement and scheduled operation
+remain unverified. Lifecycle/retention passed **83/83**, production-readiness
+unit checks **18/18**, client-lifecycle static verification, typecheck, and
+`git diff --check` passed. A read-only search of the authorized Work Drive
+folder found the partial Skool graph artifacts but not the reviewed MiroFish
+buyer-profile brief/CSV; no import or change to Drive, hosted data, or the
+browser page was made. No provider request, deployment, or spend occurred.
+
+### Authorized Skool Lesson Review - 2026-10-16
+
+Baseline and acceptance: inspect an exact registered lesson in the already
+authorized Skool Work-profile session, record only evidence actually visible,
+validate the resulting local graph, and do not count a summary as lesson-text
+coverage. The selected Oct.  9 Hermes VPS lesson resolves to exact lesson ID
+`ed72d1e0070c4c8e842fbbc98f8d5a3c`. Its page has a 5:52 embedded video and a
+Nous Research cloud-portal link; sampled English captions describe a request
+for a consolidated Hermes/VPS and agent-team setup guide, with Hermes Cloud
+presented as a guided route and quick setup. This is a partial summary of
+presenter claims, not verified instructions or a transcript.
+
+Added a local-only summary node and merged candidate under ignored
+`tmp/authorized-skool-import/`; portable graph validation passes and coverage
+remains partial. The strict exact-ID text report correctly remains **87/107
+lessons**, **226 linked text segments**, and **20 lessons without captured
+text**; completeness is false and the Oct. 9 lesson remains in the missing
+queue. Skool automatically marked the lesson complete after playback; that
+reversible toggle was restored, and the Work Chrome window was returned to its
+original Internal Beta Memory tab. The focused Skool graph/gap suites passed
+**11/11**. No tenant write, external publication, deployment, provider request,
+or spend occurred. Candidate-bound local receipts were refreshed after this
+board edit; the strict release verifier remains authoritative and not ready.
+
+### Skool Summary-Only Coverage Accounting - 2026-10-16
+
+The exact-ID gap report now separately counts non-empty summary segments linked
+with `hasSummary` and exposes `hasSummary` on each lesson still lacking a text
+capture. This prevents useful video-caption summaries from being conflated with
+lesson-body text. The exact latest local graph
+`tmp/authorized-skool-import/agentos-may29-gpt6-hermes-summaries-oct9-2026-10-16.jsonld`
+(SHA-256 `a9b52902f598c8094e71d5f990d61c0771a3355003be343a7fe766b8be4f4483`)
+contains 1,162 nodes, 9,691 edges, and 21 source-pack receipts. Its gap report
+counts **3/107** summary-only lessons and **2/107** transcript-only lessons;
+exact full-text coverage remains **87/107**, with **20** gaps. The aggregate
+pending-page counts are not comparable to unique lesson gaps, and
+`completenessVerified=false`. The focused gap-report tests pass **3/3**. After
+scoped approval for a loopback-only server, the isolated local
+Notebook browser journey passed **4/4** and regenerated its candidate-bound
+receipt. The AI evaluation passed **16/16**, with zero model samples or
+provider cost. No acquisition, tenant import, deployment, external provider
+request, or spend occurred; release readiness remains false pending the
+existing gates.
+
+### MiroFish Buyer-Pilot Re-Audit - 2026-10-16
+
+Baseline: re-audit the existing isolated synthetic run `sim_8f4e26a9d170`
+read-only, with no new provider call or spend. Acceptance for pilot evidence
+requires consistent run identity/completion telemetry, action-log reconciliation,
+all 10 personas covering the shared workflow, cross-buyer interaction between
+the 2 scheduled synthetic buyers, and complete human review with useful approved
+responses. The command exited 1 and confirms the run still fails those gates:
+missing `run_state.json`; `runIdentity`, `completionTelemetry`, and
+`actionTelemetry` false; 8 action rows vs. 4 traced posts; all 10 personas miss
+the workflow phrase check; no cross-buyer quotes; 2/2 dynamic responses reviewed
+and 0 approved. Persona coverage, mappings, attribution, novelty, identity, and
+numeric support pass. `pilotEvidencePassed` and `marketValidation` remain false.
+
+The local-only pilot preparation, buyer-seed, release-evidence, and GTM suites
+passed **16/16** Playwright tests; the MiroFish audit/bootstrap/arm Python suites
+passed **31/31**. These establish harness behavior only, not a technically valid
+simulation, provider spend-cap enforcement, buyer demand, or willingness to pay.
+No run artifacts were changed and no new simulation, provider request, hosted
+action, or spend occurred. A further provider-backed run still needs explicit
+approval under a fresh bounded budget.
+
+### MiroFish Run And Harness Follow-Up - 2026-10-16
+
+The retained newer synthetic run `sim_f91504972e42` was audited read-only with
+the matching v1 cohort. Run identity/completion, action telemetry, profile and
+persona mapping, and cross-buyer interaction are technically coherent, but the
+human buyer-content review gate remains false: two posts were reviewed and
+only one was approved. The run therefore remains excluded from pilot and market
+validation evidence. This is simulated behavior, not observed buyer demand.
+
+The earlier `sim_8f4e26a9d170` artifact was also checked against its matching
+v1 cohort. It fails technical evidence: `run_state.json` is absent, completion
+and action telemetry do not reconcile, all ten profiles fail the shared
+workflow-coverage check, and the two scheduled buyers have no cross-buyer
+interaction. It is not rescued by the newer run's status; the artifacts remain
+separately classified.
+
+In the separate `MiroFish-Buyer-Pilot` checkout, the focused v2 test file passed
+**8/8** on the current working-tree candidate (fingerprint
+`a9ff3617e2102795ccb8000a3cf3a17033eec4db3fac4aaf7245344e09e31555`). The
+checkout contains two pre-existing user-edited files, which were left intact.
+These offline tests establish preflight/workflow contract coverage only. The
+declared zero-dollar limit is not proof of provider-side spend enforcement;
+cost/free-tier enforcement remains unverified. No simulation, provider call,
+hosted action, artifact mutation, or spend occurred. The MiroFish pilot gate and
+market validation remain open.
+
+### Build-Identity Parity Gate - 2026-10-16
+
+Baseline: the latest authorized hosted probes recorded
+`client_route_not_enabled` for `/api/client-runtime/build-identity`, while the
+local source route and provisioning template now include it. Acceptance is a
+read-only request against the intended ready revision that succeeds only for an
+authenticated active tenant member, returns source commit/revision plus
+tenant-scope and runtime-config digests, and is corroborated against the live
+Cloud Run image digest, route allowlist, and tenant/project identity. No raw
+secret or tenant slug may be returned.
+
+The local route/policy, Cloud Run config preflight, and cloud-receipt tests pass
+**22/22**. The preflight requires build identity and source-import routes; the
+route is no-store and omits raw namespace, project URL, and provider key values.
+This verifies candidate code and rejection behavior only. It does not resolve
+the deployed route denial or prove the active image/config. No hosted
+configuration was changed. Next step is an explicitly approved read-only
+snapshot of the named hosted revision, followed by a config-corrected candidate
+and separately authorized deployment only if needed; parity remains unverified.
+
+The next read-only snapshot attempt used the exact service/project/region in
+`client-blueprints/agentos-internal-beta.gcp.json`; Cloud Run returned
+`permission_denied`. The diagnostic was reduced to that classification and no
+service environment values, secret references, or account identifiers were
+emitted. No hosted state changed. The next parity step requires a caller with
+Cloud Run service-description permission for the named project, or an owner-
+supplied sanitized service snapshot.
+
+### Local Notebook Journey Active-Retention Assertion - 2026-10-16
+
+Baseline: the existing current-source synthetic journey exercised fixture
+sign-in, selection of an active tenant source, queue/worker execution,
+source-bound citations, review, and private download, but did not assert the
+artifact's active expiry. Acceptance for this increment is that the real local
+handler path stamps the artifact with exactly 28 days from a point during the
+journey, within the captured before/after time bounds; the separate storage
+object gate continues to verify 7-day recovery policy.
+
+Added the active-expiry assertion to the existing end-to-end handler journey.
+The journey, provenance, and receipt-contract suites pass **19/19**, including
+cross-member, cross-tenant, expired-artifact denial, stale-source, budget-denial,
+and citation-failure cases. This is synthetic local behavior only: it does not
+verify hosted source selection, actual object lifecycle, backup/vendor
+retention, or customer acceptance. No external provider or hosted action was
+used.
+
+### M1 Local Acceptance And M2 Archive Inventory Reconciliation - 2026-10-16
+
+**M1 baseline and acceptance:** The current candidate's fixture-backed Notebook
+workflow must exercise sign-in, approved-source selection, bounded queue/worker
+execution, source-grounded draft/provenance, human review, private download,
+28-day artifact expiry metadata, and failure/isolation cases. It must run on
+the supported Node runtime with external browser origins blocked. This is the
+system-design M1 local scope, not the release checklist's 15-stage hosted
+customer journey.
+
+**M1 result:** With bundled Node `v24.19.0`, the provenance/worker/lane suite
+passed **29/29**, receipt-contract tests passed **3/3**, and the isolated
+browser-plus-real-handler journey passed **4/4** (`cited-draft`,
+`citations-outside-file`, `source-changed`, `budget-denied`). The handler suite
+also denies other-member, other-tenant, and expired-artifact downloads without
+reading storage. AI evidence was independently rerun at **16/16** with zero
+model samples. The strict verifier bound both candidate receipts to one
+working-tree fingerprint after this board update; see
+`tmp/production-readiness-current.json` and
+`tmp/customer-journey/local-browser-receipt.json`.
+
+This accepts M1's synthetic local scope only. It does not establish hosted
+identity, real member or tenant data, Supabase RLS, Cloud Storage lifecycle or
+recovery, provider quality, or customer acceptance. The 15-stage hosted
+journey remains open under M5.
+
+**M2 source inventory baseline and result:** A read-only listing of the
+owner-authorized `School Tabs Agent OS` Drive folder returned **115/115** direct
+items. The newest manifest is modified `2026-10-15T02:46:10.899Z`; the newest
+Drive graph export is the explicitly partial 87/107 crosswalk modified
+`2026-10-15T02:45:53.841Z`; the lesson-link register is the owner-provided
+2026-10-11 edition. Folder metadata has no item titled as a transcript,
+caption, or lesson capture, but filenames/MIME types do not prove that content
+is absent within other files.
+
+The newest local graph candidate is
+`tmp/authorized-skool-import/agentos-may29-crosswalk-v2-with-hermes-vps-sampled-summaries-2026-10-16.jsonld`,
+not the older bonus-resource graph used by an earlier audit command. Its exact
+lesson-ID report is **87/107** with full linked text, **20** without, **226**
+linked text segments, and **2** summary-only lesson links. Pending-page receipt
+counters are not comparable to unique lesson gaps, so `completenessVerified`
+remains false. The portable graph validator accepts **1,156 nodes / 9,680
+relations** with `coverage: partial`. Eleven missing lessons have public
+YouTube references and nine have Skool-hosted video IDs; those are pointers,
+not lesson text. No import or graph mutation occurred.
+
+**M2 next action:** The permitted transcript-enrichment pass has captured one
+of the 11 owner-registered public YouTube references as a transcript-only
+segment; see the [coverage audit](./skool-coverage-audit-2026-10-15.md) and
+[repeatable intake lane](./community-source-pack-import.md). Check the official
+transcript panel once for each of the other 10 public references, record an
+unresolved outcome and continue when no text is exposed, and do not substitute
+summaries or descriptions for transcripts. For the nine Skool-hosted videos,
+require a platform-permitted owner export or other authorized source. Keep all
+20 exact lesson-text gaps open until full lesson text is source-backed and
+linked; do not import the partial graph as complete.
+
+### YouTube Tool Fit And Transcript Lane - 2026-10-16
+
+**Baseline and acceptance:** The user-shared repository list proposed a
+Claude Code/Playwright transcript workflow and several full-channel generation
+and publishing agents. Before integration, determine whether a candidate
+provides a platform-permitted path to arbitrary third-party transcript text,
+fits AgentOS's existing architecture, avoids duplicating video generation,
+and can be used without provider spend or publishing side effects.
+
+**Result:** No candidate meets that need. The transcript-oriented project is a
+Claude Code/browser workflow rather than an AgentOS connector. The official
+YouTube caption-download API requires OAuth permission to edit the video and
+charges 200 quota units per download; it does not provide arbitrary public
+video captions. Full channel agents overlap AgentOS video-production features
+and introduce unnecessary provider, credential, and publishing scope. No
+third-party repository was installed or run. AgentOS's existing local source
+pack, private graph export/merge, and exact-ID gap report processed one
+user-authorized transcript capture successfully; the capture is linked to its
+registered lesson and remains distinct from page text. This accelerates
+downstream validation but does not automate acquisition. The 10 remaining
+public references have a one-check manual intake path, with an unresolved stop
+state. No external request, hosted write, deployment, provider call, or spend
+occurred for this tool-fit evaluation. The official API condition is documented
+at <https://developers.google.com/youtube/v3/docs/captions/download>.
+
+### Local Evidence Refresh After M2 Transcript-Lane Update - 2026-10-16
+
+**Baseline and acceptance:** The shell's Node `v26.4.0` is outside the
+repository's declared `>=22 <26` range; use the bundled Node `v24.19.0`.
+The prior strict report marked AI and Notebook receipts stale after the
+candidate edits. Acceptance for this refresh is the deterministic AI suite
+passing with zero model samples, the Notebook provenance and isolated browser
+journey passing all expected cases, the portable/source-graph suites passing,
+and the strict verifier recognizing current candidate-bound AI and Notebook
+receipts. This is local synthetic evidence only.
+
+**Result:** Under Node `v24.19.0`, AI evaluation passed **16/16** with zero
+model samples; Notebook provenance passed **29/29**; receipt-contract tests
+passed **3/3**; the isolated browser journey passed **4/4**; portable graph
+tests passed **4/4**; and Skool register/gap/private graph export tests passed
+**19/19**. The strict verifier at
+`tmp/production-readiness-current.json` recognizes both local receipts as
+candidate-bound. It still reports `releaseReady=false`, with the dirty-tree
+and unconfigured-ledger gates failing and hosted, migration, approval, and
+release evidence unverified. The final board update changed the candidate, so
+the AI and Notebook receipts are regenerated after this note. No provider call,
+hosted write, deployment, or spend occurred.
+
+### Hosted Memory UI Count Snapshots - 2026-10-16
+
+**Baseline and acceptance:** User-shared Chrome captures showed different
+Memory-page counters on the Cloud Test and Internal Beta URLs. Record only the
+visible environment label and counts; do not infer tenant contents, identity,
+data loss, isolation, or parity from a UI render. Acceptance for a parity claim
+still requires a same-session authenticated identity comparison, tenant-scope
+digest, deployed build identity, and server-side scoped data evidence.
+
+**Observation:** On `veloce-cloud-test-mquo4bf7aq-el.a.run.app`, one capture
+showed **0 records / 0 nodes / 0 edges**, and a later capture showed **23
+records / 32 nodes / 54 edges**. On
+`agentos-internal-beta-vbimnfseva-ew.a.run.app`, a later capture showed **2
+records / 114 nodes / 113 edges**. These are transient user-visible counters,
+not retained or independently verified runtime evidence. The Cloud Test
+zero-count render followed by a populated render means even a same-URL UI
+snapshot is insufficient to establish stable contents. No refresh, import,
+mutation, or hosted API request was made for this note.
+
+**Disposition:** M3 remains open. Reconcile the environments only after the
+same authorized member/session, tenant-scope digest, deployed revision/config,
+and server-side counts can be compared read-only. Any data change or repair
+requires separate explicit authorization naming the exact environment and
+action. This observation does not change M3's existing blocked dependency on
+hosted identity/build access.
+
+### Local Retention Inventory And Lifecycle Recheck - 2026-10-16
+
+**Baseline and acceptance:** The selected owner policy is per-item active
+retention of up to 28 days, followed by seven recovery-only days. The inventory
+previously reported 62 tenant tables across 79 migration files and a 72-test
+lifecycle run; the current migration tree has changed since that snapshot.
+Acceptance for this local recheck is exact reconciliation of all declared
+`public.client_*` migration tables with the classification map, plus a passing
+focused suite for implemented lifecycle and storage-object controls. Hosted
+policy application, read-after-expiry, purge scheduling, and recovery remain
+separate acceptance evidence.
+
+**Result:** `npm run verify:client-lifecycle` passed **84/84** local tests. Its
+inventory verifier classified **62/62** tenant tables across **81** migration
+files and labeled `hostedEnforcementVerified: false`. Coverage includes tested
+active-expiry barriers, seven-day recovery boundaries, tenant-scoped bounded
+purges, child-first deletion/defer rules, audit-failure rollback, and object
+inventory checks. The inventory and this board were updated to replace the
+stale migration/test counts. This is synthetic/local SQL and route evidence;
+it does not prove the new migrations are applied, scheduled, or operating in a
+hosted database or bucket. Financial/credit and security/audit schedules,
+exports/backups/vendor copies, hosted grants, and recovery/deletion receipts
+remain unresolved. No cloud request, data change, deployment, or spend occurred.
+
+### M4 Observability Ledger Integrity Guard - 2026-10-16
+
+**Baseline and acceptance:** Before this change, observability converted
+malformed ledger amounts and token counters to zero and could return a normal
+response with understated usage. The source candidate fingerprint at that
+baseline was `cf4eaf3ccfae928b681eac147cad688a7970ba9e4addcc6da0fcf3e45c03a891`.
+The local contract now requires persisted `amount_micros` to be a safe,
+nonnegative integer, `usage_metadata` to be an object, and any supplied token
+counters to be safe, nonnegative integers. Missing counter keys mean zero;
+invalid rows and integer overflow must fail closed rather than under-report.
+
+**Result:** The observability API returns `502 observability_ledger_invalid`
+when the ledger violates that contract. Focused tests cover malformed, negative,
+unsafe, and overflowing values while retaining the existing valid multi-page
+aggregation coverage. Verification is local and synthetic only; it does not
+prove hosted ledger completeness, reconciliation, alert delivery, or production
+spend accuracy. Candidate-bound AI and Notebook receipts and the strict
+read-only readiness report are regenerated after this board entry. No hosted
+request/write, provider call, deployment, or spend occurred.
+
+### M4 Durable Telemetry Audit Gate - 2026-10-16
+
+**Baseline and acceptance:** The source candidate before this change was
+`665bf42f4e8f43da414f455790c6f8faea4afdbacb4fbf7ccedd6831ce3a1475`.
+The authenticated telemetry route previously returned success even if the
+tenant audit insert reported failure, and attempted optional vendor capture
+before checking durable audit persistence. Acceptance: audit persistence must
+succeed before external analytics is attempted; a failed or thrown audit write
+returns a bounded error without vendor egress, while analytics capture remains
+best-effort once the audit is durable.
+
+**Result:** The route now returns `502 telemetry_audit_write_failed` on a
+failed/throwing tenant audit write and only then attempts optional vendor
+capture. The focused telemetry boundary suite passed **7/7**, covering the new
+fail-closed and best-effort cases plus existing auth, size, content-redaction,
+and default-off checks. `npm run typecheck` and focused ESLint passed. This is
+local contract evidence, not proof of hosted audit persistence or live alert
+delivery. The AI and Notebook receipts and strict read-only readiness report
+are refreshed after this board update. No vendor request, hosted write,
+deployment, or spend occurred.
+
+### M4 Monthly Ledger Snapshot Bounds - 2026-10-16
+
+**Baseline and acceptance:** Candidate fingerprint before this change was
+`f0850c24eddfe7aedbbf43ce3b0ae8a2b1c19f73578d35f0f5180584ff005e31`. Both the
+tenant budget and observability routes queried monthly ledger rows from UTC
+month start with no upper bound, so a future-dated row could inflate current
+usage. Acceptance: both queries use a bounded snapshot window from UTC month
+start through the request's `asOf` instant; full pagination and existing
+malformed-ledger failure behavior remain intact; a future-dated row does not
+contribute to either total.
+
+**Result:** Both routes now use a PostgREST `and` filter for
+`created_at >= monthStart` and `created_at <= asOf`. The focused
+budget/observability suite passed **10/10**, including a future-row regression
+in both routes and existing pagination, cap, validation, redaction, and
+tenant-scope checks. TypeScript typecheck and targeted ESLint passed. This is
+query-contract evidence against fixtures, not a live Supabase reconciliation
+or hosted spend-accuracy result. AI and Notebook candidate receipts and the
+strict local readiness report are refreshed after this entry. No hosted query,
+tenant write, provider call, deployment, or spend occurred.
+
+### M4 Recent Activity Snapshot Bounds - 2026-10-16
+
+**Baseline and acceptance:** Candidate fingerprint before this change was
+`d6d0a29d0c44e76dcca91241393bc807c722844c304ec3c06f8b10204d52dfe8`. The
+24-hour observability audit-event and job queries had only a lower time bound.
+Future-dated rows could appear in recent activity and distort lifecycle
+counts. Acceptance: both queries use the same request-captured interval from
+`asOf - 24 hours` through `asOf`; future events/jobs are excluded, while
+tenant scoping, redaction, sampling limits, and the separately bounded monthly
+ledger remain unchanged.
+
+**Result:** Audit-event and job queries now use one shared PostgREST time
+window ending at the request's `asOf` instant. The focused
+budget/observability suite passed **11/11**, including a regression that
+excludes future rows from both recent event counts and provider job counts.
+TypeScript typecheck and targeted ESLint passed. This is fixture/query-contract
+evidence only; it does not establish hosted telemetry completeness, clock
+synchronization, alert delivery, or spend reconciliation. Candidate-bound AI
+and Notebook receipts and the strict local readiness report are regenerated
+after this entry. No hosted query, tenant write, provider call, deployment, or
+spend occurred.
+
+### M2 GPT-6 Astra Transcript Availability - 2026-10-16
+
+**Baseline and acceptance:** The partial graph links lesson ID
+`b36b5cafd8b84c429a56dbbbb15292a2` to the public video
+`uyYhuYsPdGs`, but no transcript segment is linked to that lesson. Acceptance
+for this bounded check is a single read-only visit to the owner-registered
+video's ordinary YouTube transcript panel; a visible timed transcript may be
+recorded as available, but it closes no text gap until a provenance-bound
+local capture is validated and linked to the exact lesson ID.
+
+**Result:** In the existing Chrome window, the YouTube page title matched
+**GPT-6 Astra Built This in ONE Prompt**, published Sep 5, 2026. The ordinary
+transcript panel exposed timed English auto-generated segments through the
+final chapter; the player separately reported captions unavailable. The
+transcript was not copied into a source pack or graph in this check. The lesson
+remains missing linked text, coverage remains partial, and no hosted data,
+provider, or external action was involved. Evidence and limits are recorded in
+`docs/skool-coverage-audit-2026-10-15.md`. This docs-only candidate change
+reopens M0; candidate-bound receipts and strict report must be refreshed before
+relying on them.
+
+### YouTube Intake Workflow Captured In Project Pipeline - 2026-10-16
+
+**Baseline and acceptance:** The Internal Beta Pipeline at
+`agentos-internal-beta-vbimnfseva-ew.a.run.app/pipeline` showed **0 items**.
+The user had explicitly asked to save the YouTube information-gathering
+process in the project pipeline if it was not present. Acceptance was one raw
+Capture-stage item describing the owner-registered/manual transcript intake
+lane and its boundaries, with no shaping, approval, execution, publishing, or
+second hosted mutation.
+
+**Result:** One item titled **Create a repeatable, human-reviewed YouTube
+lesson-intake lane for AgentOS Skool-to-graph coverage** was created and
+appeared in Capture; the other four stages remained at zero. Its instructions
+limit intake to owner-registered public video references, one ordinary
+transcript-panel check, exact lesson/video provenance, local hashed source-pack
+and graph validation, and an unresolved stop state. They prohibit Skool
+scraping/login automation, cookies, downloads, third-party scrapers, provider
+spend, hosted imports, deployment, publication, and outreach; hosted import or
+release requires separate approval. The card's accessible detail preview was
+truncated, so this verifies the created item and stage, not a full readback of
+every saved character. The item remains unshaped. This is an explicitly
+authorized tenant record in the shown Internal Beta session; the browser view
+does not independently prove member identity, tenant digest, or backend
+read-after-write. No other hosted data was changed. The board edit reopens M0,
+so candidate-bound receipts and the strict local report must be refreshed.
+
+### Read-Only Cloud Run Service Identity and Retention Snapshot - 2026-10-16
+
+**Baseline and acceptance:** In the existing Google Cloud Console Work-profile
+Chrome window, the Cloud Run overview for project `agentos-mvp` listed healthy
+services `agentos` and `agentos-internal-beta` in `europe-west1`. The
+`agentos` service details showed a separate public AgentOS registry API whose
+GitHub source is `dev4-gpt/agentos` (Python, “The Machine-Readable Tool Layer
+for Autonomous AI Agents”), not this checkout's `dev4-gpt/local-AgenticOS`
+remote. Its active revision `agentos-00013-q7f` received 100% of service
+traffic, deployed 2026-05-27 from commit
+`4a347ad3fc308086fdb1b38b7ac56fb3e55251ae`, with immutable image digest
+`sha256:0c57bea10a1c99d91b9871d076545a0bd0c48a4a5dc35a4ce59c394fa2593996`.
+This service is not evidence for the Internal Beta web application.
+
+The user-facing host
+`agentos-internal-beta-vbimnfseva-ew.a.run.app` maps to Cloud Run service
+`agentos-internal-beta`. Revision History showed
+`agentos-internal-beta-00034-v69` receiving 100% traffic, deployed 2026-09-26.
+Revision Details identified immutable image
+`europe-west1-docker.pkg.dev/agentos-mvp/veloce-client-runtime/client-runtime@sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`.
+The exact image matches the checked-in Internal Beta manifest. That revision's
+Cloud Run console showed no build information and no source information. Its
+runtime configuration identifies Supabase mode, the `internal-beta` storage
+namespace and bucket, `CLIENT_RUNTIME_ENFORCE_AUTH=1`,
+`CLIENT_RUNTIME_WORKER_ENABLED=0`, `CLIENT_PROVIDER_CALLS_ENABLED=0`, and
+`CLIENT_RETENTION_DAYS=1`. No secret values or identity allowlist values are
+recorded here. Security details identify the dedicated
+`agentos-internal-beta-run` service account, Google-managed encryption,
+Threat Detection disabled, SLSA build level unknown, and no build details,
+container vulnerability scan, or SBOM. The service was reported healthy and
+serving traffic.
+
+Read-only inspection of the exact bucket `agentos-mvp-veloce-internal-beta`
+showed a lifecycle rule deleting objects after 1+ days when their names match
+`internal-beta/`. The bucket Protection tab showed a seven-day soft-delete
+window effective September 25, 2026, object versioning off, and no bucket-wide
+retention policy configured. The bucket displayed no public access. The bucket
+contained four objects overall, but object names/content were not opened or
+inspected.
+
+**Result and limits:** This identifies the user-facing beta's exact active
+revision/image, while also proving the deployed revision is not bound to visible
+source/build provenance. The local manifest says 28 retention days, and local
+`clientRetentionExpiresAt` uses `CLIENT_RETENTION_DAYS` to calculate expiry;
+the live value of 1 and the one-day object deletion rule both contradict the
+agreed 28-day active-retention setting. The bucket's seven-day soft-delete
+configuration is a distinct recovery window, not evidence that objects remain
+physically available for 28 active days or that restore works end to end.
+Configuration was observed, but actual deletion timing, soft-delete
+recoverability, application/database deletion, and backup behavior remain
+unproven. The provider-disabled/worker-disabled state is consistent with the
+internal beta's declared restrictions. The separate `agentos` registry API's
+public-access setting and Compute Engine default service account are not
+transferable to the beta app. Effective route allowlist, same-member/tenant
+isolation, and hosted migrations remain unproven. No deployment, hosted write,
+setting change, provider request, or spend occurred. This board edit reopens M0,
+so candidate-bound receipts and the strict local report must be refreshed.
+
+### M2 Public YouTube Transcript-Panel Pass - 2026-10-16
+
+**Baseline:** The exact-ID crosswalk has 20 lesson-text gaps, with 11 distinct
+owner-registered public YouTube references and 9 Skool-hosted video references.
+Two public references already had local transcript-capture evidence; the other
+nine had required one ordinary transcript-panel availability check each.
+
+**Result:** All nine uncaptured public references now have a recorded panel
+outcome. The seven that visibly exposed timed transcript text are GPT-6 Astra,
+September 20 Lead Generation, Claude Opus 5.5, Hermes Bot Screen, Claude Design
+Playbook, Orca, and Starnet. ChatGPT Voice and UGC Ads remained unresolved in a
+loading state. These checks did not copy transcript text or close any lesson
+text gap. Together with the two existing local captures, this accounts for all
+11 public pointers in the scoped crosswalk; the nine Skool-hosted references
+still require platform-permitted material. Exact IDs, URLs, and per-video
+outcomes are in `docs/skool-coverage-audit-2026-10-15.md`.
+
+**Boundary:** Read-only public YouTube viewing in the Work-profile Chrome
+window only. No Excel, transcript downloads, Skool scraping/login automation,
+hosted import, deployment, provider request, or spend. The updated docs reopen
+M0; refreshed candidate-bound local verification is required before relying on
+release evidence.
+
+### Local Retention Contract Recheck - 2026-10-16
+
+**Baseline and acceptance:** The selected tenant-data policy is at most 28
+active days plus seven recovery-only days, followed by purge. Validate that
+every declared tenant table is classified and run the local lifecycle,
+retention, object-inventory, and migration-contract tests. Keep local contract
+evidence distinct from hosted enforcement, storage deletion, backup, and
+recovery behavior.
+
+**Result:** `verify:client-lifecycle` passed. The lifecycle and retention
+inventory verifiers classified all 62 tenant tables across five classes from
+81 SQL migration files and reported `hostedEnforcementVerified=false`. The
+focused regression suite passed 84/84 tests, including 28+7 expiry boundaries,
+service-role-only bounded purges, tenant scoping, audit atomicity, and
+storage-object inventory constraints. This establishes local migration/code
+contracts only. It does not show that the hosted beta applies these migrations
+or honors the policy; the previously observed live `CLIENT_RETENTION_DAYS=1`
+and one-day object lifecycle remain contradictory. No database, bucket,
+tenant, or cloud state was changed.
+
+### GPT-6 Astra Public Video Summary - 2026-10-16
+
+**Baseline and acceptance:** The register links
+`https://youtu.be/uyYhuYsPdGs` to exact lesson
+`b36b5cafd8b84c429a56dbbbb15292a2` (**6th September: GPT 6 Astra!**). Use the
+user-designated Chrome Work window only; bind the local summary to that exact
+lesson/video; leave page text empty; label video claims unverified; and ensure
+the normal graph validator and exact-ID gap reporter preserve summary-only
+classification.
+
+**Result:** The summary fragment
+`tmp/authorized-skool-import/gpt6-astra-youtube-summary-2026-10-16.jsonld`
+(SHA-256 `95c2317e5928507f5d65b374a33b1b3ecbcabdf7ecfc65a415176850076d0609`)
+was merged into
+`tmp/authorized-skool-import/agentos-may29-plus-bonus-gpt6-astra-summary-2026-10-16.jsonld`
+(SHA-256 `0599870c26e7185bfc46222bf0b5a071fa12ab81596c9b21569de66f22aaa84e`).
+Graph validation passed; coverage remains 87/107 full-text, 20 gaps, two
+transcript-only lessons, and `completenessVerified=false`. The Astra lesson
+has a summary-only edge and no transcript capture; this does not close a
+lesson-text gap. The summary records iterative implementation and verification
+as a candidate workflow idea, not verified tool instructions or product
+capability. No video download, transcript copy, Skool page access, tenant
+import, hosted change, provider call, or spend occurred.
+
+### Candidate-Bound Parity And Focused Regression Recheck - 2026-10-16
+
+**Baseline and acceptance:** On the current dirty source candidate, exercise
+the authenticated build-identity endpoint, clean-source image stamping,
+tenant/config digest stability, live service/bucket evidence binding, and
+28+7 object-inventory checks using Node `v24.21.0`. Run the focused local
+regression suite and identify any skip; refresh AI and Notebook receipts after
+this board update so they bind to the resulting exact candidate fingerprint.
+
+**Result:** The focused parity/config contract tests passed 18/18. The
+repository's `test:focused` regression command completed 420/421, with one
+intentional skip in `tests/markdown-source-pack.spec.ts` because
+`AGENTOS_SOURCE_PACK_FILE` was not supplied. The retention inventory and
+lifecycle suite separately passed 84/84 and classified 62/62 declared tenant
+tables. These are local contract/regression results; they do not certify a
+clean release candidate, hosted build identity, deployed config, two-tenant
+isolation, real deletion/recovery, or production readiness. The current strict
+report still says `releaseReady=false`; hosted evidence, approvals, and release
+ledger configuration remain outstanding.
+
+### Runtime Config Digest And Observability Follow-Up - 2026-10-16
+
+**Baseline and acceptance:** The authenticated build-identity route already
+returned only hashed tenant/config scope and declared its runtime-reported
+provenance. The explicit non-secret digest allowlist omitted several behavior-
+changing controls used by the client runtime. Extend that allowlist without
+including credentials or raw tenant/user content, and prove both that those
+controls change the digest and that semantically unordered lists remain stable.
+Separately run offline trace-redaction and ledger-reconciliation contract tests.
+
+**Result:** Added routing switches, research/provider selections and worker
+config, provider-model mapping, approval policy, preview capabilities, bounded
+cost settings, and runtime job/host allowlists to the digest inputs. The
+focused build-identity, cloud-config evidence, and runtime-config tests passed
+**18/18**; targeted lint passed. Trace, telemetry-boundary, and observability
+accuracy tests passed **22/22**, including secret/prompt/output exclusion,
+tenant-row checks, complete monthly-ledger paging, and fail-closed malformed or
+truncated-ledger behavior. No provider call, hosted request, tenant write, or
+spend occurred.
+
+**Limits and next step:** These are source/test-contract results, not evidence
+that the hosted endpoint is enabled or that runtime settings match the live
+revision. The digest remains an explicit non-secret allowlist, not a complete
+environment attestation; user allowlists and secret values are not returned.
+Proceed with the read-only target-revision comparison in the designated Chrome
+Work window. The strict readiness report remains false until hosted evidence,
+the release ledger, and required approvals are present.
+
+### Cloud Test Build-Identity Route Recheck - 2026-10-16
+
+**Baseline and acceptance:** In the user-designated Aryaman (Work) Chrome
+window, perform one read-only GET of the known Cloud Test build-identity route.
+Acceptance requires a current host response that identifies the deployed
+source/build and runtime config without exposing tenant secrets; do not infer
+deployment parity from a local test or older Cloud Run revision listing.
+
+**Result:** `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/api/client-runtime/build-identity`
+currently returns `{"ok":false,"error":"client_route_not_enabled"}`. The
+host cannot attest its build identity through this route. This is a direct
+hosted blocker for M3 and release verification, not proof that the current
+local candidate is deployed. No tenant data was read or changed, and no
+deployment, hosted mutation, provider call, or spend occurred.
+
+Local diagnosis: current source includes this endpoint in both the default
+client API allowlist and the GCP provisioning template. The observed response
+is emitted by middleware when the effective API allowlist rejects the path.
+Therefore the serving host has an older/different route policy or an effective
+`CLIENT_ALLOWED_API_ROUTES` override that omits it; without an enabled identity
+route or current revision configuration, the two cases cannot be distinguished.
+
+**Next:** Diagnose why the deployed revision does not enable the route, then
+prepare a source-to-image and runtime-config attestation. Any remediation
+requires an explicit deployment authorization; do not deploy under this goal's
+current boundary. Keep local candidate evidence distinct from this failed
+hosted check.
+
+### Full Focused Offline Regression Recheck - 2026-10-16
+
+**Baseline and acceptance:** Run the checked-in `npm run test:focused` contract
+suite on supported Node `v24.21.0`. Acceptance is zero unexpected failures;
+identify and preserve any conditional skip rather than counting it as passed.
+Keep the suite offline and do not contact providers, mutate hosted state, or
+incur spend. Since this board is part of the source candidate, regenerate the
+AI and Notebook receipts after recording the result.
+
+**Result:** `npm run test:focused` completed **420 passed, 1 skipped** out of
+421 tests. The only skip is the private input-dependent case in
+`tests/markdown-source-pack.spec.ts`, which requires `AGENTOS_SOURCE_PACK_FILE`;
+that pack-specific validation remains unrun. `git diff --check` passed before
+the recheck. No provider call, hosted request, tenant write, external action,
+or spend occurred. The suite exercises local contracts and synthetic fixtures;
+it does not establish hosted identity/isolation, deployed retention/recovery,
+the signed-in J01-J15 journey, MiroFish market validity, or production
+readiness.
+
+**Evidence:** Supported Node v24.21.0 command output from 2026-10-16; candidate
+bound AI and Notebook receipts are refreshed after this note.
+
+### Consolidated Authorized Skool Summary Fragments - 2026-10-16
+
+**Baseline and acceptance:** The current private graph had the GPT-6 Astra
+summary plus two transcript captures; two separately reviewed local fragments
+held the September 5 Hermes VPS video summary and October 9 Hermes VPS page
+summary. Merge only those exact-source fragments with the existing
+validator-backed private source-pack merge tool. Acceptance: the portable graph
+validates; exact lesson IDs and provenance remain intact; summary-only records
+do not increase page-text or transcript coverage; all unresolved text gaps
+remain visible; no hosted tenant write occurs.
+
+**Result:** The merged graph
+`tmp/authorized-skool-import/agentos-may29-gpt6-hermes-summaries-oct9-2026-10-16.jsonld`
+validates as a partial private graph with 1,162 nodes, 9,691 relations, and 21
+source-pack receipts. SHA-256:
+`a9b52902f598c8094e71d5f990d61c0771a3355003be343a7fe766b8be4f4483`.
+Exact-ID coverage remains 87/107 lesson pages with text, 20 without page text,
+three summaries, and two transcript captures; `completenessVerified=false`.
+The summaries are not represented as lesson text or transcripts. No Skool
+scraping, new acquisition, tenant import, hosted write, provider request, or
+spend occurred. Candidate-bound AI and Notebook receipts are refreshed after
+this board update.
+
+### Notebook Journey Hydration-Wait Stabilization - 2026-10-16
+
+**Baseline and acceptance:** The isolated browser journey previously passed
+all four scenarios, but a fresh run intermittently lost the first Studio-tab
+click immediately after redirect (3/4 passed). Wait for the tenant record
+fixture to load before interacting with hydrated controls. Acceptance: all
+four scenarios pass, including changed-source and budget-denied stops; no
+provider call or artifact write on those failure paths; receipt bound to the
+exact candidate. Do not change production behavior to mask a test-order race.
+
+**Result:** Updated the browser test to wait for the fixture-backed `1 notebook
+records` state before clicking Studio. The isolated loopback-only run passed
+**4/4**. The source-changed and budget-denied scenarios still make zero provider
+calls and create no artifact; all non-loopback traffic remains blocked. This is
+a deterministic local UI/handler test, not hosted database, customer, or
+provider-quality evidence. AI and Notebook receipts are regenerated after this
+board update.
+
+### Work-Profile Cloud Test Identity And Memory Read Recheck - 2026-10-16
+
+**Baseline and acceptance:** On the exact dirty local candidate fingerprint
+`33756606e4f92ac65634eba24977c3130f9142a38e3d61ba2a7095d2f`, perform only
+read-only requests in the Aryaman (Work) Chrome window to the known Cloud Test
+build-identity and session endpoints. Acceptance is an authenticated session
+with an opaque tenant-scope digest plus a host response that exposes a usable
+build identity; record no raw user identifier. Restore the original Memory
+page and make no tenant writes. For retention config, inspect only the Cloud
+Run service/revision configuration, not credential or API-key pages.
+
+**Result:** The build-identity endpoint displayed
+`{"ok":false,"error":"client_route_not_enabled"}`. The session endpoint
+displayed `authenticated:true`, but no tenant-scope digest; the account ID and
+email were intentionally omitted here. On returning to `/memory`, the page
+initially showed **0 tenant memories / 0 graph nodes / 0 edges**, whereas the
+user-provided Work-window screenshot immediately before this check showed **23
+tenant memories / 32 nodes / 54 edges**. A normal read-only reload restored the
+**23 / 32 / 54** counts. No tenant-write control was activated. This is a
+transient UI-load observation, not evidence of deletion or a standalone proof
+of backend state. Cloud Run revision and retention config were not retrieved:
+Chrome reported a user switch during the attempted navigation, and the Work
+window was re-queried and restored to Memory without opening the
+credential-related Console tab.
+
+**Limits and next action:** This is a current hosted route/session observation,
+not a build attestation or tenant-isolation receipt. No evidence establishes
+the current Cloud Test `CLIENT_RETENTION_DAYS`, object lifecycle, or serving
+revision; the Memory count recovered on reload but does not replace a backend
+read or tenant-isolation check. The
+prior Internal Beta snapshot (`CLIENT_RETENTION_DAYS=1`, one-day object rule,
+seven-day soft delete) remains a historical, known mismatch and is not silently
+transferred to Cloud Test. No hosted data/configuration changed, no deployment,
+provider call, or spend occurred. The board edit changes the local candidate;
+AI and Notebook receipts and the strict local report must be refreshed.
+
+### Notebook Receipt Refresh Blocked By Local Disk - 2026-10-16
+
+**Baseline and acceptance:** The latest local strict report showed AI 16/16 and
+a stale Notebook receipt after the board changed. Refresh the isolated
+Notebook journey on the exact candidate; acceptance is all four scenarios
+passing with non-loopback traffic blocked and no provider calls or artifacts on
+failure paths.
+
+**Result:** The isolated Next build failed before tests with `ENOSPC` while
+writing `routes-manifest.json` under its temporary test directory. The runner
+removed that directory on failure. Disk inspection showed approximately 957
+MiB available; no pre-existing build outputs or user files were removed. The
+strict verifier consequently reports the Notebook receipt stale and AI 16/16
+candidate-bound. This is an environment/resource failure, not a failing
+Notebook assertion.
+
+**Next:** Available disk later increased to approximately 2.2 GiB without
+agent cleanup. The same whitelisted-snapshot, loopback-only journey then passed
+all four scenarios on the latest candidate; see the candidate-bound receipt and
+strict report. The initial failure remains an environment incident, not a
+Notebook assertion failure. No hosted state or tenant data changed, and no
+provider/infrastructure spend occurred.
+
+### Notebook Receipt Recovered After Disk Availability Increased - 2026-10-16
+
+**Baseline and acceptance:** After the `ENOSPC` failure, available disk was
+approximately 2.2 GiB. Retry the same isolated production build and four browser
+scenarios; acceptance requires all four passing, the test server bound to
+loopback, non-loopback traffic blocked, and no provider calls or failure-path
+artifacts. The result must bind to the exact candidate and be recognized by the
+strict verifier.
+
+**Result:** `playwright.notebook-journey.config.ts` passed **4/4** on candidate
+fingerprint `49dd012e120e8f39e90786cbac7b4e6cb5b910f17e997f7338a7fc75f3e8bf36`.
+The strict verifier recognizes this and the AI **16/16** receipt on the same
+fingerprint. Source-changed and budget-denied paths remain zero-provider-call
+and no-artifact cases. This is local synthetic evidence only. The strict gate
+still reports `releaseReady=false`, 109 uncommitted paths, no ledger bucket,
+and 50 categories unevaluated. No files were deleted to gain space; no hosted
+state, tenant data, provider, or infrastructure was changed or used.
+
+### Current Candidate Focused Regression Recheck - 2026-10-16
+
+**Baseline and acceptance:** Before this board edit, the strict report bound
+candidate fingerprint
+`5fa6cfd4b1f261db8185b9d48fbb519dcb2d90d30d19e28adb24e1f4a415080b` to HEAD
+`7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87` on branch
+`wip/backup-2026-10-03`; the supported runtime is Node `v24.21.0`. Run the
+complete checked-in `npm run test:focused` suite offline. Acceptance is zero
+unexpected failures, with conditional skips identified rather than counted as
+passes.
+
+**Result:** The suite completed **420 passed, 1 skipped** out of 421. The skip
+is the optional private source-pack case in `tests/markdown-source-pack.spec.ts`
+because `AGENTOS_SOURCE_PACK_FILE` was not provided. This does not validate any
+particular private pack. `git diff --check` passed. The run made no provider
+calls, hosted requests, tenant writes, external actions, or infrastructure
+spend. It provides local contract and fixture evidence only, not hosted
+identity/isolation, the signed-in J01-J15 journey, deployed retention/recovery,
+MiroFish market validation, or production readiness.
+
+**Evidence refresh:** After finalizing this board entry, the AI and Notebook
+receipts were regenerated and the strict readiness report was refreshed. The
+report is the exact-fingerprint authority and records both receipts as bound
+to the same candidate. The working tree is still dirty and the release gate
+remains closed. No hosted state or tenant data was changed, and no deployment
+or external action was performed.
+
+### Read-Only Cloud Run Snapshot Blocked By Local Credential-Datastore Access - 2026-10-16
+
+**Baseline and acceptance:** The Internal Beta blueprint names project
+`agentos-mvp`, region `europe-west1`, and service `agentos-internal-beta`.
+Attempt one read-only `gcloud run services describe` with output restricted to
+service identity, revision, traffic, image, service account, and environment
+variable names. Acceptance requires a current Cloud Run response without
+reading or recording credential values, secret references, or account data.
+
+**Result:** The local gcloud project setting matched `agentos-mvp`, but the
+service query stopped before receiving a Cloud Run response because the
+sandbox denied access while gcloud tried to initialize
+`~/.config/gcloud/credentials.db`. No credential contents or account identity
+were read; no Cloud Run revision/configuration was returned. No permission
+escalation was attempted, and no hosted state, tenant data, deployment,
+provider, or infrastructure was changed or used.
+
+**Limits and next step:** This is an environment access failure, not evidence
+about the live service. The known Internal Beta snapshot remains historical;
+current revision, image, retention settings, object lifecycle, and runtime
+identity are unverified. Continue with the designated read-only Work-profile
+inspection if that browser connection is available; otherwise obtain a
+minimized Cloud Run export through an authorized operator. Because this board
+is part of the candidate, refresh AI and Notebook receipts and the strict
+readiness report after this entry.
+
+### User-Supplied GPT-6 Astra Transcript Excerpt Bound To Exact Lesson - 2026-10-16
+
+**Baseline and acceptance:** The current local candidate graph reported 87/107
+lessons with full linked text, 20 without it, and 2 transcript-linked lessons.
+Use only the excerpted transcript text already supplied by the user. Acceptance
+is a validated local source pack and graph with the excerpt linked to the
+registered lesson `b36b5cafd8b84c429a56dbbbb15292a2` and its exact registered
+YouTube URL; page text remains empty, ASR accuracy remains unverified, and
+archive completeness remains false.
+
+**Result:** The 0:00-2:33 excerpt (1,134 characters) passed local preparation,
+graph export, merge, and exact-ID gap reporting. The lesson node has one
+transcript capture segment; the merged graph reports 3 transcript-linked
+lessons, while full page-text coverage remains 87/107 and all 20 page-text gaps
+remain. `completenessVerified=false`. The private run, pack, manifest, source
+graph, and merged graph are all mode 0600. Their hashes and detailed limits are
+recorded in `docs/skool-coverage-audit-2026-10-15.md`. This is a partial local
+source intake, not a hosted tenant import or a full lesson capture. The source
+edit changes the candidate, so candidate-bound AI/Notebook receipts and the
+strict local report must be refreshed after this entry.
+
+No browser window or Skool page was opened; no video bytes, provider call,
+hosted data change, deployment, external action, or spend occurred.
+
+Transcript provenance was tightened afterward: source packs preserve a
+source-declared `captureScope` (`full`, `excerpt`, `unknown`), legacy packs
+default to unknown, and graph metadata states that capture scope is not
+independently verified. The coverage report counts declared scopes separately.
+The excerpt is now explicitly distinguished from the two existing
+unknown-scope captures. The validated graph is
+`tmp/authorized-skool-import/agentos-may29-plus-bonus-two-youtube-transcripts-plus-gpt6-excerpt-v3-2026-10-16.jsonld`.
+
+### Isolated Client Artifact Boundary - 2026-10-16
+
+**Baseline and acceptance:** The local candidate has no proven Cloud Build or
+deployed image identity. Build the client runtime into a separate distribution
+directory, verify its trace, and prune routes outside the client surface.
+Acceptance is limited to a reproducible local artifact whose retained routes
+match the client trace; do not infer hosted parity or deploy it.
+
+**Result:** `VELOCE_CONTAINER_BUILD=1 VELOCE_DIST_DIR=.next-client-parity-evidence
+npm run build` completed, then the prune utility removed 235 routes and kept
+120. `scripts/verify-client-runtime-build-trace.mjs` passed for those 120
+routes. Receipt `tmp/client-artifact-boundary-local-2026-10-16.json` records
+the candidate fingerprint, distribution and server artifact hashes, and
+explicitly states `clientImageBuild=false`, `cloudBuild=false`, and
+`deployment=false`. The AI and Notebook receipts were refreshed after the
+board edit and now share the current candidate fingerprint recorded in the
+strict readiness report. The artifact receipt remains bound to the earlier
+pre-board snapshot: no artifact rebuild was done for the documentation-only
+board edits, so this artifact result is not a full-current-candidate receipt.
+The AI receipt was regenerated under supported Node `v24.21.0` after a Node
+26 attempt was correctly rejected as unsupported. The isolated build emitted
+a Next middleware deprecation warning and an Edge-runtime `process.cwd`
+warning.
+
+**Limits and next step:** This proves only local packaging/trace consistency.
+It does not identify the live revision, image, source commit, runtime config,
+or tenant data plane. No Cloud Build, hosted request, deployment, provider
+call, tenant write, or spend occurred. The local AI and Notebook receipts
+were regenerated after this note's earlier edits; the artifact receipt should
+be refreshed if exact whole-candidate binding is needed. Hosted identity and
+parity remain open and require a separately authorized, read-only inspection
+path.
+
+### Retention Security Recheck And Sanitized Artifact Build - 2026-10-16
+
+**Baseline and acceptance:** Recheck local lifecycle, Notebook provenance, and
+runtime/storage configuration under supported Node `v24.21.0`; acceptance is
+all scoped tests passing while reporting hosted retention enforcement
+separately. For the client artifact, do not load the project `.env.local`
+into a temporary build context; accept a current-candidate artifact only if
+the isolated production build, route pruning, and trace verifier all pass.
+
+**Result:** `npm run verify:security` completed its local security chain:
+the 28+7-day lifecycle suite passed **84/84**, Notebook provenance passed
+**29/29**, and runtime/storage configuration passed **25/25**. The lifecycle
+inventory classified all **62/62** declared tenant tables across **81**
+migrations, while correctly reporting `hostedEnforcementVerified=false`.
+Separately, an in-project artifact-build attempt was stopped after Next
+reported `.env.local` as an input. A sanitized temporary snapshot excluded
+that file; its first standalone trace failed because dependencies resolved
+through a project symlink, and its hard-linked retry compiled and typechecked
+but failed during prerender (`Expected workStore` on `/_global-error`,
+`/flow-lab`, and `/openclaw`). No sanitized artifact or trace receipt was
+produced. The interrupted in-project attempt left only an ignored partial
+Next cache, which was removed; `tsconfig.json` remained unchanged. No secret
+values were read, printed, or copied.
+
+**Limits and next step:** Local retention tests do not prove hosted bucket,
+database, backup, recovery, or deletion behavior. The earlier artifact receipt
+at `tmp/client-artifact-boundary-local-2026-10-16.json` remains historical and
+candidate-mismatched; its standalone output is unavailable for reinspection.
+Do not use it as current parity evidence. Further artifact work needs an
+isolated build setup that reproduces required non-secret build inputs without
+loading `.env.local`; hosted parity still needs a separately authorized,
+read-only identity/configuration and tenant-isolation inspection.
+
+### Buyer-Audit And Cloud-Read Permission Recheck - 2026-10-16
+
+**Baseline and acceptance:** Run the local MiroFish buyer-artifact audit with
+no provider call or external simulation; accept only its audit/guardrail
+coverage, not buyer demand. Then request only the documented Cloud Run
+service identity, ready revision, traffic, and URL for `agentos-internal-beta`
+in project `agentos-mvp`, region `europe-west1`; do not retrieve environment
+values or mutate the service.
+
+**Result:** `npm run verify:mirofish-buyer-artifacts` passed **31/31** local
+tests. The fixtures verify buyer-run audit integrity, identity/attribution,
+cost-claim rejection, and failure cases; they do not establish market
+validation. The read-only `gcloud run services describe` request was denied
+`run.services.get` and returned no service metadata. No secret or environment
+value was requested in the output format. No hosted change, provider call,
+deployment, or spend occurred.
+
+**Limits and next step:** Cloud Run identity, revision, build, config,
+retention, and tenant-isolation evidence remain unverified. Continue only via
+an authorized read-only account or a minimized operator export. Real buyer
+interviews and any model-backed MiroFish run remain separate, unapproved
+external activities; do not treat the 31 local tests as a pilot result.
+
+### Fail-Closed Telemetry Tenant Scope - 2026-10-16
+
+**Baseline and acceptance:** The telemetry POST route substituted the shared
+tenant value `client` when `CLIENT_SLUG` was absent or blank. Acceptance is to
+reject missing scope before rate-limit/data-plane access, audit persistence,
+or vendor capture; retain the existing configured-tenant pseudonymization and
+audit-before-vendor ordering.
+
+**Result:** The route now returns `503 runtime_configuration_unavailable`
+when tenant scope is missing or whitespace-only, before rate-limit, audit, or
+vendor calls. The focused telemetry boundary suite passed **8/8**, including
+both missing-scope cases and configured tenant pseudonymization. Targeted
+ESLint and `npm run typecheck` passed. The supported-runtime focused suite
+passed **421/422** (one optional skip). No provider or hosted call occurred.
+
+**Limits and next step:** This closes only the local telemetry scoping
+failure mode. It does not prove deployed configuration, tenant isolation in
+the hosted data plane, or actual vendor capture behavior. Refresh AI and
+Notebook receipts and the strict readiness report after this candidate
+change; the hosted parity gate remains open.
+
+### Cloud Object Recovery Minimum - 2026-10-16
+
+**Baseline:** `scripts/lib/client-storage-object-inventory.mjs` rejected a
+soft-deleted object's hard-delete deadline when it exceeded seven days after
+soft deletion, but it did not reject a deadline earlier than seven days. The
+accepted recovery interval was therefore not proven to be the selected full
+seven-day window.
+
+**Acceptance:** A complete, tenant-scoped object inventory must reject a
+hard-delete deadline earlier or later than `softDeleteTime + 7 days`, still
+reject total retention beyond 35 days from creation, and accept the exact
+seven-day boundary. Tests use synthetic metadata only; no Cloud Storage API or
+hosted state is touched.
+
+**Result:** The inventory evaluator now rejects both shorter and longer than
+seven-day soft-delete recovery intervals, accepts the exact seven-day
+boundary, and retains the independent 35-day total-age cap. The focused
+synthetic inventory suite passed **5/5**. `npm run verify:client-lifecycle`
+passed **85/85** tests and reconciled **62/62** classified tenant tables
+across **81** migrations; its report continues to state
+`hostedEnforcementVerified=false`. The broader offline `npm run test:focused`
+suite had **422 passed and 1 skipped out of 423**; the skipped test is the
+optional private-source-pack fixture,
+and `npm run typecheck` passed. No Cloud Storage API, hosted state, provider,
+deployment, or spend was used.
+
+**Limits:** This validates the local evaluator and synthetic metadata, not the
+actual bucket's soft-delete policy or object generations. An authorized,
+read-only inventory for the exact hosted project, bucket, namespace, and
+account remains necessary before claiming file-retention compliance.
+
+### Customer-Journey Evidence Separation - 2026-10-16
+
+**Baseline:** `validCustomerJourneyReport` requires one case attestation and
+an artifact entry, but currently accepts the same evidence reference and
+digest for both. The J01-J15 acceptance checklist describes the artifact as
+separate evidence from the reviewer attestation.
+
+**Acceptance:** For every journey case, the validator must require exactly
+one valid attestation and at least one hashed artifact with a distinct
+reference and content digest. A fixture that duplicates the attestation under
+`kind: artifact` must fail; a distinct artifact must continue to pass. This
+is a local evidence-contract check, not a hosted journey result.
+
+**Result:** Journey evidence is now accepted only when at least one artifact
+has both a different reference and a different SHA-256 digest from its case
+attestation. The targeted journey and release-verifier tests passed **19/19**;
+the complete offline focused suite passed **423**, with **1** optional
+private-source-pack fixture skipped (424 total), and `npm run typecheck`
+passed. No hosted journey, provider, Stripe, or deployment action occurred.
+
+**Limits:** This closes a local evidence-substitution gap only. It does not
+produce or verify any of the fifteen hosted customer-journey case receipts.
+
+### MiroFish Provider-Cost Evidence Gate - 2026-10-16
+
+**Baseline:** `validBuyerPilotEvidence` accepts an integrity-checked synthetic
+run receipt without any provider billing receipt. The local test fixture
+confirms this behavior. Run-artifact validity and provider-cost verification
+are therefore not represented as separate release checks.
+
+**Acceptance:** Preserve technical/run-artifact validation, but mark absent
+provider-cost evidence as unverified. Release-ledger publication and replay
+must reject the buyer-pilot gate unless a separate reviewed cost receipt is
+bound to the exact simulation ID and source commit, identifies its provider
+billing evidence by SHA-256, reconciles provider subtotals to the declared
+actual USD total, and proves that total does not exceed the explicitly
+approved USD maximum. Synthetic test fixtures may exercise the contract only;
+they cannot establish provider billing, enforce a provider-side cap, or
+validate buyer demand. No provider run is authorized by this change.
+
+**Result:** Buyer-pilot capture now records missing cost evidence as
+`unverified`; release-ledger publish and replay require a separate cost receipt
+whose simulation/commit match, provider rows sum to the actual USD total, and
+actual cost is within the approved maximum. The verifier exposes
+`buyer_pilot_cost_evidence` as its own unevaluated/release gate. The receipt
+normalizer discards unrecognized fields. Targeted buyer/release tests passed
+**16/16**, the full focused suite passed **423** with **1** optional skip under
+supported Node **24.18.0**, the MiroFish Python audit/arming suite passed
+**31/31**, candidate-bound offline AI passed **16/16**, and the isolated
+Notebook journey passed **4/4**. Typecheck, targeted ESLint, and
+`git diff --check` passed. The refreshed strict report recognizes the AI and
+Notebook receipts on the same working-tree fingerprint, but remains
+`releaseReady=false`: the working tree is dirty, no release-ledger bucket is
+configured, release environment evidence is absent, and required ledger
+categories remain unevaluated. No simulation, provider request, hosted action,
+deployment, or spend occurred.
+
+**Limits and next step:** This is a release-evidence/reconciliation gate, not
+provider-side spend enforcement; a hash and reviewed receipt do not prove the
+provider prevented overage. The sidecar receipt hash is computed at capture,
+but replay does not possess the original sidecar bytes; the hash is a
+provenance reference, not a signature. Obtain an independently reviewable
+billing export and confirm a provider-enforced cap before any separately
+authorized run. Repeat the affected tests under a supported Node runtime
+before relying on them for candidate acceptance. Synthetic MiroFish output
+remains non-market evidence.
+
+### MiroFish Pre-Run Authorization Binding - 2026-10-16
+
+**Baseline:** The current cost-evidence validator checks a post-run declared
+maximum and actual provider totals, but accepts no evidence that a person
+approved that exact simulation, provider set, purpose, cap, or stop condition
+before execution. The sidecar can therefore describe an approval that was
+never granted.
+
+**Acceptance:** Keep artifact audit and cost reconciliation distinct, and fail
+the release cost gate unless a separate pre-run authorization is bound to the
+same simulation ID and source commit, names the human approver, purpose,
+provider allowlist, USD maximum, and stop condition, and predates the recorded
+run start. Require the post-run cost sidecar to reference the authorization's
+exact SHA-256, bind run start/end and review timestamps, reconcile provider
+subtotals to actual cost, and stay within the approved cap and provider set.
+Fixtures may exercise this contract only; they do not prove the named person's
+identity, provider-side cap enforcement, or buyer demand. No run is authorized
+by this change.
+
+**Result:** The buyer-pilot cost validator now requires normalized schema-v1
+pre-run authorization and schema-v2 post-run cost evidence. It checks matching
+simulation and commit IDs, a nonempty approver/purpose/stop condition, an
+allowlisted provider set, an exact authorization cap, authorization before run
+start, ordered run/review timestamps, reconciled subtotals within the cap, and
+the authorization sidecar's SHA-256 reference. Missing or malformed evidence
+fails closed. Targeted release-evidence tests passed **16/16**; the full
+focused suite passed **423** with **1** optional skip under Node **24.18.0**.
+
+**Limits and next step:** These are self-attested sidecars and synthetic
+fixtures. They do not authenticate the human approver, prove the provider
+enforces a hard cap, or authorize/execute a run. Refresh candidate-bound AI,
+Notebook, and strict readiness evidence after this board change; keep the
+release blocked until all remaining production and customer-journey evidence
+is independently satisfied. No provider request, hosted action, deployment,
+or spend occurred.
+
+### Local Evidence Refresh And Scope Reconciliation - 2026-10-16
+
+**Baseline and acceptance:** The previous candidate report predates the current
+retention classification and evidence refresh. Reconcile only local sources:
+AI evaluation must pass all 16 deterministic cases with zero model samples;
+Notebook's four synthetic handler/browser scenarios must pass; the MiroFish
+artifact-contract suite and Skool graph/import tests must pass without provider
+calls, hosted writes, or community access. Report graph coverage from the exact
+scope-aware local artifact and keep incomplete/import/customer claims open.
+
+**Result:** Candidate-bound AI passed **16/16** and Notebook passed **4/4** on
+the same fingerprint recorded in
+`/private/tmp/agentos-production-readiness-current.json`; AI cost was zero and
+`productionReady` remains false. MiroFish harness tests passed **31/31** and
+Skool graph/import tests passed **18/18**. The local observability accuracy
+suite passed **11/11**, including full-ledger pagination, malformed/incomplete
+ledger rejection, tenant-scope mismatch rejection, bounded event/job samples,
+and redacted traces. The exact-ID audit on the latest
+scope-aware private graph found **107** registered lessons, **87** linked to
+nonempty text, **20** without text, **25** pending source-pack pages, and **3**
+transcript links; its completeness and pending-count reconciliation flags are
+false. These tests validate local tooling and fail-closed contracts only. No
+community page was accessed, no import was performed, and no MiroFish/provider
+request, hosted mutation, deployment, or spend occurred.
+
+**Remaining gates:** The strict report remains false with **54** categories
+unevaluated. The customer journey is synthetic rather than hosted acceptance;
+the import is incomplete and not tenant-verified; M3 identity/parity/isolation
+and hosted retention remain unverified; MiroFish has no accepted provider-cost
+receipt or real-buyer evidence. Refresh candidate-bound receipts after this
+documentation update and do not infer production readiness from these passes.
+
+### Current Candidate Retention And Skool Inventory Recheck - 2026-10-16
+
+**Baseline and acceptance:** The selected 28+7 policy is represented in the
+retention inventory, but local verification does not prove hosted enforcement.
+Re-run the lifecycle verifier and its complete bounded SQL/route suite on the
+current checkout; preserve unresolved data classes as explicit open gates.
+For M2, re-list only the owner-authorized `School Tabs Agent OS` Drive folder
+read-only, reconcile its direct-item count, and do not count registers,
+crosswalks, or summaries as lesson text. No tenant import or hosted write is
+part of this check.
+
+**Result:** Under supported Node **24.18.0**, `npm run verify:client-lifecycle`
+passed **85/85** tests. The inventory reconciles **62/62** declared tenant
+tables across **81** SQL migrations. A fresh read-only Drive listing returned
+**115/115** direct items, matching the previously recorded count. Of filenames
+matching transcript/caption/lesson, only the existing partial exact-lesson
+crosswalk and lesson-link register appeared; no new transcript capture was
+identified. The graph remains partial at **87/107** full-text lessons with
+**20** gaps; no import was performed.
+
+**Limits and next step:** The table inventory itself still marks tenant
+control/identity and security/audit schedules unresolved, and the financial
+and credit schedule blocked on a named billing reviewer. Local SQL/route
+fixtures do not verify hosted migrations, purge scheduling, Cloud Storage
+lifecycle, backup recovery, or vendor copies; the checker explicitly reports
+`hostedEnforcementVerified=false`. M2 needs authorized lesson text for the
+remaining exact-ID gaps. No College Chrome/Colab access, Skool page access,
+tenant write, provider request, deployment, or spend occurred.
+
+### Supported-Runtime Retention And Candidate Evidence Refresh - 2026-10-16
+
+**Baseline and acceptance:** Re-evaluate the current checkout using supported
+Node 24. Acceptance for this local increment is: the client lifecycle and
+retention inventory validators pass; all bounded retention/object tests pass;
+deterministic AI passes without model samples; the Notebook handler/browser
+receipt and AI receipt bind to the same exact working-tree fingerprint; and the
+strict readiness report preserves all hosted, approval, buyer, and release
+gaps rather than inferring completion. No provider call, hosted mutation,
+deployment, or spend is in scope.
+
+**Result:** `npm run verify:client-lifecycle` passed **88/88** focused tests.
+The validator reconciled **62/62** declared tenant tables across **82** SQL
+migrations and explicitly reported `hostedEnforcementVerified=false`.
+`npm run verify:ai-evaluation` passed **16/16** deterministic cases with zero
+model samples, tokens, or provider cost. After refreshing the AI receipt at the
+canonical local path, the strict report recognized AI and Notebook (4/4)
+receipts on the same candidate fingerprint. The report remains
+`releaseReady=false`, with `working_tree_clean` and
+`ledger_bucket_not_configured` as release-gate failures and 54 release-evidence
+categories unevaluated. The evidence report contains the exact candidate
+fingerprint; it is not copied into this tracked document because doing so would
+change that fingerprint.
+
+**Limits and next step:** This confirms local contracts only. It does not
+establish hosted deletion, recovery, backup/vendor behavior, identity,
+tenant isolation, deployment identity, approvals, or a real customer journey.
+The Skool graph remains partial (87/107 full-text lessons, 20 without text;
+25 pending pages; completeness unreconciled). MiroFish evidence remains
+synthetic. No College Chrome/Colab access, community page access, tenant write,
+provider request, deployment, or spend occurred.
+
+### Local Identity, Isolation, And Observability Contract Recheck - 2026-10-16
+
+**Baseline and acceptance:** M3's local test scope is contract coverage, not
+hosted parity. Run the exact current-source tests for build identity, cloud
+configuration evidence, authenticated membership, tenant-isolation probe
+semantics, observability ledger accuracy, and telemetry boundaries. Acceptance
+is all tests pass and ambiguous, incomplete, cross-tenant, malformed, or
+unauthenticated cases fail closed. Do not claim live identity, deployed build
+parity, or two-tenant isolation from fixtures.
+
+**Result:** The focused supported-runtime suite passed **42/42**. It verifies
+tenant-authenticated uncached build identity, clean-commit build stamping,
+stable tenant-scope digests, and a candidate fingerprint that changes with
+tracked or untracked source; cloud evidence rejects snapshot/config drift and
+requires a fresh exact-target object inventory; login checks membership before
+issuing cookies; the isolation probe treats empty/mismatched reads as
+inconclusive and cross-tenant rows as failure; and observability rejects
+incomplete ledgers while bounding and redacting event/job traces. These are
+local contract tests only. The hosted identity route, runtime revision/image,
+tenant-specific cloud config, two-member separation, and deployed object
+recovery remain unverified. No external request, hosted read/write, deployment,
+or spend occurred.
+
+### Authorized Private Graph Summary Merge - 2026-10-16
+
+**Baseline and acceptance:** Start from the scope-aware private graph at
+1,162 nodes / 9,692 relationships and the separately validated authorized
+summary graph at 1,162 nodes / 9,691 relationships. Acceptance is a new,
+non-overwriting private output; portable-graph validation passes; no conflicting
+node text; duplicate edges are removed; exact lesson IDs and transcript scope
+labels remain unchanged; summary nodes remain distinct from full page text; and
+a repeat merge is idempotent. The graph must remain explicitly partial. No
+tenant import or hosted write is in scope.
+
+**Result:** Created
+`tmp/authorized-skool-import/agentos-may29-gpt6-hermes-summaries-plus-gpt6-excerpt-v4-2026-10-16.jsonld`
+with SHA-256
+`43600870ab2b1ca81cfd2e654b606566aadaa3b923d3d1357f0a37a90d5f8ebe` and
+mode `0600`. Portable validation passed at **1,165 nodes / 9,696
+relationships**. The exact-ID audit remains **87/107** full-text lessons, with
+**20** without page text and **25** pending pages; three lessons have separately
+typed summaries and three have transcript links (one excerpt, two unknown
+scope, none declared full). `completenessVerified=false`. Dry-run node merge
+reported no text identity conflict, and a repeat merge was structurally
+idempotent with 20 import receipts.
+
+**Limits and next step:** This is a private local graph snapshot, not a tenant
+import or complete archive. Obtain permitted source material for the 20 exact
+lesson gaps and reconcile the 25 pending pages; preserve the distinction among
+lesson text, summary, and transcript. No community page access, tenant write,
+deployment, provider request, or spend occurred.
+
+### Offline Candidate Verification Refresh - 2026-10-16
+
+**Baseline and acceptance:** Re-run the supported Node 24 checks against the
+current checkout without changing hosted data or triggering external actions.
+Acceptance is: the 28+7 local retention inventory and tests pass; deterministic
+AI evaluation passes without model samples; the local Notebook journey passes
+all four scenarios; MiroFish audit/authorization and Skool graph/import
+contracts pass; the offline focused suite and typecheck pass; and the strict
+readiness report binds AI and Notebook receipts to the same exact candidate
+while preserving all unverified release gates.
+
+**Result:** Client lifecycle reconciliation passed: **62/62** declared tenant
+tables classified across **82** migrations, with
+`hostedEnforcementVerified=false`; focused retention tests passed **88/88**.
+The AI evaluation passed **16/16** deterministic cases with **0** model
+samples. Notebook receipt validation passed **3/3**, and its local real-handler
+browser journey passed **4/4**. MiroFish audit/arming tests passed **31/31**;
+Skool/source-pack graph tests passed **45**, with **1** optional private
+fixture skipped. The repository offline focused suite passed **423**, with
+**1** optional fixture skipped (**424** total); `typecheck` passed. The strict
+report at `/private/tmp/agentos-production-readiness-current.json` bound AI
+and Notebook receipts to the same exact candidate after this board entry was
+added. It reports `releaseReady=false`, with the dirty-tree and
+`ledger_bucket_not_configured` release-gate failures and **54** evidence
+categories unevaluated. Its candidate fingerprint is intentionally not copied
+here because changing this tracked board invalidates candidate-bound receipts.
+No provider request, community page access, hosted read/write, deployment, or
+spend occurred.
+
+**Limits and next step:** This local test pass is not production readiness or
+a hosted customer journey. The working tree remains dirty, so there is no clean
+release candidate; no release-ledger bucket is configured; 54 release-evidence
+categories remain unevaluated. Hosted identity/build parity, two-tenant
+isolation, verified 28+7 database/object/backup recovery, complete authorized
+Skool import, real buyer validation and cost evidence, the 15-stage hosted
+journey, approvals, and rollback remain open. Candidate-bound AI and Notebook
+receipts and the strict report were refreshed after this board update.
+
+### Local Customer-Journey Contract and Handler Recheck - 2026-10-16
+
+**Baseline and acceptance:** M1 is accepted only for synthetic local scope;
+the hosted 15-stage customer journey remains open. Against the current local
+source, run the 15-stage attestation-contract tamper tests, the Notebook
+receipt-contract tests, and the current-source queue/worker/status/download
+journey with changed-source, budget-denial, citation, membership, tenant, and
+expiry cases. Acceptance is every selected local test passes, with 28-day
+artifact-expiry assertions; this does not imply live browser/customer or hosted
+acceptance.
+
+**Result:** On Node `v24.21.0`, the selected suite passed **16/16**. The
+customer-journey report validator rejected changed deployment identity,
+missing/duplicated checks, missing evidence bytes, and artifacts reusing their
+attestation bytes. Notebook journey contracts passed; its current-source
+synthetic handlers covered successful queue-to-download, changed-source and
+budget denials, missing/out-of-artifact citations and source register, and
+other-member/other-tenant/expired download denial. The success fixture asserted
+the artifact's 28-day retention expiry. Provider interaction in this local
+harness is stubbed and charged only in the test ledger; no real provider,
+cloud, tenant, or customer action occurred.
+
+**Limits and next step:** This validates contracts and selected local handler
+behavior only. It does not execute all 15 customer stages against a deployed
+release, prove Supabase RLS or hosted storage/recovery, or establish production
+readiness. Refresh candidate-bound AI and Notebook receipts and strict
+readiness evidence after this board update; the hosted journey remains open.
+
+### Owner-Provided Classroom Index Reconciliation and Evidence Refresh - 2026-10-16
+
+**Baseline and acceptance:** The Work-window classroom list was observed at
+112 items, versus 107 graph lesson records and the Drive manifest's 108 dated
+lessons plus the standalone system entry. Reconcile against the owner's full
+title/date sequence without treating a title as lesson-body content. In
+parallel, refresh the local AI, Notebook, and customer-journey receipts after
+this evidence update and confirm the strict gate remains fail-closed.
+
+**Result:** The owner supplied the sequence from 1st May through 15th October,
+including the separate **AGENT OS System!** entry. Every title in the current
+20-item exact-ID text-gap list appears in that classroom index. This confirms
+the gaps are graph text-capture gaps, not absent dated lesson entries; the
+index supplies no body text/provenance and closes **zero** import gaps. On
+Node `v24.21.0`, the deterministic AI evaluation passed **16/16** with zero
+model samples, the synthetic customer-journey/Notebook contract suite passed
+**16/16**, Notebook receipt contracts passed **3/3**, and the isolated
+real-handler browser journey passed **4/4**. The strict local report at
+`/private/tmp/agentos-production-readiness-current.json` binds the refreshed
+AI and Notebook receipts to one candidate fingerprint and returns
+`releaseReady=false`; failures are the dirty working tree and
+`ledger_bucket_not_configured`, with **54** evidence categories unevaluated.
+
+**Limits and next step:** These local synthetic checks do not establish hosted
+identity/parity, tenant isolation, retention/deletion/recovery, complete
+authorized import, market validation, or release readiness. The classroom
+112, graph 107, and manifest 109 inventories still require exact identity and
+duplicate reconciliation. The 20 graph text gaps remain open; acquire
+permitted exact lesson-body sources, then validate and rerun the exact-ID
+crosswalk. No Skool page was scraped, no Drive/tenant data changed, and no
+provider, deployment, or infrastructure spend occurred. The initial browser
+attempt was sandbox-blocked at Chromium launch; the same isolated suite passed
+on the approved elevated local run.
+
+### Local Parity Contract Recheck - 2026-10-16
+
+**Baseline and acceptance:** On HEAD
+`7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87` with 119 dirty paths, validate the
+local tenant-authenticated build-identity contract, clean-commit image stamp,
+tenant membership boundary, cloud-evidence binding, and 28-day active plus
+seven-day object-recovery policy. Separately attempt only a read-only query of
+the already identified Cloud Test revision/traffic, without displaying
+credentials or querying runtime environment values.
+
+**Result:** Under Node `v24.21.0`, the four focused identity, membership,
+cloud-evidence, and storage-policy suites passed **26/26**. These establish
+local contract behavior only. The read-only `gcloud run services describe`
+attempt was blocked locally because the sandbox denied access to create the
+gcloud credential database; no authenticated Cloud Run query completed and
+no credential contents were inspected or printed. No service, tenant, bucket,
+database, or IAM state changed.
+
+**Limits and next step:** Cloud Test's current revision, live image/config,
+same-member tenant scope, isolation, migrations, and 28+7 retention behavior
+remain unverified. The credential-store denial is not evidence of a hosted
+failure or success. Obtain an approved read-only metadata path that does not
+require expanding access to local credential storage, then compare exact
+runtime identity/config and perform the approved same-member/two-tenant
+probes. Local/cloud parity and release readiness remain open.
+
+### MiroFish Retained-Run Re-audit - 2026-10-16
+
+**Baseline and acceptance:** Re-audit retained synthetic run
+`sim_4d52cec6d408` against the exact approved cohort hash in its
+`profile-preparation.json` and the current AgentOS auditor. Require all current
+technical, interaction, review, and content checks to pass before refreshing a
+pilot-evidence receipt. Treat provider cost as verified only with separate
+authorization and billing evidence.
+
+**Result:** The run directory was read-only audited using the matching v1
+cohort. Identity, profile/workflow coverage, action/completion telemetry, and
+numeric-claim checks pass, but `crossBuyerInteraction`, `buyerReviewComplete`,
+and `buyerContentReview` fail; the two dynamic posts are self-quotes.
+`pilotEvidencePassed=false`, `marketValidation=false`, and the current-source
+receipt capturer returned no receipt. The earlier receipt is therefore stale
+for current acceptance. Provider-cost evidence remains unverified. No run
+artifact was changed, no provider was called, and no spend or outreach
+occurred.
+
+**Limits and next step:** This is a failed technical/content acceptance for one
+synthetic run, not a finding about real buyers or demand. Do not repair the
+historical run or infer cost from its zero-provider profile-preparation
+metadata. Any repeat must use a newly approved, bounded run and current review;
+independent billing evidence is required for cost acceptance. No fresh provider
+run is authorized in this turn.
+
+### Local Customer-Journey Browser Recheck - 2026-10-16
+
+**Baseline and acceptance:** M1 remains accepted only for synthetic local
+scope. Run the Notebook journey receipt-contract suite and the isolated
+current-source browser/real-handler scenarios for cited draft, out-of-file
+citations, changed source, and denied budget. All scenarios must pass; no
+provider, hosted service, tenant data, or external delivery may be used.
+
+**Result:** The receipt-contract suite passed **3/3**. The isolated browser
+journey passed **4/4** on Node `v24.21.0`; it built a temporary app snapshot
+that excludes `.env` and cloud credentials and used only the loopback test
+server. The first sandboxed attempt was denied `127.0.0.1:3941` with `EPERM`;
+the same command passed after narrowly approved permission to bind that local
+port. The resulting receipt is `tmp/customer-journey/local-browser-receipt.json`
+and contains the four expected passed scenarios.
+
+**Limits and next step:** These checks prove current-source synthetic local
+handler behavior only, not a live customer session, the 15-stage hosted
+journey, Supabase RLS, hosted retention/recovery, or release readiness. The
+receipt must be rebound to the post-documentation candidate fingerprint by
+rerunning the AI and Notebook evidence refresh; then regenerate the strict
+readiness report. Hosted acceptance and every M3/M5 release gate remain open.
+
+### Local Studio Customer-Journey UI Recheck - 2026-10-16
+
+**Baseline and acceptance:** Build and run the client app locally with provider
+calls disabled; intercept all runtime APIs with deterministic synthetic
+responses. Verify the browser can sign in, select the approved notebook/source,
+submit a bounded draft request, inspect its citation, review the artifact, and
+download both the reviewed draft and asset. No hosted service, real credential,
+provider request, tenant data, or external delivery is permitted.
+
+**Result:** `verify:customer-journey-browser` passed **1/1** on Node
+`v24.21.0`, using loopback port 3952. The simulated member completed source
+selection, draft creation, citation display, review, and both download flows.
+Runtime APIs were intercepted; all responses and identity were synthetic.
+
+**Limits and next step:** This establishes only local UI composition and
+client-side journey behavior. It does not verify hosted authentication,
+Supabase RLS, real provider execution, artifact storage/recovery, or the
+15-stage customer acceptance journey. Refresh the candidate-bound AI and
+Notebook receipts after this board update, then regenerate strict readiness;
+hosted M1/M3/M5 gates remain open.
+
+### Work Chrome Lesson Summary Supplement - 2026-10-16
+
+**Baseline and acceptance:** The exact-ID import identifies 20 registered
+lessons without full-text segments. Inspect only the explicitly authorized
+Work Chrome classroom page for `18th September: Automating Lead Generation!`;
+accept a private non-overwriting graph supplement only if its `md` lesson ID
+matches the register, summary content is labeled summary-only, the lesson node
+remains `metadata_only` with `pageTextCaptured=false`, and portable graph and
+exact-gap validators preserve partial coverage. Do not inspect College Chrome
+or upload to Drive.
+
+**Result:** The visible Work Chrome page URL matched lesson ID
+`2ff7ca2b8f2a43869cf0cdda538388a0`. Its content was summarized into the
+mode-0600 private source pack
+`tmp/authorized-skool-import/lesson-2026-09-18-lead-generation-summary-v1.jsonld`
+and merged without overwriting the prior graph into
+`tmp/authorized-skool-import/agentos-may29-gpt6-hermes-summaries-plus-sept18-leadgen-summary-v1-2026-10-16.jsonld`.
+Portable validation passed at **1,167 nodes / 9,698 relationships**, partial
+coverage. The exact-ID audit reports **87/107 full-text lessons, 20 without
+text**, and four linked summary-only lessons. The September 18 node remains
+`metadata_only`; no full-text gap was closed. No College window was inspected,
+no Drive or hosted data changed, and no provider, deployment, or spend occurred.
+
+**Limits and next step:** The 25 pending-page count remains unreconciled, and
+this summary is not a transcript, full-text capture, or independent validation
+of lesson claims. Continue acquiring authorized lesson-body sources through
+the Work window and preserve exact ID plus capture-scope distinctions. Refresh
+candidate-bound AI and Notebook receipts after this board update; release
+readiness remains false.
+
+### Work Chrome July Lesson Summary Supplement - 2026-10-16
+
+**Baseline and acceptance:** The exact-ID crosswalk still has 20 lesson-body
+gaps. Inspect only the July 26 ChatGPT Voice page in the authorized Work Chrome
+classroom, follow its visible embedded-video reference, and accept only a
+summary-only source record if the Skool `md` ID matches, YouTube provenance is
+explicit, the lesson remains `metadata_only` with `pageTextCaptured=false`, and
+portable graph plus exact-gap validation preserve the full-text count. Do not
+inspect College Chrome, upload to Drive, or claim generated description text is
+a transcript.
+
+**Result:** The Work Chrome lesson resolved to Skool ID
+`0f3e42bc0057447791b01741b506d0c4` and embedded YouTube video
+`KVdEosuWUYM`. The visible YouTube description supplied a platform-generated
+summary and chapter labels; the transcript panel remained in a loading state,
+so no transcript text was captured. Added a paraphrased summary-only source
+pack at
+`tmp/authorized-skool-import/lesson-2026-07-26-chatgpt-voice-youtube-summary-v1.jsonld`
+and merged it without overwriting the prior private graph into
+`tmp/authorized-skool-import/agentos-may29-gpt6-hermes-summaries-plus-sept18-and-july26-summary-v1-2026-10-16.jsonld`.
+Portable validation passed at **1,169 nodes / 9,700 relationships**, partial
+coverage. Exact-gap validation remains **87/107 full-text lessons, 20 without
+text**; summary-only lessons increased to five. The July node remains
+`metadata_only`, so no full-text gap closed. The separate 25 pending-page
+count remains unreconciled. No Drive or hosted data changed, and no provider,
+deployment, or spend occurred.
+
+**Limits and next step:** This is a short secondary summary from YouTube's
+generated description, not an independent review of the video or lesson,
+transcript, or page-text capture. Obtain the remaining full lesson bodies and
+reconcile pending pages; then validate the complete authorized dry-run before
+requesting any separate tenant-import approval. Refresh candidate-bound AI and
+Notebook receipts after this board update; release readiness remains false.
+
+### Notebook Durable Artifact Review Boundary - 2026-10-16
+
+**Progress audit:** The preceding substantive goal turn reconciled authorized
+companion text and player observations into the private graph. The intervening
+Docker answer was a status clarification, not additional goal progress. This
+turn advances the canonical artifact/review boundary and M1 customer journey.
+
+**Baseline and acceptance, defined before the fix:** A real queue/worker/download
+handler regression expected denial for an unreviewed Notebook draft but received
+HTTP 200. The old Review button only previewed bytes. Require a separate explicit,
+durable approval/rejection bound to the exact reviewed SHA-256. Preview must not
+approve; stale content, failed persistence, rejection, foreign identity/tenant,
+expiry and revocation during storage read must deny export. Preserve ordinary
+uploaded-file behavior and include review metadata in artifact lifecycle backup.
+
+**Local change:** Added the Notebook artifact review migration and authenticated
+preview/decision endpoint; bounded text preview is JSON, never an attachment.
+Both download entry points require approval, and the byte endpoint verifies the
+current hash before returning any content. Studio and Assets expose separate
+Review, Approve export and Reject draft commands. SQL checks requester ownership,
+active membership, active retention, job scope and metadata identity. Review
+fields live on the artifact, inheriting its existing 28-day active plus seven-day
+recovery/purge policy rather than creating an independent retention clock.
+
+**Evidence and limits:** Final results, raw reports, source/config fingerprints,
+screenshots and checksums are recorded in
+`tmp/notebook-artifact-review-evidence-2026-10-16.json`; inspect that generated
+bundle and the current strict report, not an older local pass. PGlite exercises
+actual migration/RPC SQL; browser service boundaries remain synthetic and the
+provider receives no real request. The migration is required by release
+verification but has not been applied to any hosted target. Generic non-Notebook
+generated artifacts and external delivery approvals are not covered by this
+Notebook gate. Preview necessarily reveals draft text to the authorized reviewer;
+this is a mediated export gate, not DRM or proof that a human read the text.
+Hosted review behavior, all required retention/recovery receipts, parity, buyer
+evidence and release approvals remain open. No Docker, deployment, hosted write,
+external action or provider/infrastructure spend occurred.
+
+### Notebook Job Publication After Storage - 2026-10-16
+
+**Progress audit and starting state:** The preceding goal turn implemented
+durable, hash-bound Notebook review. This turn started from the matching dirty
+candidate `aa16d6bbf72f568aa1b6fb365145641dad06b12dab5b2658fd5eb8d2f5473557`,
+HEAD `7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`, branch
+`wip/backup-2026-10-03`, 131 dirty paths and Node `v24.18.0`. Its 112 focused,
+four browser and 16 offline AI checks matched, but strict readiness was false
+with 55 unevaluated categories. No previous pass proved post-storage failure
+quarantine.
+
+**Baseline and acceptance, defined before the fix:** The worker stores ready
+bytes before settling budget and persisting final job success. Two regressions
+against the real handlers proved that failed settlement and a lost completion
+write still permitted preview, approval, download lookup and byte export. Both
+returned HTTP 200 rather than expected 409, with three storage reads. The red
+run is candidate-bound in `tmp/notebook-job-release-baseline-2026-10-16.json`.
+Require durable success, no error/blocked disposition, the exact output artifact
+reference and a passing citation audit before preview, decision or export.
+Recheck after storage reads; a previously approved artifact must not bypass a
+withdrawn or malformed job release. Preserve uploaded-file behavior, retention,
+and the successful review/export path across a page reload.
+
+**Local action and evidence:** Added the publication predicate to the review
+and download handlers and to the still-unapplied review SQL migration. Listing
+exposes review availability; Studio and Assets disable controls for quarantined
+bytes. The browser evidence contract now requires six scenarios, including
+settlement failure and completion-write failure, rather than the earlier four.
+Successful approval is reloaded from server fixture state before export. The
+final unit/SQL, browser, offline AI, lint/typecheck and strict-readiness results,
+source/config fingerprints and artifact hashes are in
+`tmp/notebook-job-release-evidence-2026-10-16.json`. Older candidate bundles remain
+historical rather than current release evidence.
+
+**Limits and next step:** Quarantine is an access decision, not deletion or an
+automatic retry/reconciliation of failed jobs. Stored bytes still follow the
+artifact retention policy; hosted 28+7 recovery/deletion is not proved. Browser
+identity, data, queue, storage and provider services remain synthetic; PGlite
+tests exercise actual migration/RPC SQL locally, not hosted grants. The revised
+migration must be reviewed and separately authorized before hosted application.
+The full hosted journey, parity/isolation, source completion/import, real buyer
+validation, provider-backed observability and release approvals remain open.
+No Docker, hosted write, deployment, external action or spend occurred.
+
+### Managed-Credit Day-35 Retention - 2026-10-16
+
+**Baseline and acceptance:** At the start of this local retention workstream,
+HEAD was `7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87` on
+`wip/backup-2026-10-03`; the existing managed-credit suite passed 10/10 but did
+not execute the retention migration. The pre-edit candidate fingerprint was
+`d531aab44fde566a2ce14886a96fd5608d7ce91a8f16f54e3b260d2f1ad44cdf`. Require
+real local SQL execution at the 35-day boundary, tenant-scoped bounded
+child-first deletion, preserved nonzero wallet/provider balances, replay
+rejection without retaining raw tenant keys, immutable server timestamps, and
+late refund/dispute review with zero wallet RPCs.
+
+**Owner-confirmed policy:** Outstanding wallet/provider balances remain until
+spent or refunded. Purchase/allocation linkage expires at day 35; late refunds
+and disputes go to manual review and never trigger an automatic wallet change.
+
+**Local implementation and evidence:** Added
+`product-experience/supabase-v49-managed-credit-retention.sql`, the managed
+credit webhook review branches, and `tests/client-credit-retention.spec.ts`.
+The migration uses 28 active + 7 recovery days for financial detail even when
+a tenant has a shorter content window; masks historical provider totals while
+retaining available/reserved balance; preserves nonzero wallet/provider
+aggregates; and scrubs zero provider counters after day 35. Global replay
+tombstones retain only SHA-256 digests, not a tenant slug or raw idempotency
+key. Late signed refunds/disputes are acknowledged only after a minimal review
+disposition is recorded; the operator endpoint records review but does not
+adjust balances. The webhook also checks immutable plan age at event time, so a
+delayed purge cannot leave an expired-but-still-present link eligible for
+automatic refund; a 35-day-plus retained-row regression passes. The full
+lifecycle suite passed **100/100** and classified
+**62/62** tenant tables across **84** migrations. Targeted webhook/security and
+SQL regressions passed **42/42** before the exact-boundary fixture refinement;
+the refined PGlite migration suite passed **5/5**. Typecheck and targeted ESLint
+passed. No Docker, hosted migration, tenant write, provider call, or spend was
+used.
+
+**Limits and next step:** This is local evidence only. No hosted migration or
+purge schedule has been authorized or verified; billing/legal obligations,
+global Stripe webhook/disposition retention, live review queue operations, and
+post-purge recovery/read behavior remain open. The strict report after this
+change is `releaseReady=false` with dirty-worktree, ledger-bucket, and release-
+environment failures; dependent candidate receipts must match its current
+fingerprint before they are cited. Refresh AI and Notebook receipts, then
+re-run strict readiness. Do not treat local acceptance as production approval.
+
+### Exact-ID Skool PDF Gap Closure - 2026-10-16
+
+**Baseline and acceptance:** The latest local private graph reported **90/107**
+registered lessons with linked page text and **17** without. The September 24th
+Hermes Bot Screen lesson (`md=e9404e1cf69549a99db17acf733e56b8`) was one of those
+gaps. Accept a local addition only if the downloaded PDF has selectable text,
+contains that exact lesson URL, passes the source-pack hash and graph validators,
+and improves the exact-ID page-text count without claiming a complete export,
+transcript, or video backup.
+
+**Local action and evidence:** Prepared the five-page downloaded PDF with
+credential-like text sanitization enabled. Its SHA-256 is
+`d344818b21a0f0857c59332959e95ea84c573b984827d1b60ee3523e4afe12be`; the
+manifest records 34,058 extracted characters, 120 unique links, zero skipped
+links, and zero redactions. The PDF URL matched the lesson ID on every page.
+Exported and merged it into a new private graph candidate, preserving the
+existing graph rather than replacing it. Portable validation passed at **1,187
+nodes / 10,197 relations**. Exact-ID gap validation improved to **91/107** with
+**16** still missing; `completenessVerified` remains false. Evidence is in
+`tmp/authorized-skool-import/user-2026-09-24-hermes-bot-screen.pdf.manifest.json`
+and `tmp/authorized-skool-import/agentos-user-pdf-sep18-sep20-sep24-hermes-bot-screen-v2-2026-10-17.jsonld`.
+
+**Related local checks and limits:** The non-browser tests in the combined
+graph/import, parity, observability, buyer-evidence, and release-evidence run
+passed **98/98**; the six observability viewport checks passed **6/6** under the
+product Playwright configuration. MiroFish audit/authorization passed **31/31**;
+managed-credit, webhook, and SQL regressions passed **42/42**; lifecycle
+retention passed **100/100** and classified **62/62** tenant tables across
+**84** migrations. Local AI and Notebook receipts must be refreshed against the
+post-board fingerprint. The PDF merge is a private local candidate only: no
+tenant import, Drive mutation, Skool page access, provider request, or video
+download occurred. Sixteen lesson-body gaps, the unreconciled pending-page
+counter, hosted customer journey, cloud parity evidence, real-buyer/cost
+evidence, hosted retention, release ledger, and approvals remain open.
+
+### Post-Board Candidate-Bound Refresh - 2026-10-16
+
+**Baseline and acceptance:** Adding the preceding entry changed the candidate,
+so receipts from before that edit were no longer sufficient. Regenerate the
+offline AI and Notebook browser receipts after the final board change; both
+must bind to the same candidate and source commit. Then rerun strict readiness
+without relaxing any hosted, approval, or clean-source gate.
+
+**Result:** The post-board AI receipt passed **16/16** deterministic cases with
+zero model samples. The Notebook local browser receipt passed **6/6** scenarios;
+both receipts match the same candidate fingerprint and source commit. The
+strict report is at
+`/private/tmp/agentos-production-readiness-2026-10-16-final.json` and remains
+`releaseReady=false`: `working_tree_clean`, `ledger_bucket_not_configured`, and
+`release_environment` fail. Local AI/Notebook evidence is not hosted
+acceptance, and required migrations, deployment identity, customer journey,
+isolation, buyer/cost evidence, and approvals remain unevaluated. No deployment,
+hosted write, provider request, external action, or spend occurred.
+
+### Managed-Credit Refund Cutoff Controls - 2026-10-17
+
+**Baseline and acceptance:** Before adding the age-boundary control, candidate
+fingerprint `fee89a202a6ab91479f6b6c433f3316facfa8d986d690f001e2945a678e64fae`
+had the expired-plan manual-review guard but no positive test that refunds
+before day 35 still use the normal linked lifecycle. Require a 34-day refund to
+process through the existing lifecycle RPC, while a 35-day-plus retained plan
+row sends a refund/dispute to manual review with zero wallet RPCs.
+
+**Local action and evidence:** Added the pre-expiry control case. The focused
+credit-retention and webhook/security suite passed **31/31**. Product-experience
+typecheck and production build passed; targeted ESLint and root TypeScript checks
+also passed. The guard uses the server-assigned immutable plan timestamp, so
+purge scheduling lag cannot extend automatic refund linkage. After this board
+update, the deterministic AI receipt passed **16/16** with zero model samples
+and the Notebook journey passed **6/6**; both must bind to the same candidate
+and source commit. The strict report remains `releaseReady=false`: the dirty
+worktree and unconfigured ledger bucket fail, with required hosted gates still
+unevaluated.
+
+**Limits:** These checks are local only. No hosted migration, purge, billing
+event, deployment, provider call, or spend occurred. Release gates for a clean
+source revision, ledger bucket, hosted customer journey/parity, buyer and cost
+evidence, retention operations, and approvals remain open.
+
+### Local Course-Media And Graph Reconciliation - 2026-10-16
+
+**Baseline and acceptance:** Treat the 110-lesson player/companion graph as the
+current private candidate, not the later 107-lesson PDF-merged derivative.
+Require a portable graph validation, an exact-ID/segment-hash check for the
+owner-provided September 24 Hermes Bot Screen PDF, and a metadata-only scan of
+local video files against the 110 audited lesson titles. Do not count duration
+alone as a match or treat player references as saved video bytes.
+
+**Result:** The current graph passed portable validation at **1,453 nodes / 10,675
+relations** and remains partial: **92/110** lessons have linked page text,
+**18** do not, with companion text on 9 and 3 transcript-bearing lessons. Both
+PDF segments for exact lesson ID `e9404e1cf69549a99db17acf733e56b8` were found in
+the graph with matching SHA-256 values and lengths (**30,000** and **4,058**
+characters); no merge was needed. The graph SHA-256 is
+`1cd5557806770abf62b10733fdc079ec4dbe93e3fcad0ae1b0781358f0b383b8`; the PDF
+manifest SHA-256 is
+`acbfc61c512d251f2b05ff0807e73c2aca8cf0cd024dee176941479c3563d407`. The local
+Downloads scan found **16** video files and probed all 16; no filename matched
+a lesson. One duration-only match was an unrelated Veloce product explainer and
+was excluded. No media was opened, moved, uploaded, or deleted.
+
+**Limits and next action:** This does not establish whether a matching video
+exists elsewhere in Drive, prove permission to export community-hosted videos,
+or close any lesson-body gap. The 18 text gaps, video-byte archive, and hosted
+tenant import remain open. Obtain permitted exact lesson text/transcripts or
+owner-provided video exports; keep the current partial graph intact. This note
+changes the candidate fingerprint, so refresh the AI and Notebook receipts.
+
+### Credit-Purge Cascade Batch Bound - 2026-10-17
+
+**Baseline and acceptance:** On continuation candidate
+`288ca7562c371588a1c9867a75404712227c19483553ef23cce3fb0dc5e42a1c`,
+the reservation purge deferred only for children younger than the purge cutoff.
+With a batch limit of one and three expired events, the new PGlite regression
+failed: the first call deleted the reservation after explicitly deleting only
+one event, allowing the foreign-key cascade to remove the remaining two.
+Require every child deletion to drain through its own bounded step, an accurate
+per-table receipt, eventual parent deletion, and unchanged tenant isolation,
+day-35 cutoff, replay protection, and outstanding balances.
+
+**Local repair and verification:** The reservation selector now waits until no
+events or execution claim remain. Three batch-one calls delete exactly one
+expired event each; only the third removes the parent. A separate adversarial
+fixture links an event marked for another tenant to the reservation: cleanup
+preserves that child and the parent until the child's own tenant purge removes
+it. The seven managed-credit SQL tests pass, and
+`npm run verify:client-lifecycle` passes **102/102**, with
+**62/62** tenant tables classified across **84** migrations. Root typecheck,
+focused ESLint, and `git diff --check` pass. The repaired SQL SHA-256 is
+`cbcf297fbb1fc28f6329fb737cb8402302bede5290abfe3cc093584096941757`;
+the regression file SHA-256 is
+`6bcfd684af93188b1daefec6a8a4acc6fc8bdcd0b495a8c55e27980cc226f152`.
+Final candidate-bound AI, Notebook, and strict-release results are recorded in
+`tmp/credit-retention-batch-release-evidence-2026-10-17.json` after this edit.
+
+**Runtime findings and limits:** Initial Notebook attempts stopped before
+application execution: the bundled Chromium executable was absent, loopback
+listening was sandbox-denied, and installed Chrome launch required process
+permission. These startup failures are not failed application assertions.
+Final browser evaluation must use an isolated Chrome profile, loopback-only
+requests, synthetic services, and disabled provider calls. The V49 migration
+remains local and unapplied to hosted data. Hosted identity/parity/isolation,
+28+7 deletion/recovery, complete authorized source import, real buyer evidence,
+ledger/reviewer approvals, and clean committed release identity remain open.
+No deployment, hosted mutation, provider request, or spend occurred.
+
+### Owner-selected Default Runtime - 2026-10-17
+
+The owner explicitly selected
+`https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/memory` in the
+**Aryaman (Work)** Chrome profile as the default workspace to use going
+forward. Recorded this preference in the canonical production topology.
+Historical Internal Beta, other Cloud Test origins, the public site, and the
+College profile must not be substituted silently. This preference does not
+establish build/tenant parity or authorize deployments, hosted mutations,
+provider calls, or spend. No hosted action was performed for this update.
+
+### Selected Runtime Configuration And Duration Parsing - 2026-10-17
+
+**Baseline and acceptance:** The owner-selected origin was checked against the
+known Cloud Run service, not inferred from a screenshot or another tenant.
+Baseline fingerprint `c3e5b0dbf819405d387f14d939e88ea72778aedf035d5fe79a62e45d293d897e`
+was stable across both read-only captures. Require ready revision/traffic/image
+identity, source stamp, route and secret policy, 28 active days and seven-day
+recovery configuration; behavior and authenticated same-member parity remain
+separate gates. Two new local regressions reproduced false rejection of
+Cloud Storage decimal-string duration fields before the fix.
+
+**Observed hosted result:** The exact selected origin matches service
+`veloce-cloud-test`, project `veloce-agenticos-2026`, region `asia-south1`,
+revision `veloce-cloud-test-00208-5hk` at 100% traffic. Image digest is
+`sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`;
+source commit is unstamped. Auth is enforced and provider calls disabled.
+Runtime retention is 14 days, and the bucket has a matching 14-day Delete rule;
+neither satisfies the selected 28-day policy. Soft delete is `604800` seconds.
+The identity/import/upload APIs are excluded. The preflight flags two inline
+inbox secrets; only variable names, not values, are retained in evidence.
+No source/image attestation or authenticated same-member comparison was obtained.
+
+**Local repair:** Storage preflight now accepts safe unsigned decimal integer
+strings as well as numbers for duration fields. It rejects malformed, unsafe,
+negative, fractional and wrong durations; the 14-day active-retention failure
+remains. All **17/17** focused storage/cloud/build-identity tests pass, including
+the CLI and aggregate receipt. Original captures are immutable:
+`tmp/selected-runtime-readonly-2026-10-17T04-16-21-515Z.json` and
+`tmp/selected-bucket-readonly-2026-10-17T04-17-04-484Z.json`.
+The bucket's original `recovery_window_not_seven_days` finding is a parser
+false negative, superseded by offline reevaluation in
+`tmp/selected-runtime-release-evidence-2026-10-17.json`. The latter also records
+final candidate-bound checks after this documentation edit.
+
+**Limits and next action:** Configuration evidence does not prove recovery,
+deletion, retention scheduling, tenant isolation, customer acceptance or source
+completeness. Browser focus was on other Work-profile pages during inspection;
+no unrelated page was operated on. Review a clean candidate and target-specific
+remediation/rollback proposal before authorizing hosted changes. No deployment,
+hosted mutation, object listing, provider call or paid work was performed.
+
+### AI Run Identity And Early Invalidation - 2026-10-17
+
+**Baseline and acceptance:** Candidate
+`42228a8999b772b6ba0d080749ca83a00eb47cd88f719ac4c854517a8a4c80bb`
+had passing offline AI evidence wrapped in an external before/after check,
+but the AI evaluator itself captured source identity only after testing.
+A new temporary-repository CLI regression confirmed a false pass: its fake
+runner changed tracked source, returned passing cases, and the evaluator
+exited zero. Require early invalidation before fixture validation/launch,
+matching before/after source and configuration, bounded no-retry execution,
+explicit runtime metadata, private atomic receipts and rejection of legacy
+receipts by the release verifier.
+
+**Local repair and evidence:** Schema 2 records start/end times, both source
+commits and working-tree fingerprints, both clean-tree observations, fixture
+and unit-config hashes, Node and before/after Playwright versions, runner
+policy and explicit run-level failures. The runner clears an old pass before
+fixture/configuration checks, uses the existing allowlisted offline child
+environment, and has a ten-minute outer timeout with retries explicitly zero.
+It rejects tracked/untracked edits, commit changes, fixture/configuration and
+Playwright-version drift, malformed/failed/retried/global-error runners.
+The release verifier rejects schema 1, missing or changed identities/config,
+dirty release receipts, invalid timestamps and extra cases. The initial focused
+evaluator/Notebook-receipt/release-verifier suite passed **28/28** before adding
+the eighth evaluator case for ignored Playwright package drift. Final results
+and hashes are recorded after this edit in
+`tmp/ai-run-identity-release-evidence-2026-10-17.json`; old receipts remain
+historical until their candidate matches.
+
+**Limits:** This is offline engineering evidence, not model quality, hosted
+observability, customer acceptance, complete source import, tenant isolation,
+28+7 deletion/recovery or market validation. The selected Cloud Test service
+still requires separately approved remediation of its 14-day retention,
+unstamped build, excluded identity/import routes and inline inbox secrets.
+No cloud query, deployment, hosted mutation, provider request or spend was
+performed during this local repair. Next: review the target-specific remediation
+proposal and obtain required source/tenant/customer/buyer evidence without
+relaxing the open release gates.
+
+### Authorized Work Chrome Page-text Capture - 2026-10-17
+
+**Baseline and acceptance:** Previous attempts could read but not reliably
+control Work Chrome. The user supplied the Work window again; its active
+Internal Beta tab was kept distinct from the selected Cloud Test default.
+The existing Skool tab became controllable. Baseline private graph hash
+`1cd5557806770abf62b10733fdc079ec4dbe93e3fcad0ae1b0781358f0b383b8`
+had 110 lessons, 92 with page text and 18 without. Require all 18 exact IDs,
+no sidebar/player/footer text counted as body, no invented text for video-only
+pages, preserved prior sources/transcripts/player audit, production parsing,
+portable validation and idempotent merge; reject a complete-export claim.
+
+**Result:** Captured all 18 rendered pages in authorized Work Chrome. Fifteen
+have inline resource/community text (including the Codex ZIP note); three have
+only a video and no inline body. The new graph has **1,471 nodes / 10,735
+relations**, **107/110** lessons with page-text segments and three remaining
+no-body observations: ChatGPT Voice, Claude Watermarks and Claude Opus 5.5.
+Raw observations hash:
+`632805908c25aa7817ff0c32a96dc49e644f7ae3daa89c2b6fc7d8e71b7066bf`.
+Manifest hash:
+`f9f774ff2d0f8cadf9e8e72351489539278b2ae45eb77a280c0f90931d5d1ace`.
+New graph hash:
+`fab82595e200129711a8f86247e9527a6b88d0c4eecb4f27baee0c32208a5867`.
+The actual production parser accepts 18 records, with three explicitly
+media-only. Preservation, repeat-merge equality and complete-export rejection
+pass. Evidence: `tmp/authorized-skool-import/work-page-captures-2026-10-17.evidence.json`.
+Final candidate-bound checks are recorded after this documentation edit in
+`tmp/skool-page-text-release-evidence-2026-10-17.json`.
+
+**Limits:** Page-text capture presence is not substantive video coverage or a
+full transcript. Existing transcripts remain one excerpt/two unknown, none
+declared full. No completion button, graph refresh, tenant write, video download,
+attachment extraction, Drive upload, provider call or deployment occurred.
+The private graph remains partial and local. Hosted identity/isolation,
+retention/recovery, real buyer/customer evidence, ledger/reviewer approval and
+the separately authorized tenant import remain open.

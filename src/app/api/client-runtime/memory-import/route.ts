@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { checkClientRuntimeRateLimit, countClientRecords, insertClientRecord, recordClientAudit, selectClientRecords } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, clientRpc, countClientRecords, insertClientRecord, recordClientAudit, selectClientRecords } from "@/lib/clientDataPlane";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
 import { clientRetentionSecondsRemaining } from "@/lib/clientRetention";
@@ -31,11 +31,18 @@ export async function GET(request: Request) {
 
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!tenantSlug) return jsonError("tenant_not_configured", 503);
-  const snapshotAt = new Date().toISOString();
+  const retention = await clientRpc("client_tenant_retention_days", { p_tenant_slug: tenantSlug });
+  const retentionDays = Number(retention.value);
+  if (!retention.ok || !Number.isInteger(retentionDays) || retentionDays < 1 || retentionDays > 28) {
+    return jsonError("memory_export_retention_unavailable", 503);
+  }
+  const snapshot = new Date();
+  const snapshotAt = snapshot.toISOString();
+  const activeCutoff = new Date(snapshot.getTime() - retentionDays * 86_400_000).toISOString();
   const filters = {
     tenant_slug: `eq.${tenantSlug}`,
     kind: "eq.memory",
-    created_at: `lte.${snapshotAt}`,
+    and: `(created_at.gt.${activeCutoff},created_at.lte.${snapshotAt})`,
   };
   const count = await countClientRecords("client_runtime_records", filters);
   if (!count.ok || count.count === null) return jsonError("memory_export_read_failed", 502);
@@ -61,6 +68,13 @@ export async function GET(request: Request) {
   const finalCount = await countClientRecords("client_runtime_records", filters);
   if (!finalCount.ok || finalCount.count === null) return jsonError("memory_export_read_failed", 502);
   if (finalCount.count !== count.count) return jsonError("memory_export_changed_retry", 409);
+
+  const completedAt = Date.now();
+  const completedCutoff = completedAt - retentionDays * 86_400_000;
+  if (records.some((record) => typeof record.created_at !== "string"
+    || !Number.isFinite(Date.parse(record.created_at)) || Date.parse(record.created_at) <= completedCutoff)) {
+    return jsonError("memory_export_changed_retry", 409);
+  }
 
   records.sort((left, right) => String(left.created_at ?? "").localeCompare(String(right.created_at ?? "")) || String(left.id ?? "").localeCompare(String(right.id ?? "")));
   const content = memoryExportMarkdown(tenantSlug, records);

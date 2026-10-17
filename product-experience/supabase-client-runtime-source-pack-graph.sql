@@ -181,7 +181,8 @@ begin
     jsonb_build_object('record_id', record.id, 'status', record.status)
       || case when record.metadata ? 'source_url' then jsonb_build_object('source_url', record.metadata ->> 'source_url') else '{}'::jsonb end
   from public.client_runtime_records as record
-  where record.tenant_slug = p_tenant_slug and record.kind = 'memory' and record.status = 'active';
+  where record.tenant_slug = p_tenant_slug and record.kind = 'memory' and record.status = 'active'
+    and record.created_at > now() - make_interval(days => public.client_tenant_retention_days(p_tenant_slug));
 
   insert into public.client_runtime_memory_graph_nodes
     (tenant_slug, graph_key, label, kind, metadata)
@@ -191,6 +192,7 @@ begin
     from public.client_runtime_records as record
     cross join lateral regexp_matches(lower(record.title || E'\n' || record.content), '#([a-z0-9][a-z0-9_-]{1,47})', 'g') as matches(tag_parts)
     where record.tenant_slug = p_tenant_slug and record.kind = 'memory' and record.status = 'active'
+      and record.created_at > now() - make_interval(days => public.client_tenant_retention_days(p_tenant_slug))
   ) as tag
   on conflict (tenant_slug, graph_key) do nothing;
 
@@ -200,12 +202,14 @@ begin
   from (
     select record.metadata ->> 'source_url' as url, record.title as label
     from public.client_runtime_records as record
-    where record.tenant_slug = p_tenant_slug and record.kind = 'memory' and record.status = 'active' and record.metadata ? 'source_url'
+    where record.tenant_slug = p_tenant_slug and record.kind = 'memory' and record.status = 'active'
+      and record.created_at > now() - make_interval(days => public.client_tenant_retention_days(p_tenant_slug)) and record.metadata ? 'source_url'
     union all
     select link.value ->> 'url', link.value ->> 'text'
     from public.client_runtime_records as record
     cross join lateral jsonb_array_elements(case when jsonb_typeof(record.metadata -> 'source_links') = 'array' then record.metadata -> 'source_links' else '[]'::jsonb end) as link(value)
     where record.tenant_slug = p_tenant_slug and record.kind = 'memory' and record.status = 'active'
+      and record.created_at > now() - make_interval(days => public.client_tenant_retention_days(p_tenant_slug))
   ) as urls
   where url ~ '^https?://[^[:space:]]+$'
   order by url, label
@@ -220,6 +224,7 @@ begin
     from public.client_runtime_records as record
     cross join lateral regexp_matches(lower(record.title || E'\n' || record.content), '#([a-z0-9][a-z0-9_-]{1,47})', 'g') as matches(tag_parts)
     where record.tenant_slug = p_tenant_slug and record.kind = 'memory' and record.status = 'active'
+      and record.created_at > now() - make_interval(days => public.client_tenant_retention_days(p_tenant_slug))
   ) as tags
   join public.client_runtime_memory_graph_nodes as document_node on document_node.tenant_slug = p_tenant_slug and document_node.graph_key = 'record:' || tags.record_id::text
   join public.client_runtime_memory_graph_nodes as tag_node on tag_node.tenant_slug = p_tenant_slug and tag_node.graph_key = 'tag:' || tags.tag
@@ -231,7 +236,8 @@ begin
   from public.client_runtime_records as record
   join public.client_runtime_memory_graph_nodes as document_node on document_node.tenant_slug = p_tenant_slug and document_node.graph_key = 'record:' || record.id::text
   join public.client_runtime_memory_graph_nodes as url_node on url_node.tenant_slug = p_tenant_slug and url_node.graph_key = 'url:' || md5(record.metadata ->> 'source_url')
-  where record.tenant_slug = p_tenant_slug and record.kind = 'memory' and record.status = 'active' and record.metadata ? 'source_url'
+  where record.tenant_slug = p_tenant_slug and record.kind = 'memory' and record.status = 'active'
+    and record.created_at > now() - make_interval(days => public.client_tenant_retention_days(p_tenant_slug)) and record.metadata ? 'source_url'
   on conflict (tenant_slug, source_node_id, target_node_id, relation) do nothing;
 
   insert into public.client_runtime_memory_graph_edges
@@ -242,6 +248,7 @@ begin
   join public.client_runtime_memory_graph_nodes as document_node on document_node.tenant_slug = p_tenant_slug and document_node.graph_key = 'record:' || record.id::text
   join public.client_runtime_memory_graph_nodes as url_node on url_node.tenant_slug = p_tenant_slug and url_node.graph_key = 'url:' || md5(link.value ->> 'url')
   where record.tenant_slug = p_tenant_slug and record.kind = 'memory' and record.status = 'active'
+    and record.created_at > now() - make_interval(days => public.client_tenant_retention_days(p_tenant_slug))
   on conflict (tenant_slug, source_node_id, target_node_id, relation) do nothing;
 
   return true;
@@ -289,6 +296,7 @@ begin
       where record.tenant_slug = p_tenant_slug
         and record.kind = 'memory'
         and record.status = 'active'
+        and record.created_at > now() - make_interval(days => public.client_tenant_retention_days(p_tenant_slug))
         and (
           position(v_query in lower(record.title || E'\n' || record.content)) > 0
           or position(v_query in lower(coalesce(record.metadata ->> 'source_url', ''))) > 0

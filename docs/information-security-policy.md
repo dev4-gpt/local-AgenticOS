@@ -75,11 +75,13 @@ platform's behalf.
 - Retention periods must be configured per tenant and enforced through the
   offboarding/deletion process, with independent post-deletion verification
   as standard practice, not an occasional check.
-- The owner selected 28 active days from each content item's creation, plus
-  a separate seven-day object recovery window (up to 35 days recoverable).
-  Financial/credit-record retention still needs a named billing reviewer's
-  approved schedule, and the complete data-class inventory plus vendor/backup
-  deletion procedures still need review. The checked-in
+- The owner selected a 28-day maximum active period for all tenant data and
+  files, followed by seven recovery-only days; purge is due at each item's
+  active expiry plus seven days. This applies across database rows, objects,
+  exports, backups, and vendor copies. Any statutory, contractual, or incident
+  hold conflict must be documented as an explicit exception, not silently
+  exempted. The complete inventory and vendor/backup deletion procedures still
+  need implementation and verification. The checked-in
   `supabase-client-runtime-record-retention.sql` adds a service-role-only,
   bounded tenant-runtime-record purge using the configured retention window,
   with graph cleanup and minimized audit counts. The new
@@ -87,19 +89,29 @@ platform's behalf.
   existing artifact/source/learning expiry metadata at 28 days; neither file
   alone proves that every tenant table, export, backup, or vendor copy expires
   on schedule.
+  The local `supabase-client-research-retention-28.sql` migration also adds an
+  age-based read boundary and bounded cleanup for structured research runs,
+  records, citations, and worker-failure rows. Its SQL tests do not prove that
+  the migration or a scheduled cleanup has been deployed.
+  The notebook-container migration similarly expires notebook metadata while
+  detaching its live sources and records rather than deleting their content.
   After that migration and `supabase-v48-ecc-learning-retention-references.sql`
   are deployed and verified, `client-lifecycle --mode retention` previews
-  runtime records and learning items due at the configured window (maximum 28
-  days after creation).
-  Apply requires `--apply --confirm-retention-records --confirm-retention-learning`;
-  the CLI checks the hosted learning-reference guard before any purge. This is
-  not scheduled or deployed yet. The existing seven-day object recovery is
-  intentionally retained, so storage bytes can remain recoverable through day
-  35. The two deletion calls are not one database
-  transaction: review each result and rerun bounded batches after a partial
-  failure. Tenant storage lifecycle and offboarding do not prove a
-  complete 28-day purge of all in-scope database rows, private exports,
-  backups, and vendor copies. The read-only
+  runtime records, Notebook sources and containers, research rows, learning
+  items, and expired onboarding token hashes. Token hashes are physically
+  purged only seven days after their unusable `expires_at` boundary. Tenant
+  content preserves the seven-day recovery period (maximum 35 days from creation).
+  Apply requires `--apply --confirm-retention-records --confirm-retention-learning
+  --confirm-retention-sources --confirm-retention-notebooks
+  --confirm-retention-research --confirm-retention-onboarding-tokens`; the CLI checks the
+  hosted learning-reference guard before any purge. This is
+  not scheduled or deployed yet. The CLI now holds learning rows until seven
+  days after their active expiry; local SQL purge families use the same delay.
+  This is partial local coverage, not proof all tenant data/files follow the
+  policy. The purge calls are not one database transaction: review each result
+  and rerun bounded batches after a partial failure. Tenant storage lifecycle
+  and offboarding do not prove a complete active-expiry + 7-day purge of all
+  tenant database rows, private exports, backups, and vendor copies. The read-only
   `scripts/audit-client-retention-snapshot.mjs` inventories age from a private
   lifecycle export and counts missing, invalid, expired, and over-window
   artifact/Notebook source expiry metadata without printing content. A missing

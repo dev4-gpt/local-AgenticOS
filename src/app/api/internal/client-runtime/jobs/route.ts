@@ -307,15 +307,6 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const safeOutput = safeClientProviderOutput(result.output);
-  if (surface === "notebook") {
-    const citationAudit = auditNotebookDraftCitations(safeOutput, Array.isArray(input.sourceReferences) ? input.sourceReferences : []);
-    if (!citationAudit.ok) {
-      const actualAmountMicros = result.usage ? clientTextUsageCostMicros(model, result.usage) ?? estimate : estimate;
-      if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros, usageMetadata: result.usage ?? { estimatedCostMicros: estimate, usageFallback: 1 } }, { citationAudit: { ok: false, reason: citationAudit.reason } }))) return NextResponse.json({ ok: true, status: "failed" });
-      await completeJob(tenantSlug, jobId, workerToken, "failed", { citationAudit: { ok: false, reason: citationAudit.reason }, terminalEvents: workspaceTerminalEvents(surface, "failed", "The generated draft did not satisfy its verified citation contract.") }, `notebook_${citationAudit.reason}`);
-      return NextResponse.json({ ok: true, status: "failed" });
-    }
-  }
   const finishReason = typeof result.finishReason === "string" ? result.finishReason : null;
   const artifact = artifactFromWorkspaceOutput({ surface, title, artifactIntent, output: safeOutput, finishReason });
   if (!artifact) {
@@ -326,6 +317,16 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
     if (pipelineItem) await settlePipelineItem(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "workspace_artifact_invalid" });
     if (boardTask) await settleBoardTask(tenantSlug, workerToken, jobId, { execution_state: "failed", execution_error: "workspace_artifact_invalid" });
     await completeJob(tenantSlug, jobId, workerToken, "failed", { artifactDiagnostics, terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "failed", "The approved provider did not return a usable tenant artifact.")] }, "workspace_artifact_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  // Audit the downloadable bytes, not commentary discarded during fence extraction.
+  const citationAudit = surface === "notebook"
+    ? auditNotebookDraftCitations(artifact.bytes.toString("utf8"), Array.isArray(input.sourceReferences) ? input.sourceReferences : [])
+    : null;
+  if (citationAudit && !citationAudit.ok) {
+    const actualAmountMicros = result.usage ? clientTextUsageCostMicros(model, result.usage) ?? estimate : estimate;
+    if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, { actualAmountMicros, usageMetadata: result.usage ?? { estimatedCostMicros: estimate, usageFallback: 1 } }, { citationAudit }))) return NextResponse.json({ ok: true, status: "failed" });
+    await completeJob(tenantSlug, jobId, workerToken, "failed", { citationAudit, terminalEvents: workspaceTerminalEvents(surface, "failed", "The generated draft did not satisfy its verified citation contract.") }, `notebook_${citationAudit.reason}`);
     return NextResponse.json({ ok: true, status: "failed" });
   }
   const artifactId = await storeArtifact(tenantSlug, jobId, workerToken, artifact.fileName, artifact.contentType, artifact.bytes);
@@ -345,7 +346,7 @@ async function processWorkspaceExecutionJob(jobId: string, tenantSlug: string, w
     model: result.model,
     artifactId,
     artifactIntent,
-    ...(surface === "notebook" ? { citationAudit: auditNotebookDraftCitations(safeOutput, Array.isArray(input.sourceReferences) ? input.sourceReferences : []) } : {}),
+    ...(citationAudit ? { citationAudit } : {}),
     ...(artifact.previewHtml ? { previewHtml: artifact.previewHtml } : {}),
     terminalEvents: [...workspaceTerminalEvents(surface, "started"), ...workspaceTerminalEvents(surface, "completed", `Committed ${artifact.fileName} to tenant storage.`)],
   };
@@ -642,8 +643,8 @@ async function processHermesContentFactoryJob(jobId: string, tenantSlug: string,
 /**
  * Runs a Ruflo swarm: every roster agent works the shared objective from its
  * own angle, its finding is written the moment it lands, and a coordinator
- * synthesises whatever came back. One agent failing does not stop the swarm —
- * it contributes nothing and the report says so.
+ * synthesises the accounted findings. Unknown provider usage stops execution
+ * and leaves the reservation unsettled for reconciliation.
  */
 async function processRufloSwarmJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; model?: string; input_metadata?: Record<string, unknown> | null }) {
   const input = job.input_metadata ?? {};
@@ -659,8 +660,11 @@ async function processRufloSwarmJob(jobId: string, tenantSlug: string, workerTok
   }
 
   // Reserve for every agent plus the coordinator up front.
-  const perCall = estimateClientTextCostMicros(model, [{ role: "user", content: objective.padEnd(3000, " ") }], clientTextMaxOutputTokens());
-  if (perCall === null || !(await reserveClientRuntimeBudgetWorker({ provider, model, amountMicros: perCall * (roster.length + 1), jobId, workerToken }))) {
+  const reservationMicros = totalTextQuotes([
+    ...roster.map((entry) => textCallQuote(model, rufloAgentPrompt({ entry, objective }))),
+    textCallQuote(model, rufloReportPrompt({ objective, findings: roster.map((entry) => ({ name: entry.name, output: "x".repeat(2000) })) })),
+  ]);
+  if (reservationMicros === null || !(await reserveClientRuntimeBudgetWorker({ provider, model, amountMicros: reservationMicros, jobId, workerToken }))) {
     await settleRufloSwarm(tenantSlug, workerToken, jobId, "failed", null, null, "budget_exceeded");
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
     return NextResponse.json({ ok: true, status: "failed" });
@@ -670,36 +674,55 @@ async function processRufloSwarmJob(jobId: string, tenantSlug: string, workerTok
   const findings: Array<{ name: string; output: string }> = [];
   let spent = 0;
   for (const entry of roster) {
+    const prompt = rufloAgentPrompt({ entry, objective });
+    if (!textCallFitsReservation(model, prompt, reservationMicros, spent)) {
+      const reason = await stopTextBudgetEnvelope(tenantSlug, jobId, workerToken, spent, "ruflo-agent");
+      await settleRufloSwarm(tenantSlug, workerToken, jobId, "failed", null, null, reason);
+      return NextResponse.json({ ok: true, status: "failed" });
+    }
     await settleRufloAgent(tenantSlug, workerToken, jobId, entry.name, "running", null, null, 0);
     const result = await runClientTextAdapter({
-      provider, model, prompt: rufloAgentPrompt({ entry, objective }), reserveBudget: false, jobId,
+      provider, model, prompt, reserveBudget: false, jobId,
     });
     if (!result.ok) {
       logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider, status: result.status, reason: result.error });
       await settleRufloAgent(tenantSlug, workerToken, jobId, entry.name, "failed", null, result.error, 0);
-      continue;
+      await failUnverifiedTextBudget(tenantSlug, jobId, workerToken, spent, "ruflo-agent", result.error);
+      await settleRufloSwarm(tenantSlug, workerToken, jobId, "failed", null, null, "budget_usage_unverified");
+      return NextResponse.json({ ok: true, status: "failed" });
     }
-    const cost = result.usage ? clientTextUsageCostMicros(model, result.usage) ?? 0 : 0;
+    const cost = result.usage ? clientTextUsageCostMicros(model, result.usage) : null;
+    if (cost === null || !Number.isSafeInteger(spent + cost)) {
+      await settleRufloAgent(tenantSlug, workerToken, jobId, entry.name, "failed", null, "budget_usage_unverified", 0);
+      await failUnverifiedTextBudget(tenantSlug, jobId, workerToken, spent, "ruflo-agent", "usage_unavailable");
+      await settleRufloSwarm(tenantSlug, workerToken, jobId, "failed", null, null, "budget_usage_unverified");
+      return NextResponse.json({ ok: true, status: "failed" });
+    }
     spent += cost;
     const output = safeClientProviderOutput(result.output);
     findings.push({ name: entry.name, output });
     await settleRufloAgent(tenantSlug, workerToken, jobId, entry.name, "done", output, null, cost);
   }
 
-  if (findings.length === 0) {
-    await settleTerminalBudget(jobId, workerToken, spent, { rufloAgents: 0, providerFailure: 1 });
-    await settleRufloSwarm(tenantSlug, workerToken, jobId, "failed", null, null, "ruflo_no_agent_output");
-    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "ruflo_no_agent_output");
+  const reportPrompt = rufloReportPrompt({ objective, findings });
+  if (!textCallFitsReservation(model, reportPrompt, reservationMicros, spent)) {
+    const reason = await stopTextBudgetEnvelope(tenantSlug, jobId, workerToken, spent, "ruflo-report");
+    await settleRufloSwarm(tenantSlug, workerToken, jobId, "failed", null, null, reason);
     return NextResponse.json({ ok: true, status: "failed" });
   }
-
   const report = await runClientTextAdapter({
-    provider, model, prompt: rufloReportPrompt({ objective, findings }), reserveBudget: false, jobId,
+    provider, model, prompt: reportPrompt, reserveBudget: false, jobId,
   });
   let artifactId: string | null = null;
   let reportHtml: string | null = null;
+  const reportCost = report.ok && report.usage ? clientTextUsageCostMicros(model, report.usage) : null;
+  if (reportCost === null || !Number.isSafeInteger(spent + reportCost)) {
+    await failUnverifiedTextBudget(tenantSlug, jobId, workerToken, spent, "ruflo-report", report.ok ? "usage_unavailable" : report.error);
+    await settleRufloSwarm(tenantSlug, workerToken, jobId, "failed", null, null, "budget_usage_unverified");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
   if (report.ok) {
-    spent += report.usage ? clientTextUsageCostMicros(model, report.usage) ?? 0 : 0;
+    spent += reportCost;
     const artifact = artifactFromWorkspaceOutput({ surface: "ruflo", title: `swarm-${jobId.slice(0, 8)}`, artifactIntent: "preview", output: safeClientProviderOutput(report.output) });
     if (artifact) {
       reportHtml = artifact.previewHtml ?? null;
@@ -707,14 +730,19 @@ async function processRufloSwarmJob(jobId: string, tenantSlug: string, workerTok
     }
   }
 
-  const settled = await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros: spent, usageMetadata: { rufloAgents: findings.length, actualAmountMicros: spent }, workerToken });
-  if (!settled) logClientRuntimeEvent("runtime.budget_settlement_failed", { tenant: tenantSlug, jobId, status: 503 });
+  const outputMetadata = { rufloAgents: findings.length, artifactId, costMicros: spent };
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, {
+    actualAmountMicros: spent, usageMetadata: { rufloAgents: findings.length, actualAmountMicros: spent },
+  }, outputMetadata))) {
+    await settleRufloSwarm(tenantSlug, workerToken, jobId, "failed", null, null, "budget_settlement_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
   // The agents' findings are real and stored, so this is not a total failure.
   // But a swarm with no coordinator report must not read as a clean run: record
   // why the synthesis is missing instead of settling with a null error code.
   const reportError = artifactId ? null : (report.ok ? "ruflo_report_invalid" : "ruflo_report_failed");
   await settleRufloSwarm(tenantSlug, workerToken, jobId, "completed", reportHtml, artifactId, reportError);
-  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { rufloAgents: findings.length, artifactId, costMicros: spent });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
 
@@ -764,13 +792,18 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
   }
 
   // Reserve for the worst case up front: every round is a build plus a judge.
-  const perCall = estimateClientTextCostMicros(builder.model, [{ role: "user", content: goal.padEnd(4000, " ") }], clientTextMaxOutputTokens());
-  if (perCall === null || !(await reserveClientRuntimeBudgetWorker({ provider: builder.provider, model: builder.model, amountMicros: perCall * maxRounds * 2, jobId, workerToken }))) {
+  const firstBuilderQuote = textCallQuote(builder.model, loopBuilderPrompt({ goal, previous: "", issues: [] }));
+  const laterBuilderQuote = textCallQuote(builder.model, loopBuilderPrompt({ goal, previous: "x".repeat(40_000), issues: [] }));
+  const judgeQuote = textCallQuote(judge.model, loopJudgePrompt({ goal, artifact: "x".repeat(12_000) }));
+  const reservationMicros = totalTextQuotes([
+    firstBuilderQuote, ...Array<number | null>(maxRounds - 1).fill(laterBuilderQuote),
+    ...Array<number | null>(maxRounds).fill(judgeQuote),
+  ]);
+  if (reservationMicros === null || !(await reserveClientRuntimeBudgetWorker({ provider: builder.provider, model: builder.model, amountMicros: reservationMicros, jobId, workerToken }))) {
     await settleLoopRun(tenantSlug, workerToken, jobId, "failed", null, null, null, "budget_exceeded");
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
     return NextResponse.json({ ok: true, status: "failed" });
   }
-  const reservationMicros = perCall * maxRounds * 2;
   await settleLoopRun(tenantSlug, workerToken, jobId, "running", null, null, null, null);
 
   let artifactText = "";
@@ -786,29 +819,51 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
 
   while (round < maxRounds && !stopDecision?.stop) {
     round += 1;
+    const buildPrompt = loopBuilderPrompt({ goal, previous: artifactText, issues });
+    if (!textCallFitsReservation(builder.model, buildPrompt, reservationMicros, spent)) {
+      const reason = await stopTextBudgetEnvelope(tenantSlug, jobId, workerToken, spent, "loop-builder");
+      await settleLoopRun(tenantSlug, workerToken, jobId, "failed", null, null, null, reason);
+      return NextResponse.json({ ok: true, status: "failed" });
+    }
     const buildResult = await runClientTextAdapter({
       provider: builder.provider, model: builder.model,
-      prompt: loopBuilderPrompt({ goal, previous: artifactText, issues }),
+      prompt: buildPrompt,
       reserveBudget: false, jobId, disableReviewedPlanTool: true,
     });
     if (!buildResult.ok) {
       await appendLoopRound(tenantSlug, workerToken, jobId, round, false, 0, [], "", 0, 0, buildResult.error);
-      await settleTerminalBudget(jobId, workerToken, spent, { loopRounds: round, providerFailure: 1 });
-      await settleLoopRun(tenantSlug, workerToken, jobId, "failed", lastSummary || null, null, null, buildResult.error);
-      await completeJob(tenantSlug, jobId, workerToken, "failed", { loopRounds: round }, buildResult.error);
+      await failUnverifiedTextBudget(tenantSlug, jobId, workerToken, spent, "loop-builder", buildResult.error);
+      await settleLoopRun(tenantSlug, workerToken, jobId, "failed", null, null, null, "budget_usage_unverified");
       return NextResponse.json({ ok: true, status: "failed" });
     }
-    const buildCost = buildResult.usage ? clientTextUsageCostMicros(builder.model, buildResult.usage) ?? 0 : 0;
+    const buildCost = buildResult.usage ? clientTextUsageCostMicros(builder.model, buildResult.usage) : null;
+    if (buildCost === null || !Number.isSafeInteger(spent + buildCost)) {
+      await failUnverifiedTextBudget(tenantSlug, jobId, workerToken, spent, "loop-builder", "usage_unavailable");
+      await settleLoopRun(tenantSlug, workerToken, jobId, "failed", null, null, null, "budget_usage_unverified");
+      return NextResponse.json({ ok: true, status: "failed" });
+    }
     spent += buildCost;
     artifactText = safeClientProviderOutput(buildResult.output);
 
+    const judgePrompt = loopJudgePrompt({ goal, artifact: artifactText });
+    if (!textCallFitsReservation(judge.model, judgePrompt, reservationMicros, spent)) {
+      const reason = await stopTextBudgetEnvelope(tenantSlug, jobId, workerToken, spent, "loop-judge");
+      await settleLoopRun(tenantSlug, workerToken, jobId, "failed", null, null, null, reason);
+      return NextResponse.json({ ok: true, status: "failed" });
+    }
     const judgeResult = await runClientTextAdapter({
       provider: judge.provider, model: judge.model,
-      prompt: loopJudgePrompt({ goal, artifact: artifactText }),
+      prompt: judgePrompt,
       reserveBudget: false, jobId, disableReviewedPlanTool: true,
     });
-    const judgeCost = judgeResult.ok && judgeResult.usage ? clientTextUsageCostMicros(judge.model, judgeResult.usage) ?? 0 : 0;
+    const judgeCost = judgeResult.ok && judgeResult.usage ? clientTextUsageCostMicros(judge.model, judgeResult.usage) : null;
+    if (judgeCost === null || !Number.isSafeInteger(spent + judgeCost)) {
+      await failUnverifiedTextBudget(tenantSlug, jobId, workerToken, spent, "loop-judge", judgeResult.ok ? "usage_unavailable" : judgeResult.error);
+      await settleLoopRun(tenantSlug, workerToken, jobId, "failed", null, null, null, "budget_usage_unverified");
+      return NextResponse.json({ ok: true, status: "failed" });
+    }
     const roundCost = buildCost + judgeCost;
+    const estimatedRoundMicros = (round === 1 ? firstBuilderQuote! : laterBuilderQuote!) + judgeQuote!;
     spent += judgeCost;
     const verdict = judgeResult.ok ? parseLoopVerdict(safeClientProviderOutput(judgeResult.output)) : null;
     if (!verdict) {
@@ -819,7 +874,7 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
       lastSummary = "Judge output could not be read.";
       consecutivePasses = 0;
       rounds = [...rounds, loopRoundForDecision(round, false, 0, issues, lastSummary, artifactText.length, roundCost)];
-      ledger = recordRoundCost(ledger, { actualMicros: roundCost, estimatedMicros: perCall * 2 });
+      ledger = recordRoundCost(ledger, { actualMicros: roundCost, estimatedMicros: estimatedRoundMicros });
       stopDecision = decideLoopStop(contract, { round, maxRounds, passed: false, ledger, rounds, consecutivePasses, restraint: loopRestraintForDecision(rounds, ledger) });
       continue;
     }
@@ -831,7 +886,7 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
     rounds = [...rounds, loopRoundForDecision(round, verdict.pass, verdict.score, verdict.issues, verdict.summary, artifactText.length, roundCost)];
     ledger = recordRoundCost(ledger, {
       actualMicros: roundCost,
-      estimatedMicros: perCall * 2,
+      estimatedMicros: estimatedRoundMicros,
       compressionSavedMicros: compressionSavedMicros(buildResult.compression) + compressionSavedMicros(judgeResult.ok ? judgeResult.compression : undefined),
     });
     stopDecision = decideLoopStop(contract, { round, maxRounds, passed, ledger, rounds, consecutivePasses, restraint: loopRestraintForDecision(rounds, ledger) });
@@ -850,8 +905,7 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
     costMicros: spent,
   };
 
-  const settled = await settleClientRuntimeBudgetWorker({
-    jobId,
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, {
     actualAmountMicros: spent,
     usageMetadata: {
       loopRounds: round,
@@ -861,9 +915,10 @@ async function processLoopRunJob(jobId: string, tenantSlug: string, workerToken:
       retryMicros: ledger.retryMicros,
       budgetMicros: ledger.budgetMicros ?? 0,
     },
-    workerToken,
-  });
-  if (!settled) logClientRuntimeEvent("runtime.budget_settlement_failed", { tenant: tenantSlug, jobId, status: 503 });
+  }, { ...outputMetadata, loopRounds: round, passed, artifactId }))) {
+    await settleLoopRun(tenantSlug, workerToken, jobId, "failed", lastSummary || null, null, null, "budget_settlement_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
   await settleLoopRun(tenantSlug, workerToken, jobId, status, lastSummary || null, artifactId, artifact?.previewHtml ?? null, null);
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", { ...outputMetadata, loopRounds: round, passed, artifactId });
   return NextResponse.json({ ok: true, status: "succeeded" });
@@ -895,8 +950,13 @@ function compressionSavedMicros(value: unknown) {
 }
 
 function decideLoopStop(contract: ReturnType<typeof loopContractById>, input: Parameters<typeof loopStopDecision>[0]) {
+  // A checked zero envelope prices every permitted call as free. Keep the
+  // actual ledger at zero; only skip exhaustion in this stop-reason decision.
+  // The per-call quote guard still rejects any later nonzero price.
+  const freeEnvelope = input.ledger.budgetMicros === 0 && input.ledger.actualMicros === 0 && input.ledger.estimatedMicros === 0;
   const decision = loopStopDecision({
     ...input,
+    ...(freeEnvelope ? { ledger: { ...input.ledger, budgetMicros: null } } : {}),
     streakTarget: contract?.id === "quality-streak" ? QUALITY_STREAK_TARGET : undefined,
   });
   if (!decision.stop || !contract || loopPermitsStop(contract, decision.reason!)) return decision;
@@ -979,17 +1039,17 @@ async function processRoomRoundJob(jobId: string, tenantSlug: string, workerToke
     return NextResponse.json({ ok: true, status: "failed" });
   }
 
-  // Reserve for the whole round up front so a mid-round agent cannot push the
-  // tenant past its cap after earlier turns already spent.
-  const estimates = agents.map((agent) => {
+  // Include later transcript growth, then reprice each real prompt before its
+  // call. This local pricing envelope is not a provider-side spending cap.
+  const estimates = agents.map((agent, index) => {
     const persona = roomPersona(agent.id);
     if (!persona || !agent.model) return null;
-    const prompt = roomPrompt({ persona, transcript, context: contextText });
-    return estimateClientTextCostMicros(agent.model, [{ role: "user", content: `${prompt.system}\n${prompt.user}` }], clientTextMaxOutputTokens());
+    const prompt = roomPrompt({ persona, transcript: index === 0 ? transcript : [{ speaker: "", text: "x".repeat(20_000) }], context: contextText });
+    return textCallQuote(agent.model, `${prompt.system}\n\n${prompt.user}`);
   });
-  const totalEstimate = estimates.reduce<number>((total, value) => total + (value ?? 0), 0);
+  const totalEstimate = totalTextQuotes(estimates);
   const primary = agents.find((agent) => agent.provider && agent.model);
-  if (!primary?.provider || !primary.model || estimates.some((value) => value === null)
+  if (!primary?.provider || !primary.model || totalEstimate === null
     || !(await reserveClientRuntimeBudgetWorker({ provider: primary.provider, model: primary.model, amountMicros: totalEstimate, jobId, workerToken }))) {
     await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "failed", null, 0, 0, "budget_exceeded");
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "budget_exceeded");
@@ -1011,22 +1071,33 @@ async function processRoomRoundJob(jobId: string, tenantSlug: string, workerToke
       continue;
     }
     const prompt = roomPrompt({ persona, transcript: working, context: contextText });
+    const combinedPrompt = `${prompt.system}\n\n${prompt.user}`;
+    if (!textCallFitsReservation(agent.model, combinedPrompt, totalEstimate, spent)) {
+      const reason = await stopTextBudgetEnvelope(tenantSlug, jobId, workerToken, spent, "room-agent");
+      await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "failed", null, completed, spent, reason);
+      return NextResponse.json({ ok: true, status: "failed" });
+    }
     // Send persona + transcript as one user turn. The Gemini path drops
     // system-role messages entirely, so a separate system message would strip
     // this agent's character and its memory context on that provider alone.
-    const result = await runClientTextAdapter({ provider: agent.provider, model: agent.model, prompt: `${prompt.system}\n\n${prompt.user}`, reserveBudget: false, jobId });
+    const result = await runClientTextAdapter({ provider: agent.provider, model: agent.model, prompt: combinedPrompt, reserveBudget: false, jobId });
     if (!result.ok) {
       logClientRuntimeEvent("runtime.provider_failed", { tenant: tenantSlug, provider: agent.provider, status: result.status, reason: result.error });
-      // One agent failing must not abort the round; the others still speak.
       await appendRoomMessageWorker(tenantSlug, workerToken, conversationId, {
         role: "system", kind: "error", content: `${agent.name} could not reply (${result.error})`,
         agentId: agent.id, agentName: agent.name, agentColor: agent.color,
         provider: agent.provider, model: agent.model, errorCode: result.error,
       });
-      completed += 1;
-      continue;
+      await failUnverifiedTextBudget(tenantSlug, jobId, workerToken, spent, "room-agent", result.error);
+      await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "failed", null, completed, spent, "budget_usage_unverified");
+      return NextResponse.json({ ok: true, status: "failed" });
     }
-    const turnCost = result.usage ? clientTextUsageCostMicros(agent.model, result.usage) ?? 0 : 0;
+    const turnCost = result.usage ? clientTextUsageCostMicros(agent.model, result.usage) : null;
+    if (turnCost === null || !Number.isSafeInteger(spent + turnCost)) {
+      await failUnverifiedTextBudget(tenantSlug, jobId, workerToken, spent, "room-agent", "usage_unavailable");
+      await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "failed", null, completed, spent, "budget_usage_unverified");
+      return NextResponse.json({ ok: true, status: "failed" });
+    }
     spent += turnCost;
     const { clean, directives } = parseRoomDirectives(safeClientProviderOutput(result.output));
     working.push({ speaker: agent.name, text: clean });
@@ -1045,10 +1116,15 @@ async function processRoomRoundJob(jobId: string, tenantSlug: string, workerToke
     completed += 1;
   }
 
-  const settled = await settleClientRuntimeBudgetWorker({ jobId, actualAmountMicros: Math.min(spent, totalEstimate), usageMetadata: { roomTurns: completed, actualAmountMicros: spent }, workerToken });
-  if (!settled) logClientRuntimeEvent("runtime.budget_settlement_failed", { tenant: tenantSlug, jobId, status: 503 });
+  const outputMetadata = { conversationId, turns: completed, costMicros: spent };
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, {
+    actualAmountMicros: spent, usageMetadata: { roomTurns: completed, actualAmountMicros: spent },
+  }, outputMetadata))) {
+    await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "failed", null, completed, spent, "budget_settlement_failed");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
   await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "succeeded", null, completed, spent, null);
-  await completeJob(tenantSlug, jobId, workerToken, "succeeded", { conversationId, turns: completed, costMicros: spent });
+  await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
 }
 
@@ -1319,7 +1395,7 @@ async function storeArtifact(tenantSlug: string, jobId: string, workerToken: str
     p_retention_expires_at: retentionExpiresAt,
   });
   const artifactId = typeof artifact.value === "string" ? artifact.value : "";
-  if (!artifact.ok || !artifactId || !(await traceClientJobStage("artifact_upload", () => uploadClientStorageObject({ bucket: config.bucket, objectKey, contentType: storedContentType, bytes, token }), Boolean))) return null;
+  if (!artifact.ok || !artifactId || !(await traceClientJobStage("artifact_upload", () => uploadClientStorageObject({ bucket: config.bucket, objectKey, contentType: storedContentType, bytes, token, retentionExpiresAt }), Boolean))) return null;
   const confirmed = await workerRpc("confirm_client_runtime_artifact_worker", { p_tenant_slug: tenantSlug, p_artifact_id: artifactId, p_worker_token: workerToken, p_byte_size: bytes.length, p_content_type: storedContentType });
   return confirmed.ok && confirmed.value === true ? artifactId : null;
 }
@@ -1595,6 +1671,46 @@ async function completeJob(tenantSlug: string, jobId: string, workerToken: strin
     });
     if (!reconciled.ok || reconciled.value !== true) logClientRuntimeEvent("runtime.workflow_reconciliation_failed", { tenant: tenantSlug, jobId, status: 503 });
   }
+}
+
+function textCallQuote(model: string, prompt: string) {
+  return estimateClientTextCostMicros(model, [{ role: "user", content: prompt }], clientTextMaxOutputTokens());
+}
+
+function totalTextQuotes(quotes: readonly (number | null)[]) {
+  let total = 0;
+  for (const quote of quotes) {
+    if (quote === null || !Number.isSafeInteger(quote) || quote < 0 || !Number.isSafeInteger(total + quote)) return null;
+    total += quote;
+  }
+  return total;
+}
+
+function textCallFitsReservation(model: string, prompt: string, reserved: number, spent: number) {
+  const quote = textCallQuote(model, prompt);
+  return quote !== null && Number.isSafeInteger(quote) && quote >= 0
+    && Number.isSafeInteger(reserved - spent) && quote <= reserved - spent;
+}
+
+async function stopTextBudgetEnvelope(tenantSlug: string, jobId: string, workerToken: string, knownCostMicros: number, stage: string) {
+  const output = { failureDisposition: "blocked", budgetAccounting: { status: "reconciliation_required", knownCostMicros, stage, reason: "budget_envelope_exceeded" } };
+  if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, {
+    actualAmountMicros: knownCostMicros, usageMetadata: { budgetEnvelopeExceeded: 1, actualAmountMicros: knownCostMicros },
+  }, output))) return "budget_settlement_failed";
+  await completeJob(tenantSlug, jobId, workerToken, "failed", {
+    ...output, budgetAccounting: { ...output.budgetAccounting, status: "settled_prior_usage" },
+  }, "budget_envelope_exceeded");
+  return "budget_envelope_exceeded";
+}
+
+async function failUnverifiedTextBudget(tenantSlug: string, jobId: string, workerToken: string, knownCostMicros: number, stage: string, reason: string) {
+  // A failed response is not evidence of zero spend. Do not settle/refund or
+  // repeat the provider call until the unknown charge has been reconciled.
+  logClientRuntimeEvent("runtime.budget_usage_unverified", { tenant: tenantSlug, jobId, status: 503 });
+  await completeJob(tenantSlug, jobId, workerToken, "failed", {
+    failureDisposition: "blocked",
+    budgetAccounting: { status: "reconciliation_required", knownCostMicros, stage, reason, reservationDisposition: "unsettled" },
+  }, "budget_usage_unverified");
 }
 
 async function settleRequiredBudget(tenantSlug: string, jobId: string, workerToken: string, input: { actualAmountMicros: number; usageMetadata: Record<string, number> }, outputMetadata: Record<string, unknown>) {

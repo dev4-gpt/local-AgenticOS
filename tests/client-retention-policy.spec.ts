@@ -6,6 +6,8 @@ test("28-day policy caps configured tenant and existing content expiry while pre
   const db = new PGlite();
   try {
     await db.exec(`
+      create role anon; create role authenticated; create role service_role;
+      create function client_member(text) returns boolean language sql stable as $$ select $1 in ('tenant-a', 'tenant-short') $$;
       create table client_tenants (slug text primary key, retention_days integer not null, updated_at timestamptz not null default now());
       insert into client_tenants (slug, retention_days) values ('tenant-a', 45), ('tenant-short', 14);
       create table client_runtime_artifacts (id integer primary key, created_at timestamptz not null, retention_expires_at timestamptz);
@@ -41,6 +43,8 @@ test("28-day policy caps configured tenant and existing content expiry while pre
     }
     const constraint = await db.query("select conname from pg_constraint where conname='client_tenants_retention_days_max_28'");
     expect(constraint.rows).toHaveLength(1);
+    const retention = await db.query("select public.client_tenant_retention_days('tenant-a') as allowed, public.client_tenant_retention_days('unknown') as hidden");
+    expect(retention.rows[0]).toEqual({ allowed: 28, hidden: null });
   } finally {
     await db.close();
   }

@@ -6,6 +6,8 @@ import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { notifyLead } from "../product-experience/src/lib/leadNotification";
+import { workingTreeFingerprintSha256 } from "../scripts/lib/working-tree-fingerprint.mjs";
+import { buildNotebookJourneyReceipt, NOTEBOOK_JOURNEY_SCENARIOS } from "../scripts/lib/notebook-journey-evidence.mjs";
 
 test("release verifier records the current revision without secrets", () => {
   const script = resolve(process.cwd(), "scripts/verify-production-readiness.mjs");
@@ -15,15 +17,74 @@ test("release verifier records the current revision without secrets", () => {
   expect(result.stdout).toContain("release_gate:ledger_bucket_not_configured");
   const report = JSON.parse(result.stdout);
   expect(report.notEvaluated).toContain("customer_journey_evidence");
+  expect(report.notEvaluated).toContain("notebook_execution_journey_local_evidence");
   expect(report.notEvaluated).toContain("client_cloud_config_evidence");
   expect(report.notEvaluated).toContain("source_guard_schema_evidence");
   expect(report.notEvaluated).toContain("buyer_pilot_evidence");
+  expect(report.notEvaluated).toContain("buyer_pilot_cost_evidence");
+  expect(report.notEvaluated).toContain("board_loop_retention_migration_attached");
   expect(report.notEvaluated).toContain("sourceImportResult_approved");
   expect(report.notEvaluated).toContain("tenantIsolationResult_approved");
   expect(report.notEvaluated).toContain("buyerSimulationResult_approved");
   expect(report.notEvaluated).toContain("legalApproval_approved");
   expect(result.stdout).not.toContain("veloce-agenticos-2026-veloce-release-ledger");
   expect(result.stdout).not.toMatch(/sk-[A-Za-z0-9_-]{16,}|service_role|api[_ -]?key\s*[:=]/i);
+});
+
+test("inspection reports candidate-bound local checks without granting release approval", () => {
+  const dir = mkdtempSync(join(tmpdir(), "veloce-local-candidate-checks-"));
+  try {
+    const aiFile = join(dir, "ai.json");
+    const notebookFile = join(dir, "notebook.json");
+    const fixture = readFileSync(resolve(process.cwd(), "evaluations/ai-release-local-v1.json"));
+    const fixtureCases = JSON.parse(fixture.toString("utf8")).cases;
+    const sourceCommit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: process.cwd(), encoding: "utf8" }).stdout.trim();
+    const candidateFingerprint = workingTreeFingerprintSha256(process.cwd());
+    const checkedAt = new Date().toISOString();
+    writeFileSync(aiFile, JSON.stringify({
+      schemaVersion: 2, suite: "ai-release-local-v1", mode: "deterministic-local", localGatePassed: true, productionReady: false,
+      startedAt: checkedAt, checkedAt, runnerStatus: "passed", failures: [],
+      workingTreeClean: false, workingTreeCleanAfter: false, nodeEngineSupported: true, nodeVersion: process.version,
+      runnerExitCode: 0, sourceCommit, sourceCommitAfter: sourceCommit,
+      candidateFingerprintSchema: "agentos-working-tree-v1", candidateFingerprintSha256: candidateFingerprint,
+      candidateFingerprintAfterSha256: candidateFingerprint,
+      unitConfigSha256: createHash("sha256").update(readFileSync("playwright.unit.config.ts")).digest("hex"),
+      playwrightVersion: JSON.parse(readFileSync("node_modules/playwright/package.json", "utf8")).version,
+      playwrightVersionAfter: JSON.parse(readFileSync("node_modules/playwright/package.json", "utf8")).version,
+      runnerConfiguration: { workers: 1, retries: 0, reporter: "json", timeoutMs: 600000, environment: "allowlisted-offline-v1" },
+      fixtureSha256: createHash("sha256").update(fixture).digest("hex"),
+      metrics: { cases: fixtureCases.length, passed: fixtureCases.length, failed: 0, modelSamples: 0 },
+      cases: fixtureCases.map(({ id, spec, title }: { id: string; spec: string; title: string }) => ({ id, spec, title, status: "passed" })),
+    }));
+    writeFileSync(notebookFile, JSON.stringify(buildNotebookJourneyReceipt({
+      sourceCommit,
+      candidateFingerprint,
+      sourceCommitAfter: sourceCommit, candidateFingerprintAfter: candidateFingerprint, runnerStatus: "passed",
+      runtime: { browserName: "chromium", browserVersion: "150.0.0.1", playwrightVersion: "1.62.1", nodeVersion: "v24.18.0", platform: "darwin", arch: "arm64" },
+      checkedAt,
+      testPort: 3941,
+      scenarios: NOTEBOOK_JOURNEY_SCENARIOS.map((id) => ({ id, status: "passed", durationMs: 1 })),
+    })));
+
+    const result = spawnSync(process.execPath, [
+      "scripts/verify-production-readiness.mjs", "--allow-dirty",
+      "--ai-evaluation-report", aiFile, "--notebook-journey-receipt", notebookFile,
+    ], {
+      cwd: process.cwd(), encoding: "utf8",
+      env: { ...process.env, VELOCE_RELEASE_LEDGER_BUCKET: "" },
+    });
+    expect(result.status, result.stderr).toBe(0);
+    const report = JSON.parse(result.stdout);
+    expect(report.localCandidateChecks).toMatchObject({
+      candidateFingerprintSha256: candidateFingerprint,
+      workingTreeClean: false,
+      aiEvaluation: { status: "passed_candidate_bound_dirty_tree", productionReady: false, modelSamples: 0 },
+      notebookExecutionJourney: { status: "passed_candidate_bound", scenarios: NOTEBOOK_JOURNEY_SCENARIOS.length },
+    });
+    expect(report.releaseReady).toBe(false);
+    expect(report.notEvaluated).toContain("ai_evaluation_local_evidence");
+    expect(report.notEvaluated).toContain("notebook_execution_journey_local_evidence");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test("release ledger lookup distinguishes an absent record from an unavailable check", () => {
@@ -83,7 +144,7 @@ test("strict release acceptance does not trust an unpublished local ledger file"
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("release evidence requires the setup, financial, learning-retention, source-graph, artifact-owner, and notebook-reference migrations", () => {
+test("release evidence requires setup, financial, tenant-retention, source, artifact, notebook, runtime-job, room, Visual QA, request, and support migrations", () => {
   const dir = mkdtempSync(join(tmpdir(), "veloce-incomplete-ledger-"));
   try {
     const file = join(dir, "record.json");
@@ -111,7 +172,18 @@ test("release evidence requires the setup, financial, learning-retention, source
     expect(failures).toContain("release_gate:source_rpc_guard_migration_attached");
     expect(failures).toContain("release_gate:source_published_date_migration_attached");
     expect(failures).toContain("release_gate:record_retention_migration_attached");
+    expect(failures).toContain("release_gate:onboarding_token_retention_migration_attached");
+    expect(failures).toContain("release_gate:runtime_rate_limit_retention_migration_attached");
+    expect(failures).toContain("release_gate:research_retention_migration_attached");
+    expect(failures).toContain("release_gate:notebook_retention_migration_attached");
+    expect(failures).toContain("release_gate:runtime_request_retention_migration_attached");
+    expect(failures).toContain("release_gate:runtime_job_retention_migration_attached");
+    expect(failures).toContain("release_gate:room_retention_migration_attached");
+    expect(failures).toContain("release_gate:visual_qa_retention_migration_attached");
+    expect(failures).toContain("release_gate:support_retention_migration_attached");
+    expect(failures).toContain("release_gate:board_loop_retention_migration_attached");
     expect(failures).toContain("release_gate:artifact_owner_guard_migration_attached");
+    expect(failures).toContain("release_gate:notebook_artifact_review_migration_attached");
     expect(failures).toContain("release_gate:notebook_reference_guard_migration_attached");
     expect(failures).toContain("release_gate:notebook_execution_sources_migration_attached");
     expect(failures).toContain("release_gate:sourceImportResult_approved");
@@ -120,6 +192,7 @@ test("release evidence requires the setup, financial, learning-retention, source
     expect(failures).toContain("release_gate:aiEngineeringResult_approved");
     expect(failures).toContain("release_gate:ai_evaluation_local_evidence");
     expect(failures).toContain("release_gate:buyer_pilot_evidence");
+    expect(failures).toContain("release_gate:buyer_pilot_cost_evidence");
     expect(failures).toContain("release_gate:customer_journey_evidence");
     expect(failures).toContain("release_gate:client_cloud_config_evidence");
     expect(failures).toContain("release_gate:source_guard_schema_evidence");
@@ -189,6 +262,39 @@ test("customer journey approval requires fifteen current-deployment receipts", (
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test("local Notebook journey receipt is candidate-bound and never substitutes for the full customer journey", () => {
+  const dir = mkdtempSync(join(tmpdir(), "veloce-notebook-journey-ledger-"));
+  try {
+    const file = join(dir, "record.json");
+    const commit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: process.cwd(), encoding: "utf8" }).stdout.trim();
+    const receipt = buildNotebookJourneyReceipt({
+      sourceCommit: commit,
+      candidateFingerprint: workingTreeFingerprintSha256(process.cwd()),
+      sourceCommitAfter: commit, candidateFingerprintAfter: workingTreeFingerprintSha256(process.cwd()), runnerStatus: "passed",
+      runtime: { browserName: "chromium", browserVersion: "150.0.0.1", playwrightVersion: "1.62.1", nodeVersion: "v24.18.0", platform: "darwin", arch: "arm64" },
+      startedAt: "2026-10-16T00:00:00.000Z",
+      checkedAt: "2026-10-16T00:01:00.000Z",
+      scenarios: NOTEBOOK_JOURNEY_SCENARIOS.map((id) => ({ id, status: "passed", durationMs: 10 })),
+    });
+    const inspect = (notebookExecutionJourney: unknown) => {
+      writeFileSync(file, JSON.stringify({ schemaVersion: 2, source: { commit }, notebookExecutionJourney }));
+      const result = spawnSync(process.execPath, ["scripts/verify-production-readiness.mjs", "--allow-dirty", "--ledger-record-file", file], {
+        cwd: process.cwd(), encoding: "utf8", env: { ...process.env, VELOCE_RELEASE_LEDGER_BUCKET: "" },
+      });
+      expect(result.status, result.stderr).toBe(0);
+      return JSON.parse(result.stdout).failures as string[];
+    };
+    const validFailures = inspect(receipt);
+    expect(validFailures).not.toContain("release_gate:notebook_execution_journey_local_evidence");
+    expect(validFailures).toContain("release_gate:customer_journey_evidence");
+    expect(inspect(null)).toContain("release_gate:notebook_execution_journey_local_evidence");
+    expect(inspect({ ...receipt, candidateFingerprintSha256: "c".repeat(64) }))
+      .toContain("release_gate:notebook_execution_journey_local_evidence");
+    expect(inspect({ ...receipt, testConfigFingerprintSha256: "d".repeat(64) }))
+      .toContain("release_gate:notebook_execution_journey_local_evidence");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("AI approval cannot substitute for a matching local evaluation receipt", () => {
   const dir = mkdtempSync(join(tmpdir(), "veloce-ai-ledger-"));
   try {
@@ -196,9 +302,19 @@ test("AI approval cannot substitute for a matching local evaluation receipt", ()
     const fixture = readFileSync(resolve(process.cwd(), "evaluations/ai-release-local-v1.json"));
     const cases = JSON.parse(fixture.toString("utf8")).cases;
     const commit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: process.cwd(), encoding: "utf8" }).stdout.trim();
+    const fingerprint = workingTreeFingerprintSha256(process.cwd());
+    const checkedAt = new Date().toISOString();
     const receipt = {
-      schemaVersion: 1, suite: "ai-release-local-v1", localGatePassed: true, productionReady: false,
-      workingTreeClean: true, nodeEngineSupported: true, runnerExitCode: 0, sourceCommit: commit,
+      schemaVersion: 2, suite: "ai-release-local-v1", mode: "deterministic-local", localGatePassed: true, productionReady: false,
+      startedAt: checkedAt, checkedAt, runnerStatus: "passed", failures: [],
+      workingTreeClean: true, workingTreeCleanAfter: true, nodeEngineSupported: true, nodeVersion: process.version,
+      runnerExitCode: 0, sourceCommit: commit, sourceCommitAfter: commit,
+      candidateFingerprintSchema: "agentos-working-tree-v1", candidateFingerprintSha256: workingTreeFingerprintSha256(process.cwd()),
+      candidateFingerprintAfterSha256: fingerprint,
+      unitConfigSha256: createHash("sha256").update(readFileSync("playwright.unit.config.ts")).digest("hex"),
+      playwrightVersion: JSON.parse(readFileSync("node_modules/playwright/package.json", "utf8")).version,
+      playwrightVersionAfter: JSON.parse(readFileSync("node_modules/playwright/package.json", "utf8")).version,
+      runnerConfiguration: { workers: 1, retries: 0, reporter: "json", timeoutMs: 600000, environment: "allowlisted-offline-v1" },
       fixtureSha256: createHash("sha256").update(fixture).digest("hex"),
       metrics: { cases: cases.length, passed: cases.length, failed: 0, modelSamples: 0 },
       cases: cases.map(({ id, spec, title }: { id: string; spec: string; title: string }) => ({ id, spec, title, status: "passed" })),
@@ -209,11 +325,26 @@ test("AI approval cannot substitute for a matching local evaluation receipt", ()
       const result = spawnSync(process.execPath, ["scripts/verify-production-readiness.mjs", "--allow-dirty", "--ledger-record-file", file], {
         cwd: process.cwd(), encoding: "utf8", env: { ...process.env, VELOCE_RELEASE_LEDGER_BUCKET: "" },
       });
-      expect(result.status).toBe(0);
+      expect(result.status, result.stderr).toBe(0);
       return JSON.parse(result.stdout).failures as string[];
     };
     expect(inspect({ ...receipt, sourceCommit: "0".repeat(40) })).toContain("release_gate:ai_evaluation_local_evidence");
     expect(inspect({ ...receipt, workingTreeClean: false })).toContain("release_gate:ai_evaluation_local_evidence");
+    expect(inspect({ ...receipt, candidateFingerprintSha256: "c".repeat(64) })).toContain("release_gate:ai_evaluation_local_evidence");
+    for (const altered of [
+      { ...receipt, schemaVersion: 1 },
+      { ...receipt, sourceCommitAfter: "0".repeat(40) },
+      { ...receipt, candidateFingerprintAfterSha256: "c".repeat(64) },
+      { ...receipt, workingTreeCleanAfter: false },
+      { ...receipt, unitConfigSha256: "d".repeat(64) },
+      { ...receipt, playwrightVersionAfter: "0.0.0" },
+      { ...receipt, startedAt: "2099-01-01T00:00:00.000Z" },
+      { ...receipt, startedAt: undefined },
+      { ...receipt, runnerStatus: "incomplete" },
+      { ...receipt, failures: ["candidate_changed_during_run"] },
+      { ...receipt, runnerConfiguration: { ...receipt.runnerConfiguration, retries: 1 } },
+      { ...receipt, cases: [...receipt.cases, receipt.cases[0]] },
+    ]) expect(inspect(altered)).toContain("release_gate:ai_evaluation_local_evidence");
     expect(inspect(receipt)).not.toContain("release_gate:ai_evaluation_local_evidence");
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
@@ -230,6 +361,8 @@ test("production readiness source keeps live gates explicit", () => {
   expect(verifier).toContain("configurationHash");
   expect(verifier).toContain("tenantIsolationResult");
   expect(verifier).toContain("managedOpenRouterResult");
+  expect(verifier).toContain("shared runtime configuration digest");
+  expect(verifier).toContain("cloud release evidence binds runtime configuration digest");
   expect(verifier).toContain("aiEngineeringResult");
   expect(verifier).toContain("OPENROUTER_MANAGED_SECRET_RESOURCE");
   expect(verifier).toContain("OPENROUTER_MANAGED_PRICING_SNAPSHOT_ID");

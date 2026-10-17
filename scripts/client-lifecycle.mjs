@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import { readClientExportPages } from "./lib/client-export-pages.mjs";
 import { eccLifecycleColumns } from "./lib/ecc-lifecycle.mjs";
-import { clientLifecycleRestoreRow } from "./lib/client-lifecycle-restore.mjs";
+import { assertClientArtifactRestoreWindow, clientLifecycleRestoreRow } from "./lib/client-lifecycle-restore.mjs";
+import { verifyClientObjectBackup, writeClientObjectBackupManifest } from "./lib/client-lifecycle-backup.mjs";
 import { listedClientObjectPaths, objectBackupCoversListing, sameClientObjectInventory, queueListingContains, requireReviewedSecretInventory, reviewedClientSecretNames } from "./lib/client-lifecycle-inventory.mjs";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, lstatSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { clientStorageRetentionClock } from "../src/lib/clientStorageRetentionClock.mjs";
 import path from "node:path";
 import process from "node:process";
 
@@ -56,6 +58,20 @@ if (mode === "restore" && apply && !confirmRestore) fail("Refusing restore apply
 if (mode === "retention" && apply && !args.includes("--confirm-retention-records")) fail("Refusing retention apply without --confirm-retention-records");
 if (mode === "retention" && apply && !args.includes("--confirm-retention-learning")) fail("Refusing learning retention apply without --confirm-retention-learning");
 if (mode === "retention" && apply && !args.includes("--confirm-retention-sources")) fail("Refusing Notebook source retention apply without --confirm-retention-sources");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-notebooks")) fail("Refusing notebook retention apply without --confirm-retention-notebooks");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-research")) fail("Refusing research retention apply without --confirm-retention-research");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-runtime")) fail("Refusing runtime request retention apply without --confirm-retention-runtime");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-room")) fail("Refusing Agent Room retention apply without --confirm-retention-room");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-visual-qa")) fail("Refusing Visual QA retention apply without --confirm-retention-visual-qa");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-support")) fail("Refusing tenant support retention apply without --confirm-retention-support");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-pipeline")) fail("Refusing Pipeline retention apply without --confirm-retention-pipeline");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-board-loop")) fail("Refusing Board and Loop retention apply without --confirm-retention-board-loop");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-paperclip")) fail("Refusing Paperclip retention apply without --confirm-retention-paperclip");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-hermes")) fail("Refusing Hermes Content Factory retention apply without --confirm-retention-hermes");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-ruflo")) fail("Refusing Ruflo retention apply without --confirm-retention-ruflo");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-onboarding-tokens")) fail("Refusing onboarding-token retention apply without --confirm-retention-onboarding-tokens");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-rate-limits")) fail("Refusing runtime rate-limit retention apply without --confirm-retention-rate-limits");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-audit-budget")) fail("Refusing audit and budget retention apply without --confirm-retention-audit-budget");
 
 if (mode === "offboard" && apply && !configPath) fail("Offboard apply requires --config with a reviewed client manifest");
 const manifestBytes = configPath ? await readFile(path.resolve(process.cwd(), configPath)) : null;
@@ -146,7 +162,7 @@ const exportColumns = Object.freeze({
   client_runtime_requests: "id,tenant_slug,submitted_by,request_type,title,details,fields,status,created_at,updated_at",
   client_runtime_audit_events: "id,tenant_slug,actor_id,event_type,request_id,metadata,created_at",
   client_runtime_jobs: "id,tenant_slug,requested_by,capability,provider,model,idempotency_key,status,attempt_count,input_metadata,output_metadata,error_code,created_at,started_at,finished_at",
-  client_runtime_artifacts: "id,tenant_slug,job_id,created_by,object_key,original_name,content_type,byte_size,status,retention_expires_at,created_at",
+  client_runtime_artifacts: "id,tenant_slug,job_id,created_by,object_key,original_name,content_type,byte_size,status,retention_expires_at,created_at,review_decision,review_sha256,reviewed_by,reviewed_at",
   client_runtime_records: "id,tenant_slug,created_by,kind,title,content,status,metadata,notebook_id,created_at,updated_at",
   client_notebooks: "id,tenant_slug,created_by,title,summary,status,created_at,updated_at",
   client_notebook_sources: "id,tenant_slug,notebook_id,created_by,kind,title,source_url,artifact_id,source_hash,status,failure_reason,retention_expires_at,deleted_at,created_at,updated_at",
@@ -161,33 +177,33 @@ const exportColumns = Object.freeze({
   client_runtime_memory_graph_edges: "id,tenant_slug,source_node_id,target_node_id,relation,weight,metadata,created_at",
   client_runtime_budget_ledger: "id,tenant_slug,job_id,provider,model,amount_micros,usage_metadata,created_at",
   client_runtime_delivery_actions: "id,tenant_slug,request_id,requested_by,action,destination,artifact_ids,status,error_code,idempotency_key,created_at,updated_at",
-  client_paperclip_companies: "tenant_slug,name,description,issue_prefix,issue_counter,brand_color,budget_monthly_micros,status,created_at,updated_at",
-  client_paperclip_projects: "id,tenant_slug,created_by,name,url_key,description,color,icon,status,target_date,created_at,updated_at",
-  client_paperclip_agents: "id,tenant_slug,created_by,name,role,title,icon,status,reports_to,provider,model,budget_monthly_micros,last_heartbeat_at,url_key,created_at,updated_at",
+  client_paperclip_companies: "tenant_slug,name,description,issue_prefix,issue_counter,brand_color,budget_monthly_micros,status,retention_expires_at,created_at,updated_at",
+  client_paperclip_projects: "id,tenant_slug,created_by,name,url_key,description,color,icon,status,target_date,retention_expires_at,created_at,updated_at",
+  client_paperclip_agents: "id,tenant_slug,created_by,name,role,title,icon,status,reports_to,provider,model,budget_monthly_micros,last_heartbeat_at,url_key,retention_expires_at,created_at,updated_at",
   // build_preview_html is a provider-generated copy of the artifact already
   // captured in Cloud Storage; the artifact id is the durable reference, so the
   // export keeps the pointer rather than duplicating the payload.
-  client_paperclip_issues: "id,tenant_slug,created_by,issue_number,identifier,title,description,status,priority,project_id,assignee_agent_id,labels,execution_state,execution_job_id,build_artifact_id,started_at,completed_at,created_at,updated_at",
-  client_paperclip_comments: "id,tenant_slug,issue_id,created_by,author_agent_id,body,created_at",
-  client_paperclip_runs: "id,tenant_slug,created_by,issue_id,agent_id,job_id,status,provider,model,summary,error_code,cost_micros,started_at,finished_at,created_at,updated_at",
+  client_paperclip_issues: "id,tenant_slug,created_by,issue_number,identifier,title,description,status,priority,project_id,assignee_agent_id,labels,execution_state,execution_job_id,build_artifact_id,started_at,completed_at,retention_expires_at,created_at,updated_at",
+  client_paperclip_comments: "id,tenant_slug,issue_id,created_by,author_agent_id,body,retention_expires_at,created_at",
+  client_paperclip_runs: "id,tenant_slug,created_by,issue_id,agent_id,job_id,status,provider,model,summary,error_code,cost_micros,started_at,finished_at,retention_expires_at,created_at,updated_at",
   client_room_conversations: "id,tenant_slug,created_by,title,status,present_agents,created_at,updated_at",
   client_room_messages: "id,tenant_slug,conversation_id,created_by,role,kind,agent_id,agent_name,agent_color,content,provider,model,cost_micros,error_code,linked_record_id,seq,created_at",
   client_room_rounds: "id,tenant_slug,conversation_id,created_by,job_id,status,agent_ids,speaking_agent_id,completed_agents,cost_micros,error_code,created_at,updated_at",
   // build_preview_html duplicates a Cloud Storage artifact; the id is the durable reference.
-  client_pipeline_items: "id,tenant_slug,created_by,slug,title,stage,route,confidence,tags,idea,classification,plan,tasks,pinned,build_artifact_id,execution_state,execution_job_id,execution_error,decided_by,decided_at,created_at,updated_at",
-  client_board_tasks: "id,tenant_slug,created_by,board,title,body,status,assignee,priority,labels,build_artifact_id,execution_state,execution_job_id,execution_error,result,started_at,completed_at,created_at,updated_at",
-  client_board_comments: "id,tenant_slug,task_id,created_by,author,body,created_at",
-  client_board_events: "id,tenant_slug,task_id,kind,detail,created_at",
-  client_loop_runs: "id,tenant_slug,created_by,goal,title,status,job_id,builder_provider,builder_model,judge_provider,judge_model,max_rounds,rounds_completed,best_score,final_summary,build_artifact_id,cost_micros,error_code,created_at,updated_at",
-  client_loop_rounds: "id,tenant_slug,run_id,round,passed,score,issues,summary,artifact_chars,cost_micros,error_code,created_at",
-  client_hermes_content_factory_runs: "id,tenant_slug,created_by,workflow_id,idempotency_key,content_type,brief,plan,stages,citations,quality_report,approval,delivery,status,current_stage,job_id,error_code,created_at,updated_at",
-  client_hermes_content_factory_stage_outputs: "id,run_id,tenant_slug,stage,status,output_record_id,artifact_id,citation_record_id,quality_report_id,error_code,output,created_at,updated_at",
-  client_hermes_content_factory_citations: "id,run_id,tenant_slug,url,title,retrieved_at,evidence,created_at",
-  client_hermes_content_factory_quality_reports: "id,run_id,tenant_slug,passed,score,citation_count,findings,checked_at,created_at",
-  client_hermes_content_factory_approvals: "id,run_id,tenant_slug,workflow_id,approved_by,approved_at,created_at",
-  client_hermes_content_factory_deliveries: "id,run_id,tenant_slug,workflow_id,destination,status,approval_id,artifact_id,created_at",
-  client_ruflo_swarms: "id,tenant_slug,created_by,objective,topology,preset,status,job_id,provider,model,agent_count,completed_count,failed_count,report_artifact_id,cost_micros,error_code,created_at,updated_at",
-  client_ruflo_agents: "id,tenant_slug,swarm_id,agent_type,name,task,position,status,output,error_code,cost_micros,started_at,finished_at,created_at",
+  client_pipeline_items: "id,tenant_slug,created_by,slug,title,stage,route,confidence,tags,idea,classification,plan,tasks,pinned,build_artifact_id,execution_state,execution_job_id,execution_error,decided_by,decided_at,retention_expires_at,created_at,updated_at",
+  client_board_tasks: "id,tenant_slug,created_by,board,title,body,status,assignee,priority,labels,build_artifact_id,execution_state,execution_job_id,execution_error,result,started_at,completed_at,retention_expires_at,created_at,updated_at",
+  client_board_comments: "id,tenant_slug,task_id,created_by,author,body,retention_expires_at,created_at",
+  client_board_events: "id,tenant_slug,task_id,kind,detail,retention_expires_at,created_at",
+  client_loop_runs: "id,tenant_slug,created_by,goal,title,status,job_id,builder_provider,builder_model,judge_provider,judge_model,max_rounds,rounds_completed,best_score,final_summary,build_artifact_id,cost_micros,error_code,retention_expires_at,created_at,updated_at",
+  client_loop_rounds: "id,tenant_slug,run_id,round,passed,score,issues,summary,artifact_chars,cost_micros,error_code,retention_expires_at,created_at",
+  client_hermes_content_factory_runs: "id,tenant_slug,created_by,workflow_id,idempotency_key,content_type,brief,plan,stages,citations,quality_report,approval,delivery,status,current_stage,job_id,error_code,retention_expires_at,created_at,updated_at",
+  client_hermes_content_factory_stage_outputs: "id,run_id,tenant_slug,stage,status,output_record_id,artifact_id,citation_record_id,quality_report_id,error_code,output,retention_expires_at,created_at,updated_at",
+  client_hermes_content_factory_citations: "id,run_id,tenant_slug,url,title,retrieved_at,evidence,retention_expires_at,created_at",
+  client_hermes_content_factory_quality_reports: "id,run_id,tenant_slug,passed,score,citation_count,findings,checked_at,retention_expires_at,created_at",
+  client_hermes_content_factory_approvals: "id,run_id,tenant_slug,workflow_id,approved_by,approved_at,retention_expires_at,created_at",
+  client_hermes_content_factory_deliveries: "id,run_id,tenant_slug,workflow_id,destination,status,approval_id,artifact_id,retention_expires_at,created_at",
+  client_ruflo_swarms: "id,tenant_slug,created_by,objective,topology,preset,status,job_id,provider,model,agent_count,completed_count,failed_count,report_artifact_id,cost_micros,error_code,retention_expires_at,created_at,updated_at",
+  client_ruflo_agents: "id,tenant_slug,swarm_id,agent_type,name,task,position,status,output,error_code,cost_micros,started_at,finished_at,retention_expires_at,created_at",
 });
 
 const forbiddenExportFields = new Set([
@@ -204,12 +220,24 @@ const secretLikeValue = /(?:api[_ -]?key|secret|password|private[_ -]?key|access
 if (mode === "export") {
   const snapshot = await exportSnapshot();
   await writeSnapshot(snapshot, outputPath);
-  if (includeObjects) await exportObjects(objectBackupPath);
+  if (includeObjects) await exportObjects(objectBackupPath, snapshot);
   console.log(`Client export written: ${outputPath}`);
   process.exit(0);
 }
 
 if (mode === "retention") {
+  const tokenResponse = await supabaseRequest("rpc/purge_expired_client_onboarding_tokens", {
+    method: "POST",
+    body: JSON.stringify({ p_apply: apply, p_batch_limit: 500 }),
+  });
+  if (!tokenResponse.ok) fail(`Onboarding token retention failed (${tokenResponse.status}); verify the onboarding-token retention migration`);
+  const onboardingTokens = await tokenResponse.json();
+  const rateLimitResponse = await supabaseRequest("rpc/purge_expired_client_runtime_rate_limits", {
+    method: "POST",
+    body: JSON.stringify({ p_apply: apply, p_batch_limit: 500 }),
+  });
+  if (!rateLimitResponse.ok) fail(`Runtime rate-limit retention failed (${rateLimitResponse.status}); verify the runtime rate-limit retention migration`);
+  const runtimeRateLimits = await rateLimitResponse.json();
   const referenceCheck = await supabaseRequest("rpc/client_learning_retention_references_ready", { method: "POST", body: "{}" });
   if (!referenceCheck.ok || await referenceCheck.json().catch(() => false) !== true) {
     fail("Learning retention reference guard is not applied; refusing record purge");
@@ -223,8 +251,8 @@ if (mode === "retention") {
     fail("Tenant retention is missing or exceeds the 28-day content-retention maximum");
   }
   const now = new Date();
-  const cutoff = new Date(now.getTime() - retentionDays * 24 * 60 * 60 * 1000);
-  const filter = new URLSearchParams({ tenant_slug: `eq.${slug}`, created_at: `lte.${cutoff.toISOString()}`, retention_expires_at: `lte.${now.toISOString()}` });
+  const purgeCutoff = new Date(now.getTime() - (retentionDays + 7) * 24 * 60 * 60 * 1000);
+  const filter = new URLSearchParams({ tenant_slug: `eq.${slug}`, retention_expires_at: `lte.${new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()}` });
   const learningBatchLimit = 100;
   const selection = await supabaseRequest(`client_learning_items?${filter}&select=id&order=id&limit=${learningBatchLimit}`);
   if (!selection.ok) fail(`Learning retention selection failed (${selection.status})`);
@@ -246,6 +274,72 @@ if (mode === "retention") {
   });
   if (!sourceResponse.ok) fail(`Notebook source retention failed (${sourceResponse.status}); verify the 28-day policy and source-retention migrations`);
   const sources = await sourceResponse.json();
+  const notebookResponse = await supabaseRequest("rpc/purge_expired_client_notebooks", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
+  });
+  if (!notebookResponse.ok) fail(`Notebook retention failed (${notebookResponse.status}); verify the notebook retention migration`);
+  const notebooks = await notebookResponse.json();
+  const researchResponse = await supabaseRequest("rpc/purge_expired_client_research", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
+  });
+  if (!researchResponse.ok) fail(`Research retention failed (${researchResponse.status}); verify the research retention migration`);
+  const research = await researchResponse.json();
+  const runtimeResponse = await supabaseRequest("rpc/purge_expired_client_runtime_requests", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
+  });
+  if (!runtimeResponse.ok) fail(`Runtime request retention failed (${runtimeResponse.status}); verify the runtime-request retention migration`);
+  const runtimeRequests = await runtimeResponse.json();
+  const roomResponse = await supabaseRequest("rpc/purge_expired_client_room_records", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
+  });
+  if (!roomResponse.ok) fail(`Agent Room retention failed (${roomResponse.status}); verify the room-retention migration`);
+  const room = await roomResponse.json();
+  const visualQaResponse = await supabaseRequest("rpc/purge_expired_client_visual_qa", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
+  });
+  if (!visualQaResponse.ok) fail(`Visual QA retention failed (${visualQaResponse.status}); verify the Visual-QA retention migration`);
+  const visualQa = await visualQaResponse.json();
+  const supportResponse = await supabaseRequest("rpc/purge_expired_client_support_requests", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
+  });
+  if (!supportResponse.ok) fail(`Tenant support retention failed (${supportResponse.status}); verify the support-retention migration`);
+  const supportRequests = await supportResponse.json();
+  const pipelineResponse = await supabaseRequest("rpc/purge_expired_client_pipeline_items", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
+  });
+  if (!pipelineResponse.ok) fail(`Pipeline retention failed (${pipelineResponse.status}); verify the Pipeline retention migration`);
+  const pipeline = await pipelineResponse.json();
+  const boardLoopResponse = await supabaseRequest("rpc/purge_expired_client_board_loop_records", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
+  });
+  if (!boardLoopResponse.ok) fail(`Board and Loop retention failed (${boardLoopResponse.status}); verify the board/loop-retention migration`);
+  const boardLoop = await boardLoopResponse.json();
+  const paperclipResponse = await supabaseRequest("rpc/purge_expired_client_paperclip_records", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
+  });
+  if (!paperclipResponse.ok) fail(`Paperclip retention failed (${paperclipResponse.status}); verify the Paperclip-retention migration`);
+  const paperclip = await paperclipResponse.json();
+  const hermesResponse = await supabaseRequest("rpc/purge_expired_client_hermes_content_factory_records", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
+  });
+  if (!hermesResponse.ok) fail(`Hermes Content Factory retention failed (${hermesResponse.status}); verify the Hermes retention migration`);
+  const hermes = await hermesResponse.json();
+  const rufloResponse = await supabaseRequest("rpc/purge_expired_client_ruflo_records", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
+  });
+  if (!rufloResponse.ok) fail(`Ruflo retention failed (${rufloResponse.status}); verify the Ruflo-retention migration`);
+  const ruflo = await rufloResponse.json();
   if (apply && ids.length) {
     const deletion = new URLSearchParams(filter);
     deletion.set("id", `in.(${ids.join(",")})`);
@@ -257,25 +351,58 @@ if (mode === "retention") {
       fail("Learning retention delete did not match the reviewed batch");
     }
   }
-  console.log(JSON.stringify({ tenant: slug, runtimeRecords: records, notebookSources: sources, expiredLearningItems: ids.length,
+  const auditBudgetResponse = await supabaseRequest("rpc/purge_expired_client_runtime_audit_and_budget", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 500 }),
+  });
+  if (!auditBudgetResponse.ok) fail(`Audit and budget retention failed (${auditBudgetResponse.status}); verify the audit/budget retention migration`);
+  const auditBudget = await auditBudgetResponse.json();
+  console.log(JSON.stringify({ tenant: slug, onboardingTokens, runtimeRateLimits, auditBudget, runtimeRecords: records, runtimeRequests, room, visualQa, supportRequests, pipeline, boardLoop, paperclip, hermes, ruflo, notebookSources: sources, notebooks, research, purgeDueLearningItems: ids.length,
+    retentionDays, recoveryDays: 7, purgeAfterDays: retentionDays + 7, purgeCutoff: purgeCutoff.toISOString(),
     learningBatchLimit, moreLearningItemsMayRemain: ids.length === learningBatchLimit,
     applied: apply, learningRevisionsCascade: true }));
   process.exit(0);
 }
 
 if (mode === "restore") {
-  const snapshot = JSON.parse(await readFile(path.resolve(process.cwd(), inputPath), "utf8"));
+  const snapshotBytes = await readFile(path.resolve(process.cwd(), inputPath));
+  const snapshot = JSON.parse(snapshotBytes.toString("utf8"));
   validateSnapshot(snapshot);
-  if (!apply) {
-    console.log(`Dry run restore for ${snapshot.slug} from ${inputPath}`);
-    console.log(`Tables: ${Object.keys(snapshot.tables).join(", ")}`);
-    process.exit(0);
-  }
+  const restoreBatches = prepareRestoreBatches(snapshot);
   if (snapshot.tables.client_runtime_artifacts?.length && !objectsPath) {
     fail("Restore contains artifact metadata; pass --objects with the matching Cloud Storage backup");
   }
-  await restoreSnapshot(snapshot);
-  if (objectsPath) restoreObjects(objectsPath);
+  let objectPlan = null;
+  if (objectsPath) {
+    validateObjectBackupDirectory(objectsPath);
+    objectPlan = await verifyClientObjectBackup(objectsPath, resolvedNamespace, snapshotBytes, snapshot.tables.client_runtime_artifacts ?? []);
+  }
+  assertClientArtifactRestoreWindow(snapshot, objectPlan ?? []);
+  if (apply && objectPlan?.length) {
+    if (!manifestBytes || !/^[0-9a-f]{64}$/.test(manifestSha256 ?? "")
+      || createHash("sha256").update(manifestBytes).digest("hex") !== manifestSha256) {
+      fail("Object restore apply requires --config and its reviewed --manifest-sha256");
+    }
+    if (manifest.clientSlug !== slug || gcp.storageBucket !== resolvedBucket || manifest.storage?.namespace !== slug
+      || !Number.isSafeInteger(manifest.storage?.retentionDays) || manifest.storage.retentionDays < 1 || manifest.storage.retentionDays > 28) {
+      fail("Object restore destination does not match the reviewed tenant storage policy");
+    }
+    const artifactByKey = new Map(snapshot.tables.client_runtime_artifacts.map((artifact) => [artifact.object_key, artifact]));
+    if (objectPlan.some((file) => !clientStorageRetentionClock(artifactByKey.get(file.objectKey)?.retention_expires_at, manifest.storage.retentionDays))) {
+      fail("Object restore deadline is incompatible with the reviewed destination policy");
+    }
+  }
+  if (!apply) {
+    console.log(`Dry run restore for ${snapshot.slug} from ${inputPath}`);
+    console.log(`Tables: ${Object.keys(snapshot.tables).join(", ")}`);
+    console.log("Local preflight only; database constraints and the restore migration are not verified by this dry run.");
+    process.exit(0);
+  }
+  if (objectPlan) {
+    restoreObjects(objectPlan, snapshot);
+    await verifyClientObjectBackup(objectsPath, resolvedNamespace, snapshotBytes, snapshot.tables.client_runtime_artifacts ?? []);
+  }
+  await restoreSnapshot(snapshot, objectPlan ?? [], restoreBatches);
   console.log(`Client metadata restored: ${snapshot.slug}`);
   process.exit(0);
 }
@@ -303,7 +430,7 @@ try { secretNames = requireReviewedSecretInventory(listSecretNames(), reviewedCl
 catch (error) { fail(error.message); }
 if (objectPaths.length) {
   if (!includeObjects) fail("Refusing offboard: tenant objects require --include-objects backup before deletion");
-  await exportObjects(objectBackupPath);
+  await exportObjects(objectBackupPath, snapshot);
   if (!objectBackupCoversListing(objectBackupPath, resolvedNamespace, objectPaths)) {
     fail("Refusing offboard: object backup does not cover the reviewed tenant inventory");
   }
@@ -311,10 +438,12 @@ if (objectPaths.length) {
 if (!sameClientObjectInventory(objectPaths, listBucketObjects())) {
   fail("Refusing offboard: tenant object inventory changed during backup");
 }
+if (objectPaths.length) await verifyClientObjectBackup(objectBackupPath, resolvedNamespace, await readFile(outputPath), snapshot.tables.client_runtime_artifacts ?? []);
 await supabasePatch("client_tenants", `slug=eq.${encodeURIComponent(slug)}`, { status: "offboarding", updated_at: new Date().toISOString() });
 if (!sameClientObjectInventory(objectPaths, listBucketObjects())) {
   fail("Refusing offboard: tenant object inventory changed after suspension");
 }
+if (objectPaths.length) await verifyClientObjectBackup(objectBackupPath, resolvedNamespace, await readFile(outputPath), snapshot.tables.client_runtime_artifacts ?? []);
 if (objectPaths.length) runGcloud(["storage", "rm", "--recursive", `gs://${resolvedBucket}/${resolvedNamespace}/**`, "--quiet"]);
 if (listBucketObjects().length) fail("Refusing offboard: tenant objects remain after deletion");
 if (deleteBucket) runGcloud(["storage", "buckets", "delete", `gs://${resolvedBucket}`, "--project", project, "--quiet"]);
@@ -330,7 +459,14 @@ console.log(`Client offboarding completed: ${slug}`);
 async function exportSnapshot() {
   const result = { schemaVersion: 3, slug, exportedAt: new Date().toISOString(), tables: {} };
   for (const table of tables) {
-    const rows = await supabaseSelect(table, table === "client_tenants" ? `slug=eq.${encodeURIComponent(slug)}` : `tenant_slug=eq.${encodeURIComponent(slug)}`, exportColumns[table]);
+    const filter = new URLSearchParams(table === "client_tenants" ? { slug: `eq.${slug}` } : { tenant_slug: `eq.${slug}` });
+    if (table === "client_runtime_audit_events" || table === "client_runtime_budget_ledger") {
+      const tenantDays = Number(result.tables.client_tenants?.[0]?.retention_days);
+      const activeDays = table === "client_runtime_audit_events" ? Math.min(28, tenantDays) : 28;
+      if (!Number.isSafeInteger(tenantDays) || tenantDays < 1 || !Number.isSafeInteger(activeDays) || activeDays < 1) fail("Cannot export audit or budget detail without a valid 28-day retention policy");
+      filter.set("created_at", `gt.${new Date(Date.now() - activeDays * 24 * 60 * 60 * 1000).toISOString()}`);
+    }
+    const rows = await supabaseSelect(table, filter.toString(), exportColumns[table]);
     if (table === "client_tenants" && (rows.length !== 1 || rows[0].slug !== slug)) fail("Client tenant not found in lifecycle database");
     assertSnapshotSafe(table, rows);
     result.tables[table] = rows;
@@ -338,7 +474,8 @@ async function exportSnapshot() {
   return result;
 }
 
-async function restoreSnapshot(snapshot) {
+function prepareRestoreBatches(snapshot) {
+  const batches = [];
   for (const table of tables) {
     const rows = Array.isArray(snapshot.tables[table]) ? snapshot.tables[table] : [];
     if (!rows.length) continue;
@@ -347,8 +484,27 @@ async function restoreSnapshot(snapshot) {
     assertSnapshotSafe(table, tenantRows);
     const restoredRows = orderForRestore(table, tenantRows).map((row) => clientLifecycleRestoreRow(table, row));
     for (let offset = 0; offset < restoredRows.length; offset += 500) {
-      await supabaseInsert(table, restoredRows.slice(offset, offset + 500).map((row) => pickExportColumns(table, row)));
+      batches.push({ table, rows: restoredRows.slice(offset, offset + 500).map((row) => pickExportColumns(table, row)) });
     }
+  }
+  if (batches.reduce((count, batch) => count + batch.rows.length, 0) > 50000
+    || Buffer.byteLength(JSON.stringify(batches)) > 33554432) fail("Restore exceeds the bounded metadata transaction limit");
+  return batches;
+}
+
+async function restoreSnapshot(snapshot, objectPlan, batches) {
+  assertClientArtifactRestoreWindow(snapshot, objectPlan);
+  const response = await supabaseRequest("rpc/restore_client_lifecycle_metadata", {
+    method: "POST", body: JSON.stringify({ p_tenant_slug: slug, p_batches: batches }),
+  });
+  if (!response.ok) fail(`Atomic metadata restore failed (${response.status}); verify the lifecycle restore migration before retrying`);
+  const receipt = await response.json();
+  const expected = {};
+  for (const batch of batches) expected[batch.table] = (expected[batch.table] ?? 0) + batch.rows.length;
+  if (receipt?.atomicMetadata !== true || receipt.restoredRows !== batches.reduce((count, batch) => count + batch.rows.length, 0)
+    || !receipt.tables || Object.keys(receipt.tables).length !== Object.keys(expected).length
+    || Object.entries(expected).some(([table, count]) => receipt.tables[table] !== count)) {
+    fail("Atomic metadata restore returned an unverified receipt; inspect the target before retrying");
   }
 }
 
@@ -394,9 +550,14 @@ async function assertNoResidualControlPlaneRows() {
 }
 
 function validateSnapshot(snapshot) {
-  if (!snapshot || ![1, 2, 3].includes(snapshot.schemaVersion) || snapshot.slug !== slug || !snapshot.tables || typeof snapshot.tables !== "object") fail("Invalid lifecycle snapshot or slug mismatch");
+  if (!snapshot || ![1, 2, 3].includes(snapshot.schemaVersion) || snapshot.slug !== slug || !snapshot.tables || typeof snapshot.tables !== "object" || Array.isArray(snapshot.tables)) fail("Invalid lifecycle snapshot or slug mismatch");
   for (const [table, rows] of Object.entries(snapshot.tables)) {
     if (!tables.includes(table) || !Array.isArray(rows)) fail(`Invalid lifecycle table: ${table}`);
+    // Validate every table before the first insert, not just as it is restored.
+    if (rows.some((row) => !row || typeof row !== "object" || Array.isArray(row)
+      || (table === "client_tenants" ? row.slug !== slug : row.tenant_slug !== slug))) {
+      fail(`Restore contains rows outside requested tenant: ${table}`);
+    }
     assertSnapshotSafe(table, rows);
   }
 }
@@ -455,13 +616,30 @@ function orderForRestore(table, rows) {
   return [...ordered, ...remaining];
 }
 
-function restoreObjects(input) {
+function validateObjectBackupDirectory(input) {
   const source = path.resolve(process.cwd(), input);
-  if (!existsSync(source)) fail(`Object backup directory not found: ${source}`);
+  const isDirectory = (directory) => {
+    try { return lstatSync(directory).isDirectory(); }
+    catch { return false; }
+  };
+  if (!isDirectory(source)) fail(`Object backup directory not found or not a directory: ${source}`);
   if (!path.basename(source).startsWith(`${slug}-`)) fail("Object backup directory must begin with the requested client slug");
   const namespacedSource = existsSync(path.join(source, resolvedNamespace)) ? path.join(source, resolvedNamespace) : source;
-  runGcloud(["storage", "cp", "--recursive", namespacedSource, `gs://${resolvedBucket}/${resolvedNamespace}`]);
-  console.log(`Client objects restored from ${namespacedSource}`);
+  if (!isDirectory(namespacedSource)) fail(`Object backup directory is invalid: ${namespacedSource}`);
+  return namespacedSource;
+}
+
+function restoreObjects(plan, snapshot) {
+  const artifacts = new Map((snapshot.tables.client_runtime_artifacts ?? []).map((artifact) => [artifact.object_key, artifact]));
+  for (const file of plan) {
+    const clock = clientStorageRetentionClock(artifacts.get(file.objectKey)?.retention_expires_at, manifest.storage.retentionDays);
+    if (!clock) fail("Restore object has no valid original retention deadline");
+    runGcloud(["storage", "cp", file.source, `gs://${resolvedBucket}/${file.objectKey}`,
+      "--if-generation-match=0", `--content-md5=${file.md5}`, `--custom-time=${clock.customTime}`,
+      `--custom-metadata=agentos-retention-expires-at=${clock.retentionExpiresAt},agentos-retention-clock=${clock.policy}`,
+      "--cache-control=private,no-store"]);
+  }
+  console.log(`Client objects transferred: ${plan.length}`);
 }
 
 async function writeSnapshot(snapshot, filePath) {
@@ -478,11 +656,6 @@ async function writeSnapshot(snapshot, filePath) {
 async function supabaseSelect(table, filter, columns) {
   if (!columns) fail(`No export column allowlist for ${table}`);
   return readClientExportPages({ table, filter, columns, request: supabaseRequest });
-}
-
-async function supabaseInsert(table, rows) {
-  const response = await supabaseRequest(table, { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(rows) });
-  if (!response.ok) fail(`Restore failed for ${table} (${response.status})`);
 }
 
 async function supabasePatch(table, query, record) {
@@ -504,7 +677,7 @@ async function supabaseRequest(pathname, options = {}) {
   });
 }
 
-async function exportObjects(destination) {
+async function exportObjects(destination, snapshot) {
   try {
     await mkdir(destination, { mode: 0o700 });
   } catch (error) {
@@ -512,6 +685,7 @@ async function exportObjects(destination) {
     throw error;
   }
   runGcloud(["storage", "cp", "--recursive", `gs://${resolvedBucket}/${resolvedNamespace}`, destination]);
+  await writeClientObjectBackupManifest(destination, resolvedNamespace, await readFile(outputPath), snapshot.tables.client_runtime_artifacts ?? []);
 }
 
 function listBucketObjects() {

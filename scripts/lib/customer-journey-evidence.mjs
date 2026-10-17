@@ -39,7 +39,8 @@ export function validCustomerJourneyReport(report, expectedCommit, deployment, r
     if (!expectedIds.delete(item?.id) || item.status !== "passed"
       || !Array.isArray(item.evidence) || item.evidence.length === 0) return false;
     let attested = false;
-    let hasArtifact = false;
+    let attestationEntry = null;
+    const artifactEntries = [];
     for (const entry of item.evidence) {
       if (!validRef(entry?.ref) || !/^[0-9a-f]{64}$/i.test(entry.sha256 ?? "")
         || !["case-attestation", "artifact"].includes(entry.kind)) return false;
@@ -53,9 +54,11 @@ export function validCustomerJourneyReport(report, expectedCommit, deployment, r
       if (entry.kind === "case-attestation") {
         if (attested || !validAttestation(bytes, item.id, report)) return false;
         attested = true;
-      } else hasArtifact = true;
+        attestationEntry = entry;
+      } else artifactEntries.push(entry);
     }
-    if (!attested || !hasArtifact) return false;
+    if (!attested || !artifactEntries.some((entry) =>
+      entry.ref !== attestationEntry.ref && entry.sha256.toLowerCase() !== attestationEntry.sha256.toLowerCase())) return false;
   }
   return expectedIds.size === 0;
 }

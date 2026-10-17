@@ -57,6 +57,27 @@ test("journey receipts identify every current-release case and a named reviewer"
   expect(check(wrongCase)).toBe(false);
 });
 
+test("journey artifacts must be distinct from their case attestations", () => {
+  const { report, receipts, check } = fixture();
+  const candidate = structuredClone(report);
+  const attestation = candidate.cases[0].evidence[0];
+  const sameReference = structuredClone(candidate);
+  sameReference.cases[0].evidence = [
+    attestation,
+    { ...attestation, kind: "artifact" },
+  ];
+  expect(check(sameReference)).toBe(false);
+
+  const differentReferenceSameBytes = structuredClone(candidate);
+  const duplicateRef = "docs/evidence/journey/J01-duplicate-attestation.json";
+  receipts.set(duplicateRef, receipts.get(attestation.ref)!);
+  differentReferenceSameBytes.cases[0].evidence = [
+    attestation,
+    { kind: "artifact", ref: duplicateRef, sha256: attestation.sha256 },
+  ];
+  expect(check(differentReferenceSameBytes)).toBe(false);
+});
+
 test("journey attestation rejects another deployment, missing observations, and missing bytes", () => {
   const { report, receipts, check } = fixture();
   const candidate = structuredClone(report);

@@ -77,7 +77,7 @@ export async function POST(request: Request) {
   });
   if (!created.ok || created.value !== artifactId) return error("artifact_record_failed", 502);
 
-  const uploaded = await uploadClientStorageObject({ bucket: config.bucket, objectKey, contentType: "application/json", bytes, token });
+  const uploaded = await uploadClientStorageObject({ bucket: config.bucket, objectKey, contentType: "application/json", bytes, token, retentionExpiresAt });
   const metadata = uploaded ? await clientStorageObjectMetadata(config.bucket, objectKey, token) : null;
   if (!metadata || metadata.size !== bytes.byteLength || metadata.contentType !== "application/json") {
     const cleaned = await cleanupPendingUpload({ bucket: config.bucket, objectKey, token, tenantSlug, artifactId });

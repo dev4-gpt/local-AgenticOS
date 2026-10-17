@@ -9,11 +9,13 @@ import re
 import sqlite3
 from collections import Counter
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import NamedTuple
 
 
 PERSONA_ID = re.compile(r"\bP\d{5}\b")
+MONEY_AMOUNT = re.compile(r"(?<![\w.])\$\s*(\d+(?:,\d{3})*(?:\.\d+)?)([kKmM])?(?:\+)?")
 
 
 class Post(NamedTuple):
@@ -28,6 +30,16 @@ class Post(NamedTuple):
 
 def generated_text(post: Post) -> str:
     return post.quote_content or post.content
+
+
+def money_amounts(text: str) -> set[Decimal]:
+    amounts = set()
+    for raw_amount, scale in MONEY_AMOUNT.findall(text):
+        amount = Decimal(raw_amount.replace(",", ""))
+        if scale:
+            amount *= Decimal("1000") if scale.lower() == "k" else Decimal("1000000")
+        amounts.add(amount.normalize())
+    return amounts
 
 
 def is_dynamic(post: Post) -> bool:
@@ -183,6 +195,7 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
 
     profile_by_agent = {}
     profile_by_name = {}
+    profile_context_by_agent = {}
     for profile in profiles:
         agent_id = int(profile["user_id"])
         if agent_id in profile_by_agent:
@@ -191,6 +204,9 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
         if profile["name"] in profile_by_name:
             raise ValueError("profiles contain duplicate persona IDs")
         profile_by_name[profile["name"]] = profile
+        profile_context_by_agent[agent_id] = " ".join(
+            profile.get(key, "") for key in ("user_char", "description")
+        )
 
     configured_by_agent = {
         index: agent.get("entity_name")
@@ -231,6 +247,8 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
     seen_content = {normalized_words(post.content) for post in posts if not is_dynamic(post)}
     duplicate_post_ids = []
     dynamic_identity_errors = []
+    unsupported_numeric_claim_post_ids = []
+    posts_by_id = {post.post_id: post for post in posts}
     for post in dynamic_posts:
         content = generated_text(post)
         normalized = normalized_words(content)
@@ -245,6 +263,12 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
                 "assignedPersona": assigned_id,
                 "mentionedPersonas": mentioned_ids,
             })
+        source_context = profile_context_by_agent.get(post.agent_id, "")
+        quoted_source = posts_by_id.get(post.original_post_id)
+        if quoted_source:
+            source_context = f"{source_context} {quoted_source.content}"
+        if not money_amounts(content).issubset(money_amounts(source_context)):
+            unsupported_numeric_claim_post_ids.append(post.post_id)
     review_complete, content_review_passed, reviewed_dynamic_posts, approved_dynamic_posts = (
         review_covers_dynamic_posts(simulation_dir, posts, review_file)
     )
@@ -289,6 +313,7 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
         "initialPostAttribution": not attribution_errors and not missing_initial_posts,
         "dynamicPostNovelty": not duplicate_post_ids,
         "dynamicPostPersonaIdentity": not dynamic_identity_errors,
+        "buyerNumericClaimsSupported": not unsupported_numeric_claim_post_ids,
         "actionTelemetry": committed_posts == traced_posts and action_rows == reported_actions,
         "completionTelemetry": status == "completed" and type(total_rounds) is int and total_rounds > 0
         and run_state.get("current_round") == total_rounds
@@ -323,6 +348,7 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
         "unknownPostAgents": unknown_post_agents,
         "duplicateDynamicPostIds": duplicate_post_ids,
         "dynamicIdentityErrors": dynamic_identity_errors,
+        "unsupportedNumericClaimPostIds": unsupported_numeric_claim_post_ids,
         "actionLogRows": action_rows,
         "tracedPosts": sum(traced_posts.values()),
         "completionEvents": len(completion_events),
@@ -333,7 +359,7 @@ def audit(simulation_dir: Path, cohort_path: Path, review_file: Path | None = No
         "reportedRound": run_state.get("current_round"),
         "configuredRounds": run_state.get("total_rounds"),
         "checks": checks,
-        "technicalEvidencePassed": all(value for key, value in checks.items() if key not in {"buyerContentReview", "buyerReviewComplete", "crossBuyerInteraction"}),
+        "technicalEvidencePassed": all(value for key, value in checks.items() if key not in {"buyerContentReview", "buyerReviewComplete", "buyerNumericClaimsSupported", "crossBuyerInteraction"}),
         "pilotEvidencePassed": all(checks.values()),
         "marketValidation": False,
     }

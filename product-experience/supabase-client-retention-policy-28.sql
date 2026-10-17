@@ -1,9 +1,9 @@
 -- Apply after client runtime, notebook, artifact, and ECC tables exist.
--- Tenant content is active for at most 28 days from item creation. Private
--- Cloud Storage objects then remain recoverable for the separately approved
--- seven-day soft-delete window (up to 35 days total recoverability).
--- Billing/credit records and minimized security/audit evidence are not
--- automatically purged by this content-retention policy.
+-- Selected policy: all tenant data and files are active for their configured
+-- per-item retention (at most 28 days), then recovery-only for seven days.
+-- This migration only caps expiry metadata; family-specific read barriers and
+-- purge paths must also be installed and verified. It does not implement the
+-- policy for every tenant table, export, backup, vendor copy, or legal hold.
 
 begin;
 
@@ -30,6 +30,21 @@ $$;
 
 alter table public.client_tenants
   validate constraint client_tenants_retention_days_max_28;
+
+create or replace function public.client_tenant_retention_days(p_tenant_slug text)
+returns integer
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select retention_days
+  from public.client_tenants
+  where slug = p_tenant_slug
+    and public.client_member(p_tenant_slug)
+$$;
+revoke all on function public.client_tenant_retention_days(text) from public, anon;
+grant execute on function public.client_tenant_retention_days(text) to authenticated, service_role;
 
 do $$
 begin

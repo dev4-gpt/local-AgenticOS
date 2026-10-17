@@ -88,6 +88,7 @@ test("private source graph export keeps transcript text separate and linked to i
       text: "Separate transcript text.",
       segment: 1,
       segmentCount: 1,
+      captureScope: "excerpt",
       collectedAt: "2026-10-14T21:00:00.000Z",
     }],
   }] });
@@ -102,7 +103,7 @@ test("private source graph export keeps transcript text separate and linked to i
   const transcript = graph["@graph"].find((node) => node["@type"] === "Transcript");
   expect(lesson).toMatchObject({ contentStatus: "metadata_only", pageTextCaptured: false });
   expect(lesson).not.toHaveProperty("text");
-  expect(transcript).toMatchObject({ text: "Separate transcript text.", contentStatus: "transcript_available" });
+  expect(transcript).toMatchObject({ text: "Separate transcript text.", contentStatus: "transcript_excerpt", captureScope: "excerpt", captureScopeVerified: false });
   expect(graph.edges.filter((edge) => ["hasTranscript", "transcript_of"].includes(edge["@type"]))).toHaveLength(2);
   expect(graph.provenance).toMatchObject({ pageTextMissingSourceSegments: 1, transcriptSegments: 1, transcriptCharacters: 25 });
 });
