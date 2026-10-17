@@ -2,7 +2,7 @@
 
 **Status:** Working inventory; not a legal schedule or release approval  
 **Decision:** All tenant data and files have per-item active retention of up to 28 days, followed by seven recovery-only days; purge at each item's active expiry plus seven days (up to 35 days from creation).
-**Last reviewed:** October 16, 2026
+**Last reviewed:** October 17, 2026
 
 This inventory turns the owner's all-tenant-data retention decision into
 verifiable work. The policy is not implemented until every persisted tenant
@@ -15,6 +15,14 @@ superseded by this decision.
 
 The exhaustive schema-level classification is maintained in
 [`retention-table-map-2026-10-15.json`](./retention-table-map-2026-10-15.json).
+
+Room's local contract now uses a fixed conversation deadline, not last activity.
+Messages, rounds, copied job payloads and approved directives cannot obtain a
+later source window. Reads/admission stop at effective expiry; cleanup waits
+seven recovery days and cannot cascade across tenants. Ordinary restore carries
+the same clocks and validates source relationships after all parents exist.
+This is synthetic SQL/handler evidence, not operated hosted deletion, recovery,
+vendor-copy expiry or an exception for long-running conversations.
 Its verifier scans the checked-in Supabase SQL migrations and currently
 reconciles all **62** declared `public.client_*` tables across the 82 current
 product migration files.

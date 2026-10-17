@@ -25,10 +25,10 @@ test.beforeEach(() => {
 });
 test.afterEach(() => { process.env = { ...savedEnv }; globalThis.fetch = savedFetch; });
 
-function harness(capability: "ruflo-swarm" | "loop-run" | "room-round", options: { settle?: boolean; actualPerCall?: number; rejectOverrun?: boolean; settlementThrows?: boolean; missingUsageAt?: number; unpriceableAt?: number; failedAt?: number; pricePrompt?: boolean; inflateQuoteAfterCall?: boolean; outputChars?: number; quote?: number } = {}) {
+function harness(capability: "ruflo-swarm" | "loop-run" | "room-round", options: { roomDomainUnavailable?: "before-call" | "after-call" | "after-settlement"; roomDirectives?: boolean; settle?: boolean; actualPerCall?: number; rejectOverrun?: boolean; settlementThrows?: boolean; missingUsageAt?: number; unpriceableAt?: number; failedAt?: number; pricePrompt?: boolean; inflateQuoteAfterCall?: boolean; outputChars?: number; quote?: number } = {}) {
   const input: Row = capability === "ruflo-swarm" ? { objective: "Review a synthetic plan", preset: "seo" }
     : capability === "loop-run" ? { goal: "Review a synthetic plan", maxRounds: 1, builder: { provider: "openai", model: "fixture" }, judge: { provider: "openai", model: "fixture" } }
-      : { conversationId, agents: [{ id: "claude", name: "Claude", color: "#444444", provider: "openai", model: "fixture" }], transcript: [], contextText: "" };
+      : { conversationId, roomCreatedAt: new Date(Date.now()-1000).toISOString(), roomRetentionExpiresAt: new Date(Date.now()+27*86400000).toISOString(), agents: [{ id: "claude", name: "Claude", color: "#444444", provider: "openai", model: "fixture" }], transcript: [], contextText: "" };
   const state = { job: { id: jobId, tenant_slug: "tenant-a", requested_by: "member-a", capability, provider: "openai", model: "fixture", status: "queued",
     input_metadata: { ...input, __veloceTraits: traits.traitBundleMetadata(traits.resolveCapabilityTraits({ capability, provider: "openai" })) },
     output_metadata: {} as Row, error_code: null as unknown },
@@ -68,9 +68,16 @@ function harness(capability: "ruflo-swarm" | "loop-run" | "room-round", options:
         state.artifact!.status = "ready";
         return { ok: true, value: true };
       }
+      if (name === "create_client_runtime_record_worker") {
+        state.domain.push({ name, body });
+        return { ok: true, value: artifactId };
+      }
       if (["settle_client_ruflo_swarm_worker", "settle_client_ruflo_agent_worker", "settle_client_loop_run_worker", "append_client_loop_round_worker",
         "update_client_room_round_worker", "append_client_room_message_worker"].includes(name)) {
         state.domain.push({ name, body });
+        if (capability === "room-round" && ((options.roomDomainUnavailable === "before-call" && name === "update_client_room_round_worker" && body.p_status === "running")
+          || (options.roomDomainUnavailable === "after-call" && name === "append_client_room_message_worker" && body.p_role === "agent")
+          || (options.roomDomainUnavailable === "after-settlement" && name === "update_client_room_round_worker" && body.p_status === "succeeded"))) return { ok: true, value: false };
         return { ok: true, value: true };
       }
       throw new Error(`Unexpected RPC ${name}`);
@@ -118,7 +125,7 @@ function harness(capability: "ruflo-swarm" | "loop-run" | "room-round", options:
       runClientTextAdapter: async (input: { model: string; prompt: string }) => { state.providerCalls++; state.calls.push(input);
         if (state.providerCalls === options.failedAt) return { ok: false, status: 504, error: "provider_timeout" };
         return { ok: true, provider: "openai", model: "fixture", usage: state.providerCalls === options.missingUsageAt ? undefined : { inputTokens: 1, outputTokens: 1 },
-        output: capability === "loop-run" && state.providerCalls % 2 === 0 ? '{"pass":true,"score":95,"issues":[],"summary":"Fixture passes"}' : options.outputChars ? "x".repeat(options.outputChars) : "<p>Fixture</p>" }; },
+        output: capability === "loop-run" && state.providerCalls % 2 === 0 ? '{"pass":true,"score":95,"issues":[],"summary":"Fixture passes"}' : options.roomDirectives ? "Review this synthetic idea.\nNOTE:: Decision\nPIPELINE:: Draft a plan" : options.outputChars ? "x".repeat(options.outputChars) : "<p>Fixture</p>" }; },
     },
   });
   const worker = loadReviewModule("src/app/api/internal/client-runtime/jobs/route.ts", mocks);
@@ -128,6 +135,48 @@ function harness(capability: "ruflo-swarm" | "loop-run" | "room-round", options:
   return { state, execute, artifacts, primary: () => artifacts.GET(new Request(`https://fixture.invalid/api/client-runtime/artifacts?id=${artifactId}`)),
     download: () => download.GET(new Request(`https://fixture.invalid/api/client-runtime/artifacts/${artifactId}/download`), { params: Promise.resolve({ id: artifactId }) }) };
 }
+
+for (const settle of [true, false]) {
+  test(`Room directives require human review and never create domain records during generation (settle=${settle})`, async () => {
+    const h = harness("room-round", { roomDirectives: true, settle });
+    await h.execute();
+    expect(h.state.domain.filter((call) => call.name === "create_client_runtime_record_worker")).toHaveLength(0);
+    if (settle) {
+      expect(h.state.job.output_metadata.roomDirectives).toEqual([
+        { kind: "note", label: "Decision", body: "Review this synthetic idea.", agentId: "claude", agentName: "Claude" },
+        { kind: "pipeline", label: "Draft a plan", body: "Draft a plan", agentId: "claude", agentName: "Claude" },
+      ]);
+      expect(h.state.job.status).toBe("succeeded");
+    } else expect(h.state.job.status).toBe("failed");
+  });
+}
+
+for (const stage of ["before-call", "after-call", "after-settlement"] as const) {
+  test(`Room stops on unavailable/expired domain state ${stage} without replaying or losing measured cost`, async () => {
+    const h = harness("room-round", { roomDomainUnavailable: stage, roomDirectives: true });
+    expect(await (await h.execute()).json()).toMatchObject({ status: "failed" });
+    expect(h.state.providerCalls).toBe(stage === "before-call" ? 0 : 1);
+    expect(h.state.settlements).toHaveLength(1);
+    expect(h.state.settlements[0].actualAmountMicros).toBe(stage === "before-call" ? 0 : 5);
+    expect(h.state.job).toMatchObject({ status: "failed", error_code: "room_round_unavailable" });
+    expect(h.state.job.output_metadata).not.toHaveProperty("roomDirectives");
+    await h.execute();
+    expect(h.state.providerCalls).toBe(stage === "before-call" ? 0 : 1);
+  });
+}
+
+test("Room refuses missing, malformed and expired source clocks before reservation or provider work", async () => {
+  for (const invalid of [undefined, "invalid", new Date(Date.now()-1000).toISOString()]) {
+    const h = harness("room-round");
+    h.state.job.input_metadata.roomCreatedAt = new Date(Date.now()-2*86400000).toISOString();
+    h.state.job.input_metadata.roomRetentionExpiresAt = invalid;
+    await h.execute();
+    expect(h.state.providerCalls).toBe(0);
+    expect(h.state.reservations).toHaveLength(0);
+    expect(h.state.job.status).toBe("failed");
+    expect(h.state.job.error_code).toMatch(/^room_retention_/);
+  }
+});
 
 for (const capability of ["ruflo-swarm", "loop-run", "room-round"] as const) {
   test(`${capability} rejects invalid or overflowing envelope quotes before reservation and provider work`, async () => {

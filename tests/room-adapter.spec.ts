@@ -111,6 +111,7 @@ test("the prompt carries the persona and trims the transcript window", () => {
   const prompt = roomPrompt({ persona: ROOM_PERSONAS[0], transcript: turns, context: "memory line", turnWindow: 5 });
   expect(prompt.system).toContain("You are Claude");
   expect(prompt.system).toContain("memory line");
+  expect(prompt.system).toContain("require separate human review");
   expect(prompt.user).toContain("turn 29");
   expect(prompt.user).not.toContain("turn 24");
   expect(prompt.user.endsWith("Claude:")).toBe(true);

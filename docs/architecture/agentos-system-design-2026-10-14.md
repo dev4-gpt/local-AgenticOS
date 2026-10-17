@@ -119,6 +119,23 @@ markers. Readers validate timing and summary consistency. These observations
 are not durable completion/settlement, cross-attempt execution, sink-delivery
 or provider-quality attestations; preserve those separate acceptance gates.
 
+**Room directive invariant:** Model directives are proposed payloads, not
+permission to write approved memory or capture a Pipeline item. Retain them
+under their originating job; only its active requester may approve the exact
+payload after durable, error-free, nonblocked success. Review/record creation
+must commit atomically and retries must not duplicate records. Memory creation
+and Pipeline expiry inherit the original job deadline, not the approval date.
+Legacy unreviewed Room records cannot silently become approved context. This
+does not quarantine every inline chat reply or establish hosted acceptance.
+
+**Room retention invariant:** Conversation activity cannot renew its original
+active deadline. Messages, rounds and copied Room-job payloads expire no later
+than that source deadline and enter the same seven-day recovery-only window.
+Worker admission, publication and human review must stop on expiry. Approved
+derived notes/Pipeline items and ordinary restore cannot renew the source
+window. Bounded parent cleanup must not cascade through another tenant's rows.
+This is a local database/handler contract, not operated hosted deletion proof.
+
 **Unknown usage invariant:** Missing/unpriceable usage and an unverified
 provider failure are not proof of a free call. Ruflo, Loop and Room stop at
 that boundary, leave the reservation unsettled and record bounded

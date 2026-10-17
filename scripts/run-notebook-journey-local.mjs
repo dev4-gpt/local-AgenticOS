@@ -8,6 +8,8 @@ import { NOTEBOOK_JOURNEY_SERVER_ENV } from "./lib/notebook-journey-evidence.mjs
 const port = process.env.CLIENT_RUNTIME_TEST_PORT || "3941";
 if (!/^\d+$/.test(port) || Number(port) < 1024 || Number(port) > 65535) throw new Error("Invalid test port");
 const root = process.cwd();
+const surface = process.env.CLIENT_RUNTIME_TEST_SURFACE || "notebook";
+if (!["notebook", "room"].includes(surface)) throw new Error("Invalid test surface");
 const snapshot = mkdtempSync(join(tmpdir(), "agentos-notebook-journey-"));
 try {
   // Whitelist app inputs; never copy .env, cloud credentials, or local MCP configuration.
@@ -23,6 +25,7 @@ try {
   symlinkSync(join(root, "node_modules"), join(snapshot, "node_modules"), "dir");
   const next = join(root, "node_modules/next/dist/bin/next");
   const env = { PATH: `${dirname(process.execPath)}:/usr/bin:/bin`, ...NOTEBOOK_JOURNEY_SERVER_ENV };
+  if (surface === "room") env.CLIENT_ALLOWED_ROUTES = "/,/room";
   const build = spawn(process.execPath, [next, "build", "--webpack"], { cwd: snapshot, stdio: "inherit", env });
   const buildCode = await new Promise((resolve, reject) => {
     build.once("error", reject);

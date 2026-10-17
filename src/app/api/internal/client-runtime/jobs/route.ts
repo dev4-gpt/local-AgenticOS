@@ -15,7 +15,7 @@ import { runClientWorkflowRunner } from "@/lib/clientWorkflowRunner";
 import { artifactFromWorkspaceOutput, isClientWorkspaceSurface, isWorkspaceArtifactIntent, workspacePrompt, workspaceTerminalEvents } from "@/lib/clientWorkspaceExecution";
 import { auditNotebookDraftCitations, buildNotebookExecutionGoal } from "@/lib/clientNotebookExecutionProvenance";
 import { paperclipRunSummary } from "@/lib/clientPaperclipAdapter";
-import { parseRoomDirectives, roomActionSummary, roomPersona, roomPrompt } from "@/lib/clientRoomAdapter";
+import { parseRoomDirectives, roomJobRetentionDeadline, roomPersona, roomPrompt, type RoomDirectiveProposal } from "@/lib/clientRoomAdapter";
 import { parsePipelineShape, pipelineStageAfterShaping } from "@/lib/clientPipelineAdapter";
 import { loopBuilderPrompt, loopFinalStatus, loopJudgePrompt, parseLoopVerdict, type LoopRound } from "@/lib/clientLoopAdapter";
 import { QUALITY_STREAK_TARGET, loopContractById, loopPermitsStop } from "@/lib/clientLoopRegistry";
@@ -1019,7 +1019,8 @@ type RoomRoundAgent = { id: string; name: string; color: string; provider: strin
 /**
  * Walks a room round: each agent speaks in turn, its reply is appended as soon
  * as it lands so the transcript fills in progressively, and any NOTE:: /
- * PIPELINE:: directive becomes a real tenant record. Budget is reserved once
+ * PIPELINE:: directive remains a proposal for a separate member decision.
+ * Budget is reserved once
  * for the round and settled once at the end, matching the one-reservation-per-
  * job contract the ledger expects.
  */
@@ -1036,6 +1037,11 @@ async function processRoomRoundJob(jobId: string, tenantSlug: string, workerToke
   if (!/^[0-9a-f-]{36}$/i.test(conversationId) || agents.length === 0) {
     await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "failed", null, 0, 0, "room_round_input_invalid");
     await completeJob(tenantSlug, jobId, workerToken, "failed", {}, "room_round_input_invalid");
+    return NextResponse.json({ ok: true, status: "failed" });
+  }
+  const deadline = roomJobRetentionDeadline(input);
+  if (deadline === null || deadline <= Date.now()) {
+    await completeJob(tenantSlug, jobId, workerToken, "failed", {}, deadline === null ? "room_retention_unverified" : "room_retention_expired");
     return NextResponse.json({ ok: true, status: "failed" });
   }
 
@@ -1057,10 +1063,13 @@ async function processRoomRoundJob(jobId: string, tenantSlug: string, workerToke
   }
 
   const working = [...transcript];
+  const proposals: RoomDirectiveProposal[] = [];
   let spent = 0;
   let completed = 0;
   for (const agent of agents) {
-    await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "running", agent.id, completed, spent, null);
+    if (deadline <= Date.now() || !(await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "running", agent.id, completed, spent, null))) {
+      return stopUnavailableRoomRound(tenantSlug, workerToken, jobId, conversationId, completed, spent);
+    }
     const persona = roomPersona(agent.id);
     if (!agent.provider || !agent.model || !persona) {
       await appendRoomMessageWorker(tenantSlug, workerToken, conversationId, {
@@ -1100,32 +1109,42 @@ async function processRoomRoundJob(jobId: string, tenantSlug: string, workerToke
     }
     spent += turnCost;
     const { clean, directives } = parseRoomDirectives(safeClientProviderOutput(result.output));
-    working.push({ speaker: agent.name, text: clean });
-    await appendRoomMessageWorker(tenantSlug, workerToken, conversationId, {
+    const appended = await appendRoomMessageWorker(tenantSlug, workerToken, conversationId, {
       role: "agent", kind: "message", content: clean || "…",
       agentId: agent.id, agentName: agent.name, agentColor: agent.color,
       provider: result.provider, model: result.model, costMicros: turnCost,
     });
+    if (!appended) return stopUnavailableRoomRound(tenantSlug, workerToken, jobId, conversationId, completed, spent);
+    working.push({ speaker: agent.name, text: clean });
     for (const directive of directives) {
-      const recordId = await createRoomDirectiveRecord(tenantSlug, workerToken, directive, clean);
-      await appendRoomMessageWorker(tenantSlug, workerToken, conversationId, {
-        role: "system", kind: "action", content: roomActionSummary(directive, agent.name, Boolean(recordId)),
-        agentId: agent.id, agentName: agent.name, agentColor: agent.color, linkedRecordId: recordId,
-      });
+      proposals.push({ ...directive, body: (directive.kind === "note" ? clean || directive.label : directive.label).slice(0, 4000),
+        agentId: agent.id.slice(0, 40), agentName: agent.name.slice(0, 60) });
     }
     completed += 1;
   }
 
-  const outputMetadata = { conversationId, turns: completed, costMicros: spent };
+  const outputMetadata = { conversationId, turns: completed, costMicros: spent, roomDirectives: proposals };
   if (!(await settleRequiredBudget(tenantSlug, jobId, workerToken, {
     actualAmountMicros: spent, usageMetadata: { roomTurns: completed, actualAmountMicros: spent },
   }, outputMetadata))) {
     await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "failed", null, completed, spent, "budget_settlement_failed");
     return NextResponse.json({ ok: true, status: "failed" });
   }
-  await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "succeeded", null, completed, spent, null);
+  if (!(await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "succeeded", null, completed, spent, null))) {
+    return stopUnavailableRoomRound(tenantSlug, workerToken, jobId, conversationId, completed, spent, true);
+  }
   await completeJob(tenantSlug, jobId, workerToken, "succeeded", outputMetadata);
   return NextResponse.json({ ok: true, status: "succeeded" });
+}
+
+async function stopUnavailableRoomRound(tenantSlug: string, workerToken: string, jobId: string, conversationId: string, turns: number, spent: number, settled = false) {
+  const metadata = { conversationId, turns, costMicros: spent, failureDisposition: "blocked" };
+  if (!settled && !(await settleRequiredBudget(tenantSlug, jobId, workerToken, {
+    actualAmountMicros: spent, usageMetadata: { roomTurns: turns, actualAmountMicros: spent },
+  }, metadata))) return NextResponse.json({ ok: true, status: "failed" });
+  await updateRoomRoundWorker(tenantSlug, workerToken, jobId, "failed", null, turns, spent, "room_round_unavailable");
+  await completeJob(tenantSlug, jobId, workerToken, "failed", metadata, "room_round_unavailable");
+  return NextResponse.json({ ok: true, status: "failed" });
 }
 
 function isRoomRoundAgent(value: unknown): value is RoomRoundAgent {
@@ -1156,6 +1175,7 @@ async function appendRoomMessageWorker(tenantSlug: string, workerToken: string, 
     p_linked_record_id: message.linkedRecordId ?? null,
   });
   if (!result.ok || result.value !== true) logClientRuntimeEvent("runtime.room_message_append_failed", { tenant: tenantSlug, status: 503 });
+  return result.ok && result.value === true;
 }
 
 async function updateRoomRoundWorker(tenantSlug: string, workerToken: string, jobId: string, status: string, speakingAgentId: string | null, completed: number, costMicros: number, errorCode: string | null) {
@@ -1170,25 +1190,7 @@ async function updateRoomRoundWorker(tenantSlug: string, workerToken: string, jo
     p_error_code: errorCode,
   });
   if (!result.ok || result.value !== true) logClientRuntimeEvent("runtime.room_round_update_failed", { tenant: tenantSlug, jobId, status: 503 });
-}
-
-/**
- * A NOTE:: directive becomes a tenant memory record; PIPELINE:: becomes a
- * pipeline workflow record. Both are real rows the other surfaces already
- * render, so a room action is visible outside the room.
- */
-async function createRoomDirectiveRecord(tenantSlug: string, workerToken: string, directive: { kind: "note" | "pipeline"; label: string }, body: string) {
-  const result = await workerRpc("create_client_runtime_record_worker", {
-    p_tenant_slug: tenantSlug,
-    p_worker_token: workerToken,
-    p_kind: directive.kind === "note" ? "memory" : "workflow",
-    p_title: directive.label.slice(0, 240),
-    p_content: (directive.kind === "note" ? body : directive.label).slice(0, 30_000) || directive.label,
-    p_metadata: directive.kind === "note"
-      ? { source: "agent-room" }
-      : { version: 1, surface: "pipeline", operation: "plan", source: "agent-room", steps: [] },
-  });
-  return result.ok && typeof result.value === "string" ? result.value : null;
+  return result.ok && result.value === true;
 }
 
 async function processMediaJob(jobId: string, tenantSlug: string, workerToken: string, job: { provider?: string; input_metadata?: Record<string, unknown> | null }) {

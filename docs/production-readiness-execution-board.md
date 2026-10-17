@@ -71,8 +71,8 @@ and it does not contend for the same browser, tenant, environment, or files.
 
 | Gate | State (2026-10-17) | Depends on | Required work and exit evidence | Boundary / next action |
 | --- | --- | --- | --- | --- |
-| M0 - Candidate and evidence baseline | `IN_PROGRESS` during candidate refresh | None | Reconcile branch/HEAD, dirty work, supported-runtime checks, fingerprints and each receipt's candidate/environment/scope. Source/evidence-contract edits invalidate dependent receipts until refreshed. | Last verified usage-integrity candidate: HEAD `7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87`, Node `v24.19.0`, fingerprint `b21ca83d047ba666e240a6d182b2216af88fa9563fb061c12e80da8a105ed6e2`; 438 regressions, AI 22/22 and synthetic Notebook 6/6 passed. Budget-envelope changes invalidate those receipts. Accept only matching fingerprints in `/private/tmp/agentos-production-readiness-current.json` and `tmp/multi-agent-envelope-release-evidence-2026-10-17.json`. Clean source, ledger, hosted acceptance and all-copy retention remain open. |
-| M1 - Customer journey | `ACCEPTED` for synthetic local scope only when the current six-scenario receipt passes; hosted acceptance `OPEN` | M0 candidate | Prove current-source journey from member/tenant fixture through approved sources, bounded job, grounded draft, provenance, durable human decision and approved export; include post-storage failure, deny and retention cases. Separate synthetic evidence from hosted acceptance. | Preview is distinct from explicit hash-bound approval/rejection. Ready bytes from failed settlement or an unfinished job now remain unavailable: review and export additionally require durable successful completion naming the exact artifact and a passing citation audit. SQL permission/state tests, real handler denies, desktop/mobile review, reload persistence, and Studio/Assets exports are bound in `tmp/notebook-job-release-evidence-2026-10-16.json`. Accept only its matching passing final receipt in the strict report. Local checks do not establish hosted migration/grants, real reviewer quality, retention/recovery or the 15-stage hosted journey. |
+| M0 - Candidate and evidence baseline | `IN_PROGRESS` during Room fixed-retention acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | HEAD `b63a9e2e9ae1c4126f1a3c70be6a30a4cdc4ba32`, Node `v24.19.0`; the last fully checked local candidate `65df5f46...bad6b0` passed 463 regressions, 24 offline AI cases and eight synthetic browser scenarios. That bundle is historical after current retention edits. Refresh into `tmp/room-fixed-retention-release-evidence-2026-10-17.json` before accepting current-source local checks. Clean source, ledger, hosted acceptance and all-copy retention remain open. |
+| M1 - Customer journey | `IN_PROGRESS` for current-source local refresh; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | Earlier Notebook six-scenario and Room two-scenario local browser passes are historical until the frozen current candidate is checked. The final Room fixed-retention receipt must bind the refreshed journey evidence. Synthetic fixtures do not establish real customer acceptance, hosted grants/isolation, object recovery or the full hosted journey. |
 | M2 - Authorized Skool archive/import | `IN_PROGRESS` | M0; M1 source/provenance contracts inform import | Reconcile the canonical lesson inventory and all authorized source material; identify full text, summary-only, transcript-only, missing, duplicate, and video-reference coverage separately; validate a dry-run pack and idempotency; then require post-import graph/source-link evidence for an explicitly verified tenant. | Current private graph `tmp/authorized-skool-import/agentos-page-text-reconciled-2026-10-17.jsonld` validates at **1,471 nodes / 10,735 relations**. All 18 earlier gap pages were observed in authorized Work Chrome: 15 now have captured inline page text and three are video-only with no body. **107/110** lessons have page-text segments; the new captures are resource labels/community CTA and a ZIP usage note, not lesson video contents. The three remaining no-body pages are July 26 ChatGPT Voice, August 28 Claude Watermarks and September 23 Claude Opus 5.5; their YouTube references are known. All previous text, 12 companion-text links and three transcript segments are preserved. Main-player audit remains 93 YouTube / 17 Skool-native, not video bytes. Production parser accepts all 18 records, including three media-only; portable validation, repeat merge and complete-export rejection pass. The 12 PDFs, four pinned READMEs and extracted Codex README remain included; BWC is excluded. `completenessVerified=false`, with one excerpt/two unknown transcripts and none declared full. No hosted import or new Drive upload occurred. Next: obtain permitted full transcript/video exports, review omissions and confirm the destination tenant before separately authorized import. |
 | M3 - Local/cloud parity and security | `BLOCKED` | M0 candidate; M1 local acceptance | Identify exact local candidate and hosted service/revision/image/config/migrations; read-only compare same authenticated member and tenant; then prove two-member/two-tenant isolation, route allowlist, storage proxy, and 28-day active + seven-day recovery behavior with hosted receipts. | Owner-selected default is `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in Aryaman (Work) Chrome. Fresh read-only service/revision metadata confirms project `veloce-agenticos-2026`, region `asia-south1`, revision `veloce-cloud-test-00208-5hk` at 100% traffic and image `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`. Auth is enforced; provider calls are disabled. No source stamp exists, identity/import APIs are excluded, runtime and bucket retention are 14 days, and two inbox secrets are inline rather than Secret Manager references. Bucket metadata reports seven-day soft delete; behavioral recovery/deletion is unverified. Historical Internal Beta findings do not describe this selected tenant. Same-member/tenant comparison, independent source attestation, migrations, isolation and 28+7 behavior remain open. Hosted remediation requires separate target-specific approval. |
 | M4 - Evaluation and observability | `IN_PROGRESS` | M0; M1 job lifecycle contract; M3 for hosted claims | Keep deterministic offline evaluation candidate-bound; test trace redaction, lifecycle completeness, alerts, and budget/ledger reconciliation. Any model-backed evaluation requires explicit hard-cap approval and must bind outputs/costs to candidate and test case. | Offline/local tests are allowed. No model/provider call by default. Synthetic MiroFish output is not demand evidence; prioritize documented real buyer interviews before proposing another simulation. |
@@ -113,35 +113,43 @@ downstream gates.
   and the strict verifier. The ledger/checklist, not this narrative board,
   decides whether all mandatory evidence and approvals are present.
 
-**Current critical-path action:** Quote complete bounded multi-agent prompt
-envelopes at each model's own rate and recheck remaining budget before every
-call. Refresh candidate-bound regressions, offline AI, browser and strict
-receipts. The last verified usage-integrity candidate
-`b21ca83d047ba666e240a6d182b2216af88fa9563fb061c12e80da8a105ed6e2`
-passed 438 regressions, 22 offline AI cases and six synthetic browser scenarios.
-Its receipts become historical after these envelope changes.
-Current authority is
-`tmp/multi-agent-envelope-release-evidence-2026-10-17.json` and the strict report once
-their fingerprints match. Hosted retention/recovery remediation still needs
-separate target-specific approval. Also reconcile missing source material and
-per-lesson content capture/export availability separately from player presence.
-The current graph accounts for 110 exact lesson IDs, with 107 page-text
-captures and three pages observed as video-only without a body. Captured
-boilerplate/resource links are not the video contents. All 110 main players have been classified
-(93 YouTube, 17 Skool-native); the 112-item UI count is reconciled. Its production pack parser passes and local merges
-are idempotent; it remains partial and has not been imported to a tenant.
-M1 remains accepted only for synthetic local scope. Hosted identity,
-two-tenant isolation, build/config parity, 28+7 deletion/recovery behavior,
-full customer acceptance, real buyer evidence, and release-ledger approval
-remain open. Existing MiroFish simulations remain synthetic and cannot prove
-market validation. Managed-credit detail now has a local day-35 bounded purge,
-balance preservation, replay-key tombstones, and late-refund review handling;
-hosted application, legal/accounting review, and scheduled operation remain
-open.
-The local strict report at `/private/tmp/agentos-production-readiness-current.json`
-is authoritative for current candidate fingerprints and gate results; old
-dated receipts below are historical unless their fingerprints match.
-No deployment, hosted tenant mutation, provider call, or spend is authorized.
+**Current critical-path action (corrected 2026-10-17):** Verify the frozen Room
+retention candidate, including existing derived-note/Pipeline reconciliation,
+in one final local acceptance bundle. Accept this local step only if the final
+receipt below exists, passes its local checks and matches the current candidate.
+Do not expand into another hardening feature before closing this action. Once
+it passes, advance to the runbook's Selected Cloud Test Acceptance Plan and its
+target-specific approval prerequisites; local tests cannot close hosted gates.
+
+HEAD is `b63a9e2e9ae1c4126f1a3c70be6a30a4cdc4ba32` on
+`wip/backup-2026-10-03`; the checkout has 25 changed/untracked paths. The last
+fully checked local candidate was `65df5f46...bad6b0`: 463 selected regressions,
+24 offline AI cases and eight synthetic browser scenarios passed, but release
+verification stayed not ready. That receipt is historical after the current
+retention edits. At the pre-freeze checkpoint the current change had 84 targeted
+passing tests; consult the final candidate-bound receipt for subsequent full
+acceptance results. These counts are not a
+completion percentage. M0 is in progress and current-source M1 acceptance must
+be refreshed; earlier local journey passes are historical, not hosted acceptance.
+
+**Full-goal acceptance: 0 of 6 requested workstreams fully accepted.** This
+measures completed acceptance gates, not the amount of software implemented.
+Customer acceptance, complete authorized import, hosted parity/isolation,
+hosted evaluation/observability, buyer-pilot acceptance and release verification
+remain incomplete. The Skool inventory accounts for all 110 main players
+(93 YouTube / 17 Skool-native), with page text for 107 lessons; this is not
+complete video/transcript content and no hosted import has occurred. The last
+read-only Cloud Test audit found 14-day retention instead of the required 28;
+hosted 28+7 deletion/recovery, source/image attestation and isolation remain
+unverified. Synthetic buyer simulations do not establish market demand.
+
+The system design and original readiness program remain the procedure sources:
+baseline and acceptance criteria, bounded implementation, reproducible tests,
+candidate-bound evidence, then separately approved hosted/customer acceptance.
+The earlier headline summary lagged the appended evidence; this correction
+supersedes its older candidate pointers. No current release-ready claim is made.
+No deployment, hosted tenant mutation, provider call, prospect contact or spend
+is authorized by this status update.
 
 ### Multi-Agent Budget Envelope - 2026-10-17
 
@@ -8651,3 +8659,100 @@ identities. A scoped private-identifier/credential scan and whitespace check
 pass. These checks validate the briefing, not new runtime behavior or a current
 release attestation. Existing repository history was not rewritten or certified
 as redacted.
+
+### Room Directive Human Review - 2026-10-17
+
+**Baseline and acceptance:** Starting at committed `b63a9e2`, two new
+real-worker regressions showed two domain writes in both a successful and a
+settlement-failed round before any human decision. Baseline report:
+`tmp/room-approval-baseline-2026-10-17.json`. Require proposals rather than
+worker-created records; successful settled job plus active requester; exact
+payload comparison; atomic/idempotent terminal approve/reject; no new retention
+clock; archived/legacy context exclusion; bounded/paginated reads and a usable
+desktop/mobile review surface. No live-provider budget is approved.
+
+**Local candidate:** Room stores at most 16 bounded proposals in job output.
+The new member RPC locks the successful job, compares the full viewed proposal
+and atomically records the decision with its resulting memory note or real
+Pipeline inbox item. Repeating a decision returns the original result, while
+changing a terminal decision is rejected. Notes inherit job creation time;
+Pipeline expiry is anchored to job creation plus tenant active retention.
+Neither operation queues provider work. Proposals and decisions inherit job
+retention; existing record/Pipeline purge paths retain the recovery cutoff.
+The migration removes the legacy worker-write RPC, archives active unreviewed
+legacy Room records without extending clocks, prevents their reactivation or
+source stripping, and blocks direct forged provenance inserts. Context reads
+also exclude archived and legacy unreviewed Room notes before migration.
+
+**Verification and limits:** Focused PostgreSQL tests exercise real review SQL
+and record/job/Pipeline clock guards against minimal synthetic tables,
+including requester/tenant denial, expiry, replay, stale payload and injected
+transaction failure. Browser checks use real UI/HTTP handlers with synthetic
+session/database services, not hosted RLS, customer acceptance or a real model.
+The first browser startup was denied loopback listening by the sandbox; the
+bounded isolated retry passed desktop/mobile approval, rejection and reload.
+Final candidate-bound runs/hashes belong in
+`tmp/room-directive-review-restore-release-evidence-2026-10-17.json` after these edits.
+Inline chat replies, full deployed constraints, true concurrent-connection
+contention, per-item conversation retention and physical deletion/recovery
+remain separate acceptance gaps. The new migration is required by release
+verification but has not been applied to any hosted database. No deployment,
+hosted mutation, provider request, prospect contact, Drive upload or spend.
+
+The ordinary service-role metadata restore is also exercised with an approved
+Room note and its originating job, without a member JWT. Its provenance guard
+runs after both ordinary and restore clock triggers and reads tenant retention
+without requiring an operator to impersonate the member. A forged later note
+clock causes the whole restore to roll back; matching original job/note clocks
+are retained. The earlier regression failed at the member-dependent origin
+guard (`tmp/room-restore-origin-baseline-2026-10-17.json`). This is active-window,
+minimal-schema PostgreSQL evidence, not recovery-only access, a full hosted
+restore or object-byte recovery proof.
+
+### Fixed Room Retention Chain - 2026-10-17
+
+**Baseline and acceptance:** Previous verified local candidate
+`65df5f4672970d474fe37f1407f22cfc68f01cb78a7c3326bcbaa79c43bad6b0`
+still used last activity for conversation expiry. Two added regressions failed:
+a 60-day-old recently used conversation was readable; parent cleanup cascaded
+through a child marked for another tenant. Baseline:
+`tmp/room-fixed-retention-baseline-2026-10-17.json`. Require immutable original
+conversation expiry, source-bounded messages/rounds/job payloads and derived
+proposals, no member reads or provider admission after expiry, seven recovery
+days before bounded child-first cleanup, no foreign cascade, and ordinary
+restore without reactivation or clock extension. No hosted operation or spend.
+
+**Local candidate:** The fixed-retention migration backfills earlier original
+deadlines without changing activity timestamps, validates composite tenant/parent
+references and caps children at the parent deadline. Room-job admission derives
+source creation/expiry server-side, overwrites supplied clocks and protects
+them on update. Read/purge projections retain shorter tenant limits; malformed
+legacy clocks fail closed. Worker domain-state failures stop before another
+provider call, settle measured usage once and omit proposals from failed output.
+Human review and approved note/Pipeline deadlines use the source-bound job
+deadline. A service-role restore checks the complete restored Room relationship
+after parents are present; clocks are included in export/restore column contracts.
+The UI shows expiry and clears expired selections rather than polling forever.
+The review migration also reconciles previously approved note/Pipeline clocks
+against exact approval provenance. A new failing baseline reproduces a late
+approved copy surviving beyond its source deadline:
+`tmp/room-derived-retention-baseline-2026-10-17.json`. The regression requires
+shortening without clock renewal, repeat-apply idempotency and atomic rejection
+of mismatched provenance with guards restored. The next hosted sequence and
+approval prerequisites are in the runbook's Selected Cloud Test Acceptance Plan;
+that procedure is not authorization to execute it.
+
+**Evidence and remaining gates:** SQL regressions use synthetic PostgreSQL and
+controlled fixture aging; worker and browser checks use synthetic services.
+They do not prove real elapsed-time scheduling, physical deletion, object-byte
+recovery, complete deployed constraints or multi-connection race behavior.
+The final candidate-bound receipt belongs at
+`tmp/room-fixed-retention-release-evidence-2026-10-17.json`. Require the actual
+receipt and matching fingerprint before citing a pass; this entry is not
+verification evidence on its own.
+Review legacy mismatches before applying: invalid tenant/parent references
+abort the migration instead of being silently reassigned or deleted. Manual
+chat deletion is not represented as a verified purge of every derived copy.
+Other content families, backup/vendor copies and the full hosted 28+7 policy
+remain separate acceptance requirements. No deployment, hosted mutation,
+provider request, paid pilot, Drive upload, prospect contact or spend occurred.

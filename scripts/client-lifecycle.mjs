@@ -186,9 +186,9 @@ const exportColumns = Object.freeze({
   client_paperclip_issues: "id,tenant_slug,created_by,issue_number,identifier,title,description,status,priority,project_id,assignee_agent_id,labels,execution_state,execution_job_id,build_artifact_id,started_at,completed_at,retention_expires_at,created_at,updated_at",
   client_paperclip_comments: "id,tenant_slug,issue_id,created_by,author_agent_id,body,retention_expires_at,created_at",
   client_paperclip_runs: "id,tenant_slug,created_by,issue_id,agent_id,job_id,status,provider,model,summary,error_code,cost_micros,started_at,finished_at,retention_expires_at,created_at,updated_at",
-  client_room_conversations: "id,tenant_slug,created_by,title,status,present_agents,created_at,updated_at",
-  client_room_messages: "id,tenant_slug,conversation_id,created_by,role,kind,agent_id,agent_name,agent_color,content,provider,model,cost_micros,error_code,linked_record_id,seq,created_at",
-  client_room_rounds: "id,tenant_slug,conversation_id,created_by,job_id,status,agent_ids,speaking_agent_id,completed_agents,cost_micros,error_code,created_at,updated_at",
+  client_room_conversations: "id,tenant_slug,created_by,title,status,present_agents,created_at,updated_at,retention_expires_at",
+  client_room_messages: "id,tenant_slug,conversation_id,created_by,role,kind,agent_id,agent_name,agent_color,content,provider,model,cost_micros,error_code,linked_record_id,seq,created_at,retention_expires_at",
+  client_room_rounds: "id,tenant_slug,conversation_id,created_by,job_id,status,agent_ids,speaking_agent_id,completed_agents,cost_micros,error_code,created_at,updated_at,retention_expires_at",
   // build_preview_html duplicates a Cloud Storage artifact; the id is the durable reference.
   client_pipeline_items: "id,tenant_slug,created_by,slug,title,stage,route,confidence,tags,idea,classification,plan,tasks,pinned,build_artifact_id,execution_state,execution_job_id,execution_error,decided_by,decided_at,retention_expires_at,created_at,updated_at",
   client_board_tasks: "id,tenant_slug,created_by,board,title,body,status,assignee,priority,labels,build_artifact_id,execution_state,execution_job_id,execution_error,result,started_at,completed_at,retention_expires_at,created_at,updated_at",

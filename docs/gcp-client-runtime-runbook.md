@@ -1172,6 +1172,74 @@ These listings are read-only but may incur Cloud Storage listing charges.
 Never treat a bucket-only configuration snapshot as proof of object-level
 retention.
 
+## Room Schema Order
+
+Before accepting Room retention/review, apply the reviewed schema in dependency
+order: the existing 28-day policy and record/job/Room/Pipeline retention; then
+`supabase-client-room-fixed-retention.sql`; then the current
+`supabase-client-room-directive-review.sql`; then the current
+`supabase-client-lifecycle-restore.sql`. Reapplying an older Room/job retention
+migration afterward can replace the fixed guards. Verify installed definitions,
+grants, RLS and migration hashes on the exact target before release.
+
+The fixed migration validates tenant/parent relationships and backfills original
+creation deadlines, never last activity. A mismatch must stop for an approved
+remediation plan, not a foreign-tenant rewrite or destructive cascade. Expired
+Room jobs cannot be claimed/completed successfully, and ordinary restore must
+not reactivate recovery-only content. Keep Room provider calls disabled while
+performing separately authorized schema/configuration verification. SQL tests
+do not prove scheduled purge, backup expiry, physical deletion or recovery.
+
+The review migration also shortens previously approved note/Pipeline copies to
+their verified source deadline without renewing activity timestamps. It requires
+the same tenant, requester, proposal kind/index and approved record ID. Orphaned
+or conflicting provenance aborts the whole transaction, restoring the original
+triggers. Inventory and resolve those mismatches under a separately approved
+plan before rollout; do not disable the guard to force migration success.
+
+## Selected Cloud Test Acceptance Plan
+
+This is a proposed sequence, not authorization or a completed run. Use the
+owner-selected origin `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in
+Aryaman (Work) Chrome. Do not substitute Internal Beta. Historical revision,
+project, schema and secret references elsewhere in this runbook are not current
+deployment parameters. Keep the execution board as the single status tracker.
+
+1. Freeze and review one source candidate. Require its regression, offline AI,
+   Notebook/Room browser and strict receipts to match its fingerprint. Record
+   missing gates, then obtain authorization for any commit/push or hosted action
+   not already explicitly approved. A dirty candidate is not releasable.
+2. Revalidate service, region, project, active revision/image and nonsecret
+   configuration read-only. Independently bind deployed image to source commit.
+   Confirm the signed-in member and tenant ID; neither is inferred from the URL.
+   Collect redacted evidence only, never credential values or cookies.
+3. Before mutation, name the database, bucket, disposable test tenant/members,
+   reviewed migration hashes/order, configuration diff, backup/recovery handling,
+   rollback target, maximum cost and stop conditions in a specific approval.
+   Stop if identity differs, provenance is orphaned, backups cannot preserve the
+   original clocks, or a budget is absent. Do not change traffic in this step.
+4. Only after that approval, stage/apply the reviewed schema and source-stamped
+   image with providers disabled. Verify installed definitions, grants and RLS;
+   reconcile 14-day runtime/object rules with the agreed 28+7 contract. Keep
+   recovery-only bytes inaccessible to members; do not extend an old source's
+   deadline during migration, derived writes, import or restore.
+5. In the approved disposable tenant, run sign-in, authorized source intake,
+   bounded job, grounded draft/citations, explicit review and export. Prove
+   second-member/second-tenant denials and expired/recovery read denials. A real
+   model run needs its own provider/cost approval; a provider-disabled fixture
+   does not establish model quality or real customer acceptance.
+6. Verify purge scheduling, object/row deletion after recovery, backup/vendor
+   expiry and original-clock recovery with separately approved test fixtures.
+   Controlled fixture aging proves boundary logic, not 35 days of operation.
+   Run the strict release verifier against the exact candidate and reviewer
+   evidence; retain a not-ready decision while any required category is absent.
+
+The authorized Skool pack remains partial. Its first hosted import must be
+explicitly scoped as partial, source-linked, tenant-confirmed and idempotent;
+it cannot establish complete video coverage. Buyer acceptance likewise needs
+an agreed studio workflow, baseline and owner/operator review, not synthetic
+MiroFish personas. No rollout, import, contact or spend occurs from this plan.
+
 ## Rollback
 
 Cloud Run retains revisions. Roll back from the console or CLI after identifying
