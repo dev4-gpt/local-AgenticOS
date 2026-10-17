@@ -1,8 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { notifyLead } from "../product-experience/src/lib/leadNotification";
@@ -31,20 +30,43 @@ test("release verifier records the current revision without secrets", () => {
   expect(result.stdout).not.toMatch(/sk-[A-Za-z0-9_-]{16,}|service_role|api[_ -]?key\s*[:=]/i);
 });
 
-test("inspection reports candidate-bound local checks without granting release approval", () => {
+for (const workingTreeClean of [true, false]) {
+test(`inspection reports candidate-bound local checks for a ${workingTreeClean ? "clean" : "dirty"} checkout without granting release approval`, () => {
   const dir = mkdtempSync(join(tmpdir(), "veloce-local-candidate-checks-"));
   try {
+    // The verifier resolves its root from its own location, so isolate both source and Git state.
+    const root = join(dir, "source");
+    mkdirSync(root);
+    cpSync(resolve("scripts/lib"), join(root, "scripts/lib"), { recursive: true });
+    for (const file of ["scripts/verify-production-readiness.mjs", "src/lib/clientRuntimeConfigDigest.mjs",
+      "src/lib/clientStorageRetentionClock.mjs", "package.json", "playwright.unit.config.ts",
+      "evaluations/ai-release-local-v1.json", "node_modules/playwright/package.json"]) {
+      mkdirSync(dirname(join(root, file)), { recursive: true });
+      copyFileSync(resolve(file), join(root, file));
+    }
+    writeFileSync(join(root, ".gitignore"), "node_modules/\n");
+    const git = (args: string[]) => {
+      const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+      expect(result.status, result.stderr).toBe(0);
+      return result.stdout.trim();
+    };
+    git(["init", "--quiet"]);
+    git(["add", "--", "."]);
+    git(["-c", "user.name=Readiness Fixture", "-c", "user.email=fixture@example.invalid",
+      "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "--quiet", "-m", "Fixture baseline"]);
+    if (!workingTreeClean) writeFileSync(join(root, "candidate-change.txt"), "Uncommitted fixture change\n");
+    expect(git(["status", "--porcelain"]) === "").toBe(workingTreeClean);
     const aiFile = join(dir, "ai.json");
     const notebookFile = join(dir, "notebook.json");
     const fixture = readFileSync(resolve(process.cwd(), "evaluations/ai-release-local-v1.json"));
     const fixtureCases = JSON.parse(fixture.toString("utf8")).cases;
-    const sourceCommit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: process.cwd(), encoding: "utf8" }).stdout.trim();
-    const candidateFingerprint = workingTreeFingerprintSha256(process.cwd());
+    const sourceCommit = git(["rev-parse", "HEAD"]);
+    const candidateFingerprint = workingTreeFingerprintSha256(root);
     const checkedAt = new Date().toISOString();
     writeFileSync(aiFile, JSON.stringify({
       schemaVersion: 2, suite: "ai-release-local-v1", mode: "deterministic-local", localGatePassed: true, productionReady: false,
       startedAt: checkedAt, checkedAt, runnerStatus: "passed", failures: [],
-      workingTreeClean: false, workingTreeCleanAfter: false, nodeEngineSupported: true, nodeVersion: process.version,
+      workingTreeClean, workingTreeCleanAfter: workingTreeClean, nodeEngineSupported: true, nodeVersion: process.version,
       runnerExitCode: 0, sourceCommit, sourceCommitAfter: sourceCommit,
       candidateFingerprintSchema: "agentos-working-tree-v1", candidateFingerprintSha256: candidateFingerprint,
       candidateFingerprintAfterSha256: candidateFingerprint,
@@ -67,25 +89,27 @@ test("inspection reports candidate-bound local checks without granting release a
     })));
 
     const result = spawnSync(process.execPath, [
-      "scripts/verify-production-readiness.mjs", "--allow-dirty",
+      join(root, "scripts/verify-production-readiness.mjs"), "--allow-dirty",
       "--ai-evaluation-report", aiFile, "--notebook-journey-receipt", notebookFile,
     ], {
-      cwd: process.cwd(), encoding: "utf8",
+      cwd: root, encoding: "utf8",
       env: { ...process.env, VELOCE_RELEASE_LEDGER_BUCKET: "" },
     });
     expect(result.status, result.stderr).toBe(0);
     const report = JSON.parse(result.stdout);
     expect(report.localCandidateChecks).toMatchObject({
       candidateFingerprintSha256: candidateFingerprint,
-      workingTreeClean: false,
-      aiEvaluation: { status: "passed_candidate_bound_dirty_tree", productionReady: false, modelSamples: 0 },
+      workingTreeClean,
+      aiEvaluation: { status: workingTreeClean ? "passed_candidate_bound" : "passed_candidate_bound_dirty_tree", productionReady: false, modelSamples: 0 },
       notebookExecutionJourney: { status: "passed_candidate_bound", scenarios: NOTEBOOK_JOURNEY_SCENARIOS.length },
     });
     expect(report.releaseReady).toBe(false);
     expect(report.notEvaluated).toContain("ai_evaluation_local_evidence");
     expect(report.notEvaluated).toContain("notebook_execution_journey_local_evidence");
+    expect(workingTreeFingerprintSha256(root)).toBe(candidateFingerprint);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+}
 
 test("release ledger lookup distinguishes an absent record from an unavailable check", () => {
   const dir = mkdtempSync(join(tmpdir(), "veloce-ledger-lookup-"));
