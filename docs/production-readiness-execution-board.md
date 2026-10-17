@@ -8619,3 +8619,35 @@ attachment extraction, Drive upload, provider call or deployment occurred.
 The private graph remains partial and local. Hosted identity/isolation,
 retention/recovery, real buyer/customer evidence, ledger/reviewer approval and
 the separately authorized tenant import remain open.
+
+### Redacted Hackathon Background Pack - 2026-10-17
+
+**Baseline and acceptance:** The owner requested a GitHub background pack for
+the CreateOS x Stripe hackathon and explicitly selected redaction of excluded
+downloads, buyer notes and evidence. Baseline commit is
+`a4c379aaac517e23ad2863c1b8695e63dd939b8f`. Require original summaries only,
+no raw course/client material, credentials or authenticated captures; valid
+repository links; checked historical receipt hashes/counts; clear existing-work
+disclosure; and no claim of current release, live billing, buyer validation or
+event eligibility. The owner's future plan to make the repository private is
+not a credential exception or a current visibility change.
+
+**Artifact and limits:** `docs/hackathon-background/README.md` indexes the
+architecture, Stripe/pilot background, deduplicated upstream references, source
+coverage and minimized historical evidence. The original private artifacts stay
+outside Git; their contents, names/contacts and hosted identifiers are not
+copied into this pack. Historical checks remain bound to their original dirty
+candidate and receipt, not relabeled as a new committed release. No source
+import, Drive upload, deployment, hosted mutation, live Stripe operation,
+provider request, spend, prospect contact or retention renewal is performed.
+All full-goal acceptance gates remain in the canonical workstreams above.
+
+**Local verification:** All six pack files and 22 Markdown links were checked.
+The retained receipt SHA-256 matches the minimized summary; 68 historical
+tested-scope file hashes match the committed application baseline and eight
+referenced historical artifacts still match their recorded hashes. The private
+graph and fee-policy projection were checked without copying contents or
+identities. A scoped private-identifier/credential scan and whitespace check
+pass. These checks validate the briefing, not new runtime behavior or a current
+release attestation. Existing repository history was not rewritten or certified
+as redacted.
