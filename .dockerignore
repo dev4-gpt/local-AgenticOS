@@ -3,6 +3,8 @@
 **/.vercel
 .next
 .next-v0
+.next*
+**/.next*
 .next-client-test
 .next-client
 node_modules
@@ -13,10 +15,14 @@ test-results
 coverage
 tmp
 .private-client-kits
+**/.private-client-kits
 .claude-flow
 .swarm
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
+product-experience 2/
 public/openmontage/generated
 client-blueprints/*.gcp.json

@@ -11,8 +11,17 @@ export async function POST(request: Request) {
   const user = await profile?.json().catch(() => null) as { id?: unknown } | null;
   const userId = typeof user?.id === "string" ? user.id : "";
   if (!profile?.ok || !userId) return fail();
-  const account = await supabaseServiceSelect("client_onboarding_accounts", { auth_user_id: `eq.${userId}`, status: "eq.active", select: "runtime_url", limit: "2" });
+  const account = await supabaseServiceSelect("client_onboarding_accounts", { auth_user_id: `eq.${userId}`, status: "eq.active", select: "runtime_url,tenant_slug", limit: "2" });
   if (!account.ok || account.rows.length !== 1) return fail();
+  const tenantSlug = typeof account.rows[0]?.tenant_slug === "string" ? account.rows[0].tenant_slug : "";
+  if (!tenantSlug) return fail();
+  const membership = await fetch(`${config.url}/rest/v1/rpc/client_member`, {
+    method: "POST",
+    headers: { apikey: config.serviceKey, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_tenant_slug: tenantSlug }),
+    cache: "no-store",
+  }).catch(() => null);
+  if (!membership?.ok || await membership.json().catch(() => false) !== true) return fail();
   let runtime: URL;
   try { runtime = new URL(String(account.rows[0]?.runtime_url ?? "")); }
   catch { return fail(); }

@@ -12,13 +12,21 @@
 
 # testing
 /coverage
+__pycache__/
+*.pyc
 
 # next.js
 /.next/
 /.next-veloce-recovery-*/
 /.next-v0/
 /.next-client-test/
+/.next-client-browser/
 /.next-client/
+/.next-client-prod/
+/.next-client-prod-*/
+/.next-client-parity-*/
+/.next-client-e2e/
+/.next-client-e2e-*/
 /.next-local-*/
 
 # Standalone public-site build output

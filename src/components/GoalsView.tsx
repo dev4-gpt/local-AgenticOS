@@ -15,17 +15,24 @@ export default function GoalsView() {
   const [category, setCategory] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<"active" | "done" | "all">("active");
+  const [vaultStatus, setVaultStatus] = useState<"loading" | "ready" | "missing" | "error">("loading");
 
   async function load() {
-    const r = await fetch("/api/goals", { cache: "no-store" });
-    const j = await r.json();
-    setGoals(j.goals ?? []);
+    try {
+      const r = await fetch("/api/goals", { cache: "no-store" });
+      if (!r.ok) throw new Error("Goals are unavailable.");
+      const j = await r.json();
+      setGoals(j.goals ?? []);
+      setVaultStatus(j.configured === false ? "missing" : "ready");
+    } catch {
+      setVaultStatus("error");
+    }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { void load(); }, []);
 
   async function add() {
     const text = input.trim();
-    if (!text || busy) return;
+    if (!text || busy || vaultStatus !== "ready") return;
     setBusy(true);
     try {
       const r = await fetch("/api/goals", {
@@ -34,8 +41,10 @@ export default function GoalsView() {
         body: JSON.stringify({ text, category: category || undefined }),
       });
       const j = await r.json();
-      if (j.goal) setGoals((g) => [j.goal, ...g]);
-      setInput("");
+      if (r.ok && j.goal) {
+        setGoals((g) => [j.goal, ...g]);
+        setInput("");
+      }
     } finally { setBusy(false); }
   }
 
@@ -69,6 +78,8 @@ export default function GoalsView() {
 
   return (
     <div className="space-y-6">
+      {vaultStatus === "missing" && <p role="status" className="text-sm text-[var(--fg-dim)]">Connect an Obsidian vault in Memory to use Goals.</p>}
+      {vaultStatus === "error" && <p role="alert" className="text-sm text-[var(--fg-dim)]">Goals are temporarily unavailable.</p>}
       {/* Stats hero */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat label="Total" value={String(stats.total)} accent="#22d3ee" />
@@ -87,6 +98,7 @@ export default function GoalsView() {
           <VoiceButton onTranscript={(t, o) => { if (o.final) setInput((v) => (v ? v + " " : "") + t); }} size={38} />
           <input
             value={input}
+            disabled={vaultStatus !== "ready"}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
             placeholder="What's the goal? (Enter to add)"
@@ -96,6 +108,7 @@ export default function GoalsView() {
             <span className="px-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--fg-dimmer)]">Category</span>
             <select
               value={category}
+              disabled={vaultStatus !== "ready"}
               onChange={(e) => setCategory(e.target.value)}
               aria-label="Goal category"
               className="goal-category-select h-[38px] w-full rounded-lg border border-[var(--panel-border)] px-2.5 text-sm outline-none focus:border-[var(--panel-border-hot)]"
@@ -106,7 +119,7 @@ export default function GoalsView() {
           </label>
           <button
             onClick={add}
-            disabled={!input.trim() || busy}
+            disabled={!input.trim() || busy || vaultStatus !== "ready"}
             className="px-3 h-[38px] rounded-lg flex items-center gap-1.5 text-sm transition disabled:opacity-40"
             style={{
               background: "rgba(34,211,238,0.18)",

@@ -9,6 +9,7 @@ type JobSummary = { total: number; succeeded: number; failed: number; active: nu
 type RuntimeData = {
   windowHours: number;
   posthogConfigured: boolean;
+  posthogCaptureEnabled: boolean;
   sample: { eventsLimited: boolean; jobsLimited: boolean; limit: number };
   counts: Record<string, number>;
   providerCounts: Record<string, JobSummary>;
@@ -61,8 +62,8 @@ export default function ClientRuntimeObservabilityPanel() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px]" style={{ color: data?.posthogConfigured ? "#047857" : "var(--cream-mute)", borderColor: data?.posthogConfigured ? "rgba(4,120,87,0.28)" : "var(--line-soft)", background: data?.posthogConfigured ? "rgba(16,185,129,0.10)" : "rgba(255,255,255,0.04)" }}>
-            {data?.posthogConfigured ? <CheckCircle2 size={12} /> : <XCircle size={12} />} PostHog {data?.posthogConfigured ? "connected" : "not configured"}
+          <span className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px]" style={{ color: data?.posthogCaptureEnabled ? "#047857" : "var(--cream-mute)", borderColor: data?.posthogCaptureEnabled ? "rgba(4,120,87,0.28)" : "var(--line-soft)", background: data?.posthogCaptureEnabled ? "rgba(16,185,129,0.10)" : "rgba(255,255,255,0.04)" }}>
+            {data?.posthogCaptureEnabled ? <CheckCircle2 size={12} /> : <XCircle size={12} />} PostHog {data?.posthogCaptureEnabled ? "on" : "off"}
           </span>
           <button type="button" onClick={() => void load()} title="Refresh telemetry" aria-label="Refresh telemetry" className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><RefreshCw size={13} className={state === "loading" ? "animate-spin" : ""} /></button>
         </div>

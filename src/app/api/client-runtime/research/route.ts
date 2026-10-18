@@ -8,11 +8,13 @@ import { clientExecutionCredential } from "@/lib/clientExecutionCredential";
 import { clientCapabilityEnabled, clientCapabilityProviderEnabled, clientProviderCallsEnabled, clientResearchProvider, clientResearchRoutingEnabled } from "@/lib/clientRuntimePolicy";
 import { selectResearchProvider } from "@/lib/researchProviderRouter";
 import { configuredResearchWorkerStates, selectResearchWorker, type ResearchWorkerContentType } from "@/lib/researchWorkerAdapters";
+import { readBoundedJsonObject } from "@/lib/clientNetworkSafety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const UUID = /^[0-9a-f-]{36}$/i;
+const MAX_RESEARCH_REQUEST_BYTES = 8 * 1024;
 
 export async function GET(request: Request) {
   const session = await member();
@@ -82,7 +84,9 @@ export async function POST(request: Request) {
   if (!rate.ok) return fail("runtime_limit_unavailable", 503);
   if (!rate.allowed) return fail("runtime_rate_limited", 429);
 
-  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const parsed = await readBoundedJsonObject(request, MAX_RESEARCH_REQUEST_BYTES);
+  if (!parsed.ok) return fail(parsed.reason === "too_large" ? "research_request_too_large" : "research_input_invalid", parsed.reason === "too_large" ? 413 : 400);
+  const body = parsed.value;
   const input = body.input && typeof body.input === "object" && !Array.isArray(body.input) ? body.input as Record<string, unknown> : body;
   const query = typeof input.query === "string" ? input.query.trim().slice(0, 400) : "";
   const limit = Math.max(1, Math.min(3, Math.round(Number(input.limit ?? 3))));

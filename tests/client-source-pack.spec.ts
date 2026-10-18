@@ -4,10 +4,18 @@ import { expect, test } from "@playwright/test";
 import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { parseClientSourcePack } from "../src/lib/clientSourcePack";
+import { clientRetentionSecondsRemaining } from "../src/lib/clientRetention";
+import { readBoundedResponseBytes } from "../src/lib/clientNetworkSafety";
 import { loadReviewModule } from "./helpers/load-review-module";
 
 const userId = "00000000-0000-4000-8000-000000000001";
 const artifactId = "00000000-0000-4000-8000-000000000002";
+const otherUserId = "00000000-0000-4000-8000-000000000003";
+const otherArtifactId = "00000000-0000-4000-8000-000000000004";
+const secondTenantUserId = "00000000-0000-4000-8000-000000000005";
+const secondTenantArtifactId = "00000000-0000-4000-8000-000000000006";
+const workerToken = "source-import-test-worker-token-2026";
+const secondTenantWorkerToken = "source-import-second-tenant-token-2026";
 
 function examplePack() {
   return {
@@ -15,7 +23,7 @@ function examplePack() {
     skipped: [],
     sources: [
       { title: "About", url: "https://www.skool.com/example/about", text: "Welcome #intro", collectedAt: "2026-09-26T00:00:00Z", links: [{ url: "https://www.skool.com/example/classroom", text: "Classroom" }] },
-      { title: "Lesson", url: "https://www.skool.com/example/classroom", text: "A lesson", collectedAt: "2026-09-26T00:00:00Z", links: [{ url: "https://example.org/resource", text: "Resource" }] },
+      { title: "Lesson", url: "https://www.skool.com/example/classroom", text: "Transcript: A lesson", publishedAt: "2026-05-01", collectedAt: "2026-09-26T00:00:00Z", links: [{ url: "https://video.example.org/watch/1", text: "Media: Lesson playback" }] },
     ],
   };
 }
@@ -25,6 +33,7 @@ test("source pack parser preserves pages and links, rejects unsafe or incomplete
   expect(pack.sources).toHaveLength(2);
   expect(pack.linkCount).toBe(2);
   expect(pack.sources[0].sourceImportKey).toMatch(/^[a-f0-9]{64}$/);
+  expect(pack.sources[1].publishedAt).toBe("2026-05-01");
   expect(pack.sources[0].links[0].url).toBe("https://www.skool.com/example/classroom");
   const unsafe = examplePack();
   unsafe.sources[0].links[0].url = "javascript:alert(1)";
@@ -35,12 +44,44 @@ test("source pack parser preserves pages and links, rejects unsafe or incomplete
   const signedSource = examplePack();
   signedSource.sources[0].url = "https://example.org/page?signature=private-value";
   expect(() => parseClientSourcePack(signedSource)).toThrow("source_pack_url_invalid");
+  for (const privateUrl of [
+    "http://localhost:3000/",
+    "https://admin.localhost/",
+    "http://127.0.0.1/",
+    "http://192.168.1.10/",
+    "http://169.254.169.254/latest/meta-data/",
+    "http://[::1]/",
+    "http://[fd00::1]/",
+    "http://[::ffff:127.0.0.1]/",
+  ]) {
+    const privateTarget = examplePack();
+    privateTarget.sources[0].links[0].url = privateUrl;
+    expect(() => parseClientSourcePack(privateTarget), privateUrl).toThrow("source_pack_url_invalid");
+  }
+  for (const signedUrl of [
+    "https://storage.example.org/file?X-Amz-Signature=private-value",
+    "https://storage.example.org/file?X-Goog-Credential=private-value",
+    "https://storage.example.org/file?X-Goog-Signature=private-value",
+    "https://storage.example.org/file?AWSAccessKeyId=private-value",
+  ]) {
+    const signedMedia = examplePack();
+    signedMedia.sources[1].links[0].url = signedUrl;
+    expect(() => parseClientSourcePack(signedMedia)).toThrow("source_pack_url_invalid");
+  }
   const secretLabel = examplePack();
   secretLabel.sources[0].links[0].text = "api_key=sk-ABCDEFGHIJKLMNOPQRST";
   expect(() => parseClientSourcePack(secretLabel)).toThrow("source_pack_links_invalid");
   const oversized = examplePack();
   oversized.sources[0].text = "x".repeat(30_001);
   expect(() => parseClientSourcePack(oversized)).toThrow("source_pack_item_invalid");
+  const invalidDate = examplePack();
+  invalidDate.sources[0].collectedAt = "not-a-date";
+  expect(() => parseClientSourcePack(invalidDate)).toThrow("source_pack_item_invalid");
+  for (const publishedAt of ["0000-01-01", "2026-02-30", "2026-5-01", "2026-05-01T00:00:00Z"]) {
+    const invalidPublishedDate = examplePack();
+    invalidPublishedDate.sources[1].publishedAt = publishedAt;
+    expect(() => parseClientSourcePack(invalidPublishedDate)).toThrow("source_pack_item_invalid");
+  }
   const duplicate = examplePack();
   duplicate.sources[1].url = duplicate.sources[0].url;
   expect(() => parseClientSourcePack(duplicate)).toThrow("source_pack_duplicate_source");
@@ -53,36 +94,42 @@ test("source pack parser preserves pages and links, rejects unsafe or incomplete
 
 test("source import commits only the exact artifact bytes reviewed with permission", async () => {
   const savedEnv = { ...process.env };
-  const realFetch = globalThis.fetch;
   const original = Buffer.from(JSON.stringify(examplePack()));
   const changedPack = examplePack();
-  changedPack.sources[1].text = "B lesson";
+  changedPack.sources[1].text = "Transcript: B lesson";
   const changed = Buffer.from(JSON.stringify(changedPack));
   expect(changed.byteLength).toBe(original.byteLength);
   let stored = original;
   let writes = 0;
+  let expiry: string | null = new Date(Date.now() + 60_000).toISOString();
+  let downloads = 0;
+  const rpcCalls: Array<{ name: string; body: Record<string, unknown> }> = [];
   try {
-    Object.assign(process.env, { CLIENT_SLUG: "tenant-a" });
-    globalThis.fetch = async () => new Response(new Uint8Array(stored));
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_WORKER_TOKEN: workerToken });
     const route = loadReviewModule("src/app/api/client-runtime/source-import/route.ts", {
       "@/lib/clientAuth": { currentClientUser: async () => ({ id: userId }), currentClientMember: async () => true },
       "@/lib/clientDataPlane": {
         checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
-        selectClientRecords: async () => ({ ok: true, records: [{ id: artifactId, status: "ready", content_type: "application/json", original_name: "source-pack.json", byte_size: original.byteLength, object_key: "tenant-a/source-pack.json" }] }),
-        clientRpc: async () => { writes++; return { ok: true, value: { imported: 2, updated: 0, duplicates: 0 } }; },
+        selectClientRecords: async () => ({ ok: true, records: [{ id: artifactId, tenant_slug: "tenant-a", created_by: userId, status: "ready", content_type: "application/json", original_name: "source-pack.json", byte_size: original.byteLength, object_key: "tenant-a/source-pack.json", retention_expires_at: expiry }] }),
+        clientRpc: async (name: string, body: Record<string, unknown>) => { writes++; rpcCalls.push({ name, body }); return { ok: true, value: { imported: 2, updated: 0, duplicates: 0 } }; },
         recordClientAudit: async () => undefined,
       },
       "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+      "@/lib/clientRetention": { clientRetentionSecondsRemaining },
       "@/lib/clientStorage": {
         clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "test-bucket", serviceAccount: "test@example.invalid" }),
         safeClientObjectKey: (key: string) => key.startsWith("tenant-a/"),
         clientGcpAccessToken: async () => "test-token",
-        clientServiceAccountEmail: async () => "test@example.invalid",
-        signedClientStorageUrl: async () => "https://storage.example.invalid/source-pack.json",
+        readClientStorageObject: async () => { downloads++; return Buffer.from(stored); },
       },
       "@/lib/clientSourcePack": { parseClientSourcePack },
     });
     const post = (body: Record<string, unknown>) => route.POST(new Request("https://tenant.example.invalid/api/client-runtime/source-import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ artifactId, ...body }) }));
+    const oversizedRequest = await post({ action: "preview", padding: "x".repeat(9_000) });
+    expect(oversizedRequest.status).toBe(413);
+    expect((await oversizedRequest.json()).error).toBe("source_import_request_too_large");
+    expect(downloads).toBe(0);
+    expect(writes).toBe(0);
     const preview = await post({ action: "preview" });
     expect(preview.status).toBe(200);
     const reviewed = await preview.json();
@@ -90,7 +137,7 @@ test("source import commits only the exact artifact bytes reviewed with permissi
     expect(reviewed.skipped).toEqual([]);
     expect(reviewed.sources).toHaveLength(2);
     expect(reviewed.sources[0]).toMatchObject({ title: "About", url: "https://www.skool.com/example/about", text: "Welcome #intro", links: [{ url: "https://www.skool.com/example/classroom", text: "Classroom" }] });
-    expect(reviewed.sources[1]).toMatchObject({ title: "Lesson", text: "A lesson", links: [{ url: "https://example.org/resource", text: "Resource" }] });
+    expect(reviewed.sources[1]).toMatchObject({ title: "Lesson", text: "Transcript: A lesson", publishedAt: "2026-05-01", links: [{ url: "https://video.example.org/watch/1", text: "Media: Lesson playback" }] });
     const withoutPermission = await post({ action: "import", previewSha256: reviewed.packSha256 });
     expect(withoutPermission.status).toBe(400);
     expect((await withoutPermission.json()).error).toBe("source_import_review_required");
@@ -103,9 +150,201 @@ test("source import commits only the exact artifact bytes reviewed with permissi
     const imported = await post({ action: "import", previewSha256: reviewed.packSha256, permissionConfirmed: true });
     expect(imported.status).toBe(201);
     expect(writes).toBe(1);
+    expect(rpcCalls[0]).toMatchObject({ name: "import_client_runtime_source_pack", body: { p_worker_token: workerToken, p_pack_sha256: reviewed.packSha256 } });
+    delete process.env.CLIENT_WORKER_TOKEN;
+    const downloadsBeforeNoVerifier = downloads;
+    const noVerifier = await post({ action: "import", previewSha256: reviewed.packSha256, permissionConfirmed: true });
+    expect(noVerifier.status).toBe(503);
+    expect((await noVerifier.json()).error).toBe("source_import_verifier_unavailable");
+    expect(writes).toBe(1);
+    expect(downloads).toBe(downloadsBeforeNoVerifier);
+    process.env.CLIENT_WORKER_TOKEN = workerToken;
+    const priorDownloads = downloads;
+    expiry = new Date(Date.now() - 1_000).toISOString();
+    const expired = await post({ action: "import", previewSha256: reviewed.packSha256, permissionConfirmed: true });
+    expect(expired.status).toBe(409);
+    expect((await expired.json()).error).toBe("source_import_artifact_invalid");
+    expect(downloads).toBe(priorDownloads);
+    expect(writes).toBe(1);
   } finally {
     process.env = savedEnv;
-    globalThis.fetch = realFetch;
+  }
+});
+
+test("source upload requires permission and stores through the authenticated server proxy", async () => {
+  const savedEnv = { ...process.env };
+  const calls: string[] = [];
+  let recordedExpiry: unknown;
+  const bytes = Buffer.from(JSON.stringify(examplePack()));
+  const uploadRoute = loadReviewModule("src/app/api/client-runtime/source-import/upload/route.ts", {
+    "@/lib/clientAuth": { currentClientUser: async () => ({ id: userId }), currentClientMember: async () => true },
+    "@/lib/clientDataPlane": {
+      checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+      clientRpc: async (name: string, body: Record<string, unknown>) => {
+        calls.push(name);
+        if (name === "create_client_runtime_artifact") { recordedExpiry = body.p_retention_expires_at; return { ok: true, value: body.p_artifact_id }; }
+        return { ok: true, value: true };
+      },
+    },
+    "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
+    "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+    "@/lib/clientRetention": { clientRetentionExpiresAt: () => new Date(Date.now() + 86_400_000).toISOString() },
+    "@/lib/clientStorage": {
+      clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "test-bucket", serviceAccount: null }),
+      clientGcpAccessToken: async () => "runtime-token",
+      clientStorageObjectMetadata: async () => ({ size: bytes.byteLength, contentType: "application/json" }),
+      deleteClientStorageObject: async () => { calls.push("storage_delete"); return true; },
+      safeClientFileName: (name: string) => name,
+      uploadClientStorageObject: async (input: { bytes: Buffer; retentionExpiresAt: string }) => {
+        expect(input.bytes).toEqual(bytes); expect(input.retentionExpiresAt).toBe(recordedExpiry);
+        calls.push("storage_upload"); return true;
+      },
+    },
+    "@/lib/clientSourcePack": { parseClientSourcePack },
+  });
+  const post = (permissionConfirmed: boolean) => {
+    const form = new FormData();
+    form.set("file", new File([bytes], "source-pack.json", { type: "application/json" }));
+    if (permissionConfirmed) form.set("permissionConfirmed", "true");
+    return uploadRoute.POST(new Request("https://tenant.example.invalid/api/client-runtime/source-import/upload", { method: "POST", body: form }));
+  };
+  try {
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "28", CLIENT_WORKER_TOKEN: "unit-test-worker-token-credential-2026" });
+    const withoutConsent = await post(false);
+    expect(withoutConsent.status).toBe(400);
+    expect((await withoutConsent.json()).error).toBe("source_import_permission_required");
+    expect(calls).toEqual([]);
+
+    const accepted = await post(true);
+    expect(accepted.status).toBe(201);
+    expect(await accepted.json()).toMatchObject({ ok: true, packSha256: createHash("sha256").update(bytes).digest("hex") });
+    expect(calls).toEqual(["create_client_runtime_artifact", "storage_upload", "confirm_client_runtime_artifact"]);
+  } finally {
+    process.env = savedEnv;
+  }
+});
+
+test("source upload fails before artifact or storage writes when the guarded importer is unconfigured", async () => {
+  const savedEnv = { ...process.env };
+  const calls: string[] = [];
+  const bytes = Buffer.from(JSON.stringify(examplePack()));
+  const uploadRoute = loadReviewModule("src/app/api/client-runtime/source-import/upload/route.ts", {
+    "@/lib/clientAuth": { currentClientUser: async () => ({ id: userId }), currentClientMember: async () => true },
+    "@/lib/clientDataPlane": {
+      checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+      clientRpc: async () => { calls.push("artifact_rpc"); return { ok: true, value: "artifact" }; },
+    },
+    "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
+    "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+    "@/lib/clientRetention": { clientRetentionExpiresAt: () => new Date(Date.now() + 86_400_000).toISOString() },
+    "@/lib/clientStorage": {
+      clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "test-bucket", serviceAccount: null }),
+      clientGcpAccessToken: async () => { calls.push("storage_identity"); return "runtime-token"; },
+      clientStorageObjectMetadata: async () => null,
+      deleteClientStorageObject: async () => { calls.push("storage_delete"); return true; },
+      safeClientFileName: (name: string) => name,
+      uploadClientStorageObject: async () => { calls.push("storage_upload"); return true; },
+    },
+    "@/lib/clientSourcePack": { parseClientSourcePack },
+  });
+  try {
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "28", CLIENT_WORKER_TOKEN: "unit-test-worker-token-credential-2026" });
+    delete process.env.CLIENT_WORKER_TOKEN;
+    const form = new FormData();
+    form.set("file", new File([bytes], "source-pack.json", { type: "application/json" }));
+    form.set("permissionConfirmed", "true");
+    const response = await uploadRoute.POST(new Request("https://tenant.example.invalid/api/client-runtime/source-import/upload", { method: "POST", body: form }));
+    expect(response.status).toBe(503);
+    expect((await response.json()).error).toBe("source_import_verifier_unavailable");
+    expect(calls).toEqual([]);
+  } finally {
+    process.env = savedEnv;
+  }
+});
+
+test("source upload removes partial storage and artifact state when verification fails", async () => {
+  const savedEnv = { ...process.env };
+  const calls: string[] = [];
+  const bytes = Buffer.from(JSON.stringify(examplePack()));
+  const uploadRoute = loadReviewModule("src/app/api/client-runtime/source-import/upload/route.ts", {
+    "@/lib/clientAuth": { currentClientUser: async () => ({ id: userId }), currentClientMember: async () => true },
+    "@/lib/clientDataPlane": {
+      checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+      clientRpc: async (name: string, body: Record<string, unknown>) => {
+        calls.push(name);
+        return { ok: true, value: name === "create_client_runtime_artifact" ? body.p_artifact_id : true };
+      },
+    },
+    "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
+    "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+    "@/lib/clientRetention": { clientRetentionExpiresAt: () => new Date(Date.now() + 86_400_000).toISOString() },
+    "@/lib/clientStorage": {
+      clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "test-bucket", serviceAccount: null }),
+      clientGcpAccessToken: async () => "runtime-token",
+      clientStorageObjectMetadata: async () => null,
+      deleteClientStorageObject: async () => { calls.push("storage_delete"); return true; },
+      safeClientFileName: (name: string) => name,
+      uploadClientStorageObject: async () => { calls.push("storage_upload"); return true; },
+    },
+    "@/lib/clientSourcePack": { parseClientSourcePack },
+  });
+  try {
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "28", CLIENT_WORKER_TOKEN: "unit-test-worker-token-credential-2026" });
+    const form = new FormData();
+    form.set("file", new File([bytes], "source-pack.json", { type: "application/json" }));
+    form.set("permissionConfirmed", "true");
+    const response = await uploadRoute.POST(new Request("https://tenant.example.invalid/api/client-runtime/source-import/upload", { method: "POST", body: form }));
+    expect(response.status).toBe(502);
+    expect((await response.json()).error).toBe("source_import_upload_failed");
+    expect(calls).toEqual(["create_client_runtime_artifact", "storage_upload", "storage_delete", "delete_client_runtime_artifact"]);
+  } finally {
+    process.env = savedEnv;
+  }
+});
+
+test("source upload preserves its pending artifact record until storage cleanup succeeds", async () => {
+  const savedEnv = { ...process.env };
+  const bytes = Buffer.from(JSON.stringify(examplePack()));
+  try {
+    Object.assign(process.env, { CLIENT_SLUG: "tenant-a", CLIENT_RETENTION_DAYS: "28", CLIENT_WORKER_TOKEN: workerToken });
+    for (const scenario of [
+      { storageDelete: false, artifactDelete: true, expectedCalls: ["create_client_runtime_artifact", "storage_upload", "storage_delete"] },
+      { storageDelete: true, artifactDelete: false, expectedCalls: ["create_client_runtime_artifact", "storage_upload", "storage_delete", "delete_client_runtime_artifact"] },
+    ]) {
+      const calls: string[] = [];
+      const uploadRoute = loadReviewModule("src/app/api/client-runtime/source-import/upload/route.ts", {
+        "@/lib/clientAuth": { currentClientUser: async () => ({ id: userId }), currentClientMember: async () => true },
+        "@/lib/clientDataPlane": {
+          checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+          clientRpc: async (name: string, body: Record<string, unknown>) => {
+            calls.push(name);
+            if (name === "create_client_runtime_artifact") return { ok: true, value: body.p_artifact_id };
+            return { ok: true, value: scenario.artifactDelete };
+          },
+        },
+        "@/lib/clientNetworkSafety": { readBoundedResponseBytes },
+        "@/lib/clientRuntimePolicy": { clientCapabilityEnabled: () => true },
+        "@/lib/clientRetention": { clientRetentionExpiresAt: () => new Date(Date.now() + 86_400_000).toISOString() },
+        "@/lib/clientStorage": {
+          clientStorageConfig: () => ({ namespace: "tenant-a", bucket: "test-bucket", serviceAccount: null }),
+          clientGcpAccessToken: async () => "runtime-token",
+          clientStorageObjectMetadata: async () => null,
+          deleteClientStorageObject: async () => { calls.push("storage_delete"); return scenario.storageDelete; },
+          safeClientFileName: (name: string) => name,
+          uploadClientStorageObject: async () => { calls.push("storage_upload"); return true; },
+        },
+        "@/lib/clientSourcePack": { parseClientSourcePack },
+      });
+      const form = new FormData();
+      form.set("file", new File([bytes], "source-pack.json", { type: "application/json" }));
+      form.set("permissionConfirmed", "true");
+      const response = await uploadRoute.POST(new Request("https://tenant.example.invalid/api/client-runtime/source-import/upload", { method: "POST", body: form }));
+      expect(response.status).toBe(502);
+      expect((await response.json()).error).toBe("source_import_cleanup_pending");
+      expect(calls).toEqual(scenario.expectedCalls);
+    }
+  } finally {
+    process.env = savedEnv;
   }
 });
 
@@ -143,12 +382,14 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
   const db = new PGlite({ extensions: { pgcrypto } });
   try {
     await db.exec(`
-      create role anon; create role authenticated;
+      create role anon; create role authenticated; create role service_role;
+      alter default privileges in schema public grant execute on functions to service_role;
       create schema auth; create schema extensions; create extension pgcrypto with schema extensions;
       create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-      create table client_tenants (slug text primary key);
+      create table client_tenants (slug text primary key, status text not null, worker_token_hash text not null);
       create table client_memberships (tenant_slug text, user_id uuid, status text);
       create function client_member(p_tenant_slug text) returns boolean language sql as $$ select exists(select 1 from client_memberships where tenant_slug=p_tenant_slug and user_id=auth.uid() and status='active') $$;
+      create function client_tenant_retention_days(p_tenant_slug text) returns integer language sql stable as $$ select 28 $$;
       create table client_runtime_records (
         id uuid primary key default gen_random_uuid(), tenant_slug text not null references client_tenants(slug),
         created_by uuid not null, kind text not null, title text not null, content text not null,
@@ -157,36 +398,115 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
       );
       create table client_runtime_artifacts (
         id uuid primary key, tenant_slug text not null, created_by uuid not null,
-        status text not null, content_type text not null
+        status text not null, content_type text not null, retention_expires_at timestamptz
       );
-      insert into client_tenants values ('tenant-a'), ('tenant-b');
-      insert into client_memberships values ('tenant-a','${userId}','active');
-      insert into client_runtime_artifacts values ('${artifactId}','tenant-a','${userId}','ready','application/json');
+      create table client_runtime_audit_events (
+        id bigint generated by default as identity primary key, tenant_slug text not null,
+        actor_id uuid, event_type text not null, metadata jsonb not null default '{}'::jsonb
+      );
+      insert into client_tenants values
+        ('tenant-a','active',encode(extensions.digest('${workerToken}','sha256'),'hex')),
+        ('tenant-b','active',encode(extensions.digest('${secondTenantWorkerToken}','sha256'),'hex'));
+      insert into client_memberships values ('tenant-a','${userId}','active'),('tenant-a','${otherUserId}','active'),('tenant-b','${secondTenantUserId}','active');
+      insert into client_runtime_artifacts values
+        ('${artifactId}','tenant-a','${userId}','ready','application/json',now()+interval '1 day'),
+        ('${otherArtifactId}','tenant-a','${otherUserId}','ready','application/json',now()+interval '1 day'),
+        ('${secondTenantArtifactId}','tenant-b','${secondTenantUserId}','ready','application/json',now()+interval '1 day');
       select set_config('request.jwt.claim.sub','${userId}',false);
     `);
     await db.exec(readFileSync("product-experience/supabase-client-runtime-memory-graph.sql", "utf8"));
     const migration = readFileSync("product-experience/supabase-client-runtime-source-pack-graph.sql", "utf8");
     await db.exec(migration);
     await db.exec(migration);
+    await db.exec(`
+      alter function public.import_client_runtime_source_pack(text,uuid,text,jsonb)
+        rename to import_client_runtime_source_pack_legacy;
+      grant execute on function public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)
+        to service_role;
+      create function public.import_client_runtime_source_pack(text,uuid,text,jsonb)
+        returns jsonb language sql security definer as $$ select '{}'::jsonb $$;
+      grant execute on function public.import_client_runtime_source_pack(text,uuid,text,jsonb)
+        to authenticated, service_role;
+    `);
+    const guard = readFileSync("product-experience/supabase-client-runtime-source-pack-rpc-guard.sql", "utf8");
+    await db.exec(guard);
+    await db.exec(guard);
+    const publishedDateMigration = readFileSync("product-experience/supabase-client-runtime-source-pack-published-date.sql", "utf8");
+    await db.exec(publishedDateMigration);
+    await db.exec(publishedDateMigration);
+    await expect(db.exec(migration)).rejects.toThrow(/source_pack_guard_migration_must_run_last/);
+    const privileges = await db.query<{ legacyMember: boolean; legacyWorker: boolean; directMember: boolean; directWorker: boolean; guardedMember: boolean; guardedWorker: boolean }>(`
+      select has_function_privilege('authenticated','public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)','EXECUTE') as "legacyMember",
+        has_function_privilege('service_role','public.import_client_runtime_source_pack_legacy(text,uuid,text,jsonb)','EXECUTE') as "legacyWorker",
+        coalesce(has_function_privilege('authenticated',to_regprocedure('public.import_client_runtime_source_pack(text,uuid,text,jsonb)'),'EXECUTE'),false) as "directMember",
+        coalesce(has_function_privilege('service_role',to_regprocedure('public.import_client_runtime_source_pack(text,uuid,text,jsonb)'),'EXECUTE'),false) as "directWorker",
+        has_function_privilege('authenticated','public.import_client_runtime_source_pack(text,uuid,text,jsonb,text)','EXECUTE') as "guardedMember",
+        has_function_privilege('service_role','public.import_client_runtime_source_pack(text,uuid,text,jsonb,text)','EXECUTE') as "guardedWorker"
+    `);
+    expect(privileges.rows[0]).toEqual({ legacyMember: false, legacyWorker: false, directMember: false, directWorker: false, guardedMember: true, guardedWorker: false });
     const pack = parseClientSourcePack(examplePack());
-    const sql = "select import_client_runtime_source_pack($1,$2,$3,$4::jsonb) as value";
-    const args = ["tenant-a", artifactId, "a".repeat(64), JSON.stringify(pack.sources)];
-    await expect(db.query(sql, ["tenant-a", artifactId, "a".repeat(64), JSON.stringify([pack.sources[0], pack.sources[0]])]))
+    const sql = "select import_client_runtime_source_pack($1,$2,$3,$4::jsonb,$5) as value";
+    const args = ["tenant-a", artifactId, "a".repeat(64), JSON.stringify(pack.sources), workerToken];
+    await db.exec("set role authenticated");
+    await expect(db.query("select import_client_runtime_source_pack_legacy($1,$2,$3,$4::jsonb)", args.slice(0, 4)))
+      .rejects.toThrow(/permission denied/);
+    await expect(db.query("select import_client_runtime_source_pack($1,$2,$3,$4::jsonb)", args.slice(0, 4)))
+      .rejects.toThrow(/permission denied|does not exist/);
+    await expect(db.query(sql, [...args.slice(0, 4), "wrong-worker-token-that-is-long-enough"]))
+      .rejects.toThrow(/source_import_verifier_unavailable/);
+    await db.exec("reset role");
+    await db.exec(`update client_runtime_artifacts set retention_expires_at=now()-interval '1 second' where id='${artifactId}'`);
+    await expect(db.query(sql, args)).rejects.toThrow(/source_artifact_not_verified/);
+    await db.exec(`update client_runtime_artifacts set retention_expires_at=now()+interval '1 day' where id='${artifactId}'`);
+    await expect(db.query(sql, ["tenant-a", artifactId, "a".repeat(64), JSON.stringify([pack.sources[0], pack.sources[0]]), workerToken]))
       .rejects.toThrow(/source_pack_duplicate_source/);
+    const invalidPublishedDate = { ...pack.sources[0], publishedAt: "2026-02-30" };
+    await expect(db.query(sql, ["tenant-a", artifactId, "a".repeat(64), JSON.stringify([invalidPublishedDate]), workerToken]))
+      .rejects.toThrow();
     expect((await db.query("select id from client_runtime_records where tenant_slug='tenant-a'")).rows).toHaveLength(0);
+    await db.exec("set role authenticated");
     const first = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, args);
+    await db.exec("reset role");
     expect(first.rows[0].value).toEqual({ imported: 2, updated: 0, duplicates: 0, graphRefreshed: true });
+    await db.exec(`select set_config('request.jwt.claim.sub','${otherUserId}',false)`);
+    await expect(db.query(sql, ["tenant-a", otherArtifactId, "b".repeat(64), JSON.stringify(pack.sources), workerToken]))
+      .rejects.toThrow(/source_pack_owned_by_other_member/);
+    expect((await db.query<{ content: string }>("select content from client_runtime_records where title='Lesson'")).rows)
+      .toEqual([{ content: "Transcript: A lesson" }]);
+    await db.exec(`select set_config('request.jwt.claim.sub','${userId}',false)`);
+    expect((await db.query<{ event_type: string; metadata: Record<string, unknown> }>("select event_type, metadata from client_runtime_audit_events")).rows).toEqual([{
+      event_type: "tenant.source_pack.imported",
+      metadata: { artifactId, packSha256: "a".repeat(64), sourceCount: 2, linkCount: 2, imported: 2, updated: 0, duplicates: 0 },
+    }]);
     expect((await db.query("select id from client_runtime_memory_graph_nodes where tenant_slug='tenant-a' and kind='document'")).rows).toHaveLength(2);
+    expect((await db.query<{ content: string; links: { url: string; text: string }[]; publishedAt: string }>("select content, metadata -> 'source_links' as links, metadata ->> 'source_published_at' as \"publishedAt\" from client_runtime_records where title='Lesson'")).rows)
+      .toEqual([{ content: "Transcript: A lesson", links: [{ url: "https://video.example.org/watch/1", text: "Media: Lesson playback" }], publishedAt: "2026-05-01" }]);
+    expect((await db.query<{ url: string }>("select metadata ->> 'url' as url from client_runtime_memory_graph_nodes where tenant_slug='tenant-a' and kind='url' and metadata ->> 'url' = 'https://video.example.org/watch/1'")).rows)
+      .toEqual([{ url: "https://video.example.org/watch/1" }]);
+    const searchSql = "select search_client_runtime_memories($1,$2,$3,$4) as value";
+    await db.exec(`
+      insert into client_runtime_records (tenant_slug, created_by, kind, title, content, metadata, created_at)
+      values ('tenant-a', '${userId}', 'memory', 'Expired retention sentinel #expiredtag', 'expired-search-marker',
+        '{"source_url":"https://expired.example.org/secret"}', now() - interval '29 days');
+      select refresh_client_runtime_memory_graph('tenant-a');
+    `);
+    const expiredSearch = await db.query<{ value: { records: Array<{ title: string }> } }>(searchSql, ["tenant-a", "expired-search-marker", 0, 50]);
+    expect(expiredSearch.rows[0].value.records).toHaveLength(0);
+    expect((await db.query("select id from client_runtime_memory_graph_nodes where tenant_slug='tenant-a' and (label ilike '%expired%' or graph_key like 'record:%')")).rows)
+      .toHaveLength(2);
+    await db.exec("delete from client_runtime_records where title='Expired retention sentinel #expiredtag'; select refresh_client_runtime_memory_graph('tenant-a')");
     const second = await db.query<{ value: { imported: number; duplicates: number } }>(sql, args);
     expect(second.rows[0].value).toEqual({ imported: 0, updated: 0, duplicates: 2, graphRefreshed: false });
+    expect((await db.query("select id from client_runtime_audit_events")).rows).toHaveLength(2);
     const revised = examplePack();
     revised.sources[1].text = "A revised lesson #newtopic";
+    revised.sources[1].publishedAt = "2026-09-24";
     revised.sources[1].links = [{ url: "https://example.org/new-resource", text: "New resource" }];
     const revisedPack = parseClientSourcePack(revised);
-    const refreshed = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, ["tenant-a", artifactId, "b".repeat(64), JSON.stringify(revisedPack.sources)]);
+    const refreshed = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, ["tenant-a", artifactId, "b".repeat(64), JSON.stringify(revisedPack.sources), workerToken]);
     expect(refreshed.rows[0].value).toEqual({ imported: 0, updated: 1, duplicates: 1, graphRefreshed: true });
-    const revisedRecord = await db.query<{ content: string; links: { url: string; text: string }[] }>("select content, metadata -> 'source_links' as links from client_runtime_records where title='Lesson'");
-    expect(revisedRecord.rows).toEqual([{ content: "A revised lesson #newtopic", links: [{ url: "https://example.org/new-resource", text: "New resource" }] }]);
+    const revisedRecord = await db.query<{ content: string; links: { url: string; text: string }[]; publishedAt: string }>("select content, metadata -> 'source_links' as links, metadata ->> 'source_published_at' as \"publishedAt\" from client_runtime_records where title='Lesson'");
+    expect(revisedRecord.rows).toEqual([{ content: "A revised lesson #newtopic", links: [{ url: "https://example.org/new-resource", text: "New resource" }], publishedAt: "2026-09-24" }]);
     const nodes = await db.query<{ kind: string; url: string | null }>("select kind, metadata ->> 'url' as url from client_runtime_memory_graph_nodes where tenant_slug='tenant-a'");
     expect(nodes.rows.filter((row) => row.kind === "document")).toHaveLength(2);
     expect(nodes.rows.filter((row) => row.kind === "url").map((row) => row.url).sort()).toEqual([
@@ -199,20 +519,28 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
     const afterRemoval = await db.query<{ kind: string; url: string | null }>("select kind, metadata ->> 'url' as url from client_runtime_memory_graph_nodes where tenant_slug='tenant-a'");
     expect(afterRemoval.rows.filter((row) => row.kind === "document")).toHaveLength(1);
     expect(afterRemoval.rows.some((row) => row.url === "https://example.org/new-resource")).toBe(false);
-    const restored = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, ["tenant-a", artifactId, "b".repeat(64), JSON.stringify(revisedPack.sources)]);
+    const restored = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, ["tenant-a", artifactId, "b".repeat(64), JSON.stringify(revisedPack.sources), workerToken]);
     expect(restored.rows[0].value).toEqual({ imported: 1, updated: 0, duplicates: 1, graphRefreshed: true });
     await db.exec("select refresh_client_runtime_memory_graph('tenant-a')");
     const afterRestore = await db.query<{ kind: string; url: string | null }>("select kind, metadata ->> 'url' as url from client_runtime_memory_graph_nodes where tenant_slug='tenant-a'");
     expect(afterRestore.rows.filter((row) => row.kind === "document")).toHaveLength(2);
     expect(afterRestore.rows.some((row) => row.url === "https://example.org/new-resource")).toBe(true);
-    await expect(db.query(sql, ["tenant-b", artifactId, "a".repeat(64), JSON.stringify(pack.sources)])).rejects.toThrow(/tenant_not_authorized/);
+    await expect(db.query(sql, ["tenant-b", artifactId, "a".repeat(64), JSON.stringify(pack.sources), workerToken])).rejects.toThrow(/tenant_not_authorized/);
     expect((await db.query<{ value: boolean }>("select refresh_client_runtime_memory_graph('tenant-b') as value")).rows[0].value).toBe(false);
+    await db.exec(`select set_config('request.jwt.claim.sub','${secondTenantUserId}',false)`);
+    await expect(db.query(sql, ["tenant-b", secondTenantArtifactId, "c".repeat(64), JSON.stringify(pack.sources), workerToken]))
+      .rejects.toThrow(/source_import_verifier_unavailable/);
+    const secondTenant = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, ["tenant-b", secondTenantArtifactId, "c".repeat(64), JSON.stringify(pack.sources), secondTenantWorkerToken]);
+    expect(secondTenant.rows[0].value).toEqual({ imported: 2, updated: 0, duplicates: 0, graphRefreshed: true });
+    expect((await db.query("select id from client_runtime_memory_graph_nodes where tenant_slug='tenant-b' and kind='document'")).rows).toHaveLength(2);
+    expect((await db.query("select id from client_runtime_records where tenant_slug='tenant-a' and kind='memory'")).rows).toHaveLength(2);
+    await expect(db.query(sql, ["tenant-a", artifactId, "a".repeat(64), JSON.stringify(pack.sources), workerToken])).rejects.toThrow(/tenant_not_authorized/);
+    await db.exec(`select set_config('request.jwt.claim.sub','${userId}',false)`);
     await db.exec(`
       insert into client_runtime_records (tenant_slug, created_by, kind, title, content, created_at)
       select 'tenant-a', '${userId}', 'memory', 'Archive memory ' || n, 'Archived course text', now() + n * interval '1 minute'
       from generate_series(1, 125) as n;
     `);
-    const searchSql = "select search_client_runtime_memories($1,$2,$3,$4) as value";
     const firstPage = await db.query<{ value: { records: Array<{ title: string }>; hasMore: boolean } }>(searchSql, ["tenant-a", "archive", 0, 50]);
     expect(firstPage.rows[0].value.records).toHaveLength(50);
     expect(firstPage.rows[0].value.hasMore).toBe(true);
@@ -231,8 +559,10 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
       const bytes = readFileSync(process.env.AGENTOS_SOURCE_PACK_FILE);
       const realPack = parseClientSourcePack(JSON.parse(bytes.toString("utf8")));
       const realHash = createHash("sha256").update(bytes).digest("hex");
-      const imported = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, ["tenant-a", artifactId, realHash, JSON.stringify(realPack.sources)]);
+      const imported = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, ["tenant-a", artifactId, realHash, JSON.stringify(realPack.sources), workerToken]);
       expect(imported.rows[0].value).toEqual({ imported: realPack.sources.length, updated: 0, duplicates: 0, graphRefreshed: true });
+      const audit = await db.query<{ metadata: { sourceCount: number; linkCount: number; packSha256: string } }>("select metadata from client_runtime_audit_events order by id desc limit 1");
+      expect(audit.rows[0].metadata).toMatchObject({ sourceCount: realPack.sources.length, linkCount: realPack.linkCount, packSha256: realHash });
       const stored = await db.query<{ source_key: string; content: string; links: { url: string; text: string }[] }>(
         "select metadata ->> 'source_import_key' as source_key, content, metadata -> 'source_links' as links from client_runtime_records where tenant_slug='tenant-a' and kind='memory'",
       );
@@ -244,15 +574,50 @@ test("source pack SQL imports idempotently and builds tenant-scoped source/link 
       const graphUrls = (await db.query<{ url: string }>("select metadata ->> 'url' as url from client_runtime_memory_graph_nodes where tenant_slug='tenant-a' and kind='url'")).rows.map((row) => row.url).sort();
       const packUrls = [...new Set(realPack.sources.flatMap((source) => [source.sourceUrl, ...source.links.map((link) => link.url)]))].sort();
       expect(graphUrls).toEqual(packUrls);
-      const repeated = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, ["tenant-a", artifactId, realHash, JSON.stringify(realPack.sources)]);
+      const repeated = await db.query<{ value: { imported: number; updated: number; duplicates: number } }>(sql, ["tenant-a", artifactId, realHash, JSON.stringify(realPack.sources), workerToken]);
       expect(repeated.rows[0].value).toEqual({ imported: 0, updated: 0, duplicates: realPack.sources.length, graphRefreshed: false });
-      await expect(db.query(sql, ["tenant-b", artifactId, realHash, JSON.stringify(realPack.sources)])).rejects.toThrow(/tenant_not_authorized/);
+      await expect(db.query(sql, ["tenant-b", artifactId, realHash, JSON.stringify(realPack.sources), workerToken])).rejects.toThrow(/tenant_not_authorized/);
       await db.exec("delete from client_runtime_records where tenant_slug='tenant-a'; select refresh_client_runtime_memory_graph('tenant-a')");
       expect((await db.query("select id from client_runtime_memory_graph_nodes where tenant_slug='tenant-a'")).rows).toHaveLength(0);
     }
+    const largeStartUrl = "https://example.org/classroom";
+    const largeSources = Array.from({ length: 205 }, (_, index) => ({
+      title: `Synthetic lesson ${String(index + 1).padStart(3, "0")}`,
+      url: `${largeStartUrl}/lesson-${index + 1}`,
+      text: `Synthetic lesson ${index + 1} body with searchable marker ${index === 204 ? "lastlessonmarker" : "ordinarylessonmarker"}.`,
+      links: [{ url: `${largeStartUrl}/resource-${index + 1}`, text: `Resource ${index + 1}` }],
+    }));
+    for (let offset = 0; offset < largeSources.length; offset += 100) {
+      const batch = parseClientSourcePack({ startUrl: largeStartUrl, sources: largeSources.slice(offset, offset + 100) });
+      const imported = await db.query<{ value: { imported: number; updated: number; duplicates: number; graphRefreshed: boolean } }>(
+        sql, ["tenant-a", artifactId, createHash("sha256").update(JSON.stringify(batch.sources)).digest("hex"), JSON.stringify(batch.sources), workerToken],
+      );
+      expect(imported.rows[0].value).toEqual({ imported: batch.sources.length, updated: 0, duplicates: 0, graphRefreshed: true });
+    }
+    expect((await db.query("select id from client_runtime_records where tenant_slug='tenant-a' and kind='memory'")).rows).toHaveLength(205);
+    const largeGraph = await db.query<{ kind: string; url: string | null }>(
+      "select kind, metadata ->> 'url' as url from client_runtime_memory_graph_nodes where tenant_slug='tenant-a'",
+    );
+    expect(largeGraph.rows.filter((row) => row.kind === "document")).toHaveLength(205);
+    expect(largeGraph.rows.filter((row) => row.kind === "url").map((row) => row.url).sort()).toEqual(
+      largeSources.flatMap((source) => [source.url, source.links[0].url]).sort(),
+    );
+    const lastLesson = await db.query<{ value: { records: Array<{ title: string }> } }>(searchSql, ["tenant-a", "lastlessonmarker", 0, 50]);
+    expect(lastLesson.rows[0].value.records.map((row) => row.title)).toEqual(["Synthetic lesson 205"]);
+    await db.exec("delete from client_runtime_records where tenant_slug='tenant-a'; select refresh_client_runtime_memory_graph('tenant-a')");
+    expect((await db.query("select id from client_runtime_memory_graph_nodes where tenant_slug='tenant-a'")).rows).toHaveLength(0);
+    await db.exec(`
+      create function reject_source_import_audit() returns trigger language plpgsql as $$ begin raise exception 'source_audit_failed'; end $$;
+      create trigger source_import_audit_failure before insert on client_runtime_audit_events
+        for each row execute function reject_source_import_audit();
+    `);
+    const auditFailurePack = parseClientSourcePack({ startUrl: "https://example.org/audit-fail", sources: [{ title: "Audit must roll back", url: "https://example.org/audit-fail", text: "Never committed", links: [] }] });
+    await expect(db.query(sql, ["tenant-a", artifactId, "d".repeat(64), JSON.stringify(auditFailurePack.sources), workerToken])).rejects.toThrow(/source_audit_failed/);
+    expect((await db.query("select id from client_runtime_records where tenant_slug='tenant-a' and title='Audit must roll back'")).rows).toHaveLength(0);
+    await db.exec("drop trigger source_import_audit_failure on client_runtime_audit_events; drop function reject_source_import_audit()");
     await db.exec("create or replace function refresh_client_runtime_memory_graph(p_tenant_slug text) returns boolean language sql as $$ select false $$");
     const failedPack = parseClientSourcePack({ startUrl: "https://example.org/new", sources: [{ title: "Must roll back", url: "https://example.org/new", text: "Never committed", links: [] }] });
-    await expect(db.query(sql, ["tenant-a", artifactId, "c".repeat(64), JSON.stringify(failedPack.sources)])).rejects.toThrow(/source_graph_refresh_failed/);
+    await expect(db.query(sql, ["tenant-a", artifactId, "c".repeat(64), JSON.stringify(failedPack.sources), workerToken])).rejects.toThrow(/source_graph_refresh_failed/);
     expect((await db.query("select id from client_runtime_records where tenant_slug='tenant-a' and title='Must roll back'")).rows).toHaveLength(0);
   } finally { await db.close(); }
 });

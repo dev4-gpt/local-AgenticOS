@@ -8,6 +8,7 @@ const ignored = new Set([
   ".next",
   ".next-v0",
   ".next-client",
+  ".next-client-prod",
   ".next-client-test",
   "node_modules",
   "node_modules 2",

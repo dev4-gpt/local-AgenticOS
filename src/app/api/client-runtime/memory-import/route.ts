@@ -1,15 +1,18 @@
 import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
-import { checkClientRuntimeRateLimit, countClientRecords, insertClientRecord, recordClientAudit, selectClientRecords } from "@/lib/clientDataPlane";
+import { checkClientRuntimeRateLimit, clientRpc, countClientRecords, insertClientRecord, recordClientAudit, selectClientRecords } from "@/lib/clientDataPlane";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
+import { clientRetentionSecondsRemaining } from "@/lib/clientRetention";
 import { safeClientFileName } from "@/lib/clientStorage";
+import { readBoundedJsonObject } from "@/lib/clientNetworkSafety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_CONTENT_CHARS = 30_000;
+const MAX_IMPORT_REQUEST_BYTES = 128 * 1024;
 const EXPORT_PAGE_SIZE = 100;
 const MAX_EXPORT_RECORDS = 1000;
 const MARKDOWN_EXTENSIONS = new Set(["md", "markdown", "txt"]);
@@ -28,11 +31,18 @@ export async function GET(request: Request) {
 
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!tenantSlug) return jsonError("tenant_not_configured", 503);
-  const snapshotAt = new Date().toISOString();
+  const retention = await clientRpc("client_tenant_retention_days", { p_tenant_slug: tenantSlug });
+  const retentionDays = Number(retention.value);
+  if (!retention.ok || !Number.isInteger(retentionDays) || retentionDays < 1 || retentionDays > 28) {
+    return jsonError("memory_export_retention_unavailable", 503);
+  }
+  const snapshot = new Date();
+  const snapshotAt = snapshot.toISOString();
+  const activeCutoff = new Date(snapshot.getTime() - retentionDays * 86_400_000).toISOString();
   const filters = {
     tenant_slug: `eq.${tenantSlug}`,
     kind: "eq.memory",
-    created_at: `lte.${snapshotAt}`,
+    and: `(created_at.gt.${activeCutoff},created_at.lte.${snapshotAt})`,
   };
   const count = await countClientRecords("client_runtime_records", filters);
   if (!count.ok || count.count === null) return jsonError("memory_export_read_failed", 502);
@@ -59,6 +69,13 @@ export async function GET(request: Request) {
   if (!finalCount.ok || finalCount.count === null) return jsonError("memory_export_read_failed", 502);
   if (finalCount.count !== count.count) return jsonError("memory_export_changed_retry", 409);
 
+  const completedAt = Date.now();
+  const completedCutoff = completedAt - retentionDays * 86_400_000;
+  if (records.some((record) => typeof record.created_at !== "string"
+    || !Number.isFinite(Date.parse(record.created_at)) || Date.parse(record.created_at) <= completedCutoff)) {
+    return jsonError("memory_export_changed_retry", 409);
+  }
+
   records.sort((left, right) => String(left.created_at ?? "").localeCompare(String(right.created_at ?? "")) || String(left.id ?? "").localeCompare(String(right.id ?? "")));
   const content = memoryExportMarkdown(tenantSlug, records);
   await recordClientAudit("tenant.memory.exported", { recordCount: records.length });
@@ -79,7 +96,9 @@ export async function POST(request: Request) {
   if (!rateLimit.ok) return jsonError("runtime_limit_unavailable", 503);
   if (!rateLimit.allowed) return jsonError("runtime_rate_limited", 429);
 
-  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const parsed = await readBoundedJsonObject(request, MAX_IMPORT_REQUEST_BYTES);
+  if (!parsed.ok) return jsonError(parsed.reason === "too_large" ? "memory_import_request_too_large" : "memory_import_input_invalid", parsed.reason === "too_large" ? 413 : 400);
+  const body = parsed.value;
   const fileName = typeof body.fileName === "string" ? safeClientFileName(body.fileName) : null;
   const content = typeof body.content === "string" ? body.content.replace(/\r\n?/g, "\n").trim() : "";
   const artifactId = typeof body.artifactId === "string" ? body.artifactId.trim() : "";
@@ -97,7 +116,7 @@ export async function POST(request: Request) {
   });
   const artifact = artifactResult.records[0];
   if (!artifactResult.ok) return jsonError("memory_import_artifact_lookup_failed", 502);
-  if (!artifact || artifact.status !== "ready" || artifact.original_name !== fileName || !isMarkdownContentType(artifact.content_type)) {
+  if (!artifact || artifact.tenant_slug !== tenantSlug || artifact.created_by !== user.id || artifact.status !== "ready" || clientRetentionSecondsRemaining(artifact) < 1 || artifact.original_name !== fileName || !isMarkdownContentType(artifact.content_type)) {
     return jsonError("memory_import_source_not_verified", 409);
   }
 

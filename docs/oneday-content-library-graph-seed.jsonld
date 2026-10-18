@@ -1,0 +1,98 @@
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "id": "@id",
+    "type": "@type",
+    "label": "name",
+    "url": "url",
+    "description": "description",
+    "teaches": { "@id": "https://schema.org/teaches", "@type": "@id" },
+    "partOf": { "@id": "https://schema.org/isPartOf", "@type": "@id" },
+    "relatedTo": { "@id": "https://schema.org/relatedTo", "@type": "@id" },
+    "source": { "@id": "https://schema.org/citation", "@type": "@id" }
+  },
+  "metadata": {
+    "dataset": "Oneday public content-library graph seed",
+    "coverage": "partial",
+    "coverageNote": "Only two lesson pages were independently discoverable and reviewable in this pass. This is not a complete crawl of the library and excludes embedded video/transcript content.",
+    "collectedAt": "2026-10-13",
+    "contentPolicy": "Original concise summaries and topic relationships; no lesson text or media copied.",
+    "graphFormat": "JSON-LD",
+    "intendedStorage": "Portable seed; import into a separately provisioned graph store or the existing tenant graph only after a reviewed import plan."
+  },
+  "@graph": [
+    {
+      "id": "https://www.oneday.org/us/content-library",
+      "type": "CollectionPage",
+      "label": "Oneday Content Library",
+      "url": "https://www.oneday.org/us/content-library",
+      "description": "Public index for Oneday entrepreneurship learning resources.",
+      "source": "https://www.oneday.org/us/content-library"
+    },
+    {
+      "id": "https://www.oneday.org/us/content-library/how-to-find-your-niche",
+      "type": "LearningResource",
+      "label": "How to Find Your Niche",
+      "url": "https://www.oneday.org/us/content-library/how-to-find-your-niche",
+      "description": "A practical framework for narrowing an audience and problem: compare market dimensions, assess competition, use search and keyword evidence, map ideas, and examine recurring questions. The lesson emphasizes starting narrow, treating competition as a demand signal, and revising the niche as evidence accumulates.",
+      "partOf": "https://www.oneday.org/us/content-library",
+      "teaches": [
+        "https://www.oneday.org/knowledge/topic/market-niche",
+        "https://www.oneday.org/knowledge/topic/customer-research",
+        "https://www.oneday.org/knowledge/topic/market-validation"
+      ],
+      "source": "https://www.oneday.org/us/content-library/how-to-find-your-niche"
+    },
+    {
+      "id": "https://www.oneday.org/us/content-library/how-to-build-a-digital-mvp",
+      "type": "LearningResource",
+      "label": "How to Build a Digital MVP",
+      "url": "https://www.oneday.org/us/content-library/how-to-build-a-digital-mvp",
+      "description": "A beginner-oriented overview of lightweight digital MVP options, from paper prototypes to clickable prototypes and no-code approaches. It recommends making the first version communicate the solution clearly, using prototypes in customer conversations, and building only enough value to learn and retain users.",
+      "partOf": "https://www.oneday.org/us/content-library",
+      "teaches": [
+        "https://www.oneday.org/knowledge/topic/minimum-viable-product",
+        "https://www.oneday.org/knowledge/topic/prototyping",
+        "https://www.oneday.org/knowledge/topic/customer-discovery"
+      ],
+      "relatedTo": "https://www.oneday.org/us/content-library/how-to-find-your-niche",
+      "source": "https://www.oneday.org/us/content-library/how-to-build-a-digital-mvp"
+    },
+    {
+      "id": "https://www.oneday.org/knowledge/topic/market-niche",
+      "type": "DefinedTerm",
+      "label": "Market niche",
+      "description": "A narrower audience/problem focus used to make early customer discovery and product decisions more specific."
+    },
+    {
+      "id": "https://www.oneday.org/knowledge/topic/customer-research",
+      "type": "DefinedTerm",
+      "label": "Customer research",
+      "description": "Evidence gathering about a target audience's needs, behavior, alternatives, and recurring problems."
+    },
+    {
+      "id": "https://www.oneday.org/knowledge/topic/market-validation",
+      "type": "DefinedTerm",
+      "label": "Market validation",
+      "description": "Testing whether demand exists using observable search, competition, and customer-question signals."
+    },
+    {
+      "id": "https://www.oneday.org/knowledge/topic/minimum-viable-product",
+      "type": "DefinedTerm",
+      "label": "Minimum viable product",
+      "description": "The smallest useful product experience that communicates the intended solution and supports meaningful learning from users."
+    },
+    {
+      "id": "https://www.oneday.org/knowledge/topic/prototyping",
+      "type": "DefinedTerm",
+      "label": "Prototyping",
+      "description": "Creating low-cost representations of a product idea so prospective users can react before full implementation."
+    },
+    {
+      "id": "https://www.oneday.org/knowledge/topic/customer-discovery",
+      "type": "DefinedTerm",
+      "label": "Customer discovery",
+      "description": "Learning directly from prospective users to refine a problem, audience, and solution before scaling delivery."
+    }
+  ]
+}

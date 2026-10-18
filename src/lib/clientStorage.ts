@@ -1,7 +1,8 @@
-import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
-
-const METADATA_ROOT = "http://metadata.google.internal/computeMetadata/v1";
+import { createHash } from "node:crypto";
+import { clientStorageRetentionClock } from "./clientStorageRetentionClock.mjs";
+import { clientRuntimeAccessToken } from "./clientGcpIdentity";
+import { readBoundedResponseBytes } from "./clientNetworkSafety";
 
 export function clientStorageConfig() {
   const bucket = process.env.CLIENT_STORAGE_BUCKET?.trim();
@@ -24,56 +25,7 @@ export function safeClientObjectKey(value: string, namespace: string) {
 }
 
 export async function clientGcpAccessToken() {
-  const response = await fetch(`${METADATA_ROOT}/instance/service-accounts/default/token`, {
-    headers: { "Metadata-Flavor": "Google" },
-    cache: "no-store",
-  }).catch(() => null);
-  if (!response?.ok) return null;
-  const data = await response.json().catch(() => null) as { access_token?: unknown } | null;
-  return typeof data?.access_token === "string" ? data.access_token : null;
-}
-
-export async function clientServiceAccountEmail(serviceAccount?: string | null) {
-  return serviceAccount || await metadataText("instance/service-accounts/default/email");
-}
-
-export async function signedClientStorageUrl(input: {
-  method: "GET" | "PUT";
-  bucket: string;
-  objectKey: string;
-  serviceAccount: string;
-  token: string;
-  contentType?: string;
-}) {
-  const now = new Date();
-  const date = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const timestamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
-  const scope = `${date}/auto/storage/goog4_request`;
-  const encodedObject = input.objectKey.split("/").map(encodeURIComponent).join("/");
-  const canonicalUri = `/${input.bucket}/${encodedObject}`;
-  const signedHeaders = input.contentType ? "content-type;host" : "host";
-  const headers = input.contentType ? `content-type:${input.contentType}\nhost:storage.googleapis.com` : "host:storage.googleapis.com";
-  const params = new URLSearchParams({
-    "X-Goog-Algorithm": "GOOG4-RSA-SHA256",
-    "X-Goog-Credential": `${input.serviceAccount}/${scope}`,
-    "X-Goog-Date": timestamp,
-    "X-Goog-Expires": "900",
-    "X-Goog-SignedHeaders": signedHeaders,
-  });
-  const canonicalQuery = [...params.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join("&");
-  const canonicalRequest = [input.method, canonicalUri, canonicalQuery, `${headers}\n`, signedHeaders, "UNSIGNED-PAYLOAD"].join("\n");
-  const stringToSign = ["GOOG4-RSA-SHA256", timestamp, scope, createHash("sha256").update(canonicalRequest).digest("hex")].join("\n");
-  const signResponse = await fetch(`https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(input.serviceAccount)}:signBlob`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${input.token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ payload: Buffer.from(stringToSign).toString("base64") }),
-    cache: "no-store",
-  }).catch(() => null);
-  if (!signResponse?.ok) return null;
-  const signed = await signResponse.json().catch(() => null) as { signedBlob?: string } | null;
-  if (!signed?.signedBlob) return null;
-  params.set("X-Goog-Signature", Buffer.from(signed.signedBlob, "base64").toString("hex"));
-  return `https://storage.googleapis.com${canonicalUri}?${params.toString()}`;
+  return clientRuntimeAccessToken();
 }
 
 export async function clientStorageObjectMetadata(bucket: string, objectKey: string, token: string) {
@@ -85,6 +37,54 @@ export async function clientStorageObjectMetadata(bucket: string, objectKey: str
   const data = await response.json().catch(() => null) as { size?: string; contentType?: string } | null;
   const size = Number(data?.size ?? -1);
   return Number.isFinite(size) && size >= 0 && typeof data?.contentType === "string" ? { size, contentType: data.contentType } : null;
+}
+
+export async function readClientStorageObject(input: { bucket: string; objectKey: string; token: string; maxBytes: number }) {
+  const response = await fetch(`https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(input.bucket)}/o/${encodeURIComponent(input.objectKey)}?alt=media`, {
+    headers: { Authorization: `Bearer ${input.token}` },
+    cache: "no-store",
+    signal: AbortSignal.timeout(30_000),
+  }).catch(() => null);
+  if (!response?.ok || !response.body) return null;
+  try {
+    return await readBoundedResponseBytes(response, input.maxBytes);
+  } catch {
+    return null;
+  }
+}
+
+export async function proxyClientStorageObject(input: { bucket: string; objectKey: string; token: string; maxBytes: number; expectedBytes: number }) {
+  const response = await fetch(`https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(input.bucket)}/o/${encodeURIComponent(input.objectKey)}?alt=media`, {
+    headers: { Authorization: `Bearer ${input.token}` },
+    cache: "no-store",
+    signal: AbortSignal.timeout(120_000),
+  }).catch(() => null);
+  if (!response?.ok || !response.body) return null;
+  const contentLength = response.headers.get("content-length");
+  const size = contentLength === null ? null : Number(contentLength);
+  if (size !== null && (!Number.isSafeInteger(size) || size < 0 || size > input.maxBytes || size !== input.expectedBytes)) {
+    await response.body.cancel().catch(() => undefined);
+    return null;
+  }
+  let streamedBytes = 0;
+  const body = response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      streamedBytes += chunk.byteLength;
+      if (streamedBytes > input.maxBytes) {
+        controller.error(new Error("storage_object_too_large"));
+        return;
+      }
+      controller.enqueue(chunk);
+    },
+    flush(controller) {
+      if (streamedBytes !== input.expectedBytes) controller.error(new Error("storage_object_size_mismatch"));
+    },
+  }));
+  return {
+    body,
+    contentType: response.headers.get("content-type") ?? "application/octet-stream",
+    contentLength: size === null ? null : String(size),
+  };
 }
 
 export async function deleteClientStorageObject(bucket: string, objectKey: string, token: string) {
@@ -102,17 +102,36 @@ export async function uploadClientStorageObject(input: {
   contentType: string;
   bytes: Buffer;
   token: string;
+  retentionExpiresAt: string;
 }) {
-  const response = await fetch(`https://storage.googleapis.com/upload/storage/v1/b/${encodeURIComponent(input.bucket)}/o?uploadType=media&name=${encodeURIComponent(input.objectKey)}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${input.token}`, "Content-Type": input.contentType },
+  const clock = clientStorageRetentionClock(input.retentionExpiresAt, process.env.CLIENT_RETENTION_DAYS);
+  if (!clock) return false;
+  const md5 = createHash("md5").update(input.bytes).digest("base64");
+  // XML PUT sets the bytes and original-deadline metadata in one create-only write.
+  const response = await fetch(`https://storage.googleapis.com/${encodeURIComponent(input.bucket)}/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${input.token}`, "Content-Type": input.contentType,
+      "Content-MD5": md5,
+      "Cache-Control": "private, no-store", "x-goog-if-generation-match": "0",
+      "x-goog-custom-time": clock.customTime,
+      "x-goog-meta-agentos-retention-expires-at": clock.retentionExpiresAt,
+      "x-goog-meta-agentos-retention-clock": clock.policy },
     body: new Uint8Array(input.bytes) as unknown as BodyInit,
     cache: "no-store",
+    signal: AbortSignal.timeout(120_000),
   }).catch(() => null);
-  return Boolean(response?.ok);
-}
-
-async function metadataText(path: string) {
-  const response = await fetch(`${METADATA_ROOT}/${path}`, { headers: { "Metadata-Flavor": "Google" }, cache: "no-store" }).catch(() => null);
-  return response?.ok ? response.text() : null;
+  if (response?.ok) return true;
+  if (response?.status !== 412) return false;
+  // Reconcile an unknown previous upload without replacing its bytes or clock.
+  const existing = await fetch(`https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(input.bucket)}/o/${encodeURIComponent(input.objectKey)}?fields=size,contentType,md5Hash,customTime,metadata`, {
+    headers: { Authorization: `Bearer ${input.token}` }, cache: "no-store", signal: AbortSignal.timeout(30_000),
+  }).catch(() => null);
+  if (!existing?.ok) return false;
+  const metadata = await existing.json().catch(() => null) as {
+    size?: string; contentType?: string; md5Hash?: string; customTime?: string; metadata?: Record<string, string>;
+  } | null;
+  return metadata?.size === String(input.bytes.byteLength) && metadata.contentType === input.contentType
+    && metadata.md5Hash === md5 && Date.parse(metadata.customTime ?? "") === Date.parse(clock.customTime)
+    && metadata.metadata?.["agentos-retention-clock"] === clock.policy
+    && Date.parse(metadata.metadata?.["agentos-retention-expires-at"] ?? "") === Date.parse(clock.retentionExpiresAt);
 }

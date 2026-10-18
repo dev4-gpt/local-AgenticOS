@@ -56,3 +56,26 @@ test("V3.1 provenance rows are present and bounded", () => {
   expect(V96_REPOSITORY_CATALOG.find((item) => item.id === "novu")?.license).toBe("MIT");
   expect(V96_REPOSITORY_CATALOG.find((item) => item.id === "plunk")?.executionPermissions).not.toContain("send-external");
 });
+
+const creativeReferences = [
+  ["lenis", "https://github.com/darkroomengineering/lenis", "e01eefb1f55cd08bc051521d74f5f8182b71ee9d", "MIT"],
+  ["gsap", "https://github.com/greensock/GSAP", "13e2b790546426a1a2e0e9b409f3f8dc6d6611f2", "GSAP Standard No Charge License"],
+  ["vanta", "https://github.com/tengbao/vanta", "f8b351906688b56f0fc744e53bde81fc3c56f150", "MIT"],
+  ["react-bits", "https://github.com/DavidHDev/react-bits", "310fc737fadcaa149a4e06fb088fc95332dc8bfb", "MIT + Commons Clause License Condition v1.0"],
+  ["awesome-opus5-5-videos", "https://github.com/yihui-dev/awesome-opus5-5-videos", "92aee2f586ac0715cb3cbcb6384834f98a33383d", "MIT"],
+] as const;
+
+for (const [id, sourceUrl, sourceCommit, license] of creativeReferences) {
+  test(`creative build reference ${id} is pinned, discoverable and not an execution grant`, () => {
+    const reference = V96_REPOSITORY_CATALOG.find((entry) => entry.id === id);
+    expect(reference).toMatchObject({ sourceUrl, sourceCommit, license,
+      status: "cataloged", activation: "reference-only", sourceKind: "repository",
+      runtime: "dependency-free", executionPermissions: ["read-reference", "write-review"] });
+    expect(reference?.resourceUrls).toContain(sourceUrl);
+    expect(reference?.evidenceGate).toBeTruthy();
+    const publicEntry = PUBLIC_PROVIDER_CATALOG.find((entry) => entry.id === `repository-${id}`);
+    expect(publicEntry).toMatchObject({ kind: "repository", sourceUrl, sourceCommit, license,
+      status: "reference-only", selectionAllowed: false, credentialMode: "none" });
+    expect(publicEntry?.sourceNote).toContain("not an execution grant");
+  });
+}

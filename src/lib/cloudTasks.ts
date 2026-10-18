@@ -1,8 +1,6 @@
 import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
-import { spawnSync } from "node:child_process";
-
-const METADATA_ROOT = "http://metadata.google.internal/computeMetadata/v1";
+import { clientRuntimeAccessToken } from "./clientGcpIdentity";
 
 export async function enqueueClientRuntimeTask(input: { jobId?: string; actionId?: string; tenantSlug: string; delaySeconds?: number; path?: "jobs" | "delivery" | "dispatch" | "visual-qa-dispatch"; baseUrl?: string }) {
   const project = process.env.GOOGLE_CLOUD_PROJECT?.trim() || process.env.GCLOUD_PROJECT?.trim();
@@ -49,39 +47,4 @@ export async function enqueueClientRuntimeTask(input: { jobId?: string; actionId
   }).catch(() => null);
   if (!response?.ok) return { ok: false, status: response?.status ?? 502, error: "task_enqueue_failed" };
   return { ok: true, status: 202, error: null };
-}
-
-async function metadataAccessToken() {
-  const response = await fetch(`${METADATA_ROOT}/instance/service-accounts/default/token`, {
-    headers: { "Metadata-Flavor": "Google" },
-    cache: "no-store",
-  }).catch(() => null);
-  if (!response?.ok) return null;
-  const data = await response.json().catch(() => null) as { access_token?: unknown } | null;
-  return typeof data?.access_token === "string" ? data.access_token : null;
-}
-
-/**
- * Cloud Run supplies an identity through the metadata server. A laptop does
- * not, so full local tunnel parity needs an explicit, user-operated gcloud
- * credential path. This is deliberately opt-in and development-only: the
- * production client image never shells out to a local CLI or reads a local
- * credential store.
- */
-async function clientRuntimeAccessToken() {
-  const metadataToken = await metadataAccessToken();
-  if (metadataToken) return metadataToken;
-  if (
-    process.env.VELOCE_CLIENT_EDITION !== "1"
-    || process.env.NODE_ENV === "production"
-    || process.env.CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH !== "1"
-  ) return null;
-  const result = spawnSync("gcloud", ["auth", "print-access-token"], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
-    timeout: 10_000,
-  });
-  if (result.error || result.status !== 0) return null;
-  const token = result.stdout.trim();
-  return token && /^[A-Za-z0-9._-]{20,}$/.test(token) ? token : null;
 }

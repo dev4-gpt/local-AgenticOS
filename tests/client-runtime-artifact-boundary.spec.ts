@@ -10,16 +10,20 @@ test("pruning leaves the client surface registered and removes operator route en
     const server = join(root, ".next", "server");
     await writeRoute(server, "app/api/claude/chat/route.js");
     await writeRoute(server, "app/api/client-auth/magic-link/route.js");
+    await writeRoute(server, "app/api/client-runtime/build-identity/route.js");
+    await writeRoute(server, "app/api/client-runtime/source-import/route.js");
     await writeRoute(server, "app/context/page.js");
     await writeRoute(server, "app/demo-history/page.js");
     await writeFile(join(server, "app-paths-manifest.json"), JSON.stringify({
       "/api/claude/chat/route": "app/api/claude/chat/route.js",
       "/api/client-auth/magic-link/route": "app/api/client-auth/magic-link/route.js",
+      "/api/client-runtime/build-identity/route": "app/api/client-runtime/build-identity/route.js",
+      "/api/client-runtime/source-import/route": "app/api/client-runtime/source-import/route.js",
       "/context/page": "app/context/page.js",
       "/demo-history/page": "app/demo-history/page.js",
     }));
     await writeFile(join(server, "functions-config-manifest.json"), JSON.stringify({
-      functions: { "/api/claude/chat": {}, "/api/client-auth/magic-link": {} },
+      functions: { "/api/claude/chat": {}, "/api/client-auth/magic-link": {}, "/api/client-runtime/build-identity": {}, "/api/client-runtime/source-import": {} },
     }));
 
     execFileSync("node", ["scripts/prune-client-runtime-artifact.mjs", "--standalone-root", root], { cwd: process.cwd(), stdio: "pipe" });
@@ -27,12 +31,46 @@ test("pruning leaves the client surface registered and removes operator route en
     const functions = JSON.parse(await readFile(join(server, "functions-config-manifest.json"), "utf8"));
     expect(manifest).toEqual({
       "/api/client-auth/magic-link/route": "app/api/client-auth/magic-link/route.js",
+      "/api/client-runtime/build-identity/route": "app/api/client-runtime/build-identity/route.js",
+      "/api/client-runtime/source-import/route": "app/api/client-runtime/source-import/route.js",
       "/context/page": "app/context/page.js",
     });
-    expect(functions.functions).toEqual({ "/api/client-auth/magic-link": {} });
+    expect(functions.functions).toEqual({ "/api/client-auth/magic-link": {}, "/api/client-runtime/build-identity": {}, "/api/client-runtime/source-import": {} });
     await expect(readFile(join(server, "app/api/claude/chat/route.js"), "utf8")).rejects.toThrow();
     await expect(readFile(join(server, "app/demo-history/page.js"), "utf8")).rejects.toThrow();
     execFileSync("node", ["scripts/verify-client-runtime-build-trace.mjs", "--standalone-root", root], { cwd: process.cwd(), stdio: "pipe" });
+    delete manifest["/api/client-runtime/build-identity/route"];
+    await writeFile(join(server, "app-paths-manifest.json"), JSON.stringify(manifest));
+    expect(() => execFileSync("node", ["scripts/verify-client-runtime-build-trace.mjs", "--standalone-root", root], { cwd: process.cwd(), stdio: "pipe" })).toThrow(/build_identity_route_missing/);
+    manifest["/api/client-runtime/build-identity/route"] = "app/api/client-runtime/build-identity/route.js";
+    delete manifest["/api/client-runtime/source-import/route"];
+    await writeFile(join(server, "app-paths-manifest.json"), JSON.stringify(manifest));
+    expect(() => execFileSync("node", ["scripts/verify-client-runtime-build-trace.mjs", "--standalone-root", root], { cwd: process.cwd(), stdio: "pipe" })).toThrow(/source_import_route_missing/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("artifact pruning and verification follow a custom Next dist directory", async () => {
+  const root = await mkdtemp(join(tmpdir(), "veloce-client-custom-dist-"));
+  const standalone = join(root, "standalone");
+  const server = join(standalone, ".next-client-prod", "server");
+  try {
+    await writeRoute(server, "app/api/claude/chat/route.js");
+    await writeRoute(server, "app/api/client-runtime/build-identity/route.js");
+    await writeRoute(server, "app/api/client-runtime/source-import/route.js");
+    await writeFile(join(server, "app-paths-manifest.json"), JSON.stringify({
+      "/api/claude/chat/route": "app/api/claude/chat/route.js",
+      "/api/client-runtime/build-identity/route": "app/api/client-runtime/build-identity/route.js",
+      "/api/client-runtime/source-import/route": "app/api/client-runtime/source-import/route.js",
+    }));
+
+    execFileSync("node", ["scripts/prune-client-runtime-artifact.mjs", "--standalone-root", standalone, "--dist-dir", ".next-client-prod"], { cwd: process.cwd(), stdio: "pipe" });
+    const output = execFileSync("node", ["scripts/verify-client-runtime-build-trace.mjs", "--standalone-root", standalone, "--dist-dir", ".next-client-prod"], { cwd: process.cwd(), encoding: "utf8" });
+    expect(output).toContain("client runtime artifact passed (2 route entries)");
+    await expect(readFile(join(server, "app/api/claude/chat/route.js"), "utf8")).rejects.toThrow();
+    expect(() => execFileSync("node", ["scripts/prune-client-runtime-artifact.mjs", "--standalone-root", standalone, "--dist-dir", "../../outside"], { cwd: process.cwd(), stdio: "pipe" })).toThrow(/client_dist_dir_invalid/);
+    expect(() => execFileSync("node", ["scripts/verify-client-runtime-build-trace.mjs", "--standalone-root", standalone, "--dist-dir", "../../outside"], { cwd: process.cwd(), stdio: "pipe" })).toThrow(/client_dist_dir_invalid/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

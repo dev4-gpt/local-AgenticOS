@@ -33,6 +33,8 @@ The user-provided Google Doc `AI Profit Boardroom Bonuses!` was downloaded as Ma
 
 The pack is a link inventory, not a content archive or authorization to redistribute the linked bonus files. Before tenant import, confirm the target tenant, migration and retention policy, review the one skipped link, then use the authenticated preview/permission/commit workflow. For deeper product learning, prioritize the Agent OS release lessons, SOP-to-Agent System, Multi-Model Playbook and relevant operator/offer guides; assess each linked item's rights and accuracy before reuse. Marketing earnings claims in titles are not product evidence.
 
+The skipped item is the "If you're not an annual member" line under OTHER BONUSES: the supplied Markdown has an empty `()` target. There is no URL to infer or import from that line. The 111 nonempty links remain intact; this inventory is not a claim that linked page or video contents were collected.
+
 ## Release implications
 
 This delta does not change the production-readiness gate: customer-journey receipts, cloud graph migration and authenticated import, local/cloud workspace parity, real MiroFish run, hard simulation cost cap and owner approvals remain open. Feature additions should be isolated behind edition/capability gates and re-tested against those release checks. Do not bulk-merge the member package into a production candidate.

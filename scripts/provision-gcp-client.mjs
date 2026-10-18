@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { clientStorageLifecycleRules } from "../src/lib/clientStorageRetentionClock.mjs";
 import { normalizeCapabilityProviderAllowlist, normalizeHostAllowlist, normalizeModelPricing, normalizeResearchWorkerConfig, validateProviderActivation, validateResearchWorkerConfig } from "./client-provider-policy.mjs";
 
 const args = process.argv.slice(2);
@@ -44,6 +45,10 @@ const secretEnv = normalizeSecretEnv(manifest.secretEnv ?? manifest.secretRefs ?
 const manifestRuntimeEnv = manifest.runtimeEnv && typeof manifest.runtimeEnv === "object" && !Array.isArray(manifest.runtimeEnv)
   ? manifest.runtimeEnv
   : {};
+if (Object.hasOwn(manifestRuntimeEnv, "CLIENT_WORKER_TOKEN")) fail("runtimeEnv.CLIENT_WORKER_TOKEN must be Secret Manager-backed");
+for (const name of Object.keys(secretEnv)) {
+  if (Object.hasOwn(manifestRuntimeEnv, name)) fail(`runtimeEnv.${name} cannot shadow a Secret Manager binding`);
+}
 const credentialInboxSecret = normalizeClientSecretName(slug, String(manifestRuntimeEnv.CLIENT_CREDENTIAL_INBOX_SECRET || "client-credential-inbox"));
 const requestInboxSecret = normalizeClientSecretName(slug, String(manifestRuntimeEnv.CLIENT_REQUEST_INBOX_SECRET || credentialInboxSecret));
 const inboxSecretNames = [...new Set([
@@ -93,10 +98,7 @@ writeFileSync(storageCorsFile, JSON.stringify([{
 }], null, 2), { mode: 0o600 });
 const storageLifecycleFile = `/tmp/veloce-${slug}-storage-lifecycle.json`;
 writeFileSync(storageLifecycleFile, JSON.stringify({
-  rule: [{
-    action: { type: "Delete" },
-    condition: { age: retentionDays, matchesPrefix: [`${slug}/`] },
-  }],
+  rule: clientStorageLifecycleRules(slug, retentionDays),
 }, null, 2), { mode: 0o600 });
 process.on("exit", () => {
   try { unlinkSync(storageCorsFile); } catch {}
@@ -115,7 +117,7 @@ const protectedRuntimeEnv = {
   CLIENT_REQUEST_INBOX_SECRET: requestInboxSecret,
   CLIENT_ALLOWED_USER_EMAILS: allowedUserEmails.join(","),
   CLIENT_ALLOWED_ROUTES: "/,/provider-catalog,/credits,/context,/orchestrate,/create,/credentials,/capabilities,/deliver,/paperclip,/room,/pipeline,/claude,/openclaw,/hermes,/antigravity,/codex,/kimi,/glm,/glm-code,/grok,/freeclaude,/fusion,/sakana,/local,/engine,/agent-kanban,/loop,/ruflo,/goals,/journal,/seo,/seo-guide,/opendesign,/web-studio,/flow-lab,/integrations,/video,/studio,/openmontage,/music,/games,/thumbnails,/notebook,/kanban,/memory,/leads,/radar,/guide",
-  CLIENT_ALLOWED_API_ROUTES: "/api/capabilities,/api/speech/transcribe,/api/client-runtime/credentials,/api/client-runtime/credentials/revoke,/api/client-runtime/credits,/api/client-runtime/credits/checkout,/api/client-runtime/manifest-proposals,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-runtime/artifacts,/api/client-runtime/visual-qa,/api/client-runtime/hosted-jobs,/api/client-runtime/executions,/api/client-runtime/intent,/api/client-runtime/delivery,/api/client-runtime/memory-import,/api/client-runtime/source-import,/api/client-runtime/memory-graph,/api/client-runtime/provider-history,/api/client-runtime/telemetry,/api/client-runtime/observability,/api/client-runtime/records,/api/client-runtime/research,/api/client-runtime/notebooks,/api/client-runtime/notebook-sources,/api/client-runtime/budget,/api/client-runtime/skills,/api/client-runtime/learning,/api/client-runtime/ecc,/api/client-runtime/workflows,/api/client-runtime/paperclip,/api/client-runtime/room,/api/client-runtime/pipeline,/api/client-runtime/boards,/api/client-runtime/loop,/api/client-runtime/ruflo,/api/client-runtime/hermes-content-factory,/api/client-runtime/jobs,/api/internal/client-runtime/jobs,/api/internal/client-runtime/dispatch,/api/internal/client-runtime/visual-qa-dispatch,/api/internal/client-runtime/delivery,/api/client-auth/session",
+  CLIENT_ALLOWED_API_ROUTES: "/api/capabilities,/api/speech/transcribe,/api/client-runtime/credentials,/api/client-runtime/credentials/revoke,/api/client-runtime/credits,/api/client-runtime/credits/checkout,/api/client-runtime/manifest-proposals,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-runtime/artifacts,/api/client-runtime/visual-qa,/api/client-runtime/hosted-jobs,/api/client-runtime/executions,/api/client-runtime/intent,/api/client-runtime/delivery,/api/client-runtime/memory-import,/api/client-runtime/source-import,/api/client-runtime/source-import/upload,/api/client-runtime/memory-graph,/api/client-runtime/provider-history,/api/client-runtime/telemetry,/api/client-runtime/observability,/api/client-runtime/build-identity,/api/client-runtime/records,/api/client-runtime/research,/api/client-runtime/notebooks,/api/client-runtime/notebook-sources,/api/client-runtime/budget,/api/client-runtime/skills,/api/client-runtime/learning,/api/client-runtime/ecc,/api/client-runtime/workflows,/api/client-runtime/paperclip,/api/client-runtime/room,/api/client-runtime/pipeline,/api/client-runtime/boards,/api/client-runtime/loop,/api/client-runtime/ruflo,/api/client-runtime/hermes-content-factory,/api/client-runtime/jobs,/api/internal/client-runtime/jobs,/api/internal/client-runtime/dispatch,/api/internal/client-runtime/visual-qa-dispatch,/api/internal/client-runtime/delivery,/api/client-auth/session",
   CLIENT_ENABLED_CAPABILITIES: enabledCapabilities.join(","),
   CLIENT_ENABLED_TRAITS: enabledTraits.join(","),
   CLIENT_INTENT_ROUTING_ENABLED: manifest.intentRoutingEnabled === false ? "0" : "1",
@@ -197,7 +199,8 @@ if (apply) {
   if (manifest.acknowledgeClientSafeRuntime !== true) fail("Refusing --apply: acknowledgeClientSafeRuntime must be true. Do not deploy raw private 3939.");
   if (allowedUserEmails.length === 0) fail("Refusing --apply: access.allowedUserEmails must include at least one approved runtime user.");
   if (accessMode === "cloud-run-iam" && invokerEmails.length === 0) fail("Refusing --apply: access.invokerEmails must include at least one approved IAM invoker.");
-  if (phase === "deploy" && Object.keys(secretEnv).length === 0) fail("Refusing --apply: deploy phase requires at least the Supabase anon key in secretEnv.");
+  if (phase === "deploy" && !secretEnv.SUPABASE_ANON_KEY) fail("Refusing --apply: deploy phase requires SUPABASE_ANON_KEY in secretEnv.");
+  if (phase === "deploy" && !secretEnv.CLIENT_WORKER_TOKEN) fail("Refusing --apply: source import requires CLIENT_WORKER_TOKEN in secretEnv.");
   if (phase === "deploy" || phase === "all") deployImage = resolveImageDigest(image);
 }
 
@@ -477,7 +480,7 @@ function sanitizeBucket(value) {
 
 function normalizeRetentionDays(value) {
   const days = Number(value);
-  if (!Number.isSafeInteger(days) || days < 1 || days > 3650) fail("retention.days must be an integer between 1 and 3650");
+  if (!Number.isSafeInteger(days) || days < 1 || days > 28) fail("retention.days must be an integer between 1 and the 28-day maximum");
   return days;
 }
 
