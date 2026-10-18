@@ -71,12 +71,12 @@ and it does not contend for the same browser, tenant, environment, or files.
 
 | Gate | State (2026-10-17) | Depends on | Required work and exit evidence | Boundary / next action |
 | --- | --- | --- | --- | --- |
-| M0 - Candidate and evidence baseline | `IN_PROGRESS` for research restore-clock repair acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Repair base `518023ffd28a88d612851699c7e28d9aa954c85a`, Node `v24.19.0`. That clean candidate passed 501 regressions, 24 offline AI cases and eight synthetic browser scenarios. Research exports/restores omitted the creation clock used by retention. Require `tmp/research-restore-clock-committed-evidence-2026-10-18.json` to exist and match HEAD before current local acceptance. Ledger, hosted acceptance and all-copy retention remain open. |
-| M1 - Customer journey | `IN_PROGRESS` for current-source local refresh; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | The previous clean receipt includes six Notebook and two Room synthetic browser scenarios on the repair base, not the edited candidate. Refresh candidate-bound checks before a new acceptance claim. Synthetic fixtures do not establish real customer acceptance, hosted grants/isolation, object recovery or the full hosted journey. |
+| M0 - Candidate and evidence baseline | `IN_PROGRESS` for documentation-candidate evidence refresh | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Clean `02225191eb16bc87a69058cca2103011167548cd`, Node `v24.19.0`, passed 502 regressions, 24 offline AI cases and eight synthetic browser scenarios. The research repair and PostgreSQL 17 lifecycle rehearsal passed on that exact commit. This documentation update is a new candidate: require matching refreshed evidence before a current-candidate claim. Ledger, hosted acceptance and all-copy retention remain open. |
+| M1 - Customer journey | `IN_PROGRESS`; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | The clean `0222519` receipt includes six Notebook and two Room synthetic browser scenarios. Refresh candidate-bound checks after this documentation update. Synthetic fixtures do not establish real customer acceptance, hosted grants/isolation, object recovery or the full hosted journey. |
 | M2 - Authorized Skool archive/import | `IN_PROGRESS` | M0; M1 source/provenance contracts inform import | Reconcile the canonical lesson inventory and all authorized source material; identify full text, summary-only, transcript-only, missing, duplicate, and video-reference coverage separately; validate a dry-run pack and idempotency; then require post-import graph/source-link evidence for an explicitly verified tenant. | Current private graph `tmp/authorized-skool-import/agentos-page-text-reconciled-2026-10-17.jsonld` validates at **1,471 nodes / 10,735 relations**. All 18 earlier gap pages were observed in authorized Work Chrome: 15 now have captured inline page text and three are video-only with no body. **107/110** lessons have page-text segments; the new captures are resource labels/community CTA and a ZIP usage note, not lesson video contents. The three remaining no-body pages are July 26 ChatGPT Voice, August 28 Claude Watermarks and September 23 Claude Opus 5.5; their YouTube references are known. All previous text, 12 companion-text links and three transcript segments are preserved. Main-player audit remains 93 YouTube / 17 Skool-native, not video bytes. Production parser accepts all 18 records, including three media-only; portable validation, repeat merge and complete-export rejection pass. The 12 PDFs, four pinned READMEs and extracted Codex README remain included; BWC is excluded. `completenessVerified=false`, with one excerpt/two unknown transcripts and none declared full. No hosted import or new Drive upload occurred. Next: obtain permitted full transcript/video exports, review omissions and confirm the destination tenant before separately authorized import. |
 | M3 - Local/cloud parity and security | `BLOCKED` | M0 candidate; M1 local acceptance | Identify exact local candidate and hosted service/revision/image/config/migrations; read-only compare same authenticated member and tenant; then prove two-member/two-tenant isolation, route allowlist, storage proxy, and 28-day active + seven-day recovery behavior with hosted receipts. | Owner-selected default is `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in Aryaman (Work) Chrome. Fresh read-only service/revision metadata confirms project `veloce-agenticos-2026`, region `asia-south1`, revision `veloce-cloud-test-00208-5hk` at 100% traffic and image `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`. Auth is enforced; provider calls are disabled. No source stamp exists, identity/import APIs are excluded, runtime and bucket retention are 14 days, and two inbox secrets are inline rather than Secret Manager references. Bucket metadata reports seven-day soft delete; behavioral recovery/deletion is unverified. Historical Internal Beta findings do not describe this selected tenant. Same-member/tenant comparison, independent source attestation, migrations, isolation and 28+7 behavior remain open. Hosted remediation requires separate target-specific approval. |
 | M4 - Evaluation and observability | `IN_PROGRESS` | M0; M1 job lifecycle contract; M3 for hosted claims | Keep deterministic offline evaluation candidate-bound; test trace redaction, lifecycle completeness, alerts, and budget/ledger reconciliation. Any model-backed evaluation requires explicit hard-cap approval and must bind outputs/costs to candidate and test case. | Offline/local tests are allowed. No model/provider call by default. Synthetic MiroFish output is not demand evidence; prioritize documented real buyer interviews before proposing another simulation. |
-| M5 - Release decision | `OPEN` | M0-M4 plus retention/privacy/operations/legal decisions | On one clean committed candidate, pass the strict verifier with all required ledger categories, hosted/customer/import/retention evidence, reviewer approvals, immutable deployment identity, and tested rollback. Record `ready` only from the verifier and approvals for that exact candidate. | Decision gate only, not deployment authorization. Current verifier is `releaseReady=false`; dirty tree, ledger configuration, hosted evidence, and many categories remain open. |
+| M5 - Release decision | `OPEN` | M0-M4 plus retention/privacy/operations/legal decisions | On one clean committed candidate, pass the strict verifier with all required ledger categories, hosted/customer/import/retention evidence, reviewer approvals, immutable deployment identity, and tested rollback. Record `ready` only from the verifier and approvals for that exact candidate. | Decision gate only, not deployment authorization. Current verifier is `releaseReady=false`; ledger configuration, hosted evidence, and many categories remain open. A clean commit does not close them. |
 
 **Dependency graph:** `M0 -> M1 -> M3 -> M5`; `M0 -> M2 -> M3 -> M5`;
 `M0 -> M4 -> M5`. Retention inventory and 28+7 lifecycle evidence are
@@ -113,14 +113,73 @@ downstream gates.
   and the strict verifier. The ledger/checklist, not this narrative board,
   decides whether all mandatory evidence and approvals are present.
 
-**Current critical-path action (2026-10-18 UTC):** Verify the research
-export/restore creation-clock repair before any hosted rollout review. The full
-catalog audit found gaps outside the earlier export-only projection; a real
-round trip then proved that research restore renewed old creation timestamps.
-Refresh clean-commit evidence, then review all base-schema prerequisites and a
-disposable staging/recovery target. The older control-plane staging runbook
-shares production Supabase and is not that target. Creating resources,
-changing hosted schema/data, cleanup and spend all remain unauthorized.
+**Current critical-path action (2026-10-18 UTC):** Obtain an independently
+identified disposable database before proposing hosted schema/recovery tests.
+The research creation-clock repair and real PostgreSQL 17 local rehearsal
+passed on clean `0222519`; refresh candidate-bound evidence after these docs.
+The approved Free setup inspection reached the new-project form, with no
+visible quota/upgrade warning, but creation eligibility remains unproven.
+Name/password were left blank; no settings or resources changed. Follow the
+[disposable database procedure](./disposable-database-rehearsal.md), not the
+older control-plane tier that shares production Supabase. Creation, terms,
+hosted schema/data, destructive cleanup and spend require separate approval.
+
+### PostgreSQL 17 Rehearsal And Free Setup Inspection - 2026-10-18 UTC
+
+**Baseline and acceptance:** The earlier PostgreSQL 18 rehearsal had a
+cross-major catalog representation difference from the saved hosted 17.6
+metadata. Require all 73 actual repository SQL files on PostgreSQL 17, stable
+comparison identities, preserved worker contracts, two synthetic member read
+boundaries, denied anonymous reads/member cleanup, 18 service-only purge
+previews and original-clock research restore with six rejection cases. Use
+only the preinstalled pinned image, no network/ports/host mounts and bounded
+resources; remove only the uniquely labelled test container even on failure.
+
+**Observed result:** On clean `02225191eb16bc87a69058cca2103011167548cd`,
+PostgreSQL 17.11 installed all 73 files and passed those checks. Four worker
+contracts were unchanged; the four research metadata rows preserved distinct
+original creation/retrieval clocks. Missing, future and expired creation clocks
+were rejected atomically for both records and citations. All 18 previews had
+`apply=false`. The saved hosted comparison still has 31 missing columns and
+56 missing local routine signatures; the earlier gaps are not explained by the
+PostgreSQL 18 NOT NULL catalog difference. ACL/definition equivalence remains
+unaccepted. Local 17.11 is not the same minor version as saved hosted 17.6.
+
+Private receipt:
+`tmp/postgres17-lifecycle-rehearsal-2026-10-18-v1/receipt.json`, SHA-256
+`1d22a1660179a4b0cce2ce184e51315a179b29396fb2f72b75a7641e3e45fcfe`.
+The pinned image is
+`postgres@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24`.
+The receipt records 74 source hashes, SQL/collector hashes, local catalog and
+comparison hashes, and verified owned-container removal. An independent
+label-filtered container inventory was empty. The first catalog-only attempt
+failed during PostgreSQL entrypoint handoff before applying any migration;
+its container was removed. The collector's readiness check now requires the
+final server process as well as readiness, and the successful runs are retained
+separately rather than overwriting that failed baseline.
+
+**Free setup inspection:** With the owner's form-only approval, Work Chrome
+opened the intended organization's new-project form. The plan label was Free,
+with no visible quota, upgrade or payment warning. Name/password stayed blank;
+no terms, creation, security-setting change or submission occurred. The form
+showed Data API and automatic new-table exposure enabled, automatic RLS
+disabled. These observed defaults need explicit review, not automatic reuse.
+No claim is made that the proposed project can be created: eligibility may be
+checked only on submission. Supabase's
+[Free quota rules](https://supabase.com/docs/guides/platform/billing-faq)
+also depend on active projects and Owner/Admin members, not simply the number
+of visible cards. No project was paused, deleted, upgraded or repurposed.
+
+**Limits:** Synthetic SQL roles/claims do not exercise hosted Supabase Auth.
+The drill does not establish populated deployed upgrades, multi-connection
+races, real elapsed-time cleanup, object bytes, backup/vendor expiry, full
+28+7 recovery or production readiness. No new hosted SQL query, tenant-content
+read, hosted write, deployment, provider call or spend occurred. The whole-source
+502/24/eight-scenario receipt remains bound to `0222519`, not silently to this
+documentation candidate. Future clean-candidate evidence must match its own
+commit and source/configuration hashes. The next receipt is
+`tmp/postgres17-staging-committed-evidence-2026-10-18.json`; require it to
+exist and match the candidate before reuse.
 
 ### Research Restore Clock Evidence - 2026-10-18 UTC
 

@@ -8,6 +8,10 @@ apply a schema rehearsal or destructive fixture to that shared project under
 this runbook. Such testing requires a separately approved test database with
 synthetic users/data, exact target identity, bounded costs and reviewed cleanup.
 
+For that separate database, follow the
+[disposable database rehearsal procedure](./disposable-database-rehearsal.md).
+It is not permission to execute this control-plane runbook or create resources.
+
 This runbook stands up the staging tier for Phase 2 Slice 1: a full parallel
 set of Cloud Run services, identities, secrets, and a queue in the **same**
 `veloce-agenticos-2026` GCP project and the **same** Supabase project as
