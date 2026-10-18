@@ -100,6 +100,24 @@ existing user/operator credentials is not authorized by a fixture plan. Existing
 password login is distinct from creating a new password/account and its possible
 email effects. No user invitation or sign-up email is implied by test approval.
 
+The data-only builder `tests/helpers/client-isolation-fixture.mjs` prepares
+exactly 72 synthetic application rows: two tenants, two ordinary `member`
+memberships and two rows in each of the 34 read-probe tables. Dependencies are
+ordered for the real schema. Jobs are cancelled, deliveries blocked, and
+artifact metadata has no stored object. Approval-table sentinels are explicitly
+synthetic, not human approval. No provider or execution request is made.
+
+Review the generated SQL as one transaction, not as independent inserts. It
+requires two distinct existing Auth UUIDs without memberships, unused fixture
+tenant names, and a preparation clock no more than 20 minutes old or one minute
+ahead. Reuse and drift fail closed; it does not overwrite existing records.
+Regenerate with the owner-created UUIDs and current clock before final review
+and separately authorized submission. Its SQL comments cannot attest a project:
+independently verify the target in the execution surface. Local demonstration
+UUIDs must never be mistaken for hosted users. Local tests cover rollback after
+a failure at the end of the batch and count changes across all application
+relations, not just the populated tables.
+
 Pin `--expected-project-ref` to the independently observed staging reference and
 the HTTPS Supabase project origin. The current read-only command checks two
 distinct Auth users and 136 tenant reads, requires positive own sentinels and

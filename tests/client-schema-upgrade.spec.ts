@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { expect, test } from "@playwright/test";
+import ts from "typescript";
+import { clientIsolationFixture, clientIsolationFixtureSql } from "./helpers/client-isolation-fixture.mjs";
 
 // Use the real predecessor definitions: empty function fixtures miss PostgreSQL
 // replacement rules, and cannot establish that these migrations work together.
@@ -82,6 +84,98 @@ async function repositoryDatabase({ broadTableDefaults = false } = {}) {
     throw error;
   }
 }
+
+test("the two-member isolation fixture populates every real read probe atomically without execution", async () => {
+  test.setTimeout(90_000);
+  const db = await repositoryDatabase({ broadTableDefaults: true });
+  try {
+    for (const name of retentionMigrations) await db.exec(readFileSync(`product-experience/supabase-${name}.sql`, "utf8"));
+    const memberA = "00000000-0000-4000-8000-000000000101";
+    const memberB = "00000000-0000-4000-8000-000000000102";
+    await db.query("insert into auth.users(id,email) values ($1,'a@example.invalid'),($2,'b@example.invalid')", [memberA, memberB]);
+    const publicTables = (await db.query<{ name: string }>(`select c.relname as name from pg_class c
+      join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in ('r','p') order by c.relname`)).rows;
+    const counts = async () => Object.fromEntries(await Promise.all(publicTables.map(async ({ name }) => {
+      expect(name).toMatch(/^[a-z_]+$/);
+      return [name, (await db.query<{ n: number }>(`select count(*)::int as n from public.${name}`)).rows[0].n];
+    })));
+    const before = await counts();
+    const createdAt = (await db.query<{ now: string }>("select now()::text as now")).rows[0].now;
+    const fixture = clientIsolationFixture({ memberA, memberB, createdAt: new Date(createdAt).toISOString() });
+    const ast = ts.createSourceFile("probe.mjs", readFileSync("scripts/verify-client-runtime-isolation.mjs", "utf8"), ts.ScriptTarget.Latest, true);
+    const tables: string[] = [];
+    function visit(node: ts.Node) {
+      if (ts.isVariableDeclaration(node) && node.name.getText(ast) === "probes") {
+        expect(node.initializer && ts.isArrayLiteralExpression(node.initializer)).toBe(true);
+        for (const element of (node.initializer as ts.ArrayLiteralExpression).elements) {
+          expect(ts.isArrayLiteralExpression(element)).toBe(true);
+          const value = (element as ts.ArrayLiteralExpression).elements[1] as ts.StringLiteral;
+          expect(ts.isStringLiteral(value)).toBe(true);
+          tables.push(value.text);
+        }
+      }
+      ts.forEachChild(node, visit);
+    }
+    visit(ast);
+    expect(tables).toHaveLength(34);
+    expect(fixture.groups.map(group => group.table).sort()).toEqual([...tables, "client_tenants", "client_memberships"].sort());
+    expect(fixture.groups.reduce((sum, group) => sum + group.rows.length, 0)).toBe(72);
+    const fixtureSql = clientIsolationFixtureSql(fixture);
+    const missingMember = clientIsolationFixture({ memberA, memberB: "00000000-0000-4000-8000-000000000103", createdAt: fixture.createdAt });
+    await expect(db.exec(clientIsolationFixtureSql(missingMember))).rejects.toMatchObject({ message: "fixture_auth_members_missing" });
+    await db.exec("rollback");
+    expect(await counts()).toEqual(before);
+    for (const offset of [-21 * 60_000, 2 * 60_000]) {
+      const invalidClock = clientIsolationFixture({ memberA, memberB,
+        createdAt: new Date(Date.parse(fixture.createdAt) + offset).toISOString() });
+      await expect(db.exec(clientIsolationFixtureSql(invalidClock))).rejects.toMatchObject({ message: "fixture_clock_outside_prepared_window" });
+      await db.exec("rollback");
+      expect(await counts()).toEqual(before);
+    }
+    await db.query("insert into public.client_tenants(slug,name) values ($1,'Existing local sentinel')", [fixture.tenants[0]]);
+    const occupied = await counts();
+    await expect(db.exec(fixtureSql)).rejects.toMatchObject({ message: "fixture_namespace_exists" });
+    await db.exec("rollback");
+    expect(await counts()).toEqual(occupied);
+    await db.query("delete from public.client_tenants where slug=$1", [fixture.tenants[0]]);
+    expect(await counts()).toEqual(before);
+    await expect(db.exec(fixtureSql.replace("\ncommit;", "\nselect 1/0;\ncommit;"))).rejects.toMatchObject({ code: "22012" });
+    await db.exec("rollback");
+    expect(await counts()).toEqual(before);
+    await db.exec(fixtureSql);
+    const after = await counts();
+    const fixtureTables = new Set(fixture.groups.map(group => group.table));
+    for (const { name } of publicTables) expect(after[name] - before[name]).toBe(fixtureTables.has(name) ? 2 : 0);
+    for (const group of fixture.groups) expect((await db.query(`select count(*)::int as n from public.${group.table}`)).rows).toEqual([{ n: 2 }]);
+    for (const [member, own, other] of [[memberA, fixture.tenants[0], fixture.tenants[1]], [memberB, fixture.tenants[1], fixture.tenants[0]]]) {
+      await db.query("select set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claim.role','authenticated',false)", [member]);
+      await db.exec("set role authenticated");
+      for (const table of tables) {
+        expect((await db.query(`select tenant_slug from public.${table} where tenant_slug=$1`, [own])).rows).toEqual([{ tenant_slug: own }]);
+        expect((await db.query(`select tenant_slug from public.${table} where tenant_slug=$1`, [other])).rows).toEqual([]);
+      }
+      await db.exec("reset role");
+    }
+    await db.query("select set_config('request.jwt.claim.sub','',false),set_config('request.jwt.claim.role','anon',false)");
+    await db.exec("set role anon");
+    for (const table of tables) {
+      try { expect((await db.query(`select tenant_slug from public.${table}`)).rows).toEqual([]); }
+      catch (error) { expect(error).toMatchObject({ code: "42501" }); }
+    }
+    await db.exec("reset role");
+    expect((await db.query("select status from public.client_runtime_jobs")).rows).toEqual([{ status: "cancelled" }, { status: "cancelled" }]);
+    expect((await db.query("select status from public.client_hermes_content_factory_deliveries")).rows).toEqual([{ status: "blocked" }, { status: "blocked" }]);
+    expect(() => clientIsolationFixture({ memberA, memberB: memberA, createdAt: fixture.createdAt })).toThrow("distinct_fixture_members_required");
+    expect(() => clientIsolationFixture({ memberA, memberB, createdAt: "not-a-date" })).toThrow("canonical_fixture_clock_required");
+    const drift = structuredClone(fixture);
+    drift.groups[0].rows[0].retention_days = 365;
+    expect(() => clientIsolationFixtureSql(drift)).toThrow("fixture_content_drift");
+    // Rehearse the exact proposed transaction, not only parameterized inserts.
+    await expect(db.exec(clientIsolationFixtureSql(fixture))).rejects.toMatchObject({ message: "fixture_members_already_assigned" });
+    await db.exec("rollback");
+    expect(await counts()).toEqual(after);
+  } finally { await db.close(); }
+});
 
 test("Supabase table defaults cannot give members tenant-wide administrative privileges", async () => {
   test.setTimeout(90_000);

@@ -113,11 +113,14 @@ downstream gates.
   and the strict verifier. The ledger/checklist, not this narrative board,
   decides whether all mandatory evidence and approvals are present.
 
-**Current critical-path action (2026-10-18 UTC):** Prepare a separately reviewed
-Free-only real-Auth/two-member fixture plan for the installed disposable staging
-schema using the fail-closed isolation CLI. Its offline regression repair is
-recorded below; require the clean-candidate receipt before using it as a test
-tool. The schema-only installation is complete; actual sign-in, memberships,
+**Current critical-path action (2026-10-18 UTC):** Finish the local PostgreSQL 17
+rehearsal of the exact 72-row, two-member fixture, then bind the separately
+reviewed Free-only proposal to owner-created Auth UUIDs. The fail-closed CLI's
+clean historical receipt is `tmp/isolation-probe-committed-2026-10-18-v2/receipt.json`
+(SHA-256 `dadde86963e0420b296182f8084f4587bd95c7c1554c66a30202eef17c530b70`),
+bound to `ea112e2d9d1f5b835c479cfa9ae3bce3c9f4f78c`: 517 regressions,
+24 offline AI cases and eight synthetic browser scenarios. New fixture/test
+edits require refreshed candidate evidence. Actual sign-in, memberships,
 tenant isolation, execution/export and recovery remain untested and fixture
 writes are not authorized by the schema approval. Require an exact synthetic
 fixture, identity/external-email boundaries, operation limits and cleanup/recovery
@@ -125,6 +128,38 @@ decisions before additional hosted writes. Follow the
 [disposable database procedure](./disposable-database-rehearsal.md), not the
 older control-plane tier that shares production Supabase. Free-only authority
 does not permit upgrades/payments or unreviewed production/destructive actions.
+
+### Exact Isolation Fixture Preparation - 2026-10-18 UTC
+
+**Baseline and acceptance:** The installed staging schema contains no
+agent-created users or tenant fixtures. A real read probe needs populated own
+sentinels, not merely empty opposite-tenant results. Before native rehearsal,
+require the exact real-schema transaction to insert 72 rows across 36 tables,
+leave every other application relation unchanged, roll back all rows on a late
+failure, and reject missing Auth users, existing memberships, occupied tenant
+names and stale/future preparation clocks. Both ordinary members must read one
+own sentinel and zero other-tenant rows across 34 tables; anonymous reads must
+reveal none. Cancel jobs, block deliveries, and store no object bytes.
+
+**Local development result:** The data-only helper and actual-schema PGlite test
+meet those checks, including 68 own reads, 68 cross-reads, 34 anonymous probes
+and counts across all 68 application relations. The focused test and scoped
+lint passed. These are local synthetic Auth helpers/role claims, not Supabase
+logins. Native PostgreSQL 17 and full clean-candidate verification are pending;
+do not promote earlier candidate receipts to this changed tree.
+
+**Owner handoff:** Work Chrome verified staging's direct `Add user -> Create
+new user` form with `Auto confirm user?` checked and its no-confirmation-email
+notice. The blank form was handed to the owner before any credential entry.
+The owner supplied two UUIDs privately; password/session values were not
+requested or captured. UUIDs remain outside Git and are not yet independently
+attested as authenticated sessions. This does not authorize agent-created
+memberships, fixture insertion, execution, export, cleanup or deployment.
+
+**Next:** Finish candidate-bound native rehearsal, privately bind the reviewed
+fixture to those two identities and present exact hosted operation/stop limits
+for separate approval. Regenerate the clock-bound SQL immediately before final
+review; no hosted write or real session read is authorized by preparation.
 
 ### Isolation CLI False-Pass Regression - 2026-10-18 UTC
 
