@@ -4,16 +4,28 @@ import process from "node:process";
 import { evaluateTenantProbe } from "./lib/tenant-isolation-probe.mjs";
 
 const args = process.argv.slice(2);
-const baseUrl = required("--url").replace(/\/$/, "");
+const suppliedUrl = required("--url");
+const expectedProjectRef = required("--expected-project-ref");
 const tenantA = required("--tenant-a");
 const tenantB = required("--tenant-b");
-const anonKey = valueAfter("--anon-key") || process.env.SUPABASE_ANON_KEY;
-const tokenA = token("--access-token-a", "--access-token-file-a");
-const tokenB = token("--access-token-b", "--access-token-file-b");
 
 if (tenantA === tenantB) fail("--tenant-a and --tenant-b must be different");
-if (!/^https:\/\//i.test(baseUrl)) fail("--url must use HTTPS");
+if (!/^[a-z0-9]{20}$/.test(expectedProjectRef)) fail("--expected-project-ref must be a Supabase project reference");
+let parsedUrl;
+try { parsedUrl = new URL(suppliedUrl); } catch { fail("--url must be a valid Supabase project URL"); }
+if (parsedUrl.origin !== `https://${expectedProjectRef}.supabase.co` || parsedUrl.pathname !== "/"
+    || parsedUrl.username || parsedUrl.password || parsedUrl.search || parsedUrl.hash) {
+  fail("--url must match the independently verified --expected-project-ref without credentials, path or query");
+}
+const baseUrl = parsedUrl.origin;
+const anonKey = valueAfter("--anon-key") || process.env.SUPABASE_ANON_KEY;
 if (!anonKey) fail("--anon-key or SUPABASE_ANON_KEY is required");
+const tokenA = token("--access-token-a", "--access-token-file-a");
+const tokenB = token("--access-token-b", "--access-token-file-b");
+const [identityA, identityB] = await Promise.all([identity(tokenA), identity(tokenB)]);
+if (!identityA || !identityB || identityA === identityB) {
+  fail("Both sessions must resolve to distinct Supabase Auth users before table probes");
+}
 
 const probes = [
   ["records", "client_runtime_records"],
@@ -69,17 +81,29 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Client isolation verification passed for ${tenantA} and ${tenantB}. Tokens and row content were not printed.`);
+console.log(`Read-only client isolation probes passed for ${tenantA} and ${tenantB}: two distinct Auth users, ${probes.length} populated table probes. Tokens and row content were not printed. Writes, execution, export and recovery remain untested.`);
+
+async function identity(token) {
+  const response = await fetch(`${baseUrl}/auth/v1/user`, {
+    headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
+    cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000),
+  }).catch(() => null);
+  if (!response?.ok) return null;
+  const user = await response.json().catch(() => null);
+  return typeof user?.id === "string"
+    && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(user.id)
+    ? user.id.toLowerCase() : null;
+}
 
 async function select(table, tenant, token) {
   // Select tenant_slug rather than id: it is the one column every probed table
   // shares, and client_paperclip_companies is keyed by tenant_slug with no id.
   const response = await fetch(`${baseUrl}/rest/v1/${table}?select=tenant_slug&tenant_slug=eq.${encodeURIComponent(tenant)}&limit=1`, {
     headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
-    cache: "no-store",
+    cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000),
   }).catch(() => null);
-  const rows = await response?.json().catch(() => []) ?? [];
-  return { ok: response?.ok === true, status: response?.status ?? 503, rows: Array.isArray(rows) ? rows : [] };
+  const rows = await response?.json().catch(() => null);
+  return { ok: response?.ok === true && Array.isArray(rows), status: response?.status ?? 503, rows: Array.isArray(rows) ? rows : [] };
 }
 
 function required(flag) {

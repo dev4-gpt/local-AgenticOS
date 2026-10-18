@@ -1078,7 +1078,7 @@ probe script:
 ```bash
 npm run verify:client-isolation -- \
   --url https://YOUR_PROJECT.supabase.co \
-  --anon-key "$SUPABASE_ANON_KEY" \
+  --expected-project-ref YOUR_PROJECT \
   --tenant-a client-a \
   --tenant-b client-b \
   --access-token-file-a /private/tmp/client-a-access-token.txt \
@@ -1087,10 +1087,24 @@ npm run verify:client-isolation -- \
 
 Store each user token locally with mode `0600`; never put tokens in chat, shell
 arguments, source, or browser storage. The project public anon/publishable key
-is sent as `apikey`; each user token is sent only as the `Authorization` bearer
-token. The script checks each token's own tenant and confirms the opposite
-tenant returns zero rows for records, jobs, and artifacts. It never prints
-tokens or row content. Run it before enabling a second client manifest.
+is supplied through `SUPABASE_ANON_KEY` and sent as `apikey`; each user token is
+sent only as the `Authorization` bearer token. Independently verify the exact
+20-character project reference before running; the command rejects another
+origin, URL credentials, path, query or fragment before any request. Redirects
+are rejected and every request has a ten-second timeout.
+
+The script first resolves both sessions through Supabase Auth and requires
+distinct user IDs without printing them. It then requires a populated own
+sentinel and an empty successful cross-read for each token across all 34 named
+table probes. Invalid JSON, non-array bodies, HTTP errors and empty own reads
+are failures or inconclusive, never isolation evidence. A full successful run
+uses 138 read-only HTTP requests (two Auth checks plus 136 table reads), without
+automatic retries. It never prints tokens, Auth IDs, emails or row content.
+Prepare separately approved synthetic fixtures in every probed table first;
+do not fill gaps by importing customer or course material. This command proves
+only those read probes, not write isolation, application login, execution,
+review/export, expiry, deletion or recovery. Run it before enabling a second
+client manifest, with those separate acceptance gates still required.
 
 - In `app-auth` mode, the Cloud Run URL reaches only the login shell and the
   application requires a valid individual Supabase Auth session for runtime

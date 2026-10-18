@@ -115,7 +115,9 @@ downstream gates.
 
 **Current critical-path action (2026-10-18 UTC):** Prepare a separately reviewed
 Free-only real-Auth/two-member fixture plan for the installed disposable staging
-schema. The schema-only installation is complete; actual sign-in, memberships,
+schema using the fail-closed isolation CLI. Its offline regression repair is
+recorded below; require the clean-candidate receipt before using it as a test
+tool. The schema-only installation is complete; actual sign-in, memberships,
 tenant isolation, execution/export and recovery remain untested and fixture
 writes are not authorized by the schema approval. Require an exact synthetic
 fixture, identity/external-email boundaries, operation limits and cleanup/recovery
@@ -123,6 +125,49 @@ decisions before additional hosted writes. Follow the
 [disposable database procedure](./disposable-database-rehearsal.md), not the
 older control-plane tier that shares production Supabase. Free-only authority
 does not permit upgrades/payments or unreviewed production/destructive actions.
+
+### Isolation CLI False-Pass Regression - 2026-10-18 UTC
+
+**Failing baseline:** Preparing the real-Auth drill exposed that the existing
+CLI replaced invalid JSON and non-array read bodies with `[]` while retaining
+HTTP success. A malformed cross-read could therefore appear to prove isolation.
+It did not resolve the sessions through Auth and accepted any HTTPS destination
+for the supplied credentials. Offline subprocess tests intercepted every fetch
+and reproduced nine failing expectations against the previous implementation.
+Private baseline: `tmp/isolation-probe-cli-baseline-2026-10-18.json`, SHA-256
+`3ce2fd5e5c83e0c831d198a64178fe28c4d4fcabc46542d54bc3969865ea1f36`.
+These were synthetic local requests; no real credentials were sent or hosted
+exposure demonstrated.
+
+**Repair and local checks:** Require `--expected-project-ref` and its exact
+Supabase HTTPS origin before reading token files or making requests. Reject
+redirects, apply ten-second request deadlines, and require two distinct user
+IDs from successful Supabase Auth responses before probing tables. Non-array
+or invalid-JSON responses are inconclusive failures, not empty cross-reads.
+All 34 tables still require a positive own sentinel for each member and empty
+successful opposite-tenant reads. A successful command is explicitly labelled
+read-only; it makes 138 bounded requests with no retry and does not attest to
+writes, execution, export, deletion or recovery. Output omits session values,
+Auth IDs, emails and response bodies in the tested success/failure cases.
+
+The 14 targeted tests and 517 selected regressions pass with no skip, failure,
+flake or retry. Scoped lint, TypeScript, lifecycle and retention inventory also
+pass on the pre-commit candidate. Receipt:
+`tmp/isolation-probe-candidate-2026-10-18-v2/receipt.json`, SHA-256
+`87c066a80771c7334518f89622fcd7abfdc77220f9d6dad8d543fa0c8c0f244a`.
+This development receipt predates this board edit and is not clean-commit
+acceptance. Require `tmp/isolation-probe-committed-2026-10-18-v2/receipt.json`
+to exist and match the final commit, source/configuration hashes, refreshed
+offline AI and synthetic browser results before accepting that local candidate.
+
+**Scope and next action:** No application or SQL behavior changed, and all 74
+installed SQL source hashes remain unchanged. The historical schema-only
+receipt remains bound to its original SQL candidate, not this new CLI commit
+or a new deployment. No real Auth session, hosted table read, fixture write,
+provider call, deployment or spend occurred during this repair. Next prepare
+the exact 34-table fixture dependencies and owner-managed Auth/session handoff,
+then request the appropriate target-specific approval; do not treat a
+schema-only approval as permission to create users or import records.
 
 ### Approved Free Staging Schema Installation - 2026-10-18 UTC
 

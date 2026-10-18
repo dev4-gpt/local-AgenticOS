@@ -82,6 +82,34 @@ pilot does not authorize provider spend.
 
 ## Evidence Contract
 
+### Identity And Fixture Preconditions
+
+Schema installation alone cannot supply the 34 populated sentinels required by
+the read-only isolation command. A fixture plan must enumerate the exact rows,
+foreign-key dependencies, two distinct synthetic Auth users and memberships,
+per-table operation counts, fixed source clocks and follow-up disposal scope.
+Keep provider execution, object storage, deployment and outbound email absent
+unless separately approved. Do not use SQL `SET ROLE` or manufactured JWT claims
+as a substitute for real hosted Auth sessions.
+
+Have the owner create/store the disposable credentials and handle any new
+credential entry. Do not collect tokens from browser storage, cookies or hidden
+state, or paste credentials into chat. Before executing the CLI, establish an
+approved way for the owner to supply short-lived sessions privately; reading
+existing user/operator credentials is not authorized by a fixture plan. Existing
+password login is distinct from creating a new password/account and its possible
+email effects. No user invitation or sign-up email is implied by test approval.
+
+Pin `--expected-project-ref` to the independently observed staging reference and
+the HTTPS Supabase project origin. The current read-only command checks two
+distinct Auth users and 136 tenant reads, requires positive own sentinels and
+successful empty cross-reads, and fails closed on malformed results. A passing
+command is not the full journey: independently test application allowlists,
+membership checks, mutations, provider-disabled job admission, review/export,
+anonymous denial and all-copy retention/recovery under their approved scopes.
+
+### Receipt Boundaries
+
 Define the baseline, expected denials, acceptance criteria, operation bounds and
 stop conditions before evaluating a candidate. Preserve failures as well as
 passes. Bind results to source SHA, clean-tree status, source/configuration

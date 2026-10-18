@@ -379,7 +379,7 @@ export: it duplicates an artifact already held in Cloud Storage, and
   scripts are wired and syntax-checked, but executing them needs a second
   tenant access token and `SUPABASE_SERVICE_ROLE_KEY`, which the porting work
   does not hold:
-  `node scripts/verify-client-runtime-isolation.mjs --url <supabase-url> --tenant-a veloce-cloud-test --tenant-b <slug-b> --access-token-file-a <a> --access-token-file-b <b>`
+  `node scripts/verify-client-runtime-isolation.mjs --url <supabase-url> --expected-project-ref <verified-project-ref> --tenant-a veloce-cloud-test --tenant-b <slug-b> --access-token-file-a <a> --access-token-file-b <b>`
   and `npm run client:lifecycle -- --slug veloce-cloud-test --mode export`.
 - Splitting `ClientPaperclipWorkspace.tsx` (568 lines, over the 500-line rule).
 - Agent-authored comments, label management, project lead assignment, run
