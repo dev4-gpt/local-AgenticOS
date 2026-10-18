@@ -326,3 +326,79 @@ test("populated repository upgrade preserves original deadlines and purges only 
     await db.close();
   }
 });
+
+test("Paperclip issue purge drains bounded comments and runs before deleting the parent", async () => {
+  test.setTimeout(90_000);
+  const db = await repositoryDatabase();
+  try {
+    await db.exec(`
+      insert into auth.users values
+        ('00000000-0000-4000-8000-000000000101','owner-a@example.invalid'),
+        ('00000000-0000-4000-8000-000000000102','owner-b@example.invalid');
+      insert into public.client_tenants(slug,name,retention_days) values
+        ('tenant-a','Synthetic A',28),('tenant-b','Synthetic B',14);
+      insert into public.client_memberships(tenant_slug,user_id,role) values
+        ('tenant-a','00000000-0000-4000-8000-000000000101','owner'),
+        ('tenant-b','00000000-0000-4000-8000-000000000102','owner');
+      insert into public.client_paperclip_issues(tenant_slug,created_by,issue_number,identifier,title,created_at,updated_at)
+        select member.tenant_slug,member.user_id,age.number,'PC-'||age.number,age.label,
+          now()-make_interval(days=>age.days),now()
+        from public.client_memberships member
+        cross join (values (1,'active',10),(2,'recovery',30),(3,'due',40)) age(number,label,days);
+      insert into public.client_paperclip_comments(tenant_slug,created_by,issue_id,body,created_at)
+        select tenant_slug,created_by,id,'Synthetic issue comment',created_at+interval '1 day'
+        from public.client_paperclip_issues cross join generate_series(1,3);
+      insert into public.client_paperclip_runs(tenant_slug,created_by,issue_id,status,summary,created_at,updated_at)
+        select tenant_slug,created_by,id,'succeeded','Synthetic issue run',created_at+interval '1 day',now()
+        from public.client_paperclip_issues cross join generate_series(1,3);
+    `);
+    for (const name of retentionMigrations) await db.exec(readFileSync(`product-experience/supabase-${name}.sql`, "utf8"));
+    await db.exec(`
+      select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000101',false);
+      select set_config('request.jwt.claim.role','authenticated',false); set role authenticated;
+    `);
+    expect((await db.query("select title from public.client_paperclip_issues")).rows).toEqual([{ title: "active" }]);
+    expect((await db.query("select id from public.client_paperclip_comments")).rows).toHaveLength(3);
+    expect((await db.query("select id from public.client_paperclip_runs")).rows).toHaveLength(3);
+    await db.exec("reset role");
+    const foreignBefore = (await db.query(`
+      select to_jsonb(issue) as value from public.client_paperclip_issues issue where tenant_slug='tenant-b' order by id
+    `)).rows;
+    const count = async (table: string) => {
+      expect(table).toMatch(/^client_paperclip_(comments|runs|issues)$/);
+      return (await db.query(`select id from public.${table} where tenant_slug='tenant-a'`)).rows.length;
+    };
+    for (let batch = 0; batch < 3; batch++) {
+      const commentsBefore = await count("client_paperclip_comments");
+      const runsBefore = await count("client_paperclip_runs");
+      await db.exec("set role service_role");
+      const result = await db.query<{ result: { deleted: Record<string, number> } }>(
+        "select public.purge_expired_client_paperclip_records('tenant-a',true,1) as result",
+      );
+      await db.exec("reset role");
+      expect(commentsBefore - await count("client_paperclip_comments")).toBe(1);
+      expect(runsBefore - await count("client_paperclip_runs")).toBe(1);
+      expect(result.rows[0].result.deleted).toEqual({ comments: 1, runs: 1, issues: batch === 2 ? 1 : 0,
+        projects: 0, agents: 0, companies: 0 });
+      expect(await count("client_paperclip_issues")).toBe(batch === 2 ? 2 : 3);
+    }
+    expect((await db.query("select title from public.client_paperclip_issues where tenant_slug='tenant-a' order by title")).rows)
+      .toEqual([{ title: "active" }, { title: "recovery" }]);
+    expect((await db.query(`
+      select to_jsonb(issue) as value from public.client_paperclip_issues issue where tenant_slug='tenant-b' order by id
+    `)).rows).toEqual(foreignBefore);
+    expect((await db.query("select id from public.client_paperclip_comments where tenant_slug='tenant-b'")).rows).toHaveLength(9);
+    expect((await db.query("select id from public.client_paperclip_runs where tenant_slug='tenant-b'")).rows).toHaveLength(9);
+    const auditCount = (await db.query("select id from public.client_runtime_audit_events")).rows.length;
+    expect(auditCount).toBe(3);
+    await db.exec("set role service_role");
+    const replay = await db.query<{ result: { deleted: Record<string, number> } }>(
+      "select public.purge_expired_client_paperclip_records('tenant-a',true,1) as result",
+    );
+    expect(Object.values(replay.rows[0].result.deleted).every((n) => n === 0)).toBe(true);
+    await db.exec("reset role");
+    expect((await db.query("select id from public.client_runtime_audit_events")).rows).toHaveLength(auditCount);
+  } finally {
+    await db.close();
+  }
+});

@@ -1189,6 +1189,11 @@ Board/Loop parents must wait until all comments/events/rounds are drained;
 otherwise a foreign-key cascade can exceed the requested per-table batch and
 undercount deletions. Retry bounded batches until the preview reports no due
 rows; never increase limits or remove guards merely to force completion.
+Paperclip issue parents likewise wait for all comments and runs, including any
+legacy foreign-tenant reference. The populated test verifies three one-row child
+batches before issue deletion, exact reported counts, recovery-only rows and an
+unchanged foreign tenant. This does not bound unrelated `SET NULL` updates or
+prove multi-connection contention behavior.
 
 Keep the existing named worker parameters when using `create or replace
 function`; PostgreSQL rejects replacing named parameters with unnamed arguments,

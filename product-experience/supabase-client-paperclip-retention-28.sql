@@ -202,6 +202,7 @@ declare
   i integer;
   n integer;
   total integer:=0;
+  parent_guard text;
 begin
   if p_tenant_slug is null or p_tenant_slug !~ '^[a-z][a-z0-9-]{2,40}$' or p_apply is null or p_batch_limit is null or p_batch_limit<1 or p_batch_limit>500 then
     raise exception 'paperclip_retention_invalid_input';
@@ -224,7 +225,12 @@ begin
         execute 'with chosen as (select ctid from public.client_paperclip_companies where tenant_slug=$1 and retention_expires_at<=$2 order by retention_expires_at,tenant_slug limit $3 for update skip locked), removed as (delete from public.client_paperclip_companies t using chosen where t.ctid=chosen.ctid returning 1) select count(*) from removed'
           into n using p_tenant_slug,v_cutoff,p_batch_limit;
       else
-        execute format('with chosen as (select ctid from public.%I where tenant_slug=$1 and retention_expires_at<=$2 order by retention_expires_at,id limit $3 for update skip locked), removed as (delete from public.%I t using chosen where t.ctid=chosen.ctid returning 1) select count(*) from removed',v_tables[i],v_tables[i])
+        -- Do not let an issue cascade bypass either bounded child batch,
+        -- including remaining legacy references outside the requested tenant.
+        parent_guard:=case when v_tables[i]='client_paperclip_issues' then
+          'and not exists(select 1 from public.client_paperclip_comments child where child.issue_id=candidate.id) and not exists(select 1 from public.client_paperclip_runs child where child.issue_id=candidate.id)'
+          else '' end;
+        execute format('with chosen as (select ctid from public.%I candidate where tenant_slug=$1 and retention_expires_at<=$2 %s order by retention_expires_at,id limit $3 for update skip locked), removed as (delete from public.%I t using chosen where t.ctid=chosen.ctid returning 1) select count(*) from removed',v_tables[i],parent_guard,v_tables[i])
           into n using p_tenant_slug,v_cutoff,p_batch_limit;
       end if;
       v_counts[i]:=n; total:=total+n;

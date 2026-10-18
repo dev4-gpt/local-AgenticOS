@@ -71,7 +71,7 @@ and it does not contend for the same browser, tenant, environment, or files.
 
 | Gate | State (2026-10-17) | Depends on | Required work and exit evidence | Boundary / next action |
 | --- | --- | --- | --- | --- |
-| M0 - Candidate and evidence baseline | `IN_PROGRESS` for populated-schema cleanup repair acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Repair base `31937589edfff43aef9cdce248963d873e6839d2`, Node `v24.19.0`. That clean candidate passed 499 regressions, 24 offline AI cases and eight synthetic browser scenarios. The Board/Loop cascade repair changes SQL and requires refreshed evidence. Require `tmp/populated-schema-committed-evidence-2026-10-18.json` to exist and match HEAD before current local acceptance. Ledger, hosted acceptance and all-copy retention remain open. |
+| M0 - Candidate and evidence baseline | `IN_PROGRESS` for Paperclip bounded-cleanup repair acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Repair base `056d54c7fddee23834ee7f2e5ea0f5786d09a160`, Node `v24.19.0`. That clean candidate passed 500 regressions, 24 offline AI cases and eight synthetic browser scenarios. The Paperclip cascade repair changes SQL and requires refreshed evidence. Require `tmp/paperclip-bounded-committed-evidence-2026-10-18.json` to exist and match HEAD before current local acceptance. Ledger, hosted acceptance and all-copy retention remain open. |
 | M1 - Customer journey | `IN_PROGRESS` for current-source local refresh; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | The previous clean receipt includes six Notebook and two Room synthetic browser scenarios on the repair base, not the edited candidate. Refresh candidate-bound checks before a new acceptance claim. Synthetic fixtures do not establish real customer acceptance, hosted grants/isolation, object recovery or the full hosted journey. |
 | M2 - Authorized Skool archive/import | `IN_PROGRESS` | M0; M1 source/provenance contracts inform import | Reconcile the canonical lesson inventory and all authorized source material; identify full text, summary-only, transcript-only, missing, duplicate, and video-reference coverage separately; validate a dry-run pack and idempotency; then require post-import graph/source-link evidence for an explicitly verified tenant. | Current private graph `tmp/authorized-skool-import/agentos-page-text-reconciled-2026-10-17.jsonld` validates at **1,471 nodes / 10,735 relations**. All 18 earlier gap pages were observed in authorized Work Chrome: 15 now have captured inline page text and three are video-only with no body. **107/110** lessons have page-text segments; the new captures are resource labels/community CTA and a ZIP usage note, not lesson video contents. The three remaining no-body pages are July 26 ChatGPT Voice, August 28 Claude Watermarks and September 23 Claude Opus 5.5; their YouTube references are known. All previous text, 12 companion-text links and three transcript segments are preserved. Main-player audit remains 93 YouTube / 17 Skool-native, not video bytes. Production parser accepts all 18 records, including three media-only; portable validation, repeat merge and complete-export rejection pass. The 12 PDFs, four pinned READMEs and extracted Codex README remain included; BWC is excluded. `completenessVerified=false`, with one excerpt/two unknown transcripts and none declared full. No hosted import or new Drive upload occurred. Next: obtain permitted full transcript/video exports, review omissions and confirm the destination tenant before separately authorized import. |
 | M3 - Local/cloud parity and security | `BLOCKED` | M0 candidate; M1 local acceptance | Identify exact local candidate and hosted service/revision/image/config/migrations; read-only compare same authenticated member and tenant; then prove two-member/two-tenant isolation, route allowlist, storage proxy, and 28-day active + seven-day recovery behavior with hosted receipts. | Owner-selected default is `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in Aryaman (Work) Chrome. Fresh read-only service/revision metadata confirms project `veloce-agenticos-2026`, region `asia-south1`, revision `veloce-cloud-test-00208-5hk` at 100% traffic and image `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`. Auth is enforced; provider calls are disabled. No source stamp exists, identity/import APIs are excluded, runtime and bucket retention are 14 days, and two inbox secrets are inline rather than Secret Manager references. Bucket metadata reports seven-day soft delete; behavioral recovery/deletion is unverified. Historical Internal Beta findings do not describe this selected tenant. Same-member/tenant comparison, independent source attestation, migrations, isolation and 28+7 behavior remain open. Hosted remediation requires separate target-specific approval. |
@@ -113,16 +113,34 @@ downstream gates.
   and the strict verifier. The ledger/checklist, not this narrative board,
   decides whether all mandatory evidence and approvals are present.
 
-**Current critical-path action (2026-10-18 UTC):** Verify the populated-schema
-bounded-cleanup repair before any hosted rollout review. A one-row child batch
-was bypassed by deleting its parent: three comments disappeared while the RPC
-reported one. Board/Loop parents must now wait for every child batch to drain.
-The regression applies 47 actual predecessor files followed by 26 migrations
-with synthetic historical records, then checks original deadlines, recovery-only
-read denial, bounded deletion counts and another tenant's unchanged content.
-Refresh clean-commit evidence before accepting the repair, then review deployed
-definitions, existing-data integrity and original-clock backup/rollback
+**Current critical-path action (2026-10-18 UTC):** Verify Paperclip's populated
+schema cleanup repair before any hosted rollout review. Its issue cascade also
+bypassed a one-row batch and undercounted child deletion. Issue parents must now
+wait for all comments and runs. The regression applies 47 actual predecessor
+files and 26 migrations with synthetic historical records, then checks original
+deadlines, recovery-only reads, bounded child counts and an unchanged foreign
+tenant. Refresh clean-commit evidence before accepting the repair, then review
+deployed definitions, existing-data integrity and original-clock backup/rollback
 prerequisites. Hosted schema or cleanup remains unauthorized.
+
+### Paperclip Bounded Cleanup Evidence - 2026-10-18 UTC
+
+Baseline source: `056d54c7fddee23834ee7f2e5ea0f5786d09a160`, clean before
+adding the regression. Private baseline
+`tmp/paperclip-bounded-schema-baseline-2026-10-18.json` records one failure:
+one requested child deletion removed three comments through the issue cascade.
+The repaired RPC waits until both comments and runs are empty before selecting
+an issue parent. Existing signatures, grants, retention clocks and child batch
+limits are unchanged; no guard is disabled.
+
+The test uses actual repository application tables, foreign keys and triggers,
+with synthetic auth/historical fixtures. Three one-row batches must exactly
+match the reported child deletion counts, delete the parent only on the final
+batch, keep active/recovery-only rows and preserve the other tenant. A repeat
+must delete nothing and add no audit event. Nine targeted checks pass before
+commit. Require `tmp/paperclip-bounded-committed-evidence-2026-10-18.json` to
+exist and match HEAD for final local acceptance. This is not hosted deletion,
+all-table mutation bounds, multi-connection race, backup or customer evidence.
 
 ### Populated Schema Cleanup Evidence - 2026-10-18 UTC
 
