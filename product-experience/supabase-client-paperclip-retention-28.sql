@@ -241,11 +241,13 @@ $$;
 revoke all on function public.purge_expired_client_paperclip_records(text,boolean,integer) from public,anon,authenticated;
 grant execute on function public.purge_expired_client_paperclip_records(text,boolean,integer) to service_role;
 
-create or replace function public.complete_client_paperclip_run_worker(text,text,uuid,text,text,text,bigint,uuid,text)
+create or replace function public.complete_client_paperclip_run_worker(
+  p_tenant_slug text, p_worker_token text, p_job_id uuid, p_status text,
+  p_summary text, p_error_code text, p_cost_micros bigint,
+  p_build_artifact_id uuid, p_build_preview_html text
+)
 returns boolean language plpgsql security definer set search_path=public,extensions as $$
 declare
-  p_tenant_slug alias for $1; p_worker_token alias for $2; p_job_id alias for $3; p_status alias for $4;
-  p_summary alias for $5; p_error_code alias for $6; p_cost_micros alias for $7; p_build_artifact_id alias for $8; p_build_preview_html alias for $9;
   target_issue uuid; target_agent uuid;
 begin
   if p_worker_token is null or length(p_worker_token)<24 or p_status is null or p_status not in ('running','succeeded','failed','cancelled')

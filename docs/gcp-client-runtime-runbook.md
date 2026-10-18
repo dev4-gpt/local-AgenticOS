@@ -1172,6 +1172,22 @@ These listings are read-only but may incur Cloud Storage listing charges.
 Never treat a bucket-only configuration snapshot as proof of object-level
 retention.
 
+## Repository Schema Rehearsal
+
+Run `npm run verify:client-schema-upgrade` before reviewing a retention rollout.
+This isolated PostgreSQL test applies 47 actual repository predecessor files
+and the 26 retention/review/restore migrations together. It checks 49 lifecycle
+column projections, worker argument/grant compatibility, service-only purge
+previews, a synthetic original-clock metadata restore and two-member reads.
+It is also included in `npm run verify:client-lifecycle`.
+
+Keep the existing named worker parameters when using `create or replace
+function`; PostgreSQL rejects replacing named parameters with unnamed arguments,
+and PostgREST callers depend on those names. Do not drop functions or weaken
+grants to make an upgrade pass. The test uses synthetic auth claims and a fresh
+repository schema: it is not a deployed-database clone, an existing-data
+backfill, a backup restore drill, or permission to apply SQL to a hosted target.
+
 ## Room Schema Order
 
 The operator `client-lifecycle --mode retention` command also previews the

@@ -259,10 +259,11 @@ $$;
 revoke all on function public.purge_expired_client_board_loop_records(text,boolean,integer) from public, anon, authenticated;
 grant execute on function public.purge_expired_client_board_loop_records(text,boolean,integer) to service_role;
 
-create or replace function public.update_client_board_task_worker(text,text,uuid,jsonb)
+create or replace function public.update_client_board_task_worker(
+  p_tenant_slug text, p_worker_token text, p_job_id uuid, p_patch jsonb
+)
 returns boolean language plpgsql security definer set search_path = public, extensions as $$
 declare
-  p_tenant_slug alias for $1; p_worker_token alias for $2; p_job_id alias for $3; p_patch alias for $4;
   next_status text; next_execution text; target uuid;
 begin
   if p_worker_token is null or length(p_worker_token)<24 or p_patch is null or jsonb_typeof(p_patch)<>'object'
@@ -281,12 +282,13 @@ begin
   return true;
 end; $$;
 
-create or replace function public.append_client_loop_round_worker(text,text,uuid,integer,boolean,integer,text[],text,integer,bigint,text)
+create or replace function public.append_client_loop_round_worker(
+  p_tenant_slug text, p_worker_token text, p_job_id uuid, p_round integer,
+  p_passed boolean, p_score integer, p_issues text[], p_summary text,
+  p_artifact_chars integer, p_cost_micros bigint, p_error_code text
+)
 returns boolean language plpgsql security definer set search_path = public, extensions as $$
 declare
-  p_tenant_slug alias for $1; p_worker_token alias for $2; p_job_id alias for $3; p_round alias for $4;
-  p_passed alias for $5; p_score alias for $6; p_issues alias for $7; p_summary alias for $8;
-  p_artifact_chars alias for $9; p_cost_micros alias for $10; p_error_code alias for $11;
   target uuid; bounded_issues text[];
 begin
   if p_worker_token is null or length(p_worker_token)<24 or p_round is null or p_round<1 or p_round>5
@@ -303,11 +305,11 @@ begin
   return found;
 end; $$;
 
-create or replace function public.settle_client_loop_run_worker(text,text,uuid,text,text,uuid,text,text)
+create or replace function public.settle_client_loop_run_worker(
+  p_tenant_slug text, p_worker_token text, p_job_id uuid, p_status text,
+  p_final_summary text, p_build_artifact_id uuid, p_build_preview_html text, p_error_code text
+)
 returns boolean language plpgsql security definer set search_path = public, extensions as $$
-declare
-  p_tenant_slug alias for $1; p_worker_token alias for $2; p_job_id alias for $3; p_status alias for $4;
-  p_final_summary alias for $5; p_build_artifact_id alias for $6; p_build_preview_html alias for $7; p_error_code alias for $8;
 begin
   if p_worker_token is null or length(p_worker_token)<24 or p_status not in ('running','passed','exhausted','failed','cancelled')
      or not exists(select 1 from public.client_tenants where slug=p_tenant_slug and status='active' and worker_token_hash=encode(digest(p_worker_token,'sha256'),'hex')) then return false; end if;
