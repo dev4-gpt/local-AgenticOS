@@ -108,27 +108,34 @@ test("Supabase table defaults cannot give members tenant-wide administrative pri
       insert into public.client_board_comments(tenant_slug,task_id,created_by,body) values
         ('tenant-a','00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000101','Private to A'),
         ('tenant-b','00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000102','Private to B');
+      insert into public.deployment_requests(name,email,company,workflow) values
+        ('Synthetic A','a@example.invalid','Synthetic A','Synthetic test'),
+        ('Synthetic B','b@example.invalid','Synthetic B','Synthetic test');
     `);
     const outcomes = [];
     for (const role of ["anon", "authenticated"]) {
-      let code: string | null = null;
-      let remaining = 2;
-      try {
-        await db.exec(`begin; set local role ${role}; truncate public.client_board_comments; reset role;`);
-        remaining = (await db.query("select id from public.client_board_comments")).rows.length;
-      } catch (error) {
-        code = (error as { code?: string }).code ?? "unknown";
-      } finally {
-        await db.exec("rollback; reset role;");
+      for (const table of ["client_board_comments", "deployment_requests"]) {
+        let code: string | null = null;
+        let remaining = 2;
+        try {
+          await db.exec(`begin; set local role ${role}; truncate public.${table}; reset role;`);
+          remaining = (await db.query(`select id from public.${table}`)).rows.length;
+        } catch (error) {
+          code = (error as { code?: string }).code ?? "unknown";
+        } finally {
+          await db.exec("rollback; reset role;");
+        }
+        outcomes.push({ role, table, code, remainingBeforeRollback: remaining });
+        expect((await db.query(`select id from public.${table}`)).rows).toHaveLength(2);
+        expect((await db.query("select id from public.client_runtime_records")).rows).toHaveLength(2);
       }
-      outcomes.push({ role, code, remainingBeforeRollback: remaining });
-      expect((await db.query("select id from public.client_board_comments")).rows).toHaveLength(2);
-      expect((await db.query("select id from public.client_runtime_records")).rows).toHaveLength(2);
     }
     test.info().annotations.push({ type: "truncate-boundary", description: JSON.stringify(outcomes) });
     expect(outcomes).toEqual([
-      { role: "anon", code: "42501", remainingBeforeRollback: 2 },
-      { role: "authenticated", code: "42501", remainingBeforeRollback: 2 },
+      { role: "anon", table: "client_board_comments", code: "42501", remainingBeforeRollback: 2 },
+      { role: "anon", table: "deployment_requests", code: "42501", remainingBeforeRollback: 2 },
+      { role: "authenticated", table: "client_board_comments", code: "42501", remainingBeforeRollback: 2 },
+      { role: "authenticated", table: "deployment_requests", code: "42501", remainingBeforeRollback: 2 },
     ]);
 
     const administrativeGrants = async () => (await db.query(`
@@ -136,7 +143,7 @@ test("Supabase table defaults cannot give members tenant-wide administrative pri
       from pg_class c join pg_namespace n on n.oid=c.relnamespace
       cross join (values ('anon'),('authenticated')) r(rolname)
       cross join (values ('TRUNCATE'),('REFERENCES'),('TRIGGER'),('MAINTAIN')) p(privilege)
-      where n.nspname='public' and left(c.relname,7)='client_' and c.relkind in ('r','p')
+      where n.nspname='public' and c.relkind in ('r','p')
         and has_table_privilege(r.rolname,c.oid,p.privilege)
       order by c.relname,r.rolname,privilege
     `)).rows;

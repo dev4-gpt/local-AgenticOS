@@ -71,7 +71,7 @@ and it does not contend for the same browser, tenant, environment, or files.
 
 | Gate | State (2026-10-18) | Depends on | Required work and exit evidence | Boundary / next action |
 | --- | --- | --- | --- | --- |
-| M0 - Candidate and evidence baseline | `IN_PROGRESS` for administrative-privilege repair acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Clean base `43ff36158403d989bb1bc26709328b4adcf9cc43`, Node `v24.19.0`, passed 502 regressions, 24 offline AI cases and eight synthetic browser scenarios. Staging's broad defaults then reproduced cross-tenant table truncation locally. Require `tmp/staging-default-grants-committed-evidence-2026-10-18.json` to exist and match the repaired candidate before local acceptance. Ledger, hosted acceptance and all-copy retention remain open. |
+| M0 - Candidate and evidence baseline | `IN_PROGRESS` for administrative-privilege repair acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Clean base `43ff36158403d989bb1bc26709328b4adcf9cc43`, Node `v24.19.0`, passed 502 regressions, 24 offline AI cases and eight synthetic browser scenarios. Staging's broad defaults then reproduced cross-tenant table truncation locally. Require `tmp/staging-default-grants-intake-committed-evidence-2026-10-18.json` to exist and match the repaired candidate before local acceptance. Ledger, hosted acceptance and all-copy retention remain open. |
 | M1 - Customer journey | `IN_PROGRESS`; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | The clean `43ff361` receipt includes six Notebook and two Room synthetic browser scenarios. Refresh candidate-bound checks after the privilege repair. Synthetic fixtures do not establish real customer acceptance, hosted grants/isolation, object recovery or the full hosted journey. |
 | M2 - Authorized Skool archive/import | `IN_PROGRESS` | M0; M1 source/provenance contracts inform import | Reconcile the canonical lesson inventory and all authorized source material; identify full text, summary-only, transcript-only, missing, duplicate, and video-reference coverage separately; validate a dry-run pack and idempotency; then require post-import graph/source-link evidence for an explicitly verified tenant. | Current private graph `tmp/authorized-skool-import/agentos-page-text-reconciled-2026-10-17.jsonld` validates at **1,471 nodes / 10,735 relations**. All 18 earlier gap pages were observed in authorized Work Chrome: 15 now have captured inline page text and three are video-only with no body. **107/110** lessons have page-text segments; the new captures are resource labels/community CTA and a ZIP usage note, not lesson video contents. The three remaining no-body pages are July 26 ChatGPT Voice, August 28 Claude Watermarks and September 23 Claude Opus 5.5; their YouTube references are known. All previous text, 12 companion-text links and three transcript segments are preserved. Main-player audit remains 93 YouTube / 17 Skool-native, not video bytes. Production parser accepts all 18 records, including three media-only; portable validation, repeat merge and complete-export rejection pass. The 12 PDFs, four pinned READMEs and extracted Codex README remain included; BWC is excluded. `completenessVerified=false`, with one excerpt/two unknown transcripts and none declared full. No hosted import or new Drive upload occurred. Next: obtain permitted full transcript/video exports, review omissions and confirm the destination tenant before separately authorized import. |
 | M3 - Local/cloud parity and security | `BLOCKED` | M0 candidate; M1 local acceptance | Identify exact local candidate and hosted service/revision/image/config/migrations; read-only compare same authenticated member and tenant; then prove two-member/two-tenant isolation, route allowlist, storage proxy, and 28-day active + seven-day recovery behavior with hosted receipts. | Owner-selected default is `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in Aryaman (Work) Chrome. Fresh read-only service/revision metadata confirms project `veloce-agenticos-2026`, region `asia-south1`, revision `veloce-cloud-test-00208-5hk` at 100% traffic and image `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`. Auth is enforced; provider calls are disabled. No source stamp exists, identity/import APIs are excluded, runtime and bucket retention are 14 days, and two inbox secrets are inline rather than Secret Manager references. Bucket metadata reports seven-day soft delete; behavioral recovery/deletion is unverified. Historical Internal Beta findings do not describe this selected tenant. Same-member/tenant comparison, independent source attestation, migrations, isolation and 28+7 behavior remain open. Hosted remediation requires separate target-specific approval. |
@@ -155,18 +155,26 @@ reachable public endpoint exploit or a breach of existing customer data.
 
 **Repair and acceptance:** The new table-privilege migration revokes TRUNCATE,
 REFERENCES, TRIGGER and MAINTAIN from PUBLIC/anon/authenticated on existing
-public `client_*` tables and from global/public-schema table defaults for its
+public `client_*` tables, `deployment_requests`, and global/public-schema table defaults for its
 applying creator. It preserves DML, policies, direct service-role grants,
 functions, sequences, data and clocks; removing PUBLIC also removes privileges
 other roles inherited only through PUBLIC. Review effective operator access.
 Any remaining member inherited/owner privilege aborts
 the transaction instead of modifying membership. The five schema tests pass,
 including two-role denial, preserved tenant reads, future-table checks, repeat
-apply and rollback on inherited privileges. A separate failing release-gate
+apply and rollback on inherited privileges. The audit also covers all 68 public
+application tables, not just the client prefix. A separate failing release-gate
 baseline proves the verifier previously omitted the migration; it now requires
 the exact migration hash. Candidate-wide and PostgreSQL 17 observed-default
 replay results must be refreshed on the clean repaired commit before acceptance.
-Require `tmp/staging-default-grants-committed-evidence-2026-10-18.json` to
+An additional local baseline on `85d04f2` found four administrative privileges
+left on `deployment_requests` for `authenticated`. Its truncate attempt failed
+on the onboarding foreign key, so no successful intake truncate is claimed;
+the grant boundary still needs repair independently of that incidental denial.
+Evidence: `tmp/intake-table-privilege-baseline-2026-10-18.json`. The migration
+now names intake explicitly, and the test audits every public application
+table and requires privilege-denial errors on both comments and intake.
+Require `tmp/staging-default-grants-intake-committed-evidence-2026-10-18.json` to
 exist and match source/configuration hashes; this narrative is not a pass.
 
 **Limits and next step:** No staging application schema, users, fixtures,

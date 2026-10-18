@@ -1213,7 +1213,8 @@ migrations suggest. RLS does not constrain whole-table `TRUNCATE` or
 under broad defaults, then rolls the synthetic transaction back.
 
 The migration removes `TRUNCATE`, `REFERENCES`, `TRIGGER` and `MAINTAIN` from
-`PUBLIC`, `anon` and `authenticated` on existing public `client_*` tables. It
+`PUBLIC`, `anon` and `authenticated` on existing public `client_*` tables and
+the public intake table `deployment_requests`. It
 also removes those global/public-schema table defaults for the applying creator.
 It leaves row-level SELECT/INSERT/UPDATE/DELETE permissions, RLS policies,
 function/sequence grants, direct service-role grants, data and retention clocks
@@ -1224,7 +1225,9 @@ review role ownership/membership instead of disabling the check. Repeat apply
 is idempotent. A table created later by a different owner is not covered by
 the applying creator's defaults and requires independent review.
 
-The schema test verifies two-role truncate denial, existing/future effective
+The schema test verifies two-role truncate denial on comments and intake,
+audits administrative privileges across all repository public tables, and
+checks existing/future effective
 privileges, preserved member reads/service access, global `PUBLIC` grants,
 repeat apply and rollback of revokes when inherited privileges remain. These
 are synthetic local checks, not proof of a reachable public exploit, a deployed

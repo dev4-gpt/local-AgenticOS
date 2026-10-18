@@ -15,7 +15,8 @@ begin
     select n.nspname, c.relname
     from pg_catalog.pg_class c
     join pg_catalog.pg_namespace n on n.oid=c.relnamespace
-    where n.nspname='public' and pg_catalog.left(c.relname,7)='client_'
+    where n.nspname='public'
+      and (pg_catalog.left(c.relname,7)='client_' or c.relname='deployment_requests')
       and c.relkind in ('r','p')
     order by c.relname
   loop
@@ -33,7 +34,8 @@ begin
     join pg_catalog.pg_namespace n on n.oid=c.relnamespace
     cross join (values ('anon'),('authenticated')) r(role_name)
     cross join (values ('TRUNCATE'),('REFERENCES'),('TRIGGER'),('MAINTAIN')) p(privilege)
-    where n.nspname='public' and pg_catalog.left(c.relname,7)='client_'
+    where n.nspname='public'
+      and (pg_catalog.left(c.relname,7)='client_' or c.relname='deployment_requests')
       and c.relkind in ('r','p')
       and pg_catalog.has_table_privilege(r.role_name,c.oid,p.privilege)
   ) then
