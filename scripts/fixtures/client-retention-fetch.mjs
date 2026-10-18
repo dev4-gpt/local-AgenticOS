@@ -1,6 +1,18 @@
 globalThis.fetch = async (url, options) => {
   const parsed = new URL(url);
   if (parsed.origin !== "https://example.supabase.co") throw new Error("Unexpected retention origin");
+  if (parsed.pathname.endsWith("/rpc/purge_expired_client_credit_records") && options.method === "POST") {
+    const payload = JSON.parse(options.body);
+    if (payload.p_tenant_slug !== "tenant-a" || payload.p_batch_limit !== 100 || typeof payload.p_apply !== "boolean") {
+      throw new Error("Unexpected managed-credit retention RPC payload");
+    }
+    if (process.env.RETENTION_MOCK_CREDIT_RPC_FAIL === "1") return new Response(null, { status: 404 });
+    console.log(`MOCK_CREDIT_RETENTION:${payload.p_apply}`);
+    return Response.json({ tenant: "tenant-a", candidates: { transactions: 2 },
+      deleted: payload.p_apply ? { transactions: 2 } : {}, remainingCandidates: { transactions: payload.p_apply ? 0 : 2 },
+      preservedNonzeroWalletBalances: 1, preservedNonzeroProviderBalances: 1,
+      retentionDays: 28, recoveryDays: 7, purgeAfterDays: 35, applied: payload.p_apply });
+  }
   if (parsed.pathname.endsWith("/rpc/purge_expired_client_runtime_jobs") && options.method === "POST") {
     const payload = JSON.parse(options.body);
     if (payload.p_tenant_slug !== "tenant-a" || payload.p_batch_limit !== 500 || typeof payload.p_apply !== "boolean") {

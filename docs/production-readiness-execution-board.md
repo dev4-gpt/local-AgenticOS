@@ -71,7 +71,7 @@ and it does not contend for the same browser, tenant, environment, or files.
 
 | Gate | State (2026-10-17) | Depends on | Required work and exit evidence | Boundary / next action |
 | --- | --- | --- | --- | --- |
-| M0 - Candidate and evidence baseline | `IN_PROGRESS` for Paperclip bounded-cleanup repair acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Repair base `056d54c7fddee23834ee7f2e5ea0f5786d09a160`, Node `v24.19.0`. That clean candidate passed 500 regressions, 24 offline AI cases and eight synthetic browser scenarios. The Paperclip cascade repair changes SQL and requires refreshed evidence. Require `tmp/paperclip-bounded-committed-evidence-2026-10-18.json` to exist and match HEAD before current local acceptance. Ledger, hosted acceptance and all-copy retention remain open. |
+| M0 - Candidate and evidence baseline | `IN_PROGRESS` for operator credit-cleanup acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Repair base `d831255c24acdf84bc2627ae8faac7e3747c5c0b`, Node `v24.19.0`. That clean candidate passed 501 regressions, 24 offline AI cases and eight synthetic browser scenarios. Connecting the omitted credit-retention RPC changes the operator command, not financial SQL, and requires refreshed evidence. Require `tmp/operator-credit-retention-committed-evidence-2026-10-18.json` to exist and match HEAD before current local acceptance. Ledger, hosted acceptance and all-copy retention remain open. |
 | M1 - Customer journey | `IN_PROGRESS` for current-source local refresh; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | The previous clean receipt includes six Notebook and two Room synthetic browser scenarios on the repair base, not the edited candidate. Refresh candidate-bound checks before a new acceptance claim. Synthetic fixtures do not establish real customer acceptance, hosted grants/isolation, object recovery or the full hosted journey. |
 | M2 - Authorized Skool archive/import | `IN_PROGRESS` | M0; M1 source/provenance contracts inform import | Reconcile the canonical lesson inventory and all authorized source material; identify full text, summary-only, transcript-only, missing, duplicate, and video-reference coverage separately; validate a dry-run pack and idempotency; then require post-import graph/source-link evidence for an explicitly verified tenant. | Current private graph `tmp/authorized-skool-import/agentos-page-text-reconciled-2026-10-17.jsonld` validates at **1,471 nodes / 10,735 relations**. All 18 earlier gap pages were observed in authorized Work Chrome: 15 now have captured inline page text and three are video-only with no body. **107/110** lessons have page-text segments; the new captures are resource labels/community CTA and a ZIP usage note, not lesson video contents. The three remaining no-body pages are July 26 ChatGPT Voice, August 28 Claude Watermarks and September 23 Claude Opus 5.5; their YouTube references are known. All previous text, 12 companion-text links and three transcript segments are preserved. Main-player audit remains 93 YouTube / 17 Skool-native, not video bytes. Production parser accepts all 18 records, including three media-only; portable validation, repeat merge and complete-export rejection pass. The 12 PDFs, four pinned READMEs and extracted Codex README remain included; BWC is excluded. `completenessVerified=false`, with one excerpt/two unknown transcripts and none declared full. No hosted import or new Drive upload occurred. Next: obtain permitted full transcript/video exports, review omissions and confirm the destination tenant before separately authorized import. |
 | M3 - Local/cloud parity and security | `BLOCKED` | M0 candidate; M1 local acceptance | Identify exact local candidate and hosted service/revision/image/config/migrations; read-only compare same authenticated member and tenant; then prove two-member/two-tenant isolation, route allowlist, storage proxy, and 28-day active + seven-day recovery behavior with hosted receipts. | Owner-selected default is `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in Aryaman (Work) Chrome. Fresh read-only service/revision metadata confirms project `veloce-agenticos-2026`, region `asia-south1`, revision `veloce-cloud-test-00208-5hk` at 100% traffic and image `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`. Auth is enforced; provider calls are disabled. No source stamp exists, identity/import APIs are excluded, runtime and bucket retention are 14 days, and two inbox secrets are inline rather than Secret Manager references. Bucket metadata reports seven-day soft delete; behavioral recovery/deletion is unverified. Historical Internal Beta findings do not describe this selected tenant. Same-member/tenant comparison, independent source attestation, migrations, isolation and 28+7 behavior remain open. Hosted remediation requires separate target-specific approval. |
@@ -113,15 +113,37 @@ downstream gates.
   and the strict verifier. The ledger/checklist, not this narrative board,
   decides whether all mandatory evidence and approvals are present.
 
-**Current critical-path action (2026-10-18 UTC):** Verify Paperclip's populated
-schema cleanup repair before any hosted rollout review. Its issue cascade also
-bypassed a one-row batch and undercounted child deletion. Issue parents must now
-wait for all comments and runs. The regression applies 47 actual predecessor
-files and 26 migrations with synthetic historical records, then checks original
-deadlines, recovery-only reads, bounded child counts and an unchanged foreign
-tenant. Refresh clean-commit evidence before accepting the repair, then review
-deployed definitions, existing-data integrity and original-clock backup/rollback
-prerequisites. Hosted schema or cleanup remains unauthorized.
+**Current critical-path action (2026-10-18 UTC):** Verify the operator command's
+missing managed-credit retention step before any hosted rollout review. Default
+preview now includes the existing V49 RPC with a tenant-scoped 100-row batch;
+apply requires separate credit confirmation before any request. Refresh
+clean-commit evidence, then review deployed definitions, existing-data integrity
+and a disposable staging/recovery plan. Staging means a separate backend with
+fake data, not the current project labeled PRODUCTION. Creating staging,
+changing hosted schema/data, cleanup and spend all remain unauthorized.
+
+### Operator Credit Cleanup Evidence - 2026-10-18 UTC
+
+Baseline source: clean `d831255c24acdf84bc2627ae8faac7e3747c5c0b`.
+`tmp/operator-credit-retention-baseline-2026-10-18.json` records one failure:
+the operator preview skipped managed-credit retention entirely. The repair
+includes `creditRetention` in preview/apply output and requires
+`--confirm-retention-credit` before any request. Jobs precede credit; credit
+precedes audit/budget. Credit failure stops later steps, but earlier RPCs may
+already have committed. No multi-RPC atomicity is claimed.
+
+Fifteen focused checks pass, including the seven financial SQL cases and the
+full repository-schema suite. The fresh-schema service-only RPC scope is now
+20 (18 purge functions, readiness probe and restore). The prior catalog
+comparison's 19-function scope is historical and does not cover this added
+operator invocation. No SQL is edited: existing 35-day detail/linkage expiry,
+nonzero-balance preservation and late-refund manual review remain unchanged.
+Apply can release stale internal reservations through the existing SQL path;
+the flag is not approval to run that action on hosted data.
+
+Require `tmp/operator-credit-retention-committed-evidence-2026-10-18.json` to
+exist and match HEAD for clean-candidate acceptance. No hosted cleanup,
+scheduler, Stripe refund, provider call, financial approval or spend occurred.
 
 ### Paperclip Bounded Cleanup Evidence - 2026-10-18 UTC
 

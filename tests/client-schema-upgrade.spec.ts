@@ -44,7 +44,7 @@ const purgeNames = [
   "board_loop_records", "hermes_content_factory_records", "notebook_sources", "notebooks",
   "onboarding_tokens", "paperclip_records", "pipeline_items", "research", "room_records",
   "ruflo_records", "runtime_audit_and_budget", "runtime_jobs", "runtime_rate_limits",
-  "runtime_records", "runtime_requests", "support_requests", "visual_qa",
+  "runtime_records", "runtime_requests", "support_requests", "visual_qa", "credit_records",
 ].map((suffix) => `purge_expired_client_${suffix}`);
 const globalPurges = new Set([
   "purge_expired_client_onboarding_tokens", "purge_expired_client_runtime_rate_limits",

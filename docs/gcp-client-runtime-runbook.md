@@ -1213,6 +1213,22 @@ audit/budget step. Earlier scopes may already have committed: inspect their
 results before a separately authorized rerun. This does not install a scheduler
 or prove hosted deletion; never run apply solely because the local tests pass.
 
+The command also previews `purge_expired_client_credit_records` with a
+100-row per-table batch and returns its result under `creditRetention`. Apply
+requires `--confirm-retention-credit` alongside every other required family
+confirmation, checked before any request. Credit cleanup follows runtime jobs
+and precedes audit/budget cleanup; a failed credit RPC stops the command. These
+RPCs are not one transaction: earlier scopes may already have committed.
+Review results before authorizing a retry.
+
+The existing V49 financial policy is unchanged: detail and purchase/allocation
+linkage expire at day 35, nonzero wallet/provider balances remain, and later
+refunds require manual review. Apply can release stale internal reservations
+through the existing SQL refund path before deleting expired detail. It does
+not issue a Stripe refund or call a provider. The confirmation flag is a
+technical safeguard, not financial-policy approval, hosted cleanup authority,
+or a scheduler. Local tests do not establish hosted financial behavior.
+
 Before accepting Room retention/review, apply the reviewed schema in dependency
 order: the existing 28-day policy and record/job/Room/Pipeline retention; then
 `supabase-client-room-fixed-retention.sql`; then the current

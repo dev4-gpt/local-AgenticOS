@@ -174,6 +174,7 @@ test("operator retention requires confirmation and stops when the record RPC fai
   expect(preview.stdout).toContain("MOCK_PAPERCLIP_RETENTION:false");
   expect(preview.stdout).toContain("MOCK_RUFLO_RETENTION:false");
   expect(preview.stdout).toContain("MOCK_JOB_RETENTION:false");
+  expect(preview.stdout).toContain("MOCK_CREDIT_RETENTION:false");
   expect(preview.stdout).toContain("MOCK_AUDIT_BUDGET_RETENTION:false");
   expect(preview.stdout).not.toContain("MOCK_LEARNING_RETENTION_DELETE");
   expect(JSON.parse(preview.stdout.trim().split("\n").at(-1) || "{}")).toMatchObject({
@@ -181,6 +182,8 @@ test("operator retention requires confirmation and stops when the record RPC fai
     runtimeRateLimits: { candidates: 1, deleted: 0, remainingCandidates: 1, recoveryDays: 7, applied: false },
     runtimeRecords: { candidates: 2, deleted: 0 }, notebookSources: { candidates: 1, deleted: 0 },
     runtimeJobs: { candidates: 2, deleted: 0, remainingCandidates: 2, applied: false },
+    creditRetention: { candidates: { transactions: 2 }, deleted: {}, remainingCandidates: { transactions: 2 },
+      preservedNonzeroWalletBalances: 1, preservedNonzeroProviderBalances: 1, purgeAfterDays: 35, applied: false },
     notebooks: { candidates: 0, deleted: 0 }, research: { candidates: { runs: 0, records: 0, citations: 0, workerFailures: 0 } },
     room: { candidates: { messages: 1, rounds: 1, conversations: 1 }, deleted: { messages: 0, rounds: 0, conversations: 0 }, applied: false },
     visualQa: { candidates: { findings: 1, reports: 1 }, deleted: { findings: 0, reports: 0 }, applied: false },
@@ -266,7 +269,12 @@ test("operator retention requires confirmation and stops when the record RPC fai
   expect(missingJobConfirmation.stderr).toContain("--confirm-retention-jobs");
   expect(missingJobConfirmation.stdout).toBe("");
 
-  const confirmed = ["--apply", ...confirmationsWithoutAuditBudget, "--confirm-retention-audit-budget", "--confirm-retention-jobs"];
+  const withoutCredit = ["--apply", ...confirmationsWithoutAuditBudget, "--confirm-retention-audit-budget", "--confirm-retention-jobs"];
+  const missingCreditConfirmation = run(withoutCredit);
+  expect(missingCreditConfirmation.status).toBe(1);
+  expect(missingCreditConfirmation.stderr).toContain("--confirm-retention-credit");
+  expect(missingCreditConfirmation.stdout).toBe("");
+  const confirmed = [...withoutCredit, "--confirm-retention-credit"];
 
   const failedRpc = run(confirmed, { RETENTION_MOCK_RPC_FAIL: "1" });
   expect(failedRpc.status).toBe(1);
@@ -351,6 +359,13 @@ test("operator retention requires confirmation and stops when the record RPC fai
   expect(failedJobRpc.status).toBe(1);
   expect(failedJobRpc.stderr).toContain("Runtime job retention failed (404)");
   expect(failedJobRpc.stdout).not.toContain("MOCK_AUDIT_BUDGET_RETENTION");
+  expect(failedJobRpc.stdout).not.toContain("MOCK_CREDIT_RETENTION");
+
+  const failedCreditRpc = run(confirmed, { RETENTION_MOCK_CREDIT_RPC_FAIL: "1" });
+  expect(failedCreditRpc.status).toBe(1);
+  expect(failedCreditRpc.stderr).toContain("Managed-credit retention failed (404)");
+  expect(failedCreditRpc.stdout).toContain("MOCK_JOB_RETENTION:true");
+  expect(failedCreditRpc.stdout).not.toContain("MOCK_AUDIT_BUDGET_RETENTION");
 
   const missingReferenceGuard = run(confirmed, { RETENTION_MOCK_REFERENCE_GUARD_FAIL: "1" });
   expect(missingReferenceGuard.status).toBe(1);
@@ -380,10 +395,15 @@ test("operator retention requires confirmation and stops when the record RPC fai
   expect(applied.stdout).toContain("MOCK_HERMES_RETENTION:true");
   expect(applied.stdout).toContain("MOCK_RUFLO_RETENTION:true");
   expect(applied.stdout).toContain("MOCK_JOB_RETENTION:true");
+  expect(applied.stdout).toContain("MOCK_CREDIT_RETENTION:true");
+  expect(applied.stdout.indexOf("MOCK_CREDIT_RETENTION:true")).toBeGreaterThan(applied.stdout.indexOf("MOCK_JOB_RETENTION:true"));
+  expect(applied.stdout.indexOf("MOCK_AUDIT_BUDGET_RETENTION:true")).toBeGreaterThan(applied.stdout.indexOf("MOCK_CREDIT_RETENTION:true"));
   expect(applied.stdout.indexOf("MOCK_JOB_RETENTION:true")).toBeGreaterThan(applied.stdout.indexOf("MOCK_ROOM_RETENTION:true"));
   expect(applied.stdout.indexOf("MOCK_JOB_RETENTION:true")).toBeGreaterThan(applied.stdout.indexOf("MOCK_LEARNING_RETENTION_DELETE"));
   expect(JSON.parse(applied.stdout.trim().split("\n").at(-1) || "{}")).toMatchObject({
     runtimeJobs: { candidates: 2, deleted: 2, remainingCandidates: 0, applied: true },
+    creditRetention: { deleted: { transactions: 2 }, remainingCandidates: { transactions: 0 },
+      preservedNonzeroWalletBalances: 1, preservedNonzeroProviderBalances: 1, purgeAfterDays: 35, applied: true },
   });
   expect(applied.stdout).toContain("MOCK_AUDIT_BUDGET_RETENTION:true");
   expect(applied.stdout).toContain("MOCK_LEARNING_RETENTION_DELETE");
