@@ -71,8 +71,8 @@ and it does not contend for the same browser, tenant, environment, or files.
 
 | Gate | State (2026-10-18) | Depends on | Required work and exit evidence | Boundary / next action |
 | --- | --- | --- | --- | --- |
-| M0 - Candidate and evidence baseline | `IN_PROGRESS`; repaired SQL schema scope `ACCEPTED` in separate staging | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Clean `28895b58f0cd1d76452f396b28484cee784ea98c`, Node `v24.19.0`, passed 503 regressions, 24 offline AI cases and eight synthetic browser scenarios; private candidate receipt `tmp/staging-default-grants-intake-committed-evidence-2026-10-18.json`. All 74 pinned SQL files then installed in the separate Free staging project with explicit approval and a separately approved rate-limit resume. Final read-only comparison matches 68 relations, 137 routine definitions/execute grants and tested effective table grants; no tested anon/authenticated administrative table privileges remain. Installation receipt `tmp/staging-schema-install-2026-10-18/receipt.json` binds the SQL candidate, not later documentation commits. Ledger, hosted journey and all-copy retention remain open. |
-| M1 - Customer journey | `IN_PROGRESS`; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | The clean `28895b5` receipt includes six Notebook and two Room synthetic browser scenarios. The separate staging schema is installed, but no real Auth users, memberships or fixture records were created. Synthetic fixtures and catalog parity do not establish real customer acceptance, hosted tenant isolation, object recovery or the full hosted journey. |
+| M0 - Candidate and evidence baseline | `IN_PROGRESS`; repaired SQL schema scope `ACCEPTED` in separate staging | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Clean code candidate `7c67f060bd2694a499757e8992cd5df3c67dc9de`, Node `v24.19.0`, passed 518 regressions, 24 offline AI cases and eight synthetic browser scenarios; receipt `tmp/isolation-fixture-committed-2026-10-18/receipt.json`. The board-only status follow-up does not alter tested code or config. All 74 original SQL hashes remain unchanged from `28895b5`; its separate schema-installation receipt remains historical. Fresh approved catalog comparison matches the installed 68 relations and 137 routines with captured grants/definitions unchanged. The separately approved fixture has its own receipt below. Ledger, hosted journey and all-copy retention remain open. |
+| M1 - Customer journey | `IN_PROGRESS`; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | Clean code candidate `7c67f06` passes six Notebook and two Room synthetic browser scenarios. The owner created two staging Auth users; separately approved insertion added exactly 72 synthetic rows across 36 tables, including two ordinary memberships. Admin SQL verified fixture footprint and non-execution states. Real login, member RLS reads, execution, grounded review/export and recovery remain untested. Fixture preparation and catalog parity do not establish customer acceptance, hosted tenant isolation, object recovery or the full hosted journey. |
 | M2 - Authorized Skool archive/import | `IN_PROGRESS` | M0; M1 source/provenance contracts inform import | Reconcile the canonical lesson inventory and all authorized source material; identify full text, summary-only, transcript-only, missing, duplicate, and video-reference coverage separately; validate a dry-run pack and idempotency; then require post-import graph/source-link evidence for an explicitly verified tenant. | Current private graph `tmp/authorized-skool-import/agentos-page-text-reconciled-2026-10-17.jsonld` validates at **1,471 nodes / 10,735 relations**. All 18 earlier gap pages were observed in authorized Work Chrome: 15 now have captured inline page text and three are video-only with no body. **107/110** lessons have page-text segments; the new captures are resource labels/community CTA and a ZIP usage note, not lesson video contents. The three remaining no-body pages are July 26 ChatGPT Voice, August 28 Claude Watermarks and September 23 Claude Opus 5.5; their YouTube references are known. All previous text, 12 companion-text links and three transcript segments are preserved. Main-player audit remains 93 YouTube / 17 Skool-native, not video bytes. Production parser accepts all 18 records, including three media-only; portable validation, repeat merge and complete-export rejection pass. The 12 PDFs, four pinned READMEs and extracted Codex README remain included; BWC is excluded. `completenessVerified=false`, with one excerpt/two unknown transcripts and none declared full. No hosted import or new Drive upload occurred. Next: obtain permitted full transcript/video exports, review omissions and confirm the destination tenant before separately authorized import. |
 | M3 - Local/cloud parity and security | `BLOCKED` | M0 candidate; M1 local acceptance | Identify exact local candidate and hosted service/revision/image/config/migrations; read-only compare same authenticated member and tenant; then prove two-member/two-tenant isolation, route allowlist, storage proxy, and 28-day active + seven-day recovery behavior with hosted receipts. | Owner-selected default is `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in Aryaman (Work) Chrome. Fresh read-only service/revision metadata confirms project `veloce-agenticos-2026`, region `asia-south1`, revision `veloce-cloud-test-00208-5hk` at 100% traffic and image `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`. Auth is enforced; provider calls are disabled. No source stamp exists, identity/import APIs are excluded, runtime and bucket retention are 14 days, and two inbox secrets are inline rather than Secret Manager references. Bucket metadata reports seven-day soft delete; behavioral recovery/deletion is unverified. Historical Internal Beta findings do not describe this selected tenant. Same-member/tenant comparison, independent source attestation, migrations, isolation and 28+7 behavior remain open. Hosted remediation requires separate target-specific approval. |
 | M4 - Evaluation and observability | `IN_PROGRESS` | M0; M1 job lifecycle contract; M3 for hosted claims | Keep deterministic offline evaluation candidate-bound; test trace redaction, lifecycle completeness, alerts, and budget/ledger reconciliation. Any model-backed evaluation requires explicit hard-cap approval and must bind outputs/costs to candidate and test case. | Offline/local tests are allowed. No model/provider call by default. Synthetic MiroFish output is not demand evidence; prioritize documented real buyer interviews before proposing another simulation. |
@@ -113,18 +113,20 @@ downstream gates.
   and the strict verifier. The ledger/checklist, not this narrative board,
   decides whether all mandatory evidence and approvals are present.
 
-**Current critical-path action (2026-10-18 UTC):** Finish the local PostgreSQL 17
-rehearsal of the exact 72-row, two-member fixture, then bind the separately
-reviewed Free-only proposal to owner-created Auth UUIDs. The fail-closed CLI's
-clean historical receipt is `tmp/isolation-probe-committed-2026-10-18-v2/receipt.json`
-(SHA-256 `dadde86963e0420b296182f8084f4587bd95c7c1554c66a30202eef17c530b70`),
-bound to `ea112e2d9d1f5b835c479cfa9ae3bce3c9f4f78c`: 517 regressions,
-24 offline AI cases and eight synthetic browser scenarios. New fixture/test
-edits require refreshed candidate evidence. Actual sign-in, memberships,
-tenant isolation, execution/export and recovery remain untested and fixture
-writes are not authorized by the schema approval. Require an exact synthetic
-fixture, identity/external-email boundaries, operation limits and cleanup/recovery
-decisions before additional hosted writes. Follow the
+**Current critical-path action (2026-10-18 UTC):** Prepare a separately approved,
+owner-controlled short-lived Auth-session handoff for the read-only isolation
+CLI. The approved 72-row fixture is now installed in the separate Free staging
+project, privately bound to the two owner-supplied Auth UUIDs. Clean code
+candidate `7c67f060bd2694a499757e8992cd5df3c67dc9de`
+passes 518 selected regressions, 24 offline AI cases, eight synthetic browser
+scenarios and the native PostgreSQL 17 fixture rehearsal below on Node 24.19.0.
+The following board-only status update does not change that tested code; do not
+relabel its historical receipts as tests run on a later commit. Membership
+existence is checked, but actual sign-in, member RLS reads, tenant isolation,
+execution/export and recovery remain untested. The fixture's separate approval
+does not authorize more writes, real login or cleanup. Require private identity
+handoff, exact operation limits and independent target revalidation before the
+next hosted check. Follow the
 [disposable database procedure](./disposable-database-rehearsal.md), not the
 older control-plane tier that shares production Supabase. Free-only authority
 does not permit upgrades/payments or unreviewed production/destructive actions.
@@ -141,12 +143,27 @@ names and stale/future preparation clocks. Both ordinary members must read one
 own sentinel and zero other-tenant rows across 34 tables; anonymous reads must
 reveal none. Cancel jobs, block deliveries, and store no object bytes.
 
-**Local development result:** The data-only helper and actual-schema PGlite test
+**Local and native result:** The data-only helper and actual-schema PGlite test
 meet those checks, including 68 own reads, 68 cross-reads, 34 anonymous probes
 and counts across all 68 application relations. The focused test and scoped
-lint passed. These are local synthetic Auth helpers/role claims, not Supabase
-logins. Native PostgreSQL 17 and full clean-candidate verification are pending;
-do not promote earlier candidate receipts to this changed tree.
+lint passed. The same exact transaction also passes on pinned PostgreSQL 17.11
+with the 74 original SQL files and observed 96 default-grant entries. It proves
+the same read denials, namespace/membership/clock guards, complete late-failure
+rollback and exact row footprint. The owned container had no networking,
+published ports or host mounts, bounded CPU/memory/PIDs and no image pull; its
+removal was verified. These are local synthetic Auth helpers/role claims, not
+Supabase logins. No real execution, stored object, export or recovery is proven.
+
+Native receipt: `tmp/isolation-fixture-postgres17-2026-10-18/receipt.json`,
+SHA-256 `fe0a7c5cca279498e43c9efe0e0f55d72edbf94f6fcf189657311de5ea7ee4d7`.
+Clean code-candidate receipt:
+`tmp/isolation-fixture-committed-2026-10-18/receipt.json`, SHA-256
+`93abc8b7e62824f22629769d43001163c03e5748f1ce2b36e374d3bd9294b408`.
+Both bind `7c67f060bd2694a499757e8992cd5df3c67dc9de`; the latter records
+518 regressions with zero skip/failure/flake/retry, scoped lint, typecheck,
+lifecycle/inventory, 24 offline AI cases and eight synthetic browser scenarios.
+All 74 installed SQL hashes are unchanged. Strict release remains false:
+`ledger_bucket_not_configured`, `release_environment`, 59 categories unevaluated.
 
 **Owner handoff:** Work Chrome verified staging's direct `Add user -> Create
 new user` form with `Auto confirm user?` checked and its no-confirmation-email
@@ -156,10 +173,44 @@ requested or captured. UUIDs remain outside Git and are not yet independently
 attested as authenticated sessions. This does not authorize agent-created
 memberships, fixture insertion, execution, export, cleanup or deployment.
 
-**Next:** Finish candidate-bound native rehearsal, privately bind the reviewed
-fixture to those two identities and present exact hosted operation/stop limits
-for separate approval. Regenerate the clock-bound SQL immediately before final
-review; no hosted write or real session read is authorized by preparation.
+**Reviewed proposal:** The private proposal binds those two
+UUIDs and the verified generator to at most 72 inserted application rows in
+one transaction, with up to four read-only SQL submissions, at most four
+submissions per minute and no automatic retry. Stop on the first error, target
+or schema mismatch. It allows no Auth-user creation, passwords/tokens, real
+login, provider/job execution, object storage, cleanup, deployment or production
+change; paid budget is zero. Proposal:
+`tmp/staging-isolation-fixture-proposal-2026-10-18/proposal.json`, SHA-256
+`33e7c87ed72d93d6abcdf3bcf99e29dba9dced2ed493b25606e1b62119419840`.
+The owner separately approved this exact fixture-only scope. Only the
+preparation clock and dependent 28-day expiry were refreshed before submission,
+and the new payload hashes were preserved. No real session was read.
+
+**Approved hosted result:** Work Chrome rechecked the exact staging reference
+and Free project. One catalog-only SELECT matched the installed metadata
+snapshot after excluding only observation time: PostgreSQL 17.11, 68 relations
+and 137 routines. A second bounded SELECT confirmed both supplied Auth UUIDs
+exist, neither had memberships, and both fixture namespaces were unused. The
+single generated transaction returned success. Two post-check SELECTs found
+exactly 72 rows across 36 tables (two per table), ordinary active memberships,
+cancelled jobs, blocked deliveries, pending zero-byte artifact metadata with
+28-day expiry and 28-day tenant policy. There were four read-only submissions
+and one insert transaction, no SQL errors or automatic retries, with a minimum
+28,473 ms between submissions. A pre-submission desktop timeout and blocked
+focus-changed actions are preserved as UI interruptions, not hidden SQL retries.
+
+Private receipt: `tmp/staging-isolation-fixture-apply-2026-10-18/receipt.json`,
+SHA-256 `5f7803e66fd8f6d234998bfd5b6c94a214e12efc6256c8c391fa848ce36a8327`.
+It binds the approved proposal, exact generator/payload/check hashes, target,
+minimized UI outcomes and submission timestamps. The fixture clock is
+`2026-10-18T16:28:19.478Z`; explicit 28-day expiry is
+`2026-11-15T16:28:19.478Z`. UI results are not a database backup or independent
+platform audit log. Only fixture rows were inserted; no agent-created Auth
+users, passwords/tokens, provider/job execution, object storage, cleanup,
+deployment, production changes or paid actions occurred. Admin SQL success and
+retention metadata do not prove real member isolation, scheduling, deletion or
+seven-day recovery. Prepare the private session handoff next; all broader
+customer, import, parity, buyer, retention and release gates remain open.
 
 ### Isolation CLI False-Pass Regression - 2026-10-18 UTC
 
