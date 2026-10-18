@@ -71,8 +71,8 @@ and it does not contend for the same browser, tenant, environment, or files.
 
 | Gate | State (2026-10-18) | Depends on | Required work and exit evidence | Boundary / next action |
 | --- | --- | --- | --- | --- |
-| M0 - Candidate and evidence baseline | `IN_PROGRESS` for administrative-privilege repair acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Clean base `43ff36158403d989bb1bc26709328b4adcf9cc43`, Node `v24.19.0`, passed 502 regressions, 24 offline AI cases and eight synthetic browser scenarios. Staging's broad defaults then reproduced cross-tenant table truncation locally. Require `tmp/staging-default-grants-intake-committed-evidence-2026-10-18.json` to exist and match the repaired candidate before local acceptance. Ledger, hosted acceptance and all-copy retention remain open. |
-| M1 - Customer journey | `IN_PROGRESS`; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | The clean `43ff361` receipt includes six Notebook and two Room synthetic browser scenarios. Refresh candidate-bound checks after the privilege repair. Synthetic fixtures do not establish real customer acceptance, hosted grants/isolation, object recovery or the full hosted journey. |
+| M0 - Candidate and evidence baseline | `IN_PROGRESS`; repaired SQL schema scope `ACCEPTED` in separate staging | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Clean `28895b58f0cd1d76452f396b28484cee784ea98c`, Node `v24.19.0`, passed 503 regressions, 24 offline AI cases and eight synthetic browser scenarios; private candidate receipt `tmp/staging-default-grants-intake-committed-evidence-2026-10-18.json`. All 74 pinned SQL files then installed in the separate Free staging project with explicit approval and a separately approved rate-limit resume. Final read-only comparison matches 68 relations, 137 routine definitions/execute grants and tested effective table grants; no tested anon/authenticated administrative table privileges remain. Installation receipt `tmp/staging-schema-install-2026-10-18/receipt.json` binds the SQL candidate, not later documentation commits. Ledger, hosted journey and all-copy retention remain open. |
+| M1 - Customer journey | `IN_PROGRESS`; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | The clean `28895b5` receipt includes six Notebook and two Room synthetic browser scenarios. The separate staging schema is installed, but no real Auth users, memberships or fixture records were created. Synthetic fixtures and catalog parity do not establish real customer acceptance, hosted tenant isolation, object recovery or the full hosted journey. |
 | M2 - Authorized Skool archive/import | `IN_PROGRESS` | M0; M1 source/provenance contracts inform import | Reconcile the canonical lesson inventory and all authorized source material; identify full text, summary-only, transcript-only, missing, duplicate, and video-reference coverage separately; validate a dry-run pack and idempotency; then require post-import graph/source-link evidence for an explicitly verified tenant. | Current private graph `tmp/authorized-skool-import/agentos-page-text-reconciled-2026-10-17.jsonld` validates at **1,471 nodes / 10,735 relations**. All 18 earlier gap pages were observed in authorized Work Chrome: 15 now have captured inline page text and three are video-only with no body. **107/110** lessons have page-text segments; the new captures are resource labels/community CTA and a ZIP usage note, not lesson video contents. The three remaining no-body pages are July 26 ChatGPT Voice, August 28 Claude Watermarks and September 23 Claude Opus 5.5; their YouTube references are known. All previous text, 12 companion-text links and three transcript segments are preserved. Main-player audit remains 93 YouTube / 17 Skool-native, not video bytes. Production parser accepts all 18 records, including three media-only; portable validation, repeat merge and complete-export rejection pass. The 12 PDFs, four pinned READMEs and extracted Codex README remain included; BWC is excluded. `completenessVerified=false`, with one excerpt/two unknown transcripts and none declared full. No hosted import or new Drive upload occurred. Next: obtain permitted full transcript/video exports, review omissions and confirm the destination tenant before separately authorized import. |
 | M3 - Local/cloud parity and security | `BLOCKED` | M0 candidate; M1 local acceptance | Identify exact local candidate and hosted service/revision/image/config/migrations; read-only compare same authenticated member and tenant; then prove two-member/two-tenant isolation, route allowlist, storage proxy, and 28-day active + seven-day recovery behavior with hosted receipts. | Owner-selected default is `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in Aryaman (Work) Chrome. Fresh read-only service/revision metadata confirms project `veloce-agenticos-2026`, region `asia-south1`, revision `veloce-cloud-test-00208-5hk` at 100% traffic and image `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`. Auth is enforced; provider calls are disabled. No source stamp exists, identity/import APIs are excluded, runtime and bucket retention are 14 days, and two inbox secrets are inline rather than Secret Manager references. Bucket metadata reports seven-day soft delete; behavioral recovery/deletion is unverified. Historical Internal Beta findings do not describe this selected tenant. Same-member/tenant comparison, independent source attestation, migrations, isolation and 28+7 behavior remain open. Hosted remediation requires separate target-specific approval. |
 | M4 - Evaluation and observability | `IN_PROGRESS` | M0; M1 job lifecycle contract; M3 for hosted claims | Keep deterministic offline evaluation candidate-bound; test trace redaction, lifecycle completeness, alerts, and budget/ledger reconciliation. Any model-backed evaluation requires explicit hard-cap approval and must bind outputs/costs to candidate and test case. | Offline/local tests are allowed. No model/provider call by default. Synthetic MiroFish output is not demand evidence; prioritize documented real buyer interviews before proposing another simulation. |
@@ -113,17 +113,65 @@ downstream gates.
   and the strict verifier. The ledger/checklist, not this narrative board,
   decides whether all mandatory evidence and approvals are present.
 
-**Current critical-path action (2026-10-18 UTC):** Verify the administrative
-table-privilege repair against the observed staging defaults before proposing
-hosted schema/recovery tests. The owner created the separate Free staging
-project and a catalog-only SELECT confirmed version 17.11 and an empty public
-schema, but broad future-object grants exposed a missing local test condition.
-No application schema or fixture has been installed there. Require a clean
-candidate, local default-grant replay, target/settings review and an exact
-bounded operation plan before hosted writes. Follow the
+**Current critical-path action (2026-10-18 UTC):** Prepare a separately reviewed
+Free-only real-Auth/two-member fixture plan for the installed disposable staging
+schema. The schema-only installation is complete; actual sign-in, memberships,
+tenant isolation, execution/export and recovery remain untested and fixture
+writes are not authorized by the schema approval. Require an exact synthetic
+fixture, identity/external-email boundaries, operation limits and cleanup/recovery
+decisions before additional hosted writes. Follow the
 [disposable database procedure](./disposable-database-rehearsal.md), not the
 older control-plane tier that shares production Supabase. Free-only authority
 does not permit upgrades/payments or unreviewed production/destructive actions.
+
+### Approved Free Staging Schema Installation - 2026-10-18 UTC
+
+**Baseline and authority:** After the owner approved the exact 74-file plan,
+all file bytes/hashes were checked against clean SQL candidate
+`28895b58f0cd1d76452f396b28484cee784ea98c`. Work Chrome showed the separately
+identified staging project on Weekend Free. A fresh catalog at 14:29 UTC matched
+the earlier empty public-schema baseline, including PostgreSQL 17.11, roles,
+96 default-grant entries and six platform event triggers. No credential values
+or tenant/auth/storage rows were read. The original pre-approval plan remains
+unchanged; approval and actual outcomes are recorded separately.
+
+**Preserved failure and approved resume:** Files 1-17 returned success. File 18
+returned `ThrottlerException: Too Many Requests`; the batch stopped without
+submitting 19-74 or automatically retrying. One catalog follow-up was also
+throttled. The owner then explicitly approved a checked, slower resume, limited
+to four migration submissions per minute. A successful metadata check found
+30 relations and 38 routines, no board tables or board-worker function from
+file 18, and unchanged captured platform/default fields. Only pending files
+18-74 were then submitted. The minimum recorded resume interval was 15,869 ms.
+All 74 original files ultimately returned success; there were 75 migration
+submissions including the preserved initial throttling failure. No reset,
+object drop for recovery, guard bypass or cross-file atomicity is claimed.
+
+**Read-only acceptance:** The final catalog contains 68 application relations,
+including 62 client relations, and 137 public routines. Relation RLS flags,
+effective DML grants, routine identities/definition hashes/execute grants and
+default ACL entries match the local PostgreSQL 17 observed-default rehearsal.
+Independent effective-privilege checks found zero TRUNCATE, REFERENCES, TRIGGER
+or MAINTAIN grants for `anon` or `authenticated` across the 68 relations.
+Captured role flags, public-schema permissions, auth helper presence, extensions
+and platform event-trigger definitions were unchanged. No compared metadata
+differences remain. This is bounded catalog acceptance, not a full comparison
+of every column, constraint, policy expression or index.
+
+Private receipt: `tmp/staging-schema-install-2026-10-18/receipt.json`, SHA-256
+`6eb5e9b77c3de9081eb23131e64ae36b6eb9e95d48f1f86a02c63be1fa5b4c00`.
+It binds the original SQL candidate, source hashes, both approval phases,
+per-file UI results, pacing, final query/CSV and local catalog comparison.
+Raw catalogs, browser evidence and downloads remain outside Git.
+
+**Limits:** No auth users, tenants, memberships, source material or provider
+credentials were added; no application RPC, cleanup, restore, schedule, provider,
+Stripe operation, paid upgrade or deployment was run. Production was untouched.
+SQL Editor can retain submitted query text; application migration-history
+registration and physical backups are not claimed. The Free schema installation
+does not prove real Auth, two-tenant isolation, a populated production upgrade,
+28+7 all-copy recovery/deletion, buyer validation or production readiness.
+Keep the strict release decision `releaseReady=false` and downstream gates open.
 
 ### Staging Catalog And Administrative Table Privileges - 2026-10-18 UTC
 
@@ -177,14 +225,15 @@ table and requires privilege-denial errors on both comments and intake.
 Require `tmp/staging-default-grants-intake-committed-evidence-2026-10-18.json` to
 exist and match source/configuration hashes; this narrative is not a pass.
 
-**Limits and next step:** No staging application schema, users, fixtures,
-settings, schedules or cleanup were changed; production was untouched. Empty
+**Limits at this earlier baseline:** No staging application schema, users,
+fixtures, settings, schedules or cleanup had been changed; production was
+untouched. The later approved schema installation is recorded above. Empty
 public schema does not establish all-schema emptiness or application connection
 isolation. SSL enforcement, default-owner coverage, role memberships, platform
 triggers and actual Supabase login need review. A local default-ACL replay is
 not a full platform clone. The repair does not revoke a different owner's
-future defaults and has not been applied to either hosted database. Keep all
-hosted journey, import, object/backup recovery, elapsed retention, buyer and
+future defaults; at this baseline it had not been applied to either hosted
+database. Keep all hosted journey, import, object/backup recovery, elapsed retention, buyer and
 release gates open. No provider call, upgrade, payment or deployment occurred.
 
 ### PostgreSQL 17 Rehearsal And Free Setup Inspection - 2026-10-18 UTC

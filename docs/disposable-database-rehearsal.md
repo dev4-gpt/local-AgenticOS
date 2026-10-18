@@ -14,8 +14,9 @@ only synthetic users, tenants and files. A project name or browser tab group
 does not prove isolation. Never reuse another application project based on its
 name, idle state or apparent lack of records.
 
-The proposed name is `veloce-agentos-staging`. No creation or paid infrastructure
-budget is approved. A Free setup inspection is read-only and cannot authorize
+The intended disposable-project name is `veloce-agentos-staging`. Current
+approvals and completed actions are recorded in the execution board, not granted
+by this procedure. A Free setup inspection is read-only and cannot authorize
 project creation, terms acceptance, schema installation or fixture writes.
 Supabase's [billing FAQ](https://supabase.com/docs/guides/platform/billing-faq)
 describes two active Free projects, with quota affected by organization
@@ -46,11 +47,13 @@ pilot does not authorize provider spend.
    verify no production application points to it. Review Data API exposure,
    default table grants and automatic RLS settings rather than assuming that
    dashboard defaults match the local role fixture. No schema writes yet.
-4. **Schema and synthetic fixture approval:** Present exact candidate SHA,
+4. **Separate schema and synthetic fixture approvals:** Present exact candidate SHA,
    configuration hashes, ordered SQL files/hashes, target ID, maximum operations
    and a reviewed recovery/cleanup plan. Obtain target-specific approval before
-   installing schema or creating users/rows. Keep provider calls, production
-   credentials, schedules, billing events, outbound messages and deployment
+   installing schema or creating users/rows. Schema-only approval does not
+   authorize auth users, memberships, fixture rows or application RPC calls.
+   Keep provider calls, production credentials, schedules, billing events,
+   outbound messages and deployment
    disabled. A saved hosted catalog is not a schema/data backup; do not apply
    only a delta while prerequisite definitions remain unverified.
 5. **Bounded rehearsal:** Capture before/after metadata and actual outcomes.
@@ -61,6 +64,12 @@ pilot does not authorize provider spend.
    service-only previews, original-clock restore, expired/future/missing-clock
    rejection and transactional rollback. Stop on any unexpected target, access,
    cost, external call or partial failure; record what already committed.
+   Treat a platform rate-limit response as a stop, not an automatic retry.
+   Preserve the failed submission and obtain a separate checked-resume approval.
+   Reconcile partial effects from catalog metadata before resubmitting a pending
+   file; retain the original order and approved pacing. Never reset the project
+   or rerun already successful files to force completion. A resumed batch must
+   retain both approval phases and all submission timestamps in its receipt.
 6. **Separate recovery and release decisions:** Destructive cleanup, backup
    restore, object operations and eventual project teardown require their own
    exact approval. Prove active expiry at 28 days, the seven-day recovery window,
