@@ -71,11 +71,11 @@ and it does not contend for the same browser, tenant, environment, or files.
 
 | Gate | State (2026-10-18) | Depends on | Required work and exit evidence | Boundary / next action |
 | --- | --- | --- | --- | --- |
-| M0 - Candidate and evidence baseline | `IN_PROGRESS`; repaired SQL schema scope `ACCEPTED` in separate staging | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Clean code candidate `7c67f060bd2694a499757e8992cd5df3c67dc9de`, Node `v24.19.0`, passed 518 regressions, 24 offline AI cases and eight synthetic browser scenarios; receipt `tmp/isolation-fixture-committed-2026-10-18/receipt.json`. The board-only status follow-up does not alter tested code or config. All 74 original SQL hashes remain unchanged from `28895b5`; its separate schema-installation receipt remains historical. Fresh approved catalog comparison matches the installed 68 relations and 137 routines with captured grants/definitions unchanged. The separately approved fixture has its own receipt below. Ledger, hosted journey and all-copy retention remain open. |
-| M1 - Customer journey | `IN_PROGRESS`; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | Clean code candidate `7c67f06` passes six Notebook and two Room synthetic browser scenarios. The owner created two staging Auth users; separately approved insertion added exactly 72 synthetic rows across 36 tables, including two ordinary memberships. Admin SQL verified fixture footprint and non-execution states. Real login, member RLS reads, execution, grounded review/export and recovery remain untested. Fixture preparation and catalog parity do not establish customer acceptance, hosted tenant isolation, object recovery or the full hosted journey. |
+| M0 - Candidate and evidence baseline | `IN_PROGRESS`; repaired SQL schema scope `ACCEPTED` in separate staging | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Baseline before this board correction: clean `wip/backup-2026-10-03` at `01f48198e86c1d8ec74eadb662461964bfd81e4f`, Node `v24.19.0`, fingerprint `09d84b6bf57b0f78a14f02ada959e5c3176bde28334555ef4ebeef00f7e5c0c7`. Strict verifier was run without a ledger bucket or hosted lookup: `releaseReady=false`, blockers `ledger_bucket_not_configured` and `release_environment`; 59 ledger-backed categories were not evaluated. At that exact clean candidate, the verifier matched offline AI `24/24` (0 model samples) and Notebook journey `6/6`; focused owner-isolation tests passed `53/53`. Receipt: `tmp/release-readiness-current-2026-10-18.json`. The `7c67f06` 518-test/eight-browser-scenario receipt and the `28895b5` schema history are historical relative to this candidate; they are not current-candidate full-suite evidence. The board edit changes the working-tree fingerprint, so refresh candidate-bound evidence after the next source commit. Ledger, hosted journey and all-copy retention remain open. |
+| M1 - Customer journey | `IN_PROGRESS`; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | Existing staging Auth users and the separately approved 72-row synthetic fixture remain present per their scoped receipts. Current-candidate local Notebook journey is `6/6` in the strict-verifier receipt; focused owner-auth/isolation contract tests are `53/53`. The 2026-10-18 owner handoff was canceled at the private-key prompt: receipt records zero sign-ins, zero sessions and zero hosted requests. Real login, member RLS reads, execution, grounded review/export and recovery remain untested. Fixture preparation and catalog parity do not establish customer acceptance, hosted tenant isolation, object recovery or the full hosted journey. |
 | M2 - Authorized Skool archive/import | `IN_PROGRESS` | M0; M1 source/provenance contracts inform import | Reconcile the canonical lesson inventory and all authorized source material; identify full text, summary-only, transcript-only, missing, duplicate, and video-reference coverage separately; validate a dry-run pack and idempotency; then require post-import graph/source-link evidence for an explicitly verified tenant. | Current private graph `tmp/authorized-skool-import/agentos-page-text-reconciled-2026-10-17.jsonld` validates at **1,471 nodes / 10,735 relations**. All 18 earlier gap pages were observed in authorized Work Chrome: 15 now have captured inline page text and three are video-only with no body. **107/110** lessons have page-text segments; the new captures are resource labels/community CTA and a ZIP usage note, not lesson video contents. The three remaining no-body pages are July 26 ChatGPT Voice, August 28 Claude Watermarks and September 23 Claude Opus 5.5; their YouTube references are known. All previous text, 12 companion-text links and three transcript segments are preserved. Main-player audit remains 93 YouTube / 17 Skool-native, not video bytes. Production parser accepts all 18 records, including three media-only; portable validation, repeat merge and complete-export rejection pass. The 12 PDFs, four pinned READMEs and extracted Codex README remain included; BWC is excluded. `completenessVerified=false`, with one excerpt/two unknown transcripts and none declared full. No hosted import or new Drive upload occurred. Next: obtain permitted full transcript/video exports, review omissions and confirm the destination tenant before separately authorized import. |
 | M3 - Local/cloud parity and security | `BLOCKED` | M0 candidate; M1 local acceptance | Identify exact local candidate and hosted service/revision/image/config/migrations; read-only compare same authenticated member and tenant; then prove two-member/two-tenant isolation, route allowlist, storage proxy, and 28-day active + seven-day recovery behavior with hosted receipts. | Owner-selected default is `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in Aryaman (Work) Chrome. Fresh read-only service/revision metadata confirms project `veloce-agenticos-2026`, region `asia-south1`, revision `veloce-cloud-test-00208-5hk` at 100% traffic and image `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`. Auth is enforced; provider calls are disabled. No source stamp exists, identity/import APIs are excluded, runtime and bucket retention are 14 days, and two inbox secrets are inline rather than Secret Manager references. Bucket metadata reports seven-day soft delete; behavioral recovery/deletion is unverified. Historical Internal Beta findings do not describe this selected tenant. Same-member/tenant comparison, independent source attestation, migrations, isolation and 28+7 behavior remain open. Hosted remediation requires separate target-specific approval. |
-| M4 - Evaluation and observability | `IN_PROGRESS` | M0; M1 job lifecycle contract; M3 for hosted claims | Keep deterministic offline evaluation candidate-bound; test trace redaction, lifecycle completeness, alerts, and budget/ledger reconciliation. Any model-backed evaluation requires explicit hard-cap approval and must bind outputs/costs to candidate and test case. | Offline/local tests are allowed. No model/provider call by default. Synthetic MiroFish output is not demand evidence; prioritize documented real buyer interviews before proposing another simulation. |
+| M4 - Evaluation and observability | `IN_PROGRESS` | M0; M1 job lifecycle contract; M3 for hosted claims | Keep deterministic offline evaluation candidate-bound; test trace redaction, lifecycle completeness, alerts, and budget/ledger reconciliation. Any model-backed evaluation requires explicit hard-cap approval and must bind outputs/costs to candidate and test case. | At clean `01f4819`, strict-verifier evidence matched offline AI `24/24`, with zero model samples and `productionReady=false`. The 53 focused isolation checks also pass locally. This does not prove hosted trace delivery, alerting, spend reconciliation, provider quality, or market demand. No provider call was made. Synthetic MiroFish output remains non-market evidence; prioritize real buyer interviews. |
 | M5 - Release decision | `OPEN` | M0-M4 plus retention/privacy/operations/legal decisions | On one clean committed candidate, pass the strict verifier with all required ledger categories, hosted/customer/import/retention evidence, reviewer approvals, immutable deployment identity, and tested rollback. Record `ready` only from the verifier and approvals for that exact candidate. | Decision gate only, not deployment authorization. Current verifier is `releaseReady=false`; ledger configuration, hosted evidence, and many categories remain open. A clean commit does not close them. |
 
 **Dependency graph:** `M0 -> M1 -> M3 -> M5`; `M0 -> M2 -> M3 -> M5`;
@@ -113,25 +113,63 @@ downstream gates.
   and the strict verifier. The ledger/checklist, not this narrative board,
   decides whether all mandatory evidence and approvals are present.
 
-**Current critical-path action (2026-10-18 UTC):** Match the owner-runner's clean
-local verification receipt below, then obtain separate target-specific approval
-and private owner terminal input for staging Auth/read/current-session sign-out.
-The runner is plan-only by default; no new Auth or read-probe action has been
-performed. The approved 72-row fixture is installed in the separate Free staging
-project, privately bound to the two owner-supplied Auth UUIDs. Clean code
-candidate `7c67f060bd2694a499757e8992cd5df3c67dc9de`
-passes 518 selected regressions, 24 offline AI cases, eight synthetic browser
-scenarios and the native PostgreSQL 17 fixture rehearsal below on Node 24.19.0.
-The following board-only status update does not change that tested code; do not
-relabel its historical receipts as tests run on a later commit. Membership
-existence is checked, but actual sign-in, member RLS reads, tenant isolation,
-execution/export and recovery remain untested. The fixture's separate approval
-does not authorize more writes, real login or cleanup. Require private identity
-handoff, exact operation limits and independent target revalidation before the
-next hosted check. Follow the
+**Current critical-path action (2026-10-18 UTC):** Reconcile M0 receipts after
+this documentation update, then resume the already approved staging Auth/read
+check only through a usable private terminal handoff. The attempt-2 receipt
+`tmp/staging-owner-auth-review-2026-10-18/owner-receipt-2.json` records
+`private_input_cancelled`, zero sign-ins, zero sessions and zero hosted requests;
+the app terminal could not be surfaced, so the prompt was canceled before any
+credential entry. Receipt SHA-256:
+`1a72b7e8eb0d8a9dd2eba1cdc44e75eea73522ba64242c3dc6194e4f283bf3ff`.
+No claim of hosted identity, RLS isolation, or sign-out is made. The next
+launcher must accept only the same pre-auth, zero-request
+cancellation state and retain the existing 142-request bound; never resume after
+any sign-in request or uncertain outcome. The approved 72-row fixture remains
+separate staging data and does not authorize further writes, cleanup, provider
+calls or deployment. Follow the
 [disposable database procedure](./disposable-database-rehearsal.md), not the
 older control-plane tier that shares production Supabase. Free-only authority
 does not permit upgrades/payments or unreviewed production/destructive actions.
+
+### Current Candidate Evidence Reconciliation - 2026-10-18 UTC
+
+**Baseline:** Clean branch `wip/backup-2026-10-03`, commit
+`01f48198e86c1d8ec74eadb662461964bfd81e4f`, Node `v24.19.0`; pre-edit
+working-tree fingerprint
+`09d84b6bf57b0f78a14f02ada959e5c3176bde28334555ef4ebeef00f7e5c0c7`.
+Acceptance required a clean exact candidate, current-candidate evidence, an
+offline strict verifier, and focused auth/isolation tests without hosted calls.
+
+**Result:** Strict verification ran with no ledger bucket and no hosted lookup.
+It returned `releaseReady=false`, with `ledger_bucket_not_configured` and
+`release_environment` as blockers and 59 release-ledger categories left
+unevaluated. It matched local AI evaluation `24/24` with zero model samples and
+Notebook journey `6/6`. Separate Playwright focus run passed `53/53` tests for
+the owner terminal, identity pinning, request bounds, cancellation behavior and
+tenant-isolation CLI. Strict receipt:
+`tmp/release-readiness-current-2026-10-18.json`, SHA-256
+`cc7c30df40c567ecde7cb3e31c323e38f5117f740f91b94deee98e4e425f9f78`. The
+focused test report is `/private/tmp/isolation-owner-focused-2026-10-18.json`,
+SHA-256 `a7b8313a7bc7d3dd28f695de55b17d0b3b51c602d9f38fb353d692ae13a57841`.
+The local retention source map covers all `62/62` declared tenant tables
+across 88 SQL migration files; the lifecycle verifier also passed. Combined
+output: `/private/tmp/retention-source-lifecycle-2026-10-18.txt`, SHA-256
+`f1f8f373768cf11595caa60d9d4db8f1237556cee39c973433f1a70b237bb114`. This is
+static/source and mock lifecycle evidence only; hosted enforcement remains
+false and deletion/recovery behavior is unverified. The full local lifecycle
+and retention matrix then passed `179/179` tests; output:
+`/private/tmp/client-lifecycle-full-2026-10-18.txt`, SHA-256
+`8edcbc227b4c06214b2de3a594928c3400dc809f8fd128a521d180e95036f27f`. These
+tests cover synthetic expiry, recovery cutoffs, scoped purge, artifact clocks,
+crosswalk and restore failures, not operated hosted deletion. No provider
+request or hosted lookup occurred.
+
+The focused tests do not prove real Auth, hosted RLS, customer acceptance,
+retention/deletion/recovery, telemetry delivery or release readiness. Earlier
+`7c67f06` broad test and browser receipts remain useful historical evidence but
+are not current-candidate receipts. This board-only edit changes the working
+tree, so its pre-edit fingerprint is historical; obtain a clean committed
+candidate before using candidate-bound evidence again.
 
 ### Owner-Controlled Auth Read Handoff - 2026-10-18 UTC
 
