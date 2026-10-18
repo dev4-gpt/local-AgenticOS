@@ -1174,6 +1174,15 @@ retention.
 
 ## Room Schema Order
 
+The operator `client-lifecycle --mode retention` command also previews the
+runtime-job purge RPC with a 500-job batch limit. Apply requires the separate
+`--confirm-retention-jobs` flag in addition to the other family confirmations.
+Job cleanup follows the content-family and due learning-item steps; its result
+appears under `runtimeJobs`. A job RPC failure stops the command before the
+audit/budget step. Earlier scopes may already have committed: inspect their
+results before a separately authorized rerun. This does not install a scheduler
+or prove hosted deletion; never run apply solely because the local tests pass.
+
 Before accepting Room retention/review, apply the reviewed schema in dependency
 order: the existing 28-day policy and record/job/Room/Pipeline retention; then
 `supabase-client-room-fixed-retention.sql`; then the current

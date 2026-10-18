@@ -71,8 +71,8 @@ and it does not contend for the same browser, tenant, environment, or files.
 
 | Gate | State (2026-10-17) | Depends on | Required work and exit evidence | Boundary / next action |
 | --- | --- | --- | --- | --- |
-| M0 - Candidate and evidence baseline | `IN_PROGRESS` during Room fixed-retention acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | HEAD `b63a9e2e9ae1c4126f1a3c70be6a30a4cdc4ba32`, Node `v24.19.0`; the last fully checked local candidate `65df5f46...bad6b0` passed 463 regressions, 24 offline AI cases and eight synthetic browser scenarios. That bundle is historical after current retention edits. Refresh into `tmp/room-fixed-retention-release-evidence-2026-10-17.json` before accepting current-source local checks. Clean source, ledger, hosted acceptance and all-copy retention remain open. |
-| M1 - Customer journey | `IN_PROGRESS` for current-source local refresh; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | Earlier Notebook six-scenario and Room two-scenario local browser passes are historical until the frozen current candidate is checked. The final Room fixed-retention receipt must bind the refreshed journey evidence. Synthetic fixtures do not establish real customer acceptance, hosted grants/isolation, object recovery or the full hosted journey. |
+| M0 - Candidate and evidence baseline | `IN_PROGRESS` for committed operator job-cleanup acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Repair base `bd494c494562b4adf0b835e0c3b7a775b271d46a`, Node `v24.19.0`. The repair's pre-commit rehearsal passed 473 regressions, 24 offline AI cases and eight synthetic browser scenarios. Require `tmp/operator-job-retention-committed-release-evidence-2026-10-18.json` to exist and match current HEAD before accepting clean-commit checks; Git and that receipt, not a self-referential document SHA, own candidate identity. Ledger, hosted acceptance and all-copy retention remain open. |
+| M1 - Customer journey | `IN_PROGRESS` for current-source local refresh; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | The clean HEAD receipt includes six Notebook and two Room synthetic browser scenarios. Current operator-command edits require refreshed candidate-bound checks before a new acceptance claim. Synthetic fixtures do not establish real customer acceptance, hosted grants/isolation, object recovery or the full hosted journey. |
 | M2 - Authorized Skool archive/import | `IN_PROGRESS` | M0; M1 source/provenance contracts inform import | Reconcile the canonical lesson inventory and all authorized source material; identify full text, summary-only, transcript-only, missing, duplicate, and video-reference coverage separately; validate a dry-run pack and idempotency; then require post-import graph/source-link evidence for an explicitly verified tenant. | Current private graph `tmp/authorized-skool-import/agentos-page-text-reconciled-2026-10-17.jsonld` validates at **1,471 nodes / 10,735 relations**. All 18 earlier gap pages were observed in authorized Work Chrome: 15 now have captured inline page text and three are video-only with no body. **107/110** lessons have page-text segments; the new captures are resource labels/community CTA and a ZIP usage note, not lesson video contents. The three remaining no-body pages are July 26 ChatGPT Voice, August 28 Claude Watermarks and September 23 Claude Opus 5.5; their YouTube references are known. All previous text, 12 companion-text links and three transcript segments are preserved. Main-player audit remains 93 YouTube / 17 Skool-native, not video bytes. Production parser accepts all 18 records, including three media-only; portable validation, repeat merge and complete-export rejection pass. The 12 PDFs, four pinned READMEs and extracted Codex README remain included; BWC is excluded. `completenessVerified=false`, with one excerpt/two unknown transcripts and none declared full. No hosted import or new Drive upload occurred. Next: obtain permitted full transcript/video exports, review omissions and confirm the destination tenant before separately authorized import. |
 | M3 - Local/cloud parity and security | `BLOCKED` | M0 candidate; M1 local acceptance | Identify exact local candidate and hosted service/revision/image/config/migrations; read-only compare same authenticated member and tenant; then prove two-member/two-tenant isolation, route allowlist, storage proxy, and 28-day active + seven-day recovery behavior with hosted receipts. | Owner-selected default is `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in Aryaman (Work) Chrome. Fresh read-only service/revision metadata confirms project `veloce-agenticos-2026`, region `asia-south1`, revision `veloce-cloud-test-00208-5hk` at 100% traffic and image `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`. Auth is enforced; provider calls are disabled. No source stamp exists, identity/import APIs are excluded, runtime and bucket retention are 14 days, and two inbox secrets are inline rather than Secret Manager references. Bucket metadata reports seven-day soft delete; behavioral recovery/deletion is unverified. Historical Internal Beta findings do not describe this selected tenant. Same-member/tenant comparison, independent source attestation, migrations, isolation and 28+7 behavior remain open. Hosted remediation requires separate target-specific approval. |
 | M4 - Evaluation and observability | `IN_PROGRESS` | M0; M1 job lifecycle contract; M3 for hosted claims | Keep deterministic offline evaluation candidate-bound; test trace redaction, lifecycle completeness, alerts, and budget/ledger reconciliation. Any model-backed evaluation requires explicit hard-cap approval and must bind outputs/costs to candidate and test case. | Offline/local tests are allowed. No model/provider call by default. Synthetic MiroFish output is not demand evidence; prioritize documented real buyer interviews before proposing another simulation. |
@@ -113,24 +113,35 @@ downstream gates.
   and the strict verifier. The ledger/checklist, not this narrative board,
   decides whether all mandatory evidence and approvals are present.
 
-**Current critical-path action (corrected 2026-10-17):** Verify the frozen Room
-retention candidate, including existing derived-note/Pipeline reconciliation,
-in one final local acceptance bundle. Accept this local step only if the final
-receipt below exists, passes its local checks and matches the current candidate.
-Do not expand into another hardening feature before closing this action. Once
-it passes, advance to the runbook's Selected Cloud Test Acceptance Plan and its
-target-specific approval prerequisites; local tests cannot close hosted gates.
+**Current critical-path action (2026-10-18 UTC):** Freeze and verify the committed
+operator retention repair for its previously omitted job-purge call. It must be preview-only
+by default, tenant-scoped and bounded, separately confirmed on apply, ordered
+after content/learning cleanup, and fail the command on an unsuccessful RPC.
+Accept current local checks only if
+`tmp/operator-job-retention-committed-release-evidence-2026-10-18.json` exists and matches
+the candidate. Then review hosted migration dependencies and backup/rollback
+prerequisites; do not apply schema or cleanup without target-specific approval.
 
-HEAD is `b63a9e2e9ae1c4126f1a3c70be6a30a4cdc4ba32` on
-`wip/backup-2026-10-03`; the checkout has 25 changed/untracked paths. The last
-fully checked local candidate was `65df5f46...bad6b0`: 463 selected regressions,
-24 offline AI cases and eight synthetic browser scenarios passed, but release
-verification stayed not ready. That receipt is historical after the current
-retention edits. At the pre-freeze checkpoint the current change had 84 targeted
-passing tests; consult the final candidate-bound receipt for subsequent full
-acceptance results. These counts are not a
-completion percentage. M0 is in progress and current-source M1 acceptance must
-be refreshed; earlier local journey passes are historical, not hosted acceptance.
+The repair was developed on `bd494c494562b4adf0b835e0c3b7a775b271d46a` on
+`wip/backup-2026-10-03`; the baseline regression fails because the operator
+command never invokes the job-purge RPC. After repair, 49 targeted tests pass.
+The pre-commit receipt `tmp/operator-job-retention-release-evidence-2026-10-18.json`
+also passes 473 regressions, 24 offline AI cases and eight synthetic browser
+scenarios. The board's final status wording changed afterward; require the
+clean committed receipt named above for current-candidate acceptance. Strict
+verification remains not ready: ledger environment, hosted/customer evidence,
+and 58 unevaluated categories remain open. These counts are not a completion
+percentage or hosted acceptance.
+
+The approved catalog-only Supabase preflight observed 62 tenant tables and 79
+routines, without tenant rows or schema changes. All 49 lifecycle tables exist,
+but 27 expected columns are missing across 24 tables; all 19 RPC names used by
+the repaired lifecycle command are absent (18 before the repair). Room has no fixed-expiry columns
+or retention triggers, and the new review functions are absent. Private evidence:
+`tmp/cloud-lifecycle-catalog-comparison-2026-10-18.json` and
+`tmp/cloud-test-catalog-preflight-receipt-2026-10-17.json`. Presence and hashes
+are not policy/grant equivalence, source/image attestation, migration history,
+two-tenant isolation, backup verification or operated deletion evidence.
 
 **Full-goal acceptance: 0 of 6 requested workstreams fully accepted.** This
 measures completed acceptance gates, not the amount of software implemented.

@@ -72,6 +72,7 @@ if (mode === "retention" && apply && !args.includes("--confirm-retention-ruflo")
 if (mode === "retention" && apply && !args.includes("--confirm-retention-onboarding-tokens")) fail("Refusing onboarding-token retention apply without --confirm-retention-onboarding-tokens");
 if (mode === "retention" && apply && !args.includes("--confirm-retention-rate-limits")) fail("Refusing runtime rate-limit retention apply without --confirm-retention-rate-limits");
 if (mode === "retention" && apply && !args.includes("--confirm-retention-audit-budget")) fail("Refusing audit and budget retention apply without --confirm-retention-audit-budget");
+if (mode === "retention" && apply && !args.includes("--confirm-retention-jobs")) fail("Refusing runtime job retention apply without --confirm-retention-jobs");
 
 if (mode === "offboard" && apply && !configPath) fail("Offboard apply requires --config with a reviewed client manifest");
 const manifestBytes = configPath ? await readFile(path.resolve(process.cwd(), configPath)) : null;
@@ -351,13 +352,19 @@ if (mode === "retention") {
       fail("Learning retention delete did not match the reviewed batch");
     }
   }
+  const jobResponse = await supabaseRequest("rpc/purge_expired_client_runtime_jobs", {
+    method: "POST",
+    body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 500 }),
+  });
+  if (!jobResponse.ok) fail(`Runtime job retention failed (${jobResponse.status}); verify the runtime-job and fixed Room retention migrations`);
+  const runtimeJobs = await jobResponse.json();
   const auditBudgetResponse = await supabaseRequest("rpc/purge_expired_client_runtime_audit_and_budget", {
     method: "POST",
     body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 500 }),
   });
   if (!auditBudgetResponse.ok) fail(`Audit and budget retention failed (${auditBudgetResponse.status}); verify the audit/budget retention migration`);
   const auditBudget = await auditBudgetResponse.json();
-  console.log(JSON.stringify({ tenant: slug, onboardingTokens, runtimeRateLimits, auditBudget, runtimeRecords: records, runtimeRequests, room, visualQa, supportRequests, pipeline, boardLoop, paperclip, hermes, ruflo, notebookSources: sources, notebooks, research, purgeDueLearningItems: ids.length,
+  console.log(JSON.stringify({ tenant: slug, onboardingTokens, runtimeRateLimits, auditBudget, runtimeJobs, runtimeRecords: records, runtimeRequests, room, visualQa, supportRequests, pipeline, boardLoop, paperclip, hermes, ruflo, notebookSources: sources, notebooks, research, purgeDueLearningItems: ids.length,
     retentionDays, recoveryDays: 7, purgeAfterDays: retentionDays + 7, purgeCutoff: purgeCutoff.toISOString(),
     learningBatchLimit, moreLearningItemsMayRemain: ids.length === learningBatchLimit,
     applied: apply, learningRevisionsCascade: true }));

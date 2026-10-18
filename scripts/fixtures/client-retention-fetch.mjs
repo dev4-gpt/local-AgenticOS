@@ -1,6 +1,16 @@
 globalThis.fetch = async (url, options) => {
   const parsed = new URL(url);
   if (parsed.origin !== "https://example.supabase.co") throw new Error("Unexpected retention origin");
+  if (parsed.pathname.endsWith("/rpc/purge_expired_client_runtime_jobs") && options.method === "POST") {
+    const payload = JSON.parse(options.body);
+    if (payload.p_tenant_slug !== "tenant-a" || payload.p_batch_limit !== 500 || typeof payload.p_apply !== "boolean") {
+      throw new Error("Unexpected runtime job retention RPC payload");
+    }
+    if (process.env.RETENTION_MOCK_JOB_RPC_FAIL === "1") return new Response(null, { status: 404 });
+    console.log(`MOCK_JOB_RETENTION:${payload.p_apply}`);
+    return Response.json({ candidates: 2, deleted: payload.p_apply ? 2 : 0,
+      remainingCandidates: payload.p_apply ? 0 : 2, applied: payload.p_apply });
+  }
   if (parsed.pathname.endsWith("/rpc/purge_expired_client_onboarding_tokens") && options.method === "POST") {
     const payload = JSON.parse(options.body);
     if (payload.p_batch_limit !== 500) throw new Error("Unexpected onboarding-token retention RPC payload");

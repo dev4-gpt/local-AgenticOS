@@ -41,6 +41,7 @@ expect(lifecycle.includes("--confirm-retention-sources") && lifecycle.includes("
 expect(sourceRetentionSql.includes("retention_expires_at <= now()") && sourceRetentionSql.includes("created_at <= v_cutoff") && sourceRetentionSql.includes("to service_role"), "Notebook source retention must enforce age, expiry, and service-role access");
 expect(lifecycle.includes("--confirm-retention-rate-limits") && lifecycle.includes("rpc/purge_expired_client_runtime_rate_limits"), "runtime rate-limit retention must require a separate confirmation and invoke its bounded purge RPC");
 expect(rateLimitRetentionSql.includes("window_started_at + make_interval(secs => window_seconds) + interval '7 days'") && rateLimitRetentionSql.includes("to service_role"), "runtime rate-limit hashes must retain the stored limiter window plus seven days and restrict purge to service role");
+expect(lifecycle.includes("--confirm-retention-jobs") && lifecycle.includes("rpc/purge_expired_client_runtime_jobs"), "runtime job retention must require separate confirmation and invoke its bounded purge RPC");
 expect(lifecycle.includes("--confirm-retention-audit-budget") && lifecycle.includes("rpc/purge_expired_client_runtime_audit_and_budget"), "audit and budget retention must require explicit confirmation and invoke its bounded purge RPC");
 expect(auditBudgetRetentionSql.includes("make_interval(days => public.client_tenant_retention_days(tenant_slug))")
   && auditBudgetRetentionSql.includes("v_audit_cutoff := now() - make_interval(days => v_days + 7)")
