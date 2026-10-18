@@ -37,7 +37,7 @@ const retentionMigrations = [
   "client-runtime-audit-budget-retention", "client-onboarding-token-retention",
   "client-runtime-rate-limit-retention", "client-runtime-artifact-owner-guard",
   "client-notebook-artifact-review", "client-notebook-source-reference-guard",
-  "v49-managed-credit-retention", "client-lifecycle-restore",
+  "v49-managed-credit-retention", "client-lifecycle-restore", "client-table-privilege-hardening",
 ];
 
 const purgeNames = [
@@ -50,7 +50,7 @@ const globalPurges = new Set([
   "purge_expired_client_onboarding_tokens", "purge_expired_client_runtime_rate_limits",
 ]);
 
-async function repositoryDatabase() {
+async function repositoryDatabase({ broadTableDefaults = false } = {}) {
   const db = new PGlite({ extensions: { pgcrypto } });
   try {
     await db.exec(`
@@ -67,6 +67,12 @@ async function repositoryDatabase() {
       grant usage on schema auth,public to anon,authenticated,service_role;
       grant execute on function auth.uid(),auth.role() to anon,authenticated,service_role;
     `);
+    if (broadTableDefaults) {
+      // Match the observed Supabase creator's public-table defaults, not just
+      // the explicit grants in application migrations. No hosted rows are used.
+      await db.exec(`alter default privileges in schema public
+        grant all privileges on tables to anon, authenticated, service_role;`);
+    }
     for (const name of baseMigrations) {
       await db.exec(readFileSync(`product-experience/supabase-${name}.sql`, "utf8"));
     }
@@ -76,6 +82,112 @@ async function repositoryDatabase() {
     throw error;
   }
 }
+
+test("Supabase table defaults cannot give members tenant-wide administrative privileges", async () => {
+  test.setTimeout(90_000);
+  const db = await repositoryDatabase({ broadTableDefaults: true });
+  try {
+    for (const name of retentionMigrations) {
+      await db.exec(readFileSync(`product-experience/supabase-${name}.sql`, "utf8"));
+    }
+    await db.exec(`
+      insert into auth.users values
+        ('00000000-0000-4000-8000-000000000101','owner-a@example.invalid'),
+        ('00000000-0000-4000-8000-000000000102','owner-b@example.invalid');
+      insert into public.client_tenants(slug,name,retention_days) values
+        ('tenant-a','Synthetic A',28),('tenant-b','Synthetic B',28);
+      insert into public.client_memberships(tenant_slug,user_id,role) values
+        ('tenant-a','00000000-0000-4000-8000-000000000101','owner'),
+        ('tenant-b','00000000-0000-4000-8000-000000000102','owner');
+      insert into public.client_runtime_records(tenant_slug,created_by,kind,title,content) values
+        ('tenant-a','00000000-0000-4000-8000-000000000101','memory','A','Private to A'),
+        ('tenant-b','00000000-0000-4000-8000-000000000102','memory','B','Private to B');
+      insert into public.client_board_tasks(id,tenant_slug,created_by,board,title) values
+        ('00000000-0000-4000-8000-000000000201','tenant-a','00000000-0000-4000-8000-000000000101','kanban','A'),
+        ('00000000-0000-4000-8000-000000000202','tenant-b','00000000-0000-4000-8000-000000000102','kanban','B');
+      insert into public.client_board_comments(tenant_slug,task_id,created_by,body) values
+        ('tenant-a','00000000-0000-4000-8000-000000000201','00000000-0000-4000-8000-000000000101','Private to A'),
+        ('tenant-b','00000000-0000-4000-8000-000000000202','00000000-0000-4000-8000-000000000102','Private to B');
+    `);
+    const outcomes = [];
+    for (const role of ["anon", "authenticated"]) {
+      let code: string | null = null;
+      let remaining = 2;
+      try {
+        await db.exec(`begin; set local role ${role}; truncate public.client_board_comments; reset role;`);
+        remaining = (await db.query("select id from public.client_board_comments")).rows.length;
+      } catch (error) {
+        code = (error as { code?: string }).code ?? "unknown";
+      } finally {
+        await db.exec("rollback; reset role;");
+      }
+      outcomes.push({ role, code, remainingBeforeRollback: remaining });
+      expect((await db.query("select id from public.client_board_comments")).rows).toHaveLength(2);
+      expect((await db.query("select id from public.client_runtime_records")).rows).toHaveLength(2);
+    }
+    test.info().annotations.push({ type: "truncate-boundary", description: JSON.stringify(outcomes) });
+    expect(outcomes).toEqual([
+      { role: "anon", code: "42501", remainingBeforeRollback: 2 },
+      { role: "authenticated", code: "42501", remainingBeforeRollback: 2 },
+    ]);
+
+    const administrativeGrants = async () => (await db.query(`
+      select c.relname, r.rolname, privilege
+      from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      cross join (values ('anon'),('authenticated')) r(rolname)
+      cross join (values ('TRUNCATE'),('REFERENCES'),('TRIGGER'),('MAINTAIN')) p(privilege)
+      where n.nspname='public' and left(c.relname,7)='client_' and c.relkind in ('r','p')
+        and has_table_privilege(r.rolname,c.oid,p.privilege)
+      order by c.relname,r.rolname,privilege
+    `)).rows;
+    expect(await administrativeGrants()).toEqual([]);
+    await db.exec(`
+      select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000101',false);
+      set role authenticated;
+    `);
+    expect((await db.query("select tenant_slug from public.client_runtime_records")).rows)
+      .toEqual([{ tenant_slug: "tenant-a" }]);
+    await db.exec("reset role; set role service_role;");
+    expect((await db.query("select id from public.client_runtime_records")).rows).toHaveLength(2);
+    await db.exec("reset role;");
+    expect((await db.query<{ allowed: boolean }>(
+      "select has_table_privilege('service_role','public.client_runtime_records','TRUNCATE') as allowed",
+    )).rows[0].allowed).toBe(true);
+
+    // Global PUBLIC grants also contribute to effective permissions. Reapply
+    // against that legacy shape and require future creator-owned tables safe.
+    await db.exec(`alter default privileges grant truncate, references, trigger, maintain on tables to public;
+      grant truncate, references, trigger, maintain on public.client_runtime_records to public;`);
+    const hardening = readFileSync("product-experience/supabase-client-table-privilege-hardening.sql", "utf8");
+    await db.exec(hardening);
+    await db.exec(hardening);
+    expect(await administrativeGrants()).toEqual([]);
+    await db.exec("create table public.client_privilege_probe(id integer);");
+    expect(await administrativeGrants()).toEqual([]);
+    expect((await db.query<{ allowed: boolean }>(
+      "select has_table_privilege('authenticated','public.client_privilege_probe','SELECT') as allowed",
+    )).rows[0].allowed).toBe(true);
+    expect((await db.query<{ allowed: boolean }>(
+      "select has_table_privilege('service_role','public.client_privilege_probe','TRUNCATE') as allowed",
+    )).rows[0].allowed).toBe(true);
+
+    await db.exec(`create role legacy_table_admin;
+      grant truncate on public.client_runtime_records to legacy_table_admin;
+      grant legacy_table_admin to authenticated;
+      grant trigger on public.client_runtime_records to public;`);
+    try {
+      await expect(db.exec(hardening)).rejects.toThrow("client_administrative_table_privilege_remains");
+    } finally {
+      await db.exec("rollback;");
+    }
+    // The failed migration must also roll back its earlier direct revokes.
+    expect((await db.query<{ allowed: boolean }>(
+      "select has_table_privilege('anon','public.client_runtime_records','TRIGGER') as allowed",
+    )).rows[0].allowed).toBe(true);
+  } finally {
+    await db.close();
+  }
+});
 
 test("repository schema upgrades retain worker contracts and execute lifecycle previews under local roles", async () => {
   test.setTimeout(90_000);

@@ -241,6 +241,7 @@ const requiredMigrations = [
   { file: "product-experience/supabase-client-room-retention-28.sql", gate: "room_retention_migration_attached" },
   { file: "product-experience/supabase-client-room-fixed-retention.sql", gate: "room_fixed_retention_migration_attached" },
   { file: "product-experience/supabase-client-room-directive-review.sql", gate: "room_directive_review_migration_attached" },
+  { file: "product-experience/supabase-client-table-privilege-hardening.sql", gate: "table_privilege_hardening_migration_attached" },
   { file: "product-experience/supabase-client-visual-qa-retention-28.sql", gate: "visual_qa_retention_migration_attached" },
   { file: "product-experience/supabase-client-support-retention-28.sql", gate: "support_retention_migration_attached" },
   { file: "product-experience/supabase-client-pipeline-retention-28.sql", gate: "pipeline_retention_migration_attached" },

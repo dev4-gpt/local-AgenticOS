@@ -69,10 +69,10 @@ and it does not contend for the same browser, tenant, environment, or files.
 
 ### Dependency-Ordered Gate Plan
 
-| Gate | State (2026-10-17) | Depends on | Required work and exit evidence | Boundary / next action |
+| Gate | State (2026-10-18) | Depends on | Required work and exit evidence | Boundary / next action |
 | --- | --- | --- | --- | --- |
-| M0 - Candidate and evidence baseline | `IN_PROGRESS` for documentation-candidate evidence refresh | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Clean `02225191eb16bc87a69058cca2103011167548cd`, Node `v24.19.0`, passed 502 regressions, 24 offline AI cases and eight synthetic browser scenarios. The research repair and PostgreSQL 17 lifecycle rehearsal passed on that exact commit. This documentation update is a new candidate: require matching refreshed evidence before a current-candidate claim. Ledger, hosted acceptance and all-copy retention remain open. |
-| M1 - Customer journey | `IN_PROGRESS`; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | The clean `0222519` receipt includes six Notebook and two Room synthetic browser scenarios. Refresh candidate-bound checks after this documentation update. Synthetic fixtures do not establish real customer acceptance, hosted grants/isolation, object recovery or the full hosted journey. |
+| M0 - Candidate and evidence baseline | `IN_PROGRESS` for administrative-privilege repair acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Clean base `43ff36158403d989bb1bc26709328b4adcf9cc43`, Node `v24.19.0`, passed 502 regressions, 24 offline AI cases and eight synthetic browser scenarios. Staging's broad defaults then reproduced cross-tenant table truncation locally. Require `tmp/staging-default-grants-committed-evidence-2026-10-18.json` to exist and match the repaired candidate before local acceptance. Ledger, hosted acceptance and all-copy retention remain open. |
+| M1 - Customer journey | `IN_PROGRESS`; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | The clean `43ff361` receipt includes six Notebook and two Room synthetic browser scenarios. Refresh candidate-bound checks after the privilege repair. Synthetic fixtures do not establish real customer acceptance, hosted grants/isolation, object recovery or the full hosted journey. |
 | M2 - Authorized Skool archive/import | `IN_PROGRESS` | M0; M1 source/provenance contracts inform import | Reconcile the canonical lesson inventory and all authorized source material; identify full text, summary-only, transcript-only, missing, duplicate, and video-reference coverage separately; validate a dry-run pack and idempotency; then require post-import graph/source-link evidence for an explicitly verified tenant. | Current private graph `tmp/authorized-skool-import/agentos-page-text-reconciled-2026-10-17.jsonld` validates at **1,471 nodes / 10,735 relations**. All 18 earlier gap pages were observed in authorized Work Chrome: 15 now have captured inline page text and three are video-only with no body. **107/110** lessons have page-text segments; the new captures are resource labels/community CTA and a ZIP usage note, not lesson video contents. The three remaining no-body pages are July 26 ChatGPT Voice, August 28 Claude Watermarks and September 23 Claude Opus 5.5; their YouTube references are known. All previous text, 12 companion-text links and three transcript segments are preserved. Main-player audit remains 93 YouTube / 17 Skool-native, not video bytes. Production parser accepts all 18 records, including three media-only; portable validation, repeat merge and complete-export rejection pass. The 12 PDFs, four pinned READMEs and extracted Codex README remain included; BWC is excluded. `completenessVerified=false`, with one excerpt/two unknown transcripts and none declared full. No hosted import or new Drive upload occurred. Next: obtain permitted full transcript/video exports, review omissions and confirm the destination tenant before separately authorized import. |
 | M3 - Local/cloud parity and security | `BLOCKED` | M0 candidate; M1 local acceptance | Identify exact local candidate and hosted service/revision/image/config/migrations; read-only compare same authenticated member and tenant; then prove two-member/two-tenant isolation, route allowlist, storage proxy, and 28-day active + seven-day recovery behavior with hosted receipts. | Owner-selected default is `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in Aryaman (Work) Chrome. Fresh read-only service/revision metadata confirms project `veloce-agenticos-2026`, region `asia-south1`, revision `veloce-cloud-test-00208-5hk` at 100% traffic and image `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`. Auth is enforced; provider calls are disabled. No source stamp exists, identity/import APIs are excluded, runtime and bucket retention are 14 days, and two inbox secrets are inline rather than Secret Manager references. Bucket metadata reports seven-day soft delete; behavioral recovery/deletion is unverified. Historical Internal Beta findings do not describe this selected tenant. Same-member/tenant comparison, independent source attestation, migrations, isolation and 28+7 behavior remain open. Hosted remediation requires separate target-specific approval. |
 | M4 - Evaluation and observability | `IN_PROGRESS` | M0; M1 job lifecycle contract; M3 for hosted claims | Keep deterministic offline evaluation candidate-bound; test trace redaction, lifecycle completeness, alerts, and budget/ledger reconciliation. Any model-backed evaluation requires explicit hard-cap approval and must bind outputs/costs to candidate and test case. | Offline/local tests are allowed. No model/provider call by default. Synthetic MiroFish output is not demand evidence; prioritize documented real buyer interviews before proposing another simulation. |
@@ -113,16 +113,71 @@ downstream gates.
   and the strict verifier. The ledger/checklist, not this narrative board,
   decides whether all mandatory evidence and approvals are present.
 
-**Current critical-path action (2026-10-18 UTC):** Obtain an independently
-identified disposable database before proposing hosted schema/recovery tests.
-The research creation-clock repair and real PostgreSQL 17 local rehearsal
-passed on clean `0222519`; refresh candidate-bound evidence after these docs.
-The approved Free setup inspection reached the new-project form, with no
-visible quota/upgrade warning, but creation eligibility remains unproven.
-Name/password were left blank; no settings or resources changed. Follow the
+**Current critical-path action (2026-10-18 UTC):** Verify the administrative
+table-privilege repair against the observed staging defaults before proposing
+hosted schema/recovery tests. The owner created the separate Free staging
+project and a catalog-only SELECT confirmed version 17.11 and an empty public
+schema, but broad future-object grants exposed a missing local test condition.
+No application schema or fixture has been installed there. Require a clean
+candidate, local default-grant replay, target/settings review and an exact
+bounded operation plan before hosted writes. Follow the
 [disposable database procedure](./disposable-database-rehearsal.md), not the
-older control-plane tier that shares production Supabase. Creation, terms,
-hosted schema/data, destructive cleanup and spend require separate approval.
+older control-plane tier that shares production Supabase. Free-only authority
+does not permit upgrades/payments or unreviewed production/destructive actions.
+
+### Staging Catalog And Administrative Table Privileges - 2026-10-18 UTC
+
+**Hosted baseline:** The owner reported successful Free creation. Work Chrome
+confirmed a healthy separate project with a different ID from production,
+region `us-east-1`, no connected repository, no migration/backup display and
+no public tables. A single catalog-only SELECT, locally tested for empty,
+populated, effective-grant and truncation cases, then confirmed PostgreSQL
+17.11, zero public relations/routines, 96 default-grant entries and six platform
+event triggers. Three auth helper signatures exist; no auth or tenant rows,
+credentials, function bodies or private configuration values were read.
+Query text may be retained in SQL Editor history. The result CSV and normalized
+catalog are private; receipt:
+`tmp/staging-catalog-preflight-2026-10-18/receipt.json`, SHA-256
+`7c49966e8c7cc1974e9c70574989f30310cc3b3785042b68e94582f69f845bb5`.
+
+**Failing local baseline:** Broad future-table defaults grant table-wide
+privileges to `anon` and `authenticated`, unlike the earlier minimal local
+bootstrap. With those defaults and all actual repository migrations, both
+roles truncated a leaf comment table containing two synthetic tenants' rows.
+Both transactions were rolled back; no hosted truncate was attempted. Receipt:
+`tmp/supabase-table-truncate-baseline-2026-10-18.json`, SHA-256
+`316ed15aac5102f0091001c9cef9fb8ddd952720c3f198c754c0fbcb873ebe04`.
+The preceding ACL-only baseline also failed; its memory-table truncate attempt
+was denied by dependent-table privileges, so it is not the cross-tenant proof.
+[PostgreSQL RLS does not cover whole-table TRUNCATE or REFERENCES](https://www.postgresql.org/docs/17/ddl-rowsecurity.html).
+This is a reproduced local database-role boundary failure, not evidence of a
+reachable public endpoint exploit or a breach of existing customer data.
+
+**Repair and acceptance:** The new table-privilege migration revokes TRUNCATE,
+REFERENCES, TRIGGER and MAINTAIN from PUBLIC/anon/authenticated on existing
+public `client_*` tables and from global/public-schema table defaults for its
+applying creator. It preserves DML, policies, direct service-role grants,
+functions, sequences, data and clocks; removing PUBLIC also removes privileges
+other roles inherited only through PUBLIC. Review effective operator access.
+Any remaining member inherited/owner privilege aborts
+the transaction instead of modifying membership. The five schema tests pass,
+including two-role denial, preserved tenant reads, future-table checks, repeat
+apply and rollback on inherited privileges. A separate failing release-gate
+baseline proves the verifier previously omitted the migration; it now requires
+the exact migration hash. Candidate-wide and PostgreSQL 17 observed-default
+replay results must be refreshed on the clean repaired commit before acceptance.
+Require `tmp/staging-default-grants-committed-evidence-2026-10-18.json` to
+exist and match source/configuration hashes; this narrative is not a pass.
+
+**Limits and next step:** No staging application schema, users, fixtures,
+settings, schedules or cleanup were changed; production was untouched. Empty
+public schema does not establish all-schema emptiness or application connection
+isolation. SSL enforcement, default-owner coverage, role memberships, platform
+triggers and actual Supabase login need review. A local default-ACL replay is
+not a full platform clone. The repair does not revoke a different owner's
+future defaults and has not been applied to either hosted database. Keep all
+hosted journey, import, object/backup recovery, elapsed retention, buyer and
+release gates open. No provider call, upgrade, payment or deployment occurred.
 
 ### PostgreSQL 17 Rehearsal And Free Setup Inspection - 2026-10-18 UTC
 

@@ -168,7 +168,7 @@ test("strict release acceptance does not trust an unpublished local ledger file"
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("release evidence requires setup, financial, tenant-retention, source, artifact, notebook, runtime-job, room, Visual QA, request, and support migrations", () => {
+test("release evidence requires setup, financial, retention, source, artifact, review, and table-privilege migrations", () => {
   const dir = mkdtempSync(join(tmpdir(), "veloce-incomplete-ledger-"));
   try {
     const file = join(dir, "record.json");
@@ -205,6 +205,7 @@ test("release evidence requires setup, financial, tenant-retention, source, arti
     expect(failures).toContain("release_gate:room_retention_migration_attached");
     expect(failures).toContain("release_gate:room_fixed_retention_migration_attached");
     expect(failures).toContain("release_gate:room_directive_review_migration_attached");
+    expect(failures).toContain("release_gate:table_privilege_hardening_migration_attached");
     expect(failures).toContain("release_gate:visual_qa_retention_migration_attached");
     expect(failures).toContain("release_gate:support_retention_migration_attached");
     expect(failures).toContain("release_gate:board_loop_retention_migration_attached");

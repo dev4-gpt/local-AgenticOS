@@ -1176,7 +1176,7 @@ retention.
 
 Run `npm run verify:client-schema-upgrade` before reviewing a retention rollout.
 This isolated PostgreSQL test applies 47 actual repository predecessor files
-and the 26 retention/review/restore migrations together. It checks 49 lifecycle
+and the 27 retention/review/restore/privilege migrations together. It checks 49 lifecycle
 column projections, worker argument/grant compatibility, service-only purge
 previews, a synthetic original-clock metadata restore and two-member reads.
 It is also included in `npm run verify:client-lifecycle`.
@@ -1201,6 +1201,35 @@ and PostgREST callers depend on those names. Do not drop functions or weaken
 grants to make an upgrade pass. The test uses synthetic auth claims and a fresh
 repository schema: it is not a deployed-database clone, an existing-data
 backfill, a backup restore drill, or permission to apply SQL to a hosted target.
+
+### Administrative Table Privileges
+
+Install `supabase-client-table-privilege-hardening.sql` after the client schema
+and include its exact hash in the release ledger. Before any separately
+approved installation, inspect effective/default grants on the named target.
+Supabase's future-object defaults may grant more than the explicit application
+migrations suggest. RLS does not constrain whole-table `TRUNCATE` or
+`REFERENCES`; the local regression reproduces cross-tenant comment truncation
+under broad defaults, then rolls the synthetic transaction back.
+
+The migration removes `TRUNCATE`, `REFERENCES`, `TRIGGER` and `MAINTAIN` from
+`PUBLIC`, `anon` and `authenticated` on existing public `client_*` tables. It
+also removes those global/public-schema table defaults for the applying creator.
+It leaves row-level SELECT/INSERT/UPDATE/DELETE permissions, RLS policies,
+function/sequence grants, direct service-role grants, data and retention clocks
+unchanged. Removing a PUBLIC grant can also reduce another role's inherited
+privileges; review effective service/operator access on the target. Effective
+member inherited or owner privileges cause an atomic abort;
+review role ownership/membership instead of disabling the check. Repeat apply
+is idempotent. A table created later by a different owner is not covered by
+the applying creator's defaults and requires independent review.
+
+The schema test verifies two-role truncate denial, existing/future effective
+privileges, preserved member reads/service access, global `PUBLIC` grants,
+repeat apply and rollback of revokes when inherited privileges remain. These
+are synthetic local checks, not proof of a reachable public exploit, a deployed
+fix, Supabase login, or the full hosted deletion/export boundary. Do not infer
+hosted approval from the test result or from a Free staging project.
 
 Research lifecycle exports and restores must include the original `created_at`
 for both records and citations, independently of `retrieved_at`. Their current
