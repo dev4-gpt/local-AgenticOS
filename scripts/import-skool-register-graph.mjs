@@ -335,6 +335,13 @@ export function mergeSkoolSourcePackGraph(base, sourcePackGraph) {
       throw new Error("graph_node_identity_conflict");
     }
     const merged = { ...previous, ...node };
+    if (merged["@type"] === "Transcript") {
+      const captureScope = merged.captureScope ?? "unknown";
+      if (!["full", "excerpt", "unknown"].includes(captureScope)) throw new Error("transcript_scope_invalid");
+      merged.captureScope = captureScope;
+      merged.captureScopeVerified = false;
+      merged.contentStatus = `transcript_${captureScope}`;
+    }
     const identifiers = [...new Set([
       ...(previous?.sourceIdentifiers ?? []),
       ...(node.sourceIdentifiers ?? []),

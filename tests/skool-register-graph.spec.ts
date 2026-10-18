@@ -177,10 +177,36 @@ test("source-pack transcript remains distinct and links to its exact registered 
 
   const merged = mergeSkoolSourcePackGraph(base, pack);
   const lesson = merged["@graph"].find((node) => node["@id"] === `skool-lesson:${lessonId}`);
+  const transcript = merged["@graph"].find((node) => node["@id"] === "transcript:segment-1");
   expect(lesson).toMatchObject({ contentStatus: "metadata_only", pageTextCaptured: false, transcriptCaptureSegmentCount: 1 });
+  expect(transcript).toMatchObject({ contentStatus: "transcript_unknown", captureScope: "unknown", captureScopeVerified: false });
   expect(merged.edges).toContainEqual({ "@type": "hasTranscriptCaptureSegment", source: lesson["@id"], target: "transcript:segment-1" });
   expect(merged.edges).not.toContainEqual({ "@type": "hasTextCaptureSegment", source: lesson["@id"], target: "transcript:segment-1" });
   expect(mergeSkoolSourcePackGraph(merged, pack).edges.filter((edge) => edge["@type"] === "hasTranscriptCaptureSegment")).toHaveLength(1);
+});
+
+test("source-pack merge preserves declared transcript scope without trusting verification claims", () => {
+  const registerGraph = buildSkoolRegisterGraph(register, "A1b2C3d4E5f6G7h8I9j0");
+  const base = mergeSkoolRegisterGraph({ "@context": "https://schema.org", "@graph": [], edges: [], provenance: {} }, registerGraph);
+  const lessonUrl = `https://www.skool.com/ai-profit-lab-7462/classroom/9daf24e1?md=${lessonId}`;
+  const transcript = { "@id": "transcript:declared", "@type": "Transcript", text: "Transcript excerpt", captureScope: "excerpt", captureScopeVerified: true };
+  const pack = {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@id": "document:transcript-source", "@type": "LearningResource", url: lessonUrl },
+      transcript,
+    ],
+    edges: [{ "@type": "transcript_of", source: transcript["@id"], target: "document:transcript-source" }],
+    provenance: { format: "agentos-private-source-graph-v1", complete: false, coverage: {}, batchSha256: [] },
+  };
+
+  const merged = mergeSkoolSourcePackGraph(base, pack);
+  expect(merged["@graph"].find((node) => node["@id"] === transcript["@id"])).toMatchObject({
+    contentStatus: "transcript_excerpt", captureScope: "excerpt", captureScopeVerified: false,
+  });
+  const invalidPack = { ...pack, "@graph": pack["@graph"].map((node) =>
+    node["@id"] === transcript["@id"] ? { ...node, captureScope: "mostly-full" } : node) };
+  expect(() => mergeSkoolSourcePackGraph(base, invalidPack)).toThrow("transcript_scope_invalid");
 });
 
 test("merge redacts unsafe legacy URLs but preserves their graph references", () => {
