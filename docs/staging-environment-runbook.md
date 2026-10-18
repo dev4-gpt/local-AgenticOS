@@ -1,12 +1,21 @@
 # Staging environment deployment runbook
 
+**Scope warning:** This is a control-plane staging tier, not a disposable
+database for migration, deletion or recovery tests. It shares production's
+Supabase project. Environment-suffixed services and fresh secrets do not isolate
+project-wide SQL, grants, triggers, tenant tables or database backups. Do not
+apply a schema rehearsal or destructive fixture to that shared project under
+this runbook. Such testing requires a separately approved test database with
+synthetic users/data, exact target identity, bounded costs and reviewed cleanup.
+
 This runbook stands up the staging tier for Phase 2 Slice 1: a full parallel
 set of Cloud Run services, identities, secrets, and a queue in the **same**
 `veloce-agenticos-2026` GCP project and the **same** Supabase project as
 production, distinguished entirely by environment-suffixed resource names
 and separate secret values — not by a second GCP project. It does **not**
-create a second GCP project, a second Supabase project, or touch any
-existing production resource.
+create a second GCP project or a second Supabase project. The commands below
+include shared-project IAM changes and production Vercel environment variables;
+they require explicit approval and must not be treated as read-only setup.
 
 ## Preconditions
 

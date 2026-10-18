@@ -1202,6 +1202,17 @@ grants to make an upgrade pass. The test uses synthetic auth claims and a fresh
 repository schema: it is not a deployed-database clone, an existing-data
 backfill, a backup restore drill, or permission to apply SQL to a hosted target.
 
+Research lifecycle exports and restores must include the original `created_at`
+for both records and citations, independently of `retrieved_at`. Their current
+retention policy uses creation time; a database default of `now()` on restore
+would renew the active window. Ordinary restore rejects missing, future or
+already-expired creation clocks atomically, including older snapshots that
+contain only retrieval time. Do not infer a missing creation clock, rewrite an
+old backup or substitute its export date to force acceptance. Any exceptional
+recovery path needs independent review. The full repository-schema regression
+round-trips active research metadata and checks rollback and an untouched
+foreign tenant; it does not exercise hosted backups, object bytes or recovery.
+
 ## Room Schema Order
 
 The operator `client-lifecycle --mode retention` command also previews the

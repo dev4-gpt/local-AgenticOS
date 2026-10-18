@@ -184,6 +184,82 @@ test("repository schema upgrades retain worker contracts and execute lifecycle p
   }
 });
 
+test("research lifecycle round trip preserves creation clocks and rejects incomplete or expired backups atomically", async () => {
+  test.setTimeout(90_000);
+  const db = await repositoryDatabase();
+  try {
+    for (const name of retentionMigrations) {
+      await db.exec(readFileSync(`product-experience/supabase-${name}.sql`, "utf8"));
+    }
+    const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+    const runCreated = daysAgo(27), recordCreated = daysAgo(26), citationCreated = daysAgo(25);
+    const recordRetrieved = daysAgo(2), citationRetrieved = daysAgo(1);
+    await db.exec(`
+      insert into auth.users values ('00000000-0000-4000-8000-000000000101','research@example.invalid');
+      insert into public.client_tenants(slug,name,retention_days) values
+        ('tenant-research','Synthetic research',28),('tenant-foreign','Untouched synthetic tenant',14);
+    `);
+    await db.query(`insert into public.client_research_runs
+      (id,tenant_slug,created_by,provider,query,status,idempotency_key,result_count,created_at,updated_at)
+      values ('00000000-0000-4000-8000-000000000301','tenant-research',
+        '00000000-0000-4000-8000-000000000101','synthetic','Synthetic research','complete','research-round-trip',1,$1,$1)`, [runCreated]);
+    await db.query(`insert into public.client_research_records
+      (id,tenant_slug,research_run_id,source_url,retrieved_at,status,created_at)
+      values ('00000000-0000-4000-8000-000000000302','tenant-research',
+        '00000000-0000-4000-8000-000000000301','https://example.invalid/research',$1,'complete',$2)`, [recordRetrieved, recordCreated]);
+    await db.query(`insert into public.client_research_citations
+      (id,tenant_slug,research_run_id,research_record_id,url,title,retrieved_at,evidence,created_at)
+      values ('00000000-0000-4000-8000-000000000303','tenant-research',
+        '00000000-0000-4000-8000-000000000301','00000000-0000-4000-8000-000000000302',
+        'https://example.invalid/evidence','Synthetic citation',$1,'Synthetic evidence',$2)`, [citationRetrieved, citationCreated]);
+    const columns = (await db.query<{ value: Record<string, string> }>(
+      "select public.client_lifecycle_restore_columns() as value",
+    )).rows[0].value;
+    const tables = ["client_tenants", "client_research_runs", "client_research_records", "client_research_citations"];
+    const batches = [];
+    for (const table of tables) {
+      const tenantColumn = table === "client_tenants" ? "slug" : "tenant_slug";
+      const result = await db.query(`select ${columns[table]} from public.${table} where ${tenantColumn}='tenant-research'`);
+      batches.push({ table, rows: result.rows });
+    }
+    const snapshot = JSON.parse(JSON.stringify(batches));
+    const foreign = (await db.query("select to_jsonb(t) as value from public.client_tenants t where slug='tenant-foreign'")).rows;
+    await db.exec("delete from public.client_tenants where slug='tenant-research'; set role service_role;");
+    const restore = (value: unknown) => db.query<{ value: { restoredRows: number; atomicMetadata: boolean } }>(
+      "select public.restore_client_lifecycle_metadata('tenant-research',$1::jsonb) as value", [JSON.stringify(value)],
+    );
+    expect((await restore(snapshot)).rows[0].value).toMatchObject({ restoredRows: 4, atomicMetadata: true });
+    await db.exec("reset role");
+    for (const [table, created, retrieved] of [
+      ["client_research_records", recordCreated, recordRetrieved],
+      ["client_research_citations", citationCreated, citationRetrieved],
+    ]) {
+      const row = (await db.query<{ created_at: Date; retrieved_at: Date }>(
+        `select created_at,retrieved_at from public.${table} where tenant_slug='tenant-research'`,
+      )).rows[0];
+      expect(new Date(row.created_at).toISOString()).toBe(created);
+      expect(new Date(row.retrieved_at).toISOString()).toBe(retrieved);
+    }
+    await db.exec("delete from public.client_tenants where slug='tenant-research'; set role service_role;");
+    for (const table of ["client_research_records", "client_research_citations"]) {
+      const legacy = structuredClone(snapshot);
+      delete legacy.find((batch: { table: string }) => batch.table === table).rows[0].created_at;
+      await expect(restore(legacy)).rejects.toThrow(/client_restore_original_clock_required/);
+      const expired = structuredClone(snapshot);
+      expired.find((batch: { table: string }) => batch.table === table).rows[0].created_at = daysAgo(29);
+      await expect(restore(expired)).rejects.toThrow(/client_restore_active_window_invalid/);
+      const future = structuredClone(snapshot);
+      future.find((batch: { table: string }) => batch.table === table).rows[0].created_at = daysAgo(-1);
+      await expect(restore(future)).rejects.toThrow(/client_restore_original_clock_required/);
+    }
+    await db.exec("reset role");
+    expect((await db.query("select slug from public.client_tenants where slug='tenant-research'")).rows).toHaveLength(0);
+    expect((await db.query("select to_jsonb(t) as value from public.client_tenants t where slug='tenant-foreign'")).rows).toEqual(foreign);
+  } finally {
+    await db.close();
+  }
+});
+
 test("populated repository upgrade preserves original deadlines and purges only due tenant content", async () => {
   test.setTimeout(90_000);
   const db = await repositoryDatabase();

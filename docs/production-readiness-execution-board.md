@@ -71,7 +71,7 @@ and it does not contend for the same browser, tenant, environment, or files.
 
 | Gate | State (2026-10-17) | Depends on | Required work and exit evidence | Boundary / next action |
 | --- | --- | --- | --- | --- |
-| M0 - Candidate and evidence baseline | `IN_PROGRESS` for operator credit-cleanup acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Repair base `d831255c24acdf84bc2627ae8faac7e3747c5c0b`, Node `v24.19.0`. That clean candidate passed 501 regressions, 24 offline AI cases and eight synthetic browser scenarios. Connecting the omitted credit-retention RPC changes the operator command, not financial SQL, and requires refreshed evidence. Require `tmp/operator-credit-retention-committed-evidence-2026-10-18.json` to exist and match HEAD before current local acceptance. Ledger, hosted acceptance and all-copy retention remain open. |
+| M0 - Candidate and evidence baseline | `IN_PROGRESS` for research restore-clock repair acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Repair base `518023ffd28a88d612851699c7e28d9aa954c85a`, Node `v24.19.0`. That clean candidate passed 501 regressions, 24 offline AI cases and eight synthetic browser scenarios. Research exports/restores omitted the creation clock used by retention. Require `tmp/research-restore-clock-committed-evidence-2026-10-18.json` to exist and match HEAD before current local acceptance. Ledger, hosted acceptance and all-copy retention remain open. |
 | M1 - Customer journey | `IN_PROGRESS` for current-source local refresh; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | The previous clean receipt includes six Notebook and two Room synthetic browser scenarios on the repair base, not the edited candidate. Refresh candidate-bound checks before a new acceptance claim. Synthetic fixtures do not establish real customer acceptance, hosted grants/isolation, object recovery or the full hosted journey. |
 | M2 - Authorized Skool archive/import | `IN_PROGRESS` | M0; M1 source/provenance contracts inform import | Reconcile the canonical lesson inventory and all authorized source material; identify full text, summary-only, transcript-only, missing, duplicate, and video-reference coverage separately; validate a dry-run pack and idempotency; then require post-import graph/source-link evidence for an explicitly verified tenant. | Current private graph `tmp/authorized-skool-import/agentos-page-text-reconciled-2026-10-17.jsonld` validates at **1,471 nodes / 10,735 relations**. All 18 earlier gap pages were observed in authorized Work Chrome: 15 now have captured inline page text and three are video-only with no body. **107/110** lessons have page-text segments; the new captures are resource labels/community CTA and a ZIP usage note, not lesson video contents. The three remaining no-body pages are July 26 ChatGPT Voice, August 28 Claude Watermarks and September 23 Claude Opus 5.5; their YouTube references are known. All previous text, 12 companion-text links and three transcript segments are preserved. Main-player audit remains 93 YouTube / 17 Skool-native, not video bytes. Production parser accepts all 18 records, including three media-only; portable validation, repeat merge and complete-export rejection pass. The 12 PDFs, four pinned READMEs and extracted Codex README remain included; BWC is excluded. `completenessVerified=false`, with one excerpt/two unknown transcripts and none declared full. No hosted import or new Drive upload occurred. Next: obtain permitted full transcript/video exports, review omissions and confirm the destination tenant before separately authorized import. |
 | M3 - Local/cloud parity and security | `BLOCKED` | M0 candidate; M1 local acceptance | Identify exact local candidate and hosted service/revision/image/config/migrations; read-only compare same authenticated member and tenant; then prove two-member/two-tenant isolation, route allowlist, storage proxy, and 28-day active + seven-day recovery behavior with hosted receipts. | Owner-selected default is `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in Aryaman (Work) Chrome. Fresh read-only service/revision metadata confirms project `veloce-agenticos-2026`, region `asia-south1`, revision `veloce-cloud-test-00208-5hk` at 100% traffic and image `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`. Auth is enforced; provider calls are disabled. No source stamp exists, identity/import APIs are excluded, runtime and bucket retention are 14 days, and two inbox secrets are inline rather than Secret Manager references. Bucket metadata reports seven-day soft delete; behavioral recovery/deletion is unverified. Historical Internal Beta findings do not describe this selected tenant. Same-member/tenant comparison, independent source attestation, migrations, isolation and 28+7 behavior remain open. Hosted remediation requires separate target-specific approval. |
@@ -113,14 +113,67 @@ downstream gates.
   and the strict verifier. The ledger/checklist, not this narrative board,
   decides whether all mandatory evidence and approvals are present.
 
-**Current critical-path action (2026-10-18 UTC):** Verify the operator command's
-missing managed-credit retention step before any hosted rollout review. Default
-preview now includes the existing V49 RPC with a tenant-scoped 100-row batch;
-apply requires separate credit confirmation before any request. Refresh
-clean-commit evidence, then review deployed definitions, existing-data integrity
-and a disposable staging/recovery plan. Staging means a separate backend with
-fake data, not the current project labeled PRODUCTION. Creating staging,
+**Current critical-path action (2026-10-18 UTC):** Verify the research
+export/restore creation-clock repair before any hosted rollout review. The full
+catalog audit found gaps outside the earlier export-only projection; a real
+round trip then proved that research restore renewed old creation timestamps.
+Refresh clean-commit evidence, then review all base-schema prerequisites and a
+disposable staging/recovery target. The older control-plane staging runbook
+shares production Supabase and is not that target. Creating resources,
 changing hosted schema/data, cleanup and spend all remain unauthorized.
+
+### Research Restore Clock Evidence - 2026-10-18 UTC
+
+Baseline source: clean `518023ffd28a88d612851699c7e28d9aa954c85a` before
+adding the regression. `tmp/research-restore-clock-baseline-2026-10-18.json`
+records one failure: a 26-day-old research record restored with today's
+`created_at`. The CLI and database restore allowlist omitted that field and
+the column default renewed it. Both record and citation projections now retain
+creation time independently of retrieval time. The existing restore validation
+then rejects missing, future and expired creation clocks without changing any
+earlier row in the transaction. Older retrieval-only snapshots require review;
+no automatic clock inference or renewal is permitted.
+
+Twenty-one targeted tests pass. The new round trip applies all 73 actual
+repository migrations and uses synthetic research rows with distinct creation
+and retrieval times, plus a foreign tenant whose metadata remains unchanged.
+Require `tmp/research-restore-clock-committed-evidence-2026-10-18.json` to exist
+and match HEAD for final local acceptance. This does not establish hosted
+backup recovery, elapsed-time cleanup, object deletion or production readiness.
+
+### Full Catalog Comparison - 2026-10-18 UTC
+
+The earlier 49-table export projection was not a complete schema comparison.
+An offline rehearsal installs all 73 repository files, runs the exact approved
+metadata query locally and compares with the saved hosted catalog observed at
+`2026-10-17T21:28:48.838128+00:00`. Both catalogs have 62 `client_*` tables
+and equal RLS flags, but that is not policy or permission equivalence. The
+full comparison finds 31 local columns absent from the saved catalog: the
+earlier 27 plus two research creation timestamps, credit `financial_activity_at`
+and rate-limit `window_seconds`. Local migration origins are recorded for all
+missing columns and routines, not inferred from dashboard migration history.
+
+Of 132 local routine signatures, 56 are absent, three are hosted-only and 55
+shared signatures differ in compared fields. All 55 have ACL-text differences;
+18 also have definition-hash differences. These are review findings, not an
+exploit claim or proof of effective grants. Six missing routine definitions
+originate outside the proposed 26-file delta: onboarding verify/setup tokens,
+guarded/legacy source import, Notebook source loading and financial offboarding
+protection. Do not assume those base prerequisites are installed or apply the
+delta alone as a complete rollout.
+
+Local PostgreSQL 18.3 and hosted 17.6 differ in catalog representation. The
+comparison reports 572 local type-`n` constraint entries separately, not as
+missing hosted constraints; column nullability is still compared. PostgreSQL
+18 [added column NOT NULL entries to pg_constraint](https://www.postgresql.org/docs/18/release-18.html).
+Other textual hash differences remain unaccepted until reviewed; database-local
+policy role OIDs and trigger routine OIDs are not comparable identities.
+
+The private committed-scope artifact is
+`tmp/full-schema-catalog-comparison-2026-10-18-v3/receipt.json`; require it to
+exist and match HEAD, its source hashes and catalog hash before reuse. The
+catalog omits auth/storage and non-client billing/replay tables. No new hosted
+query, tenant-content access, backup transfer or hosted change was performed.
 
 ### Operator Credit Cleanup Evidence - 2026-10-18 UTC
 
