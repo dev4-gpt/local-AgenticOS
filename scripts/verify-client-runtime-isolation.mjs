@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { readFileSync, readSync } from "node:fs";
 import process from "node:process";
 import { evaluateTenantProbe } from "./lib/tenant-isolation-probe.mjs";
 
@@ -18,13 +18,22 @@ if (parsedUrl.origin !== `https://${expectedProjectRef}.supabase.co` || parsedUr
   fail("--url must match the independently verified --expected-project-ref without credentials, path or query");
 }
 const baseUrl = parsedUrl.origin;
-const anonKey = valueAfter("--anon-key") || process.env.SUPABASE_ANON_KEY;
+const expectedUserA = valueAfter("--expected-user-a");
+const expectedUserB = valueAfter("--expected-user-b");
+const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+if ((expectedUserA || expectedUserB) && (!uuid.test(expectedUserA || "") || !uuid.test(expectedUserB || "")
+    || expectedUserA.toLowerCase() === expectedUserB.toLowerCase())) fail("Two distinct expected users are required");
+const sessionInput = args.includes("--session-input-stdin") ? readSessionInput() : null;
+const anonKey = sessionInput?.anonKey || valueAfter("--anon-key") || process.env.SUPABASE_ANON_KEY;
 if (!anonKey) fail("--anon-key or SUPABASE_ANON_KEY is required");
-const tokenA = token("--access-token-a", "--access-token-file-a");
-const tokenB = token("--access-token-b", "--access-token-file-b");
+const tokenA = sessionInput?.tokenA || token("--access-token-a", "--access-token-file-a");
+const tokenB = sessionInput?.tokenB || token("--access-token-b", "--access-token-file-b");
 const [identityA, identityB] = await Promise.all([identity(tokenA), identity(tokenB)]);
 if (!identityA || !identityB || identityA === identityB) {
   fail("Both sessions must resolve to distinct Supabase Auth users before table probes");
+}
+if (expectedUserA && (identityA !== expectedUserA.toLowerCase() || identityB !== expectedUserB.toLowerCase())) {
+  fail("Both sessions must match the independently verified expected users before table probes");
 }
 
 const probes = [
@@ -64,6 +73,7 @@ const probes = [
   ["ruflo agents", "client_ruflo_agents"],
 ];
 const failures = [];
+let tablesChecked = 0;
 
 for (const [label, table] of probes) {
   const [aOwn, aOther, bOwn, bOther] = await Promise.all([
@@ -73,8 +83,17 @@ for (const [label, table] of probes) {
     select(table, tenantA, tokenB),
   ]);
   failures.push(...evaluateTenantProbe(label, tenantA, tenantB, { aOwn, aOther, bOwn, bOther }));
+  tablesChecked++;
+  if (failures.length) break;
 }
 
+if (args.includes("--json")) {
+  console.log(JSON.stringify({ schemaVersion: 1, passed: failures.length === 0, readOnly: true,
+    authRequests: 2, tableRequests: tablesChecked * 4, tablesChecked,
+    expectedIdentitiesMatched: Boolean(expectedUserA), failures,
+    limitations: ["Writes, execution, export and recovery remain untested."] }));
+  process.exit(failures.length ? 1 : 0);
+}
 if (failures.length) {
   console.error("Client isolation verification failed:");
   for (const failure of failures) console.error(`- ${failure}`);
@@ -130,6 +149,23 @@ function token(valueFlag, fileFlag) {
     fail(`${fileFlag} must point to a readable non-empty token file`);
   }
   fail(`${valueFlag} or ${fileFlag} is required`);
+}
+
+function readSessionInput() {
+  if (args.some(arg => ["--anon-key", "--access-token-a", "--access-token-b", "--access-token-file-a", "--access-token-file-b"].includes(arg)))
+    fail("stdin session input cannot be mixed with other credential inputs");
+  try {
+    const bytes = Buffer.alloc(32769);
+    let length = 0, read;
+    while (length < bytes.length && (read = readSync(0, bytes, length, bytes.length - length, null)) > 0) length += read;
+    if (length > 32768) fail("stdin session input is too large");
+    const value = JSON.parse(bytes.subarray(0, length).toString("utf8"));
+    bytes.fill(0);
+    if (!value || Object.keys(value).sort().join(",") !== "anonKey,tokenA,tokenB"
+        || Object.values(value).some(item => typeof item !== "string" || !item || /[\r\n]/.test(item)))
+      fail("stdin session input has an invalid shape");
+    return value;
+  } catch { fail("stdin session input must be bounded valid JSON"); }
 }
 
 function fail(message) {

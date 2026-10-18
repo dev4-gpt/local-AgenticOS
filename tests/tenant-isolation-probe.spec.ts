@@ -33,7 +33,8 @@ test("cross-tenant rows fail and expired cross-read tokens stay inconclusive", (
   expect(failures).toContain("jobs: tenant B cross-read failed (401) - inconclusive, refresh the token and re-run");
 });
 
-function runProbe(mode = "valid", url = "https://aaaaaaaaaaaaaaaaaaaa.supabase.co") {
+function runProbe(mode = "valid", url = "https://aaaaaaaaaaaaaaaaaaaa.supabase.co",
+  options: { stdin?: string; expectedUsers?: [string, string]; json?: boolean } = {}) {
   const directory = mkdtempSync(join(tmpdir(), "agentos-isolation-probe-"));
   const countsFile = join(directory, "counts.json");
   const preload = join(directory, "fetch.mjs");
@@ -71,9 +72,12 @@ function runProbe(mode = "valid", url = "https://aaaaaaaaaaaaaaaaaaaa.supabase.c
     const result = spawnSync(process.execPath, ["--import", preload,
       resolve("scripts/verify-client-runtime-isolation.mjs"),
       "--url", url, "--expected-project-ref", "aaaaaaaaaaaaaaaaaaaa",
-      "--tenant-a", "alpha", "--tenant-b", "beta", "--anon-key", "synthetic-public-key",
-      "--access-token-a", "synthetic-member-a", "--access-token-b", "synthetic-member-b"],
-    { encoding: "utf8", timeout: 10_000, env: { PATH: process.env.PATH, HOME: directory } });
+      "--tenant-a", "alpha", "--tenant-b", "beta",
+      ...(options.stdin !== undefined ? ["--session-input-stdin"] : ["--anon-key", "synthetic-public-key",
+        "--access-token-a", "synthetic-member-a", "--access-token-b", "synthetic-member-b"]),
+      ...(options.expectedUsers ? ["--expected-user-a", options.expectedUsers[0], "--expected-user-b", options.expectedUsers[1]] : []),
+      ...(options.json ? ["--json"] : [])],
+    { encoding: "utf8", input: options.stdin, timeout: 10_000, env: { PATH: process.env.PATH, HOME: directory } });
     expect(result.error).toBeUndefined();
     const output = result.stdout + result.stderr;
     for (const privateValue of ["synthetic-member-a", "synthetic-member-b", "synthetic-public-key",
@@ -90,6 +94,32 @@ test("the CLI verifies distinct Auth identities before all 34 read-only table pr
   expect(result.status).toBe(0);
   expect(result.counts).toEqual({ requests: 138, auth: 2, unsafeRedirects: 0, missingTimeout: 0 });
 });
+
+const stdinBundle = JSON.stringify({ anonKey: "synthetic-public-key", tokenA: "synthetic-member-a", tokenB: "synthetic-member-b" });
+const expectedUsers: [string, string] = ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"];
+
+test("the CLI accepts memory-only session input and emits a minimized read receipt", () => {
+  const result = runProbe("valid", undefined, { stdin: stdinBundle, expectedUsers, json: true });
+  expect(result.status).toBe(0);
+  expect(JSON.parse(result.stdout)).toMatchObject({ passed: true, authRequests: 2, tableRequests: 136,
+    tablesChecked: 34, expectedIdentitiesMatched: true, readOnly: true });
+});
+
+test("the CLI pins both expected users before any table read", () => {
+  const result = runProbe("valid", undefined, { stdin: stdinBundle, expectedUsers: [expectedUsers[1], expectedUsers[0]], json: true });
+  expect(result.status).not.toBe(0);
+  expect(result.counts.requests).toBe(2);
+  expect(result.stderr).toContain("expected users");
+});
+
+for (const input of ['{"tokenA":"private-fixture-body"}', "x".repeat(33_000)]) {
+  test(`the CLI rejects invalid or oversized stdin session input (${input.length} bytes)`, () => {
+    const result = runProbe("valid", undefined, { stdin: input });
+    expect(result.status).not.toBe(0);
+    expect(result.counts.requests).toBe(0);
+    expect(result.stderr).toContain("session input");
+  });
+}
 
 for (const mode of ["malformed-cross", "invalid-json-cross", "http-cross-error", "empty-own"]) {
   test(`the CLI rejects ${mode} rather than reporting isolation`, () => {

@@ -113,9 +113,11 @@ downstream gates.
   and the strict verifier. The ledger/checklist, not this narrative board,
   decides whether all mandatory evidence and approvals are present.
 
-**Current critical-path action (2026-10-18 UTC):** Prepare a separately approved,
-owner-controlled short-lived Auth-session handoff for the read-only isolation
-CLI. The approved 72-row fixture is now installed in the separate Free staging
+**Current critical-path action (2026-10-18 UTC):** Match the owner-runner's clean
+local verification receipt below, then obtain separate target-specific approval
+and private owner terminal input for staging Auth/read/current-session sign-out.
+The runner is plan-only by default; no new Auth or read-probe action has been
+performed. The approved 72-row fixture is installed in the separate Free staging
 project, privately bound to the two owner-supplied Auth UUIDs. Clean code
 candidate `7c67f060bd2694a499757e8992cd5df3c67dc9de`
 passes 518 selected regressions, 24 offline AI cases, eight synthetic browser
@@ -130,6 +132,56 @@ next hosted check. Follow the
 [disposable database procedure](./disposable-database-rehearsal.md), not the
 older control-plane tier that shares production Supabase. Free-only authority
 does not permit upgrades/payments or unreviewed production/destructive actions.
+
+### Owner-Controlled Auth Read Handoff - 2026-10-18 UTC
+
+**Baseline and acceptance:** Source `1b1a27a6e3f707fc6ef75cfa3637ea376a4808d0`
+has the reviewed fixture, but its CLI requires manually supplied session values
+and lacks the owner terminal flow. Four new offline CLI expectations fail on
+that baseline: memory-only stdin, expected-user pinning and two bounded-input
+denials. Private baseline: `tmp/isolation-owner-stdin-baseline-2026-10-18.json`,
+SHA-256 `4e111ff6d266a237cbb94fd00df838fdc2b77f51a459d0f4573e6340d14adf88`.
+This is a missing handoff capability, not a claim that an actual session leaked.
+Before using the new runner, require destination/user/clock checks before table
+reads, no network by default, private terminal input, no secrets in child
+arguments/environment/files/output, no retries or redirects, bounded requests,
+and attempted current-session-only sign-out on partial failure/cancellation.
+
+**Implementation and verification contract:** The new owner CLI validates a
+one-hour private plan and independently expected project, refuses a dirty
+candidate/non-TTY run, and requires an explicit Auth/read/local-sign-out flag.
+It prompts privately for the public key and two existing test-account passwords,
+keeps sessions in memory, and sends only an anonymous key and access tokens over
+the child probe's private stdin. The probe confirms the two expected UUIDs
+through Auth, retains all 34 populated table checks, and stops after the first
+failed group. Parent receipts keep allowlisted counters, expiry limits and
+source/configuration fingerprints, not raw Auth or child output. Responses and
+child output are bounded; cancellation restores terminal state or reports the
+restoration failure rather than crashing before session cleanup. The development
+test-loader/root-argument failures were corrected before clean verification.
+
+The targeted suite contains 53 checks. Accept broader local verification only
+when `tmp/isolation-owner-committed-2026-10-18/receipt.json` exists and matches
+the clean candidate, source/configuration hashes, 557 selected regressions
+(zero skip/failure/flake/retry), lint/typecheck, lifecycle/inventory, 24 offline
+AI cases and eight synthetic browser scenarios. Preserve the four failing
+baseline expectations. No application or SQL schema change is made here; the
+74 installed SQL hashes and historical fixture receipt remain separately bound.
+
+**Hosted scope still not authorized:** Proposed maximum: 142 HTTP requests,
+comprising two password sign-ins, two Auth identity reads, 136 table reads and
+two `scope=local` sign-outs of only newly obtained sessions. Each request has a
+ten-second deadline; the child read phase is bounded to seven minutes. No
+refresh, user creation, app-row/SQL mutation, storage, provider call, execution,
+export, cleanup, security-setting change, deployment or spend is included. Auth
+sessions/audit records may change, so this is not a pure read-only operation.
+Supabase local sign-out does not revoke an access JWT before expiry; the runner
+records that limit and accepts at most 65 minutes of reported token lifetime.
+Lost sign-in responses and failed sign-outs remain explicit uncertain outcomes.
+The owner must enter credentials privately after approval; do not ask for them
+in chat or collect them from browser state. No real hosted identity/isolation
+claim follows from these synthetic tests. Full journey, import, parity,
+retention/recovery, buyer and release acceptance remain open.
 
 ### Exact Isolation Fixture Preparation - 2026-10-18 UTC
 

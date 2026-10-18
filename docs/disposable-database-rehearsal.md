@@ -118,6 +118,70 @@ UUIDs must never be mistaken for hosted users. Local tests cover rollback after
 a failure at the end of the batch and count changes across all application
 relations, not just the populated tables.
 
+### Owner-Controlled Sign-In And Read Check
+
+`scripts/verify-client-isolation-owner.mjs` is plan-only by default. Its private
+JSON plan contains exactly `schemaVersion: 1`, `environment: disposable-staging`,
+`projectRef`, the exact `https://<ref>.supabase.co` origin (no slash/path/query),
+`tenantA`, `tenantB`, `userA`, `userB`, `preparedAt` and `expiresAt`. Use the
+reviewed fixture's two distinct tenants and owner-created UUIDs. Clocks must be
+canonical ISO strings; preparation cannot be in the future, and the plan lasts
+at most one hour. Keep the real plan outside Git. It contains no password, key,
+email or token. Independently recheck the named project; a JSON label is not
+proof of a staging destination or permission to use credentials there.
+
+Inspect the plan without a terminal prompt or network request:
+
+```sh
+node scripts/verify-client-isolation-owner.mjs \
+  --plan-file /absolute/private/staging-auth-plan.json \
+  --expected-project-ref <independently-verified-staging-ref>
+```
+
+Only after a separate target-specific Auth/read/local-sign-out approval, the
+owner runs the same command in a real private terminal with Node 24 and adds:
+
+```sh
+--run --confirm-staging-auth-reads-and-local-signout \
+  --out /absolute/private/new-isolation-receipt.json
+```
+
+The run refuses non-TTY input, a dirty candidate or an existing output path
+before credential entry. The parent directory must already exist. The owner
+privately enters the staging publishable/legacy anon key and the two existing
+test emails/passwords. No admin/service-role key is accepted. Input is not
+echoed; timeout, cancellation and Ctrl-C restore terminal raw mode. Passwords
+and access/refresh tokens are never requested in chat. Do not collect them from
+browser storage, cookies or an operator session.
+
+The proposed maximum is **142** HTTP requests: two password sign-ins, two Auth
+identity reads, 136 minimal table reads and two current-session-only sign-outs.
+No redirect or retry is allowed; requests have ten-second deadlines, and the
+read subprocess is bounded to seven minutes. Both expected UUIDs must resolve
+through Auth before any table read. Stop after the first failed table group.
+Only a private stdin pipe passes the public key and access tokens to that
+subprocess; none are put in arguments, environment, temporary files or receipts.
+Credentials and sessions remain in process memory; memory/swap erasure is not
+attested. The response and child-output sizes are bounded. Receipts persist
+only allowlisted outcomes/counters, source/plan fingerprints and expiry limits.
+
+The helper attempts `scope=local` sign-out for every session token it obtained,
+including partial failure and cancellation; it never signs out other existing
+sessions. A lost sign-in response can leave the created-session outcome unknown,
+and a failed sign-out is not silently accepted. Supabase documents that
+[local sign-out revokes the current session's refresh token, while its access
+JWT remains valid until expiry](https://supabase.com/docs/guides/auth/signout).
+The helper accepts at most 65 minutes of reported access-token lifetime and
+does not refresh tokens or change project security settings. Auth can retain
+session/audit records; this is a hosted Auth mutation, not a pure read-only run.
+
+A passing receipt proves only the two supplied identities and populated
+read boundaries in that approved staging environment. It does not prove the
+deployed application login, writes/execution, reviewed export, anonymous reads,
+physical deletion, recovery or production readiness. Those remain separately
+approved and evidenced gates. A test harness with fake Auth responses is not
+an actual hosted receipt.
+
 Pin `--expected-project-ref` to the independently observed staging reference and
 the HTTPS Supabase project origin. The current read-only command checks two
 distinct Auth users and 136 tenant reads, requires positive own sentinels and
