@@ -210,6 +210,7 @@ declare
   i integer;
   v_count integer;
   v_total integer := 0;
+  v_parent_guard text;
 begin
   if p_tenant_slug is null or p_tenant_slug !~ '^[a-z][a-z0-9-]{2,40}$' or p_apply is null
      or p_batch_limit is null or p_batch_limit < 1 or p_batch_limit > 500 then
@@ -228,7 +229,13 @@ begin
   ) into v_candidates;
   if p_apply then
     for i in 1..array_length(v_tables,1) loop
-      execute format('with chosen as (select ctid from public.%I where tenant_slug=$1 and retention_expires_at <= $2 order by retention_expires_at limit $3 for update skip locked), removed as (delete from public.%I t using chosen where t.ctid=chosen.ctid returning 1) select count(*) from removed', v_tables[i], v_tables[i])
+      -- A parent cascade must not bypass the bounded child batches or delete
+      -- any remaining child, including a legacy foreign-tenant reference.
+      v_parent_guard := case v_tables[i]
+        when 'client_board_tasks' then 'and not exists(select 1 from public.client_board_comments child where child.task_id=candidate.id) and not exists(select 1 from public.client_board_events child where child.task_id=candidate.id)'
+        when 'client_loop_runs' then 'and not exists(select 1 from public.client_loop_rounds child where child.run_id=candidate.id)'
+        else '' end;
+      execute format('with chosen as (select ctid from public.%I candidate where tenant_slug=$1 and retention_expires_at <= $2 %s order by retention_expires_at limit $3 for update skip locked), removed as (delete from public.%I t using chosen where t.ctid=chosen.ctid returning 1) select count(*) from removed', v_tables[i], v_parent_guard, v_tables[i])
         into v_count using p_tenant_slug, v_cutoff, p_batch_limit;
       v_counts[i] := v_count;
       v_total := v_total + v_count;

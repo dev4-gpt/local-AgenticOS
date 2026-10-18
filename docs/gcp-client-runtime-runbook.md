@@ -1181,6 +1181,15 @@ column projections, worker argument/grant compatibility, service-only purge
 previews, a synthetic original-clock metadata restore and two-member reads.
 It is also included in `npm run verify:client-lifecycle`.
 
+The populated rehearsal seeds active, recovery-only and purge-due synthetic
+Board/Loop, Room, Pipeline and job records before migration, including recent
+activity on old parents and multiple child records. It verifies original-clock
+backfills, shorter tenant policy, member read denial, and child-first cleanup.
+Board/Loop parents must wait until all comments/events/rounds are drained;
+otherwise a foreign-key cascade can exceed the requested per-table batch and
+undercount deletions. Retry bounded batches until the preview reports no due
+rows; never increase limits or remove guards merely to force completion.
+
 Keep the existing named worker parameters when using `create or replace
 function`; PostgreSQL rejects replacing named parameters with unnamed arguments,
 and PostgREST callers depend on those names. Do not drop functions or weaken

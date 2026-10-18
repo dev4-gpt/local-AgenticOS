@@ -71,7 +71,7 @@ and it does not contend for the same browser, tenant, environment, or files.
 
 | Gate | State (2026-10-17) | Depends on | Required work and exit evidence | Boundary / next action |
 | --- | --- | --- | --- | --- |
-| M0 - Candidate and evidence baseline | `IN_PROGRESS` for schema-upgrade repair acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Repair base `273aa6e5b411fac698746e04c9bc48971a5c3a56`, Node `v24.19.0`. The previous clean receipt passed 473 regressions, 24 offline AI cases and eight synthetic browser scenarios on that base. New Board/Loop and Paperclip SQL edits require fresh candidate-bound acceptance. Require `tmp/schema-upgrade-committed-release-evidence-2026-10-18.json` to exist and match current HEAD before accepting the new clean-commit checks. Ledger, hosted acceptance and all-copy retention remain open. |
+| M0 - Candidate and evidence baseline | `IN_PROGRESS` for populated-schema cleanup repair acceptance | None | Reconcile branch/HEAD, dirty work, supported runtime, candidate fingerprint and scope-bound receipts. Source edits invalidate dependent receipts. | Repair base `31937589edfff43aef9cdce248963d873e6839d2`, Node `v24.19.0`. That clean candidate passed 499 regressions, 24 offline AI cases and eight synthetic browser scenarios. The Board/Loop cascade repair changes SQL and requires refreshed evidence. Require `tmp/populated-schema-committed-evidence-2026-10-18.json` to exist and match HEAD before current local acceptance. Ledger, hosted acceptance and all-copy retention remain open. |
 | M1 - Customer journey | `IN_PROGRESS` for current-source local refresh; hosted acceptance `OPEN` | M0 candidate | Prove sign-in fixture/test tenant through approved sources, bounded job, grounded draft, provenance, durable human decision and export, including deny/failure/retention cases. | The previous clean receipt includes six Notebook and two Room synthetic browser scenarios on the repair base, not the edited candidate. Refresh candidate-bound checks before a new acceptance claim. Synthetic fixtures do not establish real customer acceptance, hosted grants/isolation, object recovery or the full hosted journey. |
 | M2 - Authorized Skool archive/import | `IN_PROGRESS` | M0; M1 source/provenance contracts inform import | Reconcile the canonical lesson inventory and all authorized source material; identify full text, summary-only, transcript-only, missing, duplicate, and video-reference coverage separately; validate a dry-run pack and idempotency; then require post-import graph/source-link evidence for an explicitly verified tenant. | Current private graph `tmp/authorized-skool-import/agentos-page-text-reconciled-2026-10-17.jsonld` validates at **1,471 nodes / 10,735 relations**. All 18 earlier gap pages were observed in authorized Work Chrome: 15 now have captured inline page text and three are video-only with no body. **107/110** lessons have page-text segments; the new captures are resource labels/community CTA and a ZIP usage note, not lesson video contents. The three remaining no-body pages are July 26 ChatGPT Voice, August 28 Claude Watermarks and September 23 Claude Opus 5.5; their YouTube references are known. All previous text, 12 companion-text links and three transcript segments are preserved. Main-player audit remains 93 YouTube / 17 Skool-native, not video bytes. Production parser accepts all 18 records, including three media-only; portable validation, repeat merge and complete-export rejection pass. The 12 PDFs, four pinned READMEs and extracted Codex README remain included; BWC is excluded. `completenessVerified=false`, with one excerpt/two unknown transcripts and none declared full. No hosted import or new Drive upload occurred. Next: obtain permitted full transcript/video exports, review omissions and confirm the destination tenant before separately authorized import. |
 | M3 - Local/cloud parity and security | `BLOCKED` | M0 candidate; M1 local acceptance | Identify exact local candidate and hosted service/revision/image/config/migrations; read-only compare same authenticated member and tenant; then prove two-member/two-tenant isolation, route allowlist, storage proxy, and 28-day active + seven-day recovery behavior with hosted receipts. | Owner-selected default is `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in Aryaman (Work) Chrome. Fresh read-only service/revision metadata confirms project `veloce-agenticos-2026`, region `asia-south1`, revision `veloce-cloud-test-00208-5hk` at 100% traffic and image `sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`. Auth is enforced; provider calls are disabled. No source stamp exists, identity/import APIs are excluded, runtime and bucket retention are 14 days, and two inbox secrets are inline rather than Secret Manager references. Bucket metadata reports seven-day soft delete; behavioral recovery/deletion is unverified. Historical Internal Beta findings do not describe this selected tenant. Same-member/tenant comparison, independent source attestation, migrations, isolation and 28+7 behavior remain open. Hosted remediation requires separate target-specific approval. |
@@ -113,16 +113,33 @@ downstream gates.
   and the strict verifier. The ledger/checklist, not this narrative board,
   decides whether all mandatory evidence and approvals are present.
 
-**Current critical-path action (2026-10-18 UTC):** Verify the repository-schema
-upgrade repair before any hosted rollout review. Applying the actual predecessor
-SQL exposed PostgreSQL error `42P13`: Board/Loop retention removed existing
-worker argument names; Paperclip had the same incompatible replacement. Preserve
-those four named contracts without dropping functions or changing worker grants.
-The regression applies 47 actual predecessor files followed by 26 migration
-files, validates 49 lifecycle projections and exercises the operator RPCs under
-local roles. Refresh clean-commit evidence before accepting the repair, then
-review deployed definitions, existing-data integrity and original-clock
-backup/rollback prerequisites. Hosted schema or cleanup remains unauthorized.
+**Current critical-path action (2026-10-18 UTC):** Verify the populated-schema
+bounded-cleanup repair before any hosted rollout review. A one-row child batch
+was bypassed by deleting its parent: three comments disappeared while the RPC
+reported one. Board/Loop parents must now wait for every child batch to drain.
+The regression applies 47 actual predecessor files followed by 26 migrations
+with synthetic historical records, then checks original deadlines, recovery-only
+read denial, bounded deletion counts and another tenant's unchanged content.
+Refresh clean-commit evidence before accepting the repair, then review deployed
+definitions, existing-data integrity and original-clock backup/rollback
+prerequisites. Hosted schema or cleanup remains unauthorized.
+
+### Populated Schema Cleanup Evidence - 2026-10-18 UTC
+
+Baseline source: `31937589edfff43aef9cdce248963d873e6839d2`, clean before the
+regression was added. Private baseline
+`tmp/populated-schema-rehearsal-bounded-baseline-2026-10-18.json` records one
+failure: requested batch one, observed three comment deletions. The new test
+uses actual application tables, foreign keys, triggers and functions, with
+synthetic auth and historical fixture rows; no application table is stubbed.
+It checks 28-day and shorter 14-day tenants, recent activity on expired parents,
+inherited child deadlines, three bounded drains, due-only job cleanup and a
+no-op repeat with no duplicate audit. Guards remain enabled throughout cleanup.
+
+Require `tmp/populated-schema-committed-evidence-2026-10-18.json` to exist and
+match HEAD for current local outcomes. Earlier source receipts and migration
+hash plans are historical, not acceptance for the edited SQL. No hosted schema,
+tenant data, backups, physical objects or real provider behavior was exercised.
 
 ### Repository Upgrade Evidence - 2026-10-18 UTC
 
