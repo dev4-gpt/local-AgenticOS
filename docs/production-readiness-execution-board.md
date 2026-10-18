@@ -137,13 +137,33 @@ service-only preview calls, preserved synthetic metadata clocks and isolated
 two-member tenant/record reads. The fixture supplies auth roles/users/claims,
 not application tables or substitute worker functions.
 
-Require `tmp/schema-upgrade-committed-release-evidence-2026-10-18.json` for the
-final candidate hash, test outcomes and strict release result; this paragraph is
-not a passing receipt. The earlier 26-file hash-pinned review plan is stale for
+The clean repair candidate `4f38199c29a8223cf1e3d5ab9d1f64faea485448` passed
+474 regressions, 24 offline AI cases and eight synthetic browser scenarios.
+`tmp/schema-upgrade-committed-release-evidence-2026-10-18.json` binds that exact
+commit; SHA-256 `16bf9d527174badfddaf12172c05bda2fa08904652a362add4fb1f18cd906bce`.
+Strict release remains false (ledger bucket/environment and 58 unevaluated
+categories). The earlier 26-file hash-pinned review plan is stale for
 the two edited SQL files and must be regenerated before any approval request.
 An empty repository-schema install and synthetic fixtures do not establish
 existing hosted-data compatibility, Supabase default grants/auth equivalence,
 backup recovery, physical deletion, provider quality or customer acceptance.
+
+### Owner-Requested Creative References - 2026-10-18 UTC
+
+Add Lenis, GSAP, VANTA.js, React Bits and `yihui-dev/awesome-opus5-5-videos`
+through the existing repository/public catalog projection. Baseline: five
+reference-registration regressions fail because all entries are absent. The
+candidate pins official upstream commits, preserves custom license labels and
+keeps reference-only status, no selectable execution and read/review permissions.
+See [creative reference boundaries](./creative-build-repositories-2026-10-18.md).
+No dependency installation, copied components/media, model call or dashboard
+animation is part of this reference registration.
+
+These edits invalidate the repair candidate's whole-source release evidence for
+the new source, without undoing its historical results. Require the generated
+`tmp/creative-repositories-committed-evidence-2026-10-18.json` to exist and match
+current HEAD for refreshed acceptance; a path in this board is not a passing
+receipt. The goal's hosted/customer/import/retention and buyer gates stay open.
 
 The repair was developed on `bd494c494562b4adf0b835e0c3b7a775b271d46a` on
 `wip/backup-2026-10-03`; the baseline regression fails because the operator
