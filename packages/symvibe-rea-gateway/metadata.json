@@ -1,0 +1,6 @@
+{
+  "name": "Symvibe + REA — Veloce AgenticOS Spatial Workspace",
+  "description": "Infinite multi-agent spatial canvas, REA (Reverse Engineer Anything) MCP provenance inspector, and Reuse/Extend/Build gateway adapter for Veloce AgenticOS powered by Gemini 4 Argon.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
