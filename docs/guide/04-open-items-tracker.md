@@ -4,7 +4,7 @@ Master plan phases (from `reports/Veloce master plan and error register.md`). Ti
 
 Legend: **Owner** = Me (the assistant) / You / Both / Lawyer. **Sev** = CRITICAL / WARNING / SUGGESTION. IDs refer to the error register.
 
-Last updated: 2026-10-19 after the budget step (Phase 1 item 4) on `feat/approval-gateway`.
+Last updated: 2026-10-19 after the Adapters page and Budget tab (Phase 1 item 5) on `feat/approval-gateway`.
 
 ---
 
@@ -13,7 +13,7 @@ Last updated: 2026-10-19 after the budget step (Phase 1 item 4) on `feat/approva
 | Phase | Name | Status |
 |---|---|---|
 | 0 | Hygiene | Mine done; yours open |
-| 1 | Host foundation | Items 1-4 done; 5-16 open |
+| 1 | Host foundation | Items 1-5 done; 6-16 open |
 | 2 | Creator OS adapter | Not started |
 | 3 | Knowledge adapter | Not started (dedupe tools exist) |
 | 4 | Forge adapter | Not started |
@@ -63,7 +63,12 @@ Last updated: 2026-10-19 after the budget step (Phase 1 item 4) on `feat/approva
   - [ ] 4c. Show unknown costs separately (a provider that does not report a cost)
   - [ ] 4d. Nothing calls the budget functions yet; the first real adapter must reserve before it runs a task
   - [ ] 4e. Add an index on the adapter tag if the ledger grows (the adapter total is a scan by tenant and period today)
-- [ ] **5. Adapters page and Budget tab (Me).** List adapters and states; spend against caps on the main page. First read the Next.js docs bundled in `node_modules/next/dist/docs/` (X-17). *Done when:* unauthenticated and non-member requests are rejected, and the page shows the real ledger
+- [x] **5. Adapters page and Budget tab (Me), done in the Adapters page commit on `feat/approval-gateway`.** The bundled Next.js docs were read first (X-17). `/adapters` lists each adapter with state, what it may do, a deletion-guarantee label and spend against its cap; the main page has an Overview / Budget tab switch (operator edition only) showing spend per adapter plus an "other spending" line that adds up to the workspace total. Both need sign-in and `ADAPTER_HOST_ENABLED=true`, and read through one read-only database function (`client_adapter_budget_summary`). Proven by `adapter-overview.spec.ts` and a new summary test in `adapter-budget-sql.spec.ts`; both screens were opened in a browser at desktop and phone width
+  - [ ] 5a. Check both screens against a real database with real ledger rows. So far they were checked in a browser with made-up sample data only, plus the signed-out state
+  - [ ] 5b. Decide whether the client edition gets these screens. Today they are not in the client edition's allowed routes, on purpose, until Phase 7
+  - [ ] 5c. Add a link to Adapters from the main navigation (today it sits in the Budget tab; the home quick-link bar is a fixed six-item layout)
+  - [ ] 5d. Next.js 16 renamed `middleware` to `proxy`; `src/middleware.ts` still works but the dev server prints a deprecation warning. Migrate with the codemod when convenient
+  - [ ] 5e. Existing lint error in `HomeImmersive.tsx` (`setWebglFailed` called inside an effect) and an unused import, both there before this work
 - [ ] **6. Observability (Me).** Audit events and counters for approvals, tokens, promotions, budget. *Done when:* each event is visible and tested
 - [ ] **7. Scoped handles (Me).** Narrow references so an adapter can read only what a task needs
 - [ ] **8. Purge and restore wiring for the new tables (Me).** Active expiry at 28 days, recovery for 7, bounded purge, restore. *Done when:* tests cover expiry, recovery-only exclusion and cross-tenant safety (the 28 + 7 gate)

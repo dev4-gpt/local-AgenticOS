@@ -6,7 +6,7 @@ All paths are relative to the repo root (`source/`). "Proof" means the test file
 npm run test:focused
 ```
 
-Expected today: 656 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
+Expected today: 666 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
 
 ## Branches
 
@@ -123,6 +123,18 @@ Proof: `tests/adapter-budget-sql.spec.ts` (11 tests: caps, periods, retries, set
 
 ---
 
+## D3. Adapters page and Budget tab
+
+- `product-experience/supabase-client-adapter-budget.sql` also holds `client_adapter_budget_summary(tenant)`: one row per registered adapter with its cap, spend for its cap period, spend this month and open reservations. Active members of that tenant get rows; anyone else gets none; the anonymous role is refused.
+- `src/lib/adapterOverview.ts`: `parseSummaryRows` (rejects any row that does not look right), `buildAdapterCards` (plain labels, cap status: ok, warning at 80%, exhausted at 100%), `buildBudgetBreakdown` (adapters plus "other spending" equal the workspace total, and flags a disagreement), `formatMicrosUsd` (a small spend is never shown as free).
+- `src/app/api/client-runtime/adapters/route.ts`: read-only `GET`. Needs sign-in and `ADAPTER_HOST_ENABLED=true`, is rate limited, reads the tenant from `CLIENT_SLUG`, and returns validated cards or an error, never raw rows. Not in the client edition's allowed API list.
+- `src/app/adapters/page.tsx` and `src/components/AdaptersView.tsx`: the `/adapters` screen with loading, switched-off, signed-out, unavailable and empty states.
+- `src/components/AdapterBudgetTab.tsx` and an edit to `src/components/HomeImmersive.tsx`: the Overview / Budget tab switch on the main page (operator edition only) and the Budget tab itself.
+
+Proof: `tests/adapter-overview.spec.ts` (9 tests: view model, route gates, malformed answers) and the summary test in `tests/adapter-budget-sql.spec.ts`. Both screens were also opened in a browser at desktop and phone width with made-up sample data, which checks layout and wording but not real numbers.
+
+---
+
 ## E. Knowledge-unify tools
 
 In `scripts/knowledge-unify/`: `scan.mjs` (340 lines), `dedupe-report.mjs` (193), `apply.mjs` (264). Format reference: `docs/knowledge-layer-schema.md` (schema version 2). How they behave is in `01-how-it-works.md`, section 6.
@@ -158,13 +170,14 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 | `adapter-approval-gateway.spec.ts` | 11 | Server hashing, input checks, route behaviour |
 | `adapter-tokens.spec.ts` | 9 | Token signing and every verification rule |
 | `adapter-token-uses-sql.spec.ts` | 5 | Single use, worker-only, bounded purge |
-| `adapter-budget-sql.spec.ts` | 11 | Budget caps, periods, idempotency, settle and release, fail closed |
+| `adapter-overview.spec.ts` | 9 | Adapters page and Budget tab data, and the read-only route's gates |
+| `adapter-budget-sql.spec.ts` | 12 | Budget caps, periods, idempotency, settle and release, fail closed |
 | `adapter-budget.spec.ts` | 6 | Budget wrapper input checks and fail-closed behaviour |
 | `adapter-budget-concurrency.spec.ts` | 4 | Simultaneous requests on a real Postgres (skipped unless configured) |
 | `knowledge-unify.spec.ts` | 23 | Scan, dedupe and apply behaviour and fixes |
 | `knowledge-unify-cli.spec.ts` | 8 | Command-line behaviour and exit codes |
 
-All eleven are registered in the `test:focused` list in `package.json`.
+All twelve are registered in the `test:focused` list in `package.json`.
 
 ## What is not in the code yet
 

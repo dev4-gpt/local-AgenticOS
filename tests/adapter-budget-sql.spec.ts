@@ -259,3 +259,37 @@ test("only the worker role can call the budget functions; members cannot, and th
     await db.close();
   }
 });
+
+test("the summary shows each adapter's cap, period spend, month spend and open reservations, to members only", async () => {
+  const db = await freshDb();
+  try {
+    await setCap(db, "forge", 1000, "day");
+    await reserve(db, { task: "t1", amount: 300 });
+    await reserve(db, { task: "t2", amount: 200 });
+    await settle(db, "t1", 250);
+    await db.exec("reset role");
+    await db.exec(`insert into public.client_runtime_budget_ledger (tenant_slug, provider, amount_micros, usage_metadata, created_at)
+      values ('tenant-a','p',900,'{"adapter_id":"forge"}'::jsonb, now() - interval '3 days')`);
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)", [OWNER]);
+    await db.exec("set role authenticated");
+    const rows = (await db.query<Record<string, unknown>>("select * from public.client_adapter_budget_summary('tenant-a')")).rows;
+    expect(rows.map((r) => r.adapter_id)).toEqual(["forge", "knowledge"]);
+    const forge = rows[0];
+    expect(Number(forge.budget_cap_micros)).toBe(1000);
+    expect(forge.budget_period).toBe("day");
+    expect(Number(forge.spent_period_micros)).toBe(450); // 250 settled + 200 reserved today; the 3-day-old row is outside the day
+    expect(forge.open_reservations).toBe(1);
+    expect(Number(rows[1].spent_period_micros)).toBe(0);
+    expect(rows[1].budget_cap_micros).toBeNull();
+    // someone who is not a member of the tenant, and the anonymous role, get nothing
+    await db.exec("reset role");
+    await db.exec("insert into auth.users values ('00000000-0000-4000-8000-0000000000ff')");
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)", ["00000000-0000-4000-8000-0000000000ff"]);
+    await db.exec("set role authenticated");
+    expect((await db.query("select * from public.client_adapter_budget_summary('tenant-a')")).rows).toHaveLength(0);
+    await db.exec("reset role; set role anon");
+    await expect(db.query("select * from public.client_adapter_budget_summary('tenant-a')")).rejects.toThrow(/permission denied/);
+  } finally {
+    await db.close();
+  }
+});

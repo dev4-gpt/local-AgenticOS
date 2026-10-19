@@ -124,7 +124,7 @@ A `publish` task cannot run without an approval (section 3).
 4. A repeated call with the same key returns the first answer and charges nothing more. A task closes once.
 5. Anything unexpected is a refusal (fail closed). All three functions take the same per-tenant lock as the existing budget code, so two requests arriving together cannot both squeeze under a cap.
 
-**Status.** The functions, the wrapper and their tests are built and committed. A real-Postgres test fires 20 requests at once at a cap that fits 3 and gets exactly 3 (it was run once on a throwaway local database, not a hosted one). **Not built:** the Budget tab on the main page, any real adapter calling these functions, showing unknown costs separately, and reading the tenant cap from one place.
+**Status.** The functions, the wrapper and their tests are built and committed. A real-Postgres test fires 20 requests at once at a cap that fits 3 and gets exactly 3 (it was run once on a throwaway local database, not a hosted one). **Screens.** The `/adapters` page shows each adapter's state, what it may do, whether it can prove deletion, and its spend against its own cap. The main page (operator edition) has a Budget tab that splits the workspace's monthly spend by adapter and adds an "other spending" line so the parts add up to the total. Both are read-only, need sign-in and the host flag, and were checked in a browser with sample data only. **Not built:** any real adapter calling the budget functions, showing unknown costs separately, reading the tenant cap from one place, and these screens in the client edition.
 
 **Where to look.** `product-experience/supabase-client-adapter-budget.sql`, `src/lib/adapterBudget.ts`, `docs/architecture/adr-007-adapter-budget.md`.
 

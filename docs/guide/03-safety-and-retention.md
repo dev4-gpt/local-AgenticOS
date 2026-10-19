@@ -28,6 +28,7 @@ Bottom line today: **no real client data may touch any adapter.** Veloce's own r
 | Money is whole-number micros only | Contract code and database checks | `adapter-contracts.spec.ts`, host SQL spec |
 | An adapter cannot spend past its own cap (day, month or total) or the tenant's monthly cap | `client_adapter_budget_reserve` under a per-tenant lock | `adapter-budget-sql.spec.ts`; `adapter-budget-concurrency.spec.ts` (20 simultaneous requests, real Postgres, run once locally) |
 | A retried charge counts once; settle cannot exceed the reservation; a task closes once | Budget functions | `adapter-budget-sql.spec.ts` |
+| The Adapters page and Budget tab need sign-in and the host flag, show only validated data, and never appear in the client edition | Route, page and `HomeImmersive` tab switch | `adapter-overview.spec.ts` (route gates and bad data); client edition exclusion by not adding the route to the allowed lists |
 | Budget calls fail closed (unknown or not-ready adapter, bad token, bad input, unexpected answer) | Budget functions and `adapterBudget.ts` | `adapter-budget-sql.spec.ts`, `adapter-budget.spec.ts` |
 | Dedupe tools never delete or move notes, never read `.env`, back up outside the vault, restore on failure | Scripts | `knowledge-unify*.spec.ts` |
 | Every `client_*` table must be classified for retention | Verifier script | `verify-client-retention-inventory.mjs` |

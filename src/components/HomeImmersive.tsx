@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { ArrowUpRight, Brain, Command, Cpu, DatabaseZap, Palette, RadioTower, ShieldCheck, Sparkles, Target, Workflow } from "lucide-react";
 import Overview from "./Overview";
 import ClientRuntimeDashboard from "./ClientRuntimeDashboard";
+import AdapterBudgetTab from "./AdapterBudgetTab";
 
 const CHAPTERS = [
   {
@@ -148,6 +149,7 @@ export default function HomeImmersive({ clientEdition = false, allowedClientRout
   const [webglFailed, setWebglFailed] = useState(false);
   const [sceneReady, setSceneReady] = useState(false);
   const [canvasMounted, setCanvasMounted] = useState(false);
+  const [overviewTab, setOverviewTab] = useState<"overview" | "budget">("overview");
   const reducedMotion = useReducedMotion();
   const routeAvailable = (href: string) => !clientEdition || allowedClientRoutes.includes(href);
 
@@ -612,7 +614,15 @@ export default function HomeImmersive({ clientEdition = false, allowedClientRout
           <DatabaseZap size={18} />
           <span>Dashboard substrate</span>
         </div>
-        {clientEdition ? <ClientRuntimeDashboard /> : <Overview clientEdition={false} />}
+        {!clientEdition && <div className="mb-3 flex gap-2" role="tablist" aria-label="Dashboard sections">
+          {(["overview", "budget"] as const).map((tab) => <button key={tab} type="button" role="tab" id={`home-tab-${tab}`} aria-selected={overviewTab === tab} aria-controls="home-tabpanel" onClick={() => setOverviewTab(tab)}
+            className="rounded-md border px-3 py-1.5 text-[11px]" style={{ borderColor: "var(--line-soft)", color: overviewTab === tab ? "var(--cream)" : "var(--cream-mute)", background: overviewTab === tab ? "rgba(255,255,255,0.06)" : "transparent" }}>
+            {tab === "overview" ? "Overview" : "Budget"}
+          </button>)}
+        </div>}
+        <div id="home-tabpanel" role={clientEdition ? undefined : "tabpanel"} aria-labelledby={clientEdition ? undefined : `home-tab-${overviewTab}`}>
+          {clientEdition ? <ClientRuntimeDashboard /> : overviewTab === "budget" ? <AdapterBudgetTab /> : <Overview clientEdition={false} />}
+        </div>
       </section>
     </div>
   );

@@ -259,6 +259,62 @@ begin
 end;
 $$;
 
+-- Read-only summary for the Adapters page and Budget tab: one row per registered adapter with its cap and spend.
+-- Callable by any active member of the tenant; other tenants get no rows. Spend comes from the central ledger.
+create or replace function public.client_adapter_budget_summary(p_tenant_slug text)
+returns table (
+  adapter_id text,
+  display_name text,
+  state text,
+  side_effect_ceiling text,
+  deletion_guarantee text,
+  budget_cap_micros bigint,
+  budget_period text,
+  spent_period_micros bigint,
+  spent_month_micros bigint,
+  open_reservations integer
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null or not public.client_member(p_tenant_slug) then
+    return;
+  end if;
+  return query
+  select r.adapter_id, r.display_name, r.state, r.side_effect_ceiling, r.deletion_guarantee,
+         r.budget_cap_micros, r.budget_period,
+         coalesce((
+           select sum(l.amount_micros)::bigint from public.client_runtime_budget_ledger l
+           where l.tenant_slug = r.tenant_slug and l.usage_metadata ->> 'adapter_id' = r.adapter_id
+             and (case r.budget_period
+                    when 'day' then l.created_at >= date_trunc('day', now() at time zone 'utc') at time zone 'utc'
+                    when 'month' then l.created_at >= date_trunc('month', now() at time zone 'utc') at time zone 'utc'
+                    else true
+                  end)
+         ), 0)::bigint,
+         coalesce((
+           select sum(l.amount_micros)::bigint from public.client_runtime_budget_ledger l
+           where l.tenant_slug = r.tenant_slug and l.usage_metadata ->> 'adapter_id' = r.adapter_id
+             and l.created_at >= date_trunc('month', now() at time zone 'utc') at time zone 'utc'
+         ), 0)::bigint,
+         (select count(*)::integer from public.client_adapter_budget_events e
+           where e.tenant_slug = r.tenant_slug and e.adapter_id = r.adapter_id and e.kind = 'reserve'
+             and not exists (
+               select 1 from public.client_adapter_budget_events c
+               where c.tenant_slug = e.tenant_slug and c.adapter_id = e.adapter_id and c.task_id = e.task_id
+                 and c.kind in ('settle', 'release')))
+  from public.client_adapter_registry r
+  where r.tenant_slug = p_tenant_slug
+  order by r.adapter_id;
+end;
+$$;
+
+revoke all on function public.client_adapter_budget_summary(text) from public, anon;
+grant execute on function public.client_adapter_budget_summary(text) to authenticated;
+
 revoke all on function public.client_adapter_budget_reserve(text, text, text, text, text, bigint, text, text, bigint) from public, authenticated;
 grant execute on function public.client_adapter_budget_reserve(text, text, text, text, text, bigint, text, text, bigint) to anon;
 revoke all on function public.client_adapter_budget_settle(text, text, text, text, text, bigint) from public, authenticated;
