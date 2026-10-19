@@ -1,0 +1,79 @@
+# Safety and retention: what holds today, and what is only promised
+
+This file separates two things that are easy to mix up: **enforced** (code exists and a test fails if it breaks) and **promised** (written down, not built or not verified). Update it after every step.
+
+Bottom line today: **no real client data may touch any adapter.** Veloce's own readiness checker still reports `releaseReady=false`, hosted tenant isolation and the 28 + 7 retention rule have not been verified in a hosted environment, and no adapter speaks the contract yet.
+
+---
+
+## 1. Enforced now (with proof)
+
+| Protection | Where enforced | Proof |
+|---|---|---|
+| Tenants cannot see each other's adapter data | Row-level security on all adapter tables | `adapter-host-sql.spec.ts` (tenants and roles) |
+| Only owners/admins can register adapters or read private memory | Database policies | same |
+| Anonymous users get nothing | No grants for the anonymous role | same, plus gateway and token SQL specs |
+| Shared memory needs an approved promotion with the same content hash | Database trigger | `adapter-host-sql.spec.ts` |
+| Promotion reviewer is not the requester | Database constraint | same |
+| One active shared note per content hash | Unique index | same |
+| Shared notes cannot be edited, only tombstoned (text erased, permanent) | Database trigger | same |
+| History and budget log cannot be edited or removed | Append-only triggers | same |
+| Approval requester is never the approver | Database constraint and function | `adapter-approval-gateway-sql.spec.ts` |
+| Approval is tied to the exact action fingerprint | Server hashing plus database check | gateway specs |
+| Approvals expire, and are used once | Database | gateway SQL spec |
+| Approver identity is never taken from a request field | Functions read the login | gateway SQL and route specs |
+| Approval routes are closed unless `ADAPTER_HOST_ENABLED=true` | Route code | `adapter-approval-gateway.spec.ts` |
+| Adapter tokens are signed, short-lived, tenant/adapter/operation bound | Token code | `adapter-tokens.spec.ts` |
+| A token cannot be replayed | `client_adapter_consume_token` | `adapter-token-uses-sql.spec.ts` |
+| Money is whole-number micros only | Contract code and database checks | `adapter-contracts.spec.ts`, host SQL spec |
+| Dedupe tools never delete or move notes, never read `.env`, back up outside the vault, restore on failure | Scripts | `knowledge-unify*.spec.ts` |
+| Every `client_*` table must be classified for retention | Verifier script | `verify-client-retention-inventory.mjs` |
+
+---
+
+## 2. Promised but not built or not verified
+
+| Promise | Why it is not true yet |
+|---|---|
+| 28 days active, then 7 recovery days, then purge, for adapter data | Tables are classified, but no read-expiry, purge or restore code exists for them, and nothing is verified in a hosted environment |
+| Deleted client data is gone everywhere | Veloce can only erase what it holds. Adapters' own stores (Creator OS vault, Forge's database, the `symlink` workspace) need deletion receipts, and none exist. Adapters with no erase ability must be labelled "outside the guarantee" and left out of the client edition |
+| One budget currency, reserve then settle, fail closed | Only the log table and cap columns exist. No reserve/settle logic or concurrency tests |
+| Shared memory cannot be poisoned | Two-person review is built, but research shows review alone may not stop a crafted note. Source-linked review, no tool instructions inside shared facts, and rollback are still to do |
+| Approver identity in adapters comes from the login | True in the host. Creator OS's own `approve()` still takes an email from the caller; that must be fixed when its approve route is built |
+| Tenant isolation holds in the hosted database | Only proven in the in-memory test database. The staging isolation check has never run |
+| Expired approvals and used tokens are cleaned up | The purge function for tokens exists; nothing schedules it. Approvals are marked expired only when someone touches them |
+| Secrets are not in any repo | The `markexis` key, Forge's committed state files and the `symlink` GitHub token are unchecked and unrotated (your task) |
+| Licence boundary is safe | Adapters run as separate programs, but no lawyer has reviewed the AGPL boundary |
+| Client payments are safe | No payment path chosen. The proposed UPI gateway reads bank messages and is not suitable. A licensed provider and legal advice are needed |
+
+---
+
+## 3. What must be true before any client data is used
+
+This is the master plan's stop-ship list, kept here so it is checked after every phase. Tick items in `04-open-items-tracker.md`.
+
+1. Veloce's verifier says `releaseReady=true` on the exact build.
+2. Hosted tenant isolation and 28 + 7 retention proven in a hosted environment.
+3. Every adapter holding client data acknowledges deletion tombstones; others are excluded.
+4. Approver identity comes from the verified login; two different people on every publish and every memory promotion.
+5. One budget currency, atomic reserve and settle, fail closed.
+6. No secret in any repo; the three known keys checked and rotated.
+7. Licence boundary and payment route reviewed by a lawyer.
+8. No payment path based on parsing bank messages.
+9. Every new route has an unauthenticated test and a wrong-tenant test.
+10. All new specs run in the project's standard test command.
+
+Item 10 is true today for all specs listed in `02-code-tour.md`. Item 9 is partly true: the two approval routes have an unauthenticated test but no wrong-tenant route test (wrong-tenant is proven at the database level).
+
+---
+
+## 4. Rules for working safely
+
+- **Never put real client data in tests.** Fixtures exist only inside test runs.
+- **Never read or print keys or `.env` files.** Credentials are referred to by variable name only.
+- **Do not apply the adapter SQL to a hosted project** until purge and restore wiring exists for the new tables.
+- **Keep every adapter `disabled`** until its contract tests pass.
+- **Treat all ingested content (web, video, Instagram) as untrusted.** It goes to quarantine and is reviewed before shared memory.
+- **Prefer the official Instagram data export** over signed-in browsing of your account.
+- **Run migrations before trusting them.** The first run of the host migration failed on a naming clash; only the test caught it.
+- **Say what is not verified.** If something was not run, the report says so.
