@@ -125,7 +125,7 @@ Proof: `tests/adapter-budget-sql.spec.ts` (11 tests: caps, periods, retries, set
 
 ## D3. Adapters page and Budget tab
 
-- `product-experience/supabase-client-adapter-budget.sql` also holds `client_adapter_budget_summary(tenant)`: one row per registered adapter with its cap, spend for its cap period, spend this month and open reservations. Active members of that tenant get rows; anyone else gets none; the anonymous role is refused.
+- `product-experience/supabase-client-adapter-budget.sql` also holds `client_adapter_budget_summary(tenant)`: one row per registered adapter with its cap, spend for its cap period (this month when the adapter has no cap), spend this month and open reservations. Active members of that tenant get rows; anyone else gets none; the anonymous role is refused.
 - `src/lib/adapterOverview.ts`: `parseSummaryRows` (rejects any row that does not look right), `buildAdapterCards` (plain labels, cap status: ok, warning at 80%, exhausted at 100%), `buildBudgetBreakdown` (adapters plus "other spending" equal the workspace total, and flags a disagreement), `formatMicrosUsd` (a small spend is never shown as free).
 - `src/app/api/client-runtime/adapters/route.ts`: read-only `GET`. Needs sign-in and `ADAPTER_HOST_ENABLED=true`, is rate limited, reads the tenant from `CLIENT_SLUG`, and returns validated cards or an error, never raw rows. Not in the client edition's allowed API list.
 - `src/app/adapters/page.tsx` and `src/components/AdaptersView.tsx`: the `/adapters` screen with loading, switched-off, signed-out, unavailable and empty states.

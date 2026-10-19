@@ -267,9 +267,13 @@ test("the summary shows each adapter's cap, period spend, month spend and open r
     await reserve(db, { task: "t1", amount: 300 });
     await reserve(db, { task: "t2", amount: 200 });
     await settle(db, "t1", 250);
+    await reserve(db, { adapter: "knowledge", task: "k1", amount: 120 });
     await db.exec("reset role");
     await db.exec(`insert into public.client_runtime_budget_ledger (tenant_slug, provider, amount_micros, usage_metadata, created_at)
       values ('tenant-a','p',900,'{"adapter_id":"forge"}'::jsonb, now() - interval '3 days')`);
+    // An old charge from before this month: it must not count for an adapter with no cap (no period means this month).
+    await db.exec(`insert into public.client_runtime_budget_ledger (tenant_slug, provider, amount_micros, usage_metadata, created_at)
+      values ('tenant-a','p',777,'{"adapter_id":"knowledge"}'::jsonb, date_trunc('month', now() at time zone 'utc') at time zone 'utc' - interval '1 day')`);
     await db.query("select set_config('request.jwt.claim.sub',$1,false)", [OWNER]);
     await db.exec("set role authenticated");
     const rows = (await db.query<Record<string, unknown>>("select * from public.client_adapter_budget_summary('tenant-a')")).rows;
@@ -279,8 +283,10 @@ test("the summary shows each adapter's cap, period spend, month spend and open r
     expect(forge.budget_period).toBe("day");
     expect(Number(forge.spent_period_micros)).toBe(450); // 250 settled + 200 reserved today; the 3-day-old row is outside the day
     expect(forge.open_reservations).toBe(1);
-    expect(Number(rows[1].spent_period_micros)).toBe(0);
     expect(rows[1].budget_cap_micros).toBeNull();
+    expect(rows[1].budget_period).toBeNull();
+    expect(Number(rows[1].spent_period_micros)).toBe(120); // no cap: "period" means this month, so last month's 777 is left out
+    expect(Number(rows[1].spent_month_micros)).toBe(120);
     // someone who is not a member of the tenant, and the anonymous role, get nothing
     await db.exec("reset role");
     await db.exec("insert into auth.users values ('00000000-0000-4000-8000-0000000000ff')");

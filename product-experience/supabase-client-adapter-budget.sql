@@ -291,8 +291,9 @@ begin
            where l.tenant_slug = r.tenant_slug and l.usage_metadata ->> 'adapter_id' = r.adapter_id
              and (case r.budget_period
                     when 'day' then l.created_at >= date_trunc('day', now() at time zone 'utc') at time zone 'utc'
-                    when 'month' then l.created_at >= date_trunc('month', now() at time zone 'utc') at time zone 'utc'
-                    else true
+                    when 'total' then true
+                    -- 'month', and an adapter with no cap (no period), both mean this month
+                    else l.created_at >= date_trunc('month', now() at time zone 'utc') at time zone 'utc'
                   end)
          ), 0)::bigint,
          coalesce((
