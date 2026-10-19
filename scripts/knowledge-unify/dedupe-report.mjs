@@ -1,0 +1,147 @@
+#!/usr/bin/env node
+// Builds a duplicate report from scan.json. Reads the scan only; never touches a store.
+// Usage: node scripts/knowledge-unify/dedupe-report.mjs [--scan FILE] [--out DIR]
+// Exact duplicates: same body hash or same primary source URL. Near duplicates: same text ignoring
+// formatting, or same title. Near duplicates are only flagged, never merged automatically.
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { sha256Hex } from "./scan.mjs";
+
+function keyGroups(records, field, reason) {
+  const byValue = new Map();
+  for (const record of records) {
+    const value = record[field];
+    if (!value) continue;
+    if (!byValue.has(value)) byValue.set(value, []);
+    byValue.get(value).push(record.key);
+  }
+  return [...byValue.values()].filter((members) => members.length > 1).map((members) => ({ reason, members }));
+}
+
+function components(records, groups) {
+  const index = new Map(records.map((record, i) => [record.key, i]));
+  const parent = records.map((_, i) => i);
+  const find = (start) => {
+    let node = start;
+    while (parent[node] !== node) {
+      parent[node] = parent[parent[node]];
+      node = parent[node];
+    }
+    return node;
+  };
+  for (const group of groups) {
+    const first = find(index.get(group.members[0]));
+    for (const key of group.members.slice(1)) parent[find(index.get(key))] = first;
+  }
+  const byRoot = new Map();
+  records.forEach((record, i) => {
+    const root = find(i);
+    if (!byRoot.has(root)) byRoot.set(root, { members: [], reasons: new Set() });
+    byRoot.get(root).members.push(record);
+  });
+  for (const group of groups) byRoot.get(find(index.get(group.members[0]))).reasons.add(group.reason);
+  return [...byRoot.values()]
+    .filter((component) => component.members.length > 1)
+    .map((component) => ({ members: component.members, reasons: [...component.reasons].sort() }));
+}
+
+function inboundCounts(records) {
+  const linkers = new Map();
+  for (const record of records) {
+    for (const target of record.linksOut) {
+      if (!linkers.has(target)) linkers.set(target, new Set());
+      linkers.get(target).add(record.key);
+    }
+  }
+  return (record) => {
+    const set = linkers.get(path.posix.basename(record.rel, ".md").toLowerCase());
+    if (!set) return 0;
+    return set.size - (set.has(record.key) ? 1 : 0);
+  };
+}
+
+function toCluster(kind, component, inbound) {
+  const members = component.members
+    .map((record) => {
+      const links = inbound(record);
+      const score = links * 3 + record.metaFields + Math.min(5, Math.log10(record.size + 1));
+      return {
+        key: record.key,
+        root: record.root,
+        origin: record.origin,
+        rel: record.rel,
+        title: record.title,
+        sha256: record.sha256,
+        fileSha256: record.fileSha256,
+        size: record.size,
+        mtimeMs: record.mtimeMs,
+        inbound: links,
+        score: Math.round(score * 100) / 100,
+      };
+    })
+    .sort((a, b) => b.score - a.score || a.mtimeMs - b.mtimeMs || a.key.localeCompare(b.key));
+  const id = sha256Hex(members.map((member) => member.key).sort().join("\n")).slice(0, 12);
+  return { id, kind, reasons: component.reasons, suggestedKeeper: members[0].key, members };
+}
+
+export function buildReport(scanData) {
+  const records = scanData.records;
+  const inbound = inboundCounts(records);
+  const exactGroups = [...keyGroups(records, "sha256", "same-body"), ...keyGroups(records, "primaryUrl", "same-url")];
+  const exact = components(records, exactGroups).map((component) => toCluster("exact", component, inbound));
+  const inExact = new Set(exact.flatMap((cluster) => cluster.members.map((member) => member.key)));
+  const rest = records.filter((record) => !inExact.has(record.key));
+  const nearGroups = [...keyGroups(rest, "nearKey", "same-text-ignoring-format"), ...keyGroups(rest, "titleKey", "same-title")];
+  const near = components(rest, nearGroups).map((component) => toCluster("near", component, inbound));
+  const clusters = [...exact, ...near].sort((a, b) => a.kind.localeCompare(b.kind) || b.members.length - a.members.length || a.id.localeCompare(b.id));
+  const report = {
+    generatedAt: new Date().toISOString(),
+    scanGeneratedAt: scanData.generatedAt,
+    stores: scanData.stores,
+    summary: {
+      exactClusters: exact.length,
+      nearClusters: near.length,
+      notesInClusters: clusters.reduce((total, cluster) => total + cluster.members.length, 0),
+    },
+    clusters,
+  };
+  const decisions = {
+    schema: 1,
+    note: 'Every cluster starts as "pending". To approve, set action to "mark-duplicates" and keep or change "keeper". Nothing is merged without this.',
+    decisions: Object.fromEntries(
+      clusters.map((cluster) => [cluster.id, { action: "pending", kind: cluster.kind, keeper: cluster.suggestedKeeper }]),
+    ),
+  };
+  return { report, decisions };
+}
+
+function fail(message) {
+  console.error(`knowledge-unify dedupe-report: ${message}`);
+  process.exitCode = 2;
+}
+
+function main(argv) {
+  let scanPath = path.join(os.tmpdir(), "knowledge-unify", "scan.json");
+  let out = "";
+  for (let i = 0; i < argv.length; i += 1) {
+    if (argv[i] === "--scan") scanPath = argv[++i] ?? "";
+    else if (argv[i] === "--out") out = argv[++i] ?? "";
+    else return fail(`unknown argument ${argv[i]}`);
+  }
+  if (!existsSync(scanPath)) return fail("scan file not found; run scan.mjs first");
+  const scanData = JSON.parse(readFileSync(scanPath, "utf8"));
+  const outDir = path.resolve(out || path.dirname(scanPath));
+  const { report, decisions } = buildReport(scanData);
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(path.join(outDir, "dedupe-report.json"), JSON.stringify(report, null, 2));
+  const decisionsName = existsSync(path.join(outDir, "decisions.json")) ? "decisions.new.json" : "decisions.json";
+  writeFileSync(path.join(outDir, decisionsName), JSON.stringify(decisions, null, 2));
+  console.log(`${report.summary.exactClusters} exact and ${report.summary.nearClusters} near-duplicate groups (${report.summary.notesInClusters} notes).`);
+  console.log(`Report: ${path.join(outDir, "dedupe-report.json")}`);
+  console.log(`Decisions (all pending): ${path.join(outDir, decisionsName)}${decisionsName === "decisions.new.json" ? " (existing decisions.json kept)" : ""}`);
+}
+
+if (process.argv[1]?.endsWith("/knowledge-unify/dedupe-report.mjs")) {
+  main(process.argv.slice(2));
+}
