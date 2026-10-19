@@ -116,7 +116,17 @@ A `publish` task cannot run without an approval (section 3).
 - **Each adapter has an optional cap** per day, month or total, stored on the registry.
 - **Planned behaviour:** reserve the money before a task starts, settle the real cost after, release if cancelled; if the ledger is down, refuse the task (fail closed); show unknown costs separately.
 
-**Status.** The log table and the cap columns exist. **The reserve/settle logic, concurrency tests, and the Budget tab on the main page are not built.** This is the next Phase 1 item.
+**How it works now.**
+
+1. **Reserve** before a task starts. The database checks, in order: the caller is the host worker, the adapter is registered and in `preview` or `enabled`, the idempotency key is new, the task has no reservation yet, the adapter's own cap for its period (day, month or total) has room, and the tenant's monthly cap has room. Only then is a central ledger row written (tagged with the adapter and task) plus a log row.
+2. **Settle** when the task finishes: the ledger row changes to the real cost. It can never exceed what was reserved.
+3. **Release** if the task is cancelled: the reservation drops to zero and frees room under the cap.
+4. A repeated call with the same key returns the first answer and charges nothing more. A task closes once.
+5. Anything unexpected is a refusal (fail closed). All three functions take the same per-tenant lock as the existing budget code, so two requests arriving together cannot both squeeze under a cap.
+
+**Status.** The functions, the wrapper and their tests are built and committed. A real-Postgres test fires 20 requests at once at a cap that fits 3 and gets exactly 3 (it was run once on a throwaway local database, not a hosted one). **Not built:** the Budget tab on the main page, any real adapter calling these functions, showing unknown costs separately, and reading the tenant cap from one place.
+
+**Where to look.** `product-experience/supabase-client-adapter-budget.sql`, `src/lib/adapterBudget.ts`, `docs/architecture/adr-007-adapter-budget.md`.
 
 ---
 

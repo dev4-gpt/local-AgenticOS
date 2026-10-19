@@ -26,6 +26,9 @@ Bottom line today: **no real client data may touch any adapter.** Veloce's own r
 | Adapter tokens are signed, short-lived, tenant/adapter/operation bound | Token code | `adapter-tokens.spec.ts` |
 | A token cannot be replayed | `client_adapter_consume_token` | `adapter-token-uses-sql.spec.ts` |
 | Money is whole-number micros only | Contract code and database checks | `adapter-contracts.spec.ts`, host SQL spec |
+| An adapter cannot spend past its own cap (day, month or total) or the tenant's monthly cap | `client_adapter_budget_reserve` under a per-tenant lock | `adapter-budget-sql.spec.ts`; `adapter-budget-concurrency.spec.ts` (20 simultaneous requests, real Postgres, run once locally) |
+| A retried charge counts once; settle cannot exceed the reservation; a task closes once | Budget functions | `adapter-budget-sql.spec.ts` |
+| Budget calls fail closed (unknown or not-ready adapter, bad token, bad input, unexpected answer) | Budget functions and `adapterBudget.ts` | `adapter-budget-sql.spec.ts`, `adapter-budget.spec.ts` |
 | Dedupe tools never delete or move notes, never read `.env`, back up outside the vault, restore on failure | Scripts | `knowledge-unify*.spec.ts` |
 | Every `client_*` table must be classified for retention | Verifier script | `verify-client-retention-inventory.mjs` |
 
@@ -37,7 +40,7 @@ Bottom line today: **no real client data may touch any adapter.** Veloce's own r
 |---|---|
 | 28 days active, then 7 recovery days, then purge, for adapter data | Tables are classified, but no read-expiry, purge or restore code exists for them, and nothing is verified in a hosted environment |
 | Deleted client data is gone everywhere | Veloce can only erase what it holds. Adapters' own stores (Creator OS vault, Forge's database, the `symlink` workspace) need deletion receipts, and none exist. Adapters with no erase ability must be labelled "outside the guarantee" and left out of the client edition |
-| One budget currency, reserve then settle, fail closed | Only the log table and cap columns exist. No reserve/settle logic or concurrency tests |
+| Budget caps hold in real use | The functions and tests exist (see section 1), but nothing calls them yet, the tenant cap is passed in by the caller, unknown costs are not shown separately, and concurrency was proven only on a throwaway local Postgres, not a hosted one |
 | Shared memory cannot be poisoned | Two-person review is built, but research shows review alone may not stop a crafted note. Source-linked review, no tool instructions inside shared facts, and rollback are still to do |
 | Approver identity in adapters comes from the login | True in the host. Creator OS's own `approve()` still takes an email from the caller; that must be fixed when its approve route is built |
 | Tenant isolation holds in the hosted database | Only proven in the in-memory test database. The staging isolation check has never run |

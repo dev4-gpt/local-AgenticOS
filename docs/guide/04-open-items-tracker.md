@@ -4,7 +4,7 @@ Master plan phases (from `reports/Veloce master plan and error register.md`). Ti
 
 Legend: **Owner** = Me (the assistant) / You / Both / Lawyer. **Sev** = CRITICAL / WARNING / SUGGESTION. IDs refer to the error register.
 
-Last updated: 2026-10-19 after commit `34a03c3` on `feat/approval-gateway`.
+Last updated: 2026-10-19 after the budget step (Phase 1 item 4) on `feat/approval-gateway`.
 
 ---
 
@@ -13,7 +13,7 @@ Last updated: 2026-10-19 after commit `34a03c3` on `feat/approval-gateway`.
 | Phase | Name | Status |
 |---|---|---|
 | 0 | Hygiene | Mine done; yours open |
-| 1 | Host foundation | Items 1-3 done; 4-6 open |
+| 1 | Host foundation | Items 1-4 done; 5-16 open |
 | 2 | Creator OS adapter | Not started |
 | 3 | Knowledge adapter | Not started (dedupe tools exist) |
 | 4 | Forge adapter | Not started |
@@ -57,7 +57,12 @@ Last updated: 2026-10-19 after commit `34a03c3` on `feat/approval-gateway`.
 - [x] 3b. Ed25519 adapter tokens with single-use table (`34a03c3`)
 
 ### Open
-- [ ] **4. Budget enforcement (Me).** Reserve, settle, release functions against the central ledger; per-adapter caps; one unit; one event id per charge; fail closed; show unknown costs separately (X-5, N-4). *Done when:* tests prove two simultaneous reservations cannot overspend a cap, a retried charge is counted once, and the ledger being down refuses the task
+- [x] **4. Budget enforcement (Me), done in the budget commit on `feat/approval-gateway`.** Reserve, settle and release functions on the central ledger; per-adapter caps by day, month or total; whole-number micros; one idempotency key per charge; fail closed (X-5, N-4). Proven by `adapter-budget-sql.spec.ts`, `adapter-budget.spec.ts` and a real-Postgres concurrency test (20 simultaneous requests against a cap that fits 3 reserved exactly 3). See `docs/architecture/adr-007-adapter-budget.md`
+  - [ ] 4a. Run the concurrency test in the project's own checks and against a hosted or free-staging database (it was run once against a throwaway local Postgres 17 container; it is skipped unless `ADAPTER_BUDGET_TEST_DB_CONTAINER` is set)
+  - [ ] 4b. Read the tenant monthly cap from one place (today the caller passes it, as the existing worker functions do)
+  - [ ] 4c. Show unknown costs separately (a provider that does not report a cost)
+  - [ ] 4d. Nothing calls the budget functions yet; the first real adapter must reserve before it runs a task
+  - [ ] 4e. Add an index on the adapter tag if the ledger grows (the adapter total is a scan by tenant and period today)
 - [ ] **5. Adapters page and Budget tab (Me).** List adapters and states; spend against caps on the main page. First read the Next.js docs bundled in `node_modules/next/dist/docs/` (X-17). *Done when:* unauthenticated and non-member requests are rejected, and the page shows the real ledger
 - [ ] **6. Observability (Me).** Audit events and counters for approvals, tokens, promotions, budget. *Done when:* each event is visible and tested
 - [ ] **7. Scoped handles (Me).** Narrow references so an adapter can read only what a task needs

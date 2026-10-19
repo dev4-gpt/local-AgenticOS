@@ -6,7 +6,7 @@ All paths are relative to the repo root (`source/`). "Proof" means the test file
 npm run test:focused
 ```
 
-Expected today: 639 pass, 3 fail. The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
+Expected today: 656 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
 
 ## Branches
 
@@ -111,6 +111,18 @@ Proof: `tests/adapter-tokens.spec.ts` (9 tests; keys are generated fresh inside 
 
 ---
 
+## D2. Adapter budget
+
+### `product-experience/supabase-client-adapter-budget.sql`
+No new tables. Four functions: `client_adapter_worker_ok` (private token check), and the worker-only `client_adapter_budget_reserve`, `client_adapter_budget_settle`, `client_adapter_budget_release`. They write to the existing central ledger (`job_id` empty, adapter and task in `usage_metadata`) and to `client_adapter_budget_events`, under the same per-tenant lock as the existing budget code. Return values are short words such as `reserved`, `adapter_cap_exceeded`, `tenant_cap_exceeded`, `already_reserved`, `key_conflict`, `already_closed`, `over_reserved`, `refused`.
+
+### `src/lib/adapterBudget.ts`
+`reserveAdapterBudget`, `settleAdapterBudget`, `releaseAdapterBudget`. Check input first (whole micros, id and key rules, lengths), call the database function, and return `{ allowed, status }`. Anything that is not an exact known answer, including a network error, comes back as not allowed (`unavailable`).
+
+Proof: `tests/adapter-budget-sql.spec.ts` (11 tests: caps, periods, retries, settle and release rules, fail-closed cases, grants), `tests/adapter-budget.spec.ts` (6 tests: the wrapper), and `tests/adapter-budget-concurrency.spec.ts` (4 tests: simultaneous requests through separate connections to a real Postgres; skipped unless `ADAPTER_BUDGET_TEST_DB_CONTAINER` names a running local Postgres container). Design record: `docs/architecture/adr-007-adapter-budget.md`.
+
+---
+
 ## E. Knowledge-unify tools
 
 In `scripts/knowledge-unify/`: `scan.mjs` (340 lines), `dedupe-report.mjs` (193), `apply.mjs` (264). Format reference: `docs/knowledge-layer-schema.md` (schema version 2). How they behave is in `01-how-it-works.md`, section 6.
@@ -146,10 +158,13 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 | `adapter-approval-gateway.spec.ts` | 11 | Server hashing, input checks, route behaviour |
 | `adapter-tokens.spec.ts` | 9 | Token signing and every verification rule |
 | `adapter-token-uses-sql.spec.ts` | 5 | Single use, worker-only, bounded purge |
+| `adapter-budget-sql.spec.ts` | 11 | Budget caps, periods, idempotency, settle and release, fail closed |
+| `adapter-budget.spec.ts` | 6 | Budget wrapper input checks and fail-closed behaviour |
+| `adapter-budget-concurrency.spec.ts` | 4 | Simultaneous requests on a real Postgres (skipped unless configured) |
 | `knowledge-unify.spec.ts` | 23 | Scan, dedupe and apply behaviour and fixes |
 | `knowledge-unify-cli.spec.ts` | 8 | Command-line behaviour and exit codes |
 
-All eight are registered in the `test:focused` list in `package.json`.
+All eleven are registered in the `test:focused` list in `package.json`.
 
 ## What is not in the code yet
 

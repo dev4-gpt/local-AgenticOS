@@ -43,7 +43,7 @@ Veloce is the **host**: one workspace that decides who you are, what you may do,
 | Two-person approval gateway (database functions, routes, tests) | Built and tested |
 | Short-lived signed adapter tokens | Built and tested, but nothing uses them yet |
 | Knowledge-vault duplicate finder (scan, report, apply) | Built, tested, used once on your vault (4 notes marked) |
-| Budget rules (reserve, settle, caps) | **Not built.** Only a log table exists |
+| Budget rules (reserve, settle, release, per-adapter caps) | Built and tested, including a real-Postgres test with simultaneous requests; nothing calls them yet |
 | Adapters page and Budget tab in the UI | **Not built** |
 | Any real adapter speaking the contract | **Not built** (Creator OS only serves 4 read-only routes) |
 | Cleanup jobs on a schedule (expiry, purges) | **Not built** |
