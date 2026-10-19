@@ -87,6 +87,8 @@ wired to the lifecycle:
 - `client_adapter_memory_items`, `client_adapter_memory_promotions`, `client_adapter_memory_provenance`:
   tenant-content (28 active days plus 7 recovery days).
 - `client_adapter_outbox`: ephemeral-security-state.
+- `client_adapter_token_uses`: ephemeral-security-state (replay ids for tokens that live at most five minutes; a
+  bounded service-role purge removes rows one day after expiry, but no schedule runs it yet).
 - `client_adapter_approvals`: security-audit-evidence (provisional; that group still needs an approved schedule).
 - `client_adapter_budget_events`: financial-and-credit-records (provisional; that group still needs an approved
   schedule).

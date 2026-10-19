@@ -32,7 +32,11 @@ adapter needs an approval that is stored in the database, bound to one exact act
 ## What this does not do yet
 
 - The execute path is called by the host worker only; no adapter calls it yet.
-- Adapter-to-host authentication (signed tokens) is step 3b.
+- Adapter tokens (`src/lib/adapterTokens.ts`) are Ed25519, last at most 5 minutes (default 60 seconds), name one
+  tenant, one adapter and a list of operations, and carry a unique id that `client_adapter_consume_token` accepts
+  once (table `client_adapter_token_uses`). Nothing sends or checks them yet: key storage, rotation and the
+  adapter-side check come with the first real adapter. Keys are passed in by the caller and never read from the
+  environment by this module.
 - Hosted migration, scheduled expiry sweeps, and retention classes for the approvals table are provisional
   (see the retention map).
 - Two real people are still needed: the user plans to test with two of their own email accounts.

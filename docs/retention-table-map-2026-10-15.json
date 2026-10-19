@@ -131,7 +131,8 @@
       "tables": [
         "client_onboarding_tokens",
         "client_runtime_rate_limits",
-        "client_adapter_outbox"
+        "client_adapter_outbox",
+        "client_adapter_token_uses"
       ]
     },
     {
