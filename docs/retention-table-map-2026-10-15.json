@@ -96,7 +96,10 @@
         "client_learning_items",
         "client_ecc_skill_revisions",
         "client_support_requests",
-        "client_runtime_requests"
+        "client_runtime_requests",
+        "client_adapter_memory_items",
+        "client_adapter_memory_promotions",
+        "client_adapter_memory_provenance"
       ]
     },
     {
@@ -114,7 +117,8 @@
         "client_onboarding_accounts",
         "client_provisioning_runs",
         "client_pricing_snapshots",
-        "client_ecc_policy"
+        "client_ecc_policy",
+        "client_adapter_registry"
       ]
     },
     {
@@ -126,7 +130,8 @@
       "remainingGate": "Onboarding tokens are unusable at expires_at and both token hashes and runtime rate-limit hashes have local, bounded service-role purges after seven-day recovery windows. Runtime limiter rows store their active duration, capped at one hour. Verify deployment and scheduled operation of both purges before treating this class as covered.",
       "tables": [
         "client_onboarding_tokens",
-        "client_runtime_rate_limits"
+        "client_runtime_rate_limits",
+        "client_adapter_outbox"
       ]
     },
     {
@@ -140,7 +145,8 @@
     ],
     "remainingGate": "Inventory and minimize metadata payloads, cover worker-failure/security findings, and test any approved legal-hold behavior. Hosted migration and scheduled deletion remain unverified.",
       "tables": [
-        "client_runtime_audit_events"
+        "client_runtime_audit_events",
+        "client_adapter_approvals"
       ]
     },
     {
@@ -166,7 +172,8 @@
         "client_credit_purchase_plans",
         "client_credit_reservation_events",
         "client_credit_reservations",
-        "client_credit_transactions"
+        "client_credit_transactions",
+        "client_adapter_budget_events"
       ]
     }
   ]

@@ -78,6 +78,23 @@ recovery days. These paths are locally tested but hosted migration and scheduled
 operation remain unverified. Public inquiries without a tenant link and the
 remaining administrative records are not covered by these token/hash results.
 
+### Adapter host tables (added 2026-10-19, provisional)
+
+Seven tables from `product-experience/supabase-client-adapter-host.sql` are classified in the map but are not yet
+wired to the lifecycle:
+
+- `client_adapter_registry`: tenant-control-and-identity.
+- `client_adapter_memory_items`, `client_adapter_memory_promotions`, `client_adapter_memory_provenance`:
+  tenant-content (28 active days plus 7 recovery days).
+- `client_adapter_outbox`: ephemeral-security-state.
+- `client_adapter_approvals`: security-audit-evidence (provisional; that group still needs an approved schedule).
+- `client_adapter_budget_events`: financial-and-credit-records (provisional; that group still needs an approved
+  schedule).
+
+They have no read-expiry, purge or restore path yet, so the 28 + 7 policy is not enforced for them. Until that wiring
+and its tests exist, the migration must not be applied to a hosted project, every adapter stays disabled, and no
+client data may be written. Removal of derived shared memory is handled by tombstone events (ADR-005).
+
 ### Per-Item Expiry and Foreign-Key Safety
 
 The selected clock is per item, not per tenant and not inherited automatically
