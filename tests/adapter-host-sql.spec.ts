@@ -141,6 +141,32 @@ test("tenants and roles: members read their own tenant, only admins register, an
   }
 });
 
+test("function privileges: the anonymous role cannot execute the admin check or the trigger functions", async () => {
+  const db = await freshDb();
+  try {
+    const fns = [
+      "client_adapter_admin(text)",
+      "client_adapter_reject_mutation()",
+      "client_adapter_reject_truncate()",
+      "client_adapter_guard_memory_item()",
+      "client_adapter_guard_promotion()",
+      "client_adapter_guard_approval()",
+    ];
+    for (const fn of fns) {
+      const r = await db.query<{ anon: boolean; authenticated: boolean }>(
+        "select has_function_privilege('anon', $1, 'execute') as anon, has_function_privilege('authenticated', $1, 'execute') as authenticated",
+        [`public.${fn}`],
+      );
+      expect(r.rows[0].anon, `${fn} must not be executable by anon`).toBe(false);
+      expect(r.rows[0].authenticated, fn).toBe(fn === "client_adapter_admin(text)");
+    }
+    await asAnon(db);
+    await expect(db.query("select public.client_adapter_admin('tenant-a')")).rejects.toThrow(/permission denied/);
+  } finally {
+    await db.close();
+  }
+});
+
 test("private memory is admin-only, shared memory needs an approved promotion by a different person", async () => {
   const db = await freshDb();
   try {

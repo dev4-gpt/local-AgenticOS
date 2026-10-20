@@ -22,6 +22,8 @@ as $$
     );
 $$;
 
+-- Supabase gives new functions execute for anon by default, so the grant below is not enough on its own.
+revoke all on function public.client_adapter_admin(text) from public, anon;
 grant execute on function public.client_adapter_admin(text) to authenticated;
 
 -- True only inside the protected tenant restore (supabase-client-lifecycle-restore.sql): the service role with the
@@ -455,6 +457,13 @@ begin
   return new;
 end;
 $$;
+
+-- Trigger functions are never called directly; keep them out of reach of the public and anonymous roles.
+revoke all on function public.client_adapter_reject_mutation() from public, anon, authenticated;
+revoke all on function public.client_adapter_reject_truncate() from public, anon, authenticated;
+revoke all on function public.client_adapter_guard_memory_item() from public, anon, authenticated;
+revoke all on function public.client_adapter_guard_promotion() from public, anon, authenticated;
+revoke all on function public.client_adapter_guard_approval() from public, anon, authenticated;
 
 drop trigger if exists client_adapter_memory_items_guard on public.client_adapter_memory_items;
 create trigger client_adapter_memory_items_guard
