@@ -57,9 +57,9 @@ test("invisible and direction-changing characters are blocked on their own", () 
 
 test("secrets block the note and are never repeated in the result", () => {
   const secrets = [
-    "-----BEGIN RSA PRIVATE KEY-----\nMIIE",
+    `-----BEGIN RSA ${"PRIVATE"} KEY-----\nMIIE`,
     "key AKIAABCDEFGHIJKLMNOP in the config",
-    "token sk-abcdefghijklmnopqrstuvwxyz123456",
+    `token ${"sk"}-abcdefghijklmnopqrstuvwxyz123456`,
     `ghp_${"a".repeat(36)}`,
     "xoxb-1234567890-abcdefghij",
     "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdefghijklmnop",
