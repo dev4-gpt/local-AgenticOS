@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { CAPABILITIES } from "./capabilities";
+import { clientProviderContractNames } from "./clientProviderContracts";
 
 const SAFE_KEYS = new Set(["tenant", "bucket", "route", "provider", "status", "reason", "classification", "requestId", "jobId", "attempt", "capability", "result", "source", "messageCount"]);
 const SAFE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -49,11 +51,12 @@ export function logClientRuntimeEvent(event: string, fields: Record<string, unkn
   };
   // Optional sinks must not turn completed business operations into retries.
   try { console.info(JSON.stringify(payload)); } catch {}
-  const vendorFields = safeFields.tenant
+  const vendorFields = vendorSafeFields(safeFields.tenant
     ? { ...safeFields, tenant: `tenant:${createHash("sha256").update(String(safeFields.tenant)).digest("hex").slice(0, 24)}` }
-    : safeFields;
+    : safeFields);
   void capturePostHogEvent(event, vendorFields, String(vendorFields.tenant ?? "veloce-runtime")).catch(() => false);
   if (payload.severity === "WARNING") void captureSentryEvent(event, vendorFields).catch(() => false);
+  void captureDatadogEvent(event, vendorFields, payload.severity === "WARNING" ? "warn" : "info").catch(() => false);
 }
 
 export async function captureClientProductEvent(input: {
@@ -62,7 +65,7 @@ export async function captureClientProductEvent(input: {
   properties?: Record<string, unknown>;
 }) {
   if (!CLIENT_PRODUCT_EVENTS.has(input.event) || !SAFE_DISTINCT_ID.test(input.distinctId)) return false;
-  const fields = sanitizeFields(input.properties ?? {});
+  const fields = vendorSafeFields(sanitizeFields(input.properties ?? {}));
   return capturePostHogEvent(input.event, fields, input.distinctId);
 }
 
@@ -82,6 +85,76 @@ function sanitizeFields(fields: Record<string, unknown>): SafeTelemetryFields {
     if (typeof value === "string" && SAFE_CODE.test(value.trim())) safe[key] = value.trim().slice(0, 96);
   }
   return safe;
+}
+
+// Everything a vendor (PostHog, Sentry, Datadog) may receive passes through vendorSafeFields (ADR-013). Fields that could carry a
+// client's words in a code-shaped string are limited to fixed known values; anything else is sent as "other".
+const VENDOR_KEYS = new Set(["tenant", "status", "reason", "provider", "capability", "classification", "requestId", "jobId", "attempt", "messageCount"]);
+export const KNOWN_REASONS: ReadonlySet<string> = new Set([
+  "budget_exceeded", "context_compression_input_invalid", "delivery_claim_failed", "ecc_adapter_unavailable", "ecc_capability_not_enabled",
+  "ecc_execution_not_authorized", "ecc_input_invalid", "ecc_job_not_authorized", "ecc_lesson_not_active", "ecc_lesson_snapshot_invalid",
+  "gcp_identity_unavailable", "instruction_budget_input_invalid", "invalid_input", "media_text_invalid", "model_not_allowlisted",
+  "model_pricing_not_configured", "music_input_invalid", "notebook_source_changed", "notebook_source_reference_invalid",
+  "notebook_source_unavailable", "prompt_invalid", "provider_calls_require_approval", "provider_contract_not_configured",
+  "provider_model_not_allowlisted", "provider_music_failed", "provider_not_allowlisted", "provider_not_configured",
+  "provider_output_invalid", "provider_request_failed", "provider_status_failed", "provider_unreachable", "provider_video_failed",
+  "research_query_required", "secret_like_input_rejected", "seo_url_not_allowed", "task_base_url_invalid", "task_base_url_not_public",
+  "task_enqueue_failed", "task_identifier_missing", "task_runtime_not_configured", "tenant_membership_unavailable", "tenant_not_configured",
+  "video_input_invalid", "visual_qa_job_not_configured", "worker_not_allowlisted", "worker_not_configured", "worker_output_invalid",
+  "worker_output_too_large", "worker_source_url_not_allowed", "worker_unreachable", "workspace_job_not_configured",
+]);
+export const KNOWN_CLASSIFICATIONS: ReadonlySet<string> = new Set([
+  "policy_denied", "provider_auth", "provider_timeout", "provider_rate_limited", "provider_upstream", "provider_request_rejected", "provider_internal",
+]);
+const KNOWN_PROVIDERS: ReadonlySet<string> = new Set([...clientProviderContractNames(), "firecrawl", "brave"]);
+const KNOWN_CAPABILITIES: ReadonlySet<string> = new Set([...CAPABILITIES.map((capability) => capability.id), "intent-routing", "research", "visual-qa"]);
+const KNOWN_VALUES: Record<string, ReadonlySet<string>> = {
+  reason: KNOWN_REASONS, classification: KNOWN_CLASSIFICATIONS, provider: KNOWN_PROVIDERS, capability: KNOWN_CAPABILITIES,
+};
+
+export function vendorSafeFields(fields: SafeTelemetryFields): SafeTelemetryFields {
+  const out: SafeTelemetryFields = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (!VENDOR_KEYS.has(key)) continue;
+    if (key === "tenant") {
+      if (typeof value === "string" && SAFE_TENANT_TAG.test(value)) out[key] = value;
+      continue;
+    }
+    if (key === "requestId" || key === "jobId") {
+      if (typeof value === "string" && SAFE_ID.test(value)) out[key] = value;
+      continue;
+    }
+    if (key === "status" || key === "attempt" || key === "messageCount") {
+      if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 999) out[key] = value;
+      continue;
+    }
+    const known = KNOWN_VALUES[key];
+    if (known) {
+      const code = typeof value === "string" ? value.trim().toLowerCase() : "";
+      out[key] = known.has(code) ? code : "other";
+    }
+  }
+  return out;
+}
+
+// Datadog log intake sites; the gov sites are left out on purpose. Verified against docs.datadoghq.com/api/latest/logs on 2026-10-20.
+const DATADOG_SITES = new Set(["datadoghq.com", "us3.datadoghq.com", "us5.datadoghq.com", "datadoghq.eu", "ap1.datadoghq.com", "ap2.datadoghq.com", "uk1.datadoghq.com"]);
+
+async function captureDatadogEvent(event: string, fields: SafeTelemetryFields, level: "info" | "warn") {
+  if (process.env.CLIENT_DATADOG_CAPTURE_ENABLED !== "1" || !SAFE_EVENT.test(event)) return false;
+  const apiKey = process.env.DATADOG_API_KEY?.trim();
+  if (!apiKey) return false;
+  const site = process.env.DATADOG_SITE?.trim() || "datadoghq.com";
+  if (!DATADOG_SITES.has(site)) return false;
+  // Our fields sit under "veloce" so a field named status cannot overwrite Datadog's own log level.
+  const response = await fetch(`https://http-intake.logs.${site}/api/v2/logs`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "DD-API-KEY": apiKey },
+    body: JSON.stringify([{ ddsource: "veloce", service: "veloce-client-runtime", status: level, message: event, ddtags: fields.tenant ? String(fields.tenant) : undefined, veloce: fields }]),
+    cache: "no-store",
+    signal: AbortSignal.timeout(2_000),
+  }).catch(() => null);
+  return response?.ok === true;
 }
 
 async function capturePostHogEvent(event: string, fields: SafeTelemetryFields, distinctId: string) {
