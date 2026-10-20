@@ -41,6 +41,16 @@ Layers, none of which is enough on its own:
 5. **Rollback by a person.** `client_adapter_revoke_shared_memory` lets an owner or admin withdraw a shared note: its text
    is erased, it can never come back, and a `memory.tombstoned` event tells adapters to drop their copies.
 
+## The review screen
+
+`/adapters/promotions` (operator edition, behind the host flag) shows each waiting promotion with the note itself, the
+scan verdict and findings in plain words, where it came from, and whether the same fact is already shared. Invisible
+characters in a note are shown as `[U+200B]`-style markers so a reviewer cannot be fooled by text they cannot see.
+Approve is offered only when the scan covers exactly this note, did not block it, the reviewer can read the note, and
+the fact is not already shared; a flagged note also needs a written reason of at least 20 characters; Approve asks for a
+confirmation that repeats the content fingerprint. Owners and admins can also withdraw shared notes, with a reason.
+These are conveniences: the database enforces every rule independently.
+
 ## What this does not do
 
 - **The scan is a tripwire.** It cannot recognise a well-phrased false fact, instructions in other languages, look-alike

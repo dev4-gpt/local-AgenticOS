@@ -41,6 +41,7 @@ Veloce is the **host**: one workspace that decides who you are, what you may do,
 | Rules of the host/adapter contract (types and checks) | Built and tested |
 | Database tables for adapters, memory, approvals, budget log | Built and tested (in a throwaway in-memory Postgres) |
 | Two-person approval gateway (database functions, routes, tests) | Built and tested; a request stores the exact text it covers and the database checks it against the fingerprint |
+| Shared-memory protection: a mandatory scan, provenance, a queue cap, rules the database enforces, a review screen (`/adapters/promotions`) and withdrawal | Built (operator edition, behind the host flag); checked in a browser against a throwaway real Postgres. A tripwire plus a second reader, not a guarantee: paraphrased or foreign-language orders and plain false facts get past the scan. Nothing reads shared memory through the safe rendering yet |
 | Approvals screen (`/adapters/approvals`) | Built (operator edition, behind the host flag); checked in a browser against a throwaway real Postgres; no notifications, and nothing executes an approved request yet |
 | Short-lived signed adapter tokens | Built and tested, but nothing uses them yet |
 | Knowledge-vault duplicate finder (scan, report, apply) | Built, tested, used once on your vault (4 notes marked) |

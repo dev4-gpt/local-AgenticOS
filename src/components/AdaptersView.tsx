@@ -43,6 +43,7 @@ export default function AdaptersView() {
       </div>
       <div className="flex items-center gap-3">
         <Link href="/adapters/approvals" className="text-[11px] text-sky-300 underline">Approvals</Link>
+        <Link href="/adapters/promotions" className="text-[11px] text-sky-300 underline">Shared memory review</Link>
         <button type="button" onClick={() => void load()} disabled={state === "loading"} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}>
           <RefreshCw size={13} className={state === "loading" ? "animate-spin" : ""} />Refresh
         </button>

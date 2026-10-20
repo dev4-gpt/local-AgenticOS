@@ -4,7 +4,7 @@ Master plan phases (from `reports/Veloce master plan and error register.md`). Ti
 
 Legend: **Owner** = Me (the assistant) / You / Both / Lawyer. **Sev** = CRITICAL / WARNING / SUGGESTION. IDs refer to the error register.
 
-Last updated: 2026-10-20 after the approvals screen (Phase 1 item 15) on `feat/approval-gateway`.
+Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/approval-gateway`.
 
 ---
 
@@ -13,7 +13,7 @@ Last updated: 2026-10-20 after the approvals screen (Phase 1 item 15) on `feat/a
 | Phase | Name | Status |
 |---|---|---|
 | 0 | Hygiene | Mine done; yours open |
-| 1 | Host foundation | Items 1-5, 8 and 15 done; 6, 7, 9-14 and 16 open |
+| 1 | Host foundation | Items 1-5, 8, 10 and 15 done; 6, 7, 9, 11-14 and 16 open |
 | 2 | Creator OS adapter | Not started |
 | 3 | Knowledge adapter | Not started (dedupe tools exist) |
 | 4 | Forge adapter | Not started |
@@ -84,10 +84,13 @@ Last updated: 2026-10-20 after the approvals screen (Phase 1 item 15) on `feat/a
   - [ ] 8d. Skeleton rows: a private note and its promotion keep an empty shell (text erased, hidden) until the newer shared note is purged. Decide whether a shell may outlive 35 days or the chain should be cut sooner
   - [ ] 8e. While a shared note is expired but unpurged, the same fact cannot be shared again (hash slot held for up to 7 days)
 - [ ] **9. Scheduled jobs (Me).** Run token purge and approval expiry on a schedule. *Done when:* a scheduled run is observed
-- [ ] **10. Promotion hardening (Me).** Source-linked diffs, no tool instructions inside shared facts, retrieval-time distrust, rollback (X-4, CRITICAL)
+- [x] **10. Promotion hardening (Me), done locally in three commits on `feat/approval-gateway`; the limits in 10d-10g and 10h-10j stay open.** Source-linked review, no tool instructions inside shared facts, retrieval-time distrust, rollback (X-4, CRITICAL). It is a tripwire plus a second reader, not a guarantee
   - [x] 10a. Rules and scanner (commit A, ADR-009): mandatory scan tied to the content hash, provenance required, queue cap of 25, blocked cannot be approved, flagged needs a 20-character reason, scan immutable; `client_adapter_decide_promotion` and `client_adapter_revoke_shared_memory`; scanner and safe rendering in `adapterMemoryGuard.ts`. 24 new tests; the scanner's own test found and fixed an evasion (a phrase split across lines)
   - [x] 10b. Routes for listing, deciding and withdrawing (commit B): `GET /api/client-runtime/adapter-promotions` (promotions joined with the source note, provenance and "already shared", plus the shared notes), `POST .../adapter-promotions/[id]/decision`, `POST /api/client-runtime/adapter-memory/[id]/revoke`; sign-in, host flag, rate limit, server-set tenant, audit events, stable error names. 10 tests; six deliberate breakages each fail a different test. Not in the client edition's allowed routes
-  - [ ] 10c. The review screen with content, findings, provenance and "already shared" (commit C)
+  - [x] 10c. The review screen (`/adapters/promotions`, operator edition, behind the host flag; commit C): each waiting note with the note itself (invisible characters made visible as [U+200B]), the scan verdict and what it found, where it came from, and whether the same fact is already shared; Approve (with a confirm step that repeats the fingerprint) only when the scan covers exactly this note and did not block it and the reviewer can read it; a written reason box (required, 20 characters, for flagged notes); Reject; and a Shared notes list with Withdraw (reason of at least 5 characters). 10 view-model tests (six deliberate breakages each fail a test). Checked in a browser against a throwaway real Postgres with the real scanner's results and real row-level security: blocked, hidden-character, duplicate and own requests could not be approved; the flagged note stayed locked until a proper reason was typed; approve, reject and withdraw worked and were audited; a plain member saw only their own requests, never the note text, and the API answered "not found" to their decisions; no overflow at phone width
+  - [ ] 10h. Repeat the screen check on free staging Supabase with the real login layer and migrations (the throwaway check used a small stand-in for Supabase's REST layer and a faked rate limiter)
+  - [ ] 10i. With the login service unreachable the screen says "Sign in" rather than "unavailable" (same existing behaviour as 5g)
+  - [ ] 10j. Nothing creates promotions yet except a direct database insert by the host: the adapter-facing `memory.propose` route (Phase 2) must run the scanner and write provenance first
   - [ ] 10d. The scan cannot catch paraphrased or foreign-language orders, look-alike letters, or a well-phrased false fact. Decide whether to add a model-based second opinion (it would add cost and its own injection risk)
   - [ ] 10e. Nothing calls the safe rendering yet: implement `context.read` for the first adapter so shared notes reach models only through it
   - [ ] 10f. Detect conflicting facts (a new shared note that contradicts an existing one) and send them to a human; today only exact duplicates are caught
