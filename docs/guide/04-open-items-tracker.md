@@ -45,6 +45,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 - [ ] **You:** decide the base branch for the work (X-18). Currently cut from `wip/backup-2026-10-03`, not `main`
 - [ ] **You:** retire the duplicate staging copy of the Keepy library when ready (X-14)
 - [ ] **You (Codex task):** Instagram export through the official data download (S-4)
+- [ ] **Watch:** two CI checks on PR 23 (`verify`, `product-experience`) fail `npm audit` on one finding, `braces` <=3.0.3 (GHSA-vfj7-8cjw-p6xm, stack-exhaustion DoS on deeply nested patterns). It reaches us only through build tooling (`micromatch` > `fast-glob` > `shadcn`, and `eslint-config-next`), not the shipped app, and no patched release exists (3.0.3 is the latest). Decision (2026-10-20, owner): leave the gates failing, no exception, do not merge PR 23 until a patched release lands or the owner decides otherwise. *Done when:* `npm audit --audit-level=high` passes in the root and `product-experience` after a `braces` release above 3.0.3. `main` already failed the same gates on 2026-10-03
 
 ---
 
