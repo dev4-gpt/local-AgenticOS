@@ -52,6 +52,12 @@ begin
   values (p_tenant_slug, p_jti, p_adapter_id, p_expires_at)
   on conflict do nothing;
   get diagnostics inserted = row_count;
+  if inserted = 1 then
+    -- A first use only (a replay is refused above and counts nothing). Only a count is kept, no token id (item 6b).
+    insert into public.client_adapter_token_use_counts (tenant_slug, adapter_id, day, uses)
+    values (p_tenant_slug, p_adapter_id, (now() at time zone 'utc')::date, 1)
+    on conflict (tenant_slug, adapter_id, day) do update set uses = public.client_adapter_token_use_counts.uses + 1;
+  end if;
   return inserted = 1;
 end;
 $$;
@@ -127,7 +133,32 @@ $$;
 
 revoke all on function public.client_adapter_consume_token(text, text, text, uuid, timestamptz) from public, authenticated;
 grant execute on function public.client_adapter_consume_token(text, text, text, uuid, timestamptz) to anon;
+-- Daily token-use counters are kept for the 28-day activity view and removed after 28 + 7 days. Bounded and safe to repeat.
+create or replace function public.client_adapter_purge_token_counts(p_limit integer default 1000)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  removed integer;
+begin
+  with doomed as (
+    select tenant_slug, adapter_id, day from public.client_adapter_token_use_counts
+    where day < (now() at time zone 'utc')::date - 35
+    order by day
+    limit least(greatest(coalesce(p_limit, 1000), 1), 5000)
+  )
+  delete from public.client_adapter_token_use_counts c using doomed d
+   where c.tenant_slug = d.tenant_slug and c.adapter_id = d.adapter_id and c.day = d.day;
+  get diagnostics removed = row_count;
+  return removed;
+end;
+$$;
+
 revoke all on function public.client_adapter_purge_token_uses(integer) from public, anon, authenticated;
 grant execute on function public.client_adapter_purge_token_uses(integer) to service_role;
 revoke all on function public.client_adapter_read_scoped(text, text, text, uuid[]) from public, authenticated;
 grant execute on function public.client_adapter_read_scoped(text, text, text, uuid[]) to anon;
+revoke all on function public.client_adapter_purge_token_counts(integer) from public, anon, authenticated;
+grant execute on function public.client_adapter_purge_token_counts(integer) to service_role;

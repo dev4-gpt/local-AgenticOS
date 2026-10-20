@@ -130,13 +130,14 @@
       "retentionClass": "ephemeral_security_state",
       "selectedDisposition": "shortest_operational_ttl_then_delete",
       "implementationStatus": "partial",
-      "knownLocalCoverage": ["client_onboarding_tokens", "client_runtime_rate_limits", "client_adapter_outbox", "client_adapter_token_uses"],
+      "knownLocalCoverage": ["client_onboarding_tokens", "client_runtime_rate_limits", "client_adapter_outbox", "client_adapter_token_uses", "client_adapter_token_use_counts"],
       "remainingGate": "Onboarding tokens are unusable at expires_at and both token hashes and runtime rate-limit hashes have local, bounded service-role purges after seven-day recovery windows. Runtime limiter rows store their active duration, capped at one hour. Verify deployment and scheduled operation of both purges before treating this class as covered.",
       "tables": [
         "client_onboarding_tokens",
         "client_runtime_rate_limits",
         "client_adapter_outbox",
-        "client_adapter_token_uses"
+        "client_adapter_token_uses",
+        "client_adapter_token_use_counts"
       ]
     },
     {

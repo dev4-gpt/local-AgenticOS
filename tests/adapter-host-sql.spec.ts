@@ -99,7 +99,7 @@ async function addShared(db: PGlite, promotionId: string | null, content: string
   );
 }
 
-test("applies twice and turns on row-level security for all seven tables", async () => {
+test("applies twice and turns on row-level security for all eight tables", async () => {
   const db = await freshDb();
   try {
     const rows = await db.query<{ relname: string; relrowsecurity: boolean }>(
@@ -113,6 +113,7 @@ test("applies twice and turns on row-level security for all seven tables", async
       "client_adapter_memory_provenance",
       "client_adapter_outbox",
       "client_adapter_registry",
+      "client_adapter_token_use_counts",
     ]);
     expect(rows.rows.every((row) => row.relrowsecurity)).toBe(true);
   } finally {

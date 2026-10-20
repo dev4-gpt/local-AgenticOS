@@ -1,10 +1,17 @@
 -- Apply after supabase-client-adapter-host.sql (and, if used, supabase-client-adapter-retention-28.sql).
--- Two functions for the people who review shared memory (ADR-009). Adds no tables.
+-- Two functions for the people who review shared memory (ADR-009). Adds no tables. A decision writes a
+-- `promotion.decided` outbox event (counts only in the activity view, tracker item 6b).
 --   client_adapter_decide_promotion       an owner or admin who is not the requester approves or rejects a promotion
 --   client_adapter_revoke_shared_memory   an owner or admin withdraws a shared note: its text is erased and adapters are
 --                                         told to drop their copies
 -- Identity always comes from auth.uid(). The rules about scans and notes (a blocked scan cannot be approved, a flagged
 -- one needs a written reason of at least 20 characters) live in the promotion guard trigger, so they hold for any route.
+
+-- The outbox's allowed event types are listed in three files (host, approval gateway, this one) and whichever is
+-- applied last wins, so all three carry the same list; a test fails if they ever differ.
+alter table public.client_adapter_outbox drop constraint if exists client_adapter_outbox_event_type_check;
+alter table public.client_adapter_outbox add constraint client_adapter_outbox_event_type_check
+  check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided'));
 
 create or replace function public.client_adapter_decide_promotion(
   p_promotion_id uuid,
@@ -53,11 +60,17 @@ begin
       set status = 'approved', reviewed_by = auth.uid(), reviewed_at = now(),
           approved_content_sha256 = promo.content_sha256, decision_note = p_note
       where id = promo.id;
+    insert into public.client_adapter_outbox (tenant_slug, event_type, adapter_id, payload, causation_id)
+    values (promo.tenant_slug, 'promotion.decided', promo.origin_adapter_id,
+            jsonb_build_object('promotion_id', promo.id, 'status', 'approved'), promo.id);
     return 'approved';
   end if;
   update public.client_adapter_memory_promotions
     set status = 'rejected', reviewed_by = auth.uid(), reviewed_at = now(), decision_note = p_note
     where id = promo.id;
+  insert into public.client_adapter_outbox (tenant_slug, event_type, adapter_id, payload, causation_id)
+  values (promo.tenant_slug, 'promotion.decided', promo.origin_adapter_id,
+          jsonb_build_object('promotion_id', promo.id, 'status', 'rejected'), promo.id);
   return 'rejected';
 end;
 $$;

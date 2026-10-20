@@ -305,3 +305,54 @@ test("withdrawing is for owners and admins of that tenant, shared notes only, wi
     await db.close();
   }
 });
+
+// Tracker item 6b: a promotion decision is a counted, visible event.
+test("an approval and a rejection each write one promotion.decided event; a refused decision writes none", async () => {
+  const db = await freshDb();
+  try {
+    const yes = await promote(db, "A note that will be approved");
+    const no = await promote(db, "A note that will be rejected");
+    const own = await promote(db, "Raised by the admin", { requester: USER.adminA });
+    // refused decisions first: the requester, a wrong hash
+    await asUser(db, USER.adminA);
+    await expect(db.query("select public.client_adapter_decide_promotion($1,'approve',$2,null)", [own.id, own.hash])).rejects.toThrow(/requester_cannot_decide/);
+    await expect(db.query("select public.client_adapter_decide_promotion($1,'approve',$2,null)", [yes.id, "0".repeat(64)])).rejects.toThrow(/hash_mismatch/);
+    await asOwner(db);
+    expect((await db.query("select 1 from public.client_adapter_outbox where event_type = 'promotion.decided'")).rows).toHaveLength(0);
+
+    expect(await decide(db, USER.adminA, yes.id, "approve", yes.hash)).toBe("approved");
+    expect(await decide(db, USER.adminA, no.id, "reject", null, "Not accurate")).toBe("rejected");
+    await asOwner(db);
+    const events = await db.query<{ adapter_id: string; payload: { promotion_id: string; status: string }; causation_id: string }>(
+      "select adapter_id, payload, causation_id from public.client_adapter_outbox where event_type = 'promotion.decided' order by payload ->> 'status'",
+    );
+    expect(events.rows).toEqual([
+      { adapter_id: "forge", payload: { promotion_id: yes.id, status: "approved" }, causation_id: yes.id },
+      { adapter_id: "forge", payload: { promotion_id: no.id, status: "rejected" }, causation_id: no.id },
+    ]);
+    // the event carries ids and a status only, never the note text
+    expect(JSON.stringify(events.rows)).not.toContain("Not accurate");
+
+    // and it shows up in the member-readable 28-day counts, for the right tenant only
+    await asUser(db, USER.memberA);
+    const counts = await db.query<{ adapter_id: string; event_type: string; event_count: number }>("select * from public.client_adapter_activity_counts('tenant-a') where event_type = 'promotion.decided'");
+    expect(counts.rows).toEqual([{ adapter_id: "forge", event_type: "promotion.decided", event_count: 2 }]);
+    await asUser(db, USER.ownerB);
+    expect((await db.query("select * from public.client_adapter_activity_counts('tenant-a')")).rows).toHaveLength(0);
+  } finally {
+    await db.close();
+  }
+});
+
+test("the outbox's allowed event types are the same list in every file that states them, so applying any one last cannot drop one", () => {
+  const listOf = (file: string) => {
+    const match = /event_type in \(([^)]*)\)/.exec(read(file));
+    expect(match, file).not.toBeNull();
+    return match![1]!.split(",").map((t) => t.trim()).sort();
+  };
+  const host = listOf("adapter-host");
+  expect(host).toContain("'promotion.decided'");
+  expect(host).toContain("'approval.executed'");
+  expect(listOf("adapter-approval-gateway")).toEqual(host);
+  expect(listOf("adapter-promotions")).toEqual(host);
+});

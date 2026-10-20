@@ -220,7 +220,7 @@ create table if not exists public.client_adapter_outbox (
   id uuid primary key default gen_random_uuid(),
   tenant_slug text not null references public.client_tenants(slug) on delete cascade,
   event_id uuid not null unique default gen_random_uuid(),
-  event_type text not null check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed')),
+  event_type text not null check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided')),
   adapter_id text check (adapter_id is null or adapter_id ~ '^[a-z][a-z0-9-]{2,40}$'),
   payload jsonb not null default '{}'::jsonb check (pg_column_size(payload) <= 16384),
   causation_id uuid,
@@ -235,6 +235,20 @@ create table if not exists public.client_adapter_outbox (
 create index if not exists client_adapter_outbox_pending_idx
   on public.client_adapter_outbox (tenant_slug, created_at)
   where delivered_at is null;
+
+-- 5b. Token use counter: how many adapter calls were authorised per adapter per UTC day (tracker item 6b). The token
+-- ids themselves are purged after a day; this keeps only a count, no ids and no people, for the 28-day activity view.
+-- Written by client_adapter_consume_token (supabase-client-adapter-token-uses.sql); purged after 28 + 7 days.
+create table if not exists public.client_adapter_token_use_counts (
+  tenant_slug text not null references public.client_tenants(slug) on delete cascade,
+  adapter_id text not null check (adapter_id ~ '^[a-z][a-z0-9-]{2,40}$'),
+  day date not null,
+  uses integer not null check (uses >= 1),
+  primary key (tenant_slug, adapter_id, day)
+);
+alter table public.client_adapter_token_use_counts enable row level security;
+revoke all on public.client_adapter_token_use_counts from public, anon, authenticated;
+grant select on public.client_adapter_token_use_counts to service_role;
 
 -- 6. Approvals: one live approval per exact action. Approval is bound to the action hash and expires.
 create table if not exists public.client_adapter_approvals (
@@ -620,6 +634,11 @@ begin
     from public.client_adapter_budget_events b
     where b.tenant_slug = p_tenant_slug and b.created_at >= now() - interval '28 days'
     group by b.adapter_id, b.kind
+  union all
+  select c.adapter_id, 'token.use', sum(c.uses)::integer
+    from public.client_adapter_token_use_counts c
+    where c.tenant_slug = p_tenant_slug and c.day >= (now() at time zone 'utc')::date - 28
+    group by c.adapter_id
   order by 1, 2;
 end;
 $$;

@@ -114,7 +114,7 @@ $$;
 -- here so execution can be recorded. Same name Postgres gave the inline check; safe to run twice.
 alter table public.client_adapter_outbox drop constraint if exists client_adapter_outbox_event_type_check;
 alter table public.client_adapter_outbox add constraint client_adapter_outbox_event_type_check
-  check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed'));
+  check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided'));
 
 create or replace function public.client_adapter_decide_approval(
   p_approval_id uuid,

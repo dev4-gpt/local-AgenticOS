@@ -282,11 +282,13 @@ test("the retention command runs the expiry sweep and the token purge only with 
   // not run, and reported as not run, unless this is a real run
   expect(block).toContain("adapterHost.approvalsExpired = null;");
   expect(block).toContain("adapterHost.tokenUsesPurged = null;");
+  expect(block).toContain("adapterHost.tokenCountsPurged = null;");
   const guarded = block.slice(block.indexOf("if (apply) {"));
   expect(guarded).toContain("rpc/client_adapter_expire_approvals");
   expect(guarded).toContain("rpc/client_adapter_purge_token_uses");
+  expect(guarded).toContain("rpc/client_adapter_purge_token_counts");
   // a failed housekeeping call stops the run instead of being reported as success
-  expect((guarded.match(/fail\(/g) ?? []).length).toBe(2);
+  expect((guarded.match(/fail\(/g) ?? []).length).toBe(3);
   // the report carries the counts
   expect(lifecycle).toMatch(/console\.log\(JSON\.stringify\(\{[^\n]*adapterHost/);
 });

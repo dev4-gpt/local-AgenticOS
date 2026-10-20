@@ -87,3 +87,15 @@ test("the route refuses when off, signed out, rate limited or misconfigured, and
   expect(invalid.status).toBe(502);
   expect((await invalid.json()).error).toBe("activity_read_invalid");
 });
+
+test("promotion decisions and token use are accepted event kinds, with plain labels", () => {
+  const rows = lib.parseActivityRows([row("forge", "promotion.decided", 2), row("forge", "token.use", 40), row("forge", "approval.requested", 1)]);
+  expect(rows).toHaveLength(3);
+  const forge = lib.buildActivityGroups(rows)[0];
+  expect(forge.lines.map((l: { eventType: string; label: string }) => [l.eventType, l.label])).toEqual([
+    ["approval.requested", "Approvals requested"],
+    ["promotion.decided", "Shared memory decisions"],
+    ["token.use", "Adapter calls authorised"],
+  ]);
+  expect(forge.total).toBe(43);
+});

@@ -384,6 +384,7 @@ if (mode === "retention") {
   if (adapterHost.included) {
     adapterHost.approvalsExpired = null;
     adapterHost.tokenUsesPurged = null;
+    adapterHost.tokenCountsPurged = null;
     if (apply) {
       const expireResponse = await supabaseRequest("rpc/client_adapter_expire_approvals", { method: "POST", body: JSON.stringify({ p_limit: 1000 }) });
       if (!expireResponse.ok) fail(`Adapter approval expiry failed (${expireResponse.status}); verify the approval gateway migration`);
@@ -391,6 +392,9 @@ if (mode === "retention") {
       const tokenResponse = await supabaseRequest("rpc/client_adapter_purge_token_uses", { method: "POST", body: JSON.stringify({ p_limit: 1000 }) });
       if (!tokenResponse.ok) fail(`Adapter token purge failed (${tokenResponse.status}); verify the token migration`);
       adapterHost.tokenUsesPurged = await tokenResponse.json();
+      const countsResponse = await supabaseRequest("rpc/client_adapter_purge_token_counts", { method: "POST", body: JSON.stringify({ p_limit: 1000 }) });
+      if (!countsResponse.ok) fail(`Adapter token-count purge failed (${countsResponse.status}); verify the token migration`);
+      adapterHost.tokenCountsPurged = await countsResponse.json();
     }
   }
   if (apply && ids.length) {
