@@ -207,6 +207,33 @@ begin
 end;
 $$;
 
+-- Marks open requests whose time has run out as expired, so they stop showing as waiting even if nobody touches them.
+-- Bounded and safe to repeat; only the host's service role runs it (the lifecycle retention command calls it).
+create or replace function public.client_adapter_expire_approvals(p_limit integer default 1000)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  changed integer;
+begin
+  with due as (
+    select id from public.client_adapter_approvals
+    where status in ('pending', 'approved') and expires_at <= now()
+    order by expires_at, id
+    limit least(greatest(coalesce(p_limit, 1000), 1), 5000)
+    for update skip locked
+  )
+  update public.client_adapter_approvals a set status = 'expired' from due where a.id = due.id;
+  get diagnostics changed = row_count;
+  return changed;
+end;
+$$;
+
+revoke all on function public.client_adapter_expire_approvals(integer) from public, anon, authenticated;
+grant execute on function public.client_adapter_expire_approvals(integer) to service_role;
+
 revoke all on function public.client_adapter_request_approval(text, text, text, text, text, text, text, integer) from public, anon;
 grant execute on function public.client_adapter_request_approval(text, text, text, text, text, text, text, integer) to authenticated;
 

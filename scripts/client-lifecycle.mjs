@@ -368,6 +368,19 @@ if (mode === "retention") {
     if (!adapterResponse.ok) fail(`Adapter host retention failed (${adapterResponse.status}); verify the adapter retention migration`);
     adapterHost = { included: true, ...(await adapterResponse.json()) };
   }
+  // The two housekeeping jobs change rows, so a dry run reports them as not run. They are bounded and safe to repeat.
+  if (adapterHost.included) {
+    adapterHost.approvalsExpired = null;
+    adapterHost.tokenUsesPurged = null;
+    if (apply) {
+      const expireResponse = await supabaseRequest("rpc/client_adapter_expire_approvals", { method: "POST", body: JSON.stringify({ p_limit: 1000 }) });
+      if (!expireResponse.ok) fail(`Adapter approval expiry failed (${expireResponse.status}); verify the approval gateway migration`);
+      adapterHost.approvalsExpired = await expireResponse.json();
+      const tokenResponse = await supabaseRequest("rpc/client_adapter_purge_token_uses", { method: "POST", body: JSON.stringify({ p_limit: 1000 }) });
+      if (!tokenResponse.ok) fail(`Adapter token purge failed (${tokenResponse.status}); verify the token migration`);
+      adapterHost.tokenUsesPurged = await tokenResponse.json();
+    }
+  }
   if (apply && ids.length) {
     const deletion = new URLSearchParams(filter);
     deletion.set("id", `in.(${ids.join(",")})`);

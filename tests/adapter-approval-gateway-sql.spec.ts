@@ -189,6 +189,59 @@ test("expired requests cannot be approved or executed, and a fresh request is al
   }
 });
 
+test("the expiry sweep marks only open, past-due requests, in bounded batches, and only for the service role", async () => {
+  const db = await freshDb();
+  try {
+    await setup(db);
+    const waiting = await request(db, USER.memberA, "1");
+    const approved = await request(db, USER.memberA, "2");
+    const used = await request(db, USER.memberA, "3");
+    const fresh = await request(db, USER.memberA, "4");
+    expect(await decide(db, USER.adminA, approved, "approve", HASH("2"))).toBe("approved");
+    expect(await decide(db, USER.adminA, used, "approve", HASH("3"))).toBe("approved");
+    expect(await execute(db, used, HASH("3"))).toBe(true);
+    const rejected = await request(db, USER.memberA, "5");
+    expect(await decide(db, USER.adminA, rejected, "reject", null)).toBe("rejected");
+    await asOwner(db);
+    await db.exec("alter table public.client_adapter_approvals disable trigger user");
+    await db.query("update public.client_adapter_approvals set expires_at = now() - interval '1 minute', created_at = now() - interval '2 hours' where id <> $1", [fresh]);
+    await db.exec("alter table public.client_adapter_approvals enable trigger user");
+    const status = async () => Object.fromEntries((await db.query<{ id: string; status: string }>("select id, status from public.client_adapter_approvals")).rows.map((r) => [r.id, r.status]));
+
+    // the signed-in roles and the anonymous role cannot run it
+    for (const as of [() => asAnon(db), () => asUser(db, USER.ownerA)]) {
+      await as();
+      await expect(db.query("select public.client_adapter_expire_approvals(10)")).rejects.toThrow(/permission denied/);
+    }
+    await db.exec("reset role; set role service_role");
+    // a batch of one moves exactly one; a second sweep finishes the rest; a third finds nothing
+    expect((await db.query<{ n: number }>("select public.client_adapter_expire_approvals(1) as n")).rows[0].n).toBe(1);
+    expect((await db.query<{ n: number }>("select public.client_adapter_expire_approvals(100) as n")).rows[0].n).toBe(1);
+    expect((await db.query<{ n: number }>("select public.client_adapter_expire_approvals(100) as n")).rows[0].n).toBe(0);
+    await asOwner(db);
+    expect(await status()).toEqual({ [waiting]: "expired", [approved]: "expired", [used]: "executed", [rejected]: "rejected", [fresh]: "pending" });
+  } finally {
+    await db.close();
+  }
+});
+
+test("the retention command runs the expiry sweep and the token purge only with the adapter host flag and only for a real run", () => {
+  const lifecycle = readFileSync("scripts/client-lifecycle.mjs", "utf8");
+  const start = lifecycle.indexOf("if (adapterHost.included) {");
+  expect(start).toBeGreaterThan(0);
+  const block = lifecycle.slice(start, lifecycle.indexOf("if (apply && ids.length) {", start));
+  // not run, and reported as not run, unless this is a real run
+  expect(block).toContain("adapterHost.approvalsExpired = null;");
+  expect(block).toContain("adapterHost.tokenUsesPurged = null;");
+  const guarded = block.slice(block.indexOf("if (apply) {"));
+  expect(guarded).toContain("rpc/client_adapter_expire_approvals");
+  expect(guarded).toContain("rpc/client_adapter_purge_token_uses");
+  // a failed housekeeping call stops the run instead of being reported as success
+  expect((guarded.match(/fail\(/g) ?? []).length).toBe(2);
+  // the report carries the counts
+  expect(lifecycle).toMatch(/console\.log\(JSON\.stringify\(\{[^\n]*adapterHost/);
+});
+
 test("request rules: adapter must exist and be ready, one live request per exact action, limits apply", async () => {
   const db = await freshDb();
   try {
