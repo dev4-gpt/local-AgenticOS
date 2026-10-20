@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { GATEWAY_HTTP_STATUS, requestApproval, type GatewayErrorCode } from "@/lib/adapterApprovalGateway";
-import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
+import { currentClientCredentialManager, currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, recordClientAudit, selectClientRecords } from "@/lib/clientDataPlane";
 
 export const runtime = "nodejs";
@@ -13,12 +13,15 @@ export async function GET() {
   if (!gate.ok) return gate.response;
   const page = await selectClientRecords("client_adapter_approvals", {
     tenant_slug: `eq.${gate.tenantSlug}`,
-    select: "id,adapter_id,action_kind,action_hash,destination,policy_version,requested_by,decided_by,status,expires_at,decided_at,executed_at,created_at",
+    select: "id,adapter_id,action_kind,action_hash,action_canonical,destination,policy_version,requested_by,decided_by,status,expires_at,decided_at,executed_at,created_at",
     order: "created_at.desc,id.asc",
     limit: "100",
   });
   if (!page.ok) return jsonError("unavailable", 502);
-  return NextResponse.json({ ok: true, approvals: page.records }, { headers: noStore });
+  // The screen needs to know who is looking and whether they may decide, so it can hide buttons the database would refuse.
+  // The database still enforces both: the requester can never decide, and only owners and admins can.
+  const canDecide = await currentClientCredentialManager();
+  return NextResponse.json({ ok: true, approvals: page.records, viewerId: gate.userId, canDecide }, { headers: noStore });
 }
 
 export async function POST(request: Request) {
@@ -63,5 +66,5 @@ async function gateRequest(bucket: string, limit: number) {
   if (!rateLimit.allowed) return { ok: false as const, response: jsonError("runtime_rate_limited", 429) };
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
   if (!tenantSlug) return { ok: false as const, response: jsonError("tenant_not_configured", 503) };
-  return { ok: true as const, tenantSlug };
+  return { ok: true as const, tenantSlug, userId: user.id };
 }

@@ -20,6 +20,7 @@ Bottom line today: **no real client data may touch any adapter.** Veloce's own r
 | History and budget log cannot be edited or removed | Append-only triggers | same |
 | Approval requester is never the approver | Database constraint and function | `adapter-approval-gateway-sql.spec.ts` |
 | Approval is tied to the exact action fingerprint | Server hashing plus database check | gateway specs |
+| The text a reviewer reads is exactly what the fingerprint covers: the request stores the hashed text, the database refuses text that does not hash to the fingerprint or disagrees with the row, and the text cannot change afterwards | `client_adapter_request_approval`, approval guard | `adapter-approval-gateway-sql.spec.ts` (hash, field, invalid, oversize and immutability cases; three deliberate breakages each fail tests) |
 | Approvals expire, and are used once | Database | gateway SQL spec |
 | Approver identity is never taken from a request field | Functions read the login | gateway SQL and route specs |
 | Approval routes are closed unless `ADAPTER_HOST_ENABLED=true` | Route code | `adapter-approval-gateway.spec.ts` |

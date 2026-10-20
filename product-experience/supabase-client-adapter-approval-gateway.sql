@@ -4,13 +4,20 @@
 --   client_adapter_decide_approval   a different signed-in owner or admin approves or rejects it
 --   client_adapter_execute_approval  the host worker consumes an approved request, once
 -- Adds no tables. Identity always comes from auth.uid(); no function trusts a caller-supplied user id.
+-- A request also stores the exact canonical text that was hashed (column added in the host migration) and the
+-- database checks that it hashes to the fingerprint and agrees with the row, so a reviewer sees what they approve.
 -- Do not apply to a hosted project until the adapter host tables are covered by the 28 + 7 day lifecycle.
+
+-- The request now carries the exact canonical text that was hashed. The old signature is removed so there is no
+-- overload that skips the check.
+drop function if exists public.client_adapter_request_approval(text, text, text, text, text, text, integer);
 
 create or replace function public.client_adapter_request_approval(
   p_tenant_slug text,
   p_adapter_id text,
   p_action_kind text,
   p_action_hash text,
+  p_action_canonical text,
   p_destination text,
   p_policy_version text,
   p_ttl_seconds integer default 86400
@@ -18,10 +25,11 @@ create or replace function public.client_adapter_request_approval(
 returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   adapter public.client_adapter_registry%rowtype;
+  canonical jsonb;
   live_count integer;
   new_id uuid;
 begin
@@ -33,6 +41,26 @@ begin
   end if;
   if p_ttl_seconds is null or p_ttl_seconds < 60 or p_ttl_seconds > 259200 then
     raise exception 'adapter_approval_bad_ttl';
+  end if;
+  -- What the reviewer will see must be exactly what the fingerprint covers.
+  if p_action_canonical is null or length(p_action_canonical) not between 2 and 16384 then
+    raise exception 'adapter_approval_canonical_invalid';
+  end if;
+  begin
+    canonical := p_action_canonical::jsonb;
+  exception when others then
+    raise exception 'adapter_approval_canonical_invalid';
+  end;
+  if jsonb_typeof(canonical) <> 'object' then
+    raise exception 'adapter_approval_canonical_invalid';
+  end if;
+  if encode(digest(convert_to(p_action_canonical, 'UTF8'), 'sha256'), 'hex') is distinct from p_action_hash
+     or canonical ->> 'v' is distinct from 'approval-action-h1'
+     or canonical ->> 'kind' is distinct from p_action_kind
+     or canonical ->> 'adapterId' is distinct from p_adapter_id
+     or canonical ->> 'destination' is distinct from p_destination
+     or canonical ->> 'policyVersion' is distinct from p_policy_version then
+    raise exception 'adapter_approval_canonical_mismatch';
   end if;
   select * into adapter
     from public.client_adapter_registry
@@ -69,9 +97,9 @@ begin
   end if;
 
   insert into public.client_adapter_approvals
-    (tenant_slug, adapter_id, action_kind, action_hash, destination, policy_version, requested_by, expires_at)
+    (tenant_slug, adapter_id, action_kind, action_hash, action_canonical, destination, policy_version, requested_by, expires_at)
   values
-    (p_tenant_slug, p_adapter_id, p_action_kind, p_action_hash, p_destination, p_policy_version, auth.uid(),
+    (p_tenant_slug, p_adapter_id, p_action_kind, p_action_hash, p_action_canonical, p_destination, p_policy_version, auth.uid(),
      now() + make_interval(secs => p_ttl_seconds))
   returning id into new_id;
 
@@ -179,8 +207,8 @@ begin
 end;
 $$;
 
-revoke all on function public.client_adapter_request_approval(text, text, text, text, text, text, integer) from public, anon;
-grant execute on function public.client_adapter_request_approval(text, text, text, text, text, text, integer) to authenticated;
+revoke all on function public.client_adapter_request_approval(text, text, text, text, text, text, text, integer) from public, anon;
+grant execute on function public.client_adapter_request_approval(text, text, text, text, text, text, text, integer) to authenticated;
 
 revoke all on function public.client_adapter_decide_approval(uuid, text, text) from public, anon;
 grant execute on function public.client_adapter_decide_approval(uuid, text, text) to authenticated;

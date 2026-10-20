@@ -29,6 +29,20 @@ adapter needs an approval that is stored in the database, bound to one exact act
 7. **Audit.** Request and decision write a client audit event and an outbox event (`approval.requested`,
    `approval.decided`).
 
+## What the reviewer sees (added with the approvals screen)
+
+A fingerprint alone does not let a reviewer see what they are approving. So a request now also stores the exact
+canonical text that was hashed (`action_canonical`, at most 16 KB). The database checks, before storing anything, that
+the text is a JSON object, that its SHA-256 equals the fingerprint, and that its own kind, adapter, destination and
+policy version equal the row's. A request whose text is missing, oversized, not JSON, or does not match is refused. The
+text cannot be changed afterwards (the approval guard treats it as part of the row's identity), follows the same
+28 + 7 retention as the rest of the approval, and is in the backup and restore projection. Older rows have no text.
+The old seven-argument request function is removed so nothing can skip the check.
+
+What this proves and what it does not: the text a reviewer reads is exactly what the fingerprint covers, and the
+worker must present the same fingerprint at execution. It does not prove the adapter will later do what the text says;
+that depends on the host executing from the same payload it hashed.
+
 ## What this does not do yet
 
 - The execute path is called by the host worker only; no adapter calls it yet.

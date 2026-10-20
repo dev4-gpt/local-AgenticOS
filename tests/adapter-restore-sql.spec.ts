@@ -80,7 +80,8 @@ async function seed(db: PGlite) {
     "insert into public.client_adapter_memory_items (tenant_slug, namespace, origin_adapter_id, content, content_sha256, trust_level, promotion_id, idempotency_key) values ('tenant-a','shared','forge','a shared fact',$1,'reviewed',$2,'idem-key-2') returning id", [sha("a shared fact"), promo],
   )).rows[0].id;
   await db.query("insert into public.client_adapter_memory_provenance (tenant_slug, item_id, adapter_id, adapter_version, agent_principal, source_task_id, confidence) values ('tenant-a',$1,'forge','1','agent','task-1',0.5)", [shared]);
-  await db.query("insert into public.client_adapter_approvals (tenant_slug, adapter_id, action_kind, action_hash, destination, policy_version, requested_by, expires_at) values ('tenant-a','forge','publish',$1,'dest','p1',$2, now() + interval '2 days')", [H("1"), USER.memberA]);
+  const canonical = JSON.stringify({ adapterId: "forge", destination: "dest", kind: "publish", payload: { text: "post body" }, policyVersion: "p1", v: "approval-action-h1" });
+  await db.query("insert into public.client_adapter_approvals (tenant_slug, adapter_id, action_kind, action_hash, action_canonical, destination, policy_version, requested_by, expires_at) values ('tenant-a','forge','publish',$1,$2,'dest','p1',$3, now() + interval '2 days')", [sha(canonical), canonical, USER.memberA]);
   await db.query("insert into public.client_adapter_budget_events (tenant_slug, adapter_id, task_id, kind, amount_micros, provider, idempotency_key) values ('tenant-a','forge','t1','reserve',250,'provider-x','idem-key-b1')");
   return { priv, promo, shared };
 }
@@ -148,6 +149,9 @@ test("a tenant's adapter data survives a backup and restore with its original da
     expect(registry).toEqual({ state: "disabled", budget_cap_micros: 5000000, budget_period: "month" });
     const approval = (await db.query<{ status: string }>("select status from public.client_adapter_approvals")).rows[0];
     expect(approval.status).toBe("expired"); // it was still pending in the source, so it must not come back usable
+    const kept = (await db.query<{ action_canonical: string; action_hash: string }>("select action_canonical, action_hash from public.client_adapter_approvals")).rows[0];
+    expect(sha(kept.action_canonical)).toBe(kept.action_hash); // what the reviewer saw came back with it, and still matches its fingerprint
+    expect(JSON.parse(kept.action_canonical).payload).toEqual({ text: "post body" });
     // members can read the restored shared note straight away, so the read barrier and memberships came back too
     await asUser(db, USER.memberA);
     expect((await db.query<{ content: string }>("select content from public.client_adapter_memory_items")).rows).toEqual([{ content: "a shared fact" }]);

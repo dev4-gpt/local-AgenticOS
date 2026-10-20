@@ -221,7 +221,7 @@ const exportColumns = Object.freeze({
   client_adapter_memory_items: "id,tenant_slug,namespace,origin_adapter_id,status,content,content_sha256,trust_level,idempotency_key,promotion_id,supersedes_id,valid_from,tombstoned_at,created_at,retention_expires_at",
   client_adapter_memory_promotions: "id,tenant_slug,source_item_id,origin_adapter_id,content_sha256,status,scan_result,requested_by,reviewed_by,reviewed_at,approved_content_sha256,decision_note,created_at,retention_expires_at",
   client_adapter_memory_provenance: "id,tenant_slug,item_id,adapter_id,adapter_version,agent_principal,source_task_id,source_url,source_sha256,confidence,actor_user,created_at,retention_expires_at",
-  client_adapter_approvals: "id,tenant_slug,adapter_id,action_kind,action_hash,destination,policy_version,requested_by,decided_by,approved_action_hash,status,expires_at,decided_at,executed_at,execution_receipt_sha256,created_at,retention_expires_at",
+  client_adapter_approvals: "id,tenant_slug,adapter_id,action_kind,action_hash,action_canonical,destination,policy_version,requested_by,decided_by,approved_action_hash,status,expires_at,decided_at,executed_at,execution_receipt_sha256,created_at,retention_expires_at",
   client_adapter_budget_events: "id,tenant_slug,adapter_id,task_id,kind,amount_micros,provider,model,runtime_budget_ref,idempotency_key,created_at,retention_expires_at",
 });
 

@@ -264,6 +264,18 @@ create table if not exists public.client_adapter_approvals (
   constraint client_adapter_approvals_expiry_after_creation check (expires_at > created_at)
 );
 
+-- The exact text that was hashed, so a reviewer sees what the fingerprint covers. The request function checks that it
+-- hashes to action_hash and agrees with the row's kind, adapter, destination and policy version. Older rows have none.
+alter table public.client_adapter_approvals add column if not exists action_canonical text;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public.client_adapter_approvals'::regclass and conname = 'client_adapter_approvals_canonical_size') then
+    alter table public.client_adapter_approvals
+      add constraint client_adapter_approvals_canonical_size check (action_canonical is null or length(action_canonical) between 2 and 16384);
+  end if;
+end;
+$$;
+
 create unique index if not exists client_adapter_approvals_live_idx
   on public.client_adapter_approvals (tenant_slug, action_kind, action_hash, destination)
   where status in ('pending', 'approved');
@@ -390,7 +402,8 @@ begin
   end if;
   if (new.tenant_slug, new.adapter_id, new.action_kind, new.action_hash, new.destination, new.policy_version, new.requested_by, new.expires_at, new.created_at)
      is distinct from
-     (old.tenant_slug, old.adapter_id, old.action_kind, old.action_hash, old.destination, old.policy_version, old.requested_by, old.expires_at, old.created_at) then
+     (old.tenant_slug, old.adapter_id, old.action_kind, old.action_hash, old.destination, old.policy_version, old.requested_by, old.expires_at, old.created_at)
+     or new.action_canonical is distinct from old.action_canonical then
     raise exception 'approval identity is immutable';
   end if;
   if new.status = old.status then

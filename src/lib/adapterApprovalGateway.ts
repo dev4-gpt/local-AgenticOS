@@ -65,8 +65,14 @@ function boundedText(value: unknown, field: string, max: number): string {
   return value;
 }
 
-/** The hash an approval is bound to. It covers the kind, adapter, destination, policy version and the full payload. */
-export function approvalActionHash(action: ApprovalAction): string {
+export const MAX_CANONICAL_CHARS = 16_384;
+
+/**
+ * The exact text an approval is bound to, and its SHA-256. It covers the kind, adapter, destination, policy version and
+ * the full payload. The text is stored with the approval so a reviewer sees what the fingerprint covers; the database
+ * checks that the text hashes to the fingerprint.
+ */
+export function approvalActionCanonical(action: ApprovalAction): { canonical: string; hash: string } {
   if (!APPROVAL_ACTION_KINDS.includes(action.kind)) invalid("unknown approval action kind");
   if (!isValidAdapterId(action.adapterId)) throw new AdapterContractError("invalid_adapter_id", "adapter id is not valid");
   const canonical = canonicalJson({
@@ -77,7 +83,13 @@ export function approvalActionHash(action: ApprovalAction): string {
     policyVersion: boundedText(action.policyVersion, "policyVersion", MAX_POLICY_VERSION_CHARS),
     payload: action.payload === undefined ? null : action.payload,
   });
-  return createHash("sha256").update(canonical).digest("hex");
+  if (canonical.length > MAX_CANONICAL_CHARS) invalid(`the action is larger than ${MAX_CANONICAL_CHARS} characters`);
+  return { canonical, hash: createHash("sha256").update(canonical, "utf8").digest("hex") };
+}
+
+/** The hash an approval is bound to. */
+export function approvalActionHash(action: ApprovalAction): string {
+  return approvalActionCanonical(action).hash;
 }
 
 export type GatewayRpc = (functionName: string, body: Record<string, unknown>) => Promise<{ ok: boolean; status: number; value: unknown }>;
@@ -104,6 +116,8 @@ const MESSAGE_CODES: Record<string, GatewayErrorCode> = {
   adapter_approval_bad_ttl: "invalid_input",
   adapter_approval_bad_kind: "invalid_input",
   adapter_approval_bad_decision: "invalid_input",
+  adapter_approval_canonical_invalid: "invalid_input",
+  adapter_approval_canonical_mismatch: "invalid_input",
   adapter_approval_requester_cannot_decide: "requester_cannot_decide",
   adapter_approval_not_pending: "not_pending",
   adapter_approval_hash_mismatch: "hash_mismatch",
@@ -155,14 +169,15 @@ export async function requestApproval(rpc: GatewayRpc, input: RequestApprovalInp
     return { ok: false, error: "invalid_input" };
   }
   let actionHash: string;
+  let actionCanonical: string;
   try {
-    actionHash = approvalActionHash({
+    ({ hash: actionHash, canonical: actionCanonical } = approvalActionCanonical({
       kind: input.kind as ApprovalActionKind,
       adapterId: input.adapterId as string,
       destination: input.destination as string,
       policyVersion: input.policyVersion as string,
       payload: input.payload,
-    });
+    }));
   } catch {
     return { ok: false, error: "invalid_input" };
   }
@@ -171,6 +186,7 @@ export async function requestApproval(rpc: GatewayRpc, input: RequestApprovalInp
     p_adapter_id: input.adapterId,
     p_action_kind: input.kind,
     p_action_hash: actionHash,
+    p_action_canonical: actionCanonical,
     p_destination: input.destination,
     p_policy_version: input.policyVersion,
     p_ttl_seconds: ttl,

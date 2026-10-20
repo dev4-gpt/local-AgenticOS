@@ -6,7 +6,7 @@ All paths are relative to the repo root (`source/`). "Proof" means the test file
 npm run test:focused
 ```
 
-Expected today: 684 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
+Expected today: 689 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
 
 ## Branches
 
@@ -62,7 +62,7 @@ No new tables. Three functions.
 
 | Function | Who may call | What it does |
 |---|---|---|
-| `client_adapter_request_approval` | Signed-in tenant member | Checks adapter exists and is ready for that kind of action; clears expired duplicates; refuses if 50 open already; inserts a pending request; writes an `approval.requested` outbox event |
+| `client_adapter_request_approval` | Signed-in tenant member | Takes the exact canonical text that was hashed and refuses it unless it is a JSON object, hashes to the fingerprint and agrees with the row's kind, adapter, destination and policy (the text is stored, immutable, and shown to reviewers); checks adapter exists and is ready for that kind of action; clears expired duplicates; refuses if 50 open already; inserts a pending request; writes an `approval.requested` outbox event |
 | `client_adapter_decide_approval` | Signed-in owner/admin who is **not** the requester | Locks the row; refuses wrong tenant (as "not found"), requester, non-pending; marks expired if late; approve needs the same hash; writes `approval.decided` |
 | `client_adapter_execute_approval` | Host worker (publishable key + tenant worker token) | Marks `executed` with a receipt hash, only if approved, unexpired, tenant and hash match. Returns true once |
 
@@ -169,8 +169,8 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 |---|---|---|
 | `adapter-contracts.spec.ts` | 13 | Contract rules and TypeScript/SQL agreement |
 | `adapter-host-sql.spec.ts` | 8 | Table rules, roles, tenant isolation, append-only |
-| `adapter-approval-gateway-sql.spec.ts` | 8 | Two-person, hash-bound, expiring, single-use approvals |
-| `adapter-approval-gateway.spec.ts` | 11 | Server hashing, input checks, route behaviour |
+| `adapter-approval-gateway-sql.spec.ts` | 11 | Two-person, hash-bound, expiring, single-use approvals |
+| `adapter-approval-gateway.spec.ts` | 13 | Server hashing, input checks, route behaviour |
 | `adapter-tokens.spec.ts` | 9 | Token signing and every verification rule |
 | `adapter-token-uses-sql.spec.ts` | 5 | Single use, worker-only, bounded purge |
 | `adapter-restore-sql.spec.ts` | 7 | Backup and restore of adapter data: dates, disabled adapters, usable approvals, graph check, closed shortcuts |

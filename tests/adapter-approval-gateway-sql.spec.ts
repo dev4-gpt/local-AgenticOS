@@ -17,6 +17,12 @@ const USER = {
 const H = (c: string) => c.repeat(64);
 const TOKEN = "test-worker-token-aaaaaaaaaaaaaaaaaaaa";
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
+// The canonical text is what the host hashes: sorted keys, no spaces. The database checks the text against the hash.
+const ACT = (tag: string, kind = "publish", destination = "https://example.test/post", policy = "policy-1") => {
+  const canonical = JSON.stringify({ adapterId: "forge", destination, kind, payload: { tag }, policyVersion: policy, v: "approval-action-h1" });
+  return { canonical, hash: sha(canonical) };
+};
+const HASH = (tag: string, kind = "publish") => ACT(tag, kind).hash;
 
 async function freshDb() {
   const db = new PGlite({ extensions: { pgcrypto } });
@@ -64,11 +70,12 @@ async function setup(db: PGlite, side = "publish", state = "enabled") {
   await db.query("update public.client_adapter_registry set state = $1 where adapter_id = 'forge'", [state]);
 }
 
-async function request(db: PGlite, user: string, hash = H("1"), kind = "publish", ttl = 3600, tenant = "tenant-a") {
+async function request(db: PGlite, user: string, tag = "1", kind = "publish", ttl = 3600, tenant = "tenant-a") {
   await asUser(db, user);
+  const { canonical, hash } = ACT(tag, kind);
   const r = await db.query<{ id: string }>(
-    "select public.client_adapter_request_approval($1,'forge',$2,$3,'https://example.test/post','policy-1',$4) as id",
-    [tenant, kind, hash, ttl],
+    "select public.client_adapter_request_approval($1,'forge',$2,$3,$4,'https://example.test/post','policy-1',$5) as id",
+    [tenant, kind, hash, canonical, ttl],
   );
   return r.rows[0].id;
 }
@@ -90,9 +97,9 @@ test("a member requests, a different admin approves, the worker consumes it exac
   try {
     await setup(db);
     const id = await request(db, USER.memberA);
-    expect(await decide(db, USER.adminA, id, "approve", H("1"))).toBe("approved");
-    expect(await execute(db, id, H("1"))).toBe(true);
-    expect(await execute(db, id, H("1"))).toBe(false); // replay
+    expect(await decide(db, USER.adminA, id, "approve", HASH("1"))).toBe("approved");
+    expect(await execute(db, id, HASH("1"))).toBe(true);
+    expect(await execute(db, id, HASH("1"))).toBe(false); // replay
     await asOwner(db);
     const row = await db.query<{ status: string; requested_by: string; decided_by: string }>("select status, requested_by, decided_by from public.client_adapter_approvals");
     expect(row.rows[0]).toEqual({ status: "executed", requested_by: USER.memberA, decided_by: USER.adminA });
@@ -109,7 +116,7 @@ test("the requester cannot approve their own request, even as admin", async () =
     await setup(db);
     const id = await request(db, USER.adminA);
     await asUser(db, USER.adminA);
-    await expect(db.query("select public.client_adapter_decide_approval($1,'approve',$2)", [id, H("1")])).rejects.toThrow(/requester_cannot_decide/);
+    await expect(db.query("select public.client_adapter_decide_approval($1,'approve',$2)", [id, HASH("1")])).rejects.toThrow(/requester_cannot_decide/);
   } finally {
     await db.close();
   }
@@ -122,11 +129,11 @@ test("plain members and other tenants cannot decide; unknown ids look the same",
     const id = await request(db, USER.memberA);
     for (const user of [USER.memberA, USER.ownerB]) {
       await asUser(db, user);
-      await expect(db.query("select public.client_adapter_decide_approval($1,'approve',$2)", [id, H("1")])).rejects.toThrow(/adapter_approval_not_found/);
+      await expect(db.query("select public.client_adapter_decide_approval($1,'approve',$2)", [id, HASH("1")])).rejects.toThrow(/adapter_approval_not_found/);
     }
     await asUser(db, USER.ownerA);
     await expect(
-      db.query("select public.client_adapter_decide_approval('00000000-0000-4000-8000-00000000ffff','approve',$1)", [H("1")]),
+      db.query("select public.client_adapter_decide_approval('00000000-0000-4000-8000-00000000ffff','approve',$1)", [HASH("1")]),
     ).rejects.toThrow(/adapter_approval_not_found/);
   } finally {
     await db.close();
@@ -137,14 +144,14 @@ test("approval is bound to the exact hash and cannot be reused for another actio
   const db = await freshDb();
   try {
     await setup(db);
-    const id = await request(db, USER.memberA, H("1"));
+    const id = await request(db, USER.memberA, "1");
     await asUser(db, USER.adminA);
-    await expect(db.query("select public.client_adapter_decide_approval($1,'approve',$2)", [id, H("2")])).rejects.toThrow(/hash_mismatch/);
-    expect(await decide(db, USER.adminA, id, "approve", H("1"))).toBe("approved");
-    expect(await execute(db, id, H("2"))).toBe(false); // different action
-    expect(await execute(db, id, H("1"), "wrong-token-wrong-token-wrong-token")).toBe(false);
-    expect(await execute(db, id, H("1"), TOKEN, "not-a-hash")).toBe(false);
-    expect(await execute(db, id, H("1"))).toBe(true);
+    await expect(db.query("select public.client_adapter_decide_approval($1,'approve',$2)", [id, HASH("2")])).rejects.toThrow(/hash_mismatch/);
+    expect(await decide(db, USER.adminA, id, "approve", HASH("1"))).toBe("approved");
+    expect(await execute(db, id, HASH("2"))).toBe(false); // different action
+    expect(await execute(db, id, HASH("1"), "wrong-token-wrong-token-wrong-token")).toBe(false);
+    expect(await execute(db, id, HASH("1"), TOKEN, "not-a-hash")).toBe(false);
+    expect(await execute(db, id, HASH("1"))).toBe(true);
   } finally {
     await db.close();
   }
@@ -156,9 +163,9 @@ test("rejected and already-decided requests cannot be executed or decided again"
     await setup(db);
     const id = await request(db, USER.memberA);
     expect(await decide(db, USER.adminA, id, "reject", null)).toBe("rejected");
-    expect(await execute(db, id, H("1"))).toBe(false);
+    expect(await execute(db, id, HASH("1"))).toBe(false);
     await asUser(db, USER.ownerA);
-    await expect(db.query("select public.client_adapter_decide_approval($1,'approve',$2)", [id, H("1")])).rejects.toThrow(/not_pending/);
+    await expect(db.query("select public.client_adapter_decide_approval($1,'approve',$2)", [id, HASH("1")])).rejects.toThrow(/not_pending/);
   } finally {
     await db.close();
   }
@@ -168,14 +175,14 @@ test("expired requests cannot be approved or executed, and a fresh request is al
   const db = await freshDb();
   try {
     await setup(db);
-    const id = await request(db, USER.memberA, H("1"), "publish", 3600);
+    const id = await request(db, USER.memberA, "1", "publish", 3600);
     await asOwner(db);
     await db.exec("alter table public.client_adapter_approvals disable trigger user");
     await db.exec("update public.client_adapter_approvals set expires_at = now() - interval '1 minute', created_at = now() - interval '2 hours'");
     await db.exec("alter table public.client_adapter_approvals enable trigger user");
-    expect(await decide(db, USER.adminA, id, "approve", H("1"))).toBe("expired");
-    expect(await execute(db, id, H("1"))).toBe(false);
-    const again = await request(db, USER.memberA, H("1"));
+    expect(await decide(db, USER.adminA, id, "approve", HASH("1"))).toBe("expired");
+    expect(await execute(db, id, HASH("1"))).toBe(false);
+    const again = await request(db, USER.memberA, "1");
     expect(again).not.toBe(id);
   } finally {
     await db.close();
@@ -187,23 +194,16 @@ test("request rules: adapter must exist and be ready, one live request per exact
   try {
     await setup(db, "read", "enabled");
     await asUser(db, USER.memberA);
-    await expect(
-      db.query("select public.client_adapter_request_approval('tenant-a','forge','publish',$1,'d','p',3600)", [H("1")]),
-    ).rejects.toThrow(/adapter_not_ready/); // ceiling is read, so publish is not possible
-    await expect(
-      db.query("select public.client_adapter_request_approval('tenant-a','nope-adapter','promote',$1,'d','p',3600)", [H("1")]),
-    ).rejects.toThrow(/unknown_adapter/);
-    await expect(
-      db.query("select public.client_adapter_request_approval('tenant-a','forge','promote',$1,'d','p',5)", [H("1")]),
-    ).rejects.toThrow(/bad_ttl/);
-    await expect(
-      db.query("select public.client_adapter_request_approval('tenant-b','forge','promote',$1,'d','p',3600)", [H("1")]),
-    ).rejects.toThrow(/not_allowed/);
-    await request(db, USER.memberA, H("3"), "promote");
-    await asUser(db, USER.memberA);
-    await expect(
-      db.query("select public.client_adapter_request_approval('tenant-a','forge','promote',$1,'https://example.test/post','policy-1',3600)", [H("3")]),
-    ).rejects.toThrow(/duplicate key|unique/);
+    const call = (adapter: string, kind: string, ttl: number, tenant = "tenant-a") => {
+      const { canonical, hash } = (() => { const c = JSON.stringify({ adapterId: adapter, destination: "d", kind, payload: {}, policyVersion: "p", v: "approval-action-h1" }); return { canonical: c, hash: sha(c) }; })();
+      return db.query("select public.client_adapter_request_approval($1,$2,$3,$4,$5,'d','p',$6)", [tenant, adapter, kind, hash, canonical, ttl]);
+    };
+    await expect(call("forge", "publish", 3600)).rejects.toThrow(/adapter_not_ready/); // ceiling is read, so publish is not possible
+    await expect(call("nope-adapter", "promote", 3600)).rejects.toThrow(/unknown_adapter/);
+    await expect(call("forge", "promote", 5)).rejects.toThrow(/bad_ttl/);
+    await expect(call("forge", "promote", 3600, "tenant-b")).rejects.toThrow(/not_allowed/);
+    await call("forge", "promote", 3600);
+    await expect(call("forge", "promote", 3600)).rejects.toThrow(/duplicate key|unique/);
   } finally {
     await db.close();
   }
@@ -214,10 +214,93 @@ test("function grants: anonymous cannot request or decide, signed-in users canno
   try {
     await setup(db);
     await asAnon(db);
-    await expect(db.query("select public.client_adapter_request_approval('tenant-a','forge','promote',$1,'d','p',3600)", [H("1")])).rejects.toThrow(/permission denied/);
+    const { canonical, hash } = ACT("1", "promote");
+    await expect(db.query("select public.client_adapter_request_approval('tenant-a','forge','promote',$1,$2,'https://example.test/post','policy-1',3600)", [hash, canonical])).rejects.toThrow(/permission denied/);
     await expect(db.query("select public.client_adapter_decide_approval(gen_random_uuid(),'reject',null)")).rejects.toThrow(/permission denied/);
     await asUser(db, USER.ownerA);
-    await expect(db.query("select public.client_adapter_execute_approval('tenant-a',$1,gen_random_uuid(),$2,$3)", [TOKEN, H("1"), H("9")])).rejects.toThrow(/permission denied/);
+    await expect(db.query("select public.client_adapter_execute_approval('tenant-a',$1,gen_random_uuid(),$2,$3)", [TOKEN, HASH("1"), H("9")])).rejects.toThrow(/permission denied/);
+  } finally {
+    await db.close();
+  }
+});
+
+test("the stored text must be exactly what was hashed, and agree with the request", async () => {
+  const db = await freshDb();
+  try {
+    await setup(db);
+    await asUser(db, USER.memberA);
+    const ask = (over: { hash?: string; canonical?: string | null; kind?: string; destination?: string; policy?: string; adapter?: string }) => {
+      const base = ACT("1");
+      return db.query(
+        "select public.client_adapter_request_approval('tenant-a',$1,$2,$3,$4,$5,$6,3600)",
+        [over.adapter ?? "forge", over.kind ?? "publish", over.hash ?? base.hash, over.canonical === undefined ? base.canonical : over.canonical, over.destination ?? "https://example.test/post", over.policy ?? "policy-1"],
+      );
+    };
+    // text that does not hash to the fingerprint
+    await expect(ask({ hash: HASH("other") })).rejects.toThrow(/adapter_approval_canonical_mismatch/);
+    await expect(ask({ canonical: ACT("1").canonical + " " })).rejects.toThrow(/adapter_approval_canonical_mismatch/);
+    // text that hashes correctly but says something different from the row
+    for (const [name, other] of [["kind", ACT("1", "promote")], ["destination", ACT("1", "publish", "https://example.test/elsewhere")], ["policy", ACT("1", "publish", "https://example.test/post", "policy-2")]] as const) {
+      await expect(ask({ hash: other.hash, canonical: other.canonical }), name).rejects.toThrow(/adapter_approval_canonical_mismatch/);
+    }
+    const wrongVersion = JSON.stringify({ adapterId: "forge", destination: "https://example.test/post", kind: "publish", payload: {}, policyVersion: "policy-1", v: "approval-action-h0" });
+    await expect(ask({ hash: sha(wrongVersion), canonical: wrongVersion })).rejects.toThrow(/adapter_approval_canonical_mismatch/);
+    const otherAdapter = JSON.stringify({ adapterId: "knowledge", destination: "https://example.test/post", kind: "publish", payload: {}, policyVersion: "policy-1", v: "approval-action-h1" });
+    await expect(ask({ hash: sha(otherAdapter), canonical: otherAdapter })).rejects.toThrow(/adapter_approval_canonical_mismatch/);
+    // text that is missing, not JSON, not an object, or too big
+    await expect(ask({ canonical: null })).rejects.toThrow(/adapter_approval_canonical_invalid/);
+    await expect(ask({ canonical: "" })).rejects.toThrow(/adapter_approval_canonical_invalid/);
+    for (const text of ["not json", "[1,2]", "\"text\"", "42"]) await expect(ask({ hash: sha(text), canonical: text }), text).rejects.toThrow(/adapter_approval_canonical_invalid/);
+    const huge = JSON.stringify({ adapterId: "forge", destination: "https://example.test/post", kind: "publish", payload: { x: "y".repeat(17_000) }, policyVersion: "policy-1", v: "approval-action-h1" });
+    await expect(ask({ hash: sha(huge), canonical: huge })).rejects.toThrow(/adapter_approval_canonical_invalid/);
+    // nothing was stored by any of the refusals
+    await asOwner(db);
+    expect((await db.query("select 1 from public.client_adapter_approvals")).rows).toHaveLength(0);
+    // the text is hashed as UTF-8, so non-English content works
+    await asUser(db, USER.memberA);
+    const unicode = JSON.stringify({ adapterId: "forge", destination: "https://example.test/post", kind: "publish", payload: { text: "Café 日本語 🙂" }, policyVersion: "policy-1", v: "approval-action-h1" });
+    const ok = await ask({ hash: sha(unicode), canonical: unicode });
+    expect(ok.rows).toHaveLength(1);
+  } finally {
+    await db.close();
+  }
+});
+
+test("the stored text is kept with the approval, immutable, and visible only to the requester and admins", async () => {
+  const db = await freshDb();
+  try {
+    await setup(db);
+    const id = await request(db, USER.memberA, "7");
+    const { canonical } = ACT("7");
+    await asUser(db, USER.memberA);
+    expect((await db.query<{ action_canonical: string }>("select action_canonical from public.client_adapter_approvals")).rows).toEqual([{ action_canonical: canonical }]);
+    await asUser(db, USER.adminA);
+    expect((await db.query<{ action_canonical: string }>("select action_canonical from public.client_adapter_approvals")).rows).toEqual([{ action_canonical: canonical }]);
+    // it cannot be changed, not even by the service role or the owner
+    for (const role of ["service_role", "owner"]) {
+      if (role === "owner") await asOwner(db); else await db.exec("reset role; set role service_role");
+      await expect(db.query("update public.client_adapter_approvals set action_canonical = $1 where id = $2", [ACT("8").canonical, id]), role).rejects.toThrow(/approval identity is immutable/);
+    }
+    // deciding does not touch it
+    expect(await decide(db, USER.adminA, id, "approve", HASH("7"))).toBe("approved");
+    await asOwner(db);
+    expect((await db.query<{ action_canonical: string }>("select action_canonical from public.client_adapter_approvals")).rows).toEqual([{ action_canonical: canonical }]);
+    // an unrelated member in the same tenant sees nothing, as before
+    await db.exec("insert into auth.users values ('00000000-0000-4000-8000-0000000000c1')");
+    await db.exec("insert into public.client_memberships values ('tenant-a','00000000-0000-4000-8000-0000000000c1','member','active')");
+    await asUser(db, "00000000-0000-4000-8000-0000000000c1");
+    expect((await db.query("select 1 from public.client_adapter_approvals")).rows).toHaveLength(0);
+  } finally {
+    await db.close();
+  }
+});
+
+test("the old request signature without the text is gone", async () => {
+  const db = await freshDb();
+  try {
+    await setup(db);
+    await asUser(db, USER.memberA);
+    await expect(db.query("select public.client_adapter_request_approval('tenant-a','forge','publish',$1,'d','p',3600)", [HASH("1")])).rejects.toThrow(/does not exist/);
   } finally {
     await db.close();
   }

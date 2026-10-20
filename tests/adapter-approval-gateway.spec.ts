@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { createHash } from "node:crypto";
 import { loadReviewModule } from "./helpers/load-review-module";
 
 const savedEnv = { ...process.env };
@@ -41,6 +42,26 @@ test("requestApproval hashes on the server and ignores any caller-supplied hash"
   expect(calls[0][1].p_action_hash).toBe(result.actionHash);
   expect(calls[0][1].p_action_hash).not.toBe(H("f"));
   expect(Object.keys(calls[0][1])).not.toContain("p_requested_by");
+  // the exact text that was hashed travels with the request, so the database can check it and a reviewer can read it
+  const sent = calls[0][1].p_action_canonical as string;
+  expect(createHash("sha256").update(sent, "utf8").digest("hex")).toBe(result.actionHash);
+  expect(JSON.parse(sent)).toEqual({ adapterId: "forge", destination: "d", kind: "publish", payload: { a: 1 }, policyVersion: "p", v: "approval-action-h1" });
+});
+
+test("the canonical text is the one the hash covers, sorted and compact, and too-large actions are refused", () => {
+  const action = { kind: "publish", adapterId: "forge", destination: "https://example.test/x", policyVersion: "p1", payload: { b: [2, 1], a: "é 日本" } };
+  const { canonical, hash } = gateway.approvalActionCanonical(action);
+  expect(canonical).toBe('{"adapterId":"forge","destination":"https://example.test/x","kind":"publish","payload":{"a":"é 日本","b":[2,1]},"policyVersion":"p1","v":"approval-action-h1"}');
+  expect(createHash("sha256").update(canonical, "utf8").digest("hex")).toBe(hash);
+  expect(gateway.approvalActionHash(action)).toBe(hash);
+  expect(() => gateway.approvalActionCanonical({ ...action, payload: { text: "x".repeat(17_000) } })).toThrow(/larger than/);
+  expect(gateway.MAX_CANONICAL_CHARS).toBe(16_384);
+});
+
+test("database errors about the canonical text map to invalid input", () => {
+  for (const message of ["adapter_approval_canonical_mismatch", "adapter_approval_canonical_invalid"]) {
+    expect(gateway.gatewayErrorFrom({ status: 400, value: { message } })).toBe("invalid_input");
+  }
 });
 
 test("requestApproval rejects bad input before calling the database", async () => {
@@ -88,17 +109,18 @@ test("executeApproval returns false for any bad input and only true on an exact 
   expect(await gateway.executeApproval(async () => ({ ok: true, status: 200, value: "true" }), good)).toBe(false);
 });
 
-function loadRoutes(opts: { authenticated?: boolean; limited?: boolean } = {}) {
+function loadRoutes(opts: { authenticated?: boolean; limited?: boolean; canDecide?: boolean } = {}) {
+  const selects: [string, Record<string, string>][] = [];
   const rpcCalls: [string, Record<string, unknown>][] = [];
   const audits: string[] = [];
   const mocks = {
     "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
-    "@/lib/clientAuth": { currentClientUser: async () => opts.authenticated === false ? null : { id: "u1" }, currentClientMember: async () => true },
+    "@/lib/clientAuth": { currentClientUser: async () => opts.authenticated === false ? null : { id: "u1" }, currentClientMember: async () => true, currentClientCredentialManager: async () => opts.canDecide !== false },
     "@/lib/clientDataPlane": {
       checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: !opts.limited }),
       clientRpc: async (n: string, b: Record<string, unknown>) => { rpcCalls.push([n, b]); return { ok: true, status: 200, value: n.includes("decide") ? "approved" : ID }; },
       recordClientAudit: async (e: string) => { audits.push(e); },
-      selectClientRecords: async () => ({ ok: true, records: [{ id: ID }] }),
+      selectClientRecords: async (t: string, f: Record<string, string>) => { selects.push([t, f]); return { ok: true, records: [{ id: ID }] }; },
     },
     "@/lib/adapterApprovalGateway": gateway,
   };
@@ -107,6 +129,7 @@ function loadRoutes(opts: { authenticated?: boolean; limited?: boolean } = {}) {
     decision: loadReviewModule("src/app/api/client-runtime/adapter-approvals/[id]/decision/route.ts", mocks),
     rpcCalls,
     audits,
+    selects,
   };
 }
 
@@ -158,10 +181,20 @@ test("decision route awaits params, validates input and audits the outcome", asy
   expect((await r.decision.POST(post({ decision: "reject" }), { params: Promise.resolve({ id: "not-a-uuid" }) })).status).toBe(400);
 });
 
-test("list route returns approvals with no-store caching", async () => {
+test("list route returns approvals with no-store caching, the stored text, who is looking, and whether they may decide", async () => {
   process.env.ADAPTER_HOST_ENABLED = "true";
   process.env.CLIENT_SLUG = "tenant-a";
-  const res = await loadRoutes().list.GET();
+  const first = loadRoutes();
+  const res = await first.list.GET();
   expect(res.status).toBe(200);
   expect(res.headers.get("cache-control")).toBe("private, no-store");
+  const body = await res.json();
+  expect(body).toMatchObject({ ok: true, viewerId: "u1", canDecide: true });
+  expect(body.approvals).toEqual([{ id: ID }]);
+  expect(first.selects[0][0]).toBe("client_adapter_approvals");
+  expect(first.selects[0][1].select).toContain("action_canonical");
+  expect(first.selects[0][1].tenant_slug).toBe("eq.tenant-a");
+  // a plain member can read their own requests but is told they cannot decide
+  const member = await (await loadRoutes({ canDecide: false }).list.GET()).json();
+  expect(member).toMatchObject({ ok: true, viewerId: "u1", canDecide: false });
 });

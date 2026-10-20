@@ -90,6 +90,10 @@ Last updated: 2026-10-19 after adapter retention and restore wiring (Phase 1 ite
 - [ ] **13. Key storage and rotation for adapter tokens (Both).** Decide where the signing key lives; nothing sends or checks tokens yet
 - [ ] **14. Wrong-tenant route tests (Me).** The two approval routes have unauthenticated tests only; stop-ship item 9
 - [ ] **15. Approvals page flow (Me).** A way for two people to see and decide pending approvals; the routes exist, the screen does not
+  - [x] 15a. Store and verify what is being approved (approvals-screen commit A): the request now stores the exact canonical text that was hashed; the database refuses text that does not hash to the fingerprint or disagrees with the row; the text is immutable, in the backup and restore projection, and returned by the list route with the viewer's id and whether they may decide. Three deliberate breakages each fail tests
+  - [ ] 15b. The approvals screen itself (commit B)
+  - [ ] 15c. No notification tells a second person a request is waiting; they must open the page
+  - [ ] 15d. Requests are created by host code; there is no form to create one from the UI
 - [ ] **16. Mutation check on Phase 1 tests (Me).** Remove each rule and confirm a test fails (master plan principle 5)
 
 ---
