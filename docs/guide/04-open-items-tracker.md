@@ -40,7 +40,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 - [ ] **You:** confirm the six pillar names, or choose one principal to start (X-15)
 - [ ] **You:** decide what "the knowledge bases" means: the three vaults, the hosted memory, or both
 - [ ] **You:** decide whether client notes may live in an iCloud-synced vault (S-5, X-12)
-- [ ] **You + Lawyer:** review the AGPL separation (ContractorOS, `seo-os`, `trypost`, InkOS) (X-10, WARNING)
+- [ ] **You + Lawyer:** review the AGPL separation (X-10, WARNING). `docs/architecture/adr-010-agpl-candidate-adapter-separation.md` writes up the separate-process pattern and the ten candidates for the lawyer to review (ContractorOS, `seo-os`, inkos, trypost, brightbean-studio, plunk, OpenMontage, MiroFish, FreshRSS, stackrender, locally-uncensored, firecrawl); the pattern is documentation only, nothing calls any of them, and every candidate stays blocked until sign-off
 - [ ] **You + Lawyer:** payment route: choose a licensed provider; do not use the bank-message-reading gateway (PAY-1 to PAY-4, CRITICAL)
 - [ ] **You:** decide the base branch for the work (X-18). Currently cut from `wip/backup-2026-10-03`, not `main`
 - [ ] **You:** retire the duplicate staging copy of the Keepy library when ready (X-14)
