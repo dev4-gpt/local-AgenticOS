@@ -64,7 +64,7 @@ No new tables. Three functions.
 |---|---|---|
 | `client_adapter_request_approval` | Signed-in tenant member | Takes the exact canonical text that was hashed and refuses it unless it is a JSON object, hashes to the fingerprint and agrees with the row's kind, adapter, destination and policy (the text is stored, immutable, and shown to reviewers); checks adapter exists and is ready for that kind of action; clears expired duplicates; refuses if 50 open already; inserts a pending request; writes an `approval.requested` outbox event |
 | `client_adapter_decide_approval` | Signed-in owner/admin who is **not** the requester | Locks the row; refuses wrong tenant (as "not found"), requester, non-pending; marks expired if late; approve needs the same hash; writes `approval.decided` |
-| `client_adapter_execute_approval` | Host worker (publishable key + tenant worker token) | Marks `executed` with a receipt hash, only if approved, unexpired, tenant and hash match. Returns true once |
+| `client_adapter_execute_approval` | Host worker (publishable key + tenant worker token) | Marks `executed` with a receipt hash, only if approved, unexpired, tenant and hash match. Returns true once, and writes one `approval.executed` outbox event (none on a refused call) |
 
 Proof: `tests/adapter-approval-gateway-sql.spec.ts` (8 tests).
 
@@ -126,6 +126,7 @@ Proof: `tests/adapter-budget-sql.spec.ts` (11 tests: caps, periods, retries, set
 ## D3. Adapters page and Budget tab
 
 - `product-experience/supabase-client-adapter-budget.sql` also holds `client_adapter_budget_summary(tenant)`: one row per registered adapter with its cap, spend for its cap period (this month when the adapter has no cap), spend this month and open reservations. Active members of that tenant get rows; anyone else gets none; the anonymous role is refused.
+- `product-experience/supabase-client-adapter-host.sql` also holds `client_adapter_activity_counts(tenant)`: counts of outbox events and budget events for the last 28 days, per adapter and kind (`approval.requested`, `approval.decided`, `approval.executed`, `memory.*`, `budget.reserve/settle/release`). Counts only, never payloads. Active members of that tenant get rows; the Adapters page shows it as "Recent activity" through `GET /api/client-runtime/adapter-activity`
 - `src/lib/adapterOverview.ts`: `parseSummaryRows` (rejects any row that does not look right), `buildAdapterCards` (plain labels, cap status: ok, warning at 80%, exhausted at 100%), `buildBudgetBreakdown` (adapters plus "other spending" equal the workspace total, and flags a disagreement), `formatMicrosUsd` (a small spend is never shown as free).
 - `src/app/api/client-runtime/adapters/route.ts`: read-only `GET`. Needs sign-in and `ADAPTER_HOST_ENABLED=true`, is rate limited, reads the tenant from `CLIENT_SLUG`, and returns validated cards or an error, never raw rows. Not in the client edition's allowed API list.
 - `src/app/adapters/page.tsx` and `src/components/AdaptersView.tsx`: the `/adapters` screen with loading, switched-off, signed-out, unavailable and empty states.

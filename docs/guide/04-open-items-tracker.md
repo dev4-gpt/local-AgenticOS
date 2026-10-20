@@ -13,7 +13,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 | Phase | Name | Status |
 |---|---|---|
 | 0 | Hygiene | Mine done; yours open |
-| 1 | Host foundation | Items 1-5, 8, 10, 12, 14 and 15 done; 6, 7, 9, 11, 13 and 16 open |
+| 1 | Host foundation | Items 1-5, 8, 10, 12, 14 and 15 done; 6a done (6b open); 7, 9, 11, 13 and 16 open |
 | 2 | Creator OS adapter | Not started |
 | 3 | Knowledge adapter | Not started (dedupe tools exist) |
 | 4 | Forge adapter | Not started |
@@ -72,7 +72,9 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
   - [ ] 5c. Add a link to Adapters from the main navigation (today it sits in the Budget tab; the home quick-link bar is a fixed six-item layout)
   - [ ] 5d. Next.js 16 renamed `middleware` to `proxy`; `src/middleware.ts` still works but the dev server prints a deprecation warning. Migrate with the codemod when convenient
   - [ ] 5e. Existing lint error in `HomeImmersive.tsx` (`setWebglFailed` called inside an effect) and an unused import, both there before this work
-- [ ] **6. Observability (Me).** Audit events and counters for approvals, tokens, promotions, budget. *Done when:* each event is visible and tested
+- [ ] **6. Observability (Me).** Audit events and counters for approvals, tokens, promotions, budget. *Done when:* each event is visible and tested. Split: 6a is done locally, 6b is open
+  - [x] 6a. Approvals, shared memory and budget: `client_adapter_execute_approval` now writes an `approval.executed` outbox event (the only approval step that wrote none); new read-only `client_adapter_activity_counts(tenant)` counts outbox and budget events for the last 28 days per adapter and kind (members of that tenant only, counts never payloads); new `GET /api/client-runtime/adapter-activity`, `src/lib/adapterActivity.ts` and a "Recent activity" panel on the Adapters page. 6 SQL tests plus 4 route/lib tests; five mutations (drop the event, drop the membership check, widen the window, trust a query-string tenant, accept unknown event types) each fail a test. Panel not yet checked in a browser against a database
+  - [ ] 6b. Promotion decisions and token use are not in the panel: promotion decisions only write an app-layer audit event (`tenant.adapter.promotion_*`), not an outbox or counted event, and token use rows (`client_adapter_token_uses`) are purged after one day by design, so a 28-day count of them needs a separate, longer-lived counter. Decide whether that is wanted before building it
 - [ ] **7. Scoped handles (Me).** Narrow references so an adapter can read only what a task needs
 - [x] **8. Purge and restore wiring for the new tables (Me), done locally in two commits on `feat/approval-gateway`.** Active expiry at 28 days, recovery for 7, bounded purge, export and restore. The 28 + 7 gate is met in the local and in-memory test databases only; the hosted proof is still open (8f)
   - [x] 8a. Expiry, read barrier and purge (commit A, `supabase-client-adapter-retention-28.sql`, ADR-008): 11 tests; lifecycle command runs the purge with `--include-adapter-host` (and `--confirm-retention-adapter` to apply)

@@ -220,7 +220,7 @@ create table if not exists public.client_adapter_outbox (
   id uuid primary key default gen_random_uuid(),
   tenant_slug text not null references public.client_tenants(slug) on delete cascade,
   event_id uuid not null unique default gen_random_uuid(),
-  event_type text not null check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided')),
+  event_type text not null check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed')),
   adapter_id text check (adapter_id is null or adapter_id ~ '^[a-z][a-z0-9-]{2,40}$'),
   payload jsonb not null default '{}'::jsonb check (pg_column_size(payload) <= 16384),
   causation_id uuid,
@@ -595,3 +595,34 @@ grant update (status, decided_by, decided_at, approved_action_hash) on public.cl
 grant select, insert, update on public.client_adapter_approvals to service_role;
 grant select on public.client_adapter_budget_events to authenticated;
 grant select, insert on public.client_adapter_budget_events to service_role;
+
+-- Read-only activity counts for the Adapters page (item 6, observability): how many approval, memory and budget events
+-- happened in the last 28 days, per adapter and kind. Counts only, never payloads. Any active member of the tenant may
+-- read it; other tenants get no rows.
+create or replace function public.client_adapter_activity_counts(p_tenant_slug text)
+returns table (adapter_id text, event_type text, event_count integer)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null or not public.client_member(p_tenant_slug) then
+    return;
+  end if;
+  return query
+  select o.adapter_id, o.event_type, count(*)::integer
+    from public.client_adapter_outbox o
+    where o.tenant_slug = p_tenant_slug and o.created_at >= now() - interval '28 days'
+    group by o.adapter_id, o.event_type
+  union all
+  select b.adapter_id, 'budget.' || b.kind, count(*)::integer
+    from public.client_adapter_budget_events b
+    where b.tenant_slug = p_tenant_slug and b.created_at >= now() - interval '28 days'
+    group by b.adapter_id, b.kind
+  order by 1, 2;
+end;
+$$;
+
+revoke all on function public.client_adapter_activity_counts(text) from public, anon;
+grant execute on function public.client_adapter_activity_counts(text) to authenticated;

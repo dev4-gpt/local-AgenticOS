@@ -104,7 +104,56 @@ test("a member requests, a different admin approves, the worker consumes it exac
     const row = await db.query<{ status: string; requested_by: string; decided_by: string }>("select status, requested_by, decided_by from public.client_adapter_approvals");
     expect(row.rows[0]).toEqual({ status: "executed", requested_by: USER.memberA, decided_by: USER.adminA });
     const events = await db.query<{ event_type: string }>("select event_type from public.client_adapter_outbox order by created_at, event_type");
-    expect(events.rows.map((e) => e.event_type).sort()).toEqual(["approval.decided", "approval.requested"]);
+    // Exactly one executed event: the replay that returned false wrote nothing.
+    expect(events.rows.map((e) => e.event_type).sort()).toEqual(["approval.decided", "approval.executed", "approval.requested"]);
+  } finally {
+    await db.close();
+  }
+});
+
+test("a failed execution (wrong hash, wrong token, rejected request) writes no executed event", async () => {
+  const db = await freshDb();
+  try {
+    await setup(db);
+    const id = await request(db, USER.memberA);
+    await decide(db, USER.adminA, id, "approve", HASH("1"));
+    expect(await execute(db, id, HASH("other"))).toBe(false);
+    expect(await execute(db, id, HASH("1"), "wrong-token-aaaaaaaaaaaaaaaaaaaaaaaa")).toBe(false);
+    await asOwner(db);
+    const none = await db.query("select 1 from public.client_adapter_outbox where event_type = 'approval.executed'");
+    expect(none.rows).toHaveLength(0);
+  } finally {
+    await db.close();
+  }
+});
+
+test("activity counts: per-kind counts for the last 28 days, members only, own tenant only, no payloads", async () => {
+  const db = await freshDb();
+  try {
+    await setup(db);
+    const id = await request(db, USER.memberA);
+    await decide(db, USER.adminA, id, "approve", HASH("1"));
+    await execute(db, id, HASH("1"));
+    await asOwner(db);
+    // An old event outside the window, and a budget event inside it.
+    await db.exec(`
+      insert into public.client_adapter_outbox (tenant_slug, event_type, adapter_id, payload, created_at)
+        values ('tenant-a','approval.requested','forge','{}'::jsonb, now() - interval '40 days');
+      insert into public.client_adapter_budget_events (tenant_slug, adapter_id, task_id, kind, amount_micros, provider, idempotency_key)
+        values ('tenant-a','forge','task-1','reserve',1000,'test-provider','key-00001');`);
+    await asUser(db, USER.memberA);
+    const own = await db.query<{ adapter_id: string; event_type: string; event_count: number }>("select * from public.client_adapter_activity_counts('tenant-a')");
+    expect(own.rows).toEqual([
+      { adapter_id: "forge", event_type: "approval.decided", event_count: 1 },
+      { adapter_id: "forge", event_type: "approval.executed", event_count: 1 },
+      { adapter_id: "forge", event_type: "approval.requested", event_count: 1 },
+      { adapter_id: "forge", event_type: "budget.reserve", event_count: 1 },
+    ]);
+    expect(Object.keys(own.rows[0]).sort()).toEqual(["adapter_id", "event_count", "event_type"]);
+    await asUser(db, USER.ownerB);
+    expect((await db.query("select * from public.client_adapter_activity_counts('tenant-a')")).rows).toHaveLength(0);
+    await asAnon(db);
+    await expect(db.query("select * from public.client_adapter_activity_counts('tenant-a')")).rejects.toThrow(/permission denied/);
   } finally {
     await db.close();
   }

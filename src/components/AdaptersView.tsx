@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, ArrowLeft, Plug, RefreshCw, ShieldAlert } from "lucide-react";
 import { formatMicrosUsd, type AdapterCard } from "@/lib/adapterOverview";
+import type { ActivityGroup } from "@/lib/adapterActivity";
 
 type LoadState = "loading" | "ready" | "disabled" | "signed-out" | "unavailable";
 
@@ -13,11 +14,18 @@ const PERIOD_WORD = { day: "today", month: "this month", total: "in total" } as 
 export default function AdaptersView() {
   const [cards, setCards] = useState<AdapterCard[]>([]);
   const [state, setState] = useState<LoadState>("loading");
+  // null means the activity counts could not be read; the adapter cards above do not depend on them.
+  const [activity, setActivity] = useState<{ windowDays: number; groups: ActivityGroup[] } | null>(null);
 
   const load = useCallback(async () => {
     setState("loading");
-    const response = await fetch("/api/client-runtime/adapters", { cache: "no-store" }).catch(() => null);
+    const [response, activityResponse] = await Promise.all([
+      fetch("/api/client-runtime/adapters", { cache: "no-store" }).catch(() => null),
+      fetch("/api/client-runtime/adapter-activity", { cache: "no-store" }).catch(() => null),
+    ]);
     const data = await response?.json().catch(() => null);
+    const activityData = await activityResponse?.json().catch(() => null);
+    setActivity(activityResponse?.ok && activityData?.ok && Array.isArray(activityData.groups) ? { windowDays: Number(activityData.windowDays), groups: activityData.groups as ActivityGroup[] } : null);
     if (response?.ok && data?.ok && Array.isArray(data.adapters)) {
       setCards(data.adapters as AdapterCard[]);
       setState("ready");
@@ -59,7 +67,26 @@ export default function AdaptersView() {
     {state === "ready" && cards.length > 0 && <ul className="mt-6 grid gap-4 md:grid-cols-2" aria-label="Registered adapters">
       {cards.map((card) => <li key={card.adapterId}><Card card={card} /></li>)}
     </ul>}
+
+    {state === "ready" && <ActivityPanel activity={activity} />}
   </div>;
+}
+
+function ActivityPanel({ activity }: { activity: { windowDays: number; groups: ActivityGroup[] } | null }) {
+  if (!activity) return <Notice warn title="Recent activity unavailable" body="The event counts could not be read. Nothing is shown rather than a guess." />;
+  return <section className="panel mt-6 p-4" aria-label="Recent activity">
+    <h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Recent activity <span style={{ color: "var(--cream-mute)" }}>(last {activity.windowDays} days)</span></h2>
+    {activity.groups.length === 0
+      ? <p className="mt-2 text-[12px]" style={{ color: "var(--cream-mute)" }}>No approvals, memory changes or budget events yet.</p>
+      : <ul className="mt-3 grid gap-3 md:grid-cols-2">
+        {activity.groups.map((group) => <li key={group.adapterId ?? "workspace"}>
+          <p className="font-mono text-[10px]" style={{ color: "var(--cream-mute)" }}>{group.adapterId ?? "workspace"}</p>
+          <dl className="mt-1 grid gap-0.5 text-[11px]" style={{ color: "var(--cream-dim)" }}>
+            {group.lines.map((line) => <div key={line.eventType} className="flex justify-between gap-3"><dt>{line.label}</dt><dd className="tabular-nums" style={{ color: "var(--cream)" }}>{line.count}</dd></div>)}
+          </dl>
+        </li>)}
+      </ul>}
+  </section>;
 }
 
 function Card({ card }: { card: AdapterCard }) {

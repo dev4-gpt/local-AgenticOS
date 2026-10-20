@@ -110,6 +110,12 @@ begin
 end;
 $$;
 
+-- The outbox type list lives in the host file's create table; on a database that already has the table, widen it
+-- here so execution can be recorded. Same name Postgres gave the inline check; safe to run twice.
+alter table public.client_adapter_outbox drop constraint if exists client_adapter_outbox_event_type_check;
+alter table public.client_adapter_outbox add constraint client_adapter_outbox_event_type_check
+  check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed'));
+
 create or replace function public.client_adapter_decide_approval(
   p_approval_id uuid,
   p_decision text,
@@ -203,6 +209,12 @@ begin
       and approved_action_hash = p_expected_action_hash
       and expires_at > now();
   get diagnostics changed = row_count;
+  if changed = 1 then
+    insert into public.client_adapter_outbox (tenant_slug, event_type, adapter_id, payload, causation_id)
+    select a.tenant_slug, 'approval.executed', a.adapter_id,
+           jsonb_build_object('approval_id', a.id, 'action_kind', a.action_kind), a.id
+    from public.client_adapter_approvals a where a.id = p_approval_id;
+  end if;
   return changed = 1;
 end;
 $$;
