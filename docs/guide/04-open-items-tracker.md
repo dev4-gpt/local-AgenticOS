@@ -14,7 +14,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 |---|---|---|
 | 0 | Hygiene | Mine done; yours open |
 | 1 | Host foundation | Items 1-5, 7, 8, 10, 12, 14, 15 and 16 done; 6a done (6b open); 9b, 11 and 13 open (all three need your decision) |
-| 2 | Creator OS adapter | Not started |
+| 2 | Creator OS adapter | Slice 1 done locally in the ContractorOS repo (not pushed); slice 2 open |
 | 3 | Knowledge adapter | Not started (dedupe tools exist) |
 | 4 | Forge adapter | Not started |
 | 5 | SymVibe + REA | Not started |
@@ -135,13 +135,18 @@ QM (`yc-software/qm`, MIT) as a multi-agent harness behind the host's `h1` contr
 
 ## Phase 2: Creator OS adapter
 
-- [ ] Manifest, `task.run/get/cancel`, `events`, `memory.propose`, `memory.tombstone` routes in the ContractorOS service (X-1, CRITICAL). It serves only 4 read-only routes today
-- [ ] Approver identity from the host login, not a caller field (X-6, WARNING)
-- [ ] Tenant slug threaded through every API; one slug format (X-7)
-- [ ] Draft-class tasks only; publishing stays disabled
-- [ ] Contract tests against the real service; spoofed-approver test; tenant tests
-- [ ] Budget feed reconciles with the host ledger
-- [ ] Deletion receipts or label "outside the guarantee" (X-2)
+Work happens in the separate ContractorOS repo (`dev4-gpt/ContractorOS`, AGPL, still public). Slice 1 is committed locally in a fresh clone at `~/Documents/Codex/Projects/ContractorOS`, branch `feat/h1-surface`, commit `9d984aa`, **not pushed** (push only once you decide about making the repo private). 310 tests pass across its seven packages; 22 mutations on the new code each fail a test.
+
+- [~] Manifest, `task.run/get/cancel` routes in the ContractorOS service (X-1, CRITICAL). Done in slice 1: `manifest`, `health`, `task.run`, `task.get`, `task.cancel`, one draft-class task `content.draft`, behind Ed25519 host tokens, off by default. **Open (slice 2):** `events`, `memory.propose`, `memory.tombstone`, returning the draft text (the memory store gives asset ids, not bodies), wiring `main.ts` so the service can start with the host surface on
+- [x] Approver identity from the host login, not a caller field (X-6). There is no approve or publish route at all, the requester is fixed as `veloce-host`, and any requester or approver field in a request is a 400. The two-person approval stays in the host gateway
+- [x] Tenant slug threaded through every API; one slug format (X-7). Core and the factory now share the host's rule `^[a-z][a-z0-9-]{2,40}$`; the h1 routes take the tenant from configuration and refuse a body or token naming another. Note: a client folder named with a leading digit or over 41 characters would now be refused (nothing in the repo is affected)
+- [x] Draft-class tasks only; publishing stays disabled (the manifest ceiling is `draft`; the run stops at awaiting approval)
+- [~] Contract tests against the real service; spoofed-approver test; tenant tests. Done in-process: a token minted by the real host module verifies, spoofed requester/approver fields and approve routes are refused, wrong tenant refused. **Open:** a test from the host side against a running ContractorOS service
+- [ ] Budget feed reconciles with the host ledger (the per-task limit is the factory's hard cap today; the cross-ledger reconcile is not built)
+- [ ] Deletion receipts or label "outside the guarantee" (X-2). Labelled `deletionGuarantee: "none"` in the manifest for now, so it stays out of the client edition
+- [ ] P2-1. Durable replay protection: the token-id store is in memory; use the host's `client_adapter_consume_token`
+- [ ] P2-2. You: choose the starter principal/pillar (X-15). The task takes any pillar from the existing list per request; nothing is hard-coded
+- [ ] P2-3. You: make the ContractorOS repo private (Phase 0) before any of this is pushed
 
 ## Phase 3: Knowledge adapter
 
