@@ -119,3 +119,49 @@ test("consumeAdapterToken only calls the database for matching tenants and retur
   expect(await tokens.consumeAdapterToken(rpc(true), { tenantSlug: "tenant-a", workerToken: "short", claims })).toBe(false);
   expect(calls.length).toBe(before);
 });
+
+// Item 7: scoped handles. A token can name the memory items an adapter may read; a request for any other id is refused.
+const H1 = "00000000-0000-4000-8000-000000000001";
+const H2 = "00000000-0000-4000-8000-000000000002";
+const H3 = "00000000-0000-4000-8000-000000000003";
+
+test("a token with handles verifies only for the items it names", () => {
+  const { privateKey, publicKey } = pair();
+  const { token, claims } = mint(privateKey, { handles: [H1, H2, H1] });
+  expect(claims.handles).toEqual([H1, H2]); // duplicates collapse
+  expect(verify(token, publicKey, { requestedItemIds: [H1] }).ok).toBe(true);
+  expect(verify(token, publicKey, { requestedItemIds: [H2, H1] }).ok).toBe(true);
+  expect(verify(token, publicKey, { requestedItemIds: [H1, H3] })).toEqual({ ok: false, reason: "handle_not_allowed" });
+  expect(verify(token, publicKey, { requestedItemIds: [] })).toEqual({ ok: false, reason: "handle_not_allowed" });
+  expect(verify(token, publicKey).ok).toBe(true); // not asking for items is a different check
+});
+
+test("a token without handles cannot be used to read any item", () => {
+  const { privateKey, publicKey } = pair();
+  const { token, claims } = mint(privateKey);
+  expect(claims.handles).toBeUndefined();
+  expect(verify(token, publicKey, { requestedItemIds: [H1] })).toEqual({ ok: false, reason: "handle_not_allowed" });
+});
+
+test("handles are limited to 20 valid ids and cannot be edited after signing", () => {
+  const { privateKey, publicKey } = pair();
+  const ids = Array.from({ length: 20 }, (_, i) => `00000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`);
+  expect(mint(privateKey, { handles: ids }).claims.handles).toHaveLength(20);
+  expect(() => mint(privateKey, { handles: [...ids, H3.replace("3", "f")] })).toThrow("invalid token handles");
+  expect(() => mint(privateKey, { handles: [] })).toThrow("invalid token handles");
+  expect(() => mint(privateKey, { handles: ["not-a-uuid"] })).toThrow("invalid token handles");
+  const { token } = mint(privateKey, { handles: [H1] });
+  const [body, sig] = token.split(".");
+  const widened = { ...JSON.parse(Buffer.from(body, "base64url").toString()), handles: [H1, H3] };
+  expect(verify(`${Buffer.from(JSON.stringify(widened)).toString("base64url")}.${sig}`, publicKey, { requestedItemIds: [H3] })).toEqual({ ok: false, reason: "bad_signature" });
+});
+
+test("a correctly signed token with malformed handles is refused as malformed", () => {
+  const { privateKey, publicKey } = pair();
+  const { claims } = mint(privateKey, { handles: [H1] });
+  for (const handles of [[], "x", [1], ["nope"], Array.from({ length: 21 }, () => H1)]) {
+    const body = Buffer.from(JSON.stringify({ ...claims, handles })).toString("base64url");
+    const sig = sign(null, Buffer.from(body, "utf8"), privateKey).toString("base64url");
+    expect(verify(`${body}.${sig}`, publicKey, { requestedItemIds: [H1] })).toEqual({ ok: false, reason: "malformed" });
+  }
+});

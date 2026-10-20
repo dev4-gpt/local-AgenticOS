@@ -14,8 +14,10 @@ export const TOKEN_ISSUER = "veloce-host" as const;
 export const MAX_TOKEN_TTL_SECONDS = 300;
 export const DEFAULT_TOKEN_TTL_SECONDS = 60;
 export const MAX_CLOCK_SKEW_SECONDS = 30;
+export const MAX_HANDLES = 20;
 const MAX_TOKEN_CHARS = 4096;
 const JTI = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const UUID = JTI;
 
 export interface AdapterTokenClaims {
   v: typeof TOKEN_VERSION;
@@ -23,6 +25,8 @@ export interface AdapterTokenClaims {
   tenant: string;
   aud: string;
   scope: AdapterOperation[];
+  /** Memory item ids this token may read through context.read. Absent means the token names no items. */
+  handles?: string[];
   jti: string;
   iat: number;
   exp: number;
@@ -36,6 +40,7 @@ export type TokenFailure =
   | "wrong_tenant"
   | "wrong_audience"
   | "scope_not_allowed"
+  | "handle_not_allowed"
   | "expired"
   | "not_yet_valid"
   | "ttl_too_long";
@@ -62,6 +67,8 @@ export interface MintInput {
   tenant: string;
   adapterId: string;
   scope: readonly AdapterOperation[];
+  /** Up to MAX_HANDLES memory item ids (UUIDs) the adapter may read. Narrower than the scope alone. */
+  handles?: readonly string[];
   ttlSeconds?: number;
   now?: number; // seconds since epoch; tests only
 }
@@ -73,8 +80,10 @@ export function mintAdapterToken(input: MintInput): { token: string; claims: Ada
   if (!Number.isInteger(ttl) || ttl < 1 || ttl > MAX_TOKEN_TTL_SECONDS) throw new Error("invalid token lifetime");
   const scope = [...new Set(input.scope)];
   if (!scope.length || scope.some((op) => !ADAPTER_OPERATIONS.includes(op))) throw new Error("invalid token scope");
+  const handles = input.handles === undefined ? undefined : [...new Set(input.handles)];
+  if (handles && (!handles.length || handles.length > MAX_HANDLES || handles.some((id) => !UUID.test(id)))) throw new Error("invalid token handles");
   const iat = input.now ?? Math.floor(Date.now() / 1000);
-  const claims: AdapterTokenClaims = { v: TOKEN_VERSION, iss: TOKEN_ISSUER, tenant: input.tenant, aud: input.adapterId, scope, jti: randomUUID(), iat, exp: iat + ttl };
+  const claims: AdapterTokenClaims = { v: TOKEN_VERSION, iss: TOKEN_ISSUER, tenant: input.tenant, aud: input.adapterId, scope, ...(handles ? { handles } : {}), jti: randomUUID(), iat, exp: iat + ttl };
   const body = b64(Buffer.from(JSON.stringify(claims), "utf8"));
   const signature = sign(null, Buffer.from(body, "utf8"), ed25519PrivateKey(input.privateKey));
   return { token: `${body}.${b64(signature)}`, claims };
@@ -86,6 +95,8 @@ export interface VerifyInput {
   expectedTenant: string;
   expectedAdapterId: string;
   requiredOperation: AdapterOperation;
+  /** When set, every id must be named in the token's handles, or the token is refused. */
+  requestedItemIds?: readonly string[];
   now?: number;
 }
 
@@ -93,12 +104,13 @@ function parseClaims(body: string): AdapterTokenClaims | null {
   try {
     const value = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as Record<string, unknown>;
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-    const { v, iss, tenant, aud, scope, jti, iat, exp } = value;
+    const { v, iss, tenant, aud, scope, handles, jti, iat, exp } = value;
     if (typeof v !== "string" || typeof iss !== "string" || typeof tenant !== "string" || typeof aud !== "string") return null;
     if (!Array.isArray(scope) || !scope.every((op) => typeof op === "string")) return null;
+    if (handles !== undefined && (!Array.isArray(handles) || !handles.length || handles.length > MAX_HANDLES || !handles.every((id) => typeof id === "string" && UUID.test(id)))) return null;
     if (typeof jti !== "string" || !JTI.test(jti)) return null;
     if (!Number.isInteger(iat) || !Number.isInteger(exp)) return null;
-    return { v, iss, tenant, aud, scope, jti, iat, exp } as AdapterTokenClaims;
+    return { v, iss, tenant, aud, scope, ...(handles !== undefined ? { handles } : {}), jti, iat, exp } as AdapterTokenClaims;
   } catch {
     return null;
   }
@@ -121,6 +133,10 @@ export function verifyAdapterToken(input: VerifyInput): VerifyResult {
   if (claims.tenant !== input.expectedTenant) return { ok: false, reason: "wrong_tenant" };
   if (claims.aud !== input.expectedAdapterId) return { ok: false, reason: "wrong_audience" };
   if (!claims.scope.includes(input.requiredOperation)) return { ok: false, reason: "scope_not_allowed" };
+  if (input.requestedItemIds !== undefined) {
+    const named = new Set(claims.handles ?? []);
+    if (!input.requestedItemIds.length || !input.requestedItemIds.every((id) => named.has(id))) return { ok: false, reason: "handle_not_allowed" };
+  }
   if (claims.exp - claims.iat > MAX_TOKEN_TTL_SECONDS || claims.exp <= claims.iat) return { ok: false, reason: "ttl_too_long" };
   const now = input.now ?? Math.floor(Date.now() / 1000);
   if (claims.iat > now + MAX_CLOCK_SKEW_SECONDS) return { ok: false, reason: "not_yet_valid" };

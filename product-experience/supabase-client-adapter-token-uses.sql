@@ -79,7 +79,55 @@ begin
 end;
 $$;
 
+-- Scoped read: an adapter reads only the memory items its token names (the host checks the token's handles; this
+-- function enforces the database side). Returns only active items in the tenant that are shared or in the calling
+-- adapter's own namespace. Another adapter's private memory, other tenants, unknown ids and inactive items all give
+-- the same answer, no rows, so nothing can be probed. Adapters that are not in preview or enabled read nothing.
+create or replace function public.client_adapter_read_scoped(
+  p_tenant_slug text,
+  p_worker_token text,
+  p_adapter_id text,
+  p_item_ids uuid[]
+)
+returns table (id uuid, namespace text, content text, content_sha256 text, trust_level text, valid_from timestamptz)
+language plpgsql
+stable
+security definer
+set search_path = public, extensions
+as $$
+begin
+  if p_worker_token is null or length(p_worker_token) < 24
+     or not exists (
+       select 1 from public.client_tenants t
+       where t.slug = p_tenant_slug
+         and t.status = 'active'
+         and t.worker_token_hash = encode(digest(p_worker_token, 'sha256'), 'hex')
+     ) then
+    return;
+  end if;
+  if p_item_ids is null or cardinality(p_item_ids) not between 1 and 20 then
+    return;
+  end if;
+  if not exists (
+    select 1 from public.client_adapter_registry r
+    where r.tenant_slug = p_tenant_slug and r.adapter_id = p_adapter_id and r.state in ('preview', 'enabled')
+  ) then
+    return;
+  end if;
+  return query
+  select i.id, i.namespace, i.content, i.content_sha256, i.trust_level, i.valid_from
+    from public.client_adapter_memory_items i
+    where i.tenant_slug = p_tenant_slug
+      and i.id = any (p_item_ids)
+      and i.status = 'active'
+      and (i.namespace = 'shared' or i.namespace = 'adapter:' || p_adapter_id)
+    order by i.created_at, i.id;
+end;
+$$;
+
 revoke all on function public.client_adapter_consume_token(text, text, text, uuid, timestamptz) from public, authenticated;
 grant execute on function public.client_adapter_consume_token(text, text, text, uuid, timestamptz) to anon;
 revoke all on function public.client_adapter_purge_token_uses(integer) from public, anon, authenticated;
 grant execute on function public.client_adapter_purge_token_uses(integer) to service_role;
+revoke all on function public.client_adapter_read_scoped(text, text, text, uuid[]) from public, authenticated;
+grant execute on function public.client_adapter_read_scoped(text, text, text, uuid[]) to anon;
