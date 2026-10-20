@@ -74,6 +74,10 @@ if (mode === "retention" && apply && !args.includes("--confirm-retention-rate-li
 if (mode === "retention" && apply && !args.includes("--confirm-retention-audit-budget")) fail("Refusing audit and budget retention apply without --confirm-retention-audit-budget");
 // The adapter host is not installed on every deployment, so its purge is opt-in until it is.
 const includeAdapterHost = args.includes("--include-adapter-host");
+// A scheduled retention run names its deployment, and only the recorded background owner may run (QM-6c). A manual
+// operator run leaves this out. If the check cannot be answered the run stops; it never guesses.
+const deploymentId = valueAfter("--deployment-id");
+if (deploymentId !== null && !/^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/.test(deploymentId ?? "")) fail("--deployment-id is not a valid deployment id");
 if (mode === "retention" && apply && includeAdapterHost && !args.includes("--confirm-retention-adapter")) fail("Refusing adapter host retention apply without --confirm-retention-adapter");
 if (mode === "retention" && apply && !args.includes("--confirm-retention-jobs")) fail("Refusing runtime job retention apply without --confirm-retention-jobs");
 if (mode === "retention" && apply && !args.includes("--confirm-retention-credit")) fail("Refusing managed-credit retention apply without --confirm-retention-credit");
@@ -245,6 +249,14 @@ if (mode === "export") {
 }
 
 if (mode === "retention") {
+  if (deploymentId !== null) {
+    const ownerResponse = await supabaseRequest("rpc/client_adapter_background_owner_may_run", { method: "POST", body: JSON.stringify({ p_deployment_id: deploymentId }) });
+    if (!ownerResponse.ok) fail(`Background owner check failed (${ownerResponse.status}); verify the background-owner migration`);
+    if ((await ownerResponse.json()) !== true) {
+      console.log(JSON.stringify({ tenant: slug, skipped: true, reason: "this deployment is not the background owner", deploymentId }));
+      process.exit(0);
+    }
+  }
   const tokenResponse = await supabaseRequest("rpc/purge_expired_client_onboarding_tokens", {
     method: "POST",
     body: JSON.stringify({ p_apply: apply, p_batch_limit: 500 }),

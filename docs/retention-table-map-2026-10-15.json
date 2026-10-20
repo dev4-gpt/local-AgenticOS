@@ -121,7 +121,8 @@
         "client_provisioning_runs",
         "client_pricing_snapshots",
         "client_ecc_policy",
-        "client_adapter_registry"
+        "client_adapter_registry",
+        "client_adapter_background_owner"
       ]
     },
     {

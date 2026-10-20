@@ -13,7 +13,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 | Phase | Name | Status |
 |---|---|---|
 | 0 | Hygiene | Mine done; yours open |
-| 1 | Host foundation | Items 1-5, 7, 8, 10, 12, 14, 15 and 16 done; 6a done (6b open); 9b, 11 and 13 open (all three need your decision) |
+| 1 | Host foundation | Items 1-5, 7, 8, 10, 12, 14, 15 and 16 done; 6a and 9c done (6b open); 9b, 11 and 13 open (all three need your decision) |
 | 2 | Creator OS adapter | Slice 1 done locally in the ContractorOS repo (not pushed); slice 2 open |
 | 3 | Knowledge adapter | Not started (dedupe tools exist) |
 | 4 | Forge adapter | Not started |
@@ -87,6 +87,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
   - [ ] 8e. While a shared note is expired but unpurged, the same fact cannot be shared again (hash slot held for up to 7 days)
 - [ ] **9. Scheduled jobs (Me).** Run token purge and approval expiry on a schedule. *Done when:* a scheduled run is observed
   - [x] 9a. The jobs exist and run from the retention command (done locally on `feat/approval-gateway`): `client_adapter_expire_approvals` (service role only, bounded) is new, and `client-lifecycle.mjs --mode retention --include-adapter-host` now also calls it and `client_adapter_purge_token_uses` on a real run (reported as not run on a dry run). Tests in `adapter-approval-gateway-sql.spec.ts`; four deliberate breakages fail them
+  - [x] 9c. Safe to run from two places at once (done locally; QM-6c): `supabase-client-adapter-background-owner.sql` records exactly one deployment id as the background owner (service role only, compare-and-set so a stale writer loses), and `client-lifecycle.mjs --mode retention --deployment-id <id>` stops before purging anything unless that id is the owner (an unanswered check stops the run too; a manual run without the flag is unchanged). 8 tests including the real script against a stub; 12 of 13 mutations each fail a test (the 13th is a harmless duplicate). This does not pick a scheduler, so 9b is still your decision, but whichever you pick can now run in two deployments without double-running
   - [ ] 9b. **You decide, then Me:** nothing in this repo runs any retention job on a timer today (no workflow has a schedule). Pick a scheduler for the whole retention command: Cloud Scheduler plus a Cloud Run job (recommended; clients already live on GCP and the service key stays out of GitHub), a GitHub Actions cron, or Supabase `pg_cron`. *Done when:* a scheduled run is seen in the logs and reported
 - [x] **10. Promotion hardening (Me), done locally in three commits on `feat/approval-gateway`; the limits in 10d-10g and 10h-10j stay open.** Source-linked review, no tool instructions inside shared facts, retrieval-time distrust, rollback (X-4, CRITICAL). It is a tripwire plus a second reader, not a guarantee
   - [x] 10a. Rules and scanner (commit A, ADR-009): mandatory scan tied to the content hash, provenance required, queue cap of 25, blocked cannot be approved, flagged needs a 20-character reason, scan immutable; `client_adapter_decide_promotion` and `client_adapter_revoke_shared_memory`; scanner and safe rendering in `adapterMemoryGuard.ts`. 24 new tests; the scanner's own test found and fixed an evasion (a phrase split across lines)
@@ -127,7 +128,7 @@ QM (`yc-software/qm`, MIT) as a multi-agent harness behind the host's `h1` contr
 - [ ] QM-3. Retention (blocks the client edition): about 70 QM tables, several holding raw prompts, tool calls, session history, files and memory revisions. One database per client, every table classified, a purge job, verifier coverage
 - [ ] QM-4. Route QM memory to the host through its external memory-provider hook; only then add `memory.propose` and `memory.tombstone` to the manifest
 - [ ] QM-5. Replace the in-memory token-id and idempotency stores with the host's `client_adapter_consume_token` and a durable key store (they are lost on restart)
-- [ ] QM-6. Borrow three designs into the host itself: memory sensitivity labels, command policy mapped to the approval gateway, and the single background-owner record (informs 9b)
+- [~] QM-6. Borrow three designs into the host itself. QM-6c (the single background-owner record) is done locally, see 9c. **Open:** QM-6a memory sensitivity labels (a label column on memory items, a promotion gate, a classifier prompt) and QM-6b command policy mapped to the approval gateway (deny / require_approval rules)
 - [ ] QM-7. Security review of QM itself before any client data: auth broker, credential broker, egress proxy, sandbox isolation, prompt-injection posture for unattended work
 - [ ] QM-8. Check the licence of `earendil-works/pi` (YC's `pi` repo is a fork of it, and QM vendors a patched `pi-ai` and depends on `@earendil-works/pi-coding-agent`). Provenance: the `yc-software` GitHub organization is titled Y Combinator and links ycombinator.com (checked 2026-10-20; no verified-domain badge was visible), so client paperwork can say "published by the Y Combinator GitHub organization, MIT licence"; the `pi` toolkit under it is not YC's own work
 

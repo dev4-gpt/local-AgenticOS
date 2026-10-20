@@ -23,6 +23,7 @@ export const TARGETS = [
   { file: `${SQL_DIR}/supabase-client-adapter-promotions.sql`, kind: "sql", specs: [T("adapter-promotions-sql")] },
   { file: `${SQL_DIR}/supabase-client-adapter-retention-28.sql`, kind: "sql", specs: [T("adapter-retention-sql"), T("adapter-restore-sql")] },
   { file: `${SQL_DIR}/supabase-client-adapter-token-uses.sql`, kind: "sql", specs: [T("adapter-token-uses-sql"), T("adapter-scoped-read-sql")] },
+  { file: `${SQL_DIR}/supabase-client-adapter-background-owner.sql`, kind: "sql", specs: [T("adapter-background-owner-sql")] },
   { file: "src/lib/adapterTokens.ts", kind: "ts", specs: [T("adapter-tokens")] },
   { file: "src/lib/adapterBudget.ts", kind: "ts", specs: [T("adapter-budget")] },
   { file: "src/lib/adapterApprovalGateway.ts", kind: "ts", specs: [T("adapter-approval-gateway"), T("adapter-wrong-tenant-routes")] },
