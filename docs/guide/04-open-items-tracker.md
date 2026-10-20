@@ -129,7 +129,7 @@ QM (`yc-software/qm`, MIT) as a multi-agent harness behind the host's `h1` contr
 - [ ] QM-5. Replace the in-memory token-id and idempotency stores with the host's `client_adapter_consume_token` and a durable key store (they are lost on restart)
 - [ ] QM-6. Borrow three designs into the host itself: memory sensitivity labels, command policy mapped to the approval gateway, and the single background-owner record (informs 9b)
 - [ ] QM-7. Security review of QM itself before any client data: auth broker, credential broker, egress proxy, sandbox isolation, prompt-injection posture for unattended work
-- [ ] QM-8. Check the licences of its dependencies `@earendil-works/pi-ai` (vendored and patched) and `@earendil-works/pi-coding-agent`; do not describe QM as built by Y Combinator in client paperwork (the repo does not say so)
+- [ ] QM-8. Check the licence of `earendil-works/pi` (YC's `pi` repo is a fork of it, and QM vendors a patched `pi-ai` and depends on `@earendil-works/pi-coding-agent`). Provenance: the `yc-software` GitHub organization is titled Y Combinator and links ycombinator.com (checked 2026-10-20; no verified-domain badge was visible), so client paperwork can say "published by the Y Combinator GitHub organization, MIT licence"; the `pi` toolkit under it is not YC's own work
 
 ---
 
