@@ -31,6 +31,7 @@ export const TARGETS = [
   { file: "src/lib/adapterContracts.ts", kind: "ts", specs: [T("adapter-contracts"), T("adapter-tokens")] },
   { file: "src/lib/adapterActivity.ts", kind: "ts", specs: [T("adapter-activity")] },
   { file: "src/lib/adapterPromotionsView.ts", kind: "ts", specs: [T("adapter-promotions-view")] },
+  { file: "src/lib/adapterCommandPolicy.ts", kind: "ts", specs: [T("adapter-command-policy")] },
   { file: "src/app/api/client-runtime/adapter-promotions/[id]/decision/route.ts", kind: "ts", specs: [T("adapter-promotions-routes"), T("adapter-wrong-tenant-routes")] },
   { file: "src/lib/adapterOverview.ts", kind: "ts", specs: [T("adapter-overview")] },
 ];
@@ -46,7 +47,7 @@ const NO_USER = "The functions are not granted to the public role, and a missing
 export const EQUIVALENT = [
   { file: `${SQL_DIR}/supabase-client-adapter-promotions.sql`, line: 37, original: "raise exception 'adapter_promotion_not_allowed';", reason: NO_USER },
   { file: `${SQL_DIR}/supabase-client-adapter-promotions.sql`, line: 100, original: "raise exception 'adapter_revoke_not_allowed';", reason: NO_USER },
-  { file: `${SQL_DIR}/supabase-client-adapter-approval-gateway.sql`, line: 134, original: "raise exception 'adapter_approval_not_allowed';", reason: NO_USER },
+  { file: `${SQL_DIR}/supabase-client-adapter-approval-gateway.sql`, line: 142, original: "raise exception 'adapter_approval_not_allowed';", reason: NO_USER },
   { file: `${SQL_DIR}/supabase-client-adapter-budget.sql`, line: 166, original: "return 'not_found';", reason: "Without it settle falls through to the ledger lookup, which finds nothing for a missing reservation and returns the same not_found (the vanished-ledger case is tested separately)." },
   { file: `${SQL_DIR}/supabase-client-adapter-budget.sql`, line: 236, original: "return 'not_found';", reason: "Without it release falls through to the ledger update, which matches no row for a missing reservation and returns the same not_found." },
   { file: "src/lib/adapterTokens.ts", line: 109, original: 'if (!value || typeof value !== "object" || Array.isArray(value)) return null;', reason: "A null or array payload fails the next line's field checks, or throws inside the try block, and both end as null." },

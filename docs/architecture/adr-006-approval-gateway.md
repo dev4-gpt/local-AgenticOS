@@ -57,6 +57,28 @@ that depends on the host executing from the same payload it hashed.
   class and the schedule together. Hosted migration and the scheduled expiry sweep are still unverified (items 9b, 4a).
 - Two real people are still needed: the user plans to test with two of their own email accounts.
 
+## Addendum 2026-10-20: commands, `run-command` (QM-6b)
+
+A fourth approval kind, `run-command`, lets a command policy hand a command to this gateway
+(`src/lib/adapterCommandPolicy.ts`). The policy's idea and its five floor rules come from QM's command policy (MIT,
+`yc-software/qm`); the gateway is what makes the answer binding.
+
+- **Three answers per command:** allow, deny, or require approval. The strictest matching rule wins, so a client's own
+  rules can add limits but never loosen the org floor, and an org allowlist cannot be switched off by a client.
+- **An approval is for one exact command under one exact policy.** The action is `{kind: run-command, adapter,
+  destination: "command", policyVersion: <fingerprint of the policy>, payload: {command}}`, hashed like any other
+  action. Change one character of the command, the adapter, or any rule, and the hash differs, so the approval does not
+  cover it. The runtime recomputes the action from the command it is about to run and executes the approval with that hash.
+- **Who may ask:** an adapter in `preview` or `enabled` whose side-effect ceiling is above `read`; a read-only,
+  disabled or suspended adapter is refused (`adapter_approval_adapter_not_ready`).
+- **Rules are checked before they are trusted:** a pattern must compile and may not repeat a group that itself repeats or
+  branches, use look-around, or back-refer (these make matching explode on hostile input). Matching compares the raw
+  text and a folded copy (look-alike letters, invisible characters), so `r<zero-width>m -rf` does not slip through.
+- **Not built:** nothing in the host runs commands yet, so nothing calls `decideCommand`. The first runtime that does
+  (a sandbox runner for Forge, Phase 4) must call it before every command and must refuse anything but `run`. Per-client
+  rules have no screen or storage yet. QM runs commands under its own policy inside its own sandbox; this does not
+  replace that, it is for commands the host itself mediates.
+
 ## Rollback
 
 Leave `ADAPTER_HOST_ENABLED` unset. The functions and routes then do nothing. The SQL file can be dropped with

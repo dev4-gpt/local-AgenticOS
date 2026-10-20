@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
+import { APPROVAL_ACTION_KINDS } from "../src/lib/adapterContracts";
 
 // Real PostgreSQL (PGlite) tests for product-experience/supabase-client-adapter-approval-gateway.sql.
 // Users, tenants, tokens and rows are all created inside each test; nothing real is used.
@@ -475,4 +476,60 @@ test("a decision must be exactly approve or reject", async () => {
   } finally {
     await db.close();
   }
+});
+
+// QM-6b: "run-command" is an approval kind, for adapters that may act and are ready.
+test("a command can be put up for approval only by an adapter that is ready and not read-only, then approved and used once", async () => {
+  const db = await freshDb();
+  try {
+    await setup(db, "draft", "enabled");
+    const id = await request(db, USER.memberA, "cmd-1", "run-command");
+    expect(await decide(db, USER.adminA, id, "approve", HASH("cmd-1", "run-command"))).toBe("approved");
+    expect(await execute(db, id, HASH("cmd-1", "run-command"))).toBe(true);
+    expect(await execute(db, id, HASH("cmd-1", "run-command"))).toBe(false); // used once
+    await asOwner(db);
+    expect((await db.query<{ action_kind: string; status: string }>("select action_kind, status from public.client_adapter_approvals where id = $1", [id])).rows[0]).toEqual({ action_kind: "run-command", status: "executed" });
+
+    // a read-only adapter, a disabled one and a suspended one cannot ask to run a command
+    for (const [ceiling, state] of [["read", "enabled"], ["draft", "disabled"], ["draft", "suspended"], ["read", "preview"]] as const) {
+      await asOwner(db);
+      await db.exec(`update public.client_adapter_registry set side_effect_ceiling = '${ceiling}', state = '${state}' where adapter_id = 'forge'`);
+      await expect(request(db, USER.memberA, `cmd-${ceiling}-${state}`, "run-command"), `${ceiling}/${state}`).rejects.toThrow(/adapter_approval_adapter_not_ready/);
+    }
+    await asOwner(db);
+    await db.exec("update public.client_adapter_registry set side_effect_ceiling = 'publish', state = 'preview' where adapter_id = 'forge'");
+    await expect(request(db, USER.memberA, "cmd-preview-ok", "run-command")).resolves.toBeDefined();
+  } finally {
+    await db.close();
+  }
+});
+
+test("on a database that already holds the three older approval kinds, applying the migration allows run-command", async () => {
+  const db = await freshDb();
+  try {
+    await asOwner(db);
+    await db.exec(`alter table public.client_adapter_approvals drop constraint client_adapter_approvals_action_kind_check;
+      alter table public.client_adapter_approvals add constraint client_adapter_approvals_action_kind_check check (action_kind in ('publish', 'promote', 'enable-adapter'));`);
+    await setup(db, "draft", "enabled");
+    await asOwner(db);
+    await expect(db.query("insert into public.client_adapter_approvals (tenant_slug, adapter_id, action_kind, action_hash, destination, policy_version, requested_by, expires_at) values ('tenant-a','forge','run-command',$1,'command','p',$2, now() + interval '1 hour')", [H("7"), USER.memberA])).rejects.toThrow(/check constraint|violates/);
+    await db.exec(GATEWAY_SQL);
+    await expect(db.query("insert into public.client_adapter_approvals (tenant_slug, adapter_id, action_kind, action_hash, destination, policy_version, requested_by, expires_at) values ('tenant-a','forge','run-command',$1,'command','p',$2, now() + interval '1 hour')", [H("7"), USER.memberA])).resolves.toBeDefined();
+    await expect(db.query("insert into public.client_adapter_approvals (tenant_slug, adapter_id, action_kind, action_hash, destination, policy_version, requested_by, expires_at) values ('tenant-a','forge','teleport',$1,'command','p',$2, now() + interval '1 hour')", [H("8"), USER.memberA])).rejects.toThrow(/check constraint|violates/);
+  } finally {
+    await db.close();
+  }
+});
+
+test("the approval kinds are one list in the code, the table's check, the upgrade and the request function", () => {
+  const quoted = (text: string) => [...text.matchAll(/'([a-z-]+)'/g)].map((m) => m[1]!).sort();
+  const hostList = /action_kind in \(([^)]*)\)/.exec(HOST_SQL)?.[1];
+  const upgradeList = /action_kind_check\s+check \(action_kind in \(([^)]*)\)\)/.exec(GATEWAY_SQL)?.[1];
+  const requestList = /p_action_kind not in \(([^)]*)\)/.exec(GATEWAY_SQL)?.[1];
+  expect(hostList && upgradeList && requestList).toBeTruthy();
+  const expected = [...APPROVAL_ACTION_KINDS].sort();
+  expect(quoted(hostList!)).toEqual(expected);
+  expect(quoted(upgradeList!)).toEqual(expected);
+  expect(quoted(requestList!)).toEqual(expected);
+  expect(expected).toContain("run-command");
 });

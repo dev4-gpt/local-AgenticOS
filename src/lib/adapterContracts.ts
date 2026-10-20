@@ -29,7 +29,7 @@ export const ADAPTER_STATES = ["disabled", "preview", "enabled", "suspended"] as
 export const MEMORY_ITEM_STATUSES = ["active", "superseded", "tombstoned"] as const;
 export const PROMOTION_STATUSES = ["quarantined", "approved", "rejected", "withdrawn"] as const;
 export const APPROVAL_STATUSES = ["pending", "approved", "rejected", "expired", "executed", "cancelled"] as const;
-export const APPROVAL_ACTION_KINDS = ["publish", "promote", "enable-adapter"] as const;
+export const APPROVAL_ACTION_KINDS = ["publish", "promote", "enable-adapter", "run-command"] as const;
 export const BUDGET_EVENT_KINDS = ["reserve", "settle", "release"] as const;
 
 export type AdapterOperation = (typeof ADAPTER_OPERATIONS)[number];

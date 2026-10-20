@@ -117,6 +117,7 @@ const KIND_LABELS: Record<ApprovalKind, string> = {
   publish: "Publish something outside Veloce",
   promote: "Share a note with every adapter",
   "enable-adapter": "Turn an adapter on",
+  "run-command": "Run a command",
 };
 const STATUS_LABELS: Record<ApprovalStatus, string> = {
   pending: "Waiting for a second person",

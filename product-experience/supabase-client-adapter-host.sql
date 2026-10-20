@@ -266,7 +266,7 @@ create table if not exists public.client_adapter_approvals (
   id uuid primary key default gen_random_uuid(),
   tenant_slug text not null references public.client_tenants(slug) on delete cascade,
   adapter_id text not null check (adapter_id ~ '^[a-z][a-z0-9-]{2,40}$'),
-  action_kind text not null check (action_kind in ('publish', 'promote', 'enable-adapter')),
+  action_kind text not null check (action_kind in ('publish', 'promote', 'enable-adapter', 'run-command')),
   action_hash text not null check (action_hash ~ '^[0-9a-f]{64}$'),
   destination text not null check (length(destination) between 1 and 500),
   policy_version text not null check (length(policy_version) between 1 and 80),

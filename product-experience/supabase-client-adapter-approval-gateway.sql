@@ -36,7 +36,7 @@ begin
   if auth.uid() is null or not public.client_member(p_tenant_slug) then
     raise exception 'adapter_approval_not_allowed';
   end if;
-  if p_action_kind is null or p_action_kind not in ('publish', 'promote', 'enable-adapter') then
+  if p_action_kind is null or p_action_kind not in ('publish', 'promote', 'enable-adapter', 'run-command') then
     raise exception 'adapter_approval_bad_kind';
   end if;
   if p_ttl_seconds is null or p_ttl_seconds < 60 or p_ttl_seconds > 259200 then
@@ -75,6 +75,9 @@ begin
     raise exception 'adapter_approval_adapter_not_ready';
   elsif p_action_kind = 'enable-adapter' and adapter.state not in ('disabled', 'suspended') then
     raise exception 'adapter_approval_adapter_not_ready';
+  elsif p_action_kind = 'run-command' and (adapter.side_effect_ceiling = 'read' or adapter.state not in ('preview', 'enabled')) then
+    -- A command can change things, so an adapter whose ceiling is read-only cannot ask to run one (QM-6b).
+    raise exception 'adapter_approval_adapter_not_ready';
   end if;
 
   -- An expired request must not block a fresh request for the same exact action.
@@ -109,6 +112,11 @@ begin
   return new_id;
 end;
 $$;
+
+-- The same goes for the approval kinds: widen the table's check on a database that already has it (QM-6b).
+alter table public.client_adapter_approvals drop constraint if exists client_adapter_approvals_action_kind_check;
+alter table public.client_adapter_approvals add constraint client_adapter_approvals_action_kind_check
+  check (action_kind in ('publish', 'promote', 'enable-adapter', 'run-command'));
 
 -- The outbox type list lives in the host file's create table; on a database that already has the table, widen it
 -- here so execution can be recorded. Same name Postgres gave the inline check; safe to run twice.
