@@ -30,7 +30,9 @@ Layers, none of which is enough on its own:
    the content hash), or no provenance record for its source note; a queue of more than 25 waiting promotions per
    adapter; approval of a `blocked` promotion; approval of a `flagged` one without a written reason of at least 20
    characters; and any later change to the scan result.
-3. **A reviewer who can see what they approve** (commits B and C): the content, the scan findings, the provenance, and
+3. **A reviewer who can see what they approve** (routes in commit B, screen in commit C; the routes are
+   `GET /api/client-runtime/adapter-promotions`, `POST .../adapter-promotions/[id]/decision` and
+   `POST /api/client-runtime/adapter-memory/[id]/revoke`, all closed unless the host flag is on): the content, the scan findings, the provenance, and
    whether the same fact is already shared. The decision function (`client_adapter_decide_promotion`) repeats the
    content hash, refuses the requester, plain members and other tenants.
 4. **Safe reading.** `renderSharedFactForModel` shows a shared note to a model as quoted data with its origin, with

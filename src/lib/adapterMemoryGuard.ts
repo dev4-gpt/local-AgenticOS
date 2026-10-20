@@ -161,6 +161,51 @@ export function scanMemoryContent(content: string, options: { sourceUrl?: string
   };
 }
 
+export type PromotionErrorCode =
+  | "not_allowed" | "not_found" | "requester_cannot_decide" | "not_pending" | "hash_mismatch" | "invalid_input"
+  | "blocked_by_scan" | "scan_required" | "note_required" | "not_shared" | "unavailable";
+
+export const PROMOTION_HTTP_STATUS: Record<PromotionErrorCode, number> = {
+  not_allowed: 403,
+  not_found: 404,
+  requester_cannot_decide: 403,
+  not_pending: 409,
+  hash_mismatch: 400,
+  invalid_input: 400,
+  blocked_by_scan: 409,
+  scan_required: 409,
+  note_required: 400,
+  not_shared: 409,
+  unavailable: 503,
+};
+
+// Order matters only where one code could be a prefix of another; none is today.
+const PROMOTION_MESSAGE_CODES: Array<[string, PromotionErrorCode]> = [
+  ["adapter_promotion_requester_cannot_decide", "requester_cannot_decide"],
+  ["adapter_promotion_not_pending", "not_pending"],
+  ["adapter_promotion_hash_mismatch", "hash_mismatch"],
+  ["adapter_promotion_blocked", "blocked_by_scan"],
+  ["adapter_promotion_scan_required", "scan_required"],
+  ["adapter_promotion_note_required", "note_required"],
+  ["adapter_promotion_not_found", "not_found"],
+  ["adapter_revoke_not_found", "not_found"],
+  ["adapter_promotion_not_allowed", "not_allowed"],
+  ["adapter_revoke_not_allowed", "not_allowed"],
+  ["adapter_promotion_bad_decision", "invalid_input"],
+  ["adapter_promotion_bad_note", "invalid_input"],
+  ["adapter_revoke_bad_reason", "invalid_input"],
+  ["adapter_revoke_not_shared", "not_shared"],
+];
+
+/** Turns a database refusal into a stable code. Anything unrecognised becomes "unavailable" and is never echoed. */
+export function promotionErrorFrom(result: { status: number; value: unknown }): PromotionErrorCode {
+  const body = result.value && typeof result.value === "object" ? (result.value as Record<string, unknown>) : {};
+  const message = typeof body.message === "string" ? body.message : "";
+  for (const [needle, code] of PROMOTION_MESSAGE_CODES) if (message.includes(needle)) return code;
+  if (result.status === 401 || result.status === 403) return "not_allowed";
+  return "unavailable";
+}
+
 /** Plain words for a verdict, for the review screen. */
 export function verdictSummary(verdict: ScanVerdict): string {
   if (verdict === "clean") return "No common attack patterns found. This is a tripwire, not a guarantee: read it yourself.";

@@ -6,7 +6,7 @@ All paths are relative to the repo root (`source/`). "Proof" means the test file
 npm run test:focused
 ```
 
-Expected today: 721 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
+Expected today: 731 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
 
 ## Branches
 
@@ -148,7 +148,8 @@ Proof: `tests/adapter-overview.spec.ts` (9 tests: view model, route gates, malfo
 - `src/lib/adapterMemoryGuard.ts`: `scanMemoryContent(text, { sourceUrl })` returns a verdict (clean, flagged, blocked) with findings and the content hash, stored as the promotion's `scan_result`; `verdictSummary` gives plain words; `renderSharedFactForModel` and `renderSharedFacts` show active, reviewed shared notes to a model as quoted data (escaped, hidden characters removed, shortened) and return nothing for any other note.
 - `product-experience/supabase-client-adapter-host.sql` (promotion guard): an insert needs a scan of exactly this content, a provenance record for the source note, and room under 25 waiting per adapter; approval is refused for a blocked scan, a missing scan, or a flagged one without a 20-character note; the scan result cannot change. Refusals carry codes such as `adapter_promotion_blocked`.
 - `product-experience/supabase-client-adapter-promotions.sql`: `client_adapter_decide_promotion` (owner or admin who is not the requester; repeats the content hash; same answer for unknown ids and other tenants) and `client_adapter_revoke_shared_memory` (owner or admin; text erased; a `memory.tombstoned` event tells adapters to drop it).
-- Proof: `tests/adapter-memory-guard.spec.ts` (14), `tests/adapter-promotions-sql.spec.ts` (10), plus the existing host, restore and retention specs updated for the new promotion rules.
+- Routes (all need sign-in and `ADAPTER_HOST_ENABLED=true`, are rate limited, take the tenant from the server's setting, and refuse in the same way the database does): `adapter-promotions/route.ts` lists promotions with the private source note (owners and admins only; everyone else gets null), provenance, whether the same fact is already shared, and the shared notes; `adapter-promotions/[id]/decision/route.ts` approves or rejects (approve repeats the content hash; the reviewer is always the signed-in person); `adapter-memory/[id]/revoke/route.ts` withdraws a shared note with a reason of 5 to 500 characters. `src/lib/adapterRouteGate.ts` holds the shared checks; `promotionErrorFrom` in `adapterMemoryGuard.ts` turns the database's coded refusals into stable names and statuses and never echoes anything unknown.
+- Proof: `tests/adapter-memory-guard.spec.ts` (14), `tests/adapter-promotions-sql.spec.ts` (10), `tests/adapter-promotions-routes.spec.ts` (10), plus the existing host, restore and retention specs updated for the new promotion rules.
 
 ---
 
@@ -190,6 +191,7 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 | `adapter-approval-gateway.spec.ts` | 13 | Server hashing, input checks, route behaviour |
 | `adapter-tokens.spec.ts` | 9 | Token signing and every verification rule |
 | `adapter-token-uses-sql.spec.ts` | 5 | Single use, worker-only, bounded purge |
+| `adapter-promotions-routes.spec.ts` | 10 | Promotion list, decision and withdrawal routes: gates, joins, input checks, stable refusals, audits |
 | `adapter-memory-guard.spec.ts` | 14 | Scanner (attacks, evasions, secrets, flags, speed, known limits) and safe rendering |
 | `adapter-promotions-sql.spec.ts` | 10 | Promotion rules (scan, provenance, queue, blocked, flagged note, immutability), decision and withdrawal functions |
 | `adapter-approvals-view.spec.ts` | 8 | Approvals screen: what each request shows, who gets which buttons, bad data rejected |
@@ -202,7 +204,7 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 | `knowledge-unify.spec.ts` | 23 | Scan, dedupe and apply behaviour and fixes |
 | `knowledge-unify-cli.spec.ts` | 8 | Command-line behaviour and exit codes |
 
-All seventeen are registered in the `test:focused` list in `package.json`.
+All eighteen are registered in the `test:focused` list in `package.json`.
 
 ## What is not in the code yet
 
