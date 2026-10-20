@@ -72,6 +72,9 @@ if (mode === "retention" && apply && !args.includes("--confirm-retention-ruflo")
 if (mode === "retention" && apply && !args.includes("--confirm-retention-onboarding-tokens")) fail("Refusing onboarding-token retention apply without --confirm-retention-onboarding-tokens");
 if (mode === "retention" && apply && !args.includes("--confirm-retention-rate-limits")) fail("Refusing runtime rate-limit retention apply without --confirm-retention-rate-limits");
 if (mode === "retention" && apply && !args.includes("--confirm-retention-audit-budget")) fail("Refusing audit and budget retention apply without --confirm-retention-audit-budget");
+// The adapter host is not installed on every deployment, so its purge is opt-in until it is.
+const includeAdapterHost = args.includes("--include-adapter-host");
+if (mode === "retention" && apply && includeAdapterHost && !args.includes("--confirm-retention-adapter")) fail("Refusing adapter host retention apply without --confirm-retention-adapter");
 if (mode === "retention" && apply && !args.includes("--confirm-retention-jobs")) fail("Refusing runtime job retention apply without --confirm-retention-jobs");
 if (mode === "retention" && apply && !args.includes("--confirm-retention-credit")) fail("Refusing managed-credit retention apply without --confirm-retention-credit");
 
@@ -342,6 +345,15 @@ if (mode === "retention") {
   });
   if (!rufloResponse.ok) fail(`Ruflo retention failed (${rufloResponse.status}); verify the Ruflo-retention migration`);
   const ruflo = await rufloResponse.json();
+  let adapterHost = { included: false };
+  if (includeAdapterHost) {
+    const adapterResponse = await supabaseRequest("rpc/purge_expired_client_adapter_records", {
+      method: "POST",
+      body: JSON.stringify({ p_tenant_slug: slug, p_apply: apply, p_batch_limit: 100 }),
+    });
+    if (!adapterResponse.ok) fail(`Adapter host retention failed (${adapterResponse.status}); verify the adapter retention migration`);
+    adapterHost = { included: true, ...(await adapterResponse.json()) };
+  }
   if (apply && ids.length) {
     const deletion = new URLSearchParams(filter);
     deletion.set("id", `in.(${ids.join(",")})`);
@@ -371,7 +383,7 @@ if (mode === "retention") {
   });
   if (!auditBudgetResponse.ok) fail(`Audit and budget retention failed (${auditBudgetResponse.status}); verify the audit/budget retention migration`);
   const auditBudget = await auditBudgetResponse.json();
-  console.log(JSON.stringify({ tenant: slug, onboardingTokens, runtimeRateLimits, auditBudget, runtimeJobs, creditRetention, runtimeRecords: records, runtimeRequests, room, visualQa, supportRequests, pipeline, boardLoop, paperclip, hermes, ruflo, notebookSources: sources, notebooks, research, purgeDueLearningItems: ids.length,
+  console.log(JSON.stringify({ tenant: slug, onboardingTokens, runtimeRateLimits, auditBudget, runtimeJobs, creditRetention, runtimeRecords: records, runtimeRequests, room, visualQa, supportRequests, pipeline, boardLoop, paperclip, hermes, ruflo, adapterHost, notebookSources: sources, notebooks, research, purgeDueLearningItems: ids.length,
     retentionDays, recoveryDays: 7, purgeAfterDays: retentionDays + 7, purgeCutoff: purgeCutoff.toISOString(),
     learningBatchLimit, moreLearningItemsMayRemain: ids.length === learningBatchLimit,
     applied: apply, learningRevisionsCascade: true }));

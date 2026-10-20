@@ -550,3 +550,16 @@ exit 0
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("the retention run can include the adapter host purge, only on request, and a real purge needs its own confirmation", () => {
+  const lifecycle = readFileSync(path.join(process.cwd(), "scripts/client-lifecycle.mjs"), "utf8");
+  expect(lifecycle).toContain('args.includes("--include-adapter-host")');
+  expect(lifecycle).toMatch(/apply && includeAdapterHost && !args\.includes\("--confirm-retention-adapter"\)/);
+  expect(lifecycle).toContain("rpc/purge_expired_client_adapter_records");
+  const call = lifecycle.slice(lifecycle.indexOf("if (includeAdapterHost) {"), lifecycle.indexOf("if (includeAdapterHost) {") + 500);
+  expect(call).toContain("p_tenant_slug: slug");
+  expect(call).toContain("p_apply: apply");
+  expect(call).toContain("fail(");
+  // Without the flag nothing about the adapter host is called, so installations without it keep working.
+  expect(lifecycle).toContain("let adapterHost = { included: false };");
+});

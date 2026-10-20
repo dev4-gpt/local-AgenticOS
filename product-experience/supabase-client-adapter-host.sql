@@ -300,6 +300,12 @@ begin
      (old.tenant_slug, old.source_item_id, old.origin_adapter_id, old.content_sha256, old.requested_by, old.created_at) then
     raise exception 'promotion identity is immutable';
   end if;
+  -- The retention purge may clear the free-text note and scan result of a decided promotion, and nothing else.
+  if current_setting('veloce.adapter_purge', true) = 'on'
+     and (new.status, new.reviewed_by, new.reviewed_at, new.approved_content_sha256)
+         is not distinct from (old.status, old.reviewed_by, old.reviewed_at, old.approved_content_sha256) then
+    return new;
+  end if;
   if old.status <> 'quarantined' then
     raise exception 'a decided promotion cannot change';
   end if;

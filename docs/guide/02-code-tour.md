@@ -6,7 +6,7 @@ All paths are relative to the repo root (`source/`). "Proof" means the test file
 npm run test:focused
 ```
 
-Expected today: 666 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
+Expected today: 677 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
 
 ## Branches
 
@@ -150,6 +150,8 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 - `docs/retention-table-map-2026-10-15.json`: lists every `client_*` table and its class.
 - `docs/retention-data-class-inventory-2026-10-15.md`: the human-readable version, including what is provisional.
 - `scripts/verify-client-retention-inventory.mjs`: fails if a table is unclassified. Currently reports `allDeclaredTablesClassified: true` and `hostedEnforcementVerified: false`.
+- `product-experience/supabase-client-adapter-retention-28.sql` (ADR-008): adds `retention_expires_at` to the five content tables; a stamp trigger sets it from the tenant's days and makes it immutable; member read policies hide expired rows; `purge_expired_client_adapter_records(tenant, apply, batch)` erases note text, announces erased shared notes through the outbox, then removes rows child-first 7 days after expiry, plus old outbox and token-use rows. One guard in `supabase-client-adapter-host.sql` also lets the purge clear a decided promotion's free-text note. Proof: `tests/adapter-retention-sql.spec.ts` (11 tests).
+- `scripts/client-lifecycle.mjs retention` runs that purge when given `--include-adapter-host` (apply also needs `--confirm-retention-adapter`). Proof: a text test in `tests/client-lifecycle-inventory.spec.ts`.
 
 ---
 
@@ -170,6 +172,7 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 | `adapter-approval-gateway.spec.ts` | 11 | Server hashing, input checks, route behaviour |
 | `adapter-tokens.spec.ts` | 9 | Token signing and every verification rule |
 | `adapter-token-uses-sql.spec.ts` | 5 | Single use, worker-only, bounded purge |
+| `adapter-retention-sql.spec.ts` | 11 | Adapter expiry, read barrier, 7-day recovery, purge ordering, tenant scope, grants |
 | `adapter-overview.spec.ts` | 9 | Adapters page and Budget tab data, and the read-only route's gates |
 | `adapter-budget-sql.spec.ts` | 12 | Budget caps, periods, idempotency, settle and release, fail closed |
 | `adapter-budget.spec.ts` | 6 | Budget wrapper input checks and fail-closed behaviour |
@@ -177,7 +180,7 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 | `knowledge-unify.spec.ts` | 23 | Scan, dedupe and apply behaviour and fixes |
 | `knowledge-unify-cli.spec.ts` | 8 | Command-line behaviour and exit codes |
 
-All twelve are registered in the `test:focused` list in `package.json`.
+All thirteen are registered in the `test:focused` list in `package.json`.
 
 ## What is not in the code yet
 

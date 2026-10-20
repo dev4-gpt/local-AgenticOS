@@ -75,6 +75,11 @@ Last updated: 2026-10-19 after the Adapters page and Budget tab (Phase 1 item 5)
 - [ ] **6. Observability (Me).** Audit events and counters for approvals, tokens, promotions, budget. *Done when:* each event is visible and tested
 - [ ] **7. Scoped handles (Me).** Narrow references so an adapter can read only what a task needs
 - [ ] **8. Purge and restore wiring for the new tables (Me).** Active expiry at 28 days, recovery for 7, bounded purge, restore. *Done when:* tests cover expiry, recovery-only exclusion and cross-tenant safety (the 28 + 7 gate)
+  - [x] 8a. Expiry, read barrier and purge (commit A, `supabase-client-adapter-retention-28.sql`, ADR-008): 11 tests; lifecycle command runs the purge with `--include-adapter-host` (and `--confirm-retention-adapter` to apply)
+  - [ ] 8b. Offboarding export and restore (commit B)
+  - [ ] 8c. Make the adapter purge default in the lifecycle command once the adapter host is installed anywhere hosted (it is opt-in today so installations without it keep working)
+  - [ ] 8d. Skeleton rows: a private note and its promotion keep an empty shell (text erased, hidden) until the newer shared note is purged. Decide whether a shell may outlive 35 days or the chain should be cut sooner
+  - [ ] 8e. While a shared note is expired but unpurged, the same fact cannot be shared again (hash slot held for up to 7 days)
 - [ ] **9. Scheduled jobs (Me).** Run token purge and approval expiry on a schedule. *Done when:* a scheduled run is observed
 - [ ] **10. Promotion hardening (Me).** Source-linked diffs, no tool instructions inside shared facts, retrieval-time distrust, rollback (X-4, CRITICAL)
 - [ ] **11. Approvals table retention class (Both).** Provisional until you approve a schedule (N-5)

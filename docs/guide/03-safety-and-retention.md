@@ -31,6 +31,8 @@ Bottom line today: **no real client data may touch any adapter.** Veloce's own r
 | The Adapters page and Budget tab need sign-in and the host flag, show only validated data, and never appear in the client edition | Route, page and `HomeImmersive` tab switch | `adapter-overview.spec.ts` (route gates and bad data); client edition exclusion by not adding the route to the allowed lists |
 | Budget calls fail closed (unknown or not-ready adapter, bad token, bad input, unexpected answer) | Budget functions and `adapterBudget.ts` | `adapter-budget-sql.spec.ts`, `adapter-budget.spec.ts` |
 | Dedupe tools never delete or move notes, never read `.env`, back up outside the vault, restore on failure | Scripts | `knowledge-unify*.spec.ts` |
+| Adapter memory, promotions, provenance, approvals and budget events expire at the tenant's days (max 28), are hidden from members once expired, and are erased and removed 7 days later; the expiry cannot be changed or extended | Stamp trigger, read policies and `purge_expired_client_adapter_records` | `adapter-retention-sql.spec.ts` (11 tests; three deliberate breakages each fail tests) |
+| Purge is tenant-scoped, batched, a dry run by default, and service-role only; it erases note text before removing rows and announces erased shared notes to adapters | Purge function | `adapter-retention-sql.spec.ts` |
 | Every `client_*` table must be classified for retention | Verifier script | `verify-client-retention-inventory.mjs` |
 
 ---
@@ -39,7 +41,7 @@ Bottom line today: **no real client data may touch any adapter.** Veloce's own r
 
 | Promise | Why it is not true yet |
 |---|---|
-| 28 days active, then 7 recovery days, then purge, for adapter data | Tables are classified, but no read-expiry, purge or restore code exists for them, and nothing is verified in a hosted environment |
+| 28 days active, then 7 recovery days, then purge, for adapter data | Expiry, the member read barrier and the purge exist and are tested locally (see section 1). Still missing: offboarding export and restore (next commit), a schedule that runs the purge, owner confirmation of the approvals and budget-event schedule, and any hosted verification. Skeleton rows (text erased, hidden) can outlive 35 days briefly while a newer row still points at them |
 | Deleted client data is gone everywhere | Veloce can only erase what it holds. Adapters' own stores (Creator OS vault, Forge's database, the `symlink` workspace) need deletion receipts, and none exist. Adapters with no erase ability must be labelled "outside the guarantee" and left out of the client edition |
 | Budget caps hold in real use | The functions and tests exist (see section 1), but nothing calls them yet, the tenant cap is passed in by the caller, unknown costs are not shown separately, and concurrency was proven only on a throwaway local Postgres, not a hosted one |
 | Shared memory cannot be poisoned | Two-person review is built, but research shows review alone may not stop a crafted note. Source-linked review, no tool instructions inside shared facts, and rollback are still to do |

@@ -93,8 +93,17 @@ wired to the lifecycle:
 - `client_adapter_budget_events`: financial-and-credit-records (provisional; that group still needs an approved
   schedule).
 
-They have no read-expiry, purge or restore path yet, so the 28 + 7 policy is not enforced for them. Until that wiring
-and its tests exist, the migration must not be applied to a hosted project, every adapter stays disabled, and no
+Local wiring (2026-10-19, `supabase-client-adapter-retention-28.sql`, ADR-008): memory items, promotions, provenance,
+approvals and budget events carry a per-row `retention_expires_at` set from the tenant's days (at most 28) and
+immutable, are hidden from members once expired, and are purged seven days later by
+`purge_expired_client_adapter_records` (dry run by default, service role only, tenant-scoped, batched). Note text is
+erased first, then rows are removed child-first. Outbox rows are purged seven days after acknowledgement (or the
+tenant's days plus seven if never delivered) and token-use rows one day after expiry. The lifecycle command runs this
+purge only when given `--include-adapter-host` (and `--confirm-retention-adapter` to apply). Approvals and budget
+events use the same 28 + 7 schedule provisionally, pending owner confirmation.
+
+Offboarding export and restore are a separate step. Nothing is verified in a hosted environment and no schedule runs
+the purge, so the migration must still not be applied to a hosted project, every adapter stays disabled, and no
 client data may be written. Removal of derived shared memory is handled by tombstone events (ADR-005).
 
 ### Per-Item Expiry and Foreign-Key Safety

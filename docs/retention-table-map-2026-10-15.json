@@ -51,9 +51,12 @@
         "client_hermes_content_factory_approvals",
         "client_hermes_content_factory_deliveries",
         "client_ruflo_swarms",
-        "client_ruflo_agents"
+        "client_ruflo_agents",
+        "client_adapter_memory_items",
+        "client_adapter_memory_promotions",
+        "client_adapter_memory_provenance"
       ],
-      "remainingGate": "Runtime records now have local age-filtered member reads/writes/deletes, server-dated inserts, immutable creation timestamps, and export-time active-window filtering. Privileged search and graph refresh filter to active retention; graph-node/edge RLS immediately hides expired-derived documents, tags, URLs, and relationships. Synthetic SQL and route tests cover active expiry and the seven-day recovery delay. Runtime jobs, Agent Room records, Visual-QA reports/findings, Pipeline items, Board/Loop/Paperclip/Hermes and Ruflo content, notebook containers, structured research rows, runtime requests/actions, and tenant-linked support requests have local age barriers or bounded purge paths with synthetic SQL coverage; request/Visual-QA/Board/Loop/Paperclip/Hermes/Ruflo cleanup is child-first, and younger child rows retain their own expiry while delaying parent purge. Room conversations now use fixed original deadlines, with messages, rounds, copied job payloads and approved directives bounded by the source window; no activity renewal or younger-child extension is accepted. Recovery-only rows are excluded from member reads and ordinary restore; bounded purge and foreign-cascade prevention have local SQL coverage. Pipeline deletion uses non-cascading artifact/job references. Paperclip company settings have a local 28-day age barrier, seven-day recovery delay, tenant-scoped bounded purge, and synthetic SQL coverage. Unlinked public inquiries are outside tenant cleanup. Notebook expiry detaches, not deletes, active child content. User-downloaded export copies, offboarding backups, vendor copies, hosted migrations, and scheduled operation remain unverified. The coverage list identifies current local paths, not proof of complete hosted enforcement.",
+      "remainingGate": "Adapter memory items, promotions and provenance now have a per-row expiry set from the tenant's days (at most 28), a member read barrier, and a tenant-scoped purge seven days after expiry that erases note text first and removes rows child-first (purge_expired_client_adapter_records, opt-in in the lifecycle command with --include-adapter-host); offboarding export and restore for them are covered separately. Runtime records now have local age-filtered member reads/writes/deletes, server-dated inserts, immutable creation timestamps, and export-time active-window filtering. Privileged search and graph refresh filter to active retention; graph-node/edge RLS immediately hides expired-derived documents, tags, URLs, and relationships. Synthetic SQL and route tests cover active expiry and the seven-day recovery delay. Runtime jobs, Agent Room records, Visual-QA reports/findings, Pipeline items, Board/Loop/Paperclip/Hermes and Ruflo content, notebook containers, structured research rows, runtime requests/actions, and tenant-linked support requests have local age barriers or bounded purge paths with synthetic SQL coverage; request/Visual-QA/Board/Loop/Paperclip/Hermes/Ruflo cleanup is child-first, and younger child rows retain their own expiry while delaying parent purge. Room conversations now use fixed original deadlines, with messages, rounds, copied job payloads and approved directives bounded by the source window; no activity renewal or younger-child extension is accepted. Recovery-only rows are excluded from member reads and ordinary restore; bounded purge and foreign-cascade prevention have local SQL coverage. Pipeline deletion uses non-cascading artifact/job references. Paperclip company settings have a local 28-day age barrier, seven-day recovery delay, tenant-scoped bounded purge, and synthetic SQL coverage. Unlinked public inquiries are outside tenant cleanup. Notebook expiry detaches, not deletes, active child content. User-downloaded export copies, offboarding backups, vendor copies, hosted migrations, and scheduled operation remain unverified. The coverage list identifies current local paths, not proof of complete hosted enforcement.",
       "tables": [
         "client_runtime_records",
         "client_runtime_jobs",
@@ -126,7 +129,7 @@
       "retentionClass": "ephemeral_security_state",
       "selectedDisposition": "shortest_operational_ttl_then_delete",
       "implementationStatus": "partial",
-      "knownLocalCoverage": ["client_onboarding_tokens", "client_runtime_rate_limits"],
+      "knownLocalCoverage": ["client_onboarding_tokens", "client_runtime_rate_limits", "client_adapter_outbox", "client_adapter_token_uses"],
       "remainingGate": "Onboarding tokens are unusable at expires_at and both token hashes and runtime rate-limit hashes have local, bounded service-role purges after seven-day recovery windows. Runtime limiter rows store their active duration, capped at one hour. Verify deployment and scheduled operation of both purges before treating this class as covered.",
       "tables": [
         "client_onboarding_tokens",
@@ -142,7 +145,8 @@
     "implementationStatus": "partially_implemented",
     "knownLocalCoverage": [
       "Tenant reads are hidden after configured active expiry",
-      "Audit rows have immutable server timestamps and bounded service-role-only purge after active expiry plus seven days"
+      "Audit rows have immutable server timestamps and bounded service-role-only purge after active expiry plus seven days",
+      "client_adapter_approvals (provisional schedule, owner confirmation pending): per-row expiry from the tenant's days, member read barrier, and purge seven days after expiry in purge_expired_client_adapter_records"
     ],
     "remainingGate": "Inventory and minimize metadata payloads, cover worker-failure/security findings, and test any approved legal-hold behavior. Hosted migration and scheduled deletion remain unverified.",
       "tables": [
@@ -161,7 +165,8 @@
         "Nonzero wallet and provider balances remain available until spent or refunded; zero provider-balance counters are scrubbed after day 35",
         "Expired provider snapshots mask historical purchased/spent totals while preserving available and reserved balance",
         "Signed late Stripe refunds/disputes with expired plan linkage are acknowledged only after an operator-review item is recorded; the operator endpoint is audit-only and cannot adjust wallet balances",
-        "PGlite migration tests cover day-35 purge, tenant scope, bounded service-role access, balance preservation, replay rejection, timestamp immutability, and managed-credit disposition constraints"
+        "PGlite migration tests cover day-35 purge, tenant scope, bounded service-role access, balance preservation, replay rejection, timestamp immutability, and managed-credit disposition constraints",
+        "client_adapter_budget_events (provisional schedule, owner confirmation pending): per-row expiry from the tenant's days, member read barrier, and purge seven days after expiry in purge_expired_client_adapter_records"
       ],
       "remainingGate": "Local V49 migration and route tests exist, but the migration is not hosted and no purge schedule has been operated. Billing/legal retention requirements and any required accounting records remain unverified. Stripe webhook event IDs/hashes and append-only operator dispositions remain global, minimized replay/review controls and still need an approved platform-level retention schedule. Verify hosted grants, actual refund/dispute queue operation, recovery, and read-after-purge behavior before release.",
       "tables": [
