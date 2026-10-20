@@ -147,7 +147,7 @@
     "knownLocalCoverage": [
       "Tenant reads are hidden after configured active expiry",
       "Audit rows have immutable server timestamps and bounded service-role-only purge after active expiry plus seven days",
-      "client_adapter_approvals (provisional schedule, owner confirmation pending): per-row expiry from the tenant's days, member read barrier, and purge seven days after expiry in purge_expired_client_adapter_records"
+      "client_adapter_approvals (28 + 7 schedule confirmed 2026-10-20 under the standing owner policy, decided on the owner's behalf and reversible by changing the class and schedule): per-row expiry from the tenant's days, member read barrier, and purge seven days after expiry in purge_expired_client_adapter_records"
     ],
     "remainingGate": "Inventory and minimize metadata payloads, cover worker-failure/security findings, and test any approved legal-hold behavior. Hosted migration and scheduled deletion remain unverified.",
       "tables": [

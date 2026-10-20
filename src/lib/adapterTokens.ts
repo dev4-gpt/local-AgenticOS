@@ -15,6 +15,8 @@ export const MAX_TOKEN_TTL_SECONDS = 300;
 export const DEFAULT_TOKEN_TTL_SECONDS = 60;
 export const MAX_CLOCK_SKEW_SECONDS = 30;
 export const MAX_HANDLES = 20;
+/** Public keys a verifier accepts at once: the current one, the next one, and the one being retired. */
+export const MAX_VERIFY_KEYS = 3;
 const MAX_TOKEN_CHARS = 4096;
 const JTI = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const UUID = JTI;
@@ -91,7 +93,8 @@ export function mintAdapterToken(input: MintInput): { token: string; claims: Ada
 
 export interface VerifyInput {
   token: unknown;
-  publicKey: string | KeyObject;
+  /** One key, or up to MAX_VERIFY_KEYS while a key is being rotated. */
+  publicKey: string | KeyObject | readonly (string | KeyObject)[];
   expectedTenant: string;
   expectedAdapterId: string;
   requiredOperation: AdapterOperation;
@@ -116,16 +119,27 @@ function parseClaims(body: string): AdapterTokenClaims | null {
   }
 }
 
+/**
+ * One public key, or a short list of them, so a key can be rotated without a flag day: publish the new public key to
+ * every verifier, switch the signer, then drop the old key once its last token has expired (ADR-012). A token must
+ * verify against at least one key; every other check is unchanged.
+ */
+function verifyKeys(keys: VerifyInput["publicKey"]): KeyObject[] {
+  const list = Array.isArray(keys) ? keys : [keys];
+  if (list.length < 1 || list.length > MAX_VERIFY_KEYS) throw new Error(`verification needs 1 to ${MAX_VERIFY_KEYS} public keys`);
+  return list.map((key) => ed25519PublicKey(key));
+}
+
 /** Checks signature first, then every claim. Never throws on bad tokens; only on a bad key. */
 export function verifyAdapterToken(input: VerifyInput): VerifyResult {
-  const publicKey = ed25519PublicKey(input.publicKey);
+  const publicKeys = verifyKeys(input.publicKey);
   if (typeof input.token !== "string" || input.token.length > MAX_TOKEN_CHARS) return { ok: false, reason: "malformed" };
   const parts = input.token.split(".");
   if (parts.length !== 2 || !parts[0] || !parts[1]) return { ok: false, reason: "malformed" };
   const [body, signature] = parts;
   const signatureBytes = Buffer.from(signature, "base64url");
   if (signatureBytes.length !== 64) return { ok: false, reason: "malformed" };
-  if (!verify(null, Buffer.from(body, "utf8"), publicKey, signatureBytes)) return { ok: false, reason: "bad_signature" };
+  if (!publicKeys.some((key) => verify(null, Buffer.from(body, "utf8"), key, signatureBytes))) return { ok: false, reason: "bad_signature" };
   const claims = parseClaims(body);
   if (!claims) return { ok: false, reason: "malformed" };
   if (claims.v !== TOKEN_VERSION) return { ok: false, reason: "wrong_version" };

@@ -12,6 +12,8 @@ import { createQmClient } from "./qm-client.mjs";
 export const TOKEN_ISSUER = "veloce-host";
 export const MAX_TOKEN_TTL_SECONDS = 300;
 export const MAX_CLOCK_SKEW_SECONDS = 30;
+/** Public keys accepted at once: current, next and retiring (ADR-012). */
+export const MAX_VERIFY_KEYS = 3;
 export const MAX_BODY_BYTES = 64 * 1024;
 export const MAX_PROMPT_CHARS = 20_000;
 const MAX_TOKEN_CHARS = 4096;
@@ -23,12 +25,14 @@ const TENANT_SLUG = /^[a-z][a-z0-9-]{2,40}$/;
 
 /** Checks signature first, then every claim. Returns the claims or null; the reason is deliberately not exposed. */
 export function verifyHostToken({ token, publicKey, tenant, adapterId, operation, now = Math.floor(Date.now() / 1000) }) {
+  const keys = Array.isArray(publicKey) ? publicKey : [publicKey];
+  if (keys.length < 1 || keys.length > MAX_VERIFY_KEYS) throw new Error(`verification needs 1 to ${MAX_VERIFY_KEYS} public keys`);
   if (typeof token !== "string" || token.length > MAX_TOKEN_CHARS) return null;
   const parts = token.split(".");
   if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
   const signature = Buffer.from(parts[1], "base64url");
   if (signature.length !== 64) return null;
-  if (!verify(null, Buffer.from(parts[0], "utf8"), publicKey, signature)) return null;
+  if (!keys.some((key) => verify(null, Buffer.from(parts[0], "utf8"), key, signature))) return null;
   let claims;
   try {
     claims = JSON.parse(Buffer.from(parts[0], "base64url").toString("utf8"));
@@ -192,12 +196,15 @@ function main() {
     process.exit(2);
   }
   const manifest = JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "manifest.json"), "utf8"));
+  // One public key, or up to three PEM blocks one after another while a key is being rotated.
   let publicKey;
   try {
-    publicKey = createPublicKey(need("ADAPTER_PUBLIC_KEY_PEM"));
-    if (publicKey.asymmetricKeyType !== "ed25519") throw new Error("not ed25519");
+    const blocks = need("ADAPTER_PUBLIC_KEY_PEM").match(/-----BEGIN PUBLIC KEY-----[\s\S]*?-----END PUBLIC KEY-----/g) ?? [];
+    if (blocks.length < 1 || blocks.length > MAX_VERIFY_KEYS) throw new Error("wrong number of keys");
+    publicKey = blocks.map((block) => createPublicKey(block));
+    if (publicKey.some((key) => key.asymmetricKeyType !== "ed25519")) throw new Error("not ed25519");
   } catch {
-    console.error("ADAPTER_PUBLIC_KEY_PEM must be an Ed25519 public key");
+    console.error("ADAPTER_PUBLIC_KEY_PEM must hold 1 to 3 Ed25519 public keys");
     process.exit(2);
   }
   const qm = createQmClient({ baseUrl: need("QM_BASE_URL"), signingSecret: need("QM_SIGNING_SECRET") });

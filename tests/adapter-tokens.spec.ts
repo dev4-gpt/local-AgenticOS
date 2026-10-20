@@ -182,3 +182,37 @@ test("a signed token whose scope is not a list of operation names is refused as 
     expect(verify(`${body}.${sig}`, publicKey).ok, JSON.stringify(payload)).toBe(false);
   }
 });
+
+// Item 13: key rotation. A verifier accepts a short list of public keys, so the signer can be switched without a flag day.
+test("rotation: during the overlap tokens from the old and the new key both verify, and after it only the new one does", () => {
+  const oldPair = pair();
+  const newPair = pair();
+  const oldToken = mint(oldPair.privateKey).token;
+  const newToken = mint(newPair.privateKey).token;
+  // Step 1: verifiers learn the new public key while the signer still uses the old one.
+  expect(verify(oldToken, [oldPair.publicKey, newPair.publicKey]).ok).toBe(true);
+  // Step 2: the signer switches. Tokens already issued by the old key still work until they expire.
+  expect(verify(newToken, [oldPair.publicKey, newPair.publicKey]).ok).toBe(true);
+  expect(verify(oldToken, [oldPair.publicKey, newPair.publicKey]).ok).toBe(true);
+  // Step 3: the old public key is dropped. The old key's tokens stop at once, the new key's keep working.
+  expect(verify(oldToken, [newPair.publicKey])).toEqual({ ok: false, reason: "bad_signature" });
+  expect(verify(newToken, [newPair.publicKey]).ok).toBe(true);
+  // A third, unrelated key never helps, and a list does not weaken any other check.
+  const stranger = pair();
+  expect(verify(mint(stranger.privateKey).token, [oldPair.publicKey, newPair.publicKey])).toEqual({ ok: false, reason: "bad_signature" });
+  expect(verify(oldToken, [oldPair.publicKey, newPair.publicKey], { expectedTenant: "tenant-b" })).toEqual({ ok: false, reason: "wrong_tenant" });
+  expect(verify(oldToken, [oldPair.publicKey, newPair.publicKey], { now: NOW + 600 })).toEqual({ ok: false, reason: "expired" });
+});
+
+test("rotation: the list is 1 to 3 Ed25519 public keys, and anything else is a setup error, not a token error", () => {
+  const a = pair();
+  const b = pair();
+  const c = pair();
+  const d = pair();
+  const token = mint(a.privateKey).token;
+  expect(verify(token, [a.publicKey, b.publicKey, c.publicKey]).ok).toBe(true);
+  expect(() => verify(token, [])).toThrow(/1 to 3 public keys/);
+  expect(() => verify(token, [a.publicKey, b.publicKey, c.publicKey, d.publicKey])).toThrow(/1 to 3 public keys/);
+  const rsa = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  expect(() => verify(token, [a.publicKey, rsa.publicKey])).toThrow(/Ed25519/);
+});

@@ -40,8 +40,8 @@ authority over identity, policy, approval, budget and the shared memory ledger. 
   functions. These are the next items of Phase 1 in the master plan.
 - The content hash is computed by the host application; the database enforces that the hash chain (item, promotion,
   shared item) is consistent. Provenance, budget and outbox rows are written by the host service role.
-- The retention classes for approvals (security-audit-evidence) and budget events (financial-and-credit-records)
-  are provisional: both groups still need an owner-approved schedule.
+- Approvals follow the 28 + 7 day rule (confirmed 2026-10-20, tracker item 11). The retention class for budget events
+  (financial-and-credit-records) is still provisional and needs an owner-approved schedule.
 
 ## Alternatives rejected
 

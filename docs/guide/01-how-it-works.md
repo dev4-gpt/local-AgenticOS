@@ -157,7 +157,7 @@ A `publish` task cannot run without an approval (section 3).
 | `client_adapter_registry` | tenant control and identity |
 | `client_adapter_memory_items`, `_promotions`, `_provenance` | tenant content (28 + 7) |
 | `client_adapter_outbox`, `client_adapter_token_uses` | ephemeral security state |
-| `client_adapter_approvals` | security audit evidence (provisional) |
+| `client_adapter_approvals` | tenant content, 28 + 7 (confirmed 2026-10-20) |
 | `client_adapter_budget_events` | financial records (provisional) |
 
 **Important.** Classifying a table is not the same as enforcing the rule. The expiry, purge and restore code for the adapter tables is **not written yet**, and nothing has been verified in a hosted environment. So these migrations must not be applied to a hosted project, every adapter stays `disabled`, and no real client data may flow. See `03-safety-and-retention.md`.

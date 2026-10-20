@@ -40,8 +40,9 @@ Adapter data follows the same rule as every other client table: active for the t
   hidden from members) until the shared note is purged. The erased note still carries its content hash.
 - **Recovery blocks re-sharing the same fact.** An expired but unpurged shared note keeps its hash slot, so the same
   fact cannot be shared again until it is purged.
-- **Approvals and budget events** use the same schedule provisionally. Their retention classes still need owner
-  confirmation (tracker item 11).
+- **Approvals** use the same 28 + 7 schedule as other tenant data, confirmed 2026-10-20 on the owner's behalf under the
+  standing policy (tracker item 11). **Budget events** use it provisionally; their class (financial records) still
+  needs owner confirmation.
 - **Nothing runs the purge on a schedule.** It runs when an operator runs the lifecycle command.
 - **Not verified in a hosted environment.** The tests run in an in-memory Postgres.
 - **Outside the guarantee.** Adapters' own stores are not reached by any of this (X-2).

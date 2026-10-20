@@ -309,3 +309,18 @@ test("when QM fails or throws, the caller gets a short generic error and never Q
     expect(JSON.stringify(result.json)).not.toContain("hunter2");
   });
 });
+
+test("rotation: the shim accepts a short list of host public keys, and a retired key stops working", async () => {
+  const { verifyHostToken } = await load("server.mjs");
+  const next = generateKeyPairSync("ed25519");
+  const check = (token: string, publicKey: unknown) => verifyHostToken({ token, publicKey, tenant: TENANT, adapterId: ADAPTER, operation: "task.run" });
+  const oldToken = mint(["task.run"]);
+  const newToken = mint(["task.run"], {}, next.privateKey);
+  expect(check(oldToken, [pair.publicKey, next.publicKey])?.aud).toBe(ADAPTER);
+  expect(check(newToken, [pair.publicKey, next.publicKey])?.aud).toBe(ADAPTER);
+  expect(check(oldToken, [next.publicKey])).toBeNull(); // the old key is retired
+  expect(check(newToken, next.publicKey)?.aud).toBe(ADAPTER); // a single key still works
+  const many = [pair.publicKey, next.publicKey, generateKeyPairSync("ed25519").publicKey, generateKeyPairSync("ed25519").publicKey];
+  expect(() => check(oldToken, many)).toThrow(/1 to 3 public keys/);
+  expect(() => check(oldToken, [])).toThrow(/1 to 3 public keys/);
+});

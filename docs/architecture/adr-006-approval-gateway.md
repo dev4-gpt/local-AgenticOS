@@ -51,8 +51,10 @@ that depends on the host executing from the same payload it hashed.
   once (table `client_adapter_token_uses`). Nothing sends or checks them yet: key storage, rotation and the
   adapter-side check come with the first real adapter. Keys are passed in by the caller and never read from the
   environment by this module.
-- Hosted migration, scheduled expiry sweeps, and retention classes for the approvals table are provisional
-  (see the retention map).
+- Approvals follow the same 28 + 7 day rule as all other tenant data (decided 2026-10-20 on the owner's behalf under
+  the standing retention policy, tracker item 11). The record of who approved what outlives the row only as the
+  `approval.*` outbox events, which also expire on that schedule. If a longer evidence period is wanted, change the
+  class and the schedule together. Hosted migration and the scheduled expiry sweep are still unverified (items 9b, 4a).
 - Two real people are still needed: the user plans to test with two of their own email accounts.
 
 ## Rollback
