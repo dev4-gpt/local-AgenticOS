@@ -563,3 +563,23 @@ test("the retention run can include the adapter host purge, only on request, and
   // Without the flag nothing about the adapter host is called, so installations without it keep working.
   expect(lifecycle).toContain("let adapterHost = { included: false };");
 });
+
+test("lifecycle exports carry the adapter tables with their expiry boundaries, and leave out the short-lived ones", () => {
+  const lifecycle = readFileSync(path.join(process.cwd(), "scripts/client-lifecycle.mjs"), "utf8");
+  for (const table of ["client_adapter_memory_items", "client_adapter_memory_promotions", "client_adapter_memory_provenance", "client_adapter_approvals", "client_adapter_budget_events"]) {
+    const row = lifecycle.split("\n").find((line) => line.includes(`${table}: "`));
+    expect(row, `${table} must have an explicit export projection`).toContain("retention_expires_at");
+    expect(row).toContain("created_at");
+  }
+  expect(lifecycle.split("\n").find((line) => line.includes('client_adapter_registry: "'))).toContain("state");
+  for (const table of ["client_adapter_outbox", "client_adapter_token_uses"]) {
+    expect(lifecycle, `${table} is short-lived operational state and must not be exported`).not.toContain(`${table}: "`);
+    expect(lifecycle).not.toContain(`  "${table}",`);
+  }
+  // Parents first, after the tables above, so the order matches the database restore order.
+  const order = ["client_adapter_registry", "client_adapter_memory_items", "client_adapter_memory_promotions", "client_adapter_memory_provenance", "client_adapter_approvals", "client_adapter_budget_events"]
+    .map((table) => lifecycle.indexOf(`  "${table}",`));
+  expect(order.every((index) => index > 0)).toBe(true);
+  expect([...order].sort((a, b) => a - b)).toEqual(order);
+  expect(order[0]).toBeGreaterThan(lifecycle.indexOf('  "client_ruflo_agents",'));
+});

@@ -6,7 +6,7 @@ All paths are relative to the repo root (`source/`). "Proof" means the test file
 npm run test:focused
 ```
 
-Expected today: 677 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
+Expected today: 684 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
 
 ## Branches
 
@@ -151,6 +151,7 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 - `docs/retention-data-class-inventory-2026-10-15.md`: the human-readable version, including what is provisional.
 - `scripts/verify-client-retention-inventory.mjs`: fails if a table is unclassified. Currently reports `allDeclaredTablesClassified: true` and `hostedEnforcementVerified: false`.
 - `product-experience/supabase-client-adapter-retention-28.sql` (ADR-008): adds `retention_expires_at` to the five content tables; a stamp trigger sets it from the tenant's days and makes it immutable; member read policies hide expired rows; `purge_expired_client_adapter_records(tenant, apply, batch)` erases note text, announces erased shared notes through the outbox, then removes rows child-first 7 days after expiry, plus old outbox and token-use rows. One guard in `supabase-client-adapter-host.sql` also lets the purge clear a decided promotion's free-text note. Proof: `tests/adapter-retention-sql.spec.ts` (11 tests).
+- Export and restore: `scripts/client-lifecycle.mjs` now exports `client_adapter_registry`, `_memory_items`, `_memory_promotions`, `_memory_provenance`, `_approvals` and `_budget_events` (not the outbox or token rows), and `scripts/lib/client-lifecycle-restore.mjs` converts a restored adapter to disabled and a usable approval to expired. `supabase-client-lifecycle-restore.sql` adds the tables to its column map and order, skips the approval's short request expiry in the active-window check, refuses a usable approval, forces adapters disabled, defers the note-to-promotion foreign key, and finally calls `validate_client_adapter_restore_graph` (rolls everything back if it fails). In `supabase-client-adapter-host.sql`, `client_adapter_restoring(table, tenant)` lets the three guards step aside only for the service role inside a restore of that table and tenant. Proof: `tests/adapter-restore-sql.spec.ts` (7 tests), `tests/client-schema-upgrade.spec.ts` (adapter migrations added to the real chain; 55 projections) and `tests/client-lifecycle-transaction.spec.ts` (55 projections).
 - `scripts/client-lifecycle.mjs retention` runs that purge when given `--include-adapter-host` (apply also needs `--confirm-retention-adapter`). Proof: a text test in `tests/client-lifecycle-inventory.spec.ts`.
 
 ---
@@ -172,6 +173,7 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 | `adapter-approval-gateway.spec.ts` | 11 | Server hashing, input checks, route behaviour |
 | `adapter-tokens.spec.ts` | 9 | Token signing and every verification rule |
 | `adapter-token-uses-sql.spec.ts` | 5 | Single use, worker-only, bounded purge |
+| `adapter-restore-sql.spec.ts` | 7 | Backup and restore of adapter data: dates, disabled adapters, usable approvals, graph check, closed shortcuts |
 | `adapter-retention-sql.spec.ts` | 11 | Adapter expiry, read barrier, 7-day recovery, purge ordering, tenant scope, grants |
 | `adapter-overview.spec.ts` | 9 | Adapters page and Budget tab data, and the read-only route's gates |
 | `adapter-budget-sql.spec.ts` | 12 | Budget caps, periods, idempotency, settle and release, fail closed |
@@ -180,7 +182,7 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 | `knowledge-unify.spec.ts` | 23 | Scan, dedupe and apply behaviour and fixes |
 | `knowledge-unify-cli.spec.ts` | 8 | Command-line behaviour and exit codes |
 
-All thirteen are registered in the `test:focused` list in `package.json`.
+All fourteen are registered in the `test:focused` list in `package.json`.
 
 ## What is not in the code yet
 

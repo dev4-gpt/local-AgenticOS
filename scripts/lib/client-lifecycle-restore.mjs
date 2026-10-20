@@ -44,5 +44,11 @@ export function clientLifecycleRestoreRow(table, row) {
   if (table === "client_manifest_proposals") {
     return { ...row, status: "submitted", manifest_hash: null };
   }
+  // Restored adapters come back disabled, and an approval that could still be used never does: it comes back as
+  // finished evidence (expired). The database enforces both again.
+  if (table === "client_adapter_registry") return { ...row, state: "disabled" };
+  if (table === "client_adapter_approvals" && (row.status === "pending" || row.status === "approved")) {
+    return { ...row, status: "expired" };
+  }
   return eccRestoreRow(table, row);
 }

@@ -112,7 +112,7 @@ test("restore rejects cross-tenant rows, unknown columns and out-of-order tables
   } finally { await db.close(); }
 });
 
-test("database restore columns match all 49 CLI export projections", async () => {
+test("database restore columns match all 55 CLI export projections", async () => {
   const db = await database();
   try {
     const ast = ts.createSourceFile("lifecycle.mjs", readFileSync("scripts/client-lifecycle.mjs", "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
@@ -127,7 +127,7 @@ test("database restore columns match all 49 CLI export projections", async () =>
     }));
     await db.exec("set role service_role");
     const stored = (await db.query<{ columns: Record<string, string> }>("select client_lifecycle_restore_columns() as columns")).rows[0].columns;
-    expect(Object.keys(stored)).toHaveLength(49);
+    expect(Object.keys(stored)).toHaveLength(55);
     expect(stored).toEqual(columns);
   } finally { await db.close(); }
 });

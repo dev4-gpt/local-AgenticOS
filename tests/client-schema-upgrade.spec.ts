@@ -39,7 +39,11 @@ const retentionMigrations = [
   "client-runtime-audit-budget-retention", "client-onboarding-token-retention",
   "client-runtime-rate-limit-retention", "client-runtime-artifact-owner-guard",
   "client-notebook-artifact-review", "client-notebook-source-reference-guard",
-  "v49-managed-credit-retention", "client-lifecycle-restore", "client-table-privilege-hardening",
+  "v49-managed-credit-retention",
+  // Adapter host data, before the restore migration so its restore triggers attach to these tables.
+  "client-adapter-host", "client-adapter-token-uses", "client-adapter-approval-gateway", "client-adapter-budget",
+  "client-adapter-retention-28",
+  "client-lifecycle-restore", "client-table-privilege-hardening",
 ];
 
 const purgeNames = [
@@ -316,7 +320,7 @@ test("repository schema upgrades retain worker contracts and execute lifecycle p
     const columns = (await db.query<{ value: Record<string, string> }>(
       "select public.client_lifecycle_restore_columns() as value",
     )).rows[0].value;
-    expect(Object.keys(columns)).toHaveLength(49);
+    expect(Object.keys(columns)).toHaveLength(55);
     for (const [table, projection] of Object.entries(columns)) {
       expect(table).toMatch(/^client_[a-z_]+$/);
       expect(projection).toMatch(/^[a-z_][a-z0-9_]*(,[a-z_][a-z0-9_]*)*$/);

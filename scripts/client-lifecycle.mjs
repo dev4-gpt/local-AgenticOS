@@ -152,6 +152,14 @@ const tables = [
   "client_ruflo_swarms",
   "client_ruflo_agents",
   ...Object.keys(eccLifecycleColumns),
+  // Adapter host data. Parents first, and after the tables above, to match the restore order in the database.
+  // The outbox and token-use rows are short-lived operational state and are deliberately not exported.
+  "client_adapter_registry",
+  "client_adapter_memory_items",
+  "client_adapter_memory_promotions",
+  "client_adapter_memory_provenance",
+  "client_adapter_approvals",
+  "client_adapter_budget_events",
 ];
 
 // Lifecycle exports are portable backups, not credential backups. Keep this
@@ -209,6 +217,12 @@ const exportColumns = Object.freeze({
   client_hermes_content_factory_deliveries: "id,run_id,tenant_slug,workflow_id,destination,status,approval_id,artifact_id,retention_expires_at,created_at",
   client_ruflo_swarms: "id,tenant_slug,created_by,objective,topology,preset,status,job_id,provider,model,agent_count,completed_count,failed_count,report_artifact_id,cost_micros,error_code,retention_expires_at,created_at,updated_at",
   client_ruflo_agents: "id,tenant_slug,swarm_id,agent_type,name,task,position,status,output,error_code,cost_micros,started_at,finished_at,retention_expires_at,created_at",
+  client_adapter_registry: "id,tenant_slug,adapter_id,display_name,contract_version,manifest_sha256,state,side_effect_ceiling,deletion_guarantee,budget_cap_micros,budget_period,created_by,created_at,updated_at",
+  client_adapter_memory_items: "id,tenant_slug,namespace,origin_adapter_id,status,content,content_sha256,trust_level,idempotency_key,promotion_id,supersedes_id,valid_from,tombstoned_at,created_at,retention_expires_at",
+  client_adapter_memory_promotions: "id,tenant_slug,source_item_id,origin_adapter_id,content_sha256,status,scan_result,requested_by,reviewed_by,reviewed_at,approved_content_sha256,decision_note,created_at,retention_expires_at",
+  client_adapter_memory_provenance: "id,tenant_slug,item_id,adapter_id,adapter_version,agent_principal,source_task_id,source_url,source_sha256,confidence,actor_user,created_at,retention_expires_at",
+  client_adapter_approvals: "id,tenant_slug,adapter_id,action_kind,action_hash,destination,policy_version,requested_by,decided_by,approved_action_hash,status,expires_at,decided_at,executed_at,execution_receipt_sha256,created_at,retention_expires_at",
+  client_adapter_budget_events: "id,tenant_slug,adapter_id,task_id,kind,amount_micros,provider,model,runtime_budget_ref,idempotency_key,created_at,retention_expires_at",
 });
 
 const forbiddenExportFields = new Set([

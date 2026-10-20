@@ -46,7 +46,8 @@ Veloce is the **host**: one workspace that decides who you are, what you may do,
 | Budget rules (reserve, settle, release, per-adapter caps) | Built and tested, including a real-Postgres test with simultaneous requests; nothing calls them yet |
 | Adapters page and Budget tab in the UI | Built (operator edition, read-only, behind the host flag); checked with sample data only, not yet against a real database |
 | Any real adapter speaking the contract | **Not built** (Creator OS only serves 4 read-only routes) |
-| Cleanup jobs on a schedule (expiry, purges) | **Not built** |
+| 28 + 7 day expiry, read barrier, purge, backup and restore for adapter data | Built and tested locally (in-memory Postgres and the project's real migration chain); not yet checked on a hosted database |
+| Cleanup jobs on a schedule (expiry, purges) | **Not built.** The purge runs when an operator runs the lifecycle command with `--include-adapter-host` |
 | Hosted (real cloud) verification of isolation and retention | **Not done** |
 
 The checklist of everything open is in `04-open-items-tracker.md`.

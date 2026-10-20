@@ -4,7 +4,7 @@ Master plan phases (from `reports/Veloce master plan and error register.md`). Ti
 
 Legend: **Owner** = Me (the assistant) / You / Both / Lawyer. **Sev** = CRITICAL / WARNING / SUGGESTION. IDs refer to the error register.
 
-Last updated: 2026-10-19 after the Adapters page and Budget tab (Phase 1 item 5) on `feat/approval-gateway`.
+Last updated: 2026-10-19 after adapter retention and restore wiring (Phase 1 item 8) on `feat/approval-gateway`.
 
 ---
 
@@ -13,7 +13,7 @@ Last updated: 2026-10-19 after the Adapters page and Budget tab (Phase 1 item 5)
 | Phase | Name | Status |
 |---|---|---|
 | 0 | Hygiene | Mine done; yours open |
-| 1 | Host foundation | Items 1-5 done; 6-16 open |
+| 1 | Host foundation | Items 1-5 and 8 done; 6, 7, 9-16 open |
 | 2 | Creator OS adapter | Not started |
 | 3 | Knowledge adapter | Not started (dedupe tools exist) |
 | 4 | Forge adapter | Not started |
@@ -74,9 +74,12 @@ Last updated: 2026-10-19 after the Adapters page and Budget tab (Phase 1 item 5)
   - [ ] 5e. Existing lint error in `HomeImmersive.tsx` (`setWebglFailed` called inside an effect) and an unused import, both there before this work
 - [ ] **6. Observability (Me).** Audit events and counters for approvals, tokens, promotions, budget. *Done when:* each event is visible and tested
 - [ ] **7. Scoped handles (Me).** Narrow references so an adapter can read only what a task needs
-- [ ] **8. Purge and restore wiring for the new tables (Me).** Active expiry at 28 days, recovery for 7, bounded purge, restore. *Done when:* tests cover expiry, recovery-only exclusion and cross-tenant safety (the 28 + 7 gate)
+- [x] **8. Purge and restore wiring for the new tables (Me), done locally in two commits on `feat/approval-gateway`.** Active expiry at 28 days, recovery for 7, bounded purge, export and restore. The 28 + 7 gate is met in the local and in-memory test databases only; the hosted proof is still open (8f)
   - [x] 8a. Expiry, read barrier and purge (commit A, `supabase-client-adapter-retention-28.sql`, ADR-008): 11 tests; lifecycle command runs the purge with `--include-adapter-host` (and `--confirm-retention-adapter` to apply)
-  - [ ] 8b. Offboarding export and restore (commit B)
+  - [x] 8b. Offboarding export and restore (commit B): the six adapter tables are exported with their dates and restored only inside their active window; adapters come back disabled; usable approvals never come back; the restore rolls back as a whole if the notes and promotions do not match up. 7 restore tests, three deliberate breakages each fail tests; also checked against the real migration chain in `client-schema-upgrade.spec.ts` (55 restore projections)
+  - [ ] 8f. Prove 8a and 8b on free staging Supabase with the real migrations, real row-level security and a real backup and restore (nothing here has run outside in-memory Postgres)
+  - [ ] 8g. The restore bypass trusts whoever can run SQL as the service role (as the other tables' restore guard does). Decide whether that is acceptable
+  - [ ] 8h. The adapter migrations were added to the real migration chain test; the hosted deployment order must put them before the lifecycle restore migration
   - [ ] 8c. Make the adapter purge default in the lifecycle command once the adapter host is installed anywhere hosted (it is opt-in today so installations without it keep working)
   - [ ] 8d. Skeleton rows: a private note and its promotion keep an empty shell (text erased, hidden) until the newer shared note is purged. Decide whether a shell may outlive 35 days or the chain should be cut sooner
   - [ ] 8e. While a shared note is expired but unpurged, the same fact cannot be shared again (hash slot held for up to 7 days)

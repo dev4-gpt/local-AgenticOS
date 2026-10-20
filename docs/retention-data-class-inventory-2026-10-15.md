@@ -102,9 +102,12 @@ tenant's days plus seven if never delivered) and token-use rows one day after ex
 purge only when given `--include-adapter-host` (and `--confirm-retention-adapter` to apply). Approvals and budget
 events use the same 28 + 7 schedule provisionally, pending owner confirmation.
 
-Offboarding export and restore are a separate step. Nothing is verified in a hosted environment and no schedule runs
-the purge, so the migration must still not be applied to a hosted project, every adapter stays disabled, and no
-client data may be written. Removal of derived shared memory is handled by tombstone events (ADR-005).
+Offboarding export and restore also cover them (ADR-008): the registry, memory items, promotions, provenance,
+approvals and budget events are exported with their original dates and expiry, and the protected restore brings them
+back only while still inside their active window, with adapters disabled and no usable approval. The outbox and
+token-use rows are not exported. Nothing is verified in a hosted environment and no schedule runs the purge, so the
+migration must still not be applied to a hosted project, every adapter stays disabled, and no client data may be
+written. Removal of derived shared memory is handled by tombstone events (ADR-005).
 
 ### Per-Item Expiry and Foreign-Key Safety
 

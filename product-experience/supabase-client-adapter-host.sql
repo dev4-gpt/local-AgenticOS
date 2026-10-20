@@ -24,6 +24,64 @@ $$;
 
 grant execute on function public.client_adapter_admin(text) to authenticated;
 
+-- True only inside the protected tenant restore (supabase-client-lifecycle-restore.sql): the service role with the
+-- restore context set for this very table and tenant. The guards below use it to let backed-up rows come back
+-- exactly as they were. Nobody else can reach it, and the restore checks the whole graph at the end.
+create or replace function public.client_adapter_restoring(p_table text, p_tenant_slug text)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  context jsonb;
+begin
+  if current_setting('role', true) is distinct from 'service_role'
+     or coalesce(current_setting('app.client_lifecycle_restore', true), '') = '' then
+    return false;
+  end if;
+  begin
+    context := current_setting('app.client_lifecycle_restore')::jsonb;
+  exception when others then
+    return false;
+  end;
+  return context ->> 'table' = p_table and context ->> 'tenant' = p_tenant_slug;
+end;
+$$;
+revoke all on function public.client_adapter_restoring(text, text) from public, anon, authenticated;
+grant execute on function public.client_adapter_restoring(text, text) to service_role;
+
+-- After a restore: every shared note needs an approved promotion of the same adapter and hash, and every promotion
+-- needs its private source note. Returns false if the restored rows do not form that picture.
+create or replace function public.validate_client_adapter_restore_graph(p_tenant_slug text)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  return not exists (
+    select 1 from public.client_adapter_memory_items i
+    where i.tenant_slug = p_tenant_slug and i.namespace = 'shared'
+      and not exists (
+        select 1 from public.client_adapter_memory_promotions p
+        where p.id = i.promotion_id and p.tenant_slug = i.tenant_slug and p.origin_adapter_id = i.origin_adapter_id
+          and p.status = 'approved' and p.approved_content_sha256 = i.content_sha256)
+  ) and not exists (
+    select 1 from public.client_adapter_memory_promotions p
+    where p.tenant_slug = p_tenant_slug
+      and not exists (
+        select 1 from public.client_adapter_memory_items s
+        where s.id = p.source_item_id and s.tenant_slug = p.tenant_slug and s.origin_adapter_id = p.origin_adapter_id
+          and s.namespace = 'adapter:' || p.origin_adapter_id and s.content_sha256 = p.content_sha256)
+  );
+end;
+$$;
+revoke all on function public.validate_client_adapter_restore_graph(text) from public, anon, authenticated;
+grant execute on function public.validate_client_adapter_restore_graph(text) to service_role;
+
 -- Direct updates and deletes are refused. Deleting a tenant still cascades (trigger depth above 1), and a future
 -- retention purge function may set veloce.adapter_purge to 'on' for its own transaction.
 create or replace function public.client_adapter_reject_mutation()
@@ -133,7 +191,8 @@ alter table public.client_adapter_memory_items
   drop constraint if exists client_adapter_memory_items_promotion_fk;
 alter table public.client_adapter_memory_items
   add constraint client_adapter_memory_items_promotion_fk
-  foreign key (promotion_id) references public.client_adapter_memory_promotions(id);
+  foreign key (promotion_id) references public.client_adapter_memory_promotions(id)
+  deferrable initially immediate; -- a tenant restore defers it, because notes and promotions point at each other
 
 -- 4. Provenance: append-only record of where every item came from.
 create table if not exists public.client_adapter_memory_provenance (
@@ -238,7 +297,8 @@ declare
   promo public.client_adapter_memory_promotions%rowtype;
 begin
   if tg_op = 'INSERT' then
-    if new.namespace = 'shared' then
+    -- A protected tenant restore brings rows back in dependency-free order; the restore then checks the whole graph.
+    if new.namespace = 'shared' and not public.client_adapter_restoring(tg_table_name, new.tenant_slug) then
       select * into promo from public.client_adapter_memory_promotions where id = new.promotion_id;
       if not found
         or promo.status <> 'approved'
@@ -281,6 +341,9 @@ declare
   src public.client_adapter_memory_items%rowtype;
 begin
   if tg_op = 'INSERT' then
+    if public.client_adapter_restoring(tg_table_name, new.tenant_slug) then
+      return new; -- protected tenant restore; the restore validates the whole graph afterwards
+    end if;
     select * into src from public.client_adapter_memory_items where id = new.source_item_id;
     if not found
       or src.tenant_slug <> new.tenant_slug
@@ -320,7 +383,7 @@ language plpgsql
 as $$
 begin
   if tg_op = 'INSERT' then
-    if new.status <> 'pending' then
+    if new.status <> 'pending' and not public.client_adapter_restoring(tg_table_name, new.tenant_slug) then
       raise exception 'an approval request starts pending';
     end if;
     return new;

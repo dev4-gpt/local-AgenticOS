@@ -46,9 +46,34 @@ Adapter data follows the same rule as every other client table: active for the t
 - **Not verified in a hosted environment.** The tests run in an in-memory Postgres.
 - **Outside the guarantee.** Adapters' own stores are not reached by any of this (X-2).
 
+## Offboarding export and restore
+
+The adapter tables are part of the tenant backup (`scripts/client-lifecycle.mjs export`) and the protected restore
+(`restore_client_lifecycle_metadata`).
+
+- **Exported:** the registry, memory items, promotions, provenance, approvals and budget events, each with its original
+  dates and expiry. **Not exported:** the outbox and token-use rows (short-lived operational state).
+- **Restored with the original dates.** The restore checks the active window as it does for every other table: expired
+  rows, or rows with an expiry longer than the tenant's days, are refused and nothing is restored.
+- **Adapters come back disabled,** with their caps. Someone turns them on again on purpose.
+- **Approvals that could still be used never come back.** A pending or approved approval is restored as expired (the
+  command line converts it; the database refuses it if it arrives anyway). Finished ones return as evidence. An approval's
+  own `expires_at` is a short request expiry, so the restore does not treat it as a retention date.
+- **A protected restore only.** The guards that normally force new promotions to start quarantined and new approvals to
+  start pending, and that require a shared note to point at an approved promotion, step aside only when the service role
+  is running the restore for that same table and tenant (`client_adapter_restoring`). The foreign key from notes to
+  promotions is deferrable, because the two point at each other. After all rows are in, the restore checks the whole
+  picture (`validate_client_adapter_restore_graph`): every shared note has an approved promotion of the same adapter and
+  content hash, and every promotion has its private source note. If not, the whole restore is rolled back.
+- **Trust boundary, stated plainly.** Whoever can run SQL as the service role could set the restore context themselves,
+  as with the other tables' restore clock guard. This protects against mistakes and ordinary callers, not against a
+  service-role holder.
+- **Checked against the real migration chain.** `tests/client-schema-upgrade.spec.ts` now applies the adapter migrations
+  after the earlier migrations and before the restore migration, and checks all 55 restore projections.
+
 ## Testing
 
-`tests/adapter-retention-sql.spec.ts` covers expiry stamping and immutability, the read barrier, the recovery window,
+`tests/adapter-restore-sql.spec.ts` covers the round trip, disabled adapters, expired and half-restored data, usable approvals, broken graphs, tables that cannot come back, and the shortcuts being closed outside a restore (three deliberate breakages each fail tests). `tests/adapter-retention-sql.spec.ts` covers expiry stamping and immutability, the read barrier, the recovery window,
 dry run versus apply, the linked-row ordering, supersede links, tenant isolation, batch limits, the outbox and token
 clocks, grants and bad input, and the backfill. Three deliberate breakages (no read barrier, no recovery window, no
 erase step) each make tests fail.
