@@ -29,6 +29,9 @@ import {
   validateMemoryProposal,
   validateTombstoneReceipt,
 } from "../src/lib/adapterContracts";
+import { isValidCapabilityTenantSlug } from "../src/lib/capabilityContracts";
+import { validateClientVisualQaInput } from "../src/lib/clientVisualQaAdapter";
+import { validateV96ResearchRequest } from "../src/lib/v96Contracts";
 
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 const UUID_A = "00000000-0000-4000-8000-0000000000a1";
@@ -74,6 +77,21 @@ test("ids, slugs, keys and hashes follow the database rules", () => {
   expect(isSha256Hex(sha("x").toUpperCase())).toBe(false);
   expect(adapterNamespace("forge")).toBe("adapter:forge");
   expect(code(() => adapterNamespace("X"))).toBe("invalid_adapter_id");
+});
+
+test("every tenant slug check in the app follows the database rule, so none accepts a slug the database refuses", () => {
+  const sql = readFileSync("product-experience/supabase-client-runtime-control-plane.sql", "utf8");
+  const rule = new RegExp(/slug text primary key check \(slug ~ '([^']+)'\)/.exec(sql)![1]);
+  const slugs = ["tenant-a", "abc", "a".repeat(41), "ab", "1abc", "9", "a".repeat(42), "a".repeat(63), "Tenant", "tenant_a", "-abc", "tenant a", "", "tenant-a\n"];
+  const v96 = (slug: string) => !validateV96ResearchRequest({ tenantSlug: slug }).includes("tenantSlug is invalid");
+  const qa = (slug: string) => !validateClientVisualQaInput({ tenantSlug: slug }).includes("visual_qa_tenant_invalid");
+  for (const slug of slugs) {
+    const expected = rule.test(slug);
+    expect(isValidTenantSlug(slug), `adapter contract: ${JSON.stringify(slug)}`).toBe(expected);
+    expect(isValidCapabilityTenantSlug(slug), `capability contracts: ${JSON.stringify(slug)}`).toBe(expected);
+    expect(v96(slug), `v96 research: ${JSON.stringify(slug)}`).toBe(expected);
+    expect(qa(slug), `visual QA: ${JSON.stringify(slug)}`).toBe(slug.trim() === slug ? expected : rule.test(slug.trim()));
+  }
 });
 
 test("money is integer micros end to end", () => {

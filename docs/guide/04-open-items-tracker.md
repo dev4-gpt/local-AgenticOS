@@ -13,7 +13,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 | Phase | Name | Status |
 |---|---|---|
 | 0 | Hygiene | Mine done; yours open |
-| 1 | Host foundation | Items 1-5, 8, 10, 14 and 15 done; 6, 7, 9, 11-13 and 16 open |
+| 1 | Host foundation | Items 1-5, 8, 10, 12, 14 and 15 done; 6, 7, 9, 11, 13 and 16 open |
 | 2 | Creator OS adapter | Not started |
 | 3 | Knowledge adapter | Not started (dedupe tools exist) |
 | 4 | Forge adapter | Not started |
@@ -96,7 +96,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
   - [ ] 10f. Detect conflicting facts (a new shared note that contradicts an existing one) and send them to a human; today only exact duplicates are caught
   - [ ] 10g. Rate-limit by time as well as by queue size
 - [ ] **11. Approvals table retention class (Both).** Provisional until you approve a schedule (N-5)
-- [ ] **12. Align tenant slug rules (Me).** The database rule and `capabilityContracts.ts` disagree (N-1, X-7, WARNING)
+- [x] **12. Align tenant slug rules (Me), done locally on `feat/approval-gateway`.** `capabilityContracts.ts` (shared by 6 modules), `v96Contracts.ts` and `clientVisualQaAdapter.ts` now use the database rule `^[a-z][a-z0-9-]{2,40}$`; a test in `adapter-contracts.spec.ts` reads the rule from the database file and checks every validator against it (loosening any one of the three fails it). Slugs with a leading digit, 2 characters, or 42 to 63 characters are now refused up front instead of at the database. Provider, repository and content ids keep their own looser rule on purpose (N-1, X-7)
 - [ ] **13. Key storage and rotation for adapter tokens (Both).** Decide where the signing key lives; nothing sends or checks tokens yet
 - [x] **14. Wrong-tenant route tests (Me), done locally on `feat/approval-gateway`.** `tests/adapter-wrong-tenant-routes.spec.ts` (4 tests) covers all six adapter-host route files (seven handlers): a request that names another tenant in the body, address, query string or path is still answered for the server's own tenant; another tenant's id looks exactly like a missing one; database errors that name a tenant or row are never echoed. Three deliberate breakages (tenant read from the address, tenant read from the body, error echoed) each fail the spec. Stop-ship item 9 is now met for routes; the database-level wrong-tenant proof is in the SQL specs and the real-stack run below
   - [x] 14a. Real local Supabase run (2026-10-19, outside the repo, then deleted): real logins, real PostgREST, the full 80-migration chain, 66 checks over isolation, registry, approvals, promotions, budget and retention, all passed. It found that `client_adapter_admin` and five trigger functions were executable by `anon` through Supabase's default privileges; revoked in `0f71173` with a test. Not run in that session: the lifecycle export/restore script and the screens against the real stack. This does not replace the hosted staging check (4a, 5a2, 8f, 10h, 15e)

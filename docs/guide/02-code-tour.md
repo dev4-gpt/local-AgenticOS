@@ -26,7 +26,7 @@ All three are pushed to `origin` (`dev4-gpt/local-AgenticOS`). No pull request e
 The shared vocabulary and checks. It has no secrets and calls nothing external, so any code (including browser code) can import it.
 
 - **Constant lists:** operations, side-effect classes, deletion guarantees, adapter states, memory item statuses, promotion statuses, approval statuses, approval action kinds, budget event kinds. The test `the TypeScript contract and the SQL data model use the same values` makes sure these match the database.
-- **Id rules:** adapter id `^[a-z][a-z0-9-]{2,40}$`; tenant slug follows the database rule (see open item N-1: Veloce has a second, different slug rule elsewhere); idempotency key and SHA-256 checks.
+- **Id rules:** adapter id `^[a-z][a-z0-9-]{2,40}$`; tenant slug follows the database rule everywhere in the app (a test keeps every copy in step); idempotency key and SHA-256 checks.
 - **Money:** `microsFromUsd`, `usdFromMicros`, `assertMicros`. Whole numbers only, 1 USD = 1,000,000 micros.
 - **Validators:** `validateAdapterManifest` (is this adapter description safe and consistent), `validateAdapterTaskRequest` (takes the risk class from the manifest, requires a hash-bound approval for `publish`), `validateMemoryProposal` (needs provenance and an honest hash), `validateTombstoneReceipt` (must name the event, carry a hash and a count).
 - **State machines:** `MEMORY_ITEM_TRANSITIONS`, `PROMOTION_TRANSITIONS`, `APPROVAL_TRANSITIONS`, `canTransition`: states only move forward and finished states stay finished.
