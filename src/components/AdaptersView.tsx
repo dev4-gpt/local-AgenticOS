@@ -41,9 +41,12 @@ export default function AdaptersView() {
           Products plugged into Veloce. Each one keeps its own private memory. It can only propose shared memory or a publish action, and a second person has to approve it.
         </p>
       </div>
-      <button type="button" onClick={() => void load()} disabled={state === "loading"} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}>
-        <RefreshCw size={13} className={state === "loading" ? "animate-spin" : ""} />Refresh
-      </button>
+      <div className="flex items-center gap-3">
+        <Link href="/adapters/approvals" className="text-[11px] text-sky-300 underline">Approvals</Link>
+        <button type="button" onClick={() => void load()} disabled={state === "loading"} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}>
+          <RefreshCw size={13} className={state === "loading" ? "animate-spin" : ""} />Refresh
+        </button>
+      </div>
     </div>
 
     {state === "loading" && <p className="panel mt-6 p-4 text-[12px]" style={{ color: "var(--cream-mute)" }}>Loading adapters...</p>}

@@ -6,7 +6,7 @@ All paths are relative to the repo root (`source/`). "Proof" means the test file
 npm run test:focused
 ```
 
-Expected today: 689 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
+Expected today: 697 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
 
 ## Branches
 
@@ -135,6 +135,14 @@ Proof: `tests/adapter-overview.spec.ts` (9 tests: view model, route gates, malfo
 
 ---
 
+## D4. Approvals screen
+
+- `src/lib/adapterApprovalsView.ts`: `parseApprovalsResponse` (rejects any answer that does not look right), `buildApprovalCards` (plain status words, "you" or "another member", time left, the content the request covers, which buttons are allowed and why not), `readContent` (the stored text must be a JSON object whose kind, adapter, destination and policy agree with its row), `decisionErrorMessage` (plain messages; unknown errors become a generic one).
+- `src/components/ApprovalsView.tsx` and `src/app/adapters/approvals/page.tsx`: the `/adapters/approvals` screen (operator edition, behind `ADAPTER_HOST_ENABLED`), linked from the Adapters page. It lists requests, shows the full content each covers, asks for a confirmation that repeats the fingerprint before approving, and refreshes after every decision. The list route (`/api/client-runtime/adapter-approvals`) also returns the viewer's id and whether they may decide.
+- Proof: `tests/adapter-approvals-view.spec.ts` (8 tests) and a browser check against a throwaway real Postgres.
+
+---
+
 ## E. Knowledge-unify tools
 
 In `scripts/knowledge-unify/`: `scan.mjs` (340 lines), `dedupe-report.mjs` (193), `apply.mjs` (264). Format reference: `docs/knowledge-layer-schema.md` (schema version 2). How they behave is in `01-how-it-works.md`, section 6.
@@ -173,6 +181,7 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 | `adapter-approval-gateway.spec.ts` | 13 | Server hashing, input checks, route behaviour |
 | `adapter-tokens.spec.ts` | 9 | Token signing and every verification rule |
 | `adapter-token-uses-sql.spec.ts` | 5 | Single use, worker-only, bounded purge |
+| `adapter-approvals-view.spec.ts` | 8 | Approvals screen: what each request shows, who gets which buttons, bad data rejected |
 | `adapter-restore-sql.spec.ts` | 7 | Backup and restore of adapter data: dates, disabled adapters, usable approvals, graph check, closed shortcuts |
 | `adapter-retention-sql.spec.ts` | 11 | Adapter expiry, read barrier, 7-day recovery, purge ordering, tenant scope, grants |
 | `adapter-overview.spec.ts` | 9 | Adapters page and Budget tab data, and the read-only route's gates |
@@ -182,7 +191,7 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 | `knowledge-unify.spec.ts` | 23 | Scan, dedupe and apply behaviour and fixes |
 | `knowledge-unify-cli.spec.ts` | 8 | Command-line behaviour and exit codes |
 
-All fourteen are registered in the `test:focused` list in `package.json`.
+All fifteen are registered in the `test:focused` list in `package.json`.
 
 ## What is not in the code yet
 

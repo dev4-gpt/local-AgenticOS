@@ -4,7 +4,7 @@ Master plan phases (from `reports/Veloce master plan and error register.md`). Ti
 
 Legend: **Owner** = Me (the assistant) / You / Both / Lawyer. **Sev** = CRITICAL / WARNING / SUGGESTION. IDs refer to the error register.
 
-Last updated: 2026-10-19 after adapter retention and restore wiring (Phase 1 item 8) on `feat/approval-gateway`.
+Last updated: 2026-10-20 after the approvals screen (Phase 1 item 15) on `feat/approval-gateway`.
 
 ---
 
@@ -13,7 +13,7 @@ Last updated: 2026-10-19 after adapter retention and restore wiring (Phase 1 ite
 | Phase | Name | Status |
 |---|---|---|
 | 0 | Hygiene | Mine done; yours open |
-| 1 | Host foundation | Items 1-5 and 8 done; 6, 7, 9-16 open |
+| 1 | Host foundation | Items 1-5, 8 and 15 done; 6, 7, 9-14 and 16 open |
 | 2 | Creator OS adapter | Not started |
 | 3 | Knowledge adapter | Not started (dedupe tools exist) |
 | 4 | Forge adapter | Not started |
@@ -89,9 +89,12 @@ Last updated: 2026-10-19 after adapter retention and restore wiring (Phase 1 ite
 - [ ] **12. Align tenant slug rules (Me).** The database rule and `capabilityContracts.ts` disagree (N-1, X-7, WARNING)
 - [ ] **13. Key storage and rotation for adapter tokens (Both).** Decide where the signing key lives; nothing sends or checks tokens yet
 - [ ] **14. Wrong-tenant route tests (Me).** The two approval routes have unauthenticated tests only; stop-ship item 9
-- [ ] **15. Approvals page flow (Me).** A way for two people to see and decide pending approvals; the routes exist, the screen does not
+- [x] **15. Approvals page flow (Me), done locally in two commits on `feat/approval-gateway`.** A way for two people to see and decide pending approvals: the request stores and verifies the exact text, and the screen shows it
   - [x] 15a. Store and verify what is being approved (approvals-screen commit A): the request now stores the exact canonical text that was hashed; the database refuses text that does not hash to the fingerprint or disagrees with the row; the text is immutable, in the backup and restore projection, and returned by the list route with the viewer's id and whether they may decide. Three deliberate breakages each fail tests
-  - [ ] 15b. The approvals screen itself (commit B)
+  - [x] 15b. The approvals screen (`/adapters/approvals`, operator edition, behind the host flag): lists requests with the exact content each covers, who asked ("you" or "another member"), time left and status; Approve (with a confirm step that repeats the fingerprint) and Reject appear only for an owner or admin who did not ask, only while the request is open, and Approve only when the stored text is present and agrees with its row. 8 view-model tests (three deliberate breakages fail tests). Checked in a browser against a throwaway local Postgres with real row-level security and the real database functions: approving worked and was recorded with an audit event; deciding your own request, a wrong fingerprint, a second decision and a plain member's attempt were all refused by the database; a member saw only their own requests and no buttons; with the backend stopped no request was shown
+  - [ ] 15e. Repeat the screen check on free staging Supabase with the real login layer and the real migrations (the throwaway check used a small stand-in for Supabase's REST layer and a faked rate limiter)
+  - [ ] 15f. With the login service unreachable the screen says "Sign in" rather than "unavailable" (same existing behaviour as 5g)
+  - [ ] 15g. Approving only marks the request approved. Something has to execute it: no adapter calls the worker's execute step yet
   - [ ] 15c. No notification tells a second person a request is waiting; they must open the page
   - [ ] 15d. Requests are created by host code; there is no form to create one from the UI
 - [ ] **16. Mutation check on Phase 1 tests (Me).** Remove each rule and confirm a test fails (master plan principle 5)
