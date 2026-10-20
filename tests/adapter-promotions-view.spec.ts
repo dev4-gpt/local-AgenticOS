@@ -204,3 +204,44 @@ test("the label errors have plain words", () => {
   expect(view.promotionErrorMessage("sensitivity_required")).toMatch(/reject/);
   expect(view.promotionErrorMessage("note_required")).toMatch(/flagged or sensitive/);
 });
+
+// Added by the mutation sweep: the limits and shapes the parser enforces on what the list route returns.
+const finding = (extra: Record<string, unknown> = {}) => ({ rule: "secret", severity: "high", count: 1, sample: "key=", ...extra });
+const provenanceRow = (extra: Record<string, unknown> = {}) => ({
+  item_id: id(2), adapter_id: "forge", adapter_version: "1.2", agent_principal: "writer", source_task_id: "t-17",
+  source_url: "https://example.test/policy", source_sha256: sha("src"), confidence: 0.8, created_at: "2026-10-20T10:00:00Z", ...extra,
+});
+const parsedWith = (extra: Record<string, unknown>) => view.parsePromotionsResponse(body([promo(extra)]));
+const withFindings = (findings: unknown) => parsedWith({ scan_result: { ...scan("flagged"), findings } });
+
+test("scan findings: at most 20, each an object with a short rule, a known severity, a whole non-negative count and a short sample", () => {
+  expect(withFindings(Array.from({ length: 20 }, () => finding()))).not.toBeNull();
+  expect(withFindings(Array.from({ length: 21 }, () => finding()))).toBeNull();
+  expect(withFindings([])).not.toBeNull();
+  for (const bad of [null, "x", 5, {}, [null], [5], [[]], [finding({ rule: 5 })], [finding({ rule: "r".repeat(61) })], [finding({ severity: "low" })], [finding({ severity: undefined })]]) {
+    expect(withFindings(bad), JSON.stringify(bad)).toBeNull();
+  }
+  for (const count of [-1, 1.5, "2", null, undefined, Number.NaN, Number.MAX_SAFE_INTEGER + 2]) expect(withFindings([finding({ count })]), String(count)).toBeNull();
+  expect(withFindings([finding({ count: 0 })])).not.toBeNull();
+  for (const sample of [5, null, undefined, "s".repeat(201)]) expect(withFindings([finding({ sample })]), String(sample)).toBeNull();
+  expect(withFindings([finding({ sample: "s".repeat(200) })])).not.toBeNull();
+  expect(withFindings([finding({ rule: "r".repeat(60) })])).not.toBeNull();
+});
+
+test("source records: at most 20, each with a valid adapter, short text fields, a confidence from 0 to 1, a date, and a link and fingerprint that are optional but valid", () => {
+  const withRows = (rows: unknown) => parsedWith({ provenance: rows });
+  expect(withRows(Array.from({ length: 20 }, () => provenanceRow()))).not.toBeNull();
+  expect(withRows(Array.from({ length: 21 }, () => provenanceRow()))).toBeNull();
+  expect(withRows([])).not.toBeNull();
+  for (const bad of [null, "x", {}, [null], [5], [[]]]) expect(withRows(bad), JSON.stringify(bad)).toBeNull();
+  const refused: Record<string, unknown>[] = [
+    { adapter_id: "Bad Adapter" }, { adapter_id: undefined }, { adapter_version: 1 }, { adapter_version: "v".repeat(41) }, { adapter_version: undefined },
+    { agent_principal: "a".repeat(121) }, { agent_principal: 5 }, { source_task_id: "t".repeat(129) }, { source_task_id: undefined },
+    { confidence: "0.5" }, { confidence: -0.01 }, { confidence: 1.01 }, { confidence: Number.NaN }, { confidence: undefined },
+    { created_at: "soon" }, { created_at: undefined }, { source_url: 5 }, { source_url: "u".repeat(2049) }, { source_sha256: "abc" }, { source_sha256: 5 },
+  ];
+  for (const over of refused) expect(withRows([provenanceRow(over)]), JSON.stringify(over)).toBeNull();
+  for (const over of [{ confidence: 0 }, { confidence: 1 }, { source_url: null }, { source_sha256: null }, { source_url: undefined, source_sha256: undefined }, { source_url: "u".repeat(2048) }, { adapter_version: "v".repeat(40) }, { agent_principal: "a".repeat(120) }, { source_task_id: "t".repeat(128) }]) {
+    expect(withRows([provenanceRow(over)]), JSON.stringify(over).slice(0, 60)).not.toBeNull();
+  }
+});
