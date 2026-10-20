@@ -127,10 +127,10 @@ test("with nothing waiting the list makes no lookups by id, and a failed read is
 test("approving repeats the content hash and sends the note; the reviewer is only ever the signed-in person", async () => {
   on();
   const route = load();
-  const res = await route.decision.POST(post({ decision: "approve", expectedContentSha256: H("1"), note: "Checked against the policy page", reviewedBy: "someone-else", reviewed_by: "x", requestedBy: "y" }), ctx());
+  const res = await route.decision.POST(post({ decision: "approve", expectedContentSha256: H("1"), note: "Checked against the policy page", sensitivity: "ordinary", reviewedBy: "someone-else", reviewed_by: "x", requestedBy: "y" }), ctx());
   expect(res.status).toBe(200);
   expect(await res.json()).toEqual({ ok: true, status: "approved" });
-  expect(route.rpcCalls).toEqual([["client_adapter_decide_promotion", { p_promotion_id: PROMO, p_decision: "approve", p_expected_content_sha256: H("1"), p_note: "Checked against the policy page" }]]);
+  expect(route.rpcCalls).toEqual([["client_adapter_decide_promotion", { p_promotion_id: PROMO, p_decision: "approve", p_expected_content_sha256: H("1"), p_note: "Checked against the policy page", p_sensitivity: "ordinary" }]]);
   expect(JSON.stringify(route.rpcCalls)).not.toMatch(/someone-else|reviewed_by|requestedBy/);
   expect(route.audits).toEqual(["tenant.adapter.promotion_approved"]);
 });
@@ -140,7 +140,7 @@ test("rejecting needs no hash, and an empty note is sent as no note", async () =
   const route = load({ rpc: { ok: true, status: 200, value: "rejected" } });
   const res = await route.decision.POST(post({ decision: "reject", expectedContentSha256: H("9"), note: "" }), ctx());
   expect(await res.json()).toEqual({ ok: true, status: "rejected" });
-  expect(route.rpcCalls[0][1]).toEqual({ p_promotion_id: PROMO, p_decision: "reject", p_expected_content_sha256: null, p_note: null });
+  expect(route.rpcCalls[0][1]).toEqual({ p_promotion_id: PROMO, p_decision: "reject", p_expected_content_sha256: null, p_note: null, p_sensitivity: null });
   expect(route.audits).toEqual(["tenant.adapter.promotion_rejected"]);
 });
 
@@ -149,8 +149,9 @@ test("bad decision requests are refused before the database is called", async ()
   const route = load();
   const bad: Array<[string, unknown, string?]> = [
     ["not json", "not json"], ["array", []], ["no decision", {}], ["unknown decision", { decision: "maybe" }],
-    ["approve without hash", { decision: "approve" }], ["approve with short hash", { decision: "approve", expectedContentSha256: "abc" }],
-    ["approve with non-text hash", { decision: "approve", expectedContentSha256: 5 }], ["note not text", { decision: "reject", note: 5 }],
+    ["approve without hash", { decision: "approve", sensitivity: "ordinary" }], ["approve with short hash", { decision: "approve", expectedContentSha256: "abc", sensitivity: "ordinary" }],
+    ["approve with non-text hash", { decision: "approve", expectedContentSha256: 5, sensitivity: "ordinary" }], ["note not text", { decision: "reject", note: 5 }],
+    ["a rejection that names a label", { decision: "reject", sensitivity: "ordinary" }],
     ["note too long", { decision: "reject", note: "x".repeat(2_001) }], ["body too big", { decision: "reject", note: "x".repeat(9_000) }],
     ["not an id", { decision: "reject" }, "not-a-uuid"],
   ];
@@ -174,10 +175,12 @@ test("the database's refusals become stable names and statuses, nothing is audit
     ["adapter_promotion_scan_required", "scan_required", 409],
     ["adapter_promotion_note_required", "note_required", 400],
     ["adapter_promotion_bad_note", "invalid_input", 400],
+    ["adapter_promotion_sensitivity_required", "sensitivity_required", 400],
+    ["adapter_promotion_sensitivity_unexpected", "invalid_input", 400],
   ];
   for (const [message, error, status] of cases) {
     const route = load({ rpc: { ok: false, status: 400, value: { message } } });
-    const res = await route.decision.POST(post({ decision: "approve", expectedContentSha256: H("1") }), ctx());
+    const res = await route.decision.POST(post({ decision: "approve", expectedContentSha256: H("1"), sensitivity: "ordinary" }), ctx());
     expect(res.status, message).toBe(status);
     expect(await res.json(), message).toEqual({ ok: false, error });
     expect(route.audits, message).toHaveLength(0);
@@ -220,4 +223,25 @@ test("withdrawal refusals are mapped too: unknown or other tenant's note, a priv
   }
   const odd = load({ rpc: { ok: true, status: 200, value: "true" } });
   expect((await odd.revoke.POST(post({ reason: "A good reason" }), ctx(SHARED))).status).toBe(503);
+});
+
+test("approving needs the reviewer's label, which must be ordinary or sensitive, and it is passed to the database as given", async () => {
+  on();
+  for (const sensitivity of [undefined, null, "", "restricted", "unknown", "public", "ORDINARY", 5, ["ordinary"], { label: "ordinary" }]) {
+    const route = load();
+    const res = await route.decision.POST(post({ decision: "approve", expectedContentSha256: H("1"), sensitivity }), ctx());
+    expect([res.status, await res.json()], JSON.stringify(sensitivity)).toEqual([400, { ok: false, error: "sensitivity_required" }]);
+    expect(route.rpcCalls, JSON.stringify(sensitivity)).toHaveLength(0); // refused before the database
+    expect(route.audits).toHaveLength(0);
+  }
+  for (const sensitivity of ["ordinary", "sensitive"]) {
+    const route = load();
+    const res = await route.decision.POST(post({ decision: "approve", expectedContentSha256: H("1"), note: "A reason that is long enough", sensitivity }), ctx());
+    expect(res.status).toBe(200);
+    expect(route.rpcCalls[0]![1]).toMatchObject({ p_sensitivity: sensitivity });
+  }
+  // a rejection never carries a label, even if the caller names one in another field
+  const rejected = load({ rpc: { ok: true, status: 200, value: "rejected" } });
+  await rejected.decision.POST(post({ decision: "reject", note: "No", sensitivity: undefined }), ctx());
+  expect(rejected.rpcCalls[0]![1]).toMatchObject({ p_sensitivity: null });
 });

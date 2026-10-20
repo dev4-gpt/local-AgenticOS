@@ -13,11 +13,21 @@ import { PROMOTION_STATUSES, isSha256Hex, isValidAdapterId } from "./adapterCont
 export const MAX_PROMOTION_ROWS = 100;
 export const MAX_NOTE_TEXT = 30_000;
 export const FLAGGED_NOTE_MIN_CHARS = 20;
+export const SENSITIVE_NOTE_MIN_CHARS = 20;
 export const REVOKE_REASON_MIN_CHARS = 5;
 export const REVOKE_REASON_MAX_CHARS = 500;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type PromotionStatus = (typeof PROMOTION_STATUSES)[number];
+/** The two labels a reviewer can give (QM-6a). A note that must never be shared is rejected, not labelled. Mirrors adapterMemoryGuard.ts; a test keeps them equal. */
+export type ApprovableLabel = "ordinary" | "sensitive";
+export type NoteSensitivity = ApprovableLabel | "restricted" | "unknown";
+export const LABEL_CHOICES: ReadonlyArray<{ value: ApprovableLabel; title: string; help: string }> = [
+  { value: "ordinary", title: "Ordinary", help: "Clearly harmless, safe to mention to any coworker." },
+  { value: "sensitive", title: "Sensitive", help: `Private personal, financial or confidential details. Needs your written reason (at least ${SENSITIVE_NOTE_MIN_CHARS} characters), and it stays out of model prompts by default.` },
+];
+const NOTE_SENSITIVITIES: readonly string[] = ["ordinary", "sensitive", "restricted", "unknown"];
+const SENSITIVITY_TITLE: Record<NoteSensitivity, string> = { ordinary: "Ordinary", sensitive: "Sensitive", restricted: "Restricted", unknown: "Not labelled" };
 export type ScanVerdict = "clean" | "flagged" | "blocked";
 export type Tone = "waiting" | "good" | "bad" | "muted";
 
@@ -30,9 +40,9 @@ export interface PromotionRow {
   id: string; sourceItemId: string; adapterId: string; contentSha256: string; status: PromotionStatus;
   scanVerdict: ScanVerdict | null; scanContentSha256: string | null; scanFindings: ScanFindingView[];
   requestedBy: string; reviewedBy: string | null; reviewedAt: string | null; decisionNote: string | null; createdAt: string;
-  sourceContent: string | null; provenance: ProvenanceRow[]; alreadySharedItemId: string | null;
+  sourceContent: string | null; provenance: ProvenanceRow[]; alreadySharedItemId: string | null; approvedSensitivity: ApprovableLabel | null;
 }
-export interface SharedNoteRow { id: string; adapterId: string; content: string; contentSha256: string; promotionId: string; createdAt: string }
+export interface SharedNoteRow { id: string; adapterId: string; content: string; contentSha256: string; promotionId: string; createdAt: string; sensitivity: NoteSensitivity }
 export interface ParsedPromotions { promotions: PromotionRow[]; sharedNotes: SharedNoteRow[]; viewerId: string; canDecide: boolean }
 
 const isTime = (v: unknown): v is string => typeof v === "string" && Number.isFinite(Date.parse(v));
@@ -110,19 +120,23 @@ export function parsePromotionsResponse(body: unknown): ParsedPromotions | null 
     const findings = parseFindings(scan.findings);
     const provenance = parseProvenance(r.provenance);
     if (findings === null || provenance === null || !(r.already_shared_item_id == null || isUuid(r.already_shared_item_id))) return null;
+    if (!(r.approved_sensitivity == null || r.approved_sensitivity === "ordinary" || r.approved_sensitivity === "sensitive")) return null;
     promotions.push({
       id: r.id, sourceItemId: r.source_item_id, adapterId: r.origin_adapter_id, contentSha256: r.content_sha256, status: r.status as PromotionStatus,
       scanVerdict: verdict, scanContentSha256: typeof scan.content_sha256 === "string" ? scan.content_sha256 : null, scanFindings: findings,
       requestedBy: r.requested_by, reviewedBy: (r.reviewed_by as string | null | undefined) ?? null, reviewedAt: (r.reviewed_at as string | null | undefined) ?? null,
       decisionNote: (r.decision_note as string | null | undefined) ?? null, createdAt: r.created_at,
       sourceContent: (r.source_content as string | null | undefined) ?? null, provenance, alreadySharedItemId: (r.already_shared_item_id as string | null | undefined) ?? null,
+      approvedSensitivity: (r.approved_sensitivity as ApprovableLabel | null | undefined) ?? null,
     });
   }
   const sharedNotes: SharedNoteRow[] = [];
   for (const raw of b.sharedNotes) {
     const s = obj(raw);
     if (!s || !isUuid(s.id) || !isValidAdapterId(s.origin_adapter_id) || !isText(s.content, MAX_NOTE_TEXT) || !isSha256Hex(s.content_sha256) || !isUuid(s.promotion_id) || !isTime(s.created_at)) return null;
-    sharedNotes.push({ id: s.id, adapterId: s.origin_adapter_id, content: s.content, contentSha256: s.content_sha256, promotionId: s.promotion_id, createdAt: s.created_at });
+    // A note shared before labels existed has none; it is shown as not labelled, never as ordinary.
+    if (!(s.sensitivity === undefined || (typeof s.sensitivity === "string" && NOTE_SENSITIVITIES.includes(s.sensitivity)))) return null;
+    sharedNotes.push({ id: s.id, adapterId: s.origin_adapter_id, content: s.content, contentSha256: s.content_sha256, promotionId: s.promotion_id, createdAt: s.created_at, sensitivity: (s.sensitivity as NoteSensitivity | undefined) ?? "unknown" });
   }
   return { promotions, sharedNotes, viewerId: b.viewerId, canDecide: b.canDecide };
 }
@@ -177,9 +191,11 @@ export interface PromotionCard {
   decisionNote: string | null;
   canApprove: boolean;
   canReject: boolean;
-  /** 0 when no written reason is needed. */
+  /** 0 when no written reason is needed by the scan alone; a "sensitive" label adds its own minimum (see minNoteChars). */
   noteMinChars: number;
   blockedReason: string | null;
+  /** The label the reviewer gave, for a promotion already approved. */
+  labelTitle: string | null;
 }
 
 const who = (id: string, viewerId: string) => (id === viewerId ? "You" : "Another member");
@@ -235,6 +251,7 @@ export function buildPromotionCards(parsed: ParsedPromotions): PromotionCard[] {
       canReject,
       noteMinChars: canApprove && verdict === "flagged" ? FLAGGED_NOTE_MIN_CHARS : 0,
       blockedReason,
+      labelTitle: row.approvedSensitivity ? SENSITIVITY_TITLE[row.approvedSensitivity] : null,
     };
   });
   return cards.sort((a, b) => (a.open === b.open ? (a.open ? Date.parse(a.createdAt) - Date.parse(b.createdAt) : Date.parse(b.createdAt) - Date.parse(a.createdAt)) : a.open ? -1 : 1));
@@ -244,19 +261,30 @@ export function waitingPromotionCount(cards: PromotionCard[]): number {
   return cards.filter((c) => c.open).length;
 }
 
-/** True when the written reason is long enough for the decision about to be made. */
-export function reasonIsEnough(card: PromotionCard, note: string): boolean {
-  return card.noteMinChars === 0 || note.trim().length >= card.noteMinChars;
+/** The shortest written reason the decision needs: the scan may ask for one, and so does a "sensitive" label. */
+export function minNoteChars(card: PromotionCard, label: ApprovableLabel | null | undefined): number {
+  return Math.max(card.noteMinChars, label === "sensitive" ? SENSITIVE_NOTE_MIN_CHARS : 0);
 }
 
-export interface SharedNoteCard { id: string; adapterId: string; content: string; hiddenCharacterCount: number; shortHash: string; createdAt: string; canRevoke: boolean }
+/** True when the written reason is long enough for the decision about to be made. */
+export function reasonIsEnough(card: PromotionCard, note: string, label?: ApprovableLabel | null): boolean {
+  const min = minNoteChars(card, label);
+  return min === 0 || note.trim().length >= min;
+}
+
+/** Approving needs a label; the button stays off until the reviewer has chosen one and written enough. */
+export function canSubmitApproval(card: PromotionCard, note: string, label: ApprovableLabel | null | undefined): boolean {
+  return card.canApprove && (label === "ordinary" || label === "sensitive") && reasonIsEnough(card, note, label);
+}
+
+export interface SharedNoteCard { id: string; adapterId: string; content: string; hiddenCharacterCount: number; shortHash: string; createdAt: string; canRevoke: boolean; sensitivity: NoteSensitivity; sensitivityTitle: string }
 
 export function buildSharedNoteCards(parsed: ParsedPromotions): SharedNoteCard[] {
   return [...parsed.sharedNotes]
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
     .map((note) => {
       const shown = showHiddenCharacters(note.content);
-      return { id: note.id, adapterId: note.adapterId, content: shown.text, hiddenCharacterCount: shown.hiddenCount, shortHash: note.contentSha256.slice(0, 12), createdAt: note.createdAt, canRevoke: parsed.canDecide };
+      return { id: note.id, adapterId: note.adapterId, content: shown.text, hiddenCharacterCount: shown.hiddenCount, shortHash: note.contentSha256.slice(0, 12), createdAt: note.createdAt, canRevoke: parsed.canDecide, sensitivity: note.sensitivity, sensitivityTitle: SENSITIVITY_TITLE[note.sensitivity] };
     });
 }
 
@@ -270,7 +298,8 @@ export function promotionErrorMessage(code: unknown): string {
     case "hash_mismatch": return "The note changed while you were looking. Refresh and read it again.";
     case "blocked_by_scan": return "The scan blocked this note, so it cannot be approved.";
     case "scan_required": return "There is no usable scan of this note, so it cannot be approved.";
-    case "note_required": return `A flagged note needs a written reason of at least ${FLAGGED_NOTE_MIN_CHARS} characters.`;
+    case "note_required": return `A flagged or sensitive note needs a written reason of at least ${FLAGGED_NOTE_MIN_CHARS} characters.`;
+    case "sensitivity_required": return "Choose whether the note is ordinary or sensitive before approving it. If it must never be shared, reject it.";
     case "not_found": return "This was not found. It may have expired or been removed.";
     case "not_allowed": return "Only owners and admins can do this.";
     case "not_shared": return "Only shared notes can be withdrawn.";

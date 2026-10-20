@@ -66,6 +66,26 @@ These are conveniences: the database enforces every rule independently.
   records it; whether the adapter complies is outside the guarantee.
 - **A queued promotion is not rate-limited by time**, only by the number waiting.
 
+## Addendum 2026-10-20: the reviewer labels what they approve (QM-6a)
+
+Borrowed from QM's memory classification (MIT, `yc-software/qm`), with Veloce's own rule about who decides: a person
+labels a note, never the note's own text and never a model.
+
+- **Approving needs a label.** The reviewer chooses `ordinary` or `sensitive`. A `sensitive` label needs a written
+  reason of at least 20 characters, like a flagged scan. A note that must never be shared is **rejected**, not
+  labelled; `restricted` exists only as a value a classifier may suggest.
+- **The label travels with the shared note.** The guard copies the promotion's label onto the shared item when it is
+  created, so a caller cannot pick a different one, and it cannot be edited afterwards. A private note starts
+  `unknown`. A note shared before labels existed stays `unknown`.
+- **A label limits where a fact goes.** `renderSharedFactForModel` shows a model only `ordinary` facts by default;
+  `sensitive` facts need the caller to ask (`includeSensitive`); `unknown` and `restricted` are never shown.
+- **The model prompt is a suggestion tool only.** `SENSITIVITY_PROMPT` and `parseSensitivity` (anything that is not
+  exactly one label becomes `unknown`) are there for a future helper that proposes a label to the reviewer. Nothing
+  calls a model yet, and nothing may set a label without a person.
+- **Carried through backup and restore.** Both new columns are in the export and restore column lists, with a test.
+- **Not built:** labelling private notes (they stay `unknown`), audience-aware reads (who may read a `sensitive` fact),
+  and the suggestion helper. Nothing calls `context.read` yet, so the render filter protects nothing until an adapter does.
+
 ## Rollback
 
 The promotion rules are in the guard trigger: restoring the earlier function body in `supabase-client-adapter-host.sql`

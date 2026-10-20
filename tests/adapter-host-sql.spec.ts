@@ -86,7 +86,7 @@ async function propose(db: PGlite, itemId: string, adapter: string, hash: string
 async function decide(db: PGlite, user: string, promotionId: string, hash: string, status = "approved") {
   await asUser(db, user);
   return db.query(
-    "update public.client_adapter_memory_promotions set status=$3, reviewed_by=auth.uid(), reviewed_at=now(), approved_content_sha256=$2 where id=$1",
+    "update public.client_adapter_memory_promotions set status=$3, reviewed_by=auth.uid(), reviewed_at=now(), approved_content_sha256=$2, approved_sensitivity = case when $3 = 'approved' then 'ordinary' end where id=$1",
     [promotionId, hash, status],
   );
 }

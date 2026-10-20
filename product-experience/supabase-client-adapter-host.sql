@@ -159,6 +159,12 @@ create unique index if not exists client_adapter_memory_items_shared_hash_idx
   on public.client_adapter_memory_items (tenant_slug, content_sha256)
   where namespace = 'shared' and status = 'active';
 
+-- Sensitivity label (QM-6a). A private note starts "unknown". A shared note takes the label the reviewer chose when
+-- approving its promotion (set by the guard below, so no caller can pick a different one). Facts that are not
+-- "ordinary" are left out of model prompts by default (src/lib/adapterMemoryGuard.ts).
+alter table public.client_adapter_memory_items
+  add column if not exists sensitivity text not null default 'unknown' check (sensitivity in ('ordinary', 'sensitive', 'restricted', 'unknown'));
+
 create index if not exists client_adapter_memory_items_tenant_ns_idx
   on public.client_adapter_memory_items (tenant_slug, namespace, status);
 
@@ -185,6 +191,11 @@ create table if not exists public.client_adapter_memory_promotions (
     or (reviewed_by is not null and reviewed_at is not null and approved_content_sha256 = content_sha256)
   )
 );
+
+-- The label the reviewer gave when approving (QM-6a). Only "ordinary" or "sensitive" can be shared; anything that must
+-- not be shared is rejected instead. Required to approve, not allowed otherwise (the guard below enforces both).
+alter table public.client_adapter_memory_promotions
+  add column if not exists approved_sensitivity text check (approved_sensitivity in ('ordinary', 'sensitive'));
 
 create index if not exists client_adapter_memory_promotions_tenant_status_idx
   on public.client_adapter_memory_promotions (tenant_slug, status, created_at desc);
@@ -335,12 +346,16 @@ begin
         or promo.approved_content_sha256 is distinct from new.content_sha256 then
         raise exception 'shared memory requires an approved promotion with the same content hash';
       end if;
+      if promo.approved_sensitivity is null then
+        raise exception 'adapter_promotion_sensitivity_required';
+      end if;
+      new.sensitivity := promo.approved_sensitivity; -- the reviewer's label, never the caller's
     end if;
     return new;
   end if;
-  if (new.tenant_slug, new.namespace, new.origin_adapter_id, new.content_sha256, new.promotion_id, new.idempotency_key, new.created_at)
+  if (new.tenant_slug, new.namespace, new.origin_adapter_id, new.content_sha256, new.promotion_id, new.idempotency_key, new.created_at, new.sensitivity)
      is distinct from
-     (old.tenant_slug, old.namespace, old.origin_adapter_id, old.content_sha256, old.promotion_id, old.idempotency_key, old.created_at) then
+     (old.tenant_slug, old.namespace, old.origin_adapter_id, old.content_sha256, old.promotion_id, old.idempotency_key, old.created_at, old.sensitivity) then
     raise exception 'memory item identity and content hash are immutable';
   end if;
   if new.status = 'tombstoned' and old.status <> 'tombstoned' then
@@ -425,9 +440,17 @@ begin
     if coalesce(new.scan_result ->> 'verdict', '') not in ('clean', 'flagged') then
       raise exception 'adapter_promotion_scan_required';
     end if;
+    if new.approved_sensitivity is null then
+      raise exception 'adapter_promotion_sensitivity_required';
+    end if;
+    if new.approved_sensitivity = 'sensitive' and length(btrim(coalesce(new.decision_note, ''))) < 20 then
+      raise exception 'adapter_promotion_note_required';
+    end if;
     if new.scan_result ->> 'verdict' = 'flagged' and length(btrim(coalesce(new.decision_note, ''))) < 20 then
       raise exception 'adapter_promotion_note_required';
     end if;
+  elsif new.approved_sensitivity is not null then
+    raise exception 'adapter_promotion_sensitivity_unexpected';
   end if;
   return new;
 end;
@@ -600,7 +623,7 @@ grant select, insert, update on public.client_adapter_memory_items to service_ro
 grant select on public.client_adapter_memory_provenance to authenticated;
 grant select, insert on public.client_adapter_memory_provenance to service_role;
 grant select on public.client_adapter_memory_promotions to authenticated;
-grant update (status, reviewed_by, reviewed_at, approved_content_sha256, decision_note) on public.client_adapter_memory_promotions to authenticated;
+grant update (status, reviewed_by, reviewed_at, approved_content_sha256, decision_note, approved_sensitivity) on public.client_adapter_memory_promotions to authenticated;
 grant select, insert, update on public.client_adapter_memory_promotions to service_role;
 grant select on public.client_adapter_outbox to authenticated;
 grant select, insert, update on public.client_adapter_outbox to service_role;

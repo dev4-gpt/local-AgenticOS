@@ -1,5 +1,5 @@
 -- Apply after supabase-client-adapter-host.sql (and, if used, supabase-client-adapter-retention-28.sql).
--- Two functions for the people who review shared memory (ADR-009). Adds no tables. A decision writes a
+-- Two functions for the people who review shared memory (ADR-009; the reviewer also labels what they approve, QM-6a). Adds no tables. A decision writes a
 -- `promotion.decided` outbox event (counts only in the activity view, tracker item 6b).
 --   client_adapter_decide_promotion       an owner or admin who is not the requester approves or rejects a promotion
 --   client_adapter_revoke_shared_memory   an owner or admin withdraws a shared note: its text is erased and adapters are
@@ -13,11 +13,16 @@ alter table public.client_adapter_outbox drop constraint if exists client_adapte
 alter table public.client_adapter_outbox add constraint client_adapter_outbox_event_type_check
   check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided'));
 
+-- The reviewer now also labels what they approve (QM-6a), so the function has a fifth argument. The old four-argument
+-- form is removed so a call cannot be ambiguous and nobody can approve without a label.
+drop function if exists public.client_adapter_decide_promotion(uuid, text, text, text);
+
 create or replace function public.client_adapter_decide_promotion(
   p_promotion_id uuid,
   p_decision text,
   p_expected_content_sha256 text,
-  p_note text default null
+  p_note text default null,
+  p_sensitivity text default null
 )
 returns text
 language plpgsql
@@ -36,6 +41,13 @@ begin
   end if;
   if p_note is not null and length(p_note) > 2000 then
     raise exception 'adapter_promotion_bad_note';
+  end if;
+  -- Approving needs a label ("ordinary" or "sensitive"); anything that must not be shared is rejected instead.
+  if p_decision = 'approve' and (p_sensitivity is null or p_sensitivity not in ('ordinary', 'sensitive')) then
+    raise exception 'adapter_promotion_sensitivity_required';
+  end if;
+  if p_decision = 'reject' and p_sensitivity is not null then
+    raise exception 'adapter_promotion_sensitivity_unexpected';
   end if;
   select * into promo from public.client_adapter_memory_promotions where id = p_promotion_id for update;
   -- Unknown ids, other tenants' promotions and plain members all get the same answer, so nothing leaks.
@@ -58,11 +70,11 @@ begin
     end if;
     update public.client_adapter_memory_promotions
       set status = 'approved', reviewed_by = auth.uid(), reviewed_at = now(),
-          approved_content_sha256 = promo.content_sha256, decision_note = p_note
+          approved_content_sha256 = promo.content_sha256, decision_note = p_note, approved_sensitivity = p_sensitivity
       where id = promo.id;
     insert into public.client_adapter_outbox (tenant_slug, event_type, adapter_id, payload, causation_id)
     values (promo.tenant_slug, 'promotion.decided', promo.origin_adapter_id,
-            jsonb_build_object('promotion_id', promo.id, 'status', 'approved'), promo.id);
+            jsonb_build_object('promotion_id', promo.id, 'status', 'approved', 'sensitivity', p_sensitivity), promo.id);
     return 'approved';
   end if;
   update public.client_adapter_memory_promotions
@@ -110,7 +122,7 @@ begin
 end;
 $$;
 
-revoke all on function public.client_adapter_decide_promotion(uuid, text, text, text) from public, anon;
-grant execute on function public.client_adapter_decide_promotion(uuid, text, text, text) to authenticated;
+revoke all on function public.client_adapter_decide_promotion(uuid, text, text, text, text) from public, anon;
+grant execute on function public.client_adapter_decide_promotion(uuid, text, text, text, text) to authenticated;
 revoke all on function public.client_adapter_revoke_shared_memory(uuid, text) from public, anon;
 grant execute on function public.client_adapter_revoke_shared_memory(uuid, text) to authenticated;

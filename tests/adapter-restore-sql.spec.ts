@@ -76,7 +76,7 @@ async function seed(db: PGlite) {
     "insert into public.client_adapter_memory_promotions (tenant_slug, source_item_id, origin_adapter_id, content_sha256, requested_by, scan_result) values ('tenant-a',$1,'forge',$2,$3,$4::jsonb) returning id", [priv, sha("a shared fact"), USER.memberA, scan],
   )).rows[0].id;
   await asUser(db, USER.adminA);
-  await db.query("update public.client_adapter_memory_promotions set status='approved', reviewed_by=auth.uid(), reviewed_at=now(), approved_content_sha256=$2, decision_note='fine' where id=$1", [promo, sha("a shared fact")]);
+  await db.query("update public.client_adapter_memory_promotions set status='approved', reviewed_by=auth.uid(), reviewed_at=now(), approved_content_sha256=$2, decision_note='reviewed and fine to share', approved_sensitivity='sensitive' where id=$1", [promo, sha("a shared fact")]);
   await asService(db);
   const shared = (await db.query<{ id: string }>(
     "insert into public.client_adapter_memory_items (tenant_slug, namespace, origin_adapter_id, content, content_sha256, trust_level, promotion_id, idempotency_key) values ('tenant-a','shared','forge','a shared fact',$1,'reviewed',$2,'idem-key-2') returning id", [sha("a shared fact"), promo],
@@ -154,6 +154,10 @@ test("a tenant's adapter data survives a backup and restore with its original da
     const kept = (await db.query<{ action_canonical: string; action_hash: string }>("select action_canonical, action_hash from public.client_adapter_approvals")).rows[0];
     expect(sha(kept.action_canonical)).toBe(kept.action_hash); // what the reviewer saw came back with it, and still matches its fingerprint
     expect(JSON.parse(kept.action_canonical).payload).toEqual({ text: "post body" });
+    // the reviewer's label came back with the notes: the shared note and its promotion are "sensitive", the private note is unlabelled
+    const labels = (await db.query<{ namespace: string; sensitivity: string }>("select namespace, sensitivity from public.client_adapter_memory_items order by namespace")).rows;
+    expect(labels).toEqual([{ namespace: "adapter:forge", sensitivity: "unknown" }, { namespace: "shared", sensitivity: "sensitive" }]);
+    expect((await db.query<{ approved_sensitivity: string }>("select approved_sensitivity from public.client_adapter_memory_promotions")).rows).toEqual([{ approved_sensitivity: "sensitive" }]);
     // members can read the restored shared note straight away, so the read barrier and memberships came back too
     await asUser(db, USER.memberA);
     expect((await db.query<{ content: string }>("select content from public.client_adapter_memory_items")).rows).toEqual([{ content: "a shared fact" }]);

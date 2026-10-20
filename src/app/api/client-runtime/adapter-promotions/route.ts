@@ -23,7 +23,7 @@ export async function GET() {
 
   const promotions = await selectClientRecords("client_adapter_memory_promotions", {
     ...base,
-    select: "id,source_item_id,origin_adapter_id,content_sha256,status,scan_result,requested_by,reviewed_by,reviewed_at,decision_note,created_at",
+    select: "id,source_item_id,origin_adapter_id,content_sha256,status,scan_result,requested_by,reviewed_by,reviewed_at,decision_note,approved_sensitivity,created_at",
     order: "created_at.desc,id.asc",
     limit: String(LIMIT),
   });
@@ -47,7 +47,7 @@ export async function GET() {
       : none,
     selectClientRecords("client_adapter_memory_items", {
       ...base, namespace: "eq.shared", status: "eq.active", order: "created_at.desc,id.asc", limit: String(LIMIT),
-      select: "id,origin_adapter_id,content,content_sha256,promotion_id,created_at",
+      select: "id,origin_adapter_id,content,content_sha256,promotion_id,sensitivity,created_at",
     }),
   ]);
   if (![sources, provenance, alreadyShared, sharedNotes].every((r) => r.ok)) return adapterJsonError("unavailable", 502);

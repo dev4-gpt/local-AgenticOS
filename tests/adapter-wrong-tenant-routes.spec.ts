@@ -61,7 +61,7 @@ test("a request that names another tenant, anywhere, is still answered for the s
   await r.promotions.GET(new Request(url));
   await r.approvals.POST(post({ adapterId: "forge", kind: "publish", destination: "d", policyVersion: "p", payload: { a: 1 }, ...foreign }, url));
   await r.approvalDecision.POST(post({ decision: "approve", expectedActionHash: H("1"), ...foreign }, url), ctx());
-  await r.promotionDecision.POST(post({ decision: "approve", expectedContentSha256: H("1"), ...foreign }, url), ctx());
+  await r.promotionDecision.POST(post({ decision: "approve", expectedContentSha256: H("1"), sensitivity: "ordinary", ...foreign }, url), ctx());
   await r.revoke.POST(post({ reason: "A good reason", ...foreign }, url), ctx());
   // calls that carry a tenant carry the server's, and nothing anywhere carries the other one
   expect(r.calls.length + r.selects.length).toBeGreaterThanOrEqual(5);
@@ -87,7 +87,7 @@ test("an id from another tenant looks exactly like an id that does not exist, an
   on();
   const cases: [string, (r: ReturnType<typeof load>) => Promise<Response>, string][] = [
     ["approval decision", (r) => r.approvalDecision.POST(post({ decision: "approve", expectedActionHash: H("1") }), ctx()), "adapter_approval_not_found"],
-    ["promotion decision", (r) => r.promotionDecision.POST(post({ decision: "approve", expectedContentSha256: H("1") }), ctx()), "adapter_promotion_not_found"],
+    ["promotion decision", (r) => r.promotionDecision.POST(post({ decision: "approve", expectedContentSha256: H("1"), sensitivity: "ordinary" }), ctx()), "adapter_promotion_not_found"],
     ["withdrawal", (r) => r.revoke.POST(post({ reason: "A good reason" }), ctx()), "adapter_revoke_not_found"],
   ];
   for (const [name, call, message] of cases) {
@@ -108,7 +108,7 @@ test("a database error that names a tenant or a row is never echoed back", async
   const r = load({ ok: false, status: 400, value: leak });
   for (const res of [
     await r.approvalDecision.POST(post({ decision: "approve", expectedActionHash: H("1") }), ctx()),
-    await r.promotionDecision.POST(post({ decision: "approve", expectedContentSha256: H("1") }), ctx()),
+    await r.promotionDecision.POST(post({ decision: "approve", expectedContentSha256: H("1"), sensitivity: "ordinary" }), ctx()),
     await r.revoke.POST(post({ reason: "A good reason" }), ctx()),
     await r.adapters.GET(),
   ]) {

@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
 import {
-  buildPromotionCards, buildSharedNoteCards, parsePromotionsResponse, promotionErrorMessage, reasonIsEnough,
-  revokeReasonIsEnough, waitingPromotionCount, REVOKE_REASON_MAX_CHARS,
-  type ParsedPromotions, type PromotionCard, type SharedNoteCard, type Tone,
+  buildPromotionCards, buildSharedNoteCards, canSubmitApproval, minNoteChars, parsePromotionsResponse, promotionErrorMessage,
+  revokeReasonIsEnough, waitingPromotionCount, LABEL_CHOICES, REVOKE_REASON_MAX_CHARS,
+  type ApprovableLabel, type ParsedPromotions, type PromotionCard, type SharedNoteCard, type Tone,
 } from "@/lib/adapterPromotionsView";
 
 type LoadState = "loading" | "ready" | "disabled" | "signed-out" | "unavailable";
@@ -23,6 +23,7 @@ export default function PromotionsView() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [labels, setLabels] = useState<Record<string, ApprovableLabel | undefined>>({});
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<Notice>(null);
@@ -63,8 +64,9 @@ export default function PromotionsView() {
   const decide = (card: PromotionCard, decision: "approve" | "reject") => {
     const note = (notes[card.id] ?? "").trim();
     // Approving repeats the content fingerprint that was shown, so the database can refuse it if the note changed.
+    // It also carries the label the reviewer chose; a rejection carries none.
     return send(`/api/client-runtime/adapter-promotions/${card.id}/decision`,
-      decision === "approve" ? { decision, expectedContentSha256: card.contentHash, note } : { decision, note },
+      decision === "approve" ? { decision, expectedContentSha256: card.contentHash, note, sensitivity: labels[card.id] } : { decision, note },
       decision === "approve" ? "Approved. The host can now share this note." : "Rejected. Nothing will be shared.", card.id);
   };
   const revoke = (note: SharedNoteCard) => send(`/api/client-runtime/adapter-memory/${note.id}/revoke`, { reason: (reasons[note.id] ?? "").trim() }, "Withdrawn. The text is erased and adapters are told to drop it.", note.id);
@@ -101,7 +103,7 @@ export default function PromotionsView() {
         {waiting === 0 ? "Nothing is waiting for review." : `${waiting} ${waiting === 1 ? "note is" : "notes are"} waiting for review.`}
       </p>
       <ul className="mt-3 grid gap-4" aria-label="Notes waiting for review">
-        {open.map((card) => <li key={card.id}><Waiting card={card} note={notes[card.id] ?? ""} busy={busyId === card.id} anyBusy={busyId !== null} confirming={confirmingId === card.id}
+        {open.map((card) => <li key={card.id}><Waiting card={card} note={notes[card.id] ?? ""} label={labels[card.id] ?? null} onLabel={(value) => setLabels((m) => ({ ...m, [card.id]: value }))} busy={busyId === card.id} anyBusy={busyId !== null} confirming={confirmingId === card.id}
           onNote={(text) => setNotes((m) => ({ ...m, [card.id]: text }))} onAskApprove={() => setConfirmingId(card.id)} onCancel={() => setConfirmingId(null)} onDecide={(d) => void decide(card, d)} /></li>)}
       </ul>
 
@@ -109,7 +111,7 @@ export default function PromotionsView() {
         <h2 id="decided-heading" className="text-[15px] font-semibold" style={{ color: "var(--cream)" }}>Already decided</h2>
         <ul className="mt-2 grid gap-2">
           {decided.map((card) => <li key={card.id} className="panel p-3 text-[11px]" style={{ color: "var(--cream-dim)" }}>
-            <span className="font-semibold" style={{ color: TONE_COLOR[card.tone] }}>{card.statusLabel}</span> · <span className="font-mono">{card.adapterId}</span> · requested by {card.requestedByLabel}{card.reviewedByLabel ? ` · decided by ${card.reviewedByLabel}` : ""}
+            <span className="font-semibold" style={{ color: TONE_COLOR[card.tone] }}>{card.statusLabel}</span>{card.labelTitle ? <span> · labelled {card.labelTitle.toLowerCase()}</span> : null} · <span className="font-mono">{card.adapterId}</span> · requested by {card.requestedByLabel}{card.reviewedByLabel ? ` · decided by ${card.reviewedByLabel}` : ""}
             {card.decisionNote ? <span> · “{card.decisionNote}”</span> : null}
             {card.content ? <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px]" style={{ color: "var(--cream-mute)" }}>{card.content}</pre> : null}
           </li>)}
@@ -121,7 +123,7 @@ export default function PromotionsView() {
         <p className="mt-1 text-[11px]" style={{ color: "var(--cream-mute)" }}>What every adapter can read now. If one is wrong or unsafe, withdraw it: the text is erased for good and adapters are told to drop their copies. A copy an adapter already keeps in its own store is outside this guarantee.</p>
         {sharedCards.length === 0 ? <p className="panel mt-3 p-3 text-[12px]" style={{ color: "var(--cream-mute)" }}>No notes are shared yet.</p> : <ul className="mt-3 grid gap-3" aria-label="Shared notes">
           {sharedCards.map((note) => <li key={note.id} className="panel p-3">
-            <p className="text-[11px]" style={{ color: "var(--cream-mute)" }}><span className="font-mono">{note.adapterId}</span> · fingerprint <span className="font-mono">{note.shortHash}…</span></p>
+            <p className="text-[11px]" style={{ color: "var(--cream-mute)" }}><span className="font-mono">{note.adapterId}</span> · <span style={{ color: note.sensitivity === "ordinary" ? GOOD : "#fbbf24" }}>{note.sensitivityTitle}</span> · fingerprint <span className="font-mono">{note.shortHash}…</span></p>
             <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px]" style={{ color: "var(--cream)" }} tabIndex={0}>{note.content}</pre>
             {note.hiddenCharacterCount > 0 && <p className="mt-1 text-[10px]" style={{ color: "#fbbf24" }}><ShieldAlert size={11} className="mr-1 inline" aria-hidden="true" />{note.hiddenCharacterCount} invisible character(s) are shown in square brackets.</p>}
             {note.canRevoke && (revokingId === note.id
@@ -141,12 +143,13 @@ export default function PromotionsView() {
   </div>;
 }
 
-function Waiting({ card, note, busy, anyBusy, confirming, onNote, onAskApprove, onCancel, onDecide }: {
-  card: PromotionCard; note: string; busy: boolean; anyBusy: boolean; confirming: boolean;
+function Waiting({ card, note, label, onLabel, busy, anyBusy, confirming, onNote, onAskApprove, onCancel, onDecide }: {
+  card: PromotionCard; note: string; label: ApprovableLabel | null; onLabel: (value: ApprovableLabel) => void; busy: boolean; anyBusy: boolean; confirming: boolean;
   onNote: (text: string) => void; onAskApprove: () => void; onCancel: () => void; onDecide: (decision: "approve" | "reject") => void;
 }) {
   const verdictColor = card.verdict ? VERDICT_COLOR[card.verdict] : "#fda4af";
-  const enough = reasonIsEnough(card, note);
+  const enough = canSubmitApproval(card, note, label);
+  const minChars = minNoteChars(card, label);
   return <article className="panel p-4" aria-labelledby={`promotion-${card.id}`}>
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
@@ -186,9 +189,20 @@ function Waiting({ card, note, busy, anyBusy, confirming, onNote, onAskApprove, 
 
     {card.blockedReason && <p className="mt-3 text-[11px]" style={{ color: "var(--cream-dim)" }}><ShieldCheck size={12} className="mr-1 inline" aria-hidden="true" />{card.blockedReason}</p>}
 
+    {card.canApprove && <fieldset className="mt-3 rounded-md border p-3" style={lineBorder}>
+      <legend className="px-1 text-[11px] font-semibold" style={{ color: "var(--cream)" }}>How sensitive is this note? (required to approve)</legend>
+      <div className="grid gap-2">
+        {LABEL_CHOICES.map((choice) => <label key={choice.value} className="flex items-start gap-2 text-[11px]" style={{ color: "var(--cream-dim)" }}>
+          <input type="radio" name={`label-${card.id}`} value={choice.value} checked={label === choice.value} onChange={() => onLabel(choice.value)} className="mt-0.5" />
+          <span><span className="font-semibold" style={{ color: "var(--cream)" }}>{choice.title}</span> · {choice.help}</span>
+        </label>)}
+      </div>
+      <p className="mt-2 text-[10px]" style={{ color: "var(--cream-mute)" }}>If this note must never be shared with other adapters, do not label it: reject it.</p>
+    </fieldset>}
+
     {(card.canApprove || card.canReject) && <div className="mt-3">
       <label className="block text-[11px]" style={{ color: "var(--cream)" }} htmlFor={`note-${card.id}`}>
-        {card.noteMinChars > 0 ? `Your reason (required, at least ${card.noteMinChars} characters)` : "Your reason (optional)"}
+        {minChars > 0 ? `Your reason (required to approve, at least ${minChars} characters)` : "Your reason (optional)"}
       </label>
       <textarea id={`note-${card.id}`} value={note} onChange={(e) => onNote(e.target.value)} rows={2} maxLength={2000} className="mt-1 w-full rounded-md border bg-transparent p-2 text-[11px]" style={{ ...lineBorder, color: "var(--cream)" }} />
       {!confirming && <div className="mt-2 flex flex-wrap gap-2">

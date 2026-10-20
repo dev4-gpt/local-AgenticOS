@@ -140,3 +140,67 @@ test("messages for refusals are plain, and unknown errors never leak", () => {
   expect(generic).toBe("That could not be recorded. Nothing was changed.");
   expect(view.promotionErrorMessage(undefined)).toBe(generic);
 });
+
+// QM-6a: the reviewer chooses a label when approving.
+const guard = loadReviewModule("src/lib/adapterMemoryGuard.ts", {});
+
+test("the labels on screen are the labels the server accepts, and the sensitive reason length is the same on both sides", () => {
+  expect(view.LABEL_CHOICES.map((c: { value: string }) => c.value)).toEqual(guard.APPROVABLE_SENSITIVITIES);
+  expect(view.SENSITIVE_NOTE_MIN_CHARS).toBe(guard.SENSITIVE_NOTE_MIN_CHARS);
+  for (const choice of view.LABEL_CHOICES) {
+    expect(choice.title.length).toBeGreaterThan(0);
+    expect(choice.help.length).toBeGreaterThan(10);
+  }
+  expect(view.LABEL_CHOICES.find((c: { value: string }) => c.value === "sensitive").help).toContain("20");
+});
+
+test("approving needs a label, and a sensitive label or a flagged scan each need a written reason of 20 characters", () => {
+  const [clean] = cardsFor([promo()]);
+  const [flagged] = cardsFor([promo({ scan_result: scan("flagged", NOTE, [{ rule: "markdown_image", severity: "medium", count: 1, sample: "x" }]) })]);
+  const long = "x".repeat(20);
+  const short = "x".repeat(19);
+  expect(view.minNoteChars(clean, "ordinary")).toBe(0);
+  expect(view.minNoteChars(clean, "sensitive")).toBe(20);
+  expect(view.minNoteChars(clean, null)).toBe(0);
+  expect(view.minNoteChars(flagged, "ordinary")).toBe(20);
+  expect(view.minNoteChars(flagged, "sensitive")).toBe(20);
+  // no label, no approval, whatever the reason says
+  for (const label of [null, undefined, "restricted", "unknown", "", "ORDINARY", "public"]) expect(view.canSubmitApproval(clean, long, label), String(label)).toBe(false);
+  expect(view.canSubmitApproval(clean, "", "ordinary")).toBe(true);
+  expect(view.canSubmitApproval(clean, short, "sensitive")).toBe(false);
+  expect(view.canSubmitApproval(clean, `  ${long}  `, "sensitive")).toBe(true);
+  expect(view.canSubmitApproval(clean, `  ${short}   `, "sensitive")).toBe(false); // padding does not count
+  expect(view.canSubmitApproval(flagged, short, "ordinary")).toBe(false);
+  expect(view.canSubmitApproval(flagged, long, "ordinary")).toBe(true);
+  // a card that cannot be approved at all cannot be submitted, label or not
+  const [blocked] = cardsFor([promo({ scan_result: scan("blocked") })]);
+  const [own] = cardsFor([promo({ requested_by: ME })]);
+  expect(view.canSubmitApproval(blocked, long, "ordinary")).toBe(false);
+  expect(view.canSubmitApproval(own, long, "ordinary")).toBe(false);
+});
+
+test("a decided promotion shows the label it was given, and shared notes show theirs, with unlabelled ones never passing for ordinary", () => {
+  const [approved] = cardsFor([promo({ status: "approved", reviewed_by: OTHER, reviewed_at: "2026-10-20T11:00:00Z", approved_sensitivity: "sensitive" })]);
+  expect(approved.labelTitle).toBe("Sensitive");
+  const [rejected] = cardsFor([promo({ status: "rejected", reviewed_by: OTHER, reviewed_at: "2026-10-20T11:00:00Z" })]);
+  expect(rejected.labelTitle).toBeNull();
+  const shared = (sensitivity?: string) => ({ id: id(5), origin_adapter_id: "forge", content: NOTE, content_sha256: sha(NOTE), promotion_id: id(1), created_at: "2026-10-20T10:00:00Z", ...(sensitivity === undefined ? {} : { sensitivity }) });
+  const cards = view.buildSharedNoteCards(view.parsePromotionsResponse(body([], { sharedNotes: [shared("ordinary"), { ...shared("sensitive"), id: id(6) }, { ...shared(), id: id(7) }, { ...shared("restricted"), id: id(8) }] })));
+  const titles = Object.fromEntries(cards.map((c: { id: string; sensitivityTitle: string }) => [c.id, c.sensitivityTitle]));
+  expect(titles).toEqual({ [id(5)]: "Ordinary", [id(6)]: "Sensitive", [id(7)]: "Not labelled", [id(8)]: "Restricted" });
+});
+
+test("an answer with an unknown label is rejected instead of shown", () => {
+  expect(view.parsePromotionsResponse(body([promo({ approved_sensitivity: "restricted" })]))).toBeNull();
+  expect(view.parsePromotionsResponse(body([promo({ approved_sensitivity: "ORDINARY" })]))).toBeNull();
+  expect(view.parsePromotionsResponse(body([promo({ approved_sensitivity: 5 })]))).toBeNull();
+  expect(view.parsePromotionsResponse(body([promo({ approved_sensitivity: "ordinary" })]))).not.toBeNull();
+  const badShared = { id: id(5), origin_adapter_id: "forge", content: NOTE, content_sha256: sha(NOTE), promotion_id: id(1), created_at: "2026-10-20T10:00:00Z", sensitivity: "public" };
+  expect(view.parsePromotionsResponse(body([], { sharedNotes: [badShared] }))).toBeNull();
+});
+
+test("the label errors have plain words", () => {
+  expect(view.promotionErrorMessage("sensitivity_required")).toMatch(/ordinary or sensitive/);
+  expect(view.promotionErrorMessage("sensitivity_required")).toMatch(/reject/);
+  expect(view.promotionErrorMessage("note_required")).toMatch(/flagged or sensitive/);
+});

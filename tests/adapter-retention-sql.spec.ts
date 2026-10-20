@@ -104,7 +104,7 @@ async function addSharedChain(db: PGlite, adapter: string, content: string, key:
   );
   const promotionId = promo.rows[0].id;
   await asUser(db, USER.adminA);
-  await db.query("update public.client_adapter_memory_promotions set status='approved', reviewed_by=auth.uid(), reviewed_at=now(), approved_content_sha256=$2, decision_note='looked fine' where id=$1", [promotionId, sha(content)]);
+  await db.query("update public.client_adapter_memory_promotions set status='approved', reviewed_by=auth.uid(), reviewed_at=now(), approved_content_sha256=$2, decision_note='looked fine', approved_sensitivity='ordinary' where id=$1", [promotionId, sha(content)]);
   await asService(db);
   const shared = await db.query<{ id: string }>(
     "insert into public.client_adapter_memory_items (tenant_slug, namespace, origin_adapter_id, content, content_sha256, trust_level, promotion_id, idempotency_key) values ('tenant-a','shared',$1,$2,$3,'reviewed',$4,$5) returning id",
