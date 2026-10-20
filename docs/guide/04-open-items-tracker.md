@@ -117,6 +117,22 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 
 ---
 
+## QM harness adapter (ADR-011, outside the numbered phases)
+
+QM (`yc-software/qm`, MIT) as a multi-agent harness behind the host's `h1` contract, run as a separate service. Analysis and spike: 2026-10-20. The adapter is built `disabled` and stays out of the client edition until metering and retention exist.
+
+- [x] Shim `services/qm-adapter/` (manifest, health, `task.run/get/cancel`) with host-token checks, single-use token ids, tenant from configuration, bounded input, safe retries, no QM text in errors. 16 tests; 17 mutations each fail a test; run once against a real local QM (mock harness): health, run, read-back and cancel all worked
+- [ ] QM-1. Staging spike with a real model key: confirm how QM reports an aborted run (the mapping is a guess), the Docker sandbox, Postgres mode, and that the reply carries no prompt or environment text
+- [ ] QM-2. Metering gateway: QM's model calls reserve and settle against the host budget (nothing enforces `budgetMaxMicros` today)
+- [ ] QM-3. Retention (blocks the client edition): about 70 QM tables, several holding raw prompts, tool calls, session history, files and memory revisions. One database per client, every table classified, a purge job, verifier coverage
+- [ ] QM-4. Route QM memory to the host through its external memory-provider hook; only then add `memory.propose` and `memory.tombstone` to the manifest
+- [ ] QM-5. Replace the in-memory token-id and idempotency stores with the host's `client_adapter_consume_token` and a durable key store (they are lost on restart)
+- [ ] QM-6. Borrow three designs into the host itself: memory sensitivity labels, command policy mapped to the approval gateway, and the single background-owner record (informs 9b)
+- [ ] QM-7. Security review of QM itself before any client data: auth broker, credential broker, egress proxy, sandbox isolation, prompt-injection posture for unattended work
+- [ ] QM-8. Check the licences of its dependencies `@earendil-works/pi-ai` (vendored and patched) and `@earendil-works/pi-coding-agent`; do not describe QM as built by Y Combinator in client paperwork (the repo does not say so)
+
+---
+
 ## Phase 2: Creator OS adapter
 
 - [ ] Manifest, `task.run/get/cancel`, `events`, `memory.propose`, `memory.tombstone` routes in the ContractorOS service (X-1, CRITICAL). It serves only 4 read-only routes today
