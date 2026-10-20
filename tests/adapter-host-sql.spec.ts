@@ -350,3 +350,80 @@ test("outbox: unique event ids, bounded payloads, acknowledgement only after del
     await db.close();
   }
 });
+
+// Added by the Phase 1 mutation sweep (item 16): rules that could be removed without any test failing.
+test("the restore context is honoured only for the service role, with well-formed settings for that table and tenant", async () => {
+  const db = await freshDb();
+  try {
+    const ctx = (table = "client_adapter_memory_items", tenant = "tenant-a") => JSON.stringify({ table, tenant });
+    const check = async (role: string, setting: string) => {
+      await db.exec("reset role");
+      await db.query("select set_config('app.client_lifecycle_restore',$1,false)", [setting]);
+      if (role) await db.exec(`set role ${role}`);
+      const r = await db.query<{ v: boolean | null }>("select public.client_adapter_restoring('client_adapter_memory_items','tenant-a') as v");
+      return r.rows[0].v;
+    };
+    expect(await check("service_role", ctx())).toBe(true);
+    // Anyone can put a value in that setting for their own session; only the service role may act on it.
+    expect(await check("", ctx())).toBe(false);
+    expect(await check("service_role", "")).toBe(false);
+    expect(await check("service_role", "not json")).toBe(false);
+    expect(await check("service_role", ctx("client_adapter_memory_promotions"))).toBe(false);
+    expect(await check("service_role", ctx("client_adapter_memory_items", "tenant-b"))).toBe(false);
+  } finally {
+    await db.close();
+  }
+});
+
+test("stored memory: identity and hash cannot change, and superseded memory stays superseded", async () => {
+  const db = await freshDb();
+  try {
+    await register(db, USER.ownerA, "tenant-a", "knowledge");
+    const item = await addPrivate(db, "knowledge", "A private working note.", H("1"), "idem-private-1");
+    await asService(db);
+    await expect(db.query("update public.client_adapter_memory_items set idempotency_key='idem-changed-1' where id=$1", [item])).rejects.toThrow(/identity and content hash are immutable/);
+    await expect(db.query("update public.client_adapter_memory_items set content_sha256=$2 where id=$1", [item, H("2")])).rejects.toThrow(/identity and content hash are immutable/);
+    await db.query("update public.client_adapter_memory_items set status='superseded' where id=$1", [item]);
+    await expect(db.query("update public.client_adapter_memory_items set status='active' where id=$1", [item])).rejects.toThrow(/superseded memory cannot become active again/);
+  } finally {
+    await db.close();
+  }
+});
+
+test("promotions: identity cannot change, and a promotion with no usable scan cannot be approved", async () => {
+  const db = await freshDb();
+  try {
+    await register(db, USER.ownerA, "tenant-a", "knowledge");
+    const first = await addPrivate(db, "knowledge", "A note to promote.", H("1"), "idem-private-1");
+    const second = await addPrivate(db, "knowledge", "A note from before scanning existed.", H("2"), "idem-private-2");
+    const promo = await propose(db, first, "knowledge", H("1"), USER.memberA);
+    await asService(db);
+    await expect(db.query("update public.client_adapter_memory_promotions set requested_by=$2 where id=$1", [promo, USER.adminA])).rejects.toThrow(/promotion identity is immutable/);
+    await expect(db.query("update public.client_adapter_memory_promotions set content_sha256=$2 where id=$1", [promo, H("9")])).rejects.toThrow(/promotion identity is immutable/);
+
+    // A promotion made before scans existed has no verdict. The insert guard is switched off only to create that old row.
+    await asOwner(db);
+    await db.exec("alter table public.client_adapter_memory_promotions disable trigger user");
+    const legacy = await db.query<{ id: string }>(
+      "insert into public.client_adapter_memory_promotions (tenant_slug, source_item_id, origin_adapter_id, content_sha256, requested_by, scan_result) values ('tenant-a',$1,'knowledge',$2,$3,'{}'::jsonb) returning id",
+      [second, H("2"), USER.memberA],
+    );
+    await db.exec("alter table public.client_adapter_memory_promotions enable trigger user");
+    await expect(decide(db, USER.ownerA, legacy.rows[0].id, H("2"))).rejects.toThrow(/adapter_promotion_scan_required/);
+  } finally {
+    await db.close();
+  }
+});
+
+test("approvals: the decision fields cannot be edited while the status stays the same", async () => {
+  const db = await freshDb();
+  try {
+    await register(db, USER.ownerA, "tenant-a", "knowledge");
+    const id = await requestApproval(db, USER.memberA, H("1"));
+    await asService(db);
+    await expect(db.query("update public.client_adapter_approvals set decided_by=$2 where id=$1", [id, USER.ownerA])).rejects.toThrow(/decision fields change only with a status transition/);
+    await expect(db.query("update public.client_adapter_approvals set approved_action_hash=$2 where id=$1", [id, H("1")])).rejects.toThrow(/decision fields change only with a status transition/);
+  } finally {
+    await db.close();
+  }
+});

@@ -171,3 +171,13 @@ test("several facts are rendered within a total limit, and skipped ones are coun
   expect(result.text.length).toBeLessThanOrEqual(12_000);
   expect(guard.renderSharedFacts([]).text).toBe("");
 });
+
+// Added by the Phase 1 mutation sweep (item 16): the label mapping for refusals.
+test("promotion refusals map to stable codes; a bare 401 or 403 is not_allowed and anything else is unavailable", () => {
+  const from = (status: number, value: unknown) => guard.promotionErrorFrom({ status, value });
+  expect(from(401, {})).toBe("not_allowed");
+  expect(from(403, null)).toBe("not_allowed");
+  expect(from(500, { message: "relation secret_table does not exist" })).toBe("unavailable");
+  expect(from(200, "text")).toBe("unavailable");
+  expect(from(400, { message: "adapter_promotion_blocked" })).not.toBe("unavailable");
+});

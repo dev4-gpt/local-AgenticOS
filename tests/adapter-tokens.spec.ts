@@ -165,3 +165,20 @@ test("a correctly signed token with malformed handles is refused as malformed", 
     expect(verify(`${body}.${sig}`, publicKey, { requestedItemIds: [H1] })).toEqual({ ok: false, reason: "malformed" });
   }
 });
+
+// Added by the Phase 1 mutation sweep (item 16): a correctly signed token with a wrongly shaped scope.
+test("a signed token whose scope is not a list of operation names is refused as malformed", () => {
+  const { privateKey, publicKey } = pair();
+  const { claims } = mint(privateKey);
+  for (const scope of ["task.run", [1, 2], { 0: "task.run" }, null]) {
+    const body = Buffer.from(JSON.stringify({ ...claims, scope })).toString("base64url");
+    const sig = sign(null, Buffer.from(body, "utf8"), privateKey).toString("base64url");
+    expect(verify(`${body}.${sig}`, publicKey), JSON.stringify(scope)).toEqual({ ok: false, reason: "malformed" });
+  }
+  // Non-object payloads and non-string identity fields never verify either.
+  for (const payload of [[], "x", 5, { ...claims, aud: 7 }, { ...claims, tenant: null }]) {
+    const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+    const sig = sign(null, Buffer.from(body, "utf8"), privateKey).toString("base64url");
+    expect(verify(`${body}.${sig}`, publicKey).ok, JSON.stringify(payload)).toBe(false);
+  }
+});

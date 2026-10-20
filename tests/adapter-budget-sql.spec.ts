@@ -299,3 +299,54 @@ test("the summary shows each adapter's cap, period spend, month spend and open r
     await db.close();
   }
 });
+
+// Added by the Phase 1 mutation sweep (item 16): settle and release refusals that no test reached.
+const rawWorker = async (db: PGlite, sql: string, params: unknown[]) => {
+  await db.exec("reset role; set role anon");
+  return (await db.query<{ s: string }>(sql, params)).rows[0].s;
+};
+
+test("settle and release refuse a bad token or bad values and change nothing", async () => {
+  const db = await freshDb();
+  try {
+    expect(await reserve(db, { task: "task-1", amount: 500 })).toBe("reserved");
+    const bad = "wrong-token-wrong-token-wrong-token";
+    const settleSql = "select public.client_adapter_budget_settle($1,$2,$3,$4,$5,$6) as s";
+    const releaseSql = "select public.client_adapter_budget_release($1,$2,$3,$4,$5) as s";
+    expect(await rawWorker(db, settleSql, ["tenant-a", bad, "forge", "task-1", "settle-key-bad", 100])).toBe("refused");
+    expect(await rawWorker(db, settleSql, ["tenant-a", WORKER, "forge", "task-1", "settle-key-neg", -1])).toBe("refused");
+    expect(await rawWorker(db, settleSql, ["tenant-a", WORKER, "forge", "task-1", "short", 100])).toBe("refused");
+    expect(await rawWorker(db, settleSql, ["tenant-a", WORKER, "Bad Adapter", "task-1", "settle-key-adp", 100])).toBe("refused");
+    expect(await rawWorker(db, releaseSql, ["tenant-a", bad, "forge", "task-1", "release-key-bad"])).toBe("refused");
+    expect(await rawWorker(db, releaseSql, ["tenant-a", WORKER, "forge", "task-1", "short"])).toBe("refused");
+    expect(await rawWorker(db, releaseSql, ["tenant-a", WORKER, "Bad Adapter", "task-1", "release-key-adp"])).toBe("refused");
+    expect(await ledger(db)).toEqual([500]); // nothing moved
+  } finally {
+    await db.close();
+  }
+});
+
+test("settle and release answer not_found for an unknown task or a reservation whose ledger row has gone, and release rejects a key used for something else", async () => {
+  const db = await freshDb();
+  try {
+    expect(await settle(db, "never-reserved", 1)).toBe("not_found");
+    expect(await release(db, "never-reserved")).toBe("not_found");
+
+    expect(await reserve(db, { task: "task-1", amount: 500 })).toBe("reserved");
+    expect(await reserve(db, { task: "task-2", amount: 300 })).toBe("reserved");
+    expect(await reserve(db, { task: "task-3", amount: 200 })).toBe("reserved");
+    // Remove the central ledger rows of task-2 and task-3 as the database owner.
+    await db.exec("reset role");
+    await db.exec("delete from public.client_runtime_budget_ledger where usage_metadata ->> 'task_id' in ('task-2', 'task-3')");
+    expect(await settle(db, "task-2", 1)).toBe("not_found");
+    expect(await release(db, "task-3")).toBe("not_found");
+
+    // A key already used to settle task-1 cannot be reused to release another task.
+    expect(await settle(db, "task-1", 100, "shared-key-0001")).toBe("settled");
+    expect(await reserve(db, { task: "task-4", amount: 50 })).toBe("reserved");
+    expect(await release(db, "task-4", "shared-key-0001")).toBe("key_conflict");
+    expect(await release(db, "task-4")).toBe("released");
+  } finally {
+    await db.close();
+  }
+});

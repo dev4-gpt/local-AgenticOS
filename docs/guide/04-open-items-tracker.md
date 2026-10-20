@@ -13,7 +13,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 | Phase | Name | Status |
 |---|---|---|
 | 0 | Hygiene | Mine done; yours open |
-| 1 | Host foundation | Items 1-5, 7, 8, 10, 12, 14 and 15 done; 6a done (6b open); 9, 11, 13 and 16 open |
+| 1 | Host foundation | Items 1-5, 7, 8, 10, 12, 14, 15 and 16 done; 6a done (6b open); 9b, 11 and 13 open (all three need your decision) |
 | 2 | Creator OS adapter | Not started |
 | 3 | Knowledge adapter | Not started (dedupe tools exist) |
 | 4 | Forge adapter | Not started |
@@ -112,7 +112,8 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
   - [ ] 15g. Approving only marks the request approved. Something has to execute it: no adapter calls the worker's execute step yet
   - [ ] 15c. No notification tells a second person a request is waiting; they must open the page
   - [ ] 15d. Requests are created by host code; there is no form to create one from the UI
-- [ ] **16. Mutation check on Phase 1 tests (Me).** Remove each rule and confirm a test fails (master plan principle 5)
+- [x] **16. Mutation check on Phase 1 tests (Me), done locally on `feat/approval-gateway`.** `npm run verify:phase1-mutations` (`scripts/phase1-mutation-sweep.mjs`) removes one rule at a time from the six adapter SQL files and seven libraries (180 mutations) and requires an owning spec to fail; it restores every file, also on a crash, and refuses to run on uncommitted target files. First run: 144 caught, 36 survived. Of those, 28 were real missing tests (including the restore-context role check, the 28-day retention cap, memory and promotion immutability, 6 settle/release refusals, the `null` hash rule, a string token scope) and now have tests; 8 are recorded as explained duplicates with a reason each (`EQUIVALENT` in the script, guarded by a spec so a stale entry fails). Second run: 172 caught, 8 explained, 0 survived, files restored. The sweep takes about 35 minutes and is not part of `test:focused`; re-run it after changing any rule
+  - [ ] 16a. Pre-existing lint findings in `tests/adapter-retention-sql.spec.ts` (two `any` types, one unused `asAnon`), not from this work
 
 ---
 

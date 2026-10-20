@@ -407,3 +407,70 @@ test("the old request signature without the text is gone", async () => {
     await db.close();
   }
 });
+
+// Added by the Phase 1 mutation sweep (item 16): rules that could be removed without any test failing.
+const requestAction = (db: PGlite, o: { adapter?: string; kind: string; tag?: string; tenant?: string }) => {
+  const canonical = JSON.stringify({ adapterId: o.adapter ?? "forge", destination: "d", kind: o.kind, payload: { tag: o.tag ?? "x" }, policyVersion: "p", v: "approval-action-h1" });
+  return db.query("select public.client_adapter_request_approval($1,$2,$3,$4,$5,'d','p',3600)", [o.tenant ?? "tenant-a", o.adapter ?? "forge", o.kind, sha(canonical), canonical]);
+};
+
+test("request rules: unknown kinds are refused by name, and each kind needs the adapter in the right state", async () => {
+  const db = await freshDb();
+  try {
+    await setup(db, "publish", "enabled");
+    await asUser(db, USER.memberA);
+    await expect(requestAction(db, { kind: "delete" })).rejects.toThrow(/adapter_approval_bad_kind/);
+    await requestAction(db, { kind: "publish" });
+    await requestAction(db, { kind: "promote" });
+    // Enabling an adapter that is already enabled makes no sense.
+    await expect(requestAction(db, { kind: "enable-adapter" })).rejects.toThrow(/adapter_not_ready/);
+    await asOwner(db);
+    await db.exec("update public.client_adapter_registry set state = 'disabled' where adapter_id = 'forge'");
+    await asUser(db, USER.memberA);
+    // A disabled adapter can be asked to be enabled, but nothing can be published or promoted through it.
+    await requestAction(db, { kind: "enable-adapter" });
+    await expect(requestAction(db, { kind: "promote", tag: "y" })).rejects.toThrow(/adapter_not_ready/);
+    await expect(requestAction(db, { kind: "publish", tag: "y" })).rejects.toThrow(/adapter_not_ready/);
+  } finally {
+    await db.close();
+  }
+});
+
+test("at most 50 open requests per tenant; the 51st is refused until one is no longer open", async () => {
+  const db = await freshDb();
+  try {
+    await setup(db, "publish", "enabled");
+    await asOwner(db);
+    await db.query(
+      `insert into public.client_adapter_approvals (tenant_slug, adapter_id, action_kind, action_hash, destination, policy_version, requested_by, expires_at)
+       select 'tenant-a','forge','publish', md5(i::text) || md5((i + 1000)::text), 'd', 'p', $1, now() + interval '1 hour' from generate_series(1, 50) i`,
+      [USER.memberA],
+    );
+    await asUser(db, USER.memberA);
+    await expect(requestAction(db, { kind: "publish", tag: "fifty-one" })).rejects.toThrow(/adapter_approval_too_many_open/);
+    await asOwner(db);
+    await db.exec("update public.client_adapter_approvals set status = 'rejected', decided_by = '" + USER.ownerA + "', decided_at = now() where id = (select id from public.client_adapter_approvals limit 1)");
+    await asUser(db, USER.memberA);
+    await requestAction(db, { kind: "publish", tag: "fifty-one" });
+  } finally {
+    await db.close();
+  }
+});
+
+test("a decision must be exactly approve or reject", async () => {
+  const db = await freshDb();
+  try {
+    await setup(db);
+    const id = await request(db, USER.memberA);
+    for (const bad of ["banana", "APPROVE", ""]) {
+      await asUser(db, USER.adminA);
+      await expect(db.query("select public.client_adapter_decide_approval($1,$2,$3)", [id, bad, HASH("1")])).rejects.toThrow(/adapter_approval_bad_decision/);
+    }
+    await asUser(db, USER.adminA);
+    await expect(db.query("select public.client_adapter_decide_approval($1,null,$2)", [id, HASH("1")])).rejects.toThrow(/adapter_approval_bad_decision/);
+    await asOwner(db);
+    expect((await db.query<{ status: string }>("select status from public.client_adapter_approvals where id = $1", [id])).rows[0].status).toBe("pending");
+  } finally {
+    await db.close();
+  }
+});

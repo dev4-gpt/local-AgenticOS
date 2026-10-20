@@ -126,3 +126,12 @@ test("a failed or malformed database answer is an error, not a screen of guesses
   expect(invalid.status).toBe(502);
   expect(await invalid.json()).toEqual({ ok: false, error: "adapters_read_invalid" });
 });
+
+// Added by the Phase 1 mutation sweep (item 16): the breakdown refuses a total that cannot be added exactly.
+test("a budget breakdown is refused when the adapter spending cannot be summed exactly", () => {
+  const big = Number.MAX_SAFE_INTEGER;
+  const rows = overview.parseSummaryRows([row({ spent_month_micros: big, spent_period_micros: 0 }), row({ adapter_id: "knowledge", display_name: "Knowledge", spent_month_micros: big, spent_period_micros: 0 })]);
+  expect(rows).toHaveLength(2);
+  expect(overview.buildBudgetBreakdown(rows, { capMicros: big, spentMicros: big })).toBeNull();
+  expect(overview.buildBudgetBreakdown(rows.slice(0, 1), { capMicros: big, spentMicros: big })).not.toBeNull();
+});

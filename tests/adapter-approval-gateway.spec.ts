@@ -198,3 +198,34 @@ test("list route returns approvals with no-store caching, the stored text, who i
   const member = await (await loadRoutes({ canDecide: false }).list.GET()).json();
   expect(member).toMatchObject({ ok: true, viewerId: "u1", canDecide: false });
 });
+
+// Added by the Phase 1 mutation sweep (item 16): rules that no test reached.
+test("null is part of the hashed action: it serialises as null, keeps its key, and differs from a missing key", () => {
+  expect(gateway.canonicalJson(null)).toBe("null");
+  expect(gateway.canonicalJson({ b: null, a: [null, 1] })).toBe('{"a":[null,1],"b":null}');
+  expect(gateway.approvalActionHash(action({ a: null }))).not.toBe(gateway.approvalActionHash(action({})));
+  expect(gateway.approvalActionHash(action({ a: null }))).not.toBe(gateway.approvalActionHash(action({ a: 0 })));
+});
+
+test("database errors map to stable codes by Postgres code and by HTTP status, and anything else is unavailable", () => {
+  const from = (status: number, value: unknown) => gateway.gatewayErrorFrom({ status, value });
+  expect(from(400, { code: "23514" })).toBe("invalid_input");
+  expect(from(400, { code: "22P02" })).toBe("invalid_input");
+  expect(from(409, { code: "23505" })).toBe("already_pending");
+  expect(from(401, {})).toBe("not_allowed");
+  expect(from(403, null)).toBe("not_allowed");
+  expect(from(500, { code: "XX000", message: "secret internals" })).toBe("unavailable");
+  expect(from(200, "text")).toBe("unavailable");
+});
+
+test("a request whose database answer is not an id is an error, never an id", async () => {
+  const input = { tenantSlug: "tenant-a", adapterId: "forge", kind: "promote", destination: "d", policyVersion: "p", payload: { a: 1 } };
+  for (const value of ["not-a-uuid", null, 5, { id: ID }]) {
+    const result = await gateway.requestApproval(async () => ({ ok: true, status: 200, value }), input);
+    expect(result.ok, JSON.stringify(value)).toBe(false);
+  }
+  const failed = await gateway.requestApproval(async () => ({ ok: false, status: 409, value: { code: "23505" } }), input);
+  expect(failed).toEqual({ ok: false, error: "already_pending" });
+  const good = await gateway.requestApproval(async () => ({ ok: true, status: 200, value: ID }), input);
+  expect(good).toMatchObject({ ok: true, approvalId: ID });
+});

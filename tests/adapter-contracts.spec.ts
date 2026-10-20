@@ -223,3 +223,18 @@ test("the TypeScript contract and the SQL data model use the same values", () =>
   expect(ADAPTER_OPERATIONS).toHaveLength(10);
   expect(sql).toContain("'disabled', 'preview', 'enabled', 'suspended'");
 });
+
+// Added by the Phase 1 mutation sweep (item 16): field checks that no test reached.
+test("manifest field checks: operations must be a list, enum fields must be known values, task names and adapter ids must be valid", () => {
+  expect(code(() => validateAdapterManifest(manifest({ operations: "manifest,health" })))).toBe("invalid_input");
+  expect(code(() => validateAdapterManifest(manifest({ operations: null })))).toBe("invalid_input");
+  expect(code(() => validateAdapterManifest(manifest({ sideEffectCeiling: "root" })))).toBe("invalid_input");
+  expect(code(() => validateAdapterManifest(manifest({ sideEffectCeiling: undefined })))).toBe("invalid_input");
+  expect(code(() => validateAdapterManifest(manifest({ deletionGuarantee: "maybe" })))).toBe("invalid_input");
+  expect(code(() => validateAdapterManifest(manifest({ tasks: [{ name: "Bad Name!", sideEffect: "draft" }] })))).toBe("invalid_input");
+  expect(code(() => validateAdapterManifest(manifest({ tasks: [{ name: "draft.post", sideEffect: "everything" }] })))).toBe("invalid_input");
+  for (const bad of ["Bad Adapter", "x", "-leading", 7, null]) {
+    expect(code(() => validateAdapterManifest(manifest({ adapterId: bad })))).toBe("invalid_adapter_id");
+    expect(code(() => validateMemoryProposal(proposal({ adapterId: bad })))).toBe("invalid_adapter_id");
+  }
+});

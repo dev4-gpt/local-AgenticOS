@@ -382,3 +382,26 @@ test("applying the migration to a database that already holds rows backfills the
     await db.close();
   }
 });
+
+// Added by the Phase 1 mutation sweep (item 16): the 28-day cap itself had no test.
+test("the purge refuses a tenant whose retention days are missing, below 1 or above 28, and accepts 1 and 28", async () => {
+  const db = await freshDb();
+  try {
+    await register(db, "tenant-a", "forge");
+    await asOwner(db);
+    for (const days of ["null", "0", "-5", "29", "90"]) {
+      await db.exec(`update public.client_tenants set retention_days = ${days} where slug = 'tenant-a'`);
+      await asService(db);
+      await expect(db.query("select public.purge_expired_client_adapter_records('tenant-a', true, 10)"), `retention_days=${days}`).rejects.toThrow(/adapter_retention_tenant_not_configured/);
+      await asOwner(db);
+    }
+    for (const days of [1, 28]) {
+      await db.exec(`update public.client_tenants set retention_days = ${days} where slug = 'tenant-a'`);
+      await asService(db);
+      await expect(db.query("select public.purge_expired_client_adapter_records('tenant-a', false, 10)"), `retention_days=${days}`).resolves.toBeDefined();
+      await asOwner(db);
+    }
+  } finally {
+    await db.close();
+  }
+});
