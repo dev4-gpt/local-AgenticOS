@@ -57,6 +57,16 @@ The separation pattern each candidate must satisfy, once approved:
   could reach the AGPL service directly (not only through Veloce), the service's own operator obligations apply to
   whoever runs it, separation or not.
 
+## Shell status
+
+- **`trypost`:** an empty infrastructure shell exists at `infra/agpl-candidates/trypost/` (Dockerfile, a
+  placeholder health-check process, a manifest stub with `state: "blocked-legal-review"`). It carries no AGPL
+  source and nothing in the application calls it. `scripts/provision-agpl-candidate-shell.mjs` is the only script
+  allowed to build it, and it refuses to build any shell whose manifest state is not `blocked-legal-review` or
+  whose directory contains anything beyond the known placeholder files — so the moment real AGPL source is added,
+  that script stops working on purpose, as a reminder that the real deploy is a separate, deliberate change made
+  only after sign-off. The other nine candidates have no shell yet; `trypost`'s is the template for them.
+
 ## Rollback
 
 This is a documentation-only ADR. There is no migration, flag, or code to roll back. Superseding it only requires
