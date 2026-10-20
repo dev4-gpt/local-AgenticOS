@@ -70,9 +70,15 @@ async function addPrivate(db: PGlite, adapter: string, content: string, hash: st
 
 async function propose(db: PGlite, itemId: string, adapter: string, hash: string, requester: string): Promise<string> {
   await asService(db);
+  // A promotion needs a provenance record for its source note and a scan of exactly this content.
+  await db.query(
+    "insert into public.client_adapter_memory_provenance (tenant_slug, item_id, adapter_id, adapter_version, agent_principal, source_task_id, confidence) select 'tenant-a',$1,$2,'1','agent','task-1',0.5 where not exists (select 1 from public.client_adapter_memory_provenance where item_id = $1)",
+    [itemId, adapter],
+  );
+  const scan = JSON.stringify({ scanner: "memory-scan-h1", content_sha256: hash, verdict: "clean", findings: [], scanned_chars: 1 });
   const result = await db.query<{ id: string }>(
-    "insert into public.client_adapter_memory_promotions (tenant_slug, source_item_id, origin_adapter_id, content_sha256, requested_by) values ('tenant-a',$1,$2,$3,$4) returning id",
-    [itemId, adapter, hash, requester],
+    "insert into public.client_adapter_memory_promotions (tenant_slug, source_item_id, origin_adapter_id, content_sha256, requested_by, scan_result) values ('tenant-a',$1,$2,$3,$4,$5::jsonb) returning id",
+    [itemId, adapter, hash, requester, scan],
   );
   return result.rows[0].id;
 }

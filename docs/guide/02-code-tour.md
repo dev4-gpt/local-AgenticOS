@@ -6,7 +6,7 @@ All paths are relative to the repo root (`source/`). "Proof" means the test file
 npm run test:focused
 ```
 
-Expected today: 697 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
+Expected today: 721 pass, 3 fail, 5 skipped (the 4 concurrency tests are skipped unless a local Postgres container is configured). The 3 failures are in `tests/public-production-readiness.spec.ts` and already fail on the untouched base commit `592ce41` (register item N-3). They are not caused by this work.
 
 ## Branches
 
@@ -143,6 +143,15 @@ Proof: `tests/adapter-overview.spec.ts` (9 tests: view model, route gates, malfo
 
 ---
 
+## D5. Promotion hardening (ADR-009)
+
+- `src/lib/adapterMemoryGuard.ts`: `scanMemoryContent(text, { sourceUrl })` returns a verdict (clean, flagged, blocked) with findings and the content hash, stored as the promotion's `scan_result`; `verdictSummary` gives plain words; `renderSharedFactForModel` and `renderSharedFacts` show active, reviewed shared notes to a model as quoted data (escaped, hidden characters removed, shortened) and return nothing for any other note.
+- `product-experience/supabase-client-adapter-host.sql` (promotion guard): an insert needs a scan of exactly this content, a provenance record for the source note, and room under 25 waiting per adapter; approval is refused for a blocked scan, a missing scan, or a flagged one without a 20-character note; the scan result cannot change. Refusals carry codes such as `adapter_promotion_blocked`.
+- `product-experience/supabase-client-adapter-promotions.sql`: `client_adapter_decide_promotion` (owner or admin who is not the requester; repeats the content hash; same answer for unknown ids and other tenants) and `client_adapter_revoke_shared_memory` (owner or admin; text erased; a `memory.tombstoned` event tells adapters to drop it).
+- Proof: `tests/adapter-memory-guard.spec.ts` (14), `tests/adapter-promotions-sql.spec.ts` (10), plus the existing host, restore and retention specs updated for the new promotion rules.
+
+---
+
 ## E. Knowledge-unify tools
 
 In `scripts/knowledge-unify/`: `scan.mjs` (340 lines), `dedupe-report.mjs` (193), `apply.mjs` (264). Format reference: `docs/knowledge-layer-schema.md` (schema version 2). How they behave is in `01-how-it-works.md`, section 6.
@@ -181,6 +190,8 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 | `adapter-approval-gateway.spec.ts` | 13 | Server hashing, input checks, route behaviour |
 | `adapter-tokens.spec.ts` | 9 | Token signing and every verification rule |
 | `adapter-token-uses-sql.spec.ts` | 5 | Single use, worker-only, bounded purge |
+| `adapter-memory-guard.spec.ts` | 14 | Scanner (attacks, evasions, secrets, flags, speed, known limits) and safe rendering |
+| `adapter-promotions-sql.spec.ts` | 10 | Promotion rules (scan, provenance, queue, blocked, flagged note, immutability), decision and withdrawal functions |
 | `adapter-approvals-view.spec.ts` | 8 | Approvals screen: what each request shows, who gets which buttons, bad data rejected |
 | `adapter-restore-sql.spec.ts` | 7 | Backup and restore of adapter data: dates, disabled adapters, usable approvals, graph check, closed shortcuts |
 | `adapter-retention-sql.spec.ts` | 11 | Adapter expiry, read barrier, 7-day recovery, purge ordering, tenant scope, grants |
@@ -191,7 +202,7 @@ Proof: `tests/knowledge-unify.spec.ts` (23 tests, named after the review finding
 | `knowledge-unify.spec.ts` | 23 | Scan, dedupe and apply behaviour and fixes |
 | `knowledge-unify-cli.spec.ts` | 8 | Command-line behaviour and exit codes |
 
-All fifteen are registered in the `test:focused` list in `package.json`.
+All seventeen are registered in the `test:focused` list in `package.json`.
 
 ## What is not in the code yet
 

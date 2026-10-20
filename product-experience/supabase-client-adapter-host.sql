@@ -368,6 +368,21 @@ begin
     if new.status <> 'quarantined' then
       raise exception 'a promotion starts quarantined';
     end if;
+    -- Shared memory is read by every adapter, so what goes in must have been scanned, must say where it came from, and
+    -- must not flood the reviewers. The scan is made by the host (src/lib/adapterMemoryGuard.ts) and is tied to the
+    -- exact content hash, so a scan of other text cannot be reused.
+    if coalesce(new.scan_result ->> 'scanner', '') = ''
+       or new.scan_result ->> 'content_sha256' is distinct from new.content_sha256
+       or coalesce(new.scan_result ->> 'verdict', '') not in ('clean', 'flagged', 'blocked') then
+      raise exception 'adapter_promotion_scan_mismatch';
+    end if;
+    if not exists (select 1 from public.client_adapter_memory_provenance pv where pv.item_id = new.source_item_id) then
+      raise exception 'adapter_promotion_provenance_required';
+    end if;
+    if (select count(*) from public.client_adapter_memory_promotions q
+        where q.tenant_slug = new.tenant_slug and q.origin_adapter_id = new.origin_adapter_id and q.status = 'quarantined') >= 25 then
+      raise exception 'adapter_promotion_queue_full';
+    end if;
     return new;
   end if;
   if (new.tenant_slug, new.source_item_id, new.origin_adapter_id, new.content_sha256, new.requested_by, new.created_at)
@@ -383,6 +398,20 @@ begin
   end if;
   if old.status <> 'quarantined' then
     raise exception 'a decided promotion cannot change';
+  end if;
+  if new.scan_result is distinct from old.scan_result then
+    raise exception 'adapter_promotion_scan_immutable';
+  end if;
+  if new.status = 'approved' then
+    if new.scan_result ->> 'verdict' = 'blocked' then
+      raise exception 'adapter_promotion_blocked';
+    end if;
+    if coalesce(new.scan_result ->> 'verdict', '') not in ('clean', 'flagged') then
+      raise exception 'adapter_promotion_scan_required';
+    end if;
+    if new.scan_result ->> 'verdict' = 'flagged' and length(btrim(coalesce(new.decision_note, ''))) < 20 then
+      raise exception 'adapter_promotion_note_required';
+    end if;
   end if;
   return new;
 end;

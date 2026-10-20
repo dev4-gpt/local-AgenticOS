@@ -85,6 +85,13 @@ Last updated: 2026-10-20 after the approvals screen (Phase 1 item 15) on `feat/a
   - [ ] 8e. While a shared note is expired but unpurged, the same fact cannot be shared again (hash slot held for up to 7 days)
 - [ ] **9. Scheduled jobs (Me).** Run token purge and approval expiry on a schedule. *Done when:* a scheduled run is observed
 - [ ] **10. Promotion hardening (Me).** Source-linked diffs, no tool instructions inside shared facts, retrieval-time distrust, rollback (X-4, CRITICAL)
+  - [x] 10a. Rules and scanner (commit A, ADR-009): mandatory scan tied to the content hash, provenance required, queue cap of 25, blocked cannot be approved, flagged needs a 20-character reason, scan immutable; `client_adapter_decide_promotion` and `client_adapter_revoke_shared_memory`; scanner and safe rendering in `adapterMemoryGuard.ts`. 24 new tests; the scanner's own test found and fixed an evasion (a phrase split across lines)
+  - [ ] 10b. Routes for listing, deciding and withdrawing (commit B)
+  - [ ] 10c. The review screen with content, findings, provenance and "already shared" (commit C)
+  - [ ] 10d. The scan cannot catch paraphrased or foreign-language orders, look-alike letters, or a well-phrased false fact. Decide whether to add a model-based second opinion (it would add cost and its own injection risk)
+  - [ ] 10e. Nothing calls the safe rendering yet: implement `context.read` for the first adapter so shared notes reach models only through it
+  - [ ] 10f. Detect conflicting facts (a new shared note that contradicts an existing one) and send them to a human; today only exact duplicates are caught
+  - [ ] 10g. Rate-limit by time as well as by queue size
 - [ ] **11. Approvals table retention class (Both).** Provisional until you approve a schedule (N-5)
 - [ ] **12. Align tenant slug rules (Me).** The database rule and `capabilityContracts.ts` disagree (N-1, X-7, WARNING)
 - [ ] **13. Key storage and rotation for adapter tokens (Both).** Decide where the signing key lives; nothing sends or checks tokens yet

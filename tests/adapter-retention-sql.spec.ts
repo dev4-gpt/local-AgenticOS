@@ -95,9 +95,12 @@ async function addProvenance(db: PGlite, itemId: string, adapter: string, tenant
 async function addSharedChain(db: PGlite, adapter: string, content: string, key: string) {
   const privateId = await addPrivate(db, adapter, content, key);
   await asService(db);
+  await addProvenance(db, privateId, adapter);
+  await asService(db);
+  const scan = JSON.stringify({ scanner: "memory-scan-h1", content_sha256: sha(content), verdict: "clean", findings: [], scanned_chars: content.length });
   const promo = await db.query<{ id: string }>(
-    "insert into public.client_adapter_memory_promotions (tenant_slug, source_item_id, origin_adapter_id, content_sha256, requested_by) values ('tenant-a',$1,$2,$3,$4) returning id",
-    [privateId, adapter, sha(content), USER.memberA],
+    "insert into public.client_adapter_memory_promotions (tenant_slug, source_item_id, origin_adapter_id, content_sha256, requested_by, scan_result) values ('tenant-a',$1,$2,$3,$4,$5::jsonb) returning id",
+    [privateId, adapter, sha(content), USER.memberA, scan],
   );
   const promotionId = promo.rows[0].id;
   await asUser(db, USER.adminA);
@@ -175,7 +178,7 @@ test("expired rows disappear from members straight away but stay in the table fo
     await asUser(db, USER.adminA);
     expect((await db.query("select 1 from public.client_adapter_memory_items")).rows).toHaveLength(2);
     expect((await db.query("select 1 from public.client_adapter_memory_promotions")).rows).toHaveLength(1);
-    expect((await db.query("select 1 from public.client_adapter_memory_provenance")).rows).toHaveLength(1);
+    expect((await db.query("select 1 from public.client_adapter_memory_provenance")).rows).toHaveLength(2); // the source note and the shared note
 
     await age(db, 29); // expired one day ago, inside the seven recovery days
     await asUser(db, USER.memberA);
@@ -227,13 +230,13 @@ test("seven days after expiry the purge erases notes and removes rows; a dry run
 
     const dry = await purge(db, "tenant-a", false);
     expect(dry.applied).toBe(false);
-    expect(dry.expiredOrPurgeDue).toMatchObject({ items: 2, promotions: 1, provenance: 1, approvals: 1, budgetEvents: 1 });
+    expect(dry.expiredOrPurgeDue).toMatchObject({ items: 2, promotions: 1, provenance: 2, approvals: 1, budgetEvents: 1 });
     expect(await count(db, "client_adapter_memory_items")).toBe(2);
     expect(await count(db, "client_adapter_memory_items", "content = 'secret client detail'")).toBe(2);
 
     const done = await purge(db);
     expect(done.applied).toBe(true);
-    expect(done.deleted).toMatchObject({ provenance: 1, budgetEvents: 1, approvals: 1, sharedNotes: 1, promotions: 1, privateNotes: 1 });
+    expect(done.deleted).toMatchObject({ provenance: 2, budgetEvents: 1, approvals: 1, sharedNotes: 1, promotions: 1, privateNotes: 1 });
     for (const table of TABLES) expect(await count(db, table), table).toBe(0);
     await asOwner(db);
     const audit = await db.query<{ metadata: Record<string, any> }>("select metadata from public.client_runtime_audit_events where event_type = 'tenant.adapter.retention_purged'");

@@ -70,8 +70,10 @@ async function seed(db: PGlite) {
   const priv = (await db.query<{ id: string }>(
     "insert into public.client_adapter_memory_items (tenant_slug, namespace, origin_adapter_id, content, content_sha256, idempotency_key) values ('tenant-a','adapter:forge','forge','a shared fact',$1,'idem-key-1') returning id", [sha("a shared fact")],
   )).rows[0].id;
+  await db.query("insert into public.client_adapter_memory_provenance (tenant_slug, item_id, adapter_id, adapter_version, agent_principal, source_task_id, confidence) values ('tenant-a',$1,'forge','1','agent','task-0',0.5)", [priv]);
+  const scan = JSON.stringify({ scanner: "memory-scan-h1", content_sha256: sha("a shared fact"), verdict: "clean", findings: [], scanned_chars: 13 });
   const promo = (await db.query<{ id: string }>(
-    "insert into public.client_adapter_memory_promotions (tenant_slug, source_item_id, origin_adapter_id, content_sha256, requested_by) values ('tenant-a',$1,'forge',$2,$3) returning id", [priv, sha("a shared fact"), USER.memberA],
+    "insert into public.client_adapter_memory_promotions (tenant_slug, source_item_id, origin_adapter_id, content_sha256, requested_by, scan_result) values ('tenant-a',$1,'forge',$2,$3,$4::jsonb) returning id", [priv, sha("a shared fact"), USER.memberA, scan],
   )).rows[0].id;
   await asUser(db, USER.adminA);
   await db.query("update public.client_adapter_memory_promotions set status='approved', reviewed_by=auth.uid(), reviewed_at=now(), approved_content_sha256=$2, decision_note='fine' where id=$1", [promo, sha("a shared fact")]);
@@ -132,7 +134,7 @@ test("a tenant's adapter data survives a backup and restore with its original da
 
     const receipt = (await restore(db, mapped)).rows[0].r;
     expect(receipt.atomicMetadata).toBe(true);
-    expect(receipt.tables).toMatchObject({ client_adapter_registry: 1, client_adapter_memory_items: 2, client_adapter_memory_promotions: 1, client_adapter_memory_provenance: 1, client_adapter_approvals: 1, client_adapter_budget_events: 1 });
+    expect(receipt.tables).toMatchObject({ client_adapter_registry: 1, client_adapter_memory_items: 2, client_adapter_memory_promotions: 1, client_adapter_memory_provenance: 2, client_adapter_approvals: 1, client_adapter_budget_events: 1 });
 
     for (const table of ORDER.slice(3)) {
       const after = await snapshotRows(db, table);
