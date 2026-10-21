@@ -181,3 +181,64 @@ test("the migration can be applied twice, and promotions asked for by a person s
     await db.close();
   }
 });
+
+test("a promotion must reference an active private note of the same adapter, with the same hash and a provenance record", async () => {
+  const db = await freshDb();
+  try {
+    const content = "A fact with a source.";
+    const note = await privateNote(db, content);
+    await asService(db);
+    const insert = (item: string, adapter: string, hash: string) =>
+      db.query("insert into public.client_adapter_memory_promotions (tenant_slug, source_item_id, origin_adapter_id, content_sha256, requested_by_adapter, scan_result) values ('tenant-a',$1,$2,$3,$2,$4::jsonb)", [item, adapter, hash, scanOf(content)]);
+    await expect(insert(note, "knowledge", sha(content))).rejects.toThrow(/must reference an active private item/); // another adapter's note
+    await expect(insert(note, "forge", sha("different text"))).rejects.toThrow(/must reference an active private item/); // another hash
+    await expect(insert("00000000-0000-4000-8000-0000000000ff", "forge", sha(content))).rejects.toThrow(/must reference an active private item/); // no such note
+    // a note whose text has been erased is no longer promotable
+    await db.query("update public.client_adapter_memory_items set status='tombstoned', content='[tombstoned]', tombstoned_at=now() where id=$1", [note]);
+    await expect(insert(note, "forge", sha(content))).rejects.toThrow(/must reference an active private item/);
+    // a note nobody can trace is not promotable either
+    const lonely = (await db.query<{ id: string }>("insert into public.client_adapter_memory_items (tenant_slug, namespace, origin_adapter_id, content, content_sha256, idempotency_key) values ('tenant-a','adapter:forge','forge',$1,$2,'idem-lonely-1') returning id", [content, sha(content)])).rows[0].id;
+    await expect(insert(lonely, "forge", sha(content))).rejects.toThrow(/adapter_promotion_provenance_required/);
+  } finally {
+    await db.close();
+  }
+});
+
+test("a decided promotion cannot change, and the scan on a waiting one cannot be rewritten", async () => {
+  const db = await freshDb();
+  try {
+    const content = "A fact to be decided.";
+    const id = (await promotion(db, content, { adapter: "forge" })).rows[0].id;
+    await asService(db);
+    await expect(db.query("update public.client_adapter_memory_promotions set scan_result = $2::jsonb where id = $1", [id, scanOf(content, "flagged")])).rejects.toThrow(/adapter_promotion_scan_immutable/);
+    expect(await decide(db, USER.adminA, id, "reject", null)).toBe("rejected");
+    await asService(db);
+    await expect(db.query("update public.client_adapter_memory_promotions set decision_note = 'edited later' where id = $1", [id])).rejects.toThrow(/a decided promotion cannot change/);
+  } finally {
+    await db.close();
+  }
+});
+
+test("a direct update cannot approve without a label, without a reason where one is required, or put a label on anything but an approval", async () => {
+  const db = await freshDb();
+  try {
+    const clean = "A clean fact.";
+    const flagged = "A flagged fact.";
+    const cleanId = (await promotion(db, clean, { adapter: "forge" })).rows[0].id;
+    const flaggedId = (await promotion(db, flagged, { adapter: "forge" }, "forge", "flagged")).rows[0].id;
+    const approve = async (id: string, hash: string, label: string | null, note: string | null) => {
+      await asUser(db, USER.adminA);
+      return db.query("update public.client_adapter_memory_promotions set status='approved', reviewed_by=auth.uid(), reviewed_at=now(), approved_content_sha256=$2, approved_sensitivity=$3, decision_note=$4 where id=$1", [id, hash, label, note]);
+    };
+    await expect(approve(cleanId, sha(clean), null, null)).rejects.toThrow(/adapter_promotion_sensitivity_required/);
+    await expect(approve(cleanId, sha(clean), "sensitive", "too short")).rejects.toThrow(/adapter_promotion_note_required/);
+    await expect(approve(flaggedId, sha(flagged), "ordinary", "too short")).rejects.toThrow(/adapter_promotion_note_required/);
+    await asUser(db, USER.adminA);
+    await expect(db.query("update public.client_adapter_memory_promotions set status='rejected', reviewed_by=auth.uid(), reviewed_at=now(), approved_sensitivity='ordinary' where id=$1", [cleanId])).rejects.toThrow(/adapter_promotion_sensitivity_unexpected/);
+    // with a label, and a real reason where one is needed, the same updates are accepted
+    await expect(approve(cleanId, sha(clean), "sensitive", "Reviewed: this is private pricing detail.")).resolves.toBeDefined();
+    await expect(approve(flaggedId, sha(flagged), "ordinary", "Reviewed the flagged link: it is our own site.")).resolves.toBeDefined();
+  } finally {
+    await db.close();
+  }
+});

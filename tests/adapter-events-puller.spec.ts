@@ -121,13 +121,17 @@ test("a malformed or foreign proposal is counted and skipped, and the feed moves
     propose(8, FACT, { adapterVersion: "" }),
     propose(9, FACT, { retrievedAt: "yesterday-ish" }),
     { ...propose(10), data: "nope" as unknown as Record<string, unknown> },
+    { ...propose(13), data: null as unknown as Record<string, unknown> },
+    { ...propose(14), data: [] as unknown as Record<string, unknown> },
+    propose(15, FACT, { sourceUrl: `https://example.test/${"a".repeat(2050)}` }), // a valid address, but over the length limit
     { ...propose(11), kind: "memory.delete" }, // an operation that does not exist
     propose(12, "A good one."),
   ];
+  bad.sort((a, b) => a.seq - b.seq);
   const r = run(bad);
   const report = await r.report;
-  expect(report).toMatchObject({ events: 12, created: 1, cursor: 12, stopped: null });
-  expect(report.rejected).toEqual({ bad_proposal: 10, unknown_kind: 1 });
+  expect(report).toMatchObject({ events: 15, created: 1, cursor: 15, stopped: null });
+  expect(report.rejected).toEqual({ bad_proposal: 13, unknown_kind: 1 });
   expect(r.db.state.ingests).toHaveLength(1);
   expect(r.db.state.ingests[0]!.p_content).toBe("A good one.");
 });
@@ -176,6 +180,9 @@ test("a feed that does not continue from the cursor, or does not add up, is not 
     "more events than asked for": (p) => ({ ...p, events: [...(p.events as Ev[]), ...(p.events as Ev[])] }),
     "not ok": (p) => ({ ...p, ok: false }),
     "hasMore that is not a boolean": (p) => ({ ...p, hasMore: "yes" }),
+    "an event with no time": (p) => ({ ...p, events: (p.events as Ev[]).map((e) => ({ ...e, at: undefined })) }),
+    "an event with an empty kind": (p) => ({ ...p, events: (p.events as Ev[]).map((e) => ({ ...e, kind: "" })) }),
+    "an event with an over-long task id": (p) => ({ ...p, events: (p.events as Ev[]).map((e) => ({ ...e, taskId: "t".repeat(129) })) }),
     "an event id that is not a hash": (p) => ({ ...p, events: (p.events as Ev[]).map((e) => ({ ...e, id: "short" })) }),
   };
   for (const [name, mutate] of Object.entries(cases)) {
@@ -208,6 +215,7 @@ test("an empty feed is a quiet success", async () => {
   const r = run([]);
   expect(await r.report).toMatchObject({ pages: 1, events: 0, cursor: 0, stopped: null });
   expect(r.db.state.ingests).toHaveLength(0);
+  expect(r.db.state.calls).not.toContain("client_adapter_events_cursor_advance"); // nothing handled, so nothing to save
 });
 
 test("the address is checked before anything is sent: https only, plain http only to loopback and only when allowed, no credentials or query", async () => {
