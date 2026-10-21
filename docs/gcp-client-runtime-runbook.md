@@ -211,6 +211,29 @@ Supabase project:
 7. `product-experience/supabase-client-runtime-workflow-reconciliation.sql`
 8. `product-experience/supabase-client-hermes-content-factory.sql`
 
+### Adapter host migrations (only where the adapter host is installed)
+
+Apply these after the retention migrations above and **before**
+`supabase-client-lifecycle-restore.sql`: that migration attaches its restore
+clock triggers only to tables that exist when it runs (it skips the others
+without an error), so adapter tables created afterwards have no restore
+trigger. The order is the one `tests/client-schema-upgrade.spec.ts` runs and
+that `veloce-agentos-staging` was proven with (2026-10-21):
+
+1. `supabase-client-adapter-host.sql`
+2. `supabase-client-adapter-token-uses.sql`
+3. `supabase-client-adapter-approval-gateway.sql`
+4. `supabase-client-adapter-budget.sql`
+5. `supabase-client-adapter-retention-28.sql`
+6. `supabase-client-adapter-promotions.sql`
+7. `supabase-client-adapter-background-owner.sql`
+8. `supabase-client-lifecycle-restore.sql`
+9. `supabase-client-table-privilege-hardening.sql` (last: it revokes the default
+   privileges Supabase grants to `anon` on new functions)
+
+If the restore migration was applied first, re-apply it after installing the
+adapter migrations.
+
 Create the approved tenant and membership from the Supabase SQL editor or an
 operator-only migration job. Never accept membership creation from the
 browser. For the first internal test, run
