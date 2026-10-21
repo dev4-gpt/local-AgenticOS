@@ -228,14 +228,18 @@ that `veloce-agentos-staging` was proven with (2026-10-21):
 6. `supabase-client-adapter-promotions.sql`
 7. `supabase-client-adapter-proposals.sql` (a promotion may be asked for by an
    adapter; a source may report no confidence; 2026-10-21, ADR-013)
-8. `supabase-client-adapter-background-owner.sql`
-9. `supabase-client-lifecycle-restore.sql`
-10. `supabase-client-table-privilege-hardening.sql` (last: it revokes the default
+8. `supabase-client-adapter-ingest.sql` (the events-feed cursor and the function
+   that turns one adapter proposal into a private note, provenance and a
+   queued promotion; service role only)
+9. `supabase-client-adapter-background-owner.sql`
+10. `supabase-client-lifecycle-restore.sql`
+11. `supabase-client-table-privilege-hardening.sql` (last: it revokes the default
     privileges Supabase grants to `anon` on new functions)
 
-A database installed before the proposals migration existed (such as
-`veloce-agentos-staging`): apply `supabase-client-adapter-proposals.sql`, then
-re-apply `supabase-client-lifecycle-restore.sql` so its column list includes
+A database installed before the proposals and ingest migrations existed (such
+as `veloce-agentos-staging`): apply `supabase-client-adapter-proposals.sql` and
+`supabase-client-adapter-ingest.sql`, then re-apply
+`supabase-client-lifecycle-restore.sql` so its column list includes
 `requested_by_adapter`, then `supabase-client-table-privilege-hardening.sql`
 again.
 

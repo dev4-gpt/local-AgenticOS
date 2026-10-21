@@ -42,7 +42,7 @@ const retentionMigrations = [
   "v49-managed-credit-retention",
   // Adapter host data, before the restore migration so its restore triggers attach to these tables.
   "client-adapter-host", "client-adapter-token-uses", "client-adapter-approval-gateway", "client-adapter-budget",
-  "client-adapter-retention-28", "client-adapter-promotions", "client-adapter-proposals", "client-adapter-background-owner",
+  "client-adapter-retention-28", "client-adapter-promotions", "client-adapter-proposals", "client-adapter-ingest", "client-adapter-background-owner",
   "client-lifecycle-restore", "client-table-privilege-hardening",
 ];
 
