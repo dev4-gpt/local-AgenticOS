@@ -32,7 +32,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 - [x] Knowledge library copied into the vault; group 1 duplicate markers applied to 4 notes with a backup outside the vault
 
 ### Open (yours)
-- [ ] **You:** make the ContractorOS repo private (it is AGPL and currently public). *Done when:* the repo shows as private on GitHub
+- [x] **You:** make the ContractorOS repo private (it is AGPL and was public). *Done when:* the repo shows as private on GitHub. Verified 2026-10-21 with `gh repo view`: visibility PRIVATE, 0 forks. Anything committed there while it was public should still be treated as exposed (see the key-rotation rows)
 - [ ] **You:** rotate the `markexis` key (S-1). *Done when:* the old key no longer works; do not paste it in chat
 - [ ] **You:** check Forge's committed `.projects` state files for secrets and remove them (X-8, S-1). *Done when:* nothing sensitive remains and anything found is rotated
 - [ ] **You:** check the `symlink` `GITHUB_TOKEN` was never deployed; rotate if it was (S-1)
@@ -165,7 +165,7 @@ Work happens in the separate ContractorOS repo (`dev4-gpt/ContractorOS`, AGPL, s
 - [ ] Deletion receipts or label "outside the guarantee" (X-2). Labelled `deletionGuarantee: "none"` in the manifest for now, so it stays out of the client edition
 - [ ] P2-1. Durable replay protection: the token-id store is in memory; use the host's `client_adapter_consume_token`
 - [ ] P2-2. You: choose the starter principal/pillar (X-15). The task takes any pillar from the existing list per request; nothing is hard-coded
-- [ ] P2-3. You: make the ContractorOS repo private (Phase 0) before any of this is pushed
+- [x] P2-3. You: make the ContractorOS repo private (Phase 0) before any of this is pushed (done, verified 2026-10-21; pushing slice 1 is now allowed when you say so)
 
 ## Phase 3: Knowledge adapter
 
