@@ -173,3 +173,96 @@ begin
   raise exception 'PHASE1_PROOF_2 %', r;
 end
 $proof$;
+
+-- Block 3 (8f): the real purge. A note is moved 10 days into the past for the test only (the guards are switched off for
+-- those two updates and on again before the purge runs), then the real purge erases and deletes it. Rolled back.
+do $proof$
+declare
+  r jsonb := '{}'::jsonb;
+  t text := 'zz-phase1-purge';
+  ua uuid := '00000000-0000-4000-8000-0000000000a1';
+  v_item uuid; result jsonb; sha text := encode(extensions.digest('Fake note to expire.', 'sha256'), 'hex');
+begin
+  insert into auth.users (id, email, aud, role) values (ua, 'proof-a@example.invalid', 'authenticated', 'authenticated');
+  insert into public.client_tenants (slug, name, status, retention_days) values (t, 'Purge proof (fake)', 'active', 1);
+  insert into public.client_adapter_registry (tenant_slug, adapter_id, display_name, contract_version, manifest_sha256, state, created_by)
+    values (t, 'proof-adapter', 'Proof adapter', 'h1', repeat('a', 64), 'preview', ua);
+  insert into public.client_adapter_memory_items (tenant_slug, namespace, origin_adapter_id, content, content_sha256, idempotency_key)
+    values (t, 'adapter:proof-adapter', 'proof-adapter', 'Fake note to expire.', sha, 'purge-key-0001') returning id into v_item;
+  insert into public.client_adapter_memory_provenance (tenant_slug, item_id, adapter_id, adapter_version, agent_principal, source_task_id, confidence)
+    values (t, v_item, 'proof-adapter', '0.0.1', 'proof-agent', 'task-1', 0.5);
+  r := r || jsonb_build_object('stamped_expiry_days', (select round(extract(epoch from retention_expires_at - created_at) / 86400) from public.client_adapter_memory_items where id = v_item));
+  alter table public.client_adapter_memory_items disable trigger user;
+  alter table public.client_adapter_memory_provenance disable trigger user;
+  update public.client_adapter_memory_items set created_at = now() - interval '10 days', retention_expires_at = now() - interval '9 days' where id = v_item;
+  update public.client_adapter_memory_provenance p set created_at = now() - interval '10 days', retention_expires_at = now() - interval '9 days' where p.item_id = v_item;
+  alter table public.client_adapter_memory_items enable trigger user;
+  alter table public.client_adapter_memory_provenance enable trigger user;
+  r := r || jsonb_build_object('dry_run_due', public.purge_expired_client_adapter_records(t, false, 100) -> 'expiredOrPurgeDue');
+  result := public.purge_expired_client_adapter_records(t, true, 100);
+  r := r || jsonb_build_object('apply_notes_erased', result -> 'notesErased', 'apply_deleted', result -> 'deleted');
+  r := r || jsonb_build_object('rows_left',
+    jsonb_build_object('items', (select count(*) from public.client_adapter_memory_items where tenant_slug = t),
+                       'provenance', (select count(*) from public.client_adapter_memory_provenance where tenant_slug = t)));
+  r := r || jsonb_build_object('audit_event_written', (select count(*) from public.client_runtime_audit_events where tenant_slug = t and event_type = 'tenant.adapter.retention_purged'));
+  r := r || jsonb_build_object('second_run_deleted', public.purge_expired_client_adapter_records(t, true, 100) -> 'deleted');
+  raise exception 'PURGE_PROOF %', r;
+end
+$proof$;
+
+-- Block 4 (8f): the real restore of a backed-up fake tenant, and the backups it must refuse. Rolled back.
+do $proof$
+declare
+  r jsonb := '{}'::jsonb;
+  t text := 'zz-phase1-restore';
+  ua uuid := '00000000-0000-4000-8000-0000000000a1';
+  item uuid := '11111111-1111-4111-8111-000000000001';
+  prov uuid := '11111111-1111-4111-8111-000000000002';
+  reg uuid := '11111111-1111-4111-8111-000000000003';
+  appr uuid := '11111111-1111-4111-8111-000000000004';
+  c timestamptz := date_trunc('second', now() - interval '1 day');
+  exp timestamptz := date_trunc('second', now() + interval '20 days');
+  sha text := encode(extensions.digest('Restored fake note.', 'sha256'), 'hex');
+  batches jsonb; out jsonb; me text := current_user;
+begin
+  insert into auth.users (id, email, aud, role) values (ua, 'proof-a@example.invalid', 'authenticated', 'authenticated');
+  batches := jsonb_build_array(
+    jsonb_build_object('table', 'client_tenants', 'rows', jsonb_build_array(jsonb_build_object('slug', t, 'name', 'Restore proof (fake)', 'status', 'active', 'retention_days', 28, 'created_at', c, 'updated_at', c))),
+    jsonb_build_object('table', 'client_memberships', 'rows', jsonb_build_array(jsonb_build_object('tenant_slug', t, 'user_id', ua, 'role', 'admin', 'status', 'active', 'created_at', c))),
+    jsonb_build_object('table', 'client_adapter_registry', 'rows', jsonb_build_array(jsonb_build_object('id', reg, 'tenant_slug', t, 'adapter_id', 'proof-adapter', 'display_name', 'Proof adapter', 'contract_version', 'h1', 'manifest_sha256', repeat('a', 64), 'state', 'enabled', 'side_effect_ceiling', 'draft', 'deletion_guarantee', 'none', 'created_by', ua, 'created_at', c, 'updated_at', c))),
+    jsonb_build_object('table', 'client_adapter_memory_items', 'rows', jsonb_build_array(jsonb_build_object('id', item, 'tenant_slug', t, 'namespace', 'adapter:proof-adapter', 'origin_adapter_id', 'proof-adapter', 'status', 'active', 'content', 'Restored fake note.', 'content_sha256', sha, 'trust_level', 'untrusted', 'idempotency_key', 'restore-key-0001', 'valid_from', c, 'created_at', c, 'retention_expires_at', exp, 'sensitivity', 'unknown'))),
+    jsonb_build_object('table', 'client_adapter_memory_provenance', 'rows', jsonb_build_array(jsonb_build_object('id', prov, 'tenant_slug', t, 'item_id', item, 'adapter_id', 'proof-adapter', 'adapter_version', '0.0.1', 'agent_principal', 'proof-agent', 'source_task_id', 'task-1', 'confidence', 0.9, 'created_at', c, 'retention_expires_at', exp))),
+    jsonb_build_object('table', 'client_adapter_approvals', 'rows', jsonb_build_array(jsonb_build_object('id', appr, 'tenant_slug', t, 'adapter_id', 'proof-adapter', 'action_kind', 'publish', 'action_hash', repeat('b', 64), 'destination', 'staging-proof', 'policy_version', 'proof-v1', 'requested_by', ua, 'status', 'rejected', 'expires_at', c + interval '1 hour', 'created_at', c, 'retention_expires_at', exp)))
+  );
+  perform set_config('role', 'service_role', true);
+  begin
+    perform public.restore_client_lifecycle_metadata(t, jsonb_set(batches, '{5,rows,0,status}', '"pending"'));
+    r := r || '{"pending_approval_restored":"ALLOWED (bad)"}';
+  exception when others then r := r || jsonb_build_object('pending_approval_refused', sqlerrm); end;
+  begin
+    perform public.restore_client_lifecycle_metadata(t, jsonb_set(batches, '{3,rows,0,secret_column}', '"x"'));
+    r := r || '{"unknown_column_restored":"ALLOWED (bad)"}';
+  exception when others then r := r || jsonb_build_object('unknown_column_refused', sqlerrm); end;
+  begin
+    perform public.restore_client_lifecycle_metadata(t, jsonb_set(batches, '{3,rows,0,retention_expires_at}', to_jsonb(now() - interval '1 hour')));
+    r := r || '{"expired_note_restored":"ALLOWED (bad)"}';
+  exception when others then r := r || jsonb_build_object('expired_note_refused', sqlerrm); end;
+  begin
+    perform public.restore_client_lifecycle_metadata('zz-someone-else', batches);
+    r := r || '{"other_tenant_restored":"ALLOWED (bad)"}';
+  exception when others then r := r || jsonb_build_object('other_tenant_refused', sqlerrm); end;
+  out := public.restore_client_lifecycle_metadata(t, batches);
+  perform set_config('role', me, true);
+  r := r || jsonb_build_object('restored', out);
+  r := r || jsonb_build_object('registry_state_after_restore', (select state from public.client_adapter_registry where id = reg));
+  r := r || jsonb_build_object('note_clocks_kept', (select created_at = c and retention_expires_at = exp from public.client_adapter_memory_items where id = item));
+  r := r || jsonb_build_object('provenance_clocks_kept', (select created_at = c and retention_expires_at = exp from public.client_adapter_memory_provenance where id = prov));
+  r := r || jsonb_build_object('approval_restored_as', (select status from public.client_adapter_approvals where id = appr));
+  r := r || jsonb_build_object('graph_valid_after_restore', public.validate_client_adapter_restore_graph(t));
+  begin
+    perform public.restore_client_lifecycle_metadata(t, batches);
+    r := r || '{"restore_without_service_role":"ALLOWED (bad)"}';
+  exception when others then r := r || jsonb_build_object('restore_without_service_role_refused', sqlerrm); end;
+  raise exception 'RESTORE_PROOF %', r;
+end
+$proof$;
