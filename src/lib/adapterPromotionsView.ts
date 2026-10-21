@@ -34,12 +34,14 @@ export type Tone = "waiting" | "good" | "bad" | "muted";
 export interface ScanFindingView { rule: string; label: string; severity: "high" | "medium"; count: number; sample: string }
 export interface ProvenanceRow {
   adapterId: string; adapterVersion: string; agentPrincipal: string; sourceTaskId: string;
-  sourceUrl: string | null; sourceSha256: string | null; confidence: number; createdAt: string;
+  /** Null when the adapter reported none; shown as "not reported", never as 0%. */
+  sourceUrl: string | null; sourceSha256: string | null; confidence: number | null; createdAt: string;
 }
 export interface PromotionRow {
   id: string; sourceItemId: string; adapterId: string; contentSha256: string; status: PromotionStatus;
   scanVerdict: ScanVerdict | null; scanContentSha256: string | null; scanFindings: ScanFindingView[];
-  requestedBy: string; reviewedBy: string | null; reviewedAt: string | null; decisionNote: string | null; createdAt: string;
+  /** A person's id, or null when an adapter asked: exactly one of requestedBy and requestedByAdapter is set. */
+  requestedBy: string | null; requestedByAdapter: string | null; reviewedBy: string | null; reviewedAt: string | null; decisionNote: string | null; createdAt: string;
   sourceContent: string | null; provenance: ProvenanceRow[]; alreadySharedItemId: string | null; approvedSensitivity: ApprovableLabel | null;
 }
 export interface SharedNoteRow { id: string; adapterId: string; content: string; contentSha256: string; promotionId: string; createdAt: string; sensitivity: NoteSensitivity }
@@ -90,12 +92,12 @@ function parseProvenance(value: unknown): ProvenanceRow[] | null {
   for (const raw of value) {
     const p = obj(raw);
     if (!p || !isValidAdapterId(p.adapter_id) || !isText(p.adapter_version, 40) || !isText(p.agent_principal, 120) || !isText(p.source_task_id, 128)) return null;
-    if (typeof p.confidence !== "number" || !(p.confidence >= 0 && p.confidence <= 1) || !isTime(p.created_at)) return null;
+    if (!(p.confidence == null || (typeof p.confidence === "number" && p.confidence >= 0 && p.confidence <= 1)) || !isTime(p.created_at)) return null;
     if (!(p.source_url == null || isText(p.source_url, 2048)) || !(p.source_sha256 == null || isSha256Hex(p.source_sha256))) return null;
     out.push({
       adapterId: p.adapter_id, adapterVersion: p.adapter_version, agentPrincipal: p.agent_principal, sourceTaskId: p.source_task_id,
       sourceUrl: (p.source_url as string | null | undefined) ?? null, sourceSha256: (p.source_sha256 as string | null | undefined) ?? null,
-      confidence: p.confidence, createdAt: p.created_at,
+      confidence: (p.confidence as number | null | undefined) ?? null, createdAt: p.created_at,
     });
   }
   return out;
@@ -112,7 +114,11 @@ export function parsePromotionsResponse(body: unknown): ParsedPromotions | null 
     const r = obj(raw);
     if (!r || !isUuid(r.id) || !isUuid(r.source_item_id) || !isValidAdapterId(r.origin_adapter_id) || !isSha256Hex(r.content_sha256)) return null;
     if (typeof r.status !== "string" || !(PROMOTION_STATUSES as readonly string[]).includes(r.status)) return null;
-    if (!isUuid(r.requested_by) || !(r.reviewed_by == null || isUuid(r.reviewed_by)) || !(r.reviewed_at == null || isTime(r.reviewed_at)) || !isTime(r.created_at)) return null;
+    if (!(r.reviewed_by == null || isUuid(r.reviewed_by)) || !(r.reviewed_at == null || isTime(r.reviewed_at)) || !isTime(r.created_at)) return null;
+    // Exactly one requester: a person, or the adapter that owns the note (the database enforces the same rule).
+    const byPerson = r.requested_by == null ? null : isUuid(r.requested_by) ? r.requested_by : undefined;
+    const byAdapter = r.requested_by_adapter == null ? null : isValidAdapterId(r.requested_by_adapter) && r.requested_by_adapter === r.origin_adapter_id ? r.requested_by_adapter : undefined;
+    if (byPerson === undefined || byAdapter === undefined || (byPerson === null) === (byAdapter === null)) return null;
     if (!(r.decision_note == null || isText(r.decision_note, 2000)) || !(r.source_content == null || isText(r.source_content, MAX_NOTE_TEXT))) return null;
     const scan = obj(r.scan_result) ?? {};
     const verdict = scan.verdict === "clean" || scan.verdict === "flagged" || scan.verdict === "blocked" ? scan.verdict : null;
@@ -124,7 +130,7 @@ export function parsePromotionsResponse(body: unknown): ParsedPromotions | null 
     promotions.push({
       id: r.id, sourceItemId: r.source_item_id, adapterId: r.origin_adapter_id, contentSha256: r.content_sha256, status: r.status as PromotionStatus,
       scanVerdict: verdict, scanContentSha256: typeof scan.content_sha256 === "string" ? scan.content_sha256 : null, scanFindings: findings,
-      requestedBy: r.requested_by, reviewedBy: (r.reviewed_by as string | null | undefined) ?? null, reviewedAt: (r.reviewed_at as string | null | undefined) ?? null,
+      requestedBy: byPerson, requestedByAdapter: byAdapter, reviewedBy: (r.reviewed_by as string | null | undefined) ?? null, reviewedAt: (r.reviewed_at as string | null | undefined) ?? null,
       decisionNote: (r.decision_note as string | null | undefined) ?? null, createdAt: r.created_at,
       sourceContent: (r.source_content as string | null | undefined) ?? null, provenance, alreadySharedItemId: (r.already_shared_item_id as string | null | undefined) ?? null,
       approvedSensitivity: (r.approved_sensitivity as ApprovableLabel | null | undefined) ?? null,
@@ -198,10 +204,11 @@ export interface PromotionCard {
   labelTitle: string | null;
 }
 
-const who = (id: string, viewerId: string) => (id === viewerId ? "You" : "Another member");
+const who = (id: string | null, adapter: string | null, viewerId: string) =>
+  adapter ? `The ${adapter} adapter` : id === viewerId ? "You" : "Another member";
 
 function provenanceLine(p: ProvenanceRow): string {
-  const parts = [`${p.adapterId} ${p.adapterVersion}`, `agent ${p.agentPrincipal}`, `task ${p.sourceTaskId}`, `confidence ${Math.round(p.confidence * 100)}%`];
+  const parts = [`${p.adapterId} ${p.adapterVersion}`, `agent ${p.agentPrincipal}`, `task ${p.sourceTaskId}`, p.confidence === null ? "confidence not reported" : `confidence ${Math.round(p.confidence * 100)}%`];
   if (p.sourceUrl) parts.push(`source ${p.sourceUrl}`);
   if (p.sourceSha256) parts.push(`source fingerprint ${p.sourceSha256.slice(0, 12)}…`);
   return parts.join(" · ");
@@ -232,8 +239,8 @@ export function buildPromotionCards(parsed: ParsedPromotions): PromotionCard[] {
       statusLabel: STATUS_TEXT[row.status].label,
       tone: STATUS_TEXT[row.status].tone,
       open,
-      requestedByLabel: who(row.requestedBy, parsed.viewerId),
-      reviewedByLabel: row.reviewedBy ? who(row.reviewedBy, parsed.viewerId) : null,
+      requestedByLabel: who(row.requestedBy, row.requestedByAdapter, parsed.viewerId),
+      reviewedByLabel: row.reviewedBy ? who(row.reviewedBy, null, parsed.viewerId) : null,
       createdAt: row.createdAt,
       contentHash: row.contentSha256,
       shortHash: row.contentSha256.slice(0, 12),

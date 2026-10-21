@@ -48,7 +48,7 @@ async function freshDb() {
     insert into public.client_memberships(tenant_slug, user_id, role) values
       ('tenant-a', '${USER.ownerA}', 'owner'), ('tenant-a', '${USER.adminA}', 'admin'), ('tenant-a', '${USER.memberA}', 'member');
   `);
-  for (const file of ["client-adapter-host", "client-adapter-token-uses", "client-adapter-retention-28", "client-lifecycle-restore"]) await db.exec(read(file));
+  for (const file of ["client-adapter-host", "client-adapter-token-uses", "client-adapter-retention-28", "client-adapter-proposals", "client-lifecycle-restore"]) await db.exec(read(file));
   return db;
 }
 
@@ -301,6 +301,35 @@ test("the restore shortcuts are not available outside a protected restore", asyn
       await expect(db.query("select public.validate_client_adapter_restore_graph('tenant-a')")).rejects.toThrow(/permission denied/);
     }
     expect(promo).toBeTruthy();
+  } finally {
+    await db.close();
+  }
+});
+
+test("a promotion an adapter asked for, and a source with no reported confidence, come back as they were (ADR-013)", async () => {
+  const db = await freshDb();
+  try {
+    await asOwner(db);
+    await db.exec(`insert into public.client_adapter_registry (tenant_slug, adapter_id, display_name, contract_version, manifest_sha256, created_by, state)
+      values ('tenant-a','forge','Forge','h1','${H("a")}','${USER.ownerA}','enabled')`);
+    await asService(db);
+    const text = "A fact the adapter proposed.";
+    const item = (await db.query<{ id: string }>(
+      "insert into public.client_adapter_memory_items (tenant_slug, namespace, origin_adapter_id, content, content_sha256, idempotency_key) values ('tenant-a','adapter:forge','forge',$1,$2,'idem-key-9') returning id", [text, sha(text)],
+    )).rows[0].id;
+    await db.query("insert into public.client_adapter_memory_provenance (tenant_slug, item_id, adapter_id, adapter_version, agent_principal, source_task_id, confidence) values ('tenant-a',$1,'forge','1','forge','task-9',null)", [item]);
+    const scan = JSON.stringify({ scanner: "memory-scan-h1", content_sha256: sha(text), verdict: "clean", findings: [], scanned_chars: text.length });
+    await db.query("insert into public.client_adapter_memory_promotions (tenant_slug, source_item_id, origin_adapter_id, content_sha256, requested_by_adapter, scan_result) values ('tenant-a',$1,'forge',$2,'forge',$3::jsonb)", [item, sha(text), scan]);
+
+    const batches = await exportBatches(db);
+    const promotionRow = batches.find((b) => b.table === "client_adapter_memory_promotions")!.rows[0];
+    expect(promotionRow).toMatchObject({ requested_by: null, requested_by_adapter: "forge" }); // the backup carries who asked
+    await removeTenant(db);
+    await restore(db, batches);
+
+    await asOwner(db);
+    expect((await db.query("select requested_by, requested_by_adapter, status from public.client_adapter_memory_promotions")).rows).toEqual([{ requested_by: null, requested_by_adapter: "forge", status: "quarantined" }]);
+    expect((await db.query("select confidence from public.client_adapter_memory_provenance")).rows).toEqual([{ confidence: null }]);
   } finally {
     await db.close();
   }

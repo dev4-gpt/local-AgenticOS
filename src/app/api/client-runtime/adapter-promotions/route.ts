@@ -23,7 +23,7 @@ export async function GET() {
 
   const promotions = await selectClientRecords("client_adapter_memory_promotions", {
     ...base,
-    select: "id,source_item_id,origin_adapter_id,content_sha256,status,scan_result,requested_by,reviewed_by,reviewed_at,decision_note,approved_sensitivity,created_at",
+    select: "id,source_item_id,origin_adapter_id,content_sha256,status,scan_result,requested_by,requested_by_adapter,reviewed_by,reviewed_at,decision_note,approved_sensitivity,created_at",
     order: "created_at.desc,id.asc",
     limit: String(LIMIT),
   });

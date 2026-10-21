@@ -115,6 +115,35 @@ test("shared notes can be withdrawn only by owners and admins, newest first, wit
   expect(view.revokeReasonIsEnough("x".repeat(501))).toBe(false);
 });
 
+test("an adapter's own request says which adapter asked, and any owner or admin may decide it", () => {
+  const [card] = cardsFor([promo({ requested_by: null, requested_by_adapter: "forge" })]);
+  expect(card).toMatchObject({ requestedByLabel: "The forge adapter", open: true, canApprove: true, canReject: true, blockedReason: null });
+  const [member] = cardsFor([promo({ requested_by: null, requested_by_adapter: "forge", source_content: null })], { canDecide: false });
+  expect(member).toMatchObject({ canApprove: false, canReject: false });
+});
+
+test("exactly one requester is accepted: none, both, another adapter's name and a malformed name are all refused", () => {
+  const bad = [
+    promo({ requested_by: null }),
+    promo({ requested_by: ME, requested_by_adapter: "forge" }),
+    promo({ requested_by: null, requested_by_adapter: "knowledge" }),
+    promo({ requested_by: null, requested_by_adapter: "Forge!" }),
+  ];
+  for (const row of bad) expect(view.parsePromotionsResponse(body([row])), JSON.stringify(row).slice(0, 60)).toBeNull();
+});
+
+test("a source with no reported confidence says so, an actual zero is shown as zero, and an impossible number is refused", () => {
+  const prov = (confidence: unknown) => [{
+    item_id: id(2), adapter_id: "forge", adapter_version: "1", agent_principal: "writer", source_task_id: "t-1", source_url: null, source_sha256: null, confidence, created_at: "2026-10-20T10:00:00Z",
+  }];
+  const [none] = cardsFor([promo({ provenance: prov(null) })]);
+  expect(none.provenanceLines[0]).toContain("confidence not reported");
+  expect(none.provenanceLines[0]).not.toContain("0%");
+  const [zero] = cardsFor([promo({ provenance: prov(0) })]);
+  expect(zero.provenanceLines[0]).toContain("confidence 0%");
+  for (const bad of [1.5, -0.1, "high", Number.NaN]) expect(view.parsePromotionsResponse(body([promo({ provenance: prov(bad) })]))).toBeNull();
+});
+
 test("a malformed answer is rejected instead of shown", () => {
   const bad: unknown[] = [
     null, "x", { ok: false }, { ok: true, promotions: [], viewerId: ME, canDecide: true }, body("nope" as never), body([], { sharedNotes: "no" }),
@@ -237,11 +266,11 @@ test("source records: at most 20, each with a valid adapter, short text fields, 
   const refused: Record<string, unknown>[] = [
     { adapter_id: "Bad Adapter" }, { adapter_id: undefined }, { adapter_version: 1 }, { adapter_version: "v".repeat(41) }, { adapter_version: undefined },
     { agent_principal: "a".repeat(121) }, { agent_principal: 5 }, { source_task_id: "t".repeat(129) }, { source_task_id: undefined },
-    { confidence: "0.5" }, { confidence: -0.01 }, { confidence: 1.01 }, { confidence: Number.NaN }, { confidence: undefined },
+    { confidence: "0.5" }, { confidence: -0.01 }, { confidence: 1.01 }, { confidence: Number.NaN },
     { created_at: "soon" }, { created_at: undefined }, { source_url: 5 }, { source_url: "u".repeat(2049) }, { source_sha256: "abc" }, { source_sha256: 5 },
   ];
   for (const over of refused) expect(withRows([provenanceRow(over)]), JSON.stringify(over)).toBeNull();
-  for (const over of [{ confidence: 0 }, { confidence: 1 }, { source_url: null }, { source_sha256: null }, { source_url: undefined, source_sha256: undefined }, { source_url: "u".repeat(2048) }, { adapter_version: "v".repeat(40) }, { agent_principal: "a".repeat(120) }, { source_task_id: "t".repeat(128) }]) {
+  for (const over of [{ confidence: 0 }, { confidence: 1 }, { confidence: null }, { confidence: undefined }, { source_url: null }, { source_sha256: null }, { source_url: undefined, source_sha256: undefined }, { source_url: "u".repeat(2048) }, { adapter_version: "v".repeat(40) }, { agent_principal: "a".repeat(120) }, { source_task_id: "t".repeat(128) }]) {
     expect(withRows([provenanceRow(over)]), JSON.stringify(over).slice(0, 60)).not.toBeNull();
   }
 });
