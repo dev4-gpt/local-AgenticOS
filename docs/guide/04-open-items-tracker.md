@@ -184,7 +184,7 @@ Work happens in the separate ContractorOS repo (`dev4-gpt/ContractorOS`, AGPL, s
 ## Phase 6: Flagged extras (all off by default)
 
 - [ ] Harness2 as a proposer only; evaluator owned outside the agent (research items 9-10)
-- [ ] Higgsfield or Muapi once priced (pricing unknown, parked)
+- [ ] Higgsfield API as an off-by-default media provider (unparked 2026-10-21). Pricing: billed per generation in US dollars, no subscription needed for the API (Higgsfield's own blog); one third-party test measured about $0.20 to $3.23 per clip by model; Seedance 2.5 on the subscription is about $6.27 a clip. Not checked against Higgsfield's price list yet. Each client brings their own Higgsfield key (stored per client like other provider keys, never in the repo or chat). Conditions before client use: copy results into the client's own storage because Higgsfield result links expire; list Higgsfield as a party that receives client prompts; reserve and settle through the budget gate; contract tests first. `wide-trace/open-higgsfield` is read for ideas only: it has no licence file, so its code is not copied unless the author adds a licence. Muapi stays parked (pricing unknown)
 - [ ] Artemis for QA; SPACE as an optional sandbox on Linux; InkOS; Hunyuan3D-WorldClaw
 - [ ] Each gets its own contract tests before being turned on
 
