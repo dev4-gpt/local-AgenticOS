@@ -67,7 +67,6 @@ const asUser = async (db: PGlite, id: string) => {
   await db.exec("set role authenticated");
 };
 const asService = (db: PGlite) => db.exec("reset role; set role service_role");
-const asAnon = (db: PGlite) => db.exec("reset role; set role anon");
 const asOwner = (db: PGlite) => db.exec("reset role");
 
 async function register(db: PGlite, tenant: string, adapter: string, user = USER.ownerA) {
@@ -129,7 +128,7 @@ async function count(db: PGlite, table: string, where = "true") {
 }
 async function purge(db: PGlite, tenant = "tenant-a", apply = true, batch = 100) {
   await asService(db);
-  const r = await db.query<{ r: Record<string, any> }>("select public.purge_expired_client_adapter_records($1,$2,$3) as r", [tenant, apply, batch]);
+  const r = await db.query<{ r: Record<string, unknown> }>("select public.purge_expired_client_adapter_records($1,$2,$3) as r", [tenant, apply, batch]);
   return r.rows[0].r;
 }
 
@@ -239,7 +238,7 @@ test("seven days after expiry the purge erases notes and removes rows; a dry run
     expect(done.deleted).toMatchObject({ provenance: 2, budgetEvents: 1, approvals: 1, sharedNotes: 1, promotions: 1, privateNotes: 1 });
     for (const table of TABLES) expect(await count(db, table), table).toBe(0);
     await asOwner(db);
-    const audit = await db.query<{ metadata: Record<string, any> }>("select metadata from public.client_runtime_audit_events where event_type = 'tenant.adapter.retention_purged'");
+    const audit = await db.query<{ metadata: Record<string, unknown> }>("select metadata from public.client_runtime_audit_events where event_type = 'tenant.adapter.retention_purged'");
     expect(audit.rows).toHaveLength(1);
     expect(audit.rows[0].metadata).toMatchObject({ retentionDays: 28, recoveryDays: 7, purgeAfterDays: 35 });
     // the shared note's removal was announced to adapters

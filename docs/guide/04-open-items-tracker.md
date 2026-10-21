@@ -60,9 +60,18 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 - [x] 3a. Durable two-person approval gateway and routes (`ea0d98a`)
 - [x] 3b. Ed25519 adapter tokens with single-use table (`34a03c3`)
 
+### Phase 1 close-out view (2026-10-21, proposed by Claude; confirm or move rows)
+**Blocks calling Phase 1 done** (each needs a real environment or your decision):
+- 9b: deploy the retention job for one client, dry run, then see a scheduled run in the logs (the only top-level item whose "done when" is unmet)
+- 8f export half: `client-lifecycle.mjs` writing a real backup from staging and restoring from that file (needs the staging service key in your terminal)
+- 10h and 15e: open the promotions and approvals screens in a browser against staging with a real login
+- 8g: decide whether trusting the service role for restore is acceptable; 8h: write the hosted deployment order into the runbook
+
+**Deferred by design** (not Phase 1 gates): 4b-4e and 15g (first real adapter), 10e and 10j (Phase 2 routes), 5b (Phase 7), 5g/10i/15f (existing app behaviour), 10d/10f/10g (scanner limits, product decisions), 8c-8e (lifecycle policy), 15c/15d/5c (UI nice-to-haves), 5d/5e (pre-existing framework and lint items)
+
 ### Open
 - [x] **4. Budget enforcement (Me), done in the budget commit on `feat/approval-gateway`.** Reserve, settle and release functions on the central ledger; per-adapter caps by day, month or total; whole-number micros; one idempotency key per charge; fail closed (X-5, N-4). Proven by `adapter-budget-sql.spec.ts`, `adapter-budget.spec.ts` and a real-Postgres concurrency test (20 simultaneous requests against a cap that fits 3 reserved exactly 3). See `docs/architecture/adr-007-adapter-budget.md`
-  - [~] 4a. Run the concurrency test in the project's own checks and against a hosted or free-staging database (it was run once against a throwaway local Postgres 17 container; it is skipped unless `ADAPTER_BUDGET_TEST_DB_CONTAINER` is set). **Hosted half done 2026-10-21:** on `veloce-agentos-staging`, through the real REST layer, 20 simultaneous reservations against a cap that fits 10 reserved exactly 10 and refused 10, and the ledger stopped at the cap. **Still open:** running it in the project's own checks
+  - [x] 4a. (closed 2026-10-21: `npm run verify:adapter-budget-concurrency` runs the 4 real-Postgres concurrency tests in a disposable container and passes) Run the concurrency test in the project's own checks and against a hosted or free-staging database (it was run once against a throwaway local Postgres 17 container; it is skipped unless `ADAPTER_BUDGET_TEST_DB_CONTAINER` is set). **Hosted half done 2026-10-21:** on `veloce-agentos-staging`, through the real REST layer, 20 simultaneous reservations against a cap that fits 10 reserved exactly 10 and refused 10, and the ledger stopped at the cap. **Still open:** running it in the project's own checks
   - [ ] 4b. Read the tenant monthly cap from one place (today the caller passes it, as the existing worker functions do)
   - [ ] 4c. Show unknown costs separately (a provider that does not report a cost)
   - [ ] 4d. Nothing calls the budget functions yet; the first real adapter must reserve before it runs a task
@@ -122,7 +131,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
   - [ ] 15c. No notification tells a second person a request is waiting; they must open the page
   - [ ] 15d. Requests are created by host code; there is no form to create one from the UI
 - [x] **16. Mutation check on Phase 1 tests (Me), done locally on `feat/approval-gateway`.** `npm run verify:phase1-mutations` (`scripts/phase1-mutation-sweep.mjs`) removes one rule at a time from the six adapter SQL files and seven libraries (180 mutations) and requires an owning spec to fail; it restores every file, also on a crash, and refuses to run on uncommitted target files. First run: 144 caught, 36 survived. Of those, 28 were real missing tests (including the restore-context role check, the 28-day retention cap, memory and promotion immutability, 6 settle/release refusals, the `null` hash rule, a string token scope) and now have tests; 8 are recorded as explained duplicates with a reason each (`EQUIVALENT` in the script, guarded by a spec so a stale entry fails). Second run: 172 caught, 8 explained, 0 survived, files restored. After items 6b, 9c, 11, 13, QM-6a/6b the sweep grew to 237 mutations (it now also covers the review screen's view model, the promotion decision route and the command policy): 222 caught, 8 explained, 7 survived on first run (six response-parsing limits in the review view model, one harmless duplicate in the policy library); the six now have tests, the duplicate is explained, and a re-run of those two files is clean. The sweep takes about 35 minutes and is not part of `test:focused`; re-run it after changing any rule
-  - [ ] 16a. Pre-existing lint findings in `tests/adapter-retention-sql.spec.ts` (two `any` types, one unused `asAnon`), not from this work
+  - [x] 16a. (fixed 2026-10-21: lint clean, 12 tests pass) Pre-existing lint findings in `tests/adapter-retention-sql.spec.ts` (two `any` types, one unused `asAnon`), not from this work
 
 ---
 
