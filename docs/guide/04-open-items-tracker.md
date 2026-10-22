@@ -14,7 +14,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 |---|---|---|
 | 0 | Hygiene | Mine done; yours open |
 | 1 | Host foundation | Done and proven on staging (2026-10-21); 9b is deployed on `agentos-mvp` and was run by the scheduler, with the next unattended run on 2026-10-22 03:17 UTC as the last check |
-| 2 | Creator OS adapter | Slice 1, 2a (events feed, durable token ids) and 2b (host side: ingest, puller, contract test) done locally, nothing pushed; 2c (`memory.tombstone`) and the puller's cloud job (2d) open |
+| 2 | Creator OS adapter | Slice 1, 2a (events feed, durable token ids) and 2b (host side: ingest, puller, contract test) done locally, nothing pushed; 2c (`memory.tombstone` with deletion receipts, ADR-014) done locally and proven on staging 2026-10-22, nothing pushed; the puller and dispatcher cloud job (2d) open |
 | 3 | Knowledge adapter | Not started (dedupe tools exist) |
 | 4 | Forge adapter | Not started |
 | 5 | SymVibe + REA | Not started |
@@ -162,7 +162,7 @@ Work happens in the separate ContractorOS repo (`dev4-gpt/ContractorOS`, AGPL, n
 - [x] Draft-class tasks only; publishing stays disabled (the manifest ceiling is `draft`; the run stops at awaiting approval)
 - [x] Contract tests against the real service; spoofed-approver test; tenant tests. Done in-process: a token minted by the real host module verifies, spoofed requester/approver fields and approve routes are refused, wrong tenant refused. **Done from the host side (2026-10-21, slice 2b-4):** `npm run verify:adapter-contract-creator-os` (set `CONTRACTOROS_DIR` to the clone) starts the real service as its own process, mints real host tokens, runs a task, pulls the feed with the real puller into a real PostgreSQL with the real migrations, and checks the note, provenance and quarantined promotion; a second pull stores nothing twice, an unsafe fact is queued as blocked and can only be rejected, a switched-off adapter stores nothing, spoofed requester/approver fields give 400, another tenant's token, the wrong scope, a replayed token and the shared service key give 401, and no approve or publish route exists
 - [ ] Budget feed reconciles with the host ledger (the per-task limit is the factory's hard cap today; the cross-ledger reconcile is not built)
-- [ ] Deletion receipts or label "outside the guarantee" (X-2). Labelled `deletionGuarantee: "none"` in the manifest for now, so it stays out of the client edition
+- [x] Deletion receipts or label "outside the guarantee" (X-2). Creator OS now answers `memory.tombstone` with a receipt and declares `deletionGuarantee: "receipt"` with a stated scope (ADR-014); done locally, proven on staging 2026-10-22. Other adapters stay outside the guarantee. Original note: it was labelled `deletionGuarantee: "none"` so it stayed out of the client edition
 - [x] P2-1. (done 2026-10-21, slice 2a; decided with you: a local file, not the host function, so the adapter holds no host credential) Durable replay protection: used token ids are written to a private file (directory 0700, file 0600, only an id and an expiry) before a token is accepted, kept 60 s past expiry, refused when full, and the service stops at start-up if the file is unreadable. Wired in through the `jtiFile` option. Was: the token-id store is in memory
 - [ ] P2-2. You: choose the starter principal/pillar (X-15). The task takes any pillar from the existing list per request; nothing is hard-coded
 - [x] P2-3. You: make the ContractorOS repo private (Phase 0) before any of this is pushed (done, verified 2026-10-21; pushing slice 1 is now allowed when you say so)
@@ -208,7 +208,7 @@ Work happens in the separate ContractorOS repo (`dev4-gpt/ContractorOS`, AGPL, n
 - [ ] Billing reconciliation and the full customer journey
 - [ ] Payments through a licensed provider; legal review
 - [ ] The 3 known failing tests in `public-production-readiness.spec.ts` resolved (N-3, receipts bound to an older candidate)
-- [ ] Deletion tombstones acknowledged by every adapter that holds client data
+- [~] Deletion tombstones acknowledged by every adapter that holds client data. Creator OS acknowledges with a receipt (ADR-014, staging-proven); the dispatcher still runs by hand until slice 2d, and no other adapter has a receipt route
 - [ ] Only then may client data touch any adapter
 
 ---
