@@ -14,7 +14,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 |---|---|---|
 | 0 | Hygiene | Mine done; yours open |
 | 1 | Host foundation | Done and proven on staging (2026-10-21); 9b is deployed on `agentos-mvp` and was run by the scheduler, with the next unattended run on 2026-10-22 03:17 UTC as the last check |
-| 2 | Creator OS adapter | Slice 1, 2a (events feed, durable token ids) and 2b (host side: ingest, puller, contract test) done locally, nothing pushed; 2c (`memory.tombstone` with deletion receipts, ADR-014) done locally and proven on staging 2026-10-22, nothing pushed; the puller and dispatcher cloud job (2d) open |
+| 2 | Creator OS adapter | Slice 1, 2a (events feed, durable token ids) and 2b (host side: ingest, puller, contract test) done and pushed; 2c (`memory.tombstone` with deletion receipts, ADR-014) done, proven on staging 2026-10-22 and pushed; 2d (the scheduled sync job, ADR-015) built locally and not deployed, nothing pushed |
 | 3 | Knowledge adapter | Not started (dedupe tools exist) |
 | 4 | Forge adapter | Not started |
 | 5 | SymVibe + REA | Not started |
@@ -208,7 +208,7 @@ Work happens in the separate ContractorOS repo (`dev4-gpt/ContractorOS`, AGPL, n
 - [ ] Billing reconciliation and the full customer journey
 - [ ] Payments through a licensed provider; legal review
 - [ ] The 3 known failing tests in `public-production-readiness.spec.ts` resolved (N-3, receipts bound to an older candidate)
-- [~] Deletion tombstones acknowledged by every adapter that holds client data. Creator OS acknowledges with a receipt (ADR-014, staging-proven); the dispatcher still runs by hand until slice 2d, and no other adapter has a receipt route
+- [~] Deletion tombstones acknowledged by every adapter that holds client data. Creator OS acknowledges with a receipt (ADR-014, staging-proven); the dispatcher runs by hand until the sync job (ADR-015, built, not deployed) is deployed, and no other adapter has a receipt route
 - [ ] Only then may client data touch any adapter
 
 ---
