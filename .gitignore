@@ -110,3 +110,6 @@ launch-system/pitch-deck-local-product/
 # on demand rather than committing — these are exploration aids, not source.
 graphify-out/
 docs/architecture/diagrams/
+
+# adapter sync job build output (slice 2d)
+/dist/

@@ -14,26 +14,14 @@
 // It prints one JSON line with counts and reasons, never the text of a note. Exit 0 when the run finished or has more to
 // read next time; 1 when it stopped for a reason that needs a look; 2 when it refused to start (a setting is missing).
 //
-// The host libraries are TypeScript, so this script loads them with the `typescript` package. Baking them into the
-// Cloud Run job image is a later step (tracker, Phase 2 slice 2d); until then run this where the repository is checked out.
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
+// The host libraries are TypeScript. In a checkout this script transpiles them with the `typescript` package; in the job
+// image they are already compiled (scripts/build-adapter-sync.mjs) and `typescript` is not installed (ADR-015).
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import ts from "typescript";
+import { createHostLibLoader } from "./lib/hostLibLoader.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const cache = new Map();
-function loadLib(name) {
-  if (cache.has(name)) return cache.get(name);
-  const file = path.join(root, "src", "lib", `${name}.ts`);
-  const output = ts.transpileModule(readFileSync(file, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
-  const mod = { exports: {} };
-  cache.set(name, mod.exports);
-  const nodeRequire = createRequire(file);
-  new Function("require", "module", "exports", output)((id) => (id.startsWith("./") ? loadLib(id.slice(2)) : nodeRequire(id)), mod, mod.exports);
-  return mod.exports;
-}
+const loadLib = createHostLibLoader(root);
 
 function refuse(reason) {
   console.error(`REFUSED: ${reason}`);
