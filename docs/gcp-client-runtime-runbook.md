@@ -241,7 +241,9 @@ as `veloce-agentos-staging`): apply `supabase-client-adapter-proposals.sql` and
 `supabase-client-adapter-ingest.sql`, then re-apply
 `supabase-client-lifecycle-restore.sql` so its column list includes
 `requested_by_adapter`, then `supabase-client-table-privilege-hardening.sql`
-again.
+again. Afterwards run `notify pgrst, 'reload schema';` so the REST layer sees the
+new functions at once; until it does, a call to them fails and the events puller
+stops with "database unavailable" (seen on staging, 2026-10-21).
 
 If the restore migration was applied first, re-apply it after installing the
 adapter migrations.
