@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
 import { createHash, generateKeyPairSync } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
@@ -21,6 +21,7 @@ const contracts = loadReviewModule("src/lib/adapterContracts.ts", {});
 const guard = loadReviewModule("src/lib/adapterMemoryGuard.ts", { "./adapterContracts": contracts });
 const tokens = loadReviewModule("src/lib/adapterTokens.ts", { "./adapterContracts": contracts });
 const puller = loadReviewModule("src/lib/adapterEventsPuller.ts", { "./adapterContracts": contracts, "./adapterMemoryGuard": guard });
+const dispatcher = loadReviewModule("src/lib/adapterTombstoneDispatcher.ts", { "./adapterContracts": contracts, "./adapterEventsPuller": puller });
 
 const TENANT = "tenant-a";
 const ADAPTER = "creator-os";
@@ -116,9 +117,9 @@ async function hostDb(state = "preview"): Promise<PGlite> {
     insert into public.client_tenants(slug) values ('tenant-a');
     insert into public.client_memberships values ('tenant-a', '${USER.ownerA}', 'owner', 'active'), ('tenant-a', '${USER.adminA}', 'admin', 'active');
   `);
-  for (const file of ["adapter-host", "adapter-token-uses", "adapter-retention-28", "adapter-promotions", "adapter-proposals", "adapter-ingest"]) await pg.exec(read(file));
-  await pg.exec(`insert into public.client_adapter_registry (tenant_slug, adapter_id, display_name, contract_version, manifest_sha256, created_by, state)
-    values ('tenant-a','creator-os','Creator OS','h1','${"a".repeat(64)}','${USER.ownerA}','${state}')`);
+  for (const file of ["adapter-host", "adapter-token-uses", "adapter-retention-28", "adapter-promotions", "adapter-proposals", "adapter-ingest", "adapter-tombstones"]) await pg.exec(read(file));
+  await pg.exec(`insert into public.client_adapter_registry (tenant_slug, adapter_id, display_name, contract_version, manifest_sha256, created_by, state, deletion_guarantee)
+    values ('tenant-a','creator-os','Creator OS','h1','${"a".repeat(64)}','${USER.ownerA}','${state}','receipt')`);
   return pg;
 }
 
@@ -186,15 +187,15 @@ test("the real service refuses what the contract says it must: spoofed identity,
   expect((await hostCall(base, "GET", "/h1/events", "events", undefined, once)).status).toBe(200);
   expect((await hostCall(base, "GET", "/h1/events", "events", undefined, once)).status).toBe(401); // single use
   // the contract has no route that approves or publishes, and the feed cannot be written to
-  for (const [method, route] of [["POST", "/h1/approve"], ["POST", "/h1/publish"], ["POST", "/h1/events"], ["POST", "/h1/memory.tombstone"]] as const) {
+  for (const [method, route] of [["POST", "/h1/approve"], ["POST", "/h1/publish"], ["POST", "/h1/events"]] as const) {
     expect((await hostCall(base, method, route, "task.run", {})).status, route).toBe(404);
   }
   // the host cannot even mint a token for an operation the contract does not have
   for (const scope of ["approve", "publish", "memory.delete"]) expect(() => mint([scope]), scope).toThrow(/invalid token scope/);
   const manifest = (await hostCall(base, "GET", "/h1/manifest", "manifest")).json;
-  expect(manifest).toMatchObject({ adapterId: ADAPTER, sideEffectCeiling: "draft", deletionGuarantee: "none" });
-  expect(manifest.operations).toEqual(expect.arrayContaining(["events", "memory.propose"]));
-  expect(manifest.operations).not.toContain("memory.tombstone");
+  expect(manifest).toMatchObject({ adapterId: ADAPTER, sideEffectCeiling: "draft", deletionGuarantee: "receipt" });
+  expect(manifest.operations).toEqual(expect.arrayContaining(["events", "memory.propose", "memory.tombstone"]));
+  expect(String(manifest.deletionScope)).toMatch(/published elsewhere/); // the receipt says what it does not cover
   // and the host's own validator accepts that manifest as a legal one
   expect(() => contracts.validateAdapterManifest(manifest)).not.toThrow();
 });
@@ -233,4 +234,47 @@ test("an adapter whose address is wrong or unreachable stops the run cleanly and
   db = await hostDb();
   const gone = await puller.pullAdapterEvents({ tenantSlug: TENANT, adapterId: ADAPTER, baseUrl: "http://127.0.0.1:9", allowInsecureLoopback: true, timeoutMs: 2000 }, { rpc: rpcFor(db), mintToken: () => mint(["events"]) });
   expect(gone).toMatchObject({ stopped: "adapter_unreachable", cursor: 0, created: 0 });
+});
+
+async function filesHolding(dir: string, needle: string): Promise<string[]> {
+  const hits: string[] = [];
+  for (const entry of await readdir(dir, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile()) continue;
+    const file = path.join(entry.parentPath, entry.name);
+    if ((await readFile(file, "utf8").catch(() => "")).toLowerCase().includes(needle)) hits.push(path.relative(dir, file));
+  }
+  return hits;
+}
+
+test("withdrawing a fact makes the real service erase it from its own folders, and the host keeps the receipt (ADR-014)", async () => {
+  const base = await startService();
+  db = await hostDb();
+  await runTask(base);
+  await pull(base, db);
+  const needle = FACT.toLowerCase().replace(/\.$/, "");
+  expect((await filesHolding(workDir, needle)).length).toBeGreaterThan(0); // the service really holds the fact before
+
+  // an admin approves the proposal, it becomes a shared note, and then the admin withdraws it
+  const promotion = (await rows(db, "select id from public.client_adapter_memory_promotions"))[0]!.id as string;
+  await db.exec("reset role");
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [USER.adminA]);
+  await db.exec("set role authenticated");
+  await db.query("select public.client_adapter_decide_promotion($1,'approve',$2,null,'ordinary')", [promotion, sha(FACT)]);
+  await db.exec("reset role");
+  const sharedId = (await db.query<{ id: string }>(
+    "insert into public.client_adapter_memory_items (tenant_slug, namespace, origin_adapter_id, content, content_sha256, trust_level, promotion_id, idempotency_key) values ('tenant-a','shared','creator-os',$1,$2,'reviewed',$3,'shared-contract-1') returning id",
+    [FACT, sha(FACT), promotion],
+  )).rows[0]!.id;
+  await db.exec("set role authenticated");
+  expect((await db.query<{ r: boolean }>("select public.client_adapter_revoke_shared_memory($1,'the fact is wrong now') as r", [sharedId])).rows[0]!.r).toBe(true);
+
+  const dispatch = () => dispatcher.dispatchTombstones({ tenantSlug: TENANT, adapterId: ADAPTER, baseUrl: base, allowInsecureLoopback: true }, { rpc: rpcFor(db!), mintToken: () => mint(["memory.tombstone"]) });
+  const report = await dispatch();
+  expect(report).toMatchObject({ due: 1, acknowledged: 1, failed: {}, stopped: null, summary: { pending: 0, gaveUp: 0, acknowledged: 1 } });
+  expect(await filesHolding(workDir, needle)).toEqual([]); // gone from the event log, run state and vault
+  const books = await rows(db, "select acked_at is not null as acked, receipt_sha256 ~ '^[0-9a-f]{64}$' as hashed, deleted_count > 0 as erased from public.client_adapter_tombstone_receipts");
+  expect(books).toEqual([{ acked: true, hashed: true, erased: true }]);
+
+  // asking again finds nothing owed, and the real service would give the same receipt for a repeat anyway
+  expect(await dispatch()).toMatchObject({ due: 0, acknowledged: 0, stopped: null });
 });
