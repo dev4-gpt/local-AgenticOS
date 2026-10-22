@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { execFile } from "node:child_process";
 import { generateKeyPairSync } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import os from "node:os";
@@ -164,5 +164,36 @@ test("the image recipe copies what the job runs, compiles in a first stage, and 
   // everything the commands import from scripts/ is in the final stage
   for (const script of ["run-adapter-events-puller.mjs", "run-adapter-tombstones.mjs", "run-adapter-sync.mjs"]) {
     for (const match of readFileSync(path.join("scripts", script), "utf8").matchAll(/from "\.\/(lib\/[A-Za-z]+\.mjs)"/g)) expect(finalStage, `${script} imports ${match[1]}`).toContain(`scripts/${match[1]}`);
+  }
+});
+
+test("a library with a syntax error stops the build instead of producing a broken image", async () => {
+  const { buildAdapterSync } = await import("../scripts/build-adapter-sync.mjs");
+  const repo = mkdtempSync(path.join(os.tmpdir(), "adapter-sync-broken-"));
+  try {
+    cpSync("src/lib", path.join(repo, "src", "lib"), { recursive: true });
+    symlinkSync(path.resolve("node_modules"), path.join(repo, "node_modules"));
+    writeFileSync(path.join(repo, "src", "lib", "adapterContracts.ts"), "export const broken = ;\n");
+    expect(() => buildAdapterSync({ repoRoot: repo, outDir: path.join(repo, "out") })).toThrow(/adapterContracts\.ts does not compile/);
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});
+
+test("from a checkout the loader transpiles the source once and hands every caller the same module, and a compiled folder takes over when present", async () => {
+  const { createHostLibLoader } = await import("../scripts/lib/hostLibLoader.mjs");
+  const fromSource = createHostLibLoader(path.resolve("."));
+  const first = fromSource("adapterContracts");
+  expect(fromSource("adapterContracts")).toBe(first);
+  expect(typeof first.isValidTenantSlug).toBe("function");
+  expect(typeof fromSource("adapterTokens").mintAdapterToken).toBe("function");
+  // with dist/adapter-sync present the compiled file is used and the source is not read
+  const repo = mkdtempSync(path.join(os.tmpdir(), "adapter-sync-loader-"));
+  try {
+    mkdirSync(path.join(repo, "dist", "adapter-sync"), { recursive: true });
+    writeFileSync(path.join(repo, "dist", "adapter-sync", "adapterContracts.js"), "exports.marker = 'compiled';\n");
+    expect(createHostLibLoader(repo)("adapterContracts")).toEqual({ marker: "compiled" });
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
   }
 });
