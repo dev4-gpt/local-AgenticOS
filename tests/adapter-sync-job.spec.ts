@@ -197,3 +197,21 @@ test("from a checkout the loader transpiles the source once and hands every call
     rmSync(repo, { recursive: true, force: true });
   }
 });
+
+test("the job spec carries no secret, reads three secrets by reference, does not retry, runs one task, and the alert watches the job family", () => {
+  const job = readFileSync("infra/adapter-sync-job/job.yaml", "utf8");
+  expect(job).toMatch(/maxRetries: 0/);
+  expect(job).toMatch(/parallelism: 1/);
+  expect(job.match(/secretKeyRef:/g)).toHaveLength(3);
+  for (const name of ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "ADAPTER_TOKEN_SIGNING_KEY_PEM"]) expect(job, name).toMatch(new RegExp(`- name: ${name}\\n\\s+valueFrom:`));
+  expect(job).toContain("BACKGROUND_DEPLOYMENT_ID");
+  expect(job).toContain("https://ADAPTER_HOST"); // an https address, never plain http
+  expect(job).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}|sb_secret|BEGIN [A-Z ]*PRIVATE KEY|ALLOW_LOOPBACK/);
+  const alert = readFileSync("infra/adapter-sync-job/alert-policy.yaml", "utf8");
+  expect(alert).toContain('starts_with("veloce-adapter-sync-")');
+  expect(alert).toContain('metric.labels.result = "failed"');
+  expect(job).toContain("veloce-adapter-sync-CLIENT_SLUG-ADAPTER_ID"); // the name the alert's prefix matches
+  const readme = readFileSync("infra/adapter-sync-job/README.md", "utf8");
+  for (const needed of ["client_adapter_background_owner_set", "ADAPTER_TOKEN_SIGNING_KEY", "gaveUp", "*/5 * * * *"]) expect(readme, needed).toContain(needed);
+  expect(readme).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}/);
+});

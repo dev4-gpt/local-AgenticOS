@@ -251,6 +251,14 @@ stops with "database unavailable" (seen on staging, 2026-10-21).
 If the restore migration was applied first, re-apply it after installing the
 adapter migrations.
 
+### Adapter sync job (phase 2 slice 2d)
+
+The events puller and the tombstone dispatcher run together as one scheduled Cloud Run job per client and adapter,
+every five minutes: `infra/adapter-sync-job/` (README, `job.yaml`, `alert-policy.yaml`, Dockerfile), ADR-015. It uses
+the same background owner record as the retention job and reads three secrets by reference. Nothing is deployed until the
+owner says so; the README lists the one-time set-up and what each log line means.
+
+
 Create the approved tenant and membership from the Supabase SQL editor or an
 operator-only migration job. Never accept membership creation from the
 browser. For the first internal test, run
