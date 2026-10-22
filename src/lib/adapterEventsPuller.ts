@@ -79,6 +79,11 @@ const text = (v: unknown, min: number, max: number): v is string => typeof v ===
 
 /** The events URL for a configured adapter, or an Error naming what is wrong (never the value). */
 export function eventsUrl(config: Pick<PullerConfig, "baseUrl" | "allowInsecureLoopback">, after: number, limit: number): string {
+  return `${adapterRouteUrl(config, "/h1/events")}?after=${after}&limit=${limit}`;
+}
+
+/** The address of one h1 route of a configured adapter, under the same rules as every call the host makes to an adapter. */
+export function adapterRouteUrl(config: Pick<PullerConfig, "baseUrl" | "allowInsecureLoopback">, route: string): string {
   let url: URL;
   try {
     url = new URL(config.baseUrl);
@@ -88,7 +93,7 @@ export function eventsUrl(config: Pick<PullerConfig, "baseUrl" | "allowInsecureL
   const loopback = LOOPBACK.has(url.hostname);
   if (url.protocol !== "https:" && !(url.protocol === "http:" && config.allowInsecureLoopback === true && loopback)) throw new Error("the adapter url must be https");
   if (url.username || url.password || url.search || url.hash) throw new Error("the adapter url must not carry credentials, a query or a fragment");
-  return `${url.origin}${url.pathname.replace(/\/+$/, "")}/h1/events?after=${after}&limit=${limit}`;
+  return `${url.origin}${url.pathname.replace(/\/+$/, "")}${route}`;
 }
 
 /** Strict check of one `memory.propose` payload. The adapter may not add fields, and may not name another adapter. */
@@ -126,7 +131,8 @@ export function parsePage(body: unknown, cursor: number, pageSize: number): Page
   return { events, next: body.next, hasMore: body.hasMore };
 }
 
-async function readCapped(response: Response, max: number): Promise<string | null> {
+/** The response body as text, or null when it is missing or larger than the cap (the rest is never read). */
+export async function readCapped(response: Response, max: number): Promise<string | null> {
   const reader = response.body?.getReader();
   if (!reader) return null;
   const chunks: Uint8Array[] = [];

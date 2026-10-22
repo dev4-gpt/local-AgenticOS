@@ -26,6 +26,8 @@ export const TARGETS = [
   { file: `${SQL_DIR}/supabase-client-adapter-background-owner.sql`, kind: "sql", specs: [T("adapter-background-owner-sql")] },
   { file: `${SQL_DIR}/supabase-client-adapter-proposals.sql`, kind: "sql", specs: [T("adapter-proposals-sql"), T("adapter-ingest-sql"), T("adapter-restore-sql"), T("adapter-host-sql"), T("adapter-promotions-sql")] },
   { file: `${SQL_DIR}/supabase-client-adapter-ingest.sql`, kind: "sql", specs: [T("adapter-ingest-sql")] },
+  { file: `${SQL_DIR}/supabase-client-adapter-tombstones.sql`, kind: "sql", specs: [T("adapter-tombstones-sql"), T("adapter-promotions-sql")] },
+  { file: "src/lib/adapterTombstoneDispatcher.ts", kind: "ts", specs: [T("adapter-tombstone-dispatcher"), T("adapter-tombstone-dispatcher-cli")] },
   { file: "src/lib/adapterEventsPuller.ts", kind: "ts", specs: [T("adapter-events-puller"), T("adapter-events-puller-cli")] },
   { file: "src/lib/adapterTokens.ts", kind: "ts", specs: [T("adapter-tokens")] },
   { file: "src/lib/adapterBudget.ts", kind: "ts", specs: [T("adapter-budget")] },

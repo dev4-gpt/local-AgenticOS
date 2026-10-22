@@ -231,9 +231,12 @@ that `veloce-agentos-staging` was proven with (2026-10-21):
 8. `supabase-client-adapter-ingest.sql` (the events-feed cursor and the function
    that turns one adapter proposal into a private note, provenance and a
    queued promotion; service role only)
-9. `supabase-client-adapter-background-owner.sql`
-10. `supabase-client-lifecycle-restore.sql`
-11. `supabase-client-table-privilege-hardening.sql` (last: it revokes the default
+9. `supabase-client-adapter-tombstones.sql` (deletion receipts: the adapter is told
+   to erase its copy of a withdrawn note and its receipt is recorded; also the
+   exposure search at withdrawal; 2026-10-21, ADR-014)
+10. `supabase-client-adapter-background-owner.sql`
+11. `supabase-client-lifecycle-restore.sql`
+12. `supabase-client-table-privilege-hardening.sql` (last: it revokes the default
     privileges Supabase grants to `anon` on new functions)
 
 A database installed before the proposals and ingest migrations existed (such
