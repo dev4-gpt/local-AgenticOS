@@ -192,6 +192,10 @@ test("delivery is counted, stops after ten attempts, and a receipt closes the no
     await withdraw(db, other.sharedId);
     const second = (await pending(db))[0]!.event_id as string;
     await asService(db);
+    // a malformed answer for a note still waiting is refused and leaves it waiting (the receipt table's own check would otherwise throw)
+    for (const [hash, count] of [["short", 1], [receipt, -1], [receipt, 1_000_001]] as const) {
+      expect(await scalar(db, "select public.client_adapter_tombstone_ack($1,$2,$3) as v", [second, hash, count])).toBe(false);
+    }
     for (let i = 0; i < 10; i += 1) expect(await scalar(db, "select public.client_adapter_tombstone_attempt($1) as v", [second])).toBe(true);
     expect(await scalar(db, "select public.client_adapter_tombstone_attempt($1) as v", [second])).toBe(false);
     expect(await pending(db)).toEqual([]);

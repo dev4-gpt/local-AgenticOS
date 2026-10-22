@@ -123,7 +123,7 @@ test("a database that refuses the receipt is a failed try; one that does not ans
 });
 
 test("a list the database cannot give, or one that is malformed, stops the run before anything is sent", async () => {
-  for (const database of [fakeDb({ pendingFails: true }), fakeDb({ due: "nope" }), fakeDb({ due: [{ ...due(1), adapter_event_id: "short" }] }), fakeDb({ due: [{ ...due(1), event_id: "not-a-uuid" }] }), fakeDb({ due: [{ ...due(1), content_sha256: "abc" }] }), fakeDb({ due: [null] })]) {
+  for (const database of [fakeDb({ pendingFails: true }), fakeDb({ due: "nope" }), fakeDb({ due: {} }), fakeDb({ due: 5 }), fakeDb({ due: [{ ...due(1), adapter_event_id: "short" }] }), fakeDb({ due: [{ ...due(1), event_id: "not-a-uuid" }] }), fakeDb({ due: [{ ...due(1), content_sha256: "abc" }] }), fakeDb({ due: [null] })]) {
     const adapter = fakeAdapter([accepts]);
     expect(await run(database, adapter)).toMatchObject({ stopped: "database_unavailable", due: 0, acknowledged: 0 });
     expect(adapter.seen).toHaveLength(0);
