@@ -1,6 +1,6 @@
 # ADR 016: Reconciling an adapter's reported spend with the host's budget ledger
 
-**Status:** decided 2026-10-23 with the owner (D1 to D6); built in Phase 2 slice 3b, local commits only. Not applied to any hosted database.
+**Status:** decided 2026-10-23 with the owner (D1 to D6); built in Phase 2 slice 3b. Applied to the staging database and checked in a browser 2026-10-24.
 **Builds on:** ADR-005 (the adapter host contract), ADR-013 (the events puller), ADR-015 (the scheduled sync job), tracker item 6 (budget).
 **Closes:** the host half of the tracker item "Budget feed reconciles with the host ledger".
 
@@ -53,6 +53,6 @@ record function does not exist and the puller stops with "database unavailable".
 
 ## Still open
 
-- The Spend check panel has not been looked at in a browser (the item 4 browser check covers it).
+- Looked at in a browser on 2026-10-24 against staging (marked seed data, removed afterwards): all five statuses and their counts matched the seeded rows, the activity lines showed, no horizontal overflow at 375 px.
 - Starting adapter tasks from the host with a reservation first, so the comparison has something to compare against.
 - Deciding whether a large `unreserved` or `over_reserved` count should ever pause an adapter. D3 was flag only.
