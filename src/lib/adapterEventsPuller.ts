@@ -26,6 +26,8 @@ export const MAX_PROPOSAL_CHARS = 2_000;
 const PROPOSAL_KEYS = ["adapterVersion", "agentPrincipal", "citationId", "content", "retrievedAt", "sourceTaskId", "sourceUrl"] as const;
 const EVENT_ID = /^[0-9a-f]{32}$/;
 const TASK_ID = /^[A-Za-z0-9._:-]{1,128}$/;
+/** The most a single task can be reported to have cost: one million dollars, in micros. Matches the database's limit. */
+const MAX_SPENT_MICROS = 1_000_000_000_000;
 const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
 export type RpcResult = { ok: boolean; status: number; value: unknown };
@@ -64,6 +66,8 @@ export interface PullReport {
   created: number;
   duplicates: number;
   tasksSeen: number;
+  /** How many tasks' reported spend was newly recorded for the budget reconcile (ADR-016). */
+  spendReported: number;
   /** Reason -> how many events were skipped for it. */
   rejected: Record<string, number>;
   stopped: StopReason | null;
@@ -164,9 +168,9 @@ export async function pullAdapterEvents(config: PullerConfig, deps: PullerDeps):
   const cursorRead = await deps.rpc("client_adapter_events_cursor_get", who);
   const start = Number(cursorRead.value);
   if (!cursorRead.ok || !isWhole(start)) {
-    return { adapterId: config.adapterId, startCursor: 0, cursor: 0, pages: 0, events: 0, created: 0, duplicates: 0, tasksSeen: 0, rejected: {}, stopped: "database_unavailable" };
+    return { adapterId: config.adapterId, startCursor: 0, cursor: 0, pages: 0, events: 0, created: 0, duplicates: 0, tasksSeen: 0, spendReported: 0, rejected: {}, stopped: "database_unavailable" };
   }
-  const report: PullReport = { adapterId: config.adapterId, startCursor: start, cursor: start, pages: 0, events: 0, created: 0, duplicates: 0, tasksSeen: 0, rejected: {}, stopped: null };
+  const report: PullReport = { adapterId: config.adapterId, startCursor: start, cursor: start, pages: 0, events: 0, created: 0, duplicates: 0, tasksSeen: 0, spendReported: 0, rejected: {}, stopped: null };
   const reject = (reason: string) => { report.rejected[reason] = (report.rejected[reason] ?? 0) + 1; };
 
   /** Moves the stored cursor to what has been handled. False means someone else moved it, and this run must stop. */
@@ -209,6 +213,30 @@ export async function pullAdapterEvents(config: PullerConfig, deps: PullerDeps):
       report.events += 1;
       if (event.kind === "task.state") {
         report.tasksSeen += 1;
+        // What the adapter says the task cost (whole micros). Recorded once per task so the host can compare it with its
+        // ledger; the host only flags a difference (ADR-016). A task.state without the field is normal (older events).
+        if (isObject(event.data) && "spentMicros" in event.data) {
+          const spent = event.data.spentMicros;
+          if (!isWhole(spent, MAX_SPENT_MICROS) || !TASK_ID.test(event.taskId)) {
+            reject("bad_spend");
+          } else {
+            const recorded = await deps.rpc("client_adapter_budget_record_report", {
+              p_tenant_slug: config.tenantSlug,
+              p_adapter_id: config.adapterId,
+              p_task_id: event.taskId,
+              p_reported_micros: spent,
+            });
+            const outcome = recorded.ok ? recorded.value : null;
+            if (outcome === "recorded") report.spendReported += 1;
+            else if (outcome === "duplicate") { /* already recorded on an earlier read */ }
+            else if (outcome === "invalid") reject("bad_spend");
+            else {
+              report.stopped = outcome === "adapter_not_active" ? "adapter_not_active" : "database_unavailable";
+              if (!(await save(handled))) report.stopped = "cursor_conflict";
+              return report;
+            }
+          }
+        }
         handled = event.seq;
         continue;
       }

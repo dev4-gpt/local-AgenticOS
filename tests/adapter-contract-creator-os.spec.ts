@@ -117,7 +117,7 @@ async function hostDb(state = "preview"): Promise<PGlite> {
     insert into public.client_tenants(slug) values ('tenant-a');
     insert into public.client_memberships values ('tenant-a', '${USER.ownerA}', 'owner', 'active'), ('tenant-a', '${USER.adminA}', 'admin', 'active');
   `);
-  for (const file of ["adapter-host", "adapter-token-uses", "adapter-retention-28", "adapter-promotions", "adapter-proposals", "adapter-ingest", "adapter-tombstones"]) await pg.exec(read(file));
+  for (const file of ["adapter-host", "adapter-token-uses", "adapter-retention-28", "adapter-promotions", "adapter-proposals", "adapter-ingest", "adapter-tombstones", "adapter-budget-reconcile"]) await pg.exec(read(file));
   await pg.exec(`insert into public.client_adapter_registry (tenant_slug, adapter_id, display_name, contract_version, manifest_sha256, created_by, state, deletion_guarantee)
     values ('tenant-a','creator-os','Creator OS','h1','${"a".repeat(64)}','${USER.ownerA}','${state}','receipt')`);
   return pg;
@@ -148,7 +148,11 @@ test("a task run on the real service reaches the host as a private note, its pro
   db = await hostDb();
   const taskId = await runTask(base);
   const report = await pull(base, db);
-  expect(report).toMatchObject({ startCursor: 0, cursor: 2, pages: 1, events: 2, created: 1, tasksSeen: 1, rejected: {}, stopped: null });
+  expect(report).toMatchObject({ startCursor: 0, cursor: 2, pages: 1, events: 2, created: 1, tasksSeen: 1, spendReported: 1, rejected: {}, stopped: null });
+  // the cost the real service reported for the finished task is on the host's books, once, as the task id and a number
+  expect(await rows(db, "select adapter_id, payload from public.client_adapter_outbox where event_type = 'budget.reported'")).toEqual([
+    { adapter_id: "creator-os", payload: { task_id: taskId, reported_micros: 0 } }, // the fixture's scripted model is free
+  ]);
 
   expect(await rows(db, "select namespace, origin_adapter_id, status, content, content_sha256, trust_level from public.client_adapter_memory_items")).toEqual([
     { namespace: "adapter:creator-os", origin_adapter_id: "creator-os", status: "active", content: FACT, content_sha256: sha(FACT), trust_level: "untrusted" },
@@ -161,13 +165,14 @@ test("a task run on the real service reaches the host as a private note, its pro
 
   // a second pull finds nothing new and stores nothing twice; the cursor stays
   const again = await pull(base, db);
-  expect(again).toMatchObject({ startCursor: 2, cursor: 2, events: 0, created: 0, stopped: null });
+  expect(again).toMatchObject({ startCursor: 2, cursor: 2, events: 0, created: 0, spendReported: 0, stopped: null });
   expect((await rows(db, "select count(*)::int as n from public.client_adapter_memory_items"))[0]).toEqual({ n: 1 });
 
   // a pull that lost its place (cursor reset) reads the feed again and stores nothing twice
   await rows(db, "update public.client_adapter_event_cursors set last_seq = 0");
   const reread = await pull(base, db);
-  expect(reread).toMatchObject({ startCursor: 0, cursor: 2, events: 2, created: 0, duplicates: 1, stopped: null });
+  expect(reread).toMatchObject({ startCursor: 0, cursor: 2, events: 2, created: 0, duplicates: 1, spendReported: 0, stopped: null });
+  expect((await rows(db, "select count(*)::int as n from public.client_adapter_outbox where event_type = 'budget.reported'"))[0]).toEqual({ n: 1 }); // read again, recorded once
   expect((await rows(db, "select count(*)::int as n from public.client_adapter_memory_promotions"))[0]).toEqual({ n: 1 });
 });
 

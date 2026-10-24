@@ -41,8 +41,8 @@ function fakeFeed(events: Ev[], o: { status?: number; body?: string; throws?: bo
 }
 
 /** A fake database: the three host functions, with a cursor, and a way to choose what ingest answers. */
-function fakeDb(o: { ingest?: (body: Record<string, unknown>, n: number) => string; casFails?: boolean; cursor?: number } = {}) {
-  const state = { cursor: o.cursor ?? 0, ingests: [] as Record<string, unknown>[], advances: [] as number[], calls: [] as string[] };
+function fakeDb(o: { ingest?: (body: Record<string, unknown>, n: number) => string; spend?: (body: Record<string, unknown>, n: number) => string; casFails?: boolean; cursor?: number } = {}) {
+  const state = { cursor: o.cursor ?? 0, ingests: [] as Record<string, unknown>[], spends: [] as Record<string, unknown>[], advances: [] as number[], calls: [] as string[] };
   const rpc = async (name: string, body: Record<string, unknown>) => {
     state.calls.push(name);
     if (name === "client_adapter_events_cursor_get") return { ok: true, status: 200, value: state.cursor };
@@ -51,6 +51,11 @@ function fakeDb(o: { ingest?: (body: Record<string, unknown>, n: number) => stri
       state.cursor = body.p_next as number;
       state.advances.push(state.cursor);
       return { ok: true, status: 200, value: true };
+    }
+    if (name === "client_adapter_budget_record_report") {
+      state.spends.push(body);
+      const outcome = o.spend ? o.spend(body, state.spends.length) : "recorded";
+      return outcome === "__down" ? { ok: false, status: 503, value: null } : { ok: true, status: 200, value: outcome };
     }
     state.ingests.push(body);
     const answer = o.ingest ? o.ingest(body, state.ingests.length) : "created";
@@ -253,4 +258,62 @@ test("the report holds counts and reasons, never the text of a note", async () =
   const text = JSON.stringify(await r.report);
   expect(text).not.toContain("Jane Doe");
   expect(text).not.toContain("4111");
+});
+
+// Budget reconcile (ADR-016): the spend an adapter reports on a finished task is recorded once, for the host to compare.
+const spending = (seq: number, spentMicros: unknown, taskId = TASK): Ev => ({ ...taskState(seq), taskId, data: { state: "succeeded", spentMicros } });
+
+test("a finished task's reported spend goes to the host's books once, under the adapter and tenant from configuration", async () => {
+  const r = run([spending(1, 12_500), taskState(2), spending(3, 0, "h1-bbbbbbbbbbbbbbbbbbbbbbbb")]);
+  const report = await r.report;
+  expect(report).toMatchObject({ tasksSeen: 3, spendReported: 2, created: 0, duplicates: 0, rejected: {}, stopped: null, cursor: 3 });
+  expect(r.db.state.spends).toEqual([
+    { p_tenant_slug: TENANT, p_adapter_id: ADAPTER, p_task_id: TASK, p_reported_micros: 12_500 },
+    { p_tenant_slug: TENANT, p_adapter_id: ADAPTER, p_task_id: "h1-bbbbbbbbbbbbbbbbbbbbbbbb", p_reported_micros: 0 },
+  ]); // a task.state without the field sends nothing
+  expect(r.db.state.ingests).toEqual([]);
+});
+
+test("a spend that was already recorded is not counted again, and reading the feed twice records nothing new", async () => {
+  const r = run([spending(1, 500)], { spend: () => "duplicate" });
+  expect(await r.report).toMatchObject({ spendReported: 0, rejected: {}, stopped: null, cursor: 1, duplicates: 0 });
+});
+
+test("a spend that is not a whole number in range, or sits on a malformed task id, is skipped and counted without stalling the feed", async () => {
+  const bad = [-1, 1.5, "12", null, Number.NaN, 1_000_000_000_001, 2 ** 53, true, [5], { a: 1 }];
+  const events = bad.map((value, i) => spending(i + 1, value));
+  events.push(spending(bad.length + 1, 5, "bad id with spaces"));
+  events.push(spending(bad.length + 2, 7));
+  const r = run(events);
+  const report = await r.report;
+  expect(report).toMatchObject({ rejected: { bad_spend: bad.length + 1 }, spendReported: 1, stopped: null, cursor: bad.length + 2 });
+  expect(r.db.state.spends).toEqual([{ p_tenant_slug: TENANT, p_adapter_id: ADAPTER, p_task_id: TASK, p_reported_micros: 7 }]);
+  // the top of the range is accepted
+  const edge = run([spending(1, 1_000_000_000_000)]);
+  expect(await edge.report).toMatchObject({ spendReported: 1, rejected: {} });
+});
+
+test("the database refusing a spend as invalid is counted as a bad spend and the feed goes on", async () => {
+  const r = run([spending(1, 5), spending(2, 6, "h1-bbbbbbbbbbbbbbbbbbbbbbbb")], { spend: (_b, n) => (n === 1 ? "invalid" : "recorded") });
+  expect(await r.report).toMatchObject({ rejected: { bad_spend: 1 }, spendReported: 1, stopped: null, cursor: 2 });
+});
+
+test("an unreachable database or an inactive adapter stops the run at that task, keeping the cursor just before it", async () => {
+  const down = run([taskState(1), spending(2, 5), spending(3, 6, "h1-bbbbbbbbbbbbbbbbbbbbbbbb")], { spend: () => "__down" });
+  expect(await down.report).toMatchObject({ stopped: "database_unavailable", cursor: 1, spendReported: 0 });
+  expect(down.db.state.spends).toHaveLength(1); // it did not carry on to the next task
+  const inactive = run([spending(1, 5)], { spend: () => "adapter_not_active" });
+  expect(await inactive.report).toMatchObject({ stopped: "adapter_not_active", cursor: 0 });
+  const unknown = run([spending(1, 5)], { spend: () => "something-new" });
+  expect(await unknown.report).toMatchObject({ stopped: "database_unavailable", cursor: 0 });
+  const lost = run([taskState(1), spending(2, 5)], { spend: () => "__down", casFails: true });
+  expect(await lost.report).toMatchObject({ stopped: "cursor_conflict" });
+});
+
+test("a spend field on an event that is not a task.state is not treated as a report", async () => {
+  const sneaky: Ev = { ...propose(1), data: { ...propose(1).data, spentMicros: 5 } };
+  const r = run([sneaky]);
+  const report = await r.report;
+  expect(r.db.state.spends).toEqual([]);
+  expect(report.spendReported).toBe(0);
 });

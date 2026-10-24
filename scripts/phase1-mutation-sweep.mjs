@@ -64,7 +64,7 @@ export const EQUIVALENT = [
   { file: "src/lib/adapterTokens.ts", line: 111, original: 'if (typeof v !== "string" || typeof iss !== "string" || typeof tenant !== "string" || typeof aud !== "string") return null;', reason: "Each of those four fields is compared for equality with an expected string afterwards, so a non-string can never verify." },
   { file: "src/lib/adapterCommandPolicy.ts", line: 77, original: "if (!closed) return false;", reason: "A closing bracket with no opening one never compiles (new RegExp throws first), and the tests already prove that a) and ) are refused." },
   { file: `${SQL_DIR}/supabase-client-adapter-proposals.sql`, line: 91, original: "raise exception 'adapter_promotion_scan_required';", reason: "Unreachable: an insert only admits a clean, flagged or blocked verdict, the scan cannot be rewritten, and a blocked one is refused by the check just above." },
-  { file: "src/lib/adapterEventsPuller.ts", line: 137, original: "if (!reader) return null;", reason: "A response with no body makes getReader throw, and the caller's catch turns that into the same null, so the result is identical." },
+  { file: "src/lib/adapterEventsPuller.ts", line: 141, original: "if (!reader) return null;", reason: "A response with no body makes getReader throw, and the caller's catch turns that into the same null, so the result is identical." },
   { file: "src/lib/adapterMemoryGuard.ts", line: 98, original: "if (!url) return null;", reason: "new URL(undefined) and new URL('') throw, and the catch returns null, so the result is identical." },
 ];
 
