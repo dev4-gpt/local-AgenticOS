@@ -255,6 +255,14 @@ test("one adapter's report is its own, and another tenant's or another adapter's
     await host(db, "t-shared-id", [{ kind: "reserve", micros: 10_000 }, { kind: "settle", micros: 9_000 }], { adapter: "second-one" });
     expect(await counts(db, USER.memberA, "tenant-a")).toEqual({ "creator-os:unreserved": 1, "second-one:settled_differs": 1 }); // creator-os in tenant-a has no reservation of its own
     expect(await counts(db, USER.ownerB, "tenant-b")).toEqual({ "creator-os:matched": 1 });
+    // creator-os has only a reservation of its own; the other adapter's settle and release of the same task id must not close it
+    await host(db, "t-shared-2", [{ kind: "reserve", micros: 10_000 }]);
+    await host(db, "t-shared-2", [{ kind: "reserve", micros: 10_000 }, { kind: "settle", micros: 4_000 }], { adapter: "second-one" });
+    await report(db, "t-shared-2", 4_000);
+    await host(db, "t-shared-3", [{ kind: "reserve", micros: 10_000 }]);
+    await host(db, "t-shared-3", [{ kind: "reserve", micros: 10_000 }, { kind: "release", micros: 10_000 }], { adapter: "second-one" });
+    await report(db, "t-shared-3", 4_000);
+    expect(await counts(db, USER.memberA, "tenant-a")).toEqual({ "creator-os:unreserved": 1, "creator-os:open": 2, "second-one:settled_differs": 1 });
   } finally {
     await db.close();
   }
