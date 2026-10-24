@@ -55,6 +55,7 @@ function fakeDb(o: { ingest?: (body: Record<string, unknown>, n: number) => stri
     if (name === "client_adapter_budget_record_report") {
       state.spends.push(body);
       const outcome = o.spend ? o.spend(body, state.spends.length) : "recorded";
+      if (outcome === "__failed_with_a_recorded_body") return { ok: false, status: 500, value: "recorded" }; // an error reply must not be read as an answer
       return outcome === "__down" ? { ok: false, status: 503, value: null } : { ok: true, status: 200, value: outcome };
     }
     state.ingests.push(body);
@@ -266,7 +267,8 @@ const spending = (seq: number, spentMicros: unknown, taskId = TASK): Ev => ({ ..
 test("a finished task's reported spend goes to the host's books once, under the adapter and tenant from configuration", async () => {
   const r = run([spending(1, 12_500), taskState(2), spending(3, 0, "h1-bbbbbbbbbbbbbbbbbbbbbbbb")]);
   const report = await r.report;
-  expect(report).toMatchObject({ tasksSeen: 3, spendReported: 2, created: 0, duplicates: 0, rejected: {}, stopped: null, cursor: 3 });
+  expect(report).toMatchObject({ tasksSeen: 3, spendReported: 2, created: 0, duplicates: 0, stopped: null, cursor: 3 });
+  expect(report.rejected).toEqual({}); // a task.state without the field is normal, not a bad spend
   expect(r.db.state.spends).toEqual([
     { p_tenant_slug: TENANT, p_adapter_id: ADAPTER, p_task_id: TASK, p_reported_micros: 12_500 },
     { p_tenant_slug: TENANT, p_adapter_id: ADAPTER, p_task_id: "h1-bbbbbbbbbbbbbbbbbbbbbbbb", p_reported_micros: 0 },
@@ -304,6 +306,8 @@ test("an unreachable database or an inactive adapter stops the run at that task,
   expect(down.db.state.spends).toHaveLength(1); // it did not carry on to the next task
   const inactive = run([spending(1, 5)], { spend: () => "adapter_not_active" });
   expect(await inactive.report).toMatchObject({ stopped: "adapter_not_active", cursor: 0 });
+  const failedWithBody = run([spending(1, 5)], { spend: () => "__failed_with_a_recorded_body" });
+  expect(await failedWithBody.report).toMatchObject({ stopped: "database_unavailable", spendReported: 0, cursor: 0 });
   const unknown = run([spending(1, 5)], { spend: () => "something-new" });
   expect(await unknown.report).toMatchObject({ stopped: "database_unavailable", cursor: 0 });
   const lost = run([taskState(1), spending(2, 5)], { spend: () => "__down", casFails: true });
