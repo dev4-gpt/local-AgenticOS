@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, ArrowLeft, Plug, RefreshCw, ShieldAlert } from "lucide-react";
 import { formatMicrosUsd, type AdapterCard } from "@/lib/adapterOverview";
 import type { ActivityGroup } from "@/lib/adapterActivity";
+import type { SpendGroup } from "@/lib/adapterSpendReconcile";
 
 type LoadState = "loading" | "ready" | "disabled" | "signed-out" | "unavailable";
 
@@ -16,15 +17,20 @@ export default function AdaptersView() {
   const [state, setState] = useState<LoadState>("loading");
   // null means the activity counts could not be read; the adapter cards above do not depend on them.
   const [activity, setActivity] = useState<{ windowDays: number; groups: ActivityGroup[] } | null>(null);
+  // Same for the spend check: null means it could not be read, and the panel says so instead of showing nothing.
+  const [spend, setSpend] = useState<{ windowDays: number; groups: SpendGroup[] } | null>(null);
 
   const load = useCallback(async () => {
     setState("loading");
-    const [response, activityResponse] = await Promise.all([
+    const [response, activityResponse, spendResponse] = await Promise.all([
       fetch("/api/client-runtime/adapters", { cache: "no-store" }).catch(() => null),
       fetch("/api/client-runtime/adapter-activity", { cache: "no-store" }).catch(() => null),
+      fetch("/api/client-runtime/adapter-spend", { cache: "no-store" }).catch(() => null),
     ]);
     const data = await response?.json().catch(() => null);
     const activityData = await activityResponse?.json().catch(() => null);
+    const spendData = await spendResponse?.json().catch(() => null);
+    setSpend(spendResponse?.ok && spendData?.ok && Array.isArray(spendData.groups) ? { windowDays: Number(spendData.windowDays), groups: spendData.groups as SpendGroup[] } : null);
     setActivity(activityResponse?.ok && activityData?.ok && Array.isArray(activityData.groups) ? { windowDays: Number(activityData.windowDays), groups: activityData.groups as ActivityGroup[] } : null);
     if (response?.ok && data?.ok && Array.isArray(data.adapters)) {
       setCards(data.adapters as AdapterCard[]);
@@ -68,8 +74,33 @@ export default function AdaptersView() {
       {cards.map((card) => <li key={card.adapterId}><Card card={card} /></li>)}
     </ul>}
 
+    {state === "ready" && <SpendPanel spend={spend} />}
     {state === "ready" && <ActivityPanel activity={activity} />}
   </div>;
+}
+
+function SpendPanel({ spend }: { spend: { windowDays: number; groups: SpendGroup[] } | null }) {
+  if (!spend) return <Notice warn title="Spend check unavailable" body="The comparison with the budget ledger could not be read. Nothing is shown rather than a guess." />;
+  const flagged = spend.groups.reduce((sum, group) => sum + group.flagged, 0);
+  return <section className="panel mt-6 p-4" aria-label="Spend check">
+    <h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Spend check <span style={{ color: "var(--cream-mute)" }}>(last {spend.windowDays} days)</span></h2>
+    <p className="mt-1 text-[11px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>
+      Compares what each adapter says a finished task cost with the budget ledger. It only flags a difference; it never blocks or changes anything.
+    </p>
+    {spend.groups.length === 0
+      ? <p className="mt-2 text-[12px]" style={{ color: "var(--cream-mute)" }}>No finished tasks have reported their spend yet.</p>
+      : <>
+        {flagged > 0 && <p className="mt-2 flex items-center gap-1.5 text-[12px]" style={{ color: "#fbbf24" }} role="status"><AlertTriangle size={13} aria-hidden="true" />{flagged} {flagged === 1 ? "task" : "tasks"} where the reported spend and the ledger do not agree.</p>}
+        <ul className="mt-3 grid gap-3 md:grid-cols-2">
+          {spend.groups.map((group) => <li key={group.adapterId}>
+            <p className="font-mono text-[10px]" style={{ color: "var(--cream-mute)" }}>{group.adapterId}</p>
+            <dl className="mt-1 grid gap-0.5 text-[11px]" style={{ color: "var(--cream-dim)" }}>
+              {group.lines.map((line) => <div key={line.status} className="flex justify-between gap-3"><dt>{line.label}</dt><dd className="tabular-nums" style={{ color: line.status === "matched" || line.status === "open" ? "var(--cream)" : "#fbbf24" }}>{line.count}</dd></div>)}
+            </dl>
+          </li>)}
+        </ul>
+      </>}
+  </section>;
 }
 
 function ActivityPanel({ activity }: { activity: { windowDays: number; groups: ActivityGroup[] } | null }) {

@@ -39,6 +39,8 @@ export const TARGETS = [
   { file: "src/lib/adapterMemoryGuard.ts", kind: "ts", specs: [T("adapter-memory-guard"), T("adapter-promotions-routes"), T("adapter-wrong-tenant-routes")] },
   { file: "src/lib/adapterContracts.ts", kind: "ts", specs: [T("adapter-contracts"), T("adapter-tokens")] },
   { file: "src/lib/adapterActivity.ts", kind: "ts", specs: [T("adapter-activity")] },
+  { file: "src/lib/adapterSpendReconcile.ts", kind: "ts", specs: [T("adapter-spend-reconcile")] },
+  { file: "src/app/api/client-runtime/adapter-spend/route.ts", kind: "ts", specs: [T("adapter-spend-reconcile")] },
   { file: "src/lib/adapterPromotionsView.ts", kind: "ts", specs: [T("adapter-promotions-view")] },
   { file: "src/lib/adapterCommandPolicy.ts", kind: "ts", specs: [T("adapter-command-policy")] },
   { file: "src/app/api/client-runtime/adapter-promotions/[id]/decision/route.ts", kind: "ts", specs: [T("adapter-promotions-routes"), T("adapter-wrong-tenant-routes")] },
