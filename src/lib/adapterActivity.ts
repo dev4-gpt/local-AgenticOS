@@ -17,6 +17,7 @@ const EVENT_LABELS = {
   "memory.tombstoned": "Memory deleted",
   "memory.proposed": "Proposals received",
   "memory.erased": "Erasures confirmed",
+  "budget.reported": "Spend reported by the adapter",
   "task.requested": "Tasks requested",
   "promotion.decided": "Shared memory decisions",
   "token.use": "Adapter calls authorised",

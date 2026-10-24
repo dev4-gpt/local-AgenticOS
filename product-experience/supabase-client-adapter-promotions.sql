@@ -11,7 +11,7 @@
 -- applied last wins, so every file that states it carries the same list (host, approval gateway, promotions, ingest, tombstones); a test fails if they ever differ.
 alter table public.client_adapter_outbox drop constraint if exists client_adapter_outbox_event_type_check;
 alter table public.client_adapter_outbox add constraint client_adapter_outbox_event_type_check
-  check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided', 'memory.proposed', 'memory.erased'));
+  check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided', 'memory.proposed', 'memory.erased', 'budget.reported'));
 
 -- The reviewer now also labels what they approve (QM-6a), so the function has a fifth argument. The old four-argument
 -- form is removed so a call cannot be ambiguous and nobody can approve without a label.

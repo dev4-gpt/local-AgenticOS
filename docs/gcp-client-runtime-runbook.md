@@ -234,9 +234,11 @@ that `veloce-agentos-staging` was proven with (2026-10-21):
 9. `supabase-client-adapter-tombstones.sql` (deletion receipts: the adapter is told
    to erase its copy of a withdrawn note and its receipt is recorded; also the
    exposure search at withdrawal; 2026-10-21, ADR-014)
-10. `supabase-client-adapter-background-owner.sql`
-11. `supabase-client-lifecycle-restore.sql`
-12. `supabase-client-table-privilege-hardening.sql` (last: it revokes the default
+10. `supabase-client-adapter-budget-reconcile.sql` (compares the spend an adapter reports with the host's budget
+    ledger; flags only; 2026-10-23, ADR-016)
+11. `supabase-client-adapter-background-owner.sql`
+12. `supabase-client-lifecycle-restore.sql`
+13. `supabase-client-table-privilege-hardening.sql` (last: it revokes the default
     privileges Supabase grants to `anon` on new functions)
 
 A database installed before the proposals and ingest migrations existed (such

@@ -28,7 +28,7 @@ revoke all on public.client_adapter_event_cursors from public, anon, authenticat
 -- A proposal that arrives is counted in the activity panel (counts only: the event holds ids, never text). The outbox's allowed event types are stated in every file that adds one; the list is the same in all of them.
 alter table public.client_adapter_outbox drop constraint if exists client_adapter_outbox_event_type_check;
 alter table public.client_adapter_outbox add constraint client_adapter_outbox_event_type_check
-  check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided', 'memory.proposed', 'memory.erased'));
+  check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided', 'memory.proposed', 'memory.erased', 'budget.reported'));
 
 create or replace function public.client_adapter_events_cursor_get(p_tenant_slug text, p_adapter_id text)
 returns bigint

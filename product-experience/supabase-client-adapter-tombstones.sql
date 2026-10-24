@@ -55,7 +55,7 @@ create policy client_adapter_tombstone_exposures_admin_select on public.client_a
 -- A confirmed erasure is counted in the activity panel (counts only). The outbox's allowed event types are stated in every file that adds one; the list is the same in all of them.
 alter table public.client_adapter_outbox drop constraint if exists client_adapter_outbox_event_type_check;
 alter table public.client_adapter_outbox add constraint client_adapter_outbox_event_type_check
-  check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided', 'memory.proposed', 'memory.erased'));
+  check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided', 'memory.proposed', 'memory.erased', 'budget.reported'));
 
 create or replace function public.client_adapter_source_event_id(p_item_id uuid)
 returns text
