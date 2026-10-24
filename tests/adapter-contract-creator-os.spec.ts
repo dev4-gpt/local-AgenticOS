@@ -21,6 +21,7 @@ const contracts = loadReviewModule("src/lib/adapterContracts.ts", {});
 const guard = loadReviewModule("src/lib/adapterMemoryGuard.ts", { "./adapterContracts": contracts });
 const tokens = loadReviewModule("src/lib/adapterTokens.ts", { "./adapterContracts": contracts });
 const puller = loadReviewModule("src/lib/adapterEventsPuller.ts", { "./adapterContracts": contracts, "./adapterMemoryGuard": guard });
+const draftFetcher = loadReviewModule("src/lib/adapterDraftFetcher.ts", { "./adapterContracts": contracts, "./adapterMemoryGuard": guard, "./adapterEventsPuller": puller });
 const dispatcher = loadReviewModule("src/lib/adapterTombstoneDispatcher.ts", { "./adapterContracts": contracts, "./adapterEventsPuller": puller });
 
 const TENANT = "tenant-a";
@@ -199,7 +200,7 @@ test("the real service refuses what the contract says it must: spoofed identity,
   for (const scope of ["approve", "publish", "memory.delete"]) expect(() => mint([scope]), scope).toThrow(/invalid token scope/);
   const manifest = (await hostCall(base, "GET", "/h1/manifest", "manifest")).json;
   expect(manifest).toMatchObject({ adapterId: ADAPTER, sideEffectCeiling: "draft", deletionGuarantee: "receipt" });
-  expect(manifest.operations).toEqual(expect.arrayContaining(["events", "memory.propose", "memory.tombstone"]));
+  expect(manifest.operations).toEqual(expect.arrayContaining(["events", "memory.propose", "memory.tombstone", "task.result"]));
   expect(String(manifest.deletionScope)).toMatch(/published elsewhere/); // the receipt says what it does not cover
   // and the host's own validator accepts that manifest as a legal one
   expect(() => contracts.validateAdapterManifest(manifest)).not.toThrow();
@@ -282,4 +283,35 @@ test("withdrawing a fact makes the real service erase it from its own folders, a
 
   // asking again finds nothing owed, and the real service would give the same receipt for a repeat anyway
   expect(await dispatch()).toMatchObject({ due: 0, acknowledged: 0, stopped: null });
+});
+
+test("the host fetches a finished task's draft text from the real service, scans it, and gets nothing once the fact is erased (ADR-017)", async () => {
+  const base = await startService();
+  const fetchDrafts = (taskId: string, token = mint(["task.result"])) =>
+    draftFetcher.fetchTaskDrafts({ tenantSlug: TENANT, adapterId: ADAPTER, baseUrl: base, allowInsecureLoopback: true }, { mintToken: () => token }, taskId) as Promise<{ ok: boolean; reason?: string; omitted?: number; drafts: { assetId: string; title: string; body: string; scan: { verdict: string } }[] }>;
+  const taskId = await runTask(base);
+  const view = (await hostCall(base, "GET", `/h1/task.get?id=${taskId}`, "task.get")).json;
+
+  const fetched = await fetchDrafts(taskId);
+  expect(fetched).toMatchObject({ ok: true, omitted: 0 });
+  expect(fetched.drafts.map((d) => d.assetId)).toEqual(view.draftAssetIds);
+  expect(fetched.drafts.length).toBeGreaterThan(0);
+  expect(fetched.drafts.every((d) => d.body.includes("Replies within 5 minutes converted at 42%") && d.scan.verdict === "clean")).toBe(true);
+
+  // a token for any other operation cannot read drafts; an unknown task is not found
+  expect(await fetchDrafts(taskId, mint(["task.get"]))).toEqual({ ok: false, reason: "adapter_refused" });
+  expect(await fetchDrafts("h1-" + "0".repeat(24))).toEqual({ ok: false, reason: "not_found" });
+
+  // the host asks the service to erase the fact, and the drafts that quoted it are no longer handed out
+  const needle = FACT.toLowerCase().replace(/\.$/, "");
+  expect((await filesHolding(workDir, needle)).length).toBeGreaterThan(0);
+  const events = (await hostCall(base, "GET", "/h1/events?after=0&limit=50", "events")).json.events as { id: string; kind: string; data: { content?: string } }[];
+  const proposal = events.find((e) => e.kind === "memory.propose")!;
+  const erased = await hostCall(base, "POST", "/h1/memory.tombstone", "memory.tombstone", {
+    tenantSlug: TENANT, adapterId: ADAPTER, eventId: "11111111-1111-4111-8111-111111111111", targets: [{ adapterEventId: proposal.id, contentSha256: sha(proposal.data.content!) }],
+  });
+  expect(erased.status).toBe(200);
+  const after = await fetchDrafts(taskId);
+  expect(after).toMatchObject({ ok: true, drafts: [], omitted: view.draftAssetIds.length });
+  expect(await filesHolding(workDir, needle)).toEqual([]);
 });
