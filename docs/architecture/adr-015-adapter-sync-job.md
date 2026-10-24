@@ -1,6 +1,6 @@
 # ADR 015: The scheduled adapter sync job
 
-**Status:** decided 2026-10-22 with the owner (D1 to D6); built in Phase 2 slice 2d, local commits only. **Not deployed.**
+**Status:** decided 2026-10-22 with the owner (D1 to D6); built in Phase 2 slice 2d. Deployed to the staging project (job only, no schedule or alert yet) and proven end to end in the cloud on 2026-10-23.
 **Builds on:** ADR-012 (adapter token keys), ADR-013 (adapter memory proposals), ADR-014 (deletion receipts), tracker item 9b (the retention job).
 
 ## The problem
@@ -38,11 +38,16 @@ person remembering is not a promise.
 commands switched to the loader, `infra/adapter-sync-job/` (Dockerfile, `job.yaml`, `alert-policy.yaml`, README),
 `tests/adapter-sync-job.spec.ts` (the image simulated in a folder with no `node_modules`) and mutation-sweep targets.
 
+## Cloud proof, 2026-10-23
+
+In `agentos-mvp` (job `veloce-adapter-sync-agentos-staging-creator-os`, image `adapter-sync-job:v1` built by Cloud Build, signing key in Secret Manager) against a throwaway `zz-contract-fixture` Cloud Run service (the real Content OS service with a scripted model, public at the network level, every route 401 without a host-signed token):
+
+1. Run 1, empty feed: one page read, nothing due, exit 0 (tokens accepted over https, owner gate, secrets by reference).
+2. A task started on the fixture with a one-off token minted from the real key; run 2 ingested 1 proposal from 2 events, cursor 2.
+3. The note was approved and withdrawn on staging (temporary admin membership, removed in the same transaction); run 3 sent the erase request and recorded the receipt: acknowledged, 4 copies erased, 1 attempt.
+4. All staging rows were then removed. Still in place at the time of writing: the job, the image, the three secrets, the service account and the throwaway fixture service (to delete). Not created: the scheduler and the alert.
+
 ## Still open
 
-- Deploying it: the service account, the secrets, the image build, the job, the scheduler and the alert. A first run by
-  hand comes before the schedule. The proof needs an adapter reachable over https; the plan was a throwaway `zz-` Cloud
-  Run service running only the contract fixture, deleted afterwards. Neither has been created.
+- The scheduler and the alert (not created), and tearing down the throwaway `zz-contract-fixture` service.
 - A real Content OS deployment (`main.ts` production wiring) is separate and still open.
-- The Dockerfile has not been built here (no Docker run was part of this slice); the spec checks its text and simulates its
-  contents, but the first real build is part of the deployment.
