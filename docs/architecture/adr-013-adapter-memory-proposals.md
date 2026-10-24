@@ -67,5 +67,6 @@ reasons, never the text of a note.
 ## Not decided here
 
 `memory.tombstone` (the host asking an adapter to erase its copy) and the deletion-receipt guarantee it would need
-(slice 2c); activity-panel counts for ingested proposals (a new outbox event type, which touches three SQL files and the
-test that keeps them identical).
+(slice 2c); activity-panel counts for ingested proposals: done 2026-10-23 as the outbox events `memory.proposed` (written by the
+ingest function) and `memory.erased` (written when an erasure receipt is first recorded, ADR-014); the allowed event
+list is now stated in five SQL files and one test keeps them identical.

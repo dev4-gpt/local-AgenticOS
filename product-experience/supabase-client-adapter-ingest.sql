@@ -25,6 +25,11 @@ create table if not exists public.client_adapter_event_cursors (
 alter table public.client_adapter_event_cursors enable row level security;
 revoke all on public.client_adapter_event_cursors from public, anon, authenticated;
 
+-- A proposal that arrives is counted in the activity panel (counts only: the event holds ids, never text). The outbox's allowed event types are stated in every file that adds one; the list is the same in all of them.
+alter table public.client_adapter_outbox drop constraint if exists client_adapter_outbox_event_type_check;
+alter table public.client_adapter_outbox add constraint client_adapter_outbox_event_type_check
+  check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided', 'memory.proposed', 'memory.erased'));
+
 create or replace function public.client_adapter_events_cursor_get(p_tenant_slug text, p_adapter_id text)
 returns bigint
 language sql
@@ -130,6 +135,8 @@ begin
       if sqlerrm = 'adapter_promotion_scan_mismatch' then return jsonb_build_object('status', 'scan_mismatch'); end if;
       raise;
   end;
+  insert into public.client_adapter_outbox (tenant_slug, event_type, adapter_id, payload, causation_id)
+    values (p_tenant_slug, 'memory.proposed', p_adapter_id, jsonb_build_object('item_id', item, 'promotion_id', promo), item);
   return jsonb_build_object('status', 'created', 'item_id', item, 'promotion_id', promo);
 end;
 $$;

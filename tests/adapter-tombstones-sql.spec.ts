@@ -310,3 +310,27 @@ test("receipts and exposures go with their note or tenant, and the migration can
     await db.close();
   }
 });
+
+test("a confirmed erasure is counted once for the activity panel, and a repeated or refused answer adds nothing", async () => {
+  const db = await freshDb();
+  try {
+    const note = await sharedNote(db);
+    await withdraw(db, note.sharedId);
+    const eventId = (await pending(db))[0]!.event_id as string;
+    await asService(db);
+    await db.query("select public.client_adapter_tombstone_attempt($1)", [eventId]);
+    const receipt = "d".repeat(64);
+    expect(await scalar(db, "select public.client_adapter_tombstone_ack($1,'short',1) as v", [eventId])).toBe(false);
+    expect(await scalar(db, "select public.client_adapter_tombstone_ack($1,$2,3) as v", [eventId, receipt])).toBe(true);
+    expect(await scalar(db, "select public.client_adapter_tombstone_ack($1,$2,3) as v", [eventId, receipt])).toBe(true); // the same answer again
+    expect(await scalar(db, "select public.client_adapter_tombstone_ack($1,$2,4) as v", [eventId, receipt])).toBe(false);
+    await asOwner(db);
+    const events = (await db.query("select event_type, adapter_id, payload from public.client_adapter_outbox where event_type = 'memory.erased'")).rows;
+    expect(events).toEqual([{ event_type: "memory.erased", adapter_id: "creator-os", payload: { item_id: note.sharedId, deleted_count: 3 } }]);
+    await asUser(db, USER.memberA);
+    const counts = await db.query("select adapter_id, event_type, event_count from public.client_adapter_activity_counts('tenant-a') where event_type = 'memory.erased'");
+    expect(counts.rows).toEqual([{ adapter_id: "creator-os", event_type: "memory.erased", event_count: 1 }]);
+  } finally {
+    await db.close();
+  }
+});

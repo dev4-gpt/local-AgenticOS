@@ -356,6 +356,10 @@ test("the outbox's allowed event types are the same list in every file that stat
   expect(host).toContain("'approval.executed'");
   expect(listOf("adapter-approval-gateway")).toEqual(host);
   expect(listOf("adapter-promotions")).toEqual(host);
+  expect(listOf("adapter-ingest")).toEqual(host);
+  expect(listOf("adapter-tombstones")).toEqual(host);
+  expect(host).toContain("'memory.proposed'");
+  expect(host).toContain("'memory.erased'");
 });
 
 // QM-6a: the reviewer labels what they approve, and the label travels with the shared note.

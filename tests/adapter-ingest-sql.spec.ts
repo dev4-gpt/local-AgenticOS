@@ -255,3 +255,39 @@ test("the migration can be applied twice", async () => {
     await db.close();
   }
 });
+
+test("a proposal that arrives is counted once for the activity panel, with ids only; a duplicate or a refused one adds nothing", async () => {
+  const db = await freshDb();
+  try {
+    const first = await ingest(db);
+    await ingest(db); // the same event again
+    await ingest(db, { content: "Something else entirely." }); // the same event, other text
+    await ingest(db, { key: "b".repeat(32), hash: "0".repeat(64) }); // refused: hash is not the text's
+    await asOwner(db);
+    const events = (await db.query("select event_type, adapter_id, payload, causation_id from public.client_adapter_outbox where event_type = 'memory.proposed'")).rows;
+    expect(events).toEqual([{ event_type: "memory.proposed", adapter_id: "creator-os", payload: { item_id: first.item_id, promotion_id: first.promotion_id }, causation_id: first.item_id }]);
+    expect(JSON.stringify(events)).not.toContain("Replies within");
+    await ingest(db, { tenant: "tenant-b", key: "c".repeat(32) });
+    await asUser(db, USER.memberA);
+    const counts = await db.query("select adapter_id, event_type, event_count from public.client_adapter_activity_counts('tenant-a') where event_type = 'memory.proposed'");
+    expect(counts.rows).toEqual([{ adapter_id: "creator-os", event_type: "memory.proposed", event_count: 1 }]);
+  } finally {
+    await db.close();
+  }
+});
+
+test("a database installed before the event existed accepts it once the ingest migration is applied again", async () => {
+  const db = await freshDb();
+  try {
+    await asOwner(db);
+    await db.exec("alter table public.client_adapter_outbox drop constraint client_adapter_outbox_event_type_check; alter table public.client_adapter_outbox add constraint client_adapter_outbox_event_type_check check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided'));");
+    await expect(ingest(db)).rejects.toThrow(/event_type_check/); // the old list refuses the new event; the whole proposal rolls back and the puller sees "database unavailable"
+    expect(await count(db, "client_adapter_memory_items")).toBe(0);
+    await asOwner(db);
+    await db.exec(read("adapter-ingest"));
+    expect((await ingest(db)).status).toBe("created");
+    expect(await count(db, "client_adapter_memory_items")).toBe(1);
+  } finally {
+    await db.close();
+  }
+});

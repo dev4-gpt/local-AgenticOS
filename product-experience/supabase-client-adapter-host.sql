@@ -231,7 +231,7 @@ create table if not exists public.client_adapter_outbox (
   id uuid primary key default gen_random_uuid(),
   tenant_slug text not null references public.client_tenants(slug) on delete cascade,
   event_id uuid not null unique default gen_random_uuid(),
-  event_type text not null check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided')),
+  event_type text not null check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided', 'memory.proposed', 'memory.erased')),
   adapter_id text check (adapter_id is null or adapter_id ~ '^[a-z][a-z0-9-]{2,40}$'),
   payload jsonb not null default '{}'::jsonb check (pg_column_size(payload) <= 16384),
   causation_id uuid,

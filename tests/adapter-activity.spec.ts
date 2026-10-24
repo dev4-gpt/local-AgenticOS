@@ -99,3 +99,13 @@ test("promotion decisions and token use are accepted event kinds, with plain lab
   ]);
   expect(forge.total).toBe(43);
 });
+
+test("received proposals and confirmed erasures are accepted event kinds, with plain labels", () => {
+  const rows = lib.parseActivityRows([row("creator-os", "memory.proposed", 3), row("creator-os", "memory.erased", 1)]);
+  expect(rows).toHaveLength(2);
+  const group = lib.buildActivityGroups(rows)[0];
+  expect(group.lines.map((l: { eventType: string; label: string }) => [l.eventType, l.label])).toEqual([
+    ["memory.proposed", "Proposals received"],
+    ["memory.erased", "Erasures confirmed"],
+  ]);
+});

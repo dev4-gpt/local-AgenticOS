@@ -52,6 +52,11 @@ drop policy if exists client_adapter_tombstone_exposures_admin_select on public.
 create policy client_adapter_tombstone_exposures_admin_select on public.client_adapter_tombstone_exposures
   for select to authenticated using (public.client_adapter_admin(tenant_slug));
 
+-- A confirmed erasure is counted in the activity panel (counts only). The outbox's allowed event types are stated in every file that adds one; the list is the same in all of them.
+alter table public.client_adapter_outbox drop constraint if exists client_adapter_outbox_event_type_check;
+alter table public.client_adapter_outbox add constraint client_adapter_outbox_event_type_check
+  check (event_type in ('memory.committed', 'memory.tombstoned', 'task.requested', 'approval.requested', 'approval.decided', 'approval.executed', 'promotion.decided', 'memory.proposed', 'memory.erased'));
+
 create or replace function public.client_adapter_source_event_id(p_item_id uuid)
 returns text
 language sql
@@ -139,6 +144,8 @@ begin
   update public.client_adapter_tombstone_receipts
     set acked_at = now(), receipt_sha256 = p_receipt_sha256, deleted_count = p_deleted_count
     where event_id = p_event_id;
+  insert into public.client_adapter_outbox (tenant_slug, event_type, adapter_id, payload, causation_id)
+    values (existing.tenant_slug, 'memory.erased', existing.adapter_id, jsonb_build_object('item_id', existing.item_id, 'deleted_count', p_deleted_count), existing.item_id);
   return true;
 end;
 $$;
