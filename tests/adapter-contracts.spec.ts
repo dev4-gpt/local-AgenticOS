@@ -220,7 +220,7 @@ test("the TypeScript contract and the SQL data model use the same values", () =>
   for (const [name, values] of Object.entries(lists)) {
     for (const value of values) expect(sql, `${name}: ${value}`).toContain(`'${value}'`);
   }
-  expect(ADAPTER_OPERATIONS).toHaveLength(10);
+  expect(ADAPTER_OPERATIONS).toHaveLength(11);
   expect(sql).toContain("'disabled', 'preview', 'enabled', 'suspended'");
 });
 

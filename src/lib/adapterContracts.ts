@@ -16,6 +16,7 @@ export const ADAPTER_OPERATIONS = [
   "context.read",
   "task.run",
   "task.get",
+  "task.result",
   "task.cancel",
   "events",
   "memory.propose",
