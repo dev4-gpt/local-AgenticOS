@@ -105,7 +105,9 @@ test("the route refuses when off, signed out, not a member, rate limited or misc
   on();
   const failed = await load({ ok: false, status: 500, value: "relation secret_table does not exist" }).route.GET();
   expect(failed.status).toBe(502);
-  expect(JSON.stringify(await failed.json())).not.toContain("secret_table");
+  const failedBody = await failed.json();
+  expect(failedBody.error).toBe("spend_read_failed"); // a failed read is reported as a failed read, not as bad data
+  expect(JSON.stringify(failedBody)).not.toContain("secret_table");
   const invalid = await load({ ok: true, status: 200, value: [row("forge", "approved", 1)] }).route.GET();
   expect(invalid.status).toBe(502);
   expect((await invalid.json()).error).toBe("spend_read_invalid");

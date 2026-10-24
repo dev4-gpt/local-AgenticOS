@@ -255,6 +255,9 @@ activity counts for received proposals and confirmed erasures by re-applying `su
 `supabase-client-adapter-tombstones.sql` (2026-10-23; they widen the outbox event list and are safe to run twice). Until
 then the ingest function fails loudly on such a database rather than dropping the count, and the puller stops with
 "database unavailable". Apply both before the next puller run, then `notify pgrst, 'reload schema';`.
+The same goes for `supabase-client-adapter-budget-reconcile.sql` (2026-10-23, ADR-016): apply it before the next puller run on a
+database that has the earlier adapter migrations, or the puller stops with "database unavailable" at the first finished task that
+reports its spend.
 
 If the restore migration was applied first, re-apply it after installing the
 adapter migrations.
