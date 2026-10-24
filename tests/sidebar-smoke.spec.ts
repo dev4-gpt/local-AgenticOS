@@ -102,6 +102,13 @@ test("Flow Lab produces a reusable owned-frame sequence contract", async ({ page
 });
 
 test("Memory can create a note and confirm its vault path", async ({ page }) => {
+  await page.route("**/api/memory/vault", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ configured: true, activeVault: "/vault", configPath: "/vault/config.json", candidates: [] }),
+    });
+  });
   await page.route("**/api/memory/log", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
     await route.fulfill({
@@ -112,6 +119,10 @@ test("Memory can create a note and confirm its vault path", async ({ page }) => 
   });
   await page.route("**/api/memory/recent", async (route) => {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ recent: [] }) });
+  });
+  await page.route("**/api/memory/graphify", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
   });
 
   await page.goto("/memory", { waitUntil: "domcontentloaded" });
@@ -147,8 +158,20 @@ test("Goals category menu keeps readable workspace-theme contrast", async ({ pag
     };
   });
   expect(styles.colorScheme).toBe("light");
-  expect(styles.optionColor).toBe("rgb(38, 33, 28)");
-  expect(styles.optionBackground).toBe("rgb(250, 247, 239)");
+  expect(styles.optionColor).toBe("rgb(23, 33, 43)");
+  expect(styles.optionBackground).toBe("rgb(255, 255, 255)");
+});
+
+test("Goals explains when an Obsidian vault is not connected", async ({ page }) => {
+  await page.route("**/api/goals", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ goals: [], configured: false }),
+  }));
+  await page.goto("/goals", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("status")).toContainText("Connect an Obsidian vault in Memory");
+  await expect(page.getByPlaceholder("What's the goal? (Enter to add)")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Add", exact: true })).toBeDisabled();
 });
 
 test("Notebook Library exposes sources and opens each working surface", async ({ page }) => {

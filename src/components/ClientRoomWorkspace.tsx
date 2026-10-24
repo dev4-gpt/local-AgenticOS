@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { History, Plus, Send, Trash2, TriangleAlert, Users } from "lucide-react";
+import { Check, ChevronDown, ExternalLink, History, Plus, Send, Trash2, TriangleAlert, Users, X } from "lucide-react";
 import AgentAvatar, { type AgentKey } from "@/components/AgentAvatar";
 import ClientRuntimeNotice from "@/components/ClientRuntimeNotice";
 import {
   roomFormatMicros, roomTimeAgo,
-  type RoomConversation, type RoomMessage, type RoomRosterEntry, type RoomRound,
+  type RoomConversation, type RoomDirectiveReview, type RoomMessage, type RoomRosterEntry, type RoomRound,
 } from "@/lib/clientRoomAdapter";
 
 const PURPLE = "#a855f7";
@@ -24,6 +24,10 @@ export default function ClientRoomWorkspace() {
   const [error, setError] = useState("");
   const [configured, setConfigured] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
+  const [proposals, setProposals] = useState<RoomDirectiveReview[]>([]);
+  const [proposalPage, setProposalPage] = useState({ hasMore: false, nextOffset: 0 });
+  const [reviewing, setReviewing] = useState("");
+  const selectedConversation = useRef<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   const api = useCallback(async (path: string, init?: RequestInit) => {
@@ -43,14 +47,40 @@ export default function ClientRoomWorkspace() {
     return list;
   }, [api]);
 
-  const loadMessages = useCallback(async (conversationId: string) => {
+  const loadProposals = useCallback(async (conversationId: string, offset = 0) => {
+    const { ok, data } = await api(`proposals?conversationId=${encodeURIComponent(conversationId)}&offset=${offset}`);
+    if (selectedConversation.current !== conversationId) return;
+    if (!ok) { setError(typeof data?.error === "string" ? data.error : "room_proposals_read_failed"); return; }
+    const rows = Array.isArray(data?.proposals) ? data.proposals as RoomDirectiveReview[] : [];
+    setProposals((current) => offset === 0 ? rows : [...current, ...rows.filter((p) => !current.some((old) => old.jobId === p.jobId && old.index === p.index))]);
+    setProposalPage({ hasMore: data?.hasMore === true, nextOffset: Number(data?.nextOffset ?? 0) });
+  }, [api]);
+
+  const loadMessages = useCallback(async (conversationId: string, select = true) => {
+    if (!select && selectedConversation.current !== conversationId) return;
+    if (selectedConversation.current !== conversationId) {
+      selectedConversation.current = conversationId;
+      setProposals([]); setProposalPage({ hasMore: false, nextOffset: 0 });
+    }
     const { ok, data } = await api(`messages?conversationId=${encodeURIComponent(conversationId)}`);
-    if (!ok || data?.configured === false) return;
+    if (selectedConversation.current !== conversationId) return;
+    if (!ok) {
+      setError(typeof data?.error === "string" ? data.error : "room_read_failed");
+      if (data?.error === "room_conversation_not_found") {
+        setActiveRound(null); setConversation(null); setMessages([]); setProposals([]);
+        selectedConversation.current = null;
+        await loadConversations();
+      }
+      return;
+    }
+    if (data?.configured === false) return;
+    setError("");
     setConversation((data?.conversation as RoomConversation) ?? null);
     setMessages(Array.isArray(data?.messages) ? data.messages as RoomMessage[] : []);
     setActiveRound((data?.activeRound as RoomRound) ?? null);
     setLastRound((data?.lastRound as RoomRound) ?? null);
-  }, [api]);
+    if (!data?.activeRound) await loadProposals(conversationId);
+  }, [api, loadConversations, loadProposals]);
 
   useEffect(() => { void (async () => {
     const list = await loadConversations();
@@ -61,7 +91,7 @@ export default function ClientRoomWorkspace() {
   // is written the moment it lands, so they still arrive one at a time.
   useEffect(() => {
     if (!activeRound || !conversation) return;
-    const timer = window.setInterval(() => { void loadMessages(conversation.id); }, 2500);
+    const timer = window.setInterval(() => { void loadMessages(conversation.id, false); }, 2500);
     return () => window.clearInterval(timer);
   }, [activeRound, conversation, loadMessages]);
 
@@ -82,6 +112,7 @@ export default function ClientRoomWorkspace() {
     if (!ok) { setError("room_delete_failed"); return; }
     const list = await loadConversations();
     if (conversation?.id === id) {
+      selectedConversation.current = null; setProposals([]);
       setConversation(null); setMessages([]); setActiveRound(null);
       if (list && list[0]) await loadMessages(list[0].id);
     }
@@ -94,7 +125,7 @@ export default function ClientRoomWorkspace() {
       : [...conversation.presentAgents, id];
     setConversation({ ...conversation, presentAgents: present });
     const { ok } = await api("conversations", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: conversation.id, presentAgents: present }) });
-    if (!ok) { setError("room_write_failed"); await loadMessages(conversation.id); }
+    if (!ok) { setError("room_write_failed"); await loadMessages(conversation.id, false); }
   }
 
   async function send() {
@@ -103,8 +134,23 @@ export default function ClientRoomWorkspace() {
     setBusy(true); setError(""); setInput("");
     const { ok, data } = await api("messages", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ conversationId: conversation.id, message }) });
     if (!ok) setError(typeof data?.error === "string" ? data.error : "room_send_failed");
-    await loadMessages(conversation.id);
+    await loadMessages(conversation.id, false);
     setBusy(false);
+  }
+
+  async function reviewProposal(item: RoomDirectiveReview, decision: "approved" | "rejected") {
+    if (reviewing) return;
+    const key = `${item.jobId}:${item.index}`;
+    const conversationId = conversation?.id;
+    setReviewing(key); setError("");
+    const { ok, data } = await api("proposals", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jobId: item.jobId, index: item.index, proposal: item.proposal, decision }) });
+    if (selectedConversation.current === conversationId) {
+      if (!ok) setError(typeof data?.error === "string" ? data.error : "room_review_unavailable");
+      else setProposals((current) => current.map((p) => p.jobId === item.jobId && p.index === item.index
+        ? { ...p, decision, recordId: typeof data?.review?.recordId === "string" ? data.review.recordId : null } : p));
+    }
+    setReviewing("");
   }
 
   const present = conversation?.presentAgents ?? [];
@@ -124,13 +170,13 @@ export default function ClientRoomWorkspace() {
   </div>;
 
   return <div className="mx-auto flex max-w-[900px] flex-col pb-8">
-    <div className="mb-3 flex items-center gap-3">
+    <div className="mb-3 grid grid-cols-[40px_minmax(0,1fr)] items-start gap-3 sm:flex sm:items-center">
       <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border" style={{ borderColor: "rgba(168,85,247,0.4)", background: "rgba(168,85,247,0.12)", color: PURPLE }}><Users size={20} /></div>
       <div className="min-w-0 flex-1">
-        <h1 className="text-2xl font-medium tracking-tight" style={{ color: "var(--cream)" }}>AI Agent <span style={{ color: PURPLE }}>Mastermind</span></h1>
+        <h1 className="break-words text-2xl font-medium" style={{ color: "var(--cream)" }}>AI Agent <span style={{ color: PURPLE }}>Mastermind</span></h1>
         <div className="text-[12.5px]" style={{ color: "var(--cream-dim)" }}>Talk to available agents at once. An agent may use the tenant’s approved fallback provider when its preferred provider is unavailable. Tag one with <span className="font-mono">@claude</span> to ask just them.</div>
       </div>
-      <div className="relative flex shrink-0 items-center gap-1.5">
+      <div className="relative col-span-2 flex shrink-0 items-center gap-1.5 sm:ml-auto">
         <button type="button" onClick={() => void newChat()} className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[12px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Plus size={13} />New chat</button>
         <button type="button" onClick={() => setShowHistory((value) => !value)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[12px]" style={{ borderColor: showHistory ? PURPLE : "var(--line-soft)", color: showHistory ? PURPLE : "var(--cream-dim)", background: showHistory ? "rgba(168,85,247,0.1)" : "transparent" }}><History size={13} />History{conversations.length ? ` (${conversations.length})` : ""}</button>
         {showHistory && <div className="absolute right-0 top-full z-30 mt-2 max-h-[64vh] w-[320px] overflow-y-auto rounded-xl border p-1.5" style={{ borderColor: "var(--line-soft)", background: "var(--panel)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
@@ -176,6 +222,9 @@ export default function ClientRoomWorkspace() {
         {present.length} in the room · they reply in turn through the approved provider lane and read this workspace&apos;s memory
         {roundCost > 0 ? ` · ${roomFormatMicros(roundCost)} settled in this chat` : ""}
       </div>
+      {conversation?.retentionExpiresAt && <time dateTime={conversation.retentionExpiresAt} className="mt-1 block text-xs" style={{ color: "var(--cream-mute)" }}>
+        Expires {new Date(conversation.retentionExpiresAt).toLocaleString()}
+      </time>}
     </div>
 
     <div className="min-h-[320px] flex-1 space-y-3 overflow-y-auto pr-1">
@@ -221,6 +270,25 @@ export default function ClientRoomWorkspace() {
       <div ref={endRef} />
     </div>
 
+    {proposals.length > 0 && <section aria-label="Room proposals" className="mt-5 border-t pt-3" style={{ borderColor: "var(--line-soft)" }}>
+      <h2 className="text-sm font-semibold" style={{ color: "var(--cream)" }}>Proposals</h2>
+      <div className="divide-y" style={{ borderColor: "var(--line-soft)" }}>
+        {proposals.map((item) => <article key={`${item.jobId}:${item.index}`} className="py-3">
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="break-words text-sm font-medium" style={{ color: "var(--cream)" }}>{item.proposal.label}</div>
+              <div className="text-xs" style={{ color: "var(--cream-mute)" }}>{item.proposal.agentName} · {item.proposal.kind === "note" ? "Memory note" : "Pipeline idea"} · {item.decision}</div>
+            </div>
+            {item.decision === "pending" ? <div className="flex shrink-0 gap-1">
+              <button type="button" title="Approve proposal" aria-label={`Approve ${item.proposal.label}`} disabled={Boolean(reviewing)} onClick={() => void reviewProposal(item, "approved")} className="grid h-9 w-9 place-items-center rounded border disabled:opacity-40" style={{ color: "var(--cream)", borderColor: "var(--line-soft)" }}><Check size={16} /></button>
+              <button type="button" title="Reject proposal" aria-label={`Reject ${item.proposal.label}`} disabled={Boolean(reviewing)} onClick={() => void reviewProposal(item, "rejected")} className="grid h-9 w-9 place-items-center rounded border disabled:opacity-40" style={{ color: "var(--cream)", borderColor: "var(--line-soft)" }}><X size={16} /></button>
+            </div> : item.recordId && <a href={item.proposal.kind === "note" ? "/memory" : "/pipeline"} title="Open approved record" aria-label={`Open ${item.proposal.label}`} className="grid h-9 w-9 shrink-0 place-items-center rounded border" style={{ color: "var(--cream-dim)", borderColor: "var(--line-soft)" }}><ExternalLink size={16} /></a>}
+          </div>
+          <p className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-relaxed" style={{ color: "var(--cream-dim)" }}>{item.proposal.body}</p>
+        </article>)}
+      </div>
+    </section>}
+    {proposalPage.hasMore && conversation && <button type="button" onClick={() => void loadProposals(conversation.id, proposalPage.nextOffset)} className="mt-2 inline-flex items-center gap-1 self-start text-xs" style={{ color: "var(--cream-dim)" }}><ChevronDown size={14} />Older proposals</button>}
     {error && <ClientRuntimeNotice code={error} />}
   </div>;
 }

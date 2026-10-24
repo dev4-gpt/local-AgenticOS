@@ -16,15 +16,23 @@ export function SupportForm() {
   const [requestType, setRequestType] = useState("general");
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true);
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     const response = await fetch("/api/support", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(data.entries())) }).catch(() => null);
     const body = await response?.json().catch(() => null);
     setBusy(false);
-    if (response?.ok && body?.requestId) { event.currentTarget.reset(); setNotice(`Support request ${String(body.requestId).slice(0, 8)}… received. Check your email for acknowledgement.`); return; }
-    setNotice(body?.error === "secret_like_content" ? "Remove credentials or tokens from the message." : "Support is temporarily unavailable. Please try again shortly.");
+    if (response?.ok && body?.requestId) {
+      form.reset();
+      setNotice(`Support request ${body.requestId} received. ${body.acknowledgement === "sent" ? "Check your email for acknowledgement." : "Keep this ID for follow-up."}`);
+      return;
+    }
+    setNotice(body?.error === "secret_like_content" ? "Remove credentials or tokens from the message."
+      : body?.error === "field_too_large" ? "The email, subject, request ID, or message is too long. Shorten it and try again."
+      : body?.error === "invalid_fields" || body?.error === "invalid_request_type" ? "Check the support form and try again."
+      : "Support is temporarily unavailable. Please try again shortly.");
   }
   return <form onSubmit={submit} className="grid gap-4">
-    <input name="email" required type="email" placeholder="you@company.com" className="rounded-lg border border-[var(--g5)]/18 bg-white/70 px-4 py-3 text-sm" />
+    <input name="email" required type="email" maxLength={320} placeholder="you@company.com" className="rounded-lg border border-[var(--g5)]/18 bg-white/70 px-4 py-3 text-sm" />
     <label className="grid gap-2 text-sm font-semibold">What do you need?
       <select name="requestType" value={requestType} onChange={(event) => setRequestType(event.target.value)} className="rounded-lg border border-[var(--g5)]/18 bg-white/70 px-4 py-3 text-sm font-normal">
         <option value="general">General support</option>
@@ -43,9 +51,9 @@ export function SupportForm() {
         <input name="requestedBudgetUsd" required min="1" max="100000" step="0.01" type="number" placeholder="25.00" className="rounded-lg border border-[var(--g5)]/18 bg-white/70 px-4 py-3 font-normal" />
       </label>
     </div>}
-    <input name="subject" required placeholder="Subject" className="rounded-lg border border-[var(--g5)]/18 bg-white/70 px-4 py-3 text-sm" />
-    <input name="requestId" placeholder="Request or tenant ID (optional)" className="rounded-lg border border-[var(--g5)]/18 bg-white/70 px-4 py-3 text-sm" />
-    <textarea name="message" required rows={7} placeholder="Describe the issue or intended provider use without secrets..." className="rounded-lg border border-[var(--g5)]/18 bg-white/70 px-4 py-3 text-sm" />
-    <div className="flex items-center justify-between gap-4"><p aria-live="polite" className="text-xs leading-relaxed text-[var(--g5)]/62">{notice}</p><button disabled={busy} className="rounded-full bg-[var(--g5)] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Sending…" : "Contact support"}</button></div>
+    <input name="subject" required maxLength={240} placeholder="Subject" className="rounded-lg border border-[var(--g5)]/18 bg-white/70 px-4 py-3 text-sm" />
+    <input name="requestId" maxLength={180} placeholder="Request or tenant ID (optional)" className="rounded-lg border border-[var(--g5)]/18 bg-white/70 px-4 py-3 text-sm" />
+    <textarea name="message" required maxLength={8_000} rows={7} placeholder="Describe the issue or intended provider use without secrets..." className="rounded-lg border border-[var(--g5)]/18 bg-white/70 px-4 py-3 text-sm" />
+    <div className="flex items-center justify-between gap-4"><p aria-live="polite" className="min-w-0 break-all text-xs leading-relaxed text-[var(--g5)]/62">{notice}</p><button disabled={busy} className="shrink-0 rounded-full bg-[var(--g5)] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Sending…" : "Contact support"}</button></div>
   </form>;
 }

@@ -52,14 +52,16 @@ export async function GET(request: Request) {
   if (swarmId) {
     if (!UUID_RE.test(swarmId)) return fail("ruflo_input_invalid", 400);
     const agents = await selectClientRecords(AGENTS, {
-      tenant_slug: `eq.${user.tenantSlug}`, swarm_id: `eq.${swarmId}`, order: "position.asc", limit: "20",
+      tenant_slug: `eq.${user.tenantSlug}`, swarm_id: `eq.${swarmId}`,
+      retention_expires_at: `gt.${new Date().toISOString()}`, order: "position.asc", limit: "20",
     });
     if (!agents.ok) return fail("ruflo_read_failed", 502);
     return done({ configured: true, agents: agents.records.map(normalizeRufloAgent) });
   }
 
   const swarms = await selectClientRecords(SWARMS, {
-    tenant_slug: `eq.${user.tenantSlug}`, order: "created_at.desc", limit: "50",
+    tenant_slug: `eq.${user.tenantSlug}`, retention_expires_at: `gt.${new Date().toISOString()}`,
+    order: "created_at.desc", limit: "50",
   });
   if (!swarms.ok) {
     return rufloSchemaMissing(swarms.status)

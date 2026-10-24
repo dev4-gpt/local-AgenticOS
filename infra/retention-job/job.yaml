@@ -1,0 +1,45 @@
+# Cloud Run job for one client's scheduled retention run (tracker item 9b). Replace every UPPER_CASE placeholder, then:
+#   gcloud run jobs replace infra/retention-job/job.yaml --region REGION
+# It starts as a DRY RUN (RETENTION_APPLY "false"). Read one or two runs in the logs, then set RETENTION_APPLY to "true".
+# The secrets are references to Secret Manager; no secret value belongs in this file.
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: veloce-retention-CLIENT_SLUG
+  labels:
+    purpose: retention
+spec:
+  template:
+    spec:
+      template:
+        spec:
+          serviceAccountName: veloce-retention@PROJECT_ID.iam.gserviceaccount.com
+          # No automatic retries: a failed run waits for the next schedule instead of repeating a half-finished purge.
+          maxRetries: 0
+          timeoutSeconds: 1800
+          containers:
+            - image: REGION-docker.pkg.dev/PROJECT_ID/veloce/retention-job:TAG
+              env:
+                - name: CLIENT_SLUG
+                  value: "CLIENT_SLUG"
+                # Must equal the id recorded with client_adapter_background_owner_set, or the run does nothing.
+                - name: BACKGROUND_DEPLOYMENT_ID
+                  value: "veloce-CLIENT_SLUG-main"
+                - name: RETENTION_APPLY
+                  value: "false"
+                - name: INCLUDE_ADAPTER_HOST
+                  value: "true"
+                - name: SUPABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: CLIENT_SLUG-supabase-url
+                      key: latest
+                - name: SUPABASE_SERVICE_ROLE_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: CLIENT_SLUG-supabase-service-role-key
+                      key: latest
+              resources:
+                limits:
+                  cpu: "1"
+                  memory: 512Mi

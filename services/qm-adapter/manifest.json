@@ -1,0 +1,12 @@
+{
+  "contractVersion": "h1",
+  "adapterId": "qm-harness",
+  "displayName": "QM agent harness",
+  "adapterVersion": "0.1.0",
+  "publisher": "Veloce shim over yc-software/qm contributors",
+  "license": "MIT",
+  "operations": ["manifest", "health", "task.run", "task.get", "task.cancel"],
+  "tasks": [{ "name": "agent.run", "sideEffect": "draft" }],
+  "sideEffectCeiling": "draft",
+  "deletionGuarantee": "none"
+}

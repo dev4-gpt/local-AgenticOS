@@ -54,9 +54,10 @@ export async function GET(request: Request) {
 
   if (taskId) {
     if (!UUID_RE.test(taskId)) return fail("board_input_invalid", 400);
+    const activeAfter = new Date().toISOString();
     const [comments, events] = await Promise.all([
-      selectClientRecords(COMMENTS, { tenant_slug: `eq.${user.tenantSlug}`, task_id: `eq.${taskId}`, order: "created_at.asc", limit: "100" }),
-      selectClientRecords(EVENTS, { tenant_slug: `eq.${user.tenantSlug}`, task_id: `eq.${taskId}`, order: "created_at.desc", limit: "50" }),
+      selectClientRecords(COMMENTS, { tenant_slug: `eq.${user.tenantSlug}`, task_id: `eq.${taskId}`, retention_expires_at: `gt.${activeAfter}`, order: "created_at.asc", limit: "100" }),
+      selectClientRecords(EVENTS, { tenant_slug: `eq.${user.tenantSlug}`, task_id: `eq.${taskId}`, retention_expires_at: `gt.${activeAfter}`, order: "created_at.desc", limit: "50" }),
     ]);
     if (!comments.ok || !events.ok) return fail("board_read_failed", 502);
     return done({
@@ -67,7 +68,7 @@ export async function GET(request: Request) {
   }
 
   const result = await selectClientRecords(TASKS, {
-    tenant_slug: `eq.${user.tenantSlug}`, board: `eq.${board}`, order: "created_at.desc", limit: "200",
+    tenant_slug: `eq.${user.tenantSlug}`, board: `eq.${board}`, retention_expires_at: `gt.${new Date().toISOString()}`, order: "created_at.desc", limit: "200",
   });
   if (!result.ok) {
     return boardSchemaMissing(result.status)
@@ -131,7 +132,7 @@ async function build(user: { userId: string; tenantSlug: string }, body: Record<
   if (!clientProviderCallsEnabled()) return fail("provider_calls_require_approval", 403);
   const taskId = typeof body.taskId === "string" ? body.taskId.trim() : "";
   if (!UUID_RE.test(taskId)) return fail("board_input_invalid", 400);
-  const found = await selectClientRecords(TASKS, { tenant_slug: `eq.${user.tenantSlug}`, id: `eq.${taskId}`, limit: "1" });
+  const found = await selectClientRecords(TASKS, { tenant_slug: `eq.${user.tenantSlug}`, id: `eq.${taskId}`, retention_expires_at: `gt.${new Date().toISOString()}`, limit: "1" });
   if (!found.ok || !found.records[0]) return fail("board_task_not_found", 404);
   const task = normalizeBoardTask(found.records[0]);
   if (!boardCanBuild(task)) return fail("board_build_not_allowed", 409);
@@ -206,7 +207,7 @@ export async function PATCH(request: Request) {
   }
   if (Object.keys(patch).length <= 1) return fail("board_input_invalid", 400);
 
-  const updated = await updateClientRecord(TASKS, { id: `eq.${id}`, tenant_slug: `eq.${user.tenantSlug}`, board: `eq.${board}` }, patch);
+  const updated = await updateClientRecord(TASKS, { id: `eq.${id}`, tenant_slug: `eq.${user.tenantSlug}`, board: `eq.${board}`, retention_expires_at: `gt.${new Date().toISOString()}` }, patch);
   if (!updated.ok) return fail("board_write_failed", 502);
   if (patch.status) {
     await insertClientRecord(EVENTS, { tenant_slug: user.tenantSlug, task_id: id, kind: `moved:${patch.status}`, detail: "" });
@@ -222,7 +223,7 @@ export async function DELETE(request: Request) {
   if (!limit.allowed) return fail("runtime_rate_limited", 429);
   const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
   if (!UUID_RE.test(id)) return fail("board_input_invalid", 400);
-  const removed = await deleteClientRecord(TASKS, { id: `eq.${id}`, tenant_slug: `eq.${user.tenantSlug}` });
+  const removed = await deleteClientRecord(TASKS, { id: `eq.${id}`, tenant_slug: `eq.${user.tenantSlug}`, retention_expires_at: `gt.${new Date().toISOString()}` });
   if (!removed.ok) return fail("board_delete_failed", 502);
   await recordClientAudit("board.task_deleted", {});
   return done({});

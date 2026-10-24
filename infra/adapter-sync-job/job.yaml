@@ -1,0 +1,56 @@
+# Cloud Run job for one client's scheduled adapter sync (Veloce phase 2 slice 2d, ADR-015). One job per client and per
+# adapter. Replace every UPPER_CASE placeholder, then:
+#   gcloud run jobs replace infra/adapter-sync-job/job.yaml --region REGION
+# Each run reads the adapter's events feed into the host, then tells the adapter to erase what the host erased.
+# The secrets are references to Secret Manager; no secret value belongs in this file.
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: veloce-adapter-sync-CLIENT_SLUG-ADAPTER_ID
+  labels:
+    purpose: adapter-sync
+spec:
+  template:
+    spec:
+      # One task at a time: two runs in parallel would only repeat each other's reads (the database makes that harmless, but it is waste).
+      parallelism: 1
+      taskCount: 1
+      template:
+        spec:
+          serviceAccountName: veloce-adapter-sync@PROJECT_ID.iam.gserviceaccount.com
+          # No automatic retries: a failed run waits for the next schedule (five minutes), and every step is safe to repeat.
+          maxRetries: 0
+          timeoutSeconds: 300
+          containers:
+            - image: REGION-docker.pkg.dev/PROJECT_ID/veloce/adapter-sync-job:TAG
+              env:
+                - name: CLIENT_SLUG
+                  value: "CLIENT_SLUG"
+                - name: ADAPTER_ID
+                  value: "ADAPTER_ID"
+                # The adapter's https address. Plain http is refused (only loopback is allowed, and only for local runs).
+                - name: ADAPTER_ENDPOINTS
+                  value: '{"ADAPTER_ID":"https://ADAPTER_HOST"}'
+                # Must equal the id recorded with client_adapter_background_owner_set, or both steps do nothing.
+                - name: BACKGROUND_DEPLOYMENT_ID
+                  value: "veloce-CLIENT_SLUG-main"
+                - name: SUPABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: CLIENT_SLUG-supabase-url
+                      key: latest
+                - name: SUPABASE_SERVICE_ROLE_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: CLIENT_SLUG-supabase-service-role-key
+                      key: latest
+                # The host's Ed25519 private key (ADR-012). The adapter holds only the matching public key.
+                - name: ADAPTER_TOKEN_SIGNING_KEY_PEM
+                  valueFrom:
+                    secretKeyRef:
+                      name: ADAPTER_TOKEN_SIGNING_KEY
+                      key: latest
+              resources:
+                limits:
+                  cpu: "1"
+                  memory: 512Mi
