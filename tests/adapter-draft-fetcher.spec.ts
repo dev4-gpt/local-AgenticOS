@@ -107,6 +107,16 @@ test("each way the adapter can answer badly is one named reason, with no text fr
   }
 });
 
+test("the redirect band is exactly 300 to 399: 299 is read as an answer, 400 is a refusal, nothing in between is followed", async () => {
+  for (const status of [300, 301, 307, 308, 399]) {
+    const adapter = fakeAdapter(() => new Response(null, { status, headers: { location: "https://elsewhere.example.test/" } }));
+    expect([status, await run(adapter).result]).toEqual([status, { ok: false, reason: "redirect_refused" }]);
+    expect(adapter.requests).toHaveLength(1); // the location was not visited
+  }
+  expect(await run(fakeAdapter(() => new Response(JSON.stringify(good()), { status: 299 }))).result).toMatchObject({ ok: true });
+  for (const status of [400, 403, 429, 503]) expect([status, await run(fakeAdapter(() => new Response(null, { status }))).result]).toEqual([status, { ok: false, reason: "adapter_refused" }]);
+});
+
 test("an answer over the size cap is refused without reading the rest, and a timeout is an unreachable adapter", async () => {
   const big = fakeAdapter(() => new Response("x".repeat(2000), { status: 200 }));
   expect(await run(big, TASK, { maxResponseBytes: 1000 }).result).toEqual({ ok: false, reason: "too_large" });
