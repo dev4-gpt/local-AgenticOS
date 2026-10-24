@@ -1,6 +1,6 @@
 # ADR 018: Running the real Content OS service for the host
 
-**Status:** decided 2026-10-24 with the owner (D1 to D7, with D1 changed to a free model API); built in Phase 2 item 2, local commits in the ContractorOS repository only. **Not deployed; no cloud resource exists for it.**
+**Status:** decided 2026-10-24 with the owner (D1 to D7, with D1 changed to a free model API); built in Phase 2 item 2 and pushed. **The service is not deployed.** Cloud steps 1 and 2 are done (the mount test and the real state bucket); steps 3 to 7 are not.
 **Builds on:** ADR-005 (the adapter host contract), ADR-010 (AGPL separation), ADR-012 (token keys), ADR-015 (the sync job), ADR-017 (draft text).
 
 ## The problem
@@ -44,11 +44,31 @@ recorded as redundant). The image was **built and run locally**: non-root user, 
 cleans up after itself, it refuses missing settings, it listens, answers 401 without a token and serves the manifest to a
 signed token once (a second use is refused), and it keeps its used-token log on the mounted folder.
 
+## Cloud step 1: the Cloud Storage mount, 2026-10-24
+
+The production image (`creator-os:v1`, built by Cloud Build) ran as a Cloud Run **job** with a throwaway bucket mounted at
+`/data` (second-generation environment, `uid=1000;gid=1000;file-mode=600;dir-mode=700`) and the same `--check` the service
+runs before it listens. **Every self-test step passed on the real mount and the container exited 0**: replace by rename,
+append in order, flush, keep a private file private, list. Notes:
+
+- The mount logged one "directory not empty" error while the self-test removed its own folder; the bucket was empty afterwards.
+  It shows a brief delay in how removals appear, not a failure.
+- Cloud Run reports the mounted files as owned by an internal user (uid 2000), not the service's user. The permissions came out
+  private and reads and writes worked, so nothing is affected.
+- This proves the sequence the service depends on. It does not prove behaviour under heavy concurrent writes, so the service stays
+  pinned to **one instance maximum** (it may scale to zero when idle: state is in the bucket, only a cold start is lost).
+
+## Cloud step 2: the real state bucket
+
+`veloce-creator-os-agentos-staging-state` in `europe-west1`: uniform access, public access prevention enforced, no versioning and
+**soft delete off** (Cloud Storage otherwise keeps deleted objects for 7 days, which would undo "erased for good"). Only the
+`veloce-creator-os` service account has access beyond the project's own default roles (`objectUser`: read, write, list, delete
+objects; no bucket administration). The throwaway test bucket and test job were deleted.
+
 ## What is not checked, and why it matters
 
 - **A real model and a real search call have not been made.** They need keys you paste yourself, and the first real task will
   show how often a free model passes the factory's own quality checks. Expect more failed drafts than with a paid model.
-- **The Cloud Storage mount has not been tried.** See decision 3.
 - **Data terms of free tiers.** Free model APIs often have looser terms than paid ones (some may log prompts or use them to
   improve products). The briefs and research a task sends are client content. For staging with made-up briefs that does not
   matter. **Before a real client's work goes through a free API, someone must read that provider's current terms.** This is an
