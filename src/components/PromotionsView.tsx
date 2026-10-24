@@ -120,7 +120,7 @@ export default function PromotionsView() {
 
       <section className="mt-10" aria-labelledby="shared-heading">
         <h2 id="shared-heading" className="text-[15px] font-semibold" style={{ color: "var(--cream)" }}>Shared notes</h2>
-        <p className="mt-1 text-[11px]" style={{ color: "var(--cream-mute)" }}>What every adapter can read now. If one is wrong or unsafe, withdraw it: the text is erased for good and adapters are told to drop their copies. A copy an adapter already keeps in its own store is outside this guarantee.</p>
+        <p className="mt-1 text-[11px]" style={{ color: "var(--cream-mute)" }}>What every adapter can read now. If one is wrong or unsafe, withdraw it: the text is erased for good here. An adapter that confirms deletions with a receipt is asked to erase its own copy, and the host keeps the receipt. A copy an adapter keeps anywhere else, or any copy held by an adapter that gives no receipt, is outside this guarantee.</p>
         {sharedCards.length === 0 ? <p className="panel mt-3 p-3 text-[12px]" style={{ color: "var(--cream-mute)" }}>No notes are shared yet.</p> : <ul className="mt-3 grid gap-3" aria-label="Shared notes">
           {sharedCards.map((note) => <li key={note.id} className="panel p-3">
             <p className="text-[11px]" style={{ color: "var(--cream-mute)" }}><span className="font-mono">{note.adapterId}</span> · <span style={{ color: note.sensitivity === "ordinary" ? GOOD : "#fbbf24" }}>{note.sensitivityTitle}</span> · fingerprint <span className="font-mono">{note.shortHash}…</span></p>
