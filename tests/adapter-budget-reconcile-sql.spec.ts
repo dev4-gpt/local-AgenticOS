@@ -48,6 +48,8 @@ async function freshDb() {
   await db.exec(`insert into public.client_adapter_registry (tenant_slug, adapter_id, display_name, contract_version, manifest_sha256, created_by, state)
     values ('tenant-a','creator-os','Creator OS','h1','${"a".repeat(64)}','${USER.ownerA}','enabled'),
            ('tenant-a','forge','Forge','h1','${"a".repeat(64)}','${USER.ownerA}','disabled'),
+           ('tenant-a','second-one','Second','h1','${"a".repeat(64)}','${USER.ownerA}','enabled'),
+           ('tenant-a','preview-one','Preview','h1','${"a".repeat(64)}','${USER.ownerA}','preview'),
            ('tenant-b','creator-os','Creator OS','h1','${"a".repeat(64)}','${USER.ownerB}','enabled')`);
   return db;
 }
@@ -122,8 +124,9 @@ test("a malformed report, an unknown or switched-off adapter and an inactive ten
     await db.exec("update public.client_tenants set status = 'suspended' where slug = 'tenant-b'");
     expect(await report(db, T, 5, { tenant: "tenant-b" })).toBe("adapter_not_active");
     expect(await report(db, T, 1_000_000_000_000)).toBe("recorded"); // the top of the range is allowed
+    expect(await report(db, T, 5, { adapter: "preview-one" })).toBe("recorded"); // a preview adapter is active enough to be heard
     await asOwner(db);
-    expect(Number((await db.query<{ n: string }>("select count(*) as n from public.client_adapter_outbox where event_type = 'budget.reported'")).rows[0].n)).toBe(1);
+    expect(Number((await db.query<{ n: string }>("select count(*) as n from public.client_adapter_outbox where event_type = 'budget.reported'")).rows[0].n)).toBe(2);
   } finally {
     await db.close();
   }
@@ -211,14 +214,16 @@ test("only the last 28 days are compared, the money tables are never changed, an
     const before = JSON.stringify((await db.query("select task_id, kind, amount_micros from public.client_adapter_budget_events order by task_id, kind")).rows);
     await report(db, "t-money", 6_000);
     await report(db, "t-old", 5_000);
+    await report(db, "t-edge", 5_000);
     await asOwner(db);
     await db.exec("update public.client_adapter_outbox set created_at = now() - interval '40 days' where payload ->> 'task_id' = 't-old'");
-    expect(await counts(db)).toEqual({ "creator-os:settled_differs": 1 }); // the old report is out of the window
+    await db.exec("update public.client_adapter_outbox set created_at = now() - interval '27 days 12 hours' where payload ->> 'task_id' = 't-edge'");
+    expect(await counts(db)).toEqual({ "creator-os:settled_differs": 1, "creator-os:unreserved": 1 }); // 40 days old is out of the window, 27.5 days old is still in
     await asOwner(db);
     expect(JSON.stringify((await db.query("select task_id, kind, amount_micros from public.client_adapter_budget_events order by task_id, kind")).rows)).toBe(before);
     await asUser(db, USER.memberA);
     const activity = await db.query("select adapter_id, event_type, event_count from public.client_adapter_activity_counts('tenant-a') where event_type = 'budget.reported'");
-    expect(activity.rows).toEqual([{ adapter_id: "creator-os", event_type: "budget.reported", event_count: 1 }]);
+    expect(activity.rows).toEqual([{ adapter_id: "creator-os", event_type: "budget.reported", event_count: 2 }]);
   } finally {
     await db.close();
   }
@@ -234,6 +239,22 @@ test("a database installed before the event existed accepts it once the migratio
     await db.exec(read("adapter-budget-reconcile"));
     await db.exec(read("adapter-budget-reconcile"));
     expect(await report(db, "t-early", 5)).toBe("recorded");
+  } finally {
+    await db.close();
+  }
+});
+
+test("one adapter's report is its own, and another tenant's or another adapter's rows for the same task id never count", async () => {
+  const db = await freshDb();
+  try {
+    // the same task id in two tenants and two adapters is three different things
+    expect(await report(db, "t-shared-id", 4_000)).toBe("recorded");
+    expect(await report(db, "t-shared-id", 4_000, { adapter: "second-one" })).toBe("recorded");
+    expect(await report(db, "t-shared-id", 4_000, { tenant: "tenant-b" })).toBe("recorded");
+    await host(db, "t-shared-id", [{ kind: "reserve", micros: 10_000 }, { kind: "settle", micros: 4_000 }], { tenant: "tenant-b" });
+    await host(db, "t-shared-id", [{ kind: "reserve", micros: 10_000 }, { kind: "settle", micros: 9_000 }], { adapter: "second-one" });
+    expect(await counts(db, USER.memberA, "tenant-a")).toEqual({ "creator-os:unreserved": 1, "second-one:settled_differs": 1 }); // creator-os in tenant-a has no reservation of its own
+    expect(await counts(db, USER.ownerB, "tenant-b")).toEqual({ "creator-os:matched": 1 });
   } finally {
     await db.close();
   }
