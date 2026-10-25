@@ -1,6 +1,6 @@
 # ADR 018: Running the real Content OS service for the host
 
-**Status:** decided 2026-10-24 with the owner (D1 to D7, with D1 changed to a free model API); built in Phase 2 item 2 and pushed. The service is deployed to staging. Cloud steps 1 to 5 are done (mount test, state bucket, secrets, deploy, first real task); steps 6 and 7 are not.
+**Status:** decided 2026-10-24 with the owner (D1 to D7, with D1 changed to a free model API); built in Phase 2 item 2 and pushed. The service is deployed to staging. Cloud steps 1 to 6 are done (mount test, state bucket, secrets, deploy, first real task, sync job and deletion receipt against the real service); step 7 (scheduler and alert) is not.
 **Builds on:** ADR-005 (the adapter host contract), ADR-010 (AGPL separation), ADR-012 (token keys), ADR-015 (the sync job), ADR-017 (draft text).
 
 ## The problem
@@ -80,6 +80,32 @@ Observations:
 - The drafts ran about 170 words against about 150 asked for, and the title is the brief cut off at 70 characters.
 - Token use is not reported on the task. With spend 0 the dollar cap cannot stop a runaway task; the per-task token cap does.
 - A failed task should record a short, key-free reason. That is not built.
+
+## Cloud step 6: the evidence-cap bug, the v2 deploy and the receipt proof, 2026-10-25
+
+**The bug.** The step 5 task had 5 citations and produced 0 proposals. The research step keeps up to 3,000 characters of page
+text per citation, but the run manager turns a citation into a `memory.propose` event only if its text is at most
+`MAX_PROPOSAL_CHARS` (2,000), and it skips the rest without a message. The stored run showed evidence of 2,894 to 2,991
+characters, so every proposal was dropped. Tests never saw it because the local fixture used short evidence.
+
+**The fix.** `buildProduction` now builds its research source through `productionResearch`, which passes
+`maxEvidenceChars: RESEARCH_EVIDENCE_CHARS` (`MAX_PROPOSAL_CHARS - 100`, 1,900). A test with a page far longer than the cap
+fails with the old 3,000 and passes with 1,900. ContractorOS commit `2146201`. Image `creator-os:v2` (Cloud Build) was deployed as
+revision `veloce-creator-os-agentos-staging-00003-ncs`, same settings (model `openai/gpt-oss-120b`).
+
+**The proof, against the real service.** The sync job `veloce-adapter-sync-agentos-staging-creator-os` was pointed at the real
+service. With a marked `zz-` registry row and one admin membership on staging:
+
+- A new task succeeded in 17 s (quality 100, no repair) and produced **5 proposals** of 1,829 to 1,896 characters.
+- First sync run: exit 0, 8 events read, 5 private notes and 5 queued promotions created, cursor 8. (Before the registry row existed
+  the run read the events but stopped with `cursor_conflict`, because the host cannot save its place for an unregistered adapter.)
+- An admin approved one promotion, the shared note was created by hand as the contract test does, and the withdrawal returned true.
+- Second sync run: exit 0. The host holds an acknowledged receipt with a sha256 and 3 copies deleted after 1 attempt. The fact is
+  gone from the proposing task's event log, run state and research note.
+- Every row added on staging (registry, membership, notes, promotions, outbox, cursor, receipts) was deleted afterwards.
+
+**Not covered.** An erasure reaches the copies of a fact in the task that proposed it. The same public page text still sits in
+the folders of earlier tasks that never sent a proposal to the host, and in the state bucket's drafts of those tasks.
 
 ## What is not checked, and why it matters
 
