@@ -1,6 +1,6 @@
 # ADR 018: Running the real Content OS service for the host
 
-**Status:** decided 2026-10-24 with the owner (D1 to D7, with D1 changed to a free model API); built in Phase 2 item 2 and pushed. **The service is not deployed.** Cloud steps 1 and 2 are done (the mount test and the real state bucket); steps 3 to 7 are not.
+**Status:** decided 2026-10-24 with the owner (D1 to D7, with D1 changed to a free model API); built in Phase 2 item 2 and pushed. The service is deployed to staging. Cloud steps 1 to 5 are done (mount test, state bucket, secrets, deploy, first real task); steps 6 and 7 are not.
 **Builds on:** ADR-005 (the adapter host contract), ADR-010 (AGPL separation), ADR-012 (token keys), ADR-015 (the sync job), ADR-017 (draft text).
 
 ## The problem
@@ -65,10 +65,26 @@ append in order, flush, keep a private file private, list. Notes:
 `veloce-creator-os` service account has access beyond the project's own default roles (`objectUser`: read, write, list, delete
 objects; no bucket administration). The throwaway test bucket and test job were deleted.
 
+## Cloud step 5: the first real task, 2026-10-25
+
+The first `content.draft` task (a made-up one-sentence brief) failed after 10 seconds with spend 0. Search and page reading had
+worked (5 citations), so the failure was the first model call. Listing the models the Groq key can use showed that
+`llama-3.3-70b-versatile`, the configured model, is **not available to this key**. The model name is a setting, so the fix was
+`CONTENT_OS_LLM_MODEL=openai/gpt-oss-120b` (new revision `00002`, nothing else changed). The service log cannot show why a task
+failed, because it prints setting names and counts only; a failed task's state says just "failed".
+
+The rerun with a new idempotency key **succeeded in 57 seconds**: quality passed with score 100 after 1 repair, 5 citations,
+2 drafts (the first and its repair, about 1,100 characters each), spend 0 (free tier), 0 proposals (normal for a draft task).
+Observations:
+
+- The drafts ran about 170 words against about 150 asked for, and the title is the brief cut off at 70 characters.
+- Token use is not reported on the task. With spend 0 the dollar cap cannot stop a runaway task; the per-task token cap does.
+- A failed task should record a short, key-free reason. That is not built.
+
 ## What is not checked, and why it matters
 
-- **A real model and a real search call have not been made.** They need keys you paste yourself, and the first real task will
-  show how often a free model passes the factory's own quality checks. Expect more failed drafts than with a paid model.
+- **One real model and search call have been made (step 5), with one task.** It passed the factory's quality checks, but one
+  task does not show how often a free model does. Expect more failed drafts than with a paid model.
 - **Data terms of free tiers.** Free model APIs often have looser terms than paid ones (some may log prompts or use them to
   improve products). The briefs and research a task sends are client content. For staging with made-up briefs that does not
   matter. **Before a real client's work goes through a free API, someone must read that provider's current terms.** This is an
