@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "scope": "standalone Commerce SQLite only; Veloce host integration remains open",
+  "tables": {
+    "commerce_workspaces": {"class":"configuration","policy":"operator-managed; no automatic removal"},
+    "commerce_members": {"class":"identity","policy":"operator-managed membership; offboarding remains open"},
+    "commerce_sources": {"class":"content","policy":"active at most 28 days; hidden at original expiry; text redacted after 7 recovery days; identifier/hash skeleton retained"},
+    "commerce_proposals": {"class":"content-and-financial-reference","policy":"active at most 28 days, no later than sources; scope and description redacted after 7 recovery days; digest/money/reference skeleton retained"},
+    "commerce_approvals": {"class":"authority-evidence","policy":"original execution expiry enforced; identity/digest evidence retained pending financial policy; never reactivated by purge"},
+    "commerce_intents": {"class":"financial","policy":"retained pending owner policy; expired checkout URL hidden immediately and erased after 7 recovery days"},
+    "commerce_operations": {"class":"financial-recovery","policy":"stable claim/operation identifiers retained pending owner policy"},
+    "commerce_orders": {"class":"financial-recovery","policy":"provider order mapping retained pending owner policy"},
+    "commerce_captures": {"class":"financial-recovery","policy":"provider capture mapping retained pending owner policy"},
+    "commerce_payment_inbox": {"class":"financial-replay","policy":"event id/hash/disposition only; retained pending owner policy; raw event body not persisted"},
+    "commerce_kickoff_outbox": {"class":"financial-replay","policy":"intent/state only; retained pending owner policy; held on proposal content purge"},
+    "commerce_projects": {"class":"content","policy":"inherits proposal expiry; title/tasks redacted after 7 recovery days; held identifier skeleton retained"},
+    "commerce_draft_runs": {"class":"usage-metadata","policy":"no source/prompt/output body; model metadata redacted at 35 days; id/status/subject skeleton retained pending lifecycle completion"},
+    "commerce_proposal_decisions": {"class":"authority-evidence","policy":"reason redacted with proposal after 7 recovery days; actor/decision/reference retained pending financial policy"},
+    "commerce_users": {"class":"authentication","policy":"private verifier records; operator revocation supported; full offboarding remains open"},
+    "commerce_sessions": {"class":"authentication","policy":"hashed tokens; 1 hour expiry enforced; logout/revocation remove tokens; expired rows removed at login"},
+    "commerce_login_limits": {"class":"authentication","policy":"hashed buckets; 15 minute expiry; expired rows removed at login attempt"}
+  }
+}

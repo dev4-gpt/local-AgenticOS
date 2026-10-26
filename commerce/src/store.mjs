@@ -25,6 +25,7 @@ export class CommerceStore {
     this.#db = new DatabaseSync(path, { timeout:5000 });
     this.#db.exec(`
       PRAGMA foreign_keys = ON;
+      PRAGMA secure_delete = ON;
       PRAGMA journal_mode = WAL;
       PRAGMA synchronous = FULL;
       CREATE TABLE IF NOT EXISTS commerce_workspaces (
@@ -141,7 +142,16 @@ export class CommerceStore {
   putSource(source) {
     tenantId(source?.tenant);identifier(source?.id);identifier(source?.revision);
     if (!['active','withdrawn'].includes(source.status) || !['approved','quarantined'].includes(source.reviewState) || !['ordinary','sensitive','unknown','restricted'].includes(source.sensitivity) || JSON.stringify(source).length>250_000) fail('invalid_source');
-    this.#db.prepare(`INSERT INTO commerce_sources VALUES (?,?,?) ON CONFLICT(tenant,id) DO UPDATE SET payload=excluded.payload`).run(source.tenant,source.id,JSON.stringify(source));
+    const now=this.#now(),expiry=Date.parse(source.expiresAt);
+    if(!Number.isSafeInteger(expiry)||new Date(expiry).toISOString()!==source.expiresAt)fail('invalid_expiry');
+    const prior=parse(this.#db.prepare('SELECT payload FROM commerce_sources WHERE tenant=? AND id=?').get(source.tenant,source.id));
+    // An update is not a new retention window, even for a privileged importer.
+    if(prior&&(prior.expiresAt!==source.expiresAt||prior.purgedAt))fail('retention_clock_changed');
+    if(!prior&&(expiry<=now||expiry>now+28*24*60*60*1000))fail('invalid_expiry');
+    const changed=this.#db.prepare(`INSERT INTO commerce_sources VALUES (?,?,?) ON CONFLICT(tenant,id) DO UPDATE SET payload=excluded.payload
+      WHERE json_extract(commerce_sources.payload,'$.purgedAt') IS NULL
+      AND json_extract(commerce_sources.payload,'$.expiresAt')=json_extract(excluded.payload,'$.expiresAt')`).run(source.tenant,source.id,JSON.stringify(source));
+    if(changed.changes!==1)fail('retention_clock_changed');
   }
 
   submitSource(subject,tenant,{title,content}) {
@@ -199,7 +209,7 @@ export class CommerceStore {
       const decision=this.#db.prepare('SELECT decision,reason FROM commerce_proposal_decisions WHERE tenant=? AND proposal_id=? AND proposal_revision=?').get(tenant,proposal.id,proposal.revision);
       return {...proposal,eligibility,requestedBy,reviewDecision:decision?.decision??'pending',reviewReason:decision?.reason??''};
     });
-    return {tenant,subject,role:member.role,policyVersion:config.policy_version,merchantId:config.merchant_id,sources,proposals,approvals:rows('commerce_approvals').filter(a=>Date.parse(a.expiresAt)>now),intents:rows('commerce_intents'),projects:rows('commerce_projects').filter(p=>Date.parse(p.expiresAt)>now)};
+    return {tenant,subject,role:member.role,policyVersion:config.policy_version,merchantId:config.merchant_id,sources,proposals,approvals:rows('commerce_approvals').filter(a=>Date.parse(a.expiresAt)>now),intents:rows('commerce_intents').map(i=>this.#intentView(i)),projects:rows('commerce_projects').filter(p=>Date.parse(p.expiresAt)>now)};
   }
   reserveDraft(subject,tenant) {
     return this.#transaction(()=>{
@@ -223,6 +233,7 @@ export class CommerceStore {
       const context = this.#context(input);
       const proposal = createProposal(input,context.sources,context.now);
       // Binding workspace policy/merchant is checked here too, not just at approval time.
+      if(Date.parse(proposal.expiresAt)-Date.parse(proposal.createdAt)>28*24*60*60*1000)fail('invalid_expiry');
       if (proposal.policyVersion !== context.policyVersion || proposal.terms.merchantId !== context.merchantId) fail('policy_or_merchant_changed');
       const prior=this.#db.prepare('SELECT * FROM commerce_proposals WHERE tenant=? AND id=? AND revision=?').get(proposal.tenant,proposal.id,proposal.revision);
       if (prior) {
@@ -296,7 +307,13 @@ export class CommerceStore {
     this.#member(tenant,subject);
     const result=parse(this.#db.prepare('SELECT payload FROM commerce_intents WHERE tenant=? AND id=?').get(tenant,identifier(id)));
     if (!result) fail('not_found');
-    return result;
+    return this.#intentView(result);
+  }
+
+  #intentView(intent) {
+    // Provider facts stay available for reconciliation, but an expired buyer link does not.
+    if(Date.parse(intent.expiresAt)<=this.#now())return {...intent,approvalUrl:null,executionExpired:true};
+    return intent;
   }
 
   #intent(tenant,id) {
@@ -306,7 +323,7 @@ export class CommerceStore {
   }
   #saveIntent(intent) {
     this.#db.prepare('UPDATE commerce_intents SET payload=? WHERE tenant=? AND id=?').run(JSON.stringify(intent),intent.tenant,intent.id);
-    return structuredClone(intent);
+    return this.#intentView(structuredClone(intent));
   }
   #admit(intent) {
     const approval=parse(this.#db.prepare('SELECT payload FROM commerce_approvals WHERE tenant=? AND id=?').get(intent.tenant,intent.approvalId));
@@ -451,4 +468,54 @@ export class CommerceStore {
       return project;
     });
   }
+
+  /** PRIVILEGED operator maintenance. Never expose this as a session-authorized HTTP route.
+   * Redacts application-held content after its active window plus seven recovery days.
+   * Financial/auth records are explicitly outside this content purge; see LIFECYCLE.md.
+   */
+  purgeContent(tenant,{apply=false,batch=100}={}) {
+    tenantId(tenant);
+    if(typeof apply!=='boolean'||!Number.isSafeInteger(batch)||batch<1||batch>1000)fail('invalid_maintenance_options');
+    return this.#transaction(()=>{
+      if(!this.#db.prepare('SELECT 1 FROM commerce_workspaces WHERE tenant=?').get(tenant))fail('not_found');
+      const now=this.#now(),cutoff=now-7*24*60*60*1000,purgedAt=new Date(now).toISOString();
+      // Each table has its own batch so a large source backlog cannot starve proposal cleanup.
+      const due=table=>this.#db.prepare(`SELECT rowid,* FROM ${table} WHERE tenant=? AND json_extract(payload,'$.purgedAt') IS NULL AND julianday(json_extract(payload,'$.expiresAt'))<=julianday(?) ORDER BY rowid LIMIT ?`).all(tenant,new Date(cutoff).toISOString(),batch);
+      const sources=due('commerce_sources'),proposals=due('commerce_proposals'),projects=due('commerce_projects');
+      const drafts=this.#db.prepare("SELECT rowid,* FROM commerce_draft_runs WHERE tenant=? AND started_at<=? AND payload<>'{}' ORDER BY rowid LIMIT ?").all(tenant,now-35*24*60*60*1000,batch);
+      const links=this.#db.prepare("SELECT rowid,* FROM commerce_intents WHERE tenant=? AND json_extract(payload,'$.approvalUrl') IS NOT NULL AND julianday(json_extract(payload,'$.expiresAt'))<=julianday(?) ORDER BY rowid LIMIT ?").all(tenant,new Date(cutoff).toISOString(),batch);
+      const counts={sources:sources.length,proposals:proposals.length,projects:projects.length,draftMetadata:drafts.length,buyerLinks:links.length};
+      if(apply){
+        const update=(table,row,value)=>this.#db.prepare(`UPDATE ${table} SET payload=? WHERE rowid=? AND tenant=?`).run(JSON.stringify(value),row.rowid,tenant);
+        for(const row of sources){
+          const v=parse(row);update('commerce_sources',row,{tenant,id:v.id,revision:v.revision,contentHash:v.contentHash,metadataHash:v.metadataHash,expiresAt:v.expiresAt,status:'withdrawn',reviewState:'quarantined',sensitivity:v.sensitivity,purgedAt});
+        }
+        for(const row of proposals){
+          const v=parse(row);
+          // Keep bounded hashes/ids/money needed to match financial facts; no scope/description text.
+          const sources=v.sources.map(r=>({tenant:r.tenant,id:r.id,revision:r.revision,contentHash:r.contentHash,metadataHash:r.metadataHash,expiresAt:r.expiresAt}));
+          update('commerce_proposals',row,{schema:v.schema,environment:v.environment,tenant,id:v.id,revision:v.revision,digest:v.digest,policyVersion:v.policyVersion,createdAt:v.createdAt,expiresAt:v.expiresAt,sources,terms:{currency:v.terms.currency,totalCents:v.terms.totalCents,depositCents:v.terms.depositCents,merchantId:v.terms.merchantId},purgedAt});
+          this.#db.prepare("UPDATE commerce_proposal_decisions SET reason='' WHERE tenant=? AND proposal_id=? AND proposal_revision=?").run(tenant,v.id,v.revision);
+          this.#db.prepare("UPDATE commerce_kickoff_outbox SET state='review_required' WHERE tenant=? AND intent_id IN (SELECT id FROM commerce_intents WHERE tenant=? AND proposal_id=? AND proposal_revision=?)").run(tenant,tenant,v.id,v.revision);
+        }
+        for(const row of projects){
+          const v=parse(row);update('commerce_projects',row,{id:v.id,tenant,intentId:v.intentId,proposalId:v.proposalId,proposalRevision:v.proposalRevision,proposalDigest:v.proposalDigest,createdAt:v.createdAt,expiresAt:v.expiresAt,state:'review_required',purgedAt});
+        }
+        for(const row of drafts)update('commerce_draft_runs',row,{});
+        for(const row of links){const v=parse(row);delete v.approvalUrl;update('commerce_intents',row,v);}
+      }
+      return {tenant,applied:apply,cutoff:new Date(cutoff).toISOString(),counts,batch,financialRecords:'retained_policy_pending',physicalCompaction:'not_performed'};
+    });
+  }
+
+  /** Offline operator step after logical purge. Throws if active readers prevent WAL truncation. */
+  compactContentStorage() {
+    const checkpoint=this.#db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get();
+    if(checkpoint.busy)fail('maintenance_busy');
+    this.#db.exec('VACUUM');
+    const after=this.#db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get();
+    if(after.busy)fail('maintenance_busy');
+    return {physicalCompaction:'completed',externalCopies:'outside_local_database_guarantee'};
+  }
+
 }

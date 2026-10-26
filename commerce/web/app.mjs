@@ -77,13 +77,13 @@ function render(){
 }
 function proposalCard(p){
   const approval=state.approvals.find(a=>a.proposalId===p.id&&a.proposalRevision===p.revision),intent=state.intents.find(i=>i.proposalId===p.id&&i.proposalRevision===p.revision),current=p.eligibility==='current';
-  const status=p.reviewDecision==='rejected'?'Changes requested':!current?'Evidence needs review':intent?({paid:'Deposit confirmed',paid_review_required:'Paid · review required',payment_review_required:'Payment review required',awaiting_buyer:'Awaiting buyer',buyer_approved:'Buyer approved',payment_pending:'Payment pending',capturing:'Confirming payment',creating_order:'Preparing checkout',reconciling:'Check payment status',cancelled:'Checkout cancelled'}[intent.state]??'Checkout ready'):approval?'Terms approved':'Draft · awaiting review';
+  const status=p.reviewDecision==='rejected'?'Changes requested':!current?'Evidence needs review':intent?.executionExpired&&!intent.captureId?'Execution approval expired':intent?({paid:'Deposit confirmed',paid_review_required:'Paid · review required',payment_review_required:'Payment review required',awaiting_buyer:'Awaiting buyer',buyer_approved:'Buyer approved',payment_pending:'Payment pending',capturing:'Confirming payment',creating_order:'Preparing checkout',reconciling:'Check payment status',cancelled:'Checkout cancelled'}[intent.state]??'Checkout ready'):approval?'Terms approved':'Draft · awaiting review';
   const card=node('article',{class:'proposal-card'},[node('div',{class:'card-top'},[badge(status,intent?.state==='paid'?'good':!current?'warning':'pending'),node('span',{class:'meta'},['Expires '+new Date(p.expiresAt).toLocaleDateString()])]),node('h3',{},[p.title]),node('div',{class:'terms-strip'},[node('div',{},[node('span',{},['TOTAL FEE']),node('strong',{},[money(p.terms.totalCents)])]),node('div',{},[node('span',{},['DEPOSIT']),node('strong',{},[money(p.terms.depositCents)])]),node('div',{},[node('span',{},['PAYMENT TERMS']),node('p',{},[p.terms.description])])]),node('details',{},[node('summary',{},['Read proposed scope and citations']),node('pre',{class:'proposal-body'},[p.body])])]);
   const evidence=node('details',{},[node('summary',{},['Review supporting evidence'])]);
   for(const ref of p.sources){const s=state.sources.find(s=>s.id===ref.id);evidence.append(node('div',{class:'evidence'},[node('strong',{},[s?.title??'Source no longer available']),node('pre',{},[s?.content??'This source has been withdrawn or expired. Prepare a new proposal before taking another commercial action.'])]));}card.append(evidence);
   if(!current)card.append(node('p',{class:'warning-copy'},['Supporting evidence changed or expired. New commercial actions are blocked; an existing payment can still be reconciled.']));
   if(p.reviewDecision==='rejected')card.append(node('p',{class:'warning-copy'},['Reviewer requested changes: '+p.reviewReason]));
-  if(!approval&&current&&p.reviewDecision!=='rejected'){
+  if(!approval&&!intent&&current&&p.reviewDecision!=='rejected'){
     if(['owner','admin'].includes(state.role)&&p.requestedBy!==state.subject){
       const form=node('form',{'data-review':p.id,'data-revision':p.revision,'data-digest':p.digest,class:'review-form'},[
         node('label',{},[node('input',{type:'checkbox',name:'evidence',required:true}),'I reviewed the cited passages and the scope they support.']),
@@ -96,11 +96,12 @@ function proposalCard(p){
   const actions=node('div',{class:'actions'});
   if(approval&&!intent&&current)actions.append(button('Prepare PayPal checkout','start-checkout',{approval:approval.id},!state.paymentsConfigured));
   if(intent){
+    if(intent.executionExpired)card.append(node('p',{class:'warning-copy'},['Execution approval expired. Check payment status to reconcile an existing order; prepare a new proposal before requesting another payment or kickoff.']));
     if(intent.approvalUrl&&!intent.captureId&&current)actions.append(node('a',{class:'button primary',href:intent.approvalUrl,target:'_blank',rel:'noopener noreferrer'},['Approve in PayPal sandbox ↗']));
     if(intent.orderId)actions.append(button('Check payment status','reconcile',{id:intent.id}));
-    if(current&&['buyer_approved','reconciling'].includes(intent.state)&&intent.orderId&&!intent.captureId)actions.append(button('Confirm sandbox payment','capture',{id:intent.id},!state.paymentsConfigured));
-    if(current&&['ready','reconciling'].includes(intent.state)&&!intent.orderId)actions.append(button('Retry original checkout request','create',{id:intent.id},!state.paymentsConfigured));
-    if(intent.state==='paid'&&current&&!state.projects.some(project=>project.intentId===intent.id))actions.append(button('Create project kickoff','kickoff',{id:intent.id}));
+    if(current&&!intent.executionExpired&&['buyer_approved','reconciling'].includes(intent.state)&&intent.orderId&&!intent.captureId)actions.append(button('Confirm sandbox payment','capture',{id:intent.id},!state.paymentsConfigured));
+    if(current&&!intent.executionExpired&&['ready','reconciling'].includes(intent.state)&&!intent.orderId)actions.append(button('Retry original checkout request','create',{id:intent.id},!state.paymentsConfigured));
+    if(intent.state==='paid'&&!intent.executionExpired&&current&&!state.projects.some(project=>project.intentId===intent.id))actions.append(button('Create project kickoff','kickoff',{id:intent.id}));
   }
   if(approval&&!state.paymentsConfigured)actions.append(node('p',{class:'connection-state'},['Connect PayPal sandbox to open checkout.']));
   card.append(actions);return card;

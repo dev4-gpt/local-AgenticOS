@@ -32,22 +32,30 @@ async function hiddenPassword(prompt){
 }
 const command=process.argv[2]??'help';
 if(command==='help'){
-  process.stdout.write('Veloce Commerce (Node 24)\n\ninit --tenant owner-dev --merchant SANDBOX_MERCHANT_ID\nuser --tenant owner-dev --username YOUR_USERNAME --role owner|admin|member\nserve --tenant owner-dev --port 4141\n\nAll commands accept --data-dir PATH (private, mode 0700).\nPasswords are entered privately in your own terminal.\nProvider configuration is documented in README.md; paid services are not enabled.\n');
+  process.stdout.write('Veloce Commerce (Node 24)\n\ninit --tenant owner-dev --merchant SANDBOX_MERCHANT_ID\nuser --tenant owner-dev --username YOUR_USERNAME --role owner|admin|member\nserve --tenant owner-dev --port 4141\nretention --tenant owner-dev [--apply] [--batch 100] [--compact]\n\nAll commands accept --data-dir PATH (private, mode 0700).\nPasswords are entered privately in your own terminal.\nProvider configuration is documented in README.md; paid services are not enabled.\n');
 }else{
   let store,auth;
   try{
-    const path=privateDatabase(),tenant=arg('tenant','owner-dev');store=new CommerceStore(path);auth=new CommerceAuth(path);
+    const path=privateDatabase(),tenant=arg('tenant','owner-dev');store=new CommerceStore(path);
     if(command==='init'){
       store.configureWorkspace({tenant,policyVersion:'commerce-v1',merchantId:arg('merchant')});
       process.stdout.write('Workspace initialized. Provision separate author and reviewer accounts next.\n');
     }else if(command==='user'){
+      auth=new CommerceAuth(path);
       const username=arg('username'),role=arg('role','member');
       if(!['owner','admin','member'].includes(role))throw new Error('Choose owner, admin or member.');
       const secret=await hiddenPassword('Password (12 or more characters; hidden): '),confirmation=await hiddenPassword('Confirm password (hidden): ');
       if(secret!==confirmation)throw new Error('Passwords did not match.');
       const user=await auth.createUser(username,secret);store.setMember({tenant,subject:user.subject,role});
       process.stdout.write('Local account created. Sign in through the workspace.\n');
+    }else if(command==='retention'){
+      const apply=process.argv.includes('--apply'),compact=process.argv.includes('--compact');
+      if(compact&&!apply)throw new Error('Compaction requires applying the content purge.');
+      const report=store.purgeContent(tenant,{apply,batch:Number(arg('batch','100'))});
+      if(compact)Object.assign(report,store.compactContentStorage());
+      process.stdout.write(`${JSON.stringify(report,null,2)}\n`);
     }else if(command==='serve'){
+      auth=new CommerceAuth(path);
       const port=Number(arg('port','4141'));
       if(!Number.isInteger(port)||port<1024||port>65535)throw new Error('Choose a port between 1024 and 65535.');
       const origin=`http://127.0.0.1:${port}`;

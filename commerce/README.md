@@ -97,3 +97,7 @@ Stop it with Ctrl-C to remove its temporary state. Do not present fixture output
 The enclosing Veloce application predates this entry. This newly authored standalone module implements the knowledge-bound proposal, commercial review, sandbox provider, payment reconciliation/kickoff and focused UI contribution. The module's [MIT license](LICENSE) applies to this directory only; it does not relicense the enclosing Veloce repository or optional third-party adapters. Node and installed model/service clients retain their own licenses and terms.
 
 Current verification is recorded per milestone. A passing fixture journey is not real PayPal interoperability, customer validation, semantic proof for every citation, complete financial retention policy, or production readiness. Those remain separate acceptance work before a real client rollout.
+
+## Content cleanup
+
+The standalone operator can preview and apply tenant-scoped expired content cleanup. See [LIFECYCLE.md](LIFECYCLE.md) for the commands, seven-day recovery boundary, retained financial records and remaining restore/host gaps. No cleanup runs on a schedule.
