@@ -125,3 +125,16 @@ test('untrusted certificate locations are rejected without forwarding or fetchin
   }
   assert.equal(calls.length,0);
 });
+
+test('read-only sandbox preflight checks webhook identity, HTTPS path and event coverage without returning configuration secrets',async()=>{
+ const events=['PAYMENT.CAPTURE.COMPLETED','PAYMENT.CAPTURE.PENDING','PAYMENT.CAPTURE.DENIED','PAYMENT.CAPTURE.REVERSED'];
+ let calls=[];let webhook={id:'TEST-WEBHOOK',url:'https://private-owner-webhook.example/api/paypal/webhook',event_types:events.map(name=>({name}))};
+ const provider=createPayPalClient({clientId:'test-client',clientSecret:'test-secret',webhookId:'TEST-WEBHOOK',fetchImpl:async(url,options)=>{
+  calls.push({url,method:options.method});return url.endsWith('/oauth2/token')?Response.json({access_token:'PRIVATE-TOKEN',token_type:'Bearer'}):Response.json(webhook);
+ }});
+ const valid=await provider.checkWebhookConfiguration();assert.equal(valid.ready,true);assert.equal(valid.reachability,'not_tested');assert.ok(!JSON.stringify(valid).includes('private-owner'));assert.ok(!JSON.stringify(valid).includes('PRIVATE-TOKEN'));
+ assert.deepEqual(calls.map(c=>c.method),['POST','GET']);assert.ok(calls.every(c=>c.url.startsWith('https://api-m.sandbox.paypal.com/')));
+ webhook={...webhook,id:'wrong',url:'http://example.test/api/workspace',event_types:[]};
+ const invalid=await provider.checkWebhookConfiguration();assert.equal(invalid.ready,false);assert.equal(invalid.checks.idMatches,false);assert.equal(invalid.checks.https,false);assert.equal(invalid.checks.exactPath,false);assert.equal(invalid.missingEvents.length,4);
+ webhook={id:'TEST-WEBHOOK',url:'https://example.test/api/paypal/webhook',event_types:[{name:'*'}]};assert.equal((await provider.checkWebhookConfiguration()).ready,true);
+});

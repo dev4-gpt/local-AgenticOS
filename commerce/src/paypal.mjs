@@ -106,6 +106,16 @@ export function createPayPalClient({ clientId, clientSecret, webhookId, fetchImp
   }
   return Object.freeze({
     environment:'sandbox',
+    async checkWebhookConfiguration() {
+      identifier(webhookId);
+      const raw=await api(`/v1/notifications/webhooks/${encodeURIComponent(webhookId)}`,'GET');
+      let url;try{url=new URL(raw.url);}catch{bad('provider_invalid_response');}
+      const required=['PAYMENT.CAPTURE.COMPLETED','PAYMENT.CAPTURE.PENDING','PAYMENT.CAPTURE.DENIED','PAYMENT.CAPTURE.REVERSED'];
+      const events=Array.isArray(raw.event_types)?raw.event_types.map(event=>event?.name):[];
+      const missingEvents=required.filter(name=>!events.includes(name)&&!events.includes('*'));
+      const checks={idMatches:raw.id===webhookId,https:url.protocol==='https:'&&!url.username&&!url.password,exactPath:url.pathname==='/api/paypal/webhook'&&!url.search&&!url.hash,eventSubscriptions:missingEvents.length===0};
+      return Object.freeze({environment:'sandbox',oauthAuthenticated:true,checks,missingEvents,ready:Object.values(checks).every(Boolean),reachability:'not_tested',merchantIdentity:'requires_real_order_validation'});
+    },
     async createOrder(input) {
       const e = expectedOrder(input); operationId(input.operationId);
       const raw = await api('/v2/checkout/orders','POST',{

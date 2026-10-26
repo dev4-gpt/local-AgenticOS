@@ -266,3 +266,5 @@ Work happens in the separate ContractorOS repo (`dev4-gpt/ContractorOS`, AGPL, n
 ## How to use this file
 
 After every step: tick what finished (only if its check was run), add anything new that the step revealed with an ID, update the "Last updated" line, and mention the commit hash. After every phase: walk the stop-ship list and the "what holds today" table in `03-safety-and-retention.md`.
+
+Commerce sandbox ingress checkpoint (October 26): separate optional loopback callback-only listener and read-only OAuth/webhook configuration checker implemented; 129 tests pass. `commerce/SANDBOX-ACCEPTANCE.md` records the real acceptance sequence. Actual local environment check found the three PayPal configuration names absent. No real sandbox capture/webhook, tunnel, deployment or production readiness is claimed.
