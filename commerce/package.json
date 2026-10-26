@@ -1,0 +1,10 @@
+{
+  "name": "@veloce/commerce",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Portable, evidence-bound service commerce for Veloce. Sandbox integration in progress.",
+  "engines": { "node": ">=22 <26" },
+  "scripts": { "test": "node --test test/*.test.mjs", "check": "node --check src/proposals.mjs && node --check src/paypal.mjs && node --check src/store.mjs" },
+  "exports": { "./proposals": "./src/proposals.mjs", "./paypal": "./src/paypal.mjs", "./store": "./src/store.mjs" }
+}

@@ -4,7 +4,7 @@ Master plan phases (from `reports/Veloce master plan and error register.md`). Ti
 
 Legend: **Owner** = Me (the assistant) / You / Both / Lawyer. **Sev** = CRITICAL / WARNING / SUGGESTION. IDs refer to the error register.
 
-Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/approval-gateway`.
+Last updated: 2026-10-26 for the isolated commerce implementation checkpoint on `codex/veloce-commerce`; Phase 1/2 history remains below.
 
 ---
 
@@ -166,6 +166,14 @@ Work happens in the separate ContractorOS repo (`dev4-gpt/ContractorOS`, AGPL, n
 - [x] P2-1. (done 2026-10-21, slice 2a; decided with you: a local file, not the host function, so the adapter holds no host credential) Durable replay protection: used token ids are written to a private file (directory 0700, file 0600, only an id and an expiry) before a token is accepted, kept 60 s past expiry, refused when full, and the service stops at start-up if the file is unreadable. Wired in through the `jtiFile` option. Was: the token-id store is in memory
 - [ ] P2-2. You: choose the starter principal/pillar (X-15). The task takes any pillar from the existing list per request; nothing is hard-coded
 - [x] P2-3. You: make the ContractorOS repo private (Phase 0) before any of this is pushed (done, verified 2026-10-21; pushing slice 1 is now allowed when you say so)
+
+## PayPal hackathon commerce slice (separate worktree, 2026-10-26)
+
+- [x] C1: portable evidence-bound proposal domain in `commerce/`: immutable source/terms digest, source eligibility, distinct review identities and expiry. Verified locally with `npm run test:commerce` on Node 24.18.0; 72 tests passed across this slice.
+- [~] C2: local standalone SQLite review/intent persistence and atomic single-use admission, restart/tenant tests. HTTP authentication, execution orchestration, lifecycle and hosted binding are not complete.
+- [~] C3: PayPal sandbox-only provider boundary and fixture-backed failure tests. No actual PayPal call or payment was made; real interoperability and reconciliation remain open.
+- [ ] C4-C10: AI drafting, UI, verified event inbox/kickoff outbox, Veloce binding, complete lifecycle/budget integration, actual sandbox/model proof, public-source packaging and demo.
+- Plan and trajectory: `commerce/EXECUTION.md`; isolated branch `codex/veloce-commerce`, baseline `707d5b3`. This slice does not close Phase 3 or Phase 7. No shared-checkout edits, push, deployment or publication.
 
 ## Phase 3: Knowledge adapter
 
