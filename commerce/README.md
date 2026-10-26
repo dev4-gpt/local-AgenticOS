@@ -103,3 +103,14 @@ Current verification is recorded per milestone. A passing fixture journey is not
 The standalone operator can preview and apply tenant-scoped expired content cleanup. See [LIFECYCLE.md](LIFECYCLE.md) for the commands, seven-day recovery boundary, retained financial records and remaining restore/host gaps. No cleanup runs on a schedule.
 
 Protected local snapshot export/restore is also documented in [LIFECYCLE.md](LIFECYCLE.md). Restore preserves original clocks and financial replay identity while revoking old approvals; it is an offline recovery staging workflow, not automatic disaster failover.
+
+
+## Opt-in real model through the application
+
+`test/real-model-http-evaluation.mjs` runs the authenticated HTTP source → source review → real drafting → persisted proposal path using only the public challenge brief and the existing Claude subscription. It uses disposable test accounts and synthetic terms, disables PayPal, verifies that the author cannot approve its own proposal, and leaves semantic/commercial review pending. No real client material is sent. It is excluded from `npm test`.
+
+```sh
+node test/real-model-http-evaluation.mjs --out /PRIVATE/NEW-EVIDENCE.json
+```
+
+The output path must not exist. The evidence includes only public-text model output, test proposal/terms and verification metadata, not credentials/session tokens. `--keep-open` leaves its temporary loopback app running for browser review; stop with Ctrl-C to remove temporary accounts/state. The two disposable evaluation account names/password are in the harness source and must never be used in a real runtime. An account-separation test does not establish review by two distinct real people. Review every claim against the source before approving; a citation marker and valid JSON do not prove semantic support.
