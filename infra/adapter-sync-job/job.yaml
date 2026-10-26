@@ -31,6 +31,10 @@ spec:
                 # The adapter's https address. Plain http is refused (only loopback is allowed, and only for local runs).
                 - name: ADAPTER_ENDPOINTS
                   value: '{"ADAPTER_ID":"https://ADAPTER_HOST"}'
+                # The sync switch (ADR-019): "true" makes each run ask the host first and do nothing, without calling the
+                # adapter, while the switch is off. Leave it out and every run goes ahead (an always-warm adapter service).
+                - name: ADAPTER_SYNC_USES_SWITCH
+                  value: "true"
                 # Must equal the id recorded with client_adapter_background_owner_set, or both steps do nothing.
                 - name: BACKGROUND_DEPLOYMENT_ID
                   value: "veloce-CLIENT_SLUG-main"

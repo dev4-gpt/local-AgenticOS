@@ -24,7 +24,7 @@ const EVENT = "11111111-1111-4111-8111-111111111111";
 const listen = (server: Server) => new Promise<number>((resolve) => server.listen(0, "127.0.0.1", () => resolve((server.address() as AddressInfo).port)));
 const bodyOf = (req: IncomingMessage) => new Promise<string>((resolve) => { let s = ""; req.on("data", (c) => (s += c)); req.on("end", () => resolve(s)); });
 
-function startStubs(o: { adapterStatus?: number } = {}) {
+function startStubs(o: { adapterStatus?: number; switchAnswer?: unknown } = {}) {
   const seen = { rpc: [] as string[], adapter: [] as { url: string; verified: boolean }[] };
   let cursor = 0;
   const db = createServer(async (req, res) => {
@@ -33,6 +33,7 @@ function startStubs(o: { adapterStatus?: number } = {}) {
     seen.rpc.push(name);
     const send = (value: unknown) => { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify(value)); };
     if (name === "client_adapter_background_owner_may_run") return send(true);
+    if (name === "client_adapter_sync_switch_job_check") { if (o.switchAnswer === undefined) { res.writeHead(404); return res.end("{}"); } return send(o.switchAnswer); }
     if (name === "client_adapter_events_cursor_get") return send(cursor);
     if (name === "client_adapter_events_cursor_advance") { if (body.p_expected === cursor) { cursor = body.p_next as number; return send(true); } return send(false); }
     if (name === "client_adapter_tombstones_pending") return send([{ event_id: EVENT, item_id: "i", adapter_event_id: "a".repeat(32), content_sha256: "b".repeat(64), attempts: 0 }]);
@@ -214,4 +215,76 @@ test("the job spec carries no secret, reads three secrets by reference, does not
   const readme = readFileSync("infra/adapter-sync-job/README.md", "utf8");
   for (const needed of ["client_adapter_background_owner_set", "ADAPTER_TOKEN_SIGNING_KEY", "gaveUp", "*/5 * * * *"]) expect(readme, needed).toContain(needed);
   expect(readme).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}/);
+});
+
+// The sync switch (ADR-019): with ADAPTER_SYNC_USES_SWITCH=true the run asks the host first and, when told no, never calls the adapter.
+const SWITCH_ENV = { ADAPTER_SYNC_USES_SWITCH: "true", BACKGROUND_DEPLOYMENT_ID: "veloce-test-main" };
+
+test("with the switch on, a run goes ahead for each reason it is allowed and says which", async () => {
+  for (const answer of ["run_on", "run_now", "run_deletions_owed"]) {
+    await withImage({ switchAnswer: answer }, async ({ dir, env, seen }) => {
+      const run = await runIn(dir, { ...env, ...SWITCH_ENV });
+      expect(run.code, run.stderr).toBe(0);
+      expect(lines(run.stdout).find((l) => l.event === "adapter-sync-switch")).toMatchObject({ run: answer });
+      expect(seen.adapter.length).toBeGreaterThan(0);
+      expect(seen.rpc).toContain("client_adapter_events_cursor_get");
+    });
+  }
+});
+
+test("with the switch off, a run exits 0, says it was skipped, and never calls the adapter or touches the feed", async () => {
+  await withImage({ switchAnswer: "skip" }, async ({ dir, env, seen }) => {
+    const run = await runIn(dir, { ...env, ...SWITCH_ENV });
+    expect(run.code, run.stderr).toBe(0);
+    expect(lines(run.stdout).at(-1)).toMatchObject({ event: "adapter-sync-end", skipped: true, reason: "the sync switch is off", exitCode: 0, steps: [] });
+    expect(seen.adapter).toEqual([]);
+    expect(seen.rpc).toEqual(["client_adapter_background_owner_may_run", "client_adapter_sync_switch_job_check"]);
+  });
+});
+
+test("with the switch not configured, every run goes ahead exactly as before and never asks", async () => {
+  await withImage({ switchAnswer: "skip" }, async ({ dir, env, seen }) => {
+    const run = await runIn(dir, env);
+    expect(run.code, run.stderr).toBe(0);
+    expect(seen.rpc).not.toContain("client_adapter_sync_switch_job_check");
+    expect(seen.adapter.length).toBeGreaterThan(0);
+  });
+});
+
+test("with the switch on, an answer that cannot be got or understood fails the run so the alert fires, and the adapter is not called", async () => {
+  for (const answer of [undefined, "maybe", true, null]) {
+    await withImage({ switchAnswer: answer }, async ({ dir, env, seen }) => {
+      const run = await runIn(dir, { ...env, ...SWITCH_ENV });
+      expect(run.code, `${String(answer)}: ${run.stdout}`).toBe(1);
+      expect(lines(run.stdout).at(-1)).toMatchObject({ event: "adapter-sync-end", exitCode: 1, steps: [] });
+      expect(seen.adapter).toEqual([]);
+    });
+  }
+});
+
+test("with the switch on and a setting missing, the run is refused by name and never prints a value", async () => {
+  await withImage({ switchAnswer: "run_on" }, async ({ dir, env }) => {
+    const { SUPABASE_SERVICE_ROLE_KEY: _removed, ...rest } = env;
+    const run = await runIn(dir, { ...rest, ...SWITCH_ENV });
+    expect(run.code).toBe(2);
+    expect(run.stderr).toContain("REFUSED: SUPABASE_SERVICE_ROLE_KEY is not set");
+    expect(run.stdout + run.stderr).not.toContain(SERVICE_KEY);
+  });
+});
+
+test("a deployment that is not the background owner never uses up a request or asks the switch", async () => {
+  const { syncDecision } = await import("../scripts/run-adapter-sync.mjs");
+  const calls: string[] = [];
+  const fetchImpl = (async (url: string) => {
+    calls.push(String(url).split("/rpc/")[1]);
+    return new Response(JSON.stringify(false), { status: 200 });
+  }) as unknown as typeof fetch;
+  const env = { ADAPTER_SYNC_USES_SWITCH: "true", CLIENT_SLUG: TENANT, ADAPTER_ID: ADAPTER, SUPABASE_URL: "http://127.0.0.1:1", SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY, BACKGROUND_DEPLOYMENT_ID: "veloce-other" };
+  expect(await syncDecision(env, fetchImpl)).toEqual({ action: "skip", reason: "this deployment is not the background owner" });
+  expect(calls).toEqual(["client_adapter_background_owner_may_run"]);
+});
+
+test("the job spec turns the switch on and the README says how it is used", () => {
+  const job = readFileSync("infra/adapter-sync-job/job.yaml", "utf8");
+  expect(job).toMatch(/name: ADAPTER_SYNC_USES_SWITCH\s+value: "?true"?/);
 });

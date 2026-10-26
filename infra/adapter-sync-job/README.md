@@ -39,6 +39,18 @@ folder has been applied to any cloud project.
    ```
 6. Create the alert (replace the channel first): `gcloud alpha monitoring policies create --policy-from-file=infra/adapter-sync-job/alert-policy.yaml`
 
+## The sync switch (keeps the bill down, ADR-019)
+
+The job runs every five minutes, which is cheap. What costs money is calling the adapter, because that keeps its service running
+all day (roughly $50 a month for one always-warm service). With `ADAPTER_SYNC_USES_SWITCH=true` (set in `job.yaml`) each run first
+asks the host, and when the switch is off it ends at once with `skipped: true`, exit 0, and never calls the adapter, so the service
+can scale to zero. Apply `supabase-client-adapter-sync-switch.sql` first; without it the run fails (exit 1) and the alert fires.
+
+A run goes ahead when the switch is on (1, 4 or 24 hours from the Adapters page, then it turns itself off), when an admin pressed
+Sync now (one run), or when a deletion is owed to an adapter that promised a receipt (a withdrawal is never paused by the switch).
+"Always on" exists but only the operator can allow it for a client, for a client that pays for it:
+`select public.client_adapter_sync_switch_allow_always('CLIENT_SLUG', 'ADAPTER_ID', true);` with the service role.
+
 ## First run
 
 Run it once by hand and read the log before scheduling: `gcloud run jobs execute veloce-adapter-sync-CLIENT_SLUG-ADAPTER_ID --region REGION --wait`.
