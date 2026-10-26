@@ -127,7 +127,8 @@
         "client_ecc_policy",
         "client_adapter_registry",
         "client_adapter_background_owner",
-        "client_adapter_event_cursors"
+        "client_adapter_event_cursors",
+        "client_adapter_sync_switch"
       ]
     },
     {
