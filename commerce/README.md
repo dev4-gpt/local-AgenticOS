@@ -2,7 +2,7 @@
 
 Turn approved knowledge into a cited proposal, an explicitly reviewed PayPal sandbox deposit, and one project kickoff. If supporting evidence changes or is withdrawn, new dependent commercial actions are blocked.
 
-This is the standalone capability being developed for the PayPal AI Hackathon. It also provides domain/storage/provider seams for the Veloce host. It does not require a private Veloce backend or ContractorOS to run. Production Veloce binding, complete retention/purge/restore policy, real sandbox acceptance and final submission evidence remain open; see [EXECUTION.md](EXECUTION.md).
+This is the standalone capability being developed for the PayPal AI Hackathon. It also provides domain/storage/provider seams for the Veloce host. It does not require a private Veloce backend or ContractorOS to run. Production Veloce binding, complete shared retention and financial policy, real sandbox acceptance and final submission evidence remain open; see [EXECUTION.md](EXECUTION.md).
 
 ## Requirements
 
@@ -101,3 +101,5 @@ Current verification is recorded per milestone. A passing fixture journey is not
 ## Content cleanup
 
 The standalone operator can preview and apply tenant-scoped expired content cleanup. See [LIFECYCLE.md](LIFECYCLE.md) for the commands, seven-day recovery boundary, retained financial records and remaining restore/host gaps. No cleanup runs on a schedule.
+
+Protected local snapshot export/restore is also documented in [LIFECYCLE.md](LIFECYCLE.md). Restore preserves original clocks and financial replay identity while revoking old approvals; it is an offline recovery staging workflow, not automatic disaster failover.

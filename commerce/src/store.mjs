@@ -5,6 +5,7 @@
  */
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
+import {exportWorkspaceSnapshot,restoreWorkspaceSnapshot} from './recovery.mjs';
 import { CommerceError, createProposal, approveProposal, assertProposalCurrent, assertApprovalCurrent, sha256, usdValue } from './proposals.mjs';
 const fail = code => { throw new CommerceError(code); };
 const identifier = value => {
@@ -51,6 +52,13 @@ export class CommerceStore {
         PRIMARY KEY(tenant,id),
         FOREIGN KEY(tenant,proposal_id,proposal_revision) REFERENCES commerce_proposals(tenant,id,revision)
       ) STRICT;
+      CREATE TABLE IF NOT EXISTS commerce_revoked_approvals (
+        tenant TEXT NOT NULL, approval_id TEXT NOT NULL, reason TEXT NOT NULL CHECK(reason='workspace_restore'),
+        PRIMARY KEY(tenant,approval_id), FOREIGN KEY(tenant,approval_id) REFERENCES commerce_approvals(tenant,id)
+      ) STRICT;
+      CREATE TABLE IF NOT EXISTS commerce_workspace_restores (
+        tenant TEXT PRIMARY KEY REFERENCES commerce_workspaces(tenant), snapshot_digest TEXT NOT NULL, restored_at TEXT NOT NULL
+      ) STRICT;
       CREATE TABLE IF NOT EXISTS commerce_intents (
         tenant TEXT NOT NULL, id TEXT NOT NULL, approval_id TEXT NOT NULL,
         proposal_id TEXT NOT NULL, proposal_revision TEXT NOT NULL,
@@ -74,7 +82,8 @@ export class CommerceStore {
         UNIQUE(tenant,intent_id), FOREIGN KEY(tenant,intent_id) REFERENCES commerce_intents(tenant,id)
       ) STRICT;
       CREATE TABLE IF NOT EXISTS commerce_payment_inbox (
-        event_id TEXT PRIMARY KEY, payload_hash TEXT NOT NULL, disposition TEXT NOT NULL
+        event_id TEXT PRIMARY KEY, payload_hash TEXT NOT NULL, disposition TEXT NOT NULL,
+        tenant TEXT REFERENCES commerce_workspaces(tenant)
       ) STRICT;
       CREATE TABLE IF NOT EXISTS commerce_kickoff_outbox (
         tenant TEXT NOT NULL, intent_id TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('pending','delivered','review_required')),
@@ -96,6 +105,9 @@ export class CommerceStore {
         FOREIGN KEY(tenant,proposal_id,proposal_revision) REFERENCES commerce_proposals(tenant,id,revision)
       ) STRICT;
     `);
+    if(!this.#db.prepare('PRAGMA table_info(commerce_payment_inbox)').all().some(column=>column.name==='tenant')){
+      this.#db.exec('ALTER TABLE commerce_payment_inbox ADD COLUMN tenant TEXT REFERENCES commerce_workspaces(tenant)');
+    }
   }
   close() { this.#db.close(); }
   #transaction(fn) {
@@ -283,6 +295,7 @@ export class CommerceStore {
       const row=this.#db.prepare('SELECT * FROM commerce_approvals WHERE tenant=? AND id=?').get(tenant,identifier(approvalId));
       if (!row) fail('not_found');
       const approval=parse(row);
+      if(this.#db.prepare('SELECT 1 FROM commerce_revoked_approvals WHERE tenant=? AND approval_id=?').get(tenant,approvalId))fail('approval_revoked');
       if (subject!==approval.requester && !['owner','admin'].includes(member.role)) fail('not_allowed');
       const {proposal}=this.#proposal(tenant,row.proposal_id,row.proposal_revision);
       assertApprovalCurrent(proposal,approval,this.#context(proposal));
@@ -326,6 +339,7 @@ export class CommerceStore {
     return this.#intentView(structuredClone(intent));
   }
   #admit(intent) {
+    if(this.#db.prepare('SELECT 1 FROM commerce_revoked_approvals WHERE tenant=? AND approval_id=?').get(intent.tenant,intent.approvalId))fail('approval_revoked');
     const approval=parse(this.#db.prepare('SELECT payload FROM commerce_approvals WHERE tenant=? AND id=?').get(intent.tenant,intent.approvalId));
     const {proposal}=this.#proposal(intent.tenant,intent.proposalId,intent.proposalRevision);
     if (!approval) fail('approval_mismatch');
@@ -449,7 +463,7 @@ export class CommerceStore {
         this.#applyObservation(intent,{environment:'sandbox',intentId:intent.id,merchantId:intent.merchantId,depositCents:intent.depositCents,orderId,status:status==='COMPLETED'?'COMPLETED':'APPROVED',capture:{id:identifier(r.id),status},approvalUrl:null});
         disposition='processed';
       }
-      this.#db.prepare('INSERT INTO commerce_payment_inbox VALUES (?,?,?)').run(event.id,verified.payloadHash,disposition);
+      this.#db.prepare('INSERT INTO commerce_payment_inbox (event_id,payload_hash,disposition,tenant) VALUES (?,?,?,?)').run(event.id,verified.payloadHash,disposition,mapping?.tenant??null);
       return {duplicate:false,disposition};
     });
   }
@@ -506,6 +520,17 @@ export class CommerceStore {
       }
       return {tenant,applied:apply,cutoff:new Date(cutoff).toISOString(),counts,batch,financialRecords:'retained_policy_pending',physicalCompaction:'not_performed'};
     });
+  }
+
+  /** PRIVILEGED offline backup. Never expose snapshots to an HTTP caller. */
+  exportWorkspace(tenant) {
+    tenantId(tenant);
+    return this.#transaction(()=>exportWorkspaceSnapshot(this.#db,tenant,this.#now()));
+  }
+  /** Privileged restore into a configured, empty tenant; never overwrites a live ledger. */
+  restoreWorkspace(tenant,snapshot,options={}) {
+    tenantId(tenant);
+    return this.#transaction(()=>restoreWorkspaceSnapshot(this.#db,tenant,snapshot,this.#now(),options));
   }
 
   /** Offline operator step after logical purge. Throws if active readers prevent WAL truncation. */

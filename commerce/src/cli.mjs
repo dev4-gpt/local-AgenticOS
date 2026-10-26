@@ -1,6 +1,7 @@
 import {mkdirSync,existsSync,lstatSync,openSync,closeSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 import {CommerceStore} from './store.mjs';
+import {writePrivateSnapshot,readPrivateSnapshot} from './snapshot-files.mjs';
 import {CommerceAuth} from './auth.mjs';
 import {createCommerceServer} from './server.mjs';
 import {createPayPalClient} from './paypal.mjs';
@@ -32,7 +33,7 @@ async function hiddenPassword(prompt){
 }
 const command=process.argv[2]??'help';
 if(command==='help'){
-  process.stdout.write('Veloce Commerce (Node 24)\n\ninit --tenant owner-dev --merchant SANDBOX_MERCHANT_ID\nuser --tenant owner-dev --username YOUR_USERNAME --role owner|admin|member\nserve --tenant owner-dev --port 4141\nretention --tenant owner-dev [--apply] [--batch 100] [--compact]\n\nAll commands accept --data-dir PATH (private, mode 0700).\nPasswords are entered privately in your own terminal.\nProvider configuration is documented in README.md; paid services are not enabled.\n');
+  process.stdout.write('Veloce Commerce (Node 24)\n\ninit --tenant owner-dev --merchant SANDBOX_MERCHANT_ID\nuser --tenant owner-dev --username YOUR_USERNAME --role owner|admin|member\nserve --tenant owner-dev --port 4141\nretention --tenant owner-dev [--apply] [--batch 100] [--compact]\nexport --tenant owner-dev --output PRIVATE_FILE\nrestore --tenant owner-dev --input PRIVATE_FILE [--apply --expected-digest DIGEST]\n\nAll commands accept --data-dir PATH (private, mode 0700).\nPasswords are entered privately in your own terminal.\nProvider configuration is documented in README.md; paid services are not enabled.\n');
 }else{
   let store,auth;
   try{
@@ -48,6 +49,14 @@ if(command==='help'){
       if(secret!==confirmation)throw new Error('Passwords did not match.');
       const user=await auth.createUser(username,secret);store.setMember({tenant,subject:user.subject,role});
       process.stdout.write('Local account created. Sign in through the workspace.\n');
+    }else if(command==='export'){
+      const snapshot=store.exportWorkspace(tenant);
+      const report=writePrivateSnapshot(arg('output'),snapshot);
+      process.stdout.write(`${JSON.stringify({tenant,...report,authentication:'excluded'},null,2)}\n`);
+    }else if(command==='restore'){
+      const snapshot=readPrivateSnapshot(arg('input'));
+      const report=store.restoreWorkspace(tenant,snapshot,{apply:process.argv.includes('--apply'),expectedDigest:arg('expected-digest')});
+      process.stdout.write(`${JSON.stringify(report,null,2)}\n`);
     }else if(command==='retention'){
       const apply=process.argv.includes('--apply'),compact=process.argv.includes('--compact');
       if(compact&&!apply)throw new Error('Compaction requires applying the content purge.');
