@@ -78,6 +78,11 @@ export function createCommerceServer({store,auth,tenant,origin,paypal=null,draft
           store.finishDraft(subject,tenant,runId,'succeeded',{...result,proposalId:proposal.id});send(201,{ok:true,proposal});
         }catch(error){store.finishDraft(subject,tenant,runId,'failed');throw error;}return;
       }
+      if(path==='/api/proposals/revise'){
+        store.workspace(subject,tenant); // Establish membership before inspecting revision fields.
+        if(Object.keys(value).sort().join('|')!==['id','revision','expectedDigest','title','body'].sort().join('|'))fail('invalid_input');
+        send(201,{ok:true,proposal:store.reviseProposal(subject,tenant,value.id,value.revision,value)});return;
+      }
       if(path==='/api/proposals/review'){
         const now=clock(),proposal=store.readProposal(subject,tenant,value.id,value.revision);
         send(200,{ok:true,approval:store.reviewProposal(subject,tenant,value.id,value.revision,{expectedDigest:value.expectedDigest,evidenceReviewed:value.evidenceReviewed,termsReviewed:value.termsReviewed,expiresAt:new Date(Math.min(now+24*60*60*1000,Date.parse(proposal.expiresAt))).toISOString()})});return;

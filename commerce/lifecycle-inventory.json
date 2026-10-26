@@ -16,7 +16,7 @@
     },
     "commerce_proposals": {
       "class": "content-and-financial-reference",
-      "policy": "active at most 28 days, no later than sources; scope and description redacted after 7 recovery days; digest/money/reference skeleton retained"
+      "policy": "active at most 28 days, no later than sources; scope and description redacted after 7 recovery days; digest/money/reference skeleton retained; immutable rejected-draft correction lineage keeps original clock and prevents duplicate successors"
     },
     "commerce_approvals": {
       "class": "authority-evidence",

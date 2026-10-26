@@ -11,6 +11,7 @@ const messages={
   provider_reconciliation_required:'PayPal’s result is uncertain. Check payment status before retrying the same request.',reconciliation_required:'This operation needs reconciliation. Check payment status or retry the original request within its recovery window.',operation_in_progress:'This payment operation is already being processed. Refresh its status shortly.',
   kickoff_not_allowed:'Kickoff is on hold until payment and the supporting evidence are confirmed.',intent_not_executable:'This intent is already paid or held for review.',not_allowed:'Your account cannot perform this action.',draft_in_progress:'Another draft is being prepared. Try again when it finishes.',draft_limit_reached:'This workspace reached its hourly drafting limit. Existing proposals are still available.',
   login_rate_limited:'Too many sign-in attempts. Please wait before trying again.',invalid_amount:'Enter whole USD cents, with a deposit no larger than the total.',unavailable:'The workspace is temporarily unavailable. Your saved work has been preserved.',
+  proposal_superseded:'A newer revision exists. Review the latest version.',revision_requires_rejection:'Ask the reviewer to request changes before correcting a revision.',revision_unchanged:'Change the scope or title before saving a correction.',proposal_has_authority:'This agreement has approved or payment work. Reconcile it before starting new commercial work.',
   proposal_rejected:'This revision was rejected. Prepare a new draft to address the review.',review_reason_required:'Explain the requested changes in at least five characters.',proposal_already_reviewed:'This revision already has an approval. Its commercial terms cannot be changed in place.',
 };
 function notice(text,error=false){$('notice').textContent=text;$('notice').className=`notice${error?' error':''}`;}
@@ -77,11 +78,11 @@ function render(){
 }
 function proposalCard(p){
   const approval=state.approvals.find(a=>a.proposalId===p.id&&a.proposalRevision===p.revision),intent=state.intents.find(i=>i.proposalId===p.id&&i.proposalRevision===p.revision),current=p.eligibility==='current';
-  const status=p.reviewDecision==='rejected'?'Changes requested':!current?'Evidence needs review':intent?.executionExpired&&!intent.captureId?'Execution approval expired':intent?({paid:'Deposit confirmed',paid_review_required:'Paid · review required',payment_review_required:'Payment review required',awaiting_buyer:'Awaiting buyer',buyer_approved:'Buyer approved',payment_pending:'Payment pending',capturing:'Confirming payment',creating_order:'Preparing checkout',reconciling:'Check payment status',cancelled:'Checkout cancelled'}[intent.state]??'Checkout ready'):approval?'Terms approved':'Draft · awaiting review';
+  const status=p.eligibility==='proposal_superseded'?'Superseded':p.reviewDecision==='rejected'?'Changes requested':!current?'Evidence needs review':intent?.executionExpired&&!intent.captureId?'Execution approval expired':intent?({paid:'Deposit confirmed',paid_review_required:'Paid · review required',payment_review_required:'Payment review required',awaiting_buyer:'Awaiting buyer',buyer_approved:'Buyer approved',payment_pending:'Payment pending',capturing:'Confirming payment',creating_order:'Preparing checkout',reconciling:'Check payment status',cancelled:'Checkout cancelled'}[intent.state]??'Checkout ready'):approval?'Terms approved':'Draft · awaiting review';
   const card=node('article',{class:'proposal-card'},[node('div',{class:'card-top'},[badge(status,intent?.state==='paid'?'good':!current?'warning':'pending'),node('span',{class:'meta'},['Expires '+new Date(p.expiresAt).toLocaleDateString()])]),node('h3',{},[p.title]),node('div',{class:'terms-strip'},[node('div',{},[node('span',{},['TOTAL FEE']),node('strong',{},[money(p.terms.totalCents)])]),node('div',{},[node('span',{},['DEPOSIT']),node('strong',{},[money(p.terms.depositCents)])]),node('div',{},[node('span',{},['PAYMENT TERMS']),node('p',{},[p.terms.description])])]),node('details',{},[node('summary',{},['Read proposed scope and citations']),node('pre',{class:'proposal-body'},[p.body])])]);
   const evidence=node('details',{},[node('summary',{},['Review supporting evidence'])]);
   for(const ref of p.sources){const s=state.sources.find(s=>s.id===ref.id);evidence.append(node('div',{class:'evidence'},[node('strong',{},[s?.title??'Source no longer available']),node('pre',{},[s?.content??'This source has been withdrawn or expired. Prepare a new proposal before taking another commercial action.'])]));}card.append(evidence);
-  if(!current)card.append(node('p',{class:'warning-copy'},['Supporting evidence changed or expired. New commercial actions are blocked; an existing payment can still be reconciled.']));
+  if(!current)card.append(node('p',{class:'warning-copy'},[p.eligibility==='proposal_superseded'?'A newer immutable revision replaces this draft. Its original text and review decision remain available here.':'Supporting evidence changed or expired. New commercial actions are blocked; an existing payment can still be reconciled.']));
   if(p.reviewDecision==='rejected')card.append(node('p',{class:'warning-copy'},['Reviewer requested changes: '+p.reviewReason]));
   if(!approval&&!intent&&current&&p.reviewDecision!=='rejected'){
     if(['owner','admin'].includes(state.role)&&p.requestedBy!==state.subject){
@@ -92,6 +93,16 @@ function proposalCard(p){
       ]);card.append(form);
       card.append(node('details',{},[node('summary',{},['Request a new draft instead']),node('form',{'data-reject':p.id,'data-revision':p.revision,class:'stack-form'},[...field('What should change?',`reason-${p.id}`,'textarea',{rows:'2',maxlength:'1000'}),node('button',{type:'submit'},['Reject this revision'])])]));
     }else card.append(node('p',{class:'meta'},['Sign in with a different authorized reviewer account to approve this proposal.']));
+  }
+  if(p.parentRevision)card.append(node('p',{class:'meta'},[approval?'Corrected revision · approved by a different account.':'Corrected revision · fresh evidence and terms review required.']));
+  if(p.requestedBy===state.subject&&p.reviewDecision==='rejected'&&current&&!intent){
+    const titleId=`revision-title-${p.revision}`,bodyId=`revision-body-${p.revision}`;
+    card.append(node('details',{},[node('summary',{},['Correct this draft']),node('form',{'data-revise':p.id,'data-revision':p.revision,'data-digest':p.digest,class:'stack-form'},[
+      node('p',{class:'meta'},['Correct the scope and keep the [source:…] citations. Evidence, price, recipient and original expiry stay fixed. Saving creates a new revision for a different account to review.']),
+      node('label',{for:titleId},['Corrected title']),node('input',{id:titleId,name:'title',value:p.title,maxlength:'200',required:true}),
+      node('label',{for:bodyId},['Corrected scope and citations']),node('textarea',{id:bodyId,name:'body',rows:'14',maxlength:'30000',required:true},[p.body]),
+      node('button',{type:'submit'},['Save corrected revision']),
+    ])]));
   }
   const actions=node('div',{class:'actions'});
   if(approval&&!intent&&current)actions.append(button('Prepare PayPal checkout','start-checkout',{approval:approval.id},!state.paymentsConfigured));
@@ -127,6 +138,7 @@ document.addEventListener('submit',e=>{
     const cents=value=>{if(!/^\d+(?:\.\d{1,2})?$/.test(value))throw new Error('Enter USD amounts with no more than two decimal places.');const [whole,fraction='']=value.split('.');return Number(whole)*100+Number(fraction.padEnd(2,'0'));};
     perform(()=>api('/api/drafts',{sourceIds:[...selected],instruction:$('instruction').value,totalCents:cents($('total').value),depositCents:cents($('deposit').value),termsDescription:$('terms').value}),'Draft saved. A different account must review its evidence and commercial terms.');return;
   }
+  if(form.dataset.revise)perform(()=>api('/api/proposals/revise',{id:form.dataset.revise,revision:form.dataset.revision,expectedDigest:form.dataset.digest,title:form.elements.title.value,body:form.elements.body.value}),'Corrected revision saved. A different account must review it before checkout.');
   if(form.dataset.review)perform(()=>api('/api/proposals/review',{id:form.dataset.review,revision:form.dataset.revision,expectedDigest:form.dataset.digest,evidenceReviewed:form.elements.evidence.checked,termsReviewed:form.elements.terms.checked}),'Exact proposal approved.');
   if(form.dataset.reject)perform(()=>api('/api/proposals/reject',{id:form.dataset.reject,revision:form.dataset.revision,reason:form.querySelector('textarea').value}),'Changes requested. This revision cannot be used for checkout.');
 });

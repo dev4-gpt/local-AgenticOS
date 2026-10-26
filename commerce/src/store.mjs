@@ -43,7 +43,7 @@ export class CommerceStore {
       ) STRICT;
       CREATE TABLE IF NOT EXISTS commerce_proposals (
         tenant TEXT NOT NULL REFERENCES commerce_workspaces(tenant), id TEXT NOT NULL, revision TEXT NOT NULL,
-        requester TEXT NOT NULL, digest TEXT NOT NULL, payload TEXT NOT NULL CHECK(json_valid(payload)),
+        requester TEXT NOT NULL, digest TEXT NOT NULL, payload TEXT NOT NULL CHECK(json_valid(payload)), parent_revision TEXT,
         PRIMARY KEY(tenant,id,revision), FOREIGN KEY(tenant,requester) REFERENCES commerce_members(tenant,subject)
       ) STRICT;
       CREATE TABLE IF NOT EXISTS commerce_approvals (
@@ -105,6 +105,8 @@ export class CommerceStore {
         FOREIGN KEY(tenant,proposal_id,proposal_revision) REFERENCES commerce_proposals(tenant,id,revision)
       ) STRICT;
     `);
+    if(!this.#db.prepare('PRAGMA table_info(commerce_proposals)').all().some(column=>column.name==='parent_revision'))this.#db.exec('ALTER TABLE commerce_proposals ADD COLUMN parent_revision TEXT');
+    this.#db.exec('CREATE UNIQUE INDEX IF NOT EXISTS commerce_one_proposal_successor ON commerce_proposals(tenant,id,parent_revision) WHERE parent_revision IS NOT NULL');
     if(!this.#db.prepare('PRAGMA table_info(commerce_payment_inbox)').all().some(column=>column.name==='tenant')){
       this.#db.exec('ALTER TABLE commerce_payment_inbox ADD COLUMN tenant TEXT REFERENCES commerce_workspaces(tenant)');
     }
@@ -132,6 +134,7 @@ export class CommerceStore {
     return { row, proposal:parse(row) };
   }
   #context(proposal) {
+    if(this.#db.prepare('SELECT 1 FROM commerce_proposals WHERE tenant=? AND id=? AND parent_revision=?').get(proposal.tenant,proposal.id,proposal.revision))fail('proposal_superseded');
     const workspace = this.#db.prepare('SELECT * FROM commerce_workspaces WHERE tenant=?').get(proposal.tenant);
     if (!workspace) fail('not_found');
     const get = this.#db.prepare('SELECT payload FROM commerce_sources WHERE tenant=? AND id=?');
@@ -217,9 +220,9 @@ export class CommerceStore {
     const proposals=rows('commerce_proposals').filter(p=>Date.parse(p.expiresAt)>now).map(proposal=>{
       let eligibility='current';try{assertProposalCurrent(proposal,this.#context(proposal));}
       catch(error){eligibility=error.code??'review_required';}
-      const requestedBy=this.#db.prepare('SELECT requester FROM commerce_proposals WHERE tenant=? AND id=? AND revision=?').get(tenant,proposal.id,proposal.revision).requester;
+      const authorRow=this.#db.prepare('SELECT requester,parent_revision FROM commerce_proposals WHERE tenant=? AND id=? AND revision=?').get(tenant,proposal.id,proposal.revision);
       const decision=this.#db.prepare('SELECT decision,reason FROM commerce_proposal_decisions WHERE tenant=? AND proposal_id=? AND proposal_revision=?').get(tenant,proposal.id,proposal.revision);
-      return {...proposal,eligibility,requestedBy,reviewDecision:decision?.decision??'pending',reviewReason:decision?.reason??''};
+      return {...proposal,eligibility,requestedBy:authorRow.requester,parentRevision:authorRow.parent_revision,reviewDecision:decision?.decision??'pending',reviewReason:decision?.reason??''};
     });
     return {tenant,subject,role:member.role,policyVersion:config.policy_version,merchantId:config.merchant_id,sources,proposals,approvals:rows('commerce_approvals').filter(a=>Date.parse(a.expiresAt)>now),intents:rows('commerce_intents').map(i=>this.#intentView(i)),projects:rows('commerce_projects').filter(p=>Date.parse(p.expiresAt)>now)};
   }
@@ -252,8 +255,27 @@ export class CommerceStore {
         if (prior.digest!==proposal.digest || prior.requester!==subject) fail('revision_conflict');
         return parse(prior);
       }
-      this.#db.prepare('INSERT INTO commerce_proposals VALUES (?,?,?,?,?,?)').run(proposal.tenant,proposal.id,proposal.revision,subject,proposal.digest,JSON.stringify(proposal));
+      this.#db.prepare('INSERT INTO commerce_proposals(tenant,id,revision,requester,digest,payload) VALUES (?,?,?,?,?,?)').run(proposal.tenant,proposal.id,proposal.revision,subject,proposal.digest,JSON.stringify(proposal));
       return proposal;
+    });
+  }
+  /** Human correction after rejection: new immutable revision, same evidence/terms/original lifetime. */
+  reviseProposal(subject,tenant,id,revision,{expectedDigest,title,body}) {
+    return this.#transaction(()=>{
+      this.#member(tenant,subject);
+      const {row,proposal}=this.#proposal(tenant,id,revision);
+      if(row.requester!==subject)fail('not_allowed');
+      if(expectedDigest!==proposal.digest)fail('proposal_changed');
+      const context=this.#context(proposal);assertProposalCurrent(proposal,context);
+      if(!this.#db.prepare("SELECT 1 FROM commerce_proposal_decisions WHERE tenant=? AND proposal_id=? AND proposal_revision=? AND decision='rejected'").get(tenant,id,revision))fail('revision_requires_rejection');
+      // A correction must never be a shortcut around approved or uncertain payment work.
+      if(this.#db.prepare('SELECT 1 FROM commerce_approvals WHERE tenant=? AND proposal_id=?').get(tenant,id)||this.#db.prepare('SELECT 1 FROM commerce_intents WHERE tenant=? AND proposal_id=?').get(tenant,id))fail('proposal_has_authority');
+      const citations=typeof body==='string'?[...body.matchAll(/\[source:([^\]]+)\]/g)].map(match=>match[1]):[];
+      if(citations.some(id=>!proposal.sources.some(ref=>ref.id===id))||proposal.sources.some(ref=>!citations.includes(ref.id)))fail('invalid_citations');
+      if(title===proposal.title&&body===proposal.body)fail('revision_unchanged');
+      const next=createProposal({...proposal,revision:randomUUID(),title,body},context.sources,context.now);
+      this.#db.prepare('INSERT INTO commerce_proposals(tenant,id,revision,requester,digest,payload,parent_revision) VALUES (?,?,?,?,?,?,?)').run(tenant,id,next.revision,subject,next.digest,JSON.stringify(next),revision);
+      return next;
     });
   }
   readProposal(subject, tenant, id, revision) {

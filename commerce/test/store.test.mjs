@@ -132,3 +132,44 @@ test('approved commercial authority cannot be silently overwritten with a reject
     rejects(()=>store.rejectProposal('reviewer','owner-dev',proposal.id,'v1','Changed my mind'),'proposal_already_reviewed');
   }finally{store.close();}
 });
+
+test('author corrects a rejected draft as an immutable revision with unchanged evidence, terms and expiry',()=>{
+ const {store,proposal,review}=setup();try{
+  store.rejectProposal('reviewer','owner-dev',proposal.id,'v1','Correct the scope boundary.');
+  const next=store.reviseProposal('writer','owner-dev',proposal.id,'v1',{expectedDigest:proposal.digest,title:'Corrected scope',body:'Corrected bounded scope [source:rates]'});
+  assert.notEqual(next.revision,proposal.revision);assert.notEqual(next.digest,proposal.digest);
+  assert.deepEqual(next.terms,proposal.terms);assert.deepEqual(next.sources,proposal.sources);assert.equal(next.createdAt,proposal.createdAt);assert.equal(next.expiresAt,proposal.expiresAt);
+  assert.equal(store.readProposal('writer','owner-dev',proposal.id,'v1').body,proposal.body);
+  const state=store.workspace('writer','owner-dev');assert.equal(state.proposals.find(p=>p.revision==='v1').eligibility,'proposal_superseded');assert.equal(state.proposals.find(p=>p.revision===next.revision).parentRevision,'v1');
+  assert.equal(state.proposals.find(p=>p.revision===next.revision).reviewDecision,'pending');
+  rejects(()=>store.reviewProposal('reviewer','owner-dev',next.id,next.revision,{...review,expectedDigest:proposal.digest}),'proposal_changed');
+  const approval=store.reviewProposal('reviewer','owner-dev',next.id,next.revision,{...review,expectedDigest:next.digest});
+  assert.equal(approval.proposalDigest,next.digest);assert.equal(store.beginIntent('writer','owner-dev',approval.id).proposalRevision,next.revision);
+ }finally{store.close();}
+});
+test('revision refuses unreviewed or approved work, different authors, stale digest, changed sources and citation loss',()=>{
+ const f=setup();try{
+  const args={expectedDigest:f.proposal.digest,title:'Correction',body:'Corrected scope [source:rates]'};
+  rejects(()=>f.store.reviseProposal('writer','owner-dev',f.proposal.id,'v1',args),'revision_requires_rejection');
+  f.store.rejectProposal('reviewer','owner-dev',f.proposal.id,'v1','Correct the source claims.');
+  rejects(()=>f.store.reviseProposal('other-member','owner-dev',f.proposal.id,'v1',args),'not_allowed');
+  rejects(()=>f.store.reviseProposal('reviewer','owner-dev',f.proposal.id,'v1',args),'not_allowed');
+  rejects(()=>f.store.reviseProposal('writer','owner-dev',f.proposal.id,'v1',{...args,expectedDigest:'a'.repeat(64)}),'proposal_changed');
+  for(const body of ['No citations','Unsupported [source:invented]'])rejects(()=>f.store.reviseProposal('writer','owner-dev',f.proposal.id,'v1',{...args,body}),'invalid_citations');
+  rejects(()=>f.store.reviseProposal('writer','owner-dev',f.proposal.id,'v1',{...args,title:f.proposal.title,body:f.proposal.body}),'revision_unchanged');
+  f.store.putSource({...f.source,status:'withdrawn'});rejects(()=>f.store.reviseProposal('writer','owner-dev',f.proposal.id,'v1',args),'source_not_available');
+ }finally{f.store.close();}
+ const g=setup();try{
+  g.store.reviewProposal('reviewer','owner-dev',g.proposal.id,'v1',g.review);
+  rejects(()=>g.store.reviseProposal('writer','owner-dev',g.proposal.id,'v1',{expectedDigest:g.proposal.digest,title:'New scope',body:'New scope [source:rates]'}),'revision_requires_rejection');
+ }finally{g.store.close();}
+});
+test('one rejected revision can produce only one successor, including across store connections',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'commerce-revision-')),path=join(dir,'test.sqlite');let first,second;
+ try{
+  const f=setup(path);first=f.store;second=new CommerceStore(path,{clock:()=>now});first.rejectProposal('reviewer','owner-dev',f.proposal.id,'v1','Correct the scope.');
+  const args={expectedDigest:f.proposal.digest,title:'Revised scope',body:'Revised scope [source:rates]'};
+  first.reviseProposal('writer','owner-dev',f.proposal.id,'v1',args);
+  rejects(()=>second.reviseProposal('writer','owner-dev',f.proposal.id,'v1',args),'proposal_superseded');
+ }finally{second?.close();first?.close();rmSync(dir,{recursive:true,force:true});}
+});

@@ -53,7 +53,7 @@ test('authenticated HTTP journey uses real domain/storage/model/provider adapter
       assert.equal((await request('/api/sources',{title:'test',content:'test'},'author',{Origin:'https://attacker.test'})).data.error,'invalid_origin');
     });
     await t.test('all tenant mutation routes reject missing sessions and users belonging only to another workspace',async()=>{
-      const paths=['/api/sources','/api/sources/review','/api/sources/withdraw','/api/drafts','/api/proposals/review','/api/proposals/reject','/api/intents','/api/payments/create','/api/payments/capture','/api/payments/reconcile','/api/kickoff'];
+      const paths=['/api/sources','/api/sources/review','/api/sources/withdraw','/api/drafts','/api/proposals/review','/api/proposals/reject','/api/proposals/revise','/api/intents','/api/payments/create','/api/payments/capture','/api/payments/reconcile','/api/kickoff'];
       const body={id:'does-not-exist',revision:'v1',approvalId:'does-not-exist',sourceIds:['does-not-exist'],depositCents:10000,totalCents:50000,title:'test',content:'test'};
       for(const path of paths){
         assert.equal((await request(path,body,undefined,{'X-CSRF-Token':'a'.repeat(64)})).data.error,'sign_in_required',path);
@@ -93,12 +93,21 @@ test('authenticated HTTP journey uses real domain/storage/model/provider adapter
       const draft=(await request('/api/drafts',{sourceIds:[source.id],instruction:'Draft another service scope',depositCents:10000,totalCents:50000,termsDescription:'Test deposit'},'author')).data.proposal;
       assert.equal((await request('/api/proposals/reject',{id:draft.id,revision:draft.revision,reason:'Resolve the missing delivery requirements first.'},'reviewer')).data.decision,'rejected');
       assert.equal((await request('/api/proposals/review',{id:draft.id,revision:draft.revision,expectedDigest:draft.digest,evidenceReviewed:true,termsReviewed:true},'reviewer')).data.error,'proposal_rejected');
+      const correction={id:draft.id,revision:draft.revision,expectedDigest:draft.digest,title:'Corrected test scope',body:draft.body+'\nHuman correction: keep this scope limited to a reviewable brief.'};
+      assert.equal((await request('/api/proposals/revise',correction,'reviewer')).data.error,'not_allowed');
+      assert.equal((await request('/api/proposals/revise',{...correction,depositCents:1},'author')).data.error,'invalid_input');
+      const revised=(await request('/api/proposals/revise',correction,'author')).data.proposal;
+      assert.ok(revised);assert.notEqual(revised.digest,draft.digest);assert.deepEqual(revised.terms,draft.terms);
+      assert.equal((await request('/api/proposals/review',{id:revised.id,revision:revised.revision,expectedDigest:revised.digest,evidenceReviewed:true,termsReviewed:true},'author')).data.error,'not_allowed');
+      const reviewed=await request('/api/proposals/review',{id:revised.id,revision:revised.revision,expectedDigest:revised.digest,evidenceReviewed:true,termsReviewed:true},'reviewer');
+      assert.equal(reviewed.data.approval.proposalDigest,revised.digest);
+
     });
     await t.test('withdrawal invalidates dependent paid work and client cannot select a tenant or payee',async()=>{
       assert.equal((await request('/api/payments/create',{id:intent.id,tenant:'other-tenant'},'author')).data.error,'invalid_input');
       assert.equal((await request('/api/sources/withdraw',{id:source.id},'author')).response.status,200);
       const workspace=(await request('/api/workspace',undefined,'author')).data;
-      assert.ok(workspace.proposals.every(p=>p.eligibility==='source_not_available'));assert.equal(workspace.projects[0].state,'review_required');
+      assert.ok(workspace.proposals.every(p=>['source_not_available','proposal_superseded'].includes(p.eligibility)));assert.ok(workspace.proposals.some(p=>p.eligibility==='source_not_available'));assert.equal(workspace.projects[0].state,'review_required');
       assert.equal((await request('/api/kickoff',{id:intent.id},'author')).data.error,'kickoff_not_allowed');
       assert.equal((await request('/api/payments/reconcile',{id:intent.id},'author')).data.intent.captureId,'CAPTURE123');
     });

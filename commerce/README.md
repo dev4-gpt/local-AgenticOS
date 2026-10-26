@@ -114,3 +114,12 @@ node test/real-model-http-evaluation.mjs --out /PRIVATE/NEW-EVIDENCE.json
 ```
 
 The output path must not exist. The evidence includes only public-text model output, test proposal/terms and verification metadata, not credentials/session tokens. `--keep-open` leaves its temporary loopback app running for browser review; stop with Ctrl-C to remove temporary accounts/state. The two disposable evaluation account names/password are in the harness source and must never be used in a real runtime. An account-separation test does not establish review by two distinct real people. Review every claim against the source before approving; a citation marker and valid JSON do not prove semantic support.
+
+
+## Correct a rejected draft
+
+A reviewer can request changes with a reason. The original author then opens **Correct this draft**, edits the title/scope while preserving `[source:…]` citations, and saves a new immutable revision. The source references, total/deposit, merchant, policy, original creation time and expiry remain fixed. The old text and rejection remain visible as superseded; the new digest needs a fresh review from a different authorized account.
+
+Correction is available only after rejection, while sources and the original window are still current. It refuses unknown/missing citations, stale digests, different authors and duplicate successors. A proposal family with approved or payment work cannot use this path to evade that authority or an uncertain payment. Changed commercial terms or evidence need a separately prepared proposal; the editor does not silently revise an approved agreement.
+
+`test/correction-browser-evaluation.mjs --from /PRIVATE/RETAINED-PUBLIC-MODEL-EVIDENCE.json --out /PRIVATE/NEW-REVIEW-EVIDENCE.json` can replay the prior public-challenge evaluation for browser correction without a new model call. The app is labeled fixture-backed; the harness validates the public source/hash, retains the original model proposal digest, uses synthetic accounts/terms, disables providers and saves final review state on Ctrl-C before deleting its temporary store. The disposable accounts/password are in that harness and must never be used outside the test. This is recorded-output review evidence, not a live model/payment run or two-real-person approval.

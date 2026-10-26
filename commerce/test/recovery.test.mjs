@@ -115,3 +115,22 @@ test('CLI export/preview/apply uses private files and omits user/session credent
   assert.equal(run(target,['restore','--input',file]).status,1);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
+
+test('revision lineage survives protected restore and malformed parent links are refused; schema-one snapshots remain readable',()=>{
+ const f=fixture();try{
+  // This fixture already has an approval; use a separate source-only proposal for correction.
+  const proposal=f.origin.saveProposal('writer',{...f.proposal,id:'correctable',body:`Original scope [source:${f.source.id}]`});
+  f.origin.rejectProposal('reviewer','owner-dev',proposal.id,proposal.revision,'Correct the scope.');
+  const next=f.origin.reviseProposal('writer','owner-dev',proposal.id,proposal.revision,{expectedDigest:proposal.digest,title:'Corrected',body:`Corrected scope [source:${f.source.id}]`});
+  const snapshot=f.origin.exportWorkspace('owner-dev');assert.equal(snapshot.schema,2);
+  const bad=structuredClone(snapshot);bad.tables.commerce_proposals.find(r=>r.revision===next.revision).parent_revision='missing';
+  rejects(()=>f.target.restoreWorkspace('owner-dev',bad),'invalid_snapshot_graph');
+  apply(f,snapshot);f.target.setMember({tenant:'owner-dev',subject:'writer',role:'member'});
+  assert.equal(f.target.workspace('writer','owner-dev').proposals.find(p=>p.revision===next.revision).parentRevision,proposal.revision);
+ }finally{f.close();}
+ const g=fixture();try{
+  const legacy=g.origin.exportWorkspace('owner-dev');legacy.schema=1;
+  for(const row of legacy.tables.commerce_proposals)delete row.parent_revision;
+  apply(g,legacy);
+ }finally{g.close();}
+});

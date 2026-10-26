@@ -7,7 +7,7 @@ export const SNAPSHOT_MAX_BYTES=5_000_000;
 export const SNAPSHOT_TABLES=Object.freeze({
   commerce_members:['tenant','subject','role','active'],
   commerce_sources:['tenant','id','payload'],
-  commerce_proposals:['tenant','id','revision','requester','digest','payload'],
+  commerce_proposals:['tenant','id','revision','requester','digest','payload','parent_revision'],
   commerce_approvals:['tenant','id','proposal_id','proposal_revision','consumed','payload'],
   commerce_intents:['tenant','id','approval_id','proposal_id','proposal_revision','create_operation_id','capture_operation_id','payload'],
   commerce_operations:['id','tenant','intent_id','kind','claim','state','started_at','lease_until'],
@@ -53,7 +53,7 @@ function projectShell(p,at){
 export function validateWorkspaceSnapshot(snapshot,tenant,now){
   if(!Number.isSafeInteger(now)||now<0)fail('invalid_time');
   exact(snapshot,['schema','workspace','exportedAt','tables']);
-  if(snapshot.schema!==1)fail('unsupported_snapshot');
+  if(![1,2].includes(snapshot.schema))fail('unsupported_snapshot');
   exact(snapshot.workspace,['tenant','policy_version','merchant_id']);
   if(snapshot.workspace.tenant!==tenant||typeof tenant!=='string'||!/^[a-z][a-z0-9-]{2,40}$/.test(tenant))fail('snapshot_tenant_mismatch');
   id(snapshot.workspace.policy_version);id(snapshot.workspace.merchant_id);
@@ -63,8 +63,9 @@ export function validateWorkspaceSnapshot(snapshot,tenant,now){
   for(const [table,columns] of Object.entries(SNAPSHOT_TABLES)){
     const rows=snapshot.tables[table];if(!Array.isArray(rows)||rows.length>5000)fail('snapshot_too_large');
     for(const row of rows){
-      exact(row,columns);if(row.tenant!==tenant)fail('snapshot_tenant_mismatch');
+      exact(row,snapshot.schema===1&&table==='commerce_proposals'?columns.filter(c=>c!=='parent_revision'):columns);if(row.tenant!==tenant)fail('snapshot_tenant_mismatch');
       for(const [field,value] of Object.entries(row)){
+        if(field==='parent_revision'&&value===null)continue;
         if(field==='payload'){if(typeof value!=='string'||value.length>250_000)fail('invalid_snapshot');const p=json(row);if(p.tenant!==undefined&&p.tenant!==tenant)fail('snapshot_tenant_mismatch');}
         else if(['active','consumed'].includes(field)){if(![0,1].includes(value))fail('invalid_snapshot');}
         else if(['started_at','lease_until'].includes(field)){if(!Number.isSafeInteger(value)||value<0)fail('invalid_snapshot');}
@@ -104,6 +105,15 @@ export function validateWorkspaceSnapshot(snapshot,tenant,now){
       const originalSources=p.sources.map(ref=>({...ref,status:'active',reviewState:'approved',sensitivity:'ordinary'}));
       if(createProposal(p,originalSources,now).digest!==p.digest)fail('invalid_snapshot');
     }else if(Object.hasOwn(p,'body')||Object.hasOwn(p,'title')||Object.hasOwn(p.terms,'description'))fail('invalid_snapshot');
+  }
+  for(const row of t.commerce_proposals){
+    if(row.parent_revision==null)continue;
+    const p=json(row),parent=proposals.get(`${row.id}:${row.parent_revision}`);
+    if(!parent||parent.revision===row.revision||p.createdAt!==parent.createdAt||p.expiresAt!==parent.expiresAt||JSON.stringify(p.sources)!==JSON.stringify(parent.sources)||JSON.stringify(p.terms)!==JSON.stringify(parent.terms)||p.policyVersion!==parent.policyVersion)fail('invalid_snapshot_graph');
+    const parentRow=t.commerce_proposals.find(r=>r.id===row.id&&r.revision===row.parent_revision);
+    if(parentRow.requester!==row.requester||!t.commerce_proposal_decisions.some(d=>d.proposal_id===row.id&&d.proposal_revision===row.parent_revision&&d.decision==='rejected'))fail('invalid_snapshot_graph');
+    const seen=new Set([row.revision]);let cursor=row;
+    while(cursor.parent_revision!=null){if(seen.has(cursor.parent_revision))fail('invalid_snapshot_graph');seen.add(cursor.parent_revision);cursor=t.commerce_proposals.find(r=>r.id===row.id&&r.revision===cursor.parent_revision);if(!cursor)fail('invalid_snapshot_graph');}
   }
   for(const r of t.commerce_approvals){
     const a=json(r);exact(a,['schema','id','tenant','proposalId','proposalRevision','proposalDigest','requester','reviewer','approvedAt','expiresAt','environment','policyVersion']);
@@ -154,7 +164,7 @@ export function exportWorkspaceSnapshot(db,tenant,now){
   for(const row of tables.commerce_proposal_decisions){const p=tables.commerce_proposals.find(p=>p.id===row.proposal_id&&p.revision===row.proposal_revision);if(json(p).purgedAt)row.reason='';}
   for(const row of tables.commerce_draft_runs)if(row.started_at+35*DAY<=now)row.payload='{}';
   for(const row of tables.commerce_intents){const i=json(row);delete i.approvalUrl;row.payload=JSON.stringify(i);}
-  const snapshot={schema:1,workspace:{...workspace},exportedAt:at,tables};
+  const snapshot={schema:2,workspace:{...workspace},exportedAt:at,tables};
   validateWorkspaceSnapshot(snapshot,tenant,now);return snapshot;
 }
 
@@ -182,7 +192,7 @@ export function restoreWorkspaceSnapshot(db,tenant,snapshot,now,{apply=false,exp
         if(table==='commerce_kickoff_outbox')row.state='review_required';
         if(table==='commerce_projects'){const p=json(row);p.state='review_required';row.payload=JSON.stringify(p);}
         if(table==='commerce_draft_runs'&&row.status==='running')row.status='failed';
-        insert.run(...columns.map(column=>row[column]));
+        insert.run(...columns.map(column=>column==='parent_revision'?row[column]??null:row[column]));
       }
     }
     const revoke=db.prepare("INSERT INTO commerce_revoked_approvals VALUES (?,?,'workspace_restore')");
