@@ -1,6 +1,6 @@
 # ADR 019: The sync switch
 
-**Status:** decided 2026-10-26 with the owner (D1 to D4, with D2 changed to add "always" for paying clients); built, tested, and **applied to staging and deployed on 2026-10-26** (migration, job image `adapter-sync-job:v2`, `ADAPTER_SYNC_USES_SWITCH=true`, scheduler enabled at `*/5`). **The page has not yet been looked at in a browser** (see "Deployed").
+**Status:** decided 2026-10-26 with the owner (D1 to D4, with D2 changed to add "always" for paying clients); built, tested, and **applied to staging and deployed on 2026-10-26** (migration, job image `adapter-sync-job:v2`, `ADAPTER_SYNC_USES_SWITCH=true`, scheduler enabled at `*/5`). **The page was checked in a browser on 2026-10-26** (see "Deployed").
 **Builds on:** ADR-015 (the sync job), ADR-014 (deletion receipts), ADR-018 (the real Content OS service and its cost).
 
 ## The problem
@@ -54,12 +54,15 @@ codes. 18 deliberate breakages of these rules were each caught by a test.
   failed with NOT_FOUND. It was fixed with `${J}:run`, and the 01:45 UTC scheduled run succeeded. Anyone building such a
   URL in zsh should write `${J}:run`.
 - The registry row for `creator-os` is a normal row (not marked `zz-`), so the staging deployment now has a registered adapter.
+- **The page, in the browser pane against staging.** With a temporary admin membership (added and removed afterwards) the panel
+  showed `creator-os` Off, the switch, the duration choice and Sync now. Turning it on read "On, 1 h left"; Sync now read "Sync
+  queued"; the next scheduled run logged `run=run_now`, ran both steps and exited 0 in 7.5 s (cold start included), after which the
+  request was no longer pending; turning it off read Off in the page, the API and the database. One fault found and fixed: the
+  confirmation text appeared a few seconds before the headline changed, so the panel now waits for the new state first.
+- A signed-in account that is not a member of the tenant the app serves sees "Sign in to see adapters", which is the same notice as
+  being signed out. That is correct for the data but confusing; wording that tells the two apart is not built.
 
 ## Not done
-
-- **The page has not been looked at in a browser.** The browser pane had no session (the API answered 401 and the dev
-  server log shows no sign-in request), so the panel's look and its controls are checked by typecheck, lint and tests only. The signed-in
-  account must also be an active member of the tenant the app serves, and an admin to see the controls.
 - Nothing yet stops the adapter service from being kept warm by something else (a task started by hand, for example).
 - Turning the switch on does not warm the service ahead of time; the first run after it is on pays the cold start.
 - The cost figures are estimates, not measurements. A real bill should be checked after a week of use.
