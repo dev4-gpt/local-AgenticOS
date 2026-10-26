@@ -28,8 +28,5 @@ conditions:
       duration: 0s
       trigger:
         count: 1
-alertStrategy:
-  notificationRateLimit:
-    period: 3600s
 notificationChannels:
   - NOTIFICATION_CHANNEL
