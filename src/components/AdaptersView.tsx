@@ -117,11 +117,11 @@ function SyncSwitchPanel({ data, onChanged }: { data: SwitchData | null; onChang
     setMessage(null);
     const response = await fetch("/api/client-runtime/adapter-sync-switch", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ adapterId, ...body }) }).catch(() => null);
     const json = await response?.json().catch(() => null);
+    // Show the new state first and the confirmation after it, so the words never get ahead of what is on screen.
+    if (response?.ok && json?.ok) await onChanged();
     setBusy(null);
-    if (response?.ok && json?.ok) {
-      setMessage({ adapterId, ok: true, text: done });
-      await onChanged();
-    } else setMessage({ adapterId, ok: false, text: SWITCH_ERRORS[String(json?.error)] ?? SWITCH_UNAVAILABLE });
+    if (response?.ok && json?.ok) setMessage({ adapterId, ok: true, text: done });
+    else setMessage({ adapterId, ok: false, text: SWITCH_ERRORS[String(json?.error)] ?? SWITCH_UNAVAILABLE });
   }
 
   return <section className="panel mt-6 p-4" aria-label="Sync switch">
