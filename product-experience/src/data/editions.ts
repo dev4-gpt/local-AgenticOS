@@ -5,15 +5,15 @@ import type { Chapter, FeatureItem } from "@/types/editions";
 // NEXT_PUBLIC_APP_URL only after an authenticated client edition exists.
 const APP = process.env.NEXT_PUBLIC_APP_URL;
 
-// Every feature is an equal card (kind "image", no image) — FeatureImage
-// renders eyebrow + desc + an "Open" pill so all links are equally visible and
-// clickable, in array order.
+// Every feature is an equal card (kind "image", no image). Without an
+// approved runtime URL, cards invite an access request instead of implying
+// that the private workspace is publicly open.
 const card = (chapter: string, eyebrow: string, desc: string, route: string): FeatureItem => ({
   chapter,
   kind: "image",
   eyebrow,
   desc,
-  linkText: "Open",
+  linkText: APP ? "Open workspace" : "Ask about access",
   linkHref: APP ? `${APP}${route}` : "#developer",
   imgSrc: null,
   hasVideo: false,

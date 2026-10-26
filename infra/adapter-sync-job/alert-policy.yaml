@@ -1,0 +1,32 @@
+# Alert for the adapter sync job (Veloce phase 2 slice 2d, ADR-015): fire when any execution of a veloce-adapter-sync-* job
+# fails. The job exits non-zero when the database does not answer, the adapter refuses, a setting is wrong, or a deleted
+# note has been given up on after ten tries, so a failed execution is exactly "somebody needs to look".
+# Replace NOTIFICATION_CHANNEL (the full resource name of an existing channel), then:
+#   gcloud alpha monitoring policies create --policy-from-file=infra/adapter-sync-job/alert-policy.yaml
+displayName: Veloce adapter sync job failed
+documentation:
+  mimeType: text/markdown
+  content: |
+    A scheduled adapter sync run failed. Read the job's log for the `adapter-sync-end` line: it names the step
+    (events-puller or tombstones) and the exit code (1 needs a look, 2 means a setting is wrong). A tombstones step that
+    reports `gaveUp` above zero means an adapter has not confirmed an erasure after ten tries: that is a deletion promise
+    not yet kept. See infra/adapter-sync-job/README.md.
+combiner: OR
+conditions:
+  - displayName: A veloce-adapter-sync job execution failed
+    conditionThreshold:
+      filter: >-
+        resource.type = "cloud_run_job"
+        AND resource.labels.job_name = starts_with("veloce-adapter-sync-")
+        AND metric.type = "run.googleapis.com/job/completed_execution_count"
+        AND metric.labels.result = "failed"
+      aggregations:
+        - alignmentPeriod: 300s
+          perSeriesAligner: ALIGN_SUM
+      comparison: COMPARISON_GT
+      thresholdValue: 0
+      duration: 0s
+      trigger:
+        count: 1
+notificationChannels:
+  - NOTIFICATION_CHANNEL

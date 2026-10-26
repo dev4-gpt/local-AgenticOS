@@ -6,6 +6,7 @@ const DEFAULT_CLIENT_ROUTES = [
   "/flow-lab", "/integrations", "/video", "/studio", "/openmontage", "/music", "/games", "/thumbnails",
   "/notebook", "/kanban", "/memory", "/leads", "/radar", "/guide", "/seo-guide", "/hybrid",
 ];
+const OPERATOR_ONLY_CLIENT_ROUTES = new Set(["/classroom-research", "/social-research"]);
 const DEFAULT_CLIENT_API_ROUTES = [
   "/api/capabilities",
   "/api/speech/transcribe",
@@ -22,10 +23,12 @@ const DEFAULT_CLIENT_API_ROUTES = [
   "/api/client-runtime/delivery",
   "/api/client-runtime/memory-import",
   "/api/client-runtime/source-import",
+  "/api/client-runtime/source-import/upload",
   "/api/client-runtime/memory-graph",
   "/api/client-runtime/provider-history",
   "/api/client-runtime/telemetry",
   "/api/client-runtime/observability",
+  "/api/client-runtime/build-identity",
   "/api/client-runtime/records",
   "/api/client-runtime/research",
   "/api/client-runtime/notebooks",
@@ -164,8 +167,22 @@ export function clientAuthEnforced() {
 }
 
 export function clientRouteAllowed(pathname: string) {
-  const routes = configuredList("CLIENT_ALLOWED_ROUTES", DEFAULT_CLIENT_ROUTES);
+  const routes = clientAllowedRoutes();
   return routes.some((route) => route === "/" ? pathname === "/" : pathname === route || pathname.startsWith(`${route}/`));
+}
+
+export function clientRouteIsOperatorOnly(pathname: string) {
+  return [...OPERATOR_ONLY_CLIENT_ROUTES].some((blocked) => pathname === blocked || pathname.startsWith(`${blocked}/`));
+}
+
+export function clientNavigationRoutes(routes: string[], allowedRoutes: string[]) {
+  const allowed = new Set(allowedRoutes);
+  return routes.filter((route) => allowed.has(route) && !clientRouteIsOperatorOnly(route));
+}
+
+export function clientAllowedRoutes() {
+  return configuredList("CLIENT_ALLOWED_ROUTES", DEFAULT_CLIENT_ROUTES)
+    .filter((route) => !clientRouteIsOperatorOnly(route));
 }
 
 export function clientApiRouteAllowed(pathname: string) {

@@ -4,10 +4,14 @@ steps:
       - build
       - --file
       - Dockerfile.client
+      - --build-arg
+      - VELOCE_SOURCE_COMMIT=${_SOURCE_COMMIT}
       - --tag
       - ${_IMAGE}
       - .
 images:
   - ${_IMAGE}
+substitutions:
+  _SOURCE_COMMIT: unverified
 options:
   logging: CLOUD_LOGGING_ONLY

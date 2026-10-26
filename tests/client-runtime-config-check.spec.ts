@@ -1,0 +1,167 @@
+import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { evaluateClientRuntimeConfig } from "../scripts/lib/client-runtime-config-check.mjs";
+
+const digest = "a".repeat(64);
+const expected = { service: "agentos-internal-beta", revision: "agentos-internal-beta-00035-test", digest, tenant: "internal-beta", retentionDays: 28 };
+const internalBetaManifest = JSON.parse(readFileSync("client-blueprints/agentos-internal-beta.gcp.json", "utf8"));
+
+test("internal beta deployment manifest retains customer data for the approved 28 active days", () => {
+  expect(internalBetaManifest.retention.days).toBe(28);
+});
+
+test("internal beta manifest keeps providers and workers off with secret-backed import credentials", () => {
+  expect(internalBetaManifest.providerCallsEnabled).toBe(false);
+  expect(internalBetaManifest.intentRoutingEnabled).toBe(false);
+  expect(internalBetaManifest.runtimeEnv.CLIENT_RUNTIME_WORKER_ENABLED).toBe("0");
+  expect(internalBetaManifest.approvalPolicy).toBe("approve_external_actions");
+  expect(internalBetaManifest.modelAllowlist).toEqual([]);
+  expect(internalBetaManifest.secretEnv).toEqual({
+    SUPABASE_ANON_KEY: "supabase-anon-key",
+    CLIENT_WORKER_TOKEN: "worker-token",
+  });
+  expect(JSON.stringify(internalBetaManifest)).not.toMatch(/(sk-[A-Za-z0-9]{20,}|eyJ[A-Za-z0-9_-]{40,})/);
+});
+
+function snapshot() {
+  return {
+    metadata: { name: expected.service, generation: 35 },
+    status: {
+      latestCreatedRevisionName: expected.revision,
+      latestReadyRevisionName: expected.revision,
+      observedGeneration: 35,
+      traffic: [{ revisionName: expected.revision, percent: 100, latestRevision: true }],
+    },
+    spec: { template: { spec: { containers: [{
+      image: `example.invalid/client-runtime@sha256:${digest}`,
+      env: [
+        { name: "CLIENT_SLUG", value: "internal-beta" },
+        { name: "CLIENT_RUNTIME_ENFORCE_AUTH", value: "1" },
+        { name: "CLIENT_PROVIDER_CALLS_ENABLED", value: "0" },
+        { name: "CLIENT_RETENTION_DAYS", value: "28" },
+        { name: "CLIENT_NOTEBOOK_RETENTION_DAYS", value: "28" },
+        { name: "CLIENT_ALLOWED_ROUTES", value: "/,/memory,/notebook" },
+        { name: "CLIENT_ALLOWED_API_ROUTES", value: "/api/client-runtime/source-import,/api/client-runtime/source-import/upload,/api/client-runtime/build-identity" },
+        { name: "CLIENT_ENABLED_CAPABILITIES", value: "tenant-data,artifacts" },
+        { name: "SUPABASE_ANON_KEY", value: "DO_NOT_PRINT_PRIVATE_VALUE" },
+        { name: "CLIENT_WORKER_TOKEN", valueFrom: { secretKeyRef: { name: "reviewed-worker-token", key: "latest" } } },
+      ],
+    }] } } },
+  };
+}
+
+test("candidate config preflight accepts one fully identified revision without leaking values", () => {
+  const service = snapshot();
+  const result = evaluateClientRuntimeConfig(service, expected);
+  expect(result).toEqual({ ok: true, service: expected.service, revision: expected.revision, imageDigest: `sha256:${digest}`, failures: [] });
+  expect(JSON.stringify(result)).not.toContain("DO_NOT_PRINT_PRIVATE_VALUE");
+  const cli = spawnSync(process.execPath, [
+    "scripts/verify-client-runtime-config.mjs", "--service", expected.service,
+    "--expected-revision", expected.revision, "--expected-image-digest", `sha256:${digest}`,
+    "--tenant", expected.tenant,
+  ], { input: JSON.stringify(service), encoding: "utf8" });
+  expect(cli.status).toBe(0);
+  expect(cli.stdout).not.toContain("DO_NOT_PRINT_PRIVATE_VALUE");
+});
+
+test("candidate config preflight fails for the observed beta blockers and a pending template", () => {
+  const service = snapshot();
+  const env = service.spec.template.spec.containers[0].env;
+  env.find((entry) => entry.name === "CLIENT_RETENTION_DAYS")!.value = "29";
+  env.find((entry) => entry.name === "CLIENT_ALLOWED_API_ROUTES")!.value = "/api/client-runtime/records";
+  service.status.latestCreatedRevisionName = "agentos-internal-beta-00036-pending";
+  const result = evaluateClientRuntimeConfig(service, expected);
+  expect(result.ok).toBe(false);
+  expect(result.failures).toContain("template_not_ready_revision");
+  expect(result.failures).toContain("retention_days_out_of_policy");
+  expect(result.failures).toContain("required_api_route_missing:/api/client-runtime/source-import");
+  expect(result.failures).toContain("required_api_route_missing:/api/client-runtime/build-identity");
+  const cli = spawnSync(process.execPath, [
+    "scripts/verify-client-runtime-config.mjs", "--service", expected.service,
+    "--expected-revision", expected.revision, "--expected-image-digest", `sha256:${digest}`,
+    "--tenant", expected.tenant,
+  ], { input: JSON.stringify(service), encoding: "utf8" });
+  expect(cli.status).toBe(1);
+  expect(cli.stdout).not.toContain("DO_NOT_PRINT_PRIVATE_VALUE");
+});
+
+test("candidate config preflight accepts tag-only URLs without treating them as traffic splits", () => {
+  const service = snapshot();
+  service.status.traffic.push({
+    revisionName: "agentos-internal-beta-00034-old",
+    tag: "previous-check",
+    url: "https://previous-check---agentos-internal-beta.example.invalid",
+  });
+  expect(evaluateClientRuntimeConfig(service, expected).failures).not.toContain("traffic_not_single_expected_revision");
+});
+
+test("candidate config preflight rejects ambiguous variables, actual split traffic, and malformed tag entries", () => {
+  const service = snapshot();
+  service.spec.template.spec.containers[0].env.push({ name: "CLIENT_RETENTION_DAYS", value: "1" });
+  service.status.traffic[0].percent = 50;
+  service.status.traffic.push({ revisionName: "agentos-internal-beta-00034-old", percent: 50, latestRevision: false });
+  const result = evaluateClientRuntimeConfig(service, expected);
+  expect(result.failures).toContain("duplicate_runtime_variable");
+  expect(result.failures).toContain("traffic_not_single_expected_revision");
+  expect(result.failures).toContain("retention_days_mismatch");
+
+  const malformed = snapshot();
+  malformed.status.traffic.push({ revisionName: "agentos-internal-beta-00034-old" });
+  expect(evaluateClientRuntimeConfig(malformed, expected).failures).toContain("traffic_not_single_expected_revision");
+});
+
+test("source import requires a secret-backed worker verifier", () => {
+  const missing = snapshot();
+  missing.spec.template.spec.containers[0].env = missing.spec.template.spec.containers[0].env.filter((entry) => entry.name !== "CLIENT_WORKER_TOKEN");
+  expect(evaluateClientRuntimeConfig(missing, expected).failures).toContain("source_import_worker_secret_missing");
+  const plaintext = snapshot();
+  plaintext.spec.template.spec.containers[0].env.find((entry) => entry.name === "CLIENT_WORKER_TOKEN")!.value = "DO_NOT_PRINT_PRIVATE_VALUE";
+  const result = evaluateClientRuntimeConfig(plaintext, expected);
+  expect(result.failures).toContain("source_import_worker_secret_missing");
+  expect(JSON.stringify(result)).not.toContain("DO_NOT_PRINT_PRIVATE_VALUE");
+});
+
+test("known secret and provider variables reject inline values without leaking them", () => {
+  const inline = snapshot();
+  inline.spec.template.spec.containers[0].env.push(
+    { name: "CLIENT_CREDENTIAL_INBOX_SECRET", value: "DO_NOT_PRINT_INLINE_SECRET" },
+    { name: "OPENAI_API_KEY", value: "DO_NOT_PRINT_PROVIDER_KEY" },
+  );
+  const result = evaluateClientRuntimeConfig(inline, expected);
+  expect(result.failures).toContain("secret_env_not_secret_manager:CLIENT_CREDENTIAL_INBOX_SECRET");
+  expect(result.failures).toContain("secret_env_not_secret_manager:OPENAI_API_KEY");
+  expect(JSON.stringify(result)).not.toContain("DO_NOT_PRINT_INLINE_SECRET");
+  expect(JSON.stringify(result)).not.toContain("DO_NOT_PRINT_PROVIDER_KEY");
+
+  const secretManager = snapshot();
+  secretManager.spec.template.spec.containers[0].env.push({
+    name: "CLIENT_CREDENTIAL_INBOX_SECRET",
+    valueFrom: { secretKeyRef: { name: "credential-inbox-secret", key: "latest" } },
+  });
+  expect(evaluateClientRuntimeConfig(secretManager, expected).failures)
+    .not.toContain("secret_env_not_secret_manager:CLIENT_CREDENTIAL_INBOX_SECRET");
+});
+
+test("source import preflight requires both upload and preview endpoints", () => {
+  const service = snapshot();
+  const routes = service.spec.template.spec.containers[0].env.find((entry) => entry.name === "CLIENT_ALLOWED_API_ROUTES")!;
+  routes.value = "/api/client-runtime/source-import,/api/client-runtime/build-identity";
+  expect(evaluateClientRuntimeConfig(service, expected).failures)
+    .toContain("required_api_route_missing:/api/client-runtime/source-import/upload");
+});
+
+test("candidate config requires auth enforcement and the reviewed provider-call policy", () => {
+  const service = snapshot();
+  const env = service.spec.template.spec.containers[0].env;
+  env.find((entry) => entry.name === "CLIENT_RUNTIME_ENFORCE_AUTH")!.value = "0";
+  env.find((entry) => entry.name === "CLIENT_PROVIDER_CALLS_ENABLED")!.value = "1";
+  const result = evaluateClientRuntimeConfig(service, expected);
+  expect(result.failures).toContain("runtime_auth_not_enforced");
+  expect(result.failures).toContain("provider_calls_policy_mismatch");
+
+  env.find((entry) => entry.name === "CLIENT_RUNTIME_ENFORCE_AUTH")!.value = "1";
+  env.find((entry) => entry.name === "CLIENT_PROVIDER_CALLS_ENABLED")!.value = "1";
+  expect(evaluateClientRuntimeConfig(service, { ...expected, providerCallsEnabled: true }).failures)
+    .not.toContain("provider_calls_policy_mismatch");
+});

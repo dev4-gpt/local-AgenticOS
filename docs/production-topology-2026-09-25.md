@@ -8,6 +8,36 @@ runbooks. It describes what was directly verified in the connected Vercel and
 Google Cloud accounts. It does not authorize a deployment to a new cloud
 target.
 
+## User-selected default runtime
+
+On 2026-10-17, the owner selected
+`https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in the **Aryaman (Work)**
+Chrome profile as the default Veloce workspace. Use `/memory` as the entry
+page. Do not silently substitute Internal Beta, another Cloud Test origin,
+the public editorial site, or the College Chrome profile.
+
+This selection is a navigation preference, not build/tenant identity evidence
+or authorization to deploy, change hosted data, or spend. The dated service
+receipts below remain historical observations, not a replacement for fresh
+verification of this exact runtime.
+
+Read-only refresh on 2026-10-17 confirmed the selected origin maps to service
+`veloce-cloud-test` in project `veloce-agenticos-2026`, region `asia-south1`.
+Revision `veloce-cloud-test-00208-5hk` receives 100% of service traffic and
+resolves to image digest
+`sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`.
+Authentication is enforced and provider calls are disabled. The service has
+no valid `VELOCE_BUILD_SOURCE_COMMIT` stamp and excludes the build-identity,
+source-import and source-import/upload APIs. Runtime retention and the bucket
+Delete lifecycle are both **14 days**, not the selected 28. The bucket reports
+`604800` seconds of soft delete (seven days); this is configuration evidence,
+not a recovery/deletion demonstration. The preflight also flags inline
+`CLIENT_CREDENTIAL_INBOX_SECRET` and `CLIENT_REQUEST_INBOX_SECRET`; no secret
+values were printed or retained. Secret Manager remediation requires a
+separately approved hosted change. No same-member comparison, source/image
+attestation, object listing, deployment or hosted mutation was performed.
+Minimized timestamped receipts are referenced in the execution board.
+
 ## Verified current state
 
 | Surface | Verified target | Current state | Role |
@@ -18,6 +48,16 @@ target.
 | Legacy Cloud Run | `agentos-mvp`, service `agentos`, `europe-west1` | Revision `agentos-00013-q7f`, image `agentos:4a347ad3fc308086fdb1b38b7ac56fb3e55251ae`, deployed 2026-05-27 | Legacy service; not associated with this repository's current commit |
 | Internal beta Cloud Run | `agentos-mvp`, service `agentos-internal-beta`, `europe-west1` | Revision `agentos-internal-beta-00034-v69`, image `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`, 100% service traffic, owner-only allowlist, provider calls disabled | Controlled internal beta runtime; live email callback accepted, public customer activation still closed |
 
+Read-only Cloud Run configuration check on 2026-10-09 confirmed that this
+internal-beta service uses `SUPABASE_URL=https://ppmoqjtmjtfxadsnejqc.supabase.co`
+and `CLIENT_SLUG=internal-beta`. The same Supabase project is the production
+database in the recorded Veloce rollout. `internal-beta` is a tenant, not a
+separate database. A migration that replaces a `public` RPC in that project
+changes the function for every tenant; beta-only approval does not authorize
+that project-wide write. The new source-pack RPC guard has not been applied
+there. Use a separate disposable database for beta-only migration testing or
+obtain explicit project-wide approval after preflight and rollback review.
+
 Live browser inspection on 2026-09-26 confirmed that the `app` domain serves the
 `product-experience` editorial site. Its `Runtime access` > `Client login`
 link targets `https://veloce-cloud-test-1075094991117.asia-south1.run.app/login?next=%2F`,
@@ -25,6 +65,82 @@ an approved test runtime, not a shared production workspace. The root repo's
 local Next.js UI and the `app` domain are therefore different applications;
 visual comparison between them is not deployment parity evidence. See
 [the UI parity observation](./ui-parity-observation-2026-09-26.md).
+
+The current source no longer has an implicit cloud-test login fallback. Its
+public menu links to `/login`, where a disabled-by-default server route can
+request a non-signup email link for an existing active account. The existing
+`/auth/callback` resolves one active onboarding account to its tenant runtime
+and now rechecks active tenant membership before handoff. None of this source
+change is deployed or accepted; email delivery, callback path, customer
+domain, and signed-in repeat-login evidence remain release gates.
+
+Read-only live check on 2026-10-03: `https://app.veloceos.cloud/` returned 200,
+but `https://app.veloceos.cloud/login` returned 404. The older Cloud Run test
+login returned 200. This confirms the shared-login source is not live on the
+public `app` domain; do not offer that URL as a working client login yet.
+
+Read-only refresh on 2026-10-06: the public `Runtime access` > `Client login`
+menu still points to the single `veloce-cloud-test` login, and the public
+`/login` route still returns 404. In the user's Chrome Work profile, the
+`agentos-internal-beta` workspace was signed in and its `/memory` page loaded
+tenant-scoped records. The visible `Classroom Research` link redirected to
+`/client-unavailable?route=%2Fclassroom-research`; its presence in navigation
+is not evidence that the client feature is available. A read-only Cloud Run
+revision query was denied `run.services.get`, so this refresh does not confirm
+the current internal-beta revision or replace the 2026-09-26 revision receipt.
+
+Read-only refresh on 2026-10-07: the signed-in Chrome Work window still showed
+`agentos-internal-beta-vbimnfseva-ew.a.run.app/memory` with tenant-scoped
+memory and graph counts. Its navigation still exposed `Classroom Research` and
+`Social Research`, and the Memory page offered Markdown import/export but no
+`Community sources` JSON source-pack import. Local source commit `e8eacac`
+renders that import control on Memory and excludes operator-only research from
+default client navigation; local tests do not prove those changes are hosted.
+No Cloud Run revision, deployment identity, or same-commit parity was verified
+in this browser check. Treat `sourceImportResult` and `uiParityResult` as open
+release gates; do not describe the bonus link index as a full classroom import.
+
+Further read-only Chrome Work check on 2026-10-07: the current public
+`https://app.veloceos.cloud/login` rendered a 404 page, while the local client
+server at `http://127.0.0.1:3569/memory` redirected to its own login page in
+the same Chrome profile. The signed-in beta session therefore did not establish
+a signed-in local comparison. A fresh `vercel inspect` was inconclusive because
+the CLI's saved token was invalid; the earlier Vercel deployment identity above
+was **not** revalidated. Public J08 requires a reviewed deployment of the
+`product-experience` app, a working `/login`, configured email/callback routing,
+and an actual disposable-tenant sign-in/recovery test. Do not send customers to
+the 404 URL or substitute the single-tenant Cloud Test link as their shared login.
+
+Read-only Cloud Run and Cloud Build recheck on 2026-10-09, using a second
+already-configured Google account with `run.services.get`: 100% of the
+`agentos-internal-beta` service traffic still reaches revision
+`agentos-internal-beta-00034-v69`, image
+`sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`.
+Cloud Build `e53232d7-620b-4783-b720-903486ae2ae2` produced that digest on
+2026-09-26 at 16:23 UTC from a storage source. Its metadata has no resolved
+repository commit or commit substitution, and the Cloud Run service has no
+`VELOCE_BUILD_SOURCE_COMMIT` stamp. The digest is verified; a source SHA for
+that image is not. The service's page allowlist includes `/capabilities` and
+`/paperclip`, while its API allowlist omits both
+`/api/client-runtime/source-import` and `/api/client-runtime/build-identity`.
+`CLIENT_ENABLED_CAPABILITIES` is `tenant-data,artifacts,orchestration,quality`,
+provider calls remain disabled, and `CLIENT_RETENTION_DAYS` is `1`, not the
+owner-selected 28-day active-content maximum. This is an internal-beta setting,
+not evidence of a compliant production policy. A new image alone would leave
+the two APIs unreachable under this runtime configuration. Reconcile the
+allowlists and retention setting in a reviewed new revision, then verify its
+source stamp, image digest, signed-in routes, two-member isolation, and data
+retention before claiming local/cloud parity. No setting or traffic was changed
+by this read-only check.
+
+Read-only storage-policy follow-up on 2026-10-09: the internal-beta bucket
+`agentos-mvp-veloce-internal-beta` has one Delete lifecycle rule with `age: 1`
+and `matchesPrefix: ["internal-beta/"]`. Its reported soft-delete retention is
+604800 seconds (seven days); the bucket description did not report a versioning
+setting. This is consistent with the one-day runtime configuration, but it is
+not the selected 28-day active plus seven-day recovery policy and does not prove object-by-object permanent
+deletion, database-row cleanup, backup deletion, or vendor-copy deletion. No
+object names or bytes were inspected, and no bucket setting was changed.
 
 The legacy Cloud Run service is publicly reachable but its `/`, `/healthz`, and
 documented `/status` routes returned `404` during this verification. Its source

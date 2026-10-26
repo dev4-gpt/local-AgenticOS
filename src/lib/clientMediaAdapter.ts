@@ -3,6 +3,17 @@ import { Buffer } from "node:buffer";
 import { clientProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { isPrivateAddress, readBoundedResponseBytes } from "@/lib/clientNetworkSafety";
+import {
+  buildHiggsfieldRequest,
+  higgsfieldEstimateUrl,
+  higgsfieldModel,
+  higgsfieldOutcome,
+  higgsfieldStatusUrl,
+  higgsfieldSubmitUrl,
+  isHiggsfieldCredential,
+  isHiggsfieldRequestId,
+  type HiggsfieldModel,
+} from "@/lib/higgsfieldCatalog";
 
 const ELEVENLABS_ENDPOINT = "https://api.elevenlabs.io/v1/text-to-speech";
 const OPENAI_IMAGE_ENDPOINT = "https://api.openai.com/v1/images/generations";
@@ -320,6 +331,158 @@ export async function runClientMusicAdapter(input: {
   const providerJobId = typeof data?.data?.taskId === "string" ? data.data.taskId : "";
   if (!providerJobId) return { ok: false, status: 502, error: "provider_output_invalid" };
   return { ok: true, provider: "suno", model, state: "processing", providerJobId, estimatedCostMicros: estimateSunoCostMicros() };
+}
+
+export interface ClientHiggsfieldQuote {
+  ok: true;
+  provider: "higgsfield";
+  model: string;
+  estimatedCostMicros: number;
+}
+
+export interface ClientHiggsfieldResult {
+  ok: true;
+  provider: "higgsfield";
+  model: string;
+  state: "processing" | "completed" | "failed";
+  providerJobId: string;
+  outputUrls?: string[];
+  error?: string;
+}
+
+const MAX_HIGGSFIELD_RESPONSE_BYTES = 256 * 1024;
+// A single quote above this is refused rather than reserved; it is far beyond any documented clip.
+const MAX_HIGGSFIELD_QUOTE_MICROS = 50_000_000;
+
+/**
+ * Higgsfield image and video (Phase 6, off by default). The client's own key, "id:secret", goes through the same
+ * execution gate as every other provider key and is sent only in the Authorization header. Nothing here logs:
+ * prompts and result links stay out of every log (ADR-013). The order is quote, reserve in the budget, submit with
+ * the job's idempotency key, then poll. Higgsfield keeps results for at least seven days, so a completed result is
+ * copied into the client's own storage by the caller straight away.
+ */
+export async function quoteClientHiggsfield(input: {
+  model: string;
+  prompt: string;
+  settings?: Record<string, unknown>;
+}): Promise<ClientHiggsfieldQuote | ClientMediaFailure> {
+  const request = higgsfieldRequest(input);
+  if (!request.ok) return request;
+  const key = await higgsfieldKey();
+  if (typeof key !== "string") return key;
+  const response = await fetch(higgsfieldEstimateUrl(request.model), {
+    method: "POST",
+    headers: { Authorization: `Key ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(request.body),
+    cache: "no-store",
+    signal: AbortSignal.timeout(30_000),
+  }).catch(() => null);
+  if (!response?.ok) return { ok: false, status: response?.status ?? 503, error: higgsfieldFailureCode(response) };
+  const data = await higgsfieldJson(response);
+  const usd = typeof data?.usd === "string" || typeof data?.usd === "number" ? Number(data.usd) : Number.NaN;
+  if (!Number.isFinite(usd) || usd < 0) return { ok: false, status: 502, error: "provider_estimate_invalid" };
+  const estimatedCostMicros = Math.ceil(usd * 1_000_000);
+  if (estimatedCostMicros > MAX_HIGGSFIELD_QUOTE_MICROS) return { ok: false, status: 400, error: "provider_estimate_over_limit" };
+  return { ok: true, provider: "higgsfield", model: request.model.id, estimatedCostMicros };
+}
+
+export async function runClientHiggsfieldAdapter(input: {
+  model: string;
+  prompt?: string;
+  settings?: Record<string, unknown>;
+  idempotencyKey?: string;
+  providerJobId?: string;
+}): Promise<ClientHiggsfieldResult | ClientMediaFailure> {
+  if (input.providerJobId !== undefined) {
+    const model = higgsfieldModel(input.model);
+    if (!model) return { ok: false, status: 400, error: "higgsfield_model_unknown" };
+    if (!isHiggsfieldRequestId(input.providerJobId)) return { ok: false, status: 400, error: "provider_job_invalid" };
+    const key = await higgsfieldKey();
+    if (typeof key !== "string") return key;
+    const response = await fetch(higgsfieldStatusUrl(input.providerJobId), {
+      headers: { Authorization: `Key ${key}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(30_000),
+    }).catch(() => null);
+    if (!response?.ok) {
+      const code = higgsfieldFailureCode(response);
+      return { ok: false, status: response?.status ?? 503, error: code === "provider_request_failed" ? "provider_status_failed" : code };
+    }
+    const data = await higgsfieldJson(response);
+    if (!data || data.request_id !== input.providerJobId) return { ok: false, status: 502, error: "provider_output_invalid" };
+    const outcome = higgsfieldOutcome(data.status);
+    const base = { ok: true as const, provider: "higgsfield" as const, model: model.id, providerJobId: input.providerJobId };
+    if (outcome.state === "completed") {
+      const outputUrls = higgsfieldOutputUrls(data, model);
+      if (!outputUrls) return { ok: false, status: 502, error: "provider_output_invalid" };
+      return { ...base, state: "completed", outputUrls };
+    }
+    return outcome.error ? { ...base, state: outcome.state, error: outcome.error } : { ...base, state: outcome.state };
+  }
+
+  const request = higgsfieldRequest({ model: input.model, prompt: input.prompt ?? "", settings: input.settings });
+  if (!request.ok) return request;
+  // Without the job's own key a timed-out submit could be retried into a second, separately charged generation.
+  const idempotencyKey = input.idempotencyKey ?? "";
+  if (!/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) return { ok: false, status: 400, error: "higgsfield_idempotency_key_required" };
+  const key = await higgsfieldKey();
+  if (typeof key !== "string") return key;
+  const response = await fetch(higgsfieldSubmitUrl(request.model), {
+    method: "POST",
+    headers: { Authorization: `Key ${key}`, "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify(request.body),
+    cache: "no-store",
+    signal: AbortSignal.timeout(60_000),
+  }).catch(() => null);
+  if (!response?.ok) return { ok: false, status: response?.status ?? 503, error: higgsfieldFailureCode(response) };
+  const data = await higgsfieldJson(response);
+  const providerJobId = data?.request_id;
+  if (!isHiggsfieldRequestId(providerJobId)) return { ok: false, status: 502, error: "provider_output_invalid" };
+  return { ok: true, provider: "higgsfield", model: request.model.id, state: "processing", providerJobId };
+}
+
+function higgsfieldRequest(input: { model: string; prompt: string; settings?: Record<string, unknown> }):
+  | { ok: true; model: HiggsfieldModel; body: Record<string, unknown> }
+  | ClientMediaFailure {
+  if (containsClientSecretLike(input.prompt)) return { ok: false, status: 400, error: "secret_like_input_rejected" };
+  const built = buildHiggsfieldRequest(input.model, input.prompt, input.settings ?? {});
+  return built.ok ? { ok: true, model: built.model, body: built.body } : { ok: false, status: 400, error: built.error };
+}
+
+async function higgsfieldKey(): Promise<string | ClientMediaFailure> {
+  if (!clientProviderEnabled("HIGGSFIELD_API_KEY")) return { ok: false, status: 403, error: "provider_not_allowlisted" };
+  const key = await clientExecutionCredential("HIGGSFIELD_API_KEY");
+  if (!key || !isHiggsfieldCredential(key)) return { ok: false, status: 503, error: "provider_not_configured" };
+  return key;
+}
+
+/** Status-derived codes only: a Higgsfield error body can echo the prompt, so it is never read into a result or a log. */
+function higgsfieldFailureCode(response: Response | null) {
+  if (!response) return "provider_unreachable";
+  if (response.status === 401) return "provider_key_rejected";
+  if (response.status === 404 || response.status === 423 || response.status === 503) return "provider_model_unavailable";
+  if (response.status === 429) return "provider_rate_limited";
+  return "provider_request_failed";
+}
+
+async function higgsfieldJson(response: Response): Promise<Record<string, unknown> | null> {
+  const bytes = await readBoundedResponseBytes(response, MAX_HIGGSFIELD_RESPONSE_BYTES).catch(() => null);
+  if (!bytes) return null;
+  try {
+    const parsed = JSON.parse(bytes.toString("utf8")) as unknown;
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Every output link must be safe; one unsafe link rejects the whole result rather than passing the rest through. */
+function higgsfieldOutputUrls(data: Record<string, unknown>, model: HiggsfieldModel): string[] | null {
+  const raw: unknown[] = model.output === "video"
+    ? [(data.video as { url?: unknown } | undefined)?.url]
+    : Array.isArray(data.images) ? data.images.slice(0, 4).map((image) => (image as { url?: unknown } | null)?.url) : [];
+  if (raw.length < 1 || !raw.every((url) => typeof url === "string" && safeProviderOutputUrl(url))) return null;
+  return raw as string[];
 }
 
 export function safeProviderOutputUrl(value: string) {

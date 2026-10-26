@@ -211,6 +211,67 @@ Supabase project:
 7. `product-experience/supabase-client-runtime-workflow-reconciliation.sql`
 8. `product-experience/supabase-client-hermes-content-factory.sql`
 
+### Adapter host migrations (only where the adapter host is installed)
+
+Apply these after the retention migrations above and **before**
+`supabase-client-lifecycle-restore.sql`: that migration attaches its restore
+clock triggers only to tables that exist when it runs (it skips the others
+without an error), so adapter tables created afterwards have no restore
+trigger. The order is the one `tests/client-schema-upgrade.spec.ts` runs and
+that `veloce-agentos-staging` was proven with (2026-10-21):
+
+1. `supabase-client-adapter-host.sql`
+2. `supabase-client-adapter-token-uses.sql`
+3. `supabase-client-adapter-approval-gateway.sql`
+4. `supabase-client-adapter-budget.sql`
+5. `supabase-client-adapter-retention-28.sql`
+6. `supabase-client-adapter-promotions.sql`
+7. `supabase-client-adapter-proposals.sql` (a promotion may be asked for by an
+   adapter; a source may report no confidence; 2026-10-21, ADR-013)
+8. `supabase-client-adapter-ingest.sql` (the events-feed cursor and the function
+   that turns one adapter proposal into a private note, provenance and a
+   queued promotion; service role only)
+9. `supabase-client-adapter-tombstones.sql` (deletion receipts: the adapter is told
+   to erase its copy of a withdrawn note and its receipt is recorded; also the
+   exposure search at withdrawal; 2026-10-21, ADR-014)
+10. `supabase-client-adapter-budget-reconcile.sql` (compares the spend an adapter reports with the host's budget
+    ledger; flags only; 2026-10-23, ADR-016)
+11. `supabase-client-adapter-sync-switch.sql` (the sync switch: whether the scheduled sync may call the adapter, so a paid adapter
+    service can stop between uses; apply before setting `ADAPTER_SYNC_USES_SWITCH=true` on the job; 2026-10-26, ADR-019)
+12. `supabase-client-adapter-background-owner.sql`
+13. `supabase-client-lifecycle-restore.sql`
+14. `supabase-client-table-privilege-hardening.sql` (last: it revokes the default
+    privileges Supabase grants to `anon` on new functions)
+
+A database installed before the proposals and ingest migrations existed (such
+as `veloce-agentos-staging`): apply `supabase-client-adapter-proposals.sql` and
+`supabase-client-adapter-ingest.sql`, then re-apply
+`supabase-client-lifecycle-restore.sql` so its column list includes
+`requested_by_adapter`, then `supabase-client-table-privilege-hardening.sql`
+again. Afterwards run `notify pgrst, 'reload schema';` so the REST layer sees the
+new functions at once; until it does, a call to them fails and the events puller
+stops with "database unavailable" (seen on staging, 2026-10-21).
+
+A database that already has the ingest and tombstones migrations (such as `veloce-agentos-staging`) gets the
+activity counts for received proposals and confirmed erasures by re-applying `supabase-client-adapter-ingest.sql` and
+`supabase-client-adapter-tombstones.sql` (2026-10-23; they widen the outbox event list and are safe to run twice). Until
+then the ingest function fails loudly on such a database rather than dropping the count, and the puller stops with
+"database unavailable". Apply both before the next puller run, then `notify pgrst, 'reload schema';`.
+The same goes for `supabase-client-adapter-budget-reconcile.sql` (2026-10-23, ADR-016): apply it before the next puller run on a
+database that has the earlier adapter migrations, or the puller stops with "database unavailable" at the first finished task that
+reports its spend.
+
+If the restore migration was applied first, re-apply it after installing the
+adapter migrations.
+
+### Adapter sync job (phase 2 slice 2d)
+
+The events puller and the tombstone dispatcher run together as one scheduled Cloud Run job per client and adapter,
+every five minutes: `infra/adapter-sync-job/` (README, `job.yaml`, `alert-policy.yaml`, Dockerfile), ADR-015. It uses
+the same background owner record as the retention job and reads three secrets by reference. Nothing is deployed until the
+owner says so; the README lists the one-time set-up and what each log line means.
+
+
 Create the approved tenant and membership from the Supabase SQL editor or an
 operator-only migration job. Never accept membership creation from the
 browser. For the first internal test, run
@@ -242,17 +303,38 @@ confirmation function before enabling the `artifacts` capability. Uploads are
 created as `pending`, checked against Cloud Storage metadata, and only then
 marked `ready`; downloads reject every other state.
 
-The GCP prepare phase also applies the manifest's `storage.corsOrigins` to the
-private bucket. It permits only signed `GET` and `PUT` requests from the listed
-HTTPS client origins; CORS does not make the bucket public. Keep the origins
-specific to the deployed client URL and rerun prepare when a custom domain is
-added.
+The GCP prepare phase may apply the manifest's `storage.corsOrigins` to the
+private bucket for compatibility with older clients. Current artifact uploads
+and downloads use authenticated same-origin server proxy routes, so browser
+workflows do not access the bucket directly and do not depend on bucket CORS.
+Keep any retained origins HTTPS-only and specific; CORS does not make the
+bucket public.
 
 The same prepare phase applies a Cloud Storage lifecycle rule from
 `retention.days`. The rule deletes only objects below the client namespace
 prefix after that many days; it does not apply to other tenant prefixes in a
 shared bucket. Verify it with `gcloud storage buckets describe` and inspect
 `lifecycle_config.rule` before treating retention as live.
+
+Before release, stream the reviewed bucket snapshot into the read-only storage
+preflight using the actual Cloud Run `status.url` as the origin:
+
+```sh
+gcloud storage buckets describe gs://BUCKET --project PROJECT --format=json \
+  | node scripts/verify-client-storage-config.mjs \
+      --bucket BUCKET --namespace TENANT_SLUG --expected-origin https://CLIENT_RUNTIME.run.app
+```
+
+It requires an exact 28-day namespace Delete rule and seven-day soft-delete
+recovery. It also rejects overlapping Delete rules, object versioning, default
+event-based holds, and bucket retention periods that extend beyond the 28-day
+active window. The active client origin is still provided for the verification
+receipt, but browser access no longer depends on direct-bucket upload/download
+CORS methods. The selected recovery window means objects can remain recoverable
+for up to 35 days. A bucket snapshot does not reveal every existing object's
+individual hold or retention configuration; inspect the complete tenant object
+inventory as a separate release check. A passing bucket check alone does not
+prove that bytes, backups, or vendor copies were purged.
 
 The current lifecycle SQL also provides authenticated tenant-scoped artifact
 deletion. The runtime removes the Cloud Storage object first, treats an already
@@ -638,7 +720,7 @@ only the job record and output metadata; it never sees the worker token.
 The repository includes a credential-safe acceptance harness for the controlled
 cloud-test tenant. It creates a provider-free `/orchestrate` plan, waits for
 `Execution: completed` with four `done` steps, then uploads and downloads a
-small signed artifact and verifies the returned bytes before deleting both test
+small proxy-uploaded artifact and verifies the returned bytes before deleting both test
 records. It never prints the cookie, response bodies, signed URLs, or provider
 output.
 
@@ -692,6 +774,13 @@ npm run build:client-image
 ```
 
 The image is built from `Dockerfile.client`. It contains no provider values.
+`build:client-image` refuses a dirty checkout and passes its exact Git commit
+to Cloud Build as `_SOURCE_COMMIT`. A direct Cloud Build invocation without
+that substitution stamps `unverified`, which the runtime reports as unknown.
+After deployment, an authenticated tenant member can read
+`/api/client-runtime/build-identity` for the reported source commit and Cloud
+Run revision. Compare both with the reviewed image digest and deployment
+record; this self-reported endpoint is not independent build attestation.
 
 The current internal test image is:
 
@@ -776,6 +865,86 @@ duration; do not rerun this check unless the channel or policy changes.
 The event payload contains only tenant slug, bucket/provider label, status, and
 reason-safe fields; it never contains prompts, keys, or file contents.
 
+Local trace contract (not a hosted delivery receipt): newly recorded job traces
+use version 2, retaining the first 24 and latest eight completed spans and up to
+seven stage summaries. Counts distinguish `ok`, `error` and `unknown` and cap
+at 1,000,000 per outcome with `summaryTruncated`; `inFlight` marks work without
+a recorded outcome. `truncated` means detail is incomplete. Timing caps at
+24 hours. An outcome-observer exception records unknown without replacing the
+operation result; actual operation exceptions still propagate. Snapshot/read
+validation isolates copies and rejects inconsistent summaries/timelines.
+Historical version-1 traces remain redacted but have no invented summary.
+Their independently rounded offset/duration may overrun the rounded total by
+one millisecond only; start offsets still cannot exceed the total. Version 2
+uses rounded relative endpoints and has no such allowance.
+
+Console and detached vendor sink failures cannot force a business retry.
+That isolation does not prove telemetry arrived or that missing events were
+detected. A persisted pre-completion trace does not attest to completion RPC
+success, queue delay, retries in other invocations or every provider adapter.
+Use the durable job/ledger state and separately operated alert/sink receipts.
+Do not enable a sink, change retention or run a live drill without approval.
+Trace metadata inherits its job's retention and recovery/deletion obligations.
+
+Required multi-agent settlement (local source, not deployed): Ruflo, Loop and
+Room use the same required-settlement guard as other artifact-producing lanes.
+A false settlement blocks successful completion and attempts a failed domain
+state. Room submits unclipped actual usage. Review unknown responses against
+the durable ledger before replaying; do not repeat provider work or invent a
+refund from a failed/uncertain response. Domain and job writes are separate,
+so reconciliation failures remain an operations concern.
+
+Both generated-file download paths require a successful, error-free,
+nonblocked producing job. Assets exposes `job_released` and disables an
+unreleased artifact's actions. This flag is not human approval: Notebook
+citation/hash/approval gates still apply. Non-Notebook downloads recheck the
+job/artifact after storage responds and cancel a denied stream before returning
+bytes. They do not promise mid-stream revocation. Direct member uploads keep
+their existing owner checks. Rejected ready objects remain private and keep
+their original expiry; no cleanup or retention extension is implied.
+These guards do not establish quote sufficiency, missing-usage accuracy,
+hosted grants, provider hard caps, invoice reconciliation or recovery. No
+deployment, provider enablement or hosted cleanup is authorized here.
+
+## Unknown Multi-Agent Usage (Local Contract Only)
+
+Ruflo, Loop and Room stop on missing/unpriceable usage, unsafe subtotals or a
+provider failure whose charge is unverified. Successful blocked completion
+records `budget_usage_unverified`, `failureDisposition=blocked` and bounded
+`budgetAccounting` metadata. `knownCostMicros` covers only earlier priced
+calls, not the unknown call's charge. `reservationDisposition=unsettled` means
+this worker did not settle/refund it, not a fresh hosted ledger attestation.
+If completion persistence fails, the job can remain running; do not replay it.
+
+Reconcile the exact job, original reservation and provider operation against
+approved authoritative evidence before any explicit correction. Do not turn
+absent usage into zero, refill budget to bypass a hold, rerun a possibly charged
+call, or renew retention. No automatic reconciliation, operator mutation or
+provider request is authorized by local tests. Preflight failures also remain
+conservative because the current adapter does not distinguish no-charge
+failures. Other worker lanes and earlier inline Room/Ruflo output need separate
+acceptance; generated-file denial is not blanket quarantine of those rows.
+
+## Multi-Agent Prompt Envelopes (Local Contract Only)
+
+Ruflo admission prices each specialist prompt plus bounded coordinator
+findings. Loop separately prices the first/later builder prompts and the
+judge's own model for every permitted round. Room includes the bounded growth
+of later agents' transcript prompts. Invalid or overflowing totals fail before
+reservation or provider work. The existing pricing heuristic is not proof of
+the provider's protocol overhead, token invoice or account-level spending cap.
+
+Every stage reprices its actual next prompt against the reservation minus the
+known prior cost. If it cannot fit, do not dispatch it. Required settlement of
+the unmodified known subtotal precedes `budget_envelope_exceeded` completion;
+`budgetAccounting.status=settled_prior_usage` distinguishes that case from
+`reconciliation_required` after failed accounting. A false settlement retains
+`budget_settlement_failed`. Missing usage remains on the separate unsettled
+path above. Unknown settlement/completion outcomes must be inspected, not
+replayed. These markers inherit the job's original retention, with no new
+clock or permission to extend it. Hosted ledger/grants and the remaining
+worker lanes, earlier inline output and external limits still need acceptance.
+
 ## Export, Restore, and Offboarding
 
 Lifecycle actions are operator-only and require the Supabase service-role key
@@ -796,21 +965,109 @@ npm run client:lifecycle -- \
 The export is written with mode `0600` and includes tenant-scoped Supabase
 metadata plus optional Cloud Storage objects. It uses an explicit, credential-
 safe column allowlist: worker-token hashes, provider values, and secret-like
-metadata are refused. A restore is dry-run by default;
-pass the matching object backup directory to restore Cloud Storage objects too:
+metadata are refused. Tenant-scoped manifest proposals, provider-connection
+metadata, support tickets,
+and research-worker failure records are included. Provider secret references and
+validation payloads are not exported. Restored proposals and connections return
+to `submitted`; they need fresh review and credential validation before use.
+This is not a complete onboarding, support, or financial-record archive:
+`client_onboarding_accounts`, deployment requests, and credit history remain
+outside this snapshot.
+
+A restore is dry-run by default. Pass the matching object backup directory to
+restore Cloud Storage objects too:
 
 ```bash
 npm run client:lifecycle -- \
   --mode restore \
   --slug veloce-cloud-test \
-  --input .private-client-kits/exports/EXPORT.json \
-  --objects .private-client-kits/exports/EXPORT-objects \
+  --config .private-client-kits/veloce-cloud-test.gcp.json \
+  --manifest-sha256 "$REVIEWED_MANIFEST_SHA256" \
+  --input .private-client-kits/exports/veloce-cloud-test-EXPORT.json \
+  --objects .private-client-kits/exports/veloce-cloud-test-EXPORT-objects \
   --apply --confirm-restore
 ```
 
 An applied restore requires `--confirm-restore`. If the snapshot contains
-artifact metadata, the matching `--objects` backup is also required so the
-database cannot advertise files that are missing from Cloud Storage.
+artifact metadata, the matching `--objects` backup is required in both dry-run
+and apply modes. Object exports now create a private sibling sidecar named
+`OBJECT_BACKUP_DIRECTORY.manifest.json`; keep it with the exact metadata JSON
+and object directory. It binds the snapshot SHA-256, namespace, layout, and
+every local object's path, size, SHA-256, and MD5. Restore rejects a missing
+sidecar, changed snapshot, added/missing/changed files, unsafe paths, symlinks,
+ambiguous layouts, missing ready-artifact bytes, and artifact-size mismatch
+before any cloud or database write. Pending artifacts can lack bytes; deleted
+artifact bytes cannot be restored. Legacy backups without a sidecar are not
+silently trusted: use a new verified export where possible, or obtain an
+independent review of original source digests before any legacy recovery.
+
+Restore copies each verified file to its exact tenant object key before
+writing metadata. It passes a create-only generation precondition and the
+verified file's MD5 to `gcloud storage cp`; transfer failure stops before
+metadata writes. Existing destination objects require an explicit recovery
+decision, not a blind overwrite or unchecked retry. See Google's
+[copy flags](https://docs.cloud.google.com/sdk/gcloud/reference/storage/cp)
+and [generation-zero precondition](https://docs.cloud.google.com/storage/docs/request-preconditions#the_0_value_in_a_generation-match_precondition).
+These local checks do not establish hosted recovery, remote source-checksum
+parity, signature authenticity, backup expiry/encryption, or recovery-only
+access. Ordinary restore refuses expired artifact backups, missing original
+clocks, expiry beyond the tenant's capped window, and files without matching
+ready-artifact metadata. It does not renew an original retention deadline.
+
+Before an applied metadata restore, separately review and install
+`product-experience/supabase-client-lifecycle-restore.sql` **after** the client
+tables and their retention migrations. No installation is authorized here.
+The CLI requires its service-role-only `restore_client_lifecycle_metadata`
+RPC; there is no sequential-write fallback. It sends ordered batches of at
+most 500 rows inside **one** metadata transaction, capped at 50,000 rows and
+32 MiB of batch JSON. Original clocks are restored after ordinary insert
+guards, then verified on returned rows. Typed insert, retention or clock-drift
+failure rolls back the metadata transaction. The 49 table projections match
+the credential-safe export allowlist. Existing tenants/rows are not upserted;
+restore requires a reviewed empty target, not an overwrite decision inferred
+from `--confirm-restore`.
+Both `retention_expires_at` and ECC revision `expires_at` are checked against
+their original clocks. Learning items must be proposed without old approvals;
+revisions must remain revoked evidence. Restore does not reactivate a previous
+learning approval or extend a revision's own deadline.
+
+These semantics are tested against local PostgreSQL-compatible fixtures,
+including the actual record, Pipeline and Notebook source retention guards;
+hosted grants, all-family constraints and a complete hosted restore remain
+unverified. A dry run performs local validation, not database constraint or
+migration verification. Copy failure can leave private transferred objects,
+and a lost/unverified RPC response requires target inspection before retry.
+There is no cross-resource transaction or automatic object cleanup; quiesce
+writes and use a reviewed recovery procedure and target.
+
+File-copy clock update (local source, not applied): Native member, source-pack
+and worker uploads now set bytes and deadline metadata in one create-only XML
+PUT. The `Custom-Time` anchor is the original artifact expiry minus the bucket's
+configured retention days; this also handles shorter per-item deadlines.
+A create-only conflict triggers a read-only metadata check. Reuse requires
+matching checksum, size, content type, anchor, expiry and clock-policy tag;
+it never overwrites the existing object or advances its clock.
+Restore uses the reviewed destination manifest's window, which can differ
+from the backup tenant's window. Applied object transfers now require
+`--config` and matching `--manifest-sha256`, with the client, bucket, namespace
+and 1-28-day destination window checked before copying. Local source hashes
+do not establish that a live bucket matches that manifest.
+
+The proposed bucket configuration has two tenant-prefixed Delete rules:
+`age` and `daysSinceCustomTime`, both using the configured window. The age
+rule remains a fallback for legacy objects; legacy/missing clock metadata
+still fails the schema-4 inventory gate. A minimum bucket retention period
+can block a copied/shorter-lived object's original deadline and is rejected.
+Keep seven-day soft delete; do not disable recovery or silently rewrite
+existing objects to pass the checks. Review migration, IAM, original artifact
+crosswalk and rollback separately before any hosted change.
+
+References: [atomic XML upload headers](https://docs.cloud.google.com/storage/docs/xml-api/put-object-upload),
+[copy metadata flags](https://docs.cloud.google.com/sdk/gcloud/reference/storage/cp),
+[lifecycle conditions and asynchronous behavior](https://docs.cloud.google.com/storage/docs/lifecycle).
+These define eligibility, not a guaranteed deletion time. Exact 28+7 behavior,
+recovery-only access, backup/vendor expiry, and private orphan cleanup remain
+unverified. This runbook update authorizes no hosted write or spend.
 Worker credentials are deliberately not restored. After a successful restore,
 run `npm run provision:client-worker-token` with operator credentials and
 redeploy the approved revision before enabling queued work.
@@ -823,15 +1080,41 @@ npm run client:lifecycle -- \
   --mode offboard \
   --slug veloce-cloud-test \
   --config .private-client-kits/veloce-cloud-test.gcp.json \
+  --manifest-sha256 REVIEWED_MANIFEST_SHA256 \
+  --project REVIEWED_PROJECT_ID \
   --notification-channel projects/veloce-agenticos-2026/notificationChannels/11435881475361291593 \
-  --apply --confirm-offboard --destroy-secrets --delete-queue --delete-notification-channel --delete-bucket
+  --include-objects \
+  --apply --confirm-offboard --destroy-secrets --delete-queue --delete-notification-channel
 ```
 
 `--delete-queue` is required for an applied offboarding so no durable work can
-remain queued for a deleted tenant. `--delete-bucket` is intentionally explicit. Use it only when the bucket is
-dedicated to that client and the export has been reviewed; otherwise the
-offboarding command removes the client namespace objects but leaves the empty
-bucket for an operator-controlled retention decision.
+remain queued for a deleted tenant. Record the SHA-256 of the reviewed manifest
+independently and pass the exact project from that manifest; the CLI rejects
+changed bytes, a different tenant, project, bucket, or storage namespace before
+destructive work. It also requires a real tenant row and successful object,
+queue, alert, and secret inventories before changing tenant status. An
+unreadable inventory is not treated as an empty one. A secret matched only by
+the tenant-name prefix is refused unless its exact name is derivable from the
+reviewed manifest; externally managed secret references are never deleted.
+When tenant objects exist, `--include-objects` is required. The command creates
+a new private object-backup directory, copies the reviewed namespace, and
+checks that each inventoried object has a local file before changing tenant
+status or deleting cloud objects. An existing backup directory, failed copy,
+or incomplete copy stops the offboard. Snapshot-bound local file hashes are
+also rechecked before suspension and before object deletion. The command rereads the object
+inventory after the backup and after suspending the tenant, and refuses a
+changed set. It also refuses to delete the tenant row if objects remain after
+the cloud delete command. Keep the backup under the separately approved
+28-day active content-retention procedure; these checks do not make
+concurrent writes impossible or prove checksum parity, backup expiry, or
+vendor-copy deletion. A disposable-tenant restore and independent
+post-deletion inventory are still required before accepting the offboarding
+gate.
+`--delete-bucket` is an
+additional explicit flag and is accepted only for the provisioner's canonical
+`PROJECT_ID-veloce-TENANT_SLUG` dedicated bucket; otherwise the offboarding
+command removes tenant-namespace objects but leaves the bucket for an
+operator-controlled retention decision.
 
 Offboarding also removes the client-scoped runtime alert policies and log-based
 metrics created by `provision:runtime-alerts`, then deletes the matching
@@ -839,6 +1122,12 @@ Secret Manager containers. When supplied with
 `--notification-channel` and `--delete-notification-channel`, it also verifies
 the channel display name belongs to the client before deleting that channel.
 Review the export and confirm the resource list before applying this operation.
+Applied offboarding also stops if tenant-linked support tickets or onboarding
+accounts still exist. Both survive tenant deletion, and support tickets lose
+their tenant link. Resolve their retention and reconciliation under an approved
+policy before retrying; do not bypass this check or treat the metadata export
+as proof of deletion. Managed-credit history and nonzero balances also block
+offboarding independently.
 
 Run export and restore in a disposable second tenant before using offboarding
 for a real client. Do not put the service-role key in a manifest, Vercel, Cloud
@@ -850,7 +1139,7 @@ probe script:
 ```bash
 npm run verify:client-isolation -- \
   --url https://YOUR_PROJECT.supabase.co \
-  --anon-key "$SUPABASE_ANON_KEY" \
+  --expected-project-ref YOUR_PROJECT \
   --tenant-a client-a \
   --tenant-b client-b \
   --access-token-file-a /private/tmp/client-a-access-token.txt \
@@ -859,10 +1148,24 @@ npm run verify:client-isolation -- \
 
 Store each user token locally with mode `0600`; never put tokens in chat, shell
 arguments, source, or browser storage. The project public anon/publishable key
-is sent as `apikey`; each user token is sent only as the `Authorization` bearer
-token. The script checks each token's own tenant and confirms the opposite
-tenant returns zero rows for records, jobs, and artifacts. It never prints
-tokens or row content. Run it before enabling a second client manifest.
+is supplied through `SUPABASE_ANON_KEY` and sent as `apikey`; each user token is
+sent only as the `Authorization` bearer token. Independently verify the exact
+20-character project reference before running; the command rejects another
+origin, URL credentials, path, query or fragment before any request. Redirects
+are rejected and every request has a ten-second timeout.
+
+The script first resolves both sessions through Supabase Auth and requires
+distinct user IDs without printing them. It then requires a populated own
+sentinel and an empty successful cross-read for each token across all 34 named
+table probes. Invalid JSON, non-array bodies, HTTP errors and empty own reads
+are failures or inconclusive, never isolation evidence. A full successful run
+uses 138 read-only HTTP requests (two Auth checks plus 136 table reads), without
+automatic retries. It never prints tokens, Auth IDs, emails or row content.
+Prepare separately approved synthetic fixtures in every probed table first;
+do not fill gaps by importing customer or course material. This command proves
+only those read probes, not write isolation, application login, execution,
+review/export, expiry, deletion or recovery. Run it before enabling a second
+client manifest, with those separate acceptance gates still required.
 
 - In `app-auth` mode, the Cloud Run URL reaches only the login shell and the
   application requires a valid individual Supabase Auth session for runtime
@@ -882,6 +1185,233 @@ For a second client dry run, create a new manifest with different values for
 `gcp.storageBucket`, `storage.namespace`, `access.allowedUserEmails`, and every
 Secret Manager reference. A second deployment must not be able to read
 `veloce-cloud-test` storage or secrets.
+
+## Verify Existing Tenant File Retention
+
+The bucket lifecycle and seven-day soft-delete settings do not prove that
+existing object generations are free of holds or longer per-object retention.
+Before release evidence is collected, obtain separate approval for the exact
+project, bucket, tenant, Supabase project and bounded listing/read cost. The
+collector does not authorize itself. Configure `SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY` through the existing operator secret boundary;
+never paste their values into evidence or command arguments. The URL must
+exactly match the reviewed `--supabase-project-ref` before any request. Then
+run a current inventory:
+
+```bash
+npm run prepare:client-storage-object-inventory -- \
+  --project YOUR_PROJECT_ID \
+  --bucket YOUR_CLIENT_BUCKET \
+  --namespace YOUR_TENANT_NAMESPACE \
+  --supabase-project-ref YOUR_SUPABASE_PROJECT_REF \
+  --account YOUR_OPERATOR_EMAIL \
+  --output tmp/client-storage-object-inventory.json
+```
+
+The collector brackets an all-versions listing and an exhaustive soft-deleted
+listing with complete, stable artifact GETs using an eight-column projection
+(IDs, tenant, object key, size/type, status and original clocks). Each sample
+has a 101-request bound, 500 rows/page, a 4-MiB response bound and 50,000 accepted
+rows maximum. Every generation must match its artifact's original expiry and
+size/type. Orphans, missing active ready files, live bytes for deleted records,
+ambiguous generations, incomplete samples and observed drift fail closed.
+No object writes or deletes are performed. It writes a mode-0600 schema-4
+receipt only if the output path does not already exist. The receipt contains
+counts and hashes, not object names, artifact IDs or credentials. Review the
+receipt and its `ok` result, then pass the same account and target identity
+when collecting release evidence:
+
+```bash
+npm run publish:release-ledger -- \\
+  --client-cloud-project YOUR_PROJECT_ID \\
+  --client-cloud-region YOUR_REGION \\
+  --client-cloud-service YOUR_SERVICE \\
+  --client-storage-bucket YOUR_CLIENT_BUCKET \\
+  --client-storage-namespace YOUR_TENANT_NAMESPACE \\
+  --client-cloud-account YOUR_OPERATOR_EMAIL \\
+  --client-storage-object-inventory tmp/client-storage-object-inventory.json
+```
+
+For a later readiness recheck, provide a newly generated receipt with the same
+`--client-storage-object-inventory` flag; the inventory must be less than 24
+hours old and match the current object-generation and artifact-snapshot hashes,
+Supabase project and tenant. Schema-3 and older receipts are not accepted.
+Collect on a reviewed quiescent target: bracketed reads detect observed drift,
+not every possible concurrent change or a cross-resource transaction. This
+compares metadata, not byte hashes or a cryptographic database attestation.
+Unmatched soft-deleted generations remain a failed gate until their permitted
+recovery references are reviewed; do not recreate or retain expired active
+database rows just to produce a passing crosswalk. Recovery-only access and
+physical deletion still require operated evidence.
+These listings are read-only but may incur Cloud Storage listing charges.
+Never treat a bucket-only configuration snapshot as proof of object-level
+retention.
+
+## Repository Schema Rehearsal
+
+Run `npm run verify:client-schema-upgrade` before reviewing a retention rollout.
+This isolated PostgreSQL test applies 47 actual repository predecessor files
+and the 27 retention/review/restore/privilege migrations together. It checks 49 lifecycle
+column projections, worker argument/grant compatibility, service-only purge
+previews, a synthetic original-clock metadata restore and two-member reads.
+It is also included in `npm run verify:client-lifecycle`.
+
+The populated rehearsal seeds active, recovery-only and purge-due synthetic
+Board/Loop, Room, Pipeline and job records before migration, including recent
+activity on old parents and multiple child records. It verifies original-clock
+backfills, shorter tenant policy, member read denial, and child-first cleanup.
+Board/Loop parents must wait until all comments/events/rounds are drained;
+otherwise a foreign-key cascade can exceed the requested per-table batch and
+undercount deletions. Retry bounded batches until the preview reports no due
+rows; never increase limits or remove guards merely to force completion.
+Paperclip issue parents likewise wait for all comments and runs, including any
+legacy foreign-tenant reference. The populated test verifies three one-row child
+batches before issue deletion, exact reported counts, recovery-only rows and an
+unchanged foreign tenant. This does not bound unrelated `SET NULL` updates or
+prove multi-connection contention behavior.
+
+Keep the existing named worker parameters when using `create or replace
+function`; PostgreSQL rejects replacing named parameters with unnamed arguments,
+and PostgREST callers depend on those names. Do not drop functions or weaken
+grants to make an upgrade pass. The test uses synthetic auth claims and a fresh
+repository schema: it is not a deployed-database clone, an existing-data
+backfill, a backup restore drill, or permission to apply SQL to a hosted target.
+
+### Administrative Table Privileges
+
+Install `supabase-client-table-privilege-hardening.sql` after the client schema
+and include its exact hash in the release ledger. Before any separately
+approved installation, inspect effective/default grants on the named target.
+Supabase's future-object defaults may grant more than the explicit application
+migrations suggest. RLS does not constrain whole-table `TRUNCATE` or
+`REFERENCES`; the local regression reproduces cross-tenant comment truncation
+under broad defaults, then rolls the synthetic transaction back.
+
+The migration removes `TRUNCATE`, `REFERENCES`, `TRIGGER` and `MAINTAIN` from
+`PUBLIC`, `anon` and `authenticated` on existing public `client_*` tables and
+the public intake table `deployment_requests`. It
+also removes those global/public-schema table defaults for the applying creator.
+It leaves row-level SELECT/INSERT/UPDATE/DELETE permissions, RLS policies,
+function/sequence grants, direct service-role grants, data and retention clocks
+unchanged. Removing a PUBLIC grant can also reduce another role's inherited
+privileges; review effective service/operator access on the target. Effective
+member inherited or owner privileges cause an atomic abort;
+review role ownership/membership instead of disabling the check. Repeat apply
+is idempotent. A table created later by a different owner is not covered by
+the applying creator's defaults and requires independent review.
+
+The schema test verifies two-role truncate denial on comments and intake,
+audits administrative privileges across all repository public tables, and
+checks existing/future effective
+privileges, preserved member reads/service access, global `PUBLIC` grants,
+repeat apply and rollback of revokes when inherited privileges remain. These
+are synthetic local checks, not proof of a reachable public exploit, a deployed
+fix, Supabase login, or the full hosted deletion/export boundary. Do not infer
+hosted approval from the test result or from a Free staging project.
+
+Research lifecycle exports and restores must include the original `created_at`
+for both records and citations, independently of `retrieved_at`. Their current
+retention policy uses creation time; a database default of `now()` on restore
+would renew the active window. Ordinary restore rejects missing, future or
+already-expired creation clocks atomically, including older snapshots that
+contain only retrieval time. Do not infer a missing creation clock, rewrite an
+old backup or substitute its export date to force acceptance. Any exceptional
+recovery path needs independent review. The full repository-schema regression
+round-trips active research metadata and checks rollback and an untouched
+foreign tenant; it does not exercise hosted backups, object bytes or recovery.
+
+## Room Schema Order
+
+The operator `client-lifecycle --mode retention` command also previews the
+runtime-job purge RPC with a 500-job batch limit. Apply requires the separate
+`--confirm-retention-jobs` flag in addition to the other family confirmations.
+Job cleanup follows the content-family and due learning-item steps; its result
+appears under `runtimeJobs`. A job RPC failure stops the command before the
+audit/budget step. Earlier scopes may already have committed: inspect their
+results before a separately authorized rerun. This does not install a scheduler
+or prove hosted deletion; never run apply solely because the local tests pass.
+
+The command also previews `purge_expired_client_credit_records` with a
+100-row per-table batch and returns its result under `creditRetention`. Apply
+requires `--confirm-retention-credit` alongside every other required family
+confirmation, checked before any request. Credit cleanup follows runtime jobs
+and precedes audit/budget cleanup; a failed credit RPC stops the command. These
+RPCs are not one transaction: earlier scopes may already have committed.
+Review results before authorizing a retry.
+
+The existing V49 financial policy is unchanged: detail and purchase/allocation
+linkage expire at day 35, nonzero wallet/provider balances remain, and later
+refunds require manual review. Apply can release stale internal reservations
+through the existing SQL refund path before deleting expired detail. It does
+not issue a Stripe refund or call a provider. The confirmation flag is a
+technical safeguard, not financial-policy approval, hosted cleanup authority,
+or a scheduler. Local tests do not establish hosted financial behavior.
+
+Before accepting Room retention/review, apply the reviewed schema in dependency
+order: the existing 28-day policy and record/job/Room/Pipeline retention; then
+`supabase-client-room-fixed-retention.sql`; then the current
+`supabase-client-room-directive-review.sql`; then the current
+`supabase-client-lifecycle-restore.sql`. Reapplying an older Room/job retention
+migration afterward can replace the fixed guards. Verify installed definitions,
+grants, RLS and migration hashes on the exact target before release.
+
+The fixed migration validates tenant/parent relationships and backfills original
+creation deadlines, never last activity. A mismatch must stop for an approved
+remediation plan, not a foreign-tenant rewrite or destructive cascade. Expired
+Room jobs cannot be claimed/completed successfully, and ordinary restore must
+not reactivate recovery-only content. Keep Room provider calls disabled while
+performing separately authorized schema/configuration verification. SQL tests
+do not prove scheduled purge, backup expiry, physical deletion or recovery.
+
+The review migration also shortens previously approved note/Pipeline copies to
+their verified source deadline without renewing activity timestamps. It requires
+the same tenant, requester, proposal kind/index and approved record ID. Orphaned
+or conflicting provenance aborts the whole transaction, restoring the original
+triggers. Inventory and resolve those mismatches under a separately approved
+plan before rollout; do not disable the guard to force migration success.
+
+## Selected Cloud Test Acceptance Plan
+
+This is a proposed sequence, not authorization or a completed run. Use the
+owner-selected origin `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app` in
+Aryaman (Work) Chrome. Do not substitute Internal Beta. Historical revision,
+project, schema and secret references elsewhere in this runbook are not current
+deployment parameters. Keep the execution board as the single status tracker.
+
+1. Freeze and review one source candidate. Require its regression, offline AI,
+   Notebook/Room browser and strict receipts to match its fingerprint. Record
+   missing gates, then obtain authorization for any commit/push or hosted action
+   not already explicitly approved. A dirty candidate is not releasable.
+2. Revalidate service, region, project, active revision/image and nonsecret
+   configuration read-only. Independently bind deployed image to source commit.
+   Confirm the signed-in member and tenant ID; neither is inferred from the URL.
+   Collect redacted evidence only, never credential values or cookies.
+3. Before mutation, name the database, bucket, disposable test tenant/members,
+   reviewed migration hashes/order, configuration diff, backup/recovery handling,
+   rollback target, maximum cost and stop conditions in a specific approval.
+   Stop if identity differs, provenance is orphaned, backups cannot preserve the
+   original clocks, or a budget is absent. Do not change traffic in this step.
+4. Only after that approval, stage/apply the reviewed schema and source-stamped
+   image with providers disabled. Verify installed definitions, grants and RLS;
+   reconcile 14-day runtime/object rules with the agreed 28+7 contract. Keep
+   recovery-only bytes inaccessible to members; do not extend an old source's
+   deadline during migration, derived writes, import or restore.
+5. In the approved disposable tenant, run sign-in, authorized source intake,
+   bounded job, grounded draft/citations, explicit review and export. Prove
+   second-member/second-tenant denials and expired/recovery read denials. A real
+   model run needs its own provider/cost approval; a provider-disabled fixture
+   does not establish model quality or real customer acceptance.
+6. Verify purge scheduling, object/row deletion after recovery, backup/vendor
+   expiry and original-clock recovery with separately approved test fixtures.
+   Controlled fixture aging proves boundary logic, not 35 days of operation.
+   Run the strict release verifier against the exact candidate and reviewer
+   evidence; retain a not-ready decision while any required category is absent.
+
+The authorized Skool pack remains partial. Its first hosted import must be
+explicitly scoped as partial, source-linked, tenant-confirmed and idempotent;
+it cannot establish complete video coverage. Buyer acceptance likewise needs
+an agreed studio workflow, baseline and owner/operator review, not synthetic
+MiroFish personas. No rollout, import, contact or spend occurs from this plan.
 
 ## Rollback
 

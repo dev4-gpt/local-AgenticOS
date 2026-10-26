@@ -1,0 +1,12 @@
+{
+  "_comment": "Contract stub for the trypost AGPL adapter candidate (ADR-010, X-10). Not read by any route or registry code. The real manifest, once legal clears this candidate, replaces this file and the adapter's state moves from blocked-legal-review to disabled per ADR-005 item 7.",
+  "contractVersion": "h1",
+  "adapterId": "trypost",
+  "displayName": "trypost (AGPL, blocked pending legal review)",
+  "upstreamRepository": "https://github.com/trypostit/trypost",
+  "upstreamLicense": "AGPL-3.0",
+  "state": "blocked-legal-review",
+  "sideEffectCeiling": "none",
+  "deletionGuarantee": "none",
+  "operations": []
+}

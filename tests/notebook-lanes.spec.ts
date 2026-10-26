@@ -58,6 +58,15 @@ test("the studio goal stays inside the executions route's goal limit", () => {
   expect(goal.length).toBeLessThanOrEqual(10_000);
 });
 
+test("studio preserves every selected source token and the grounding rule under truncation", () => {
+  const sources: NotebookSource[] = Array.from({ length: 5 }, (_, index) => ({ id: `source-${index}`, title: `Source ${index}`, content: "evidence ".repeat(1_500) }));
+  const goal = notebookStudioGoal({ output: "audit-report", sources });
+  for (const source of sources) expect(goal).toContain(`[source:${source.id}]`);
+  expect(goal).toContain(NOTEBOOK_GROUNDING_RULE);
+  expect(goal.match(/\[source truncated\]/g)?.length).toBe(5);
+  expect(goal.length).toBeLessThanOrEqual(10_000);
+});
+
 test("each studio output is distinct and none promises a media provider's job", () => {
   const labels = new Set(NOTEBOOK_STUDIO_OUTPUTS.map((item) => item.label));
   const goals = new Set(NOTEBOOK_STUDIO_OUTPUTS.map((item) => item.goal));

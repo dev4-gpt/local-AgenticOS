@@ -1,0 +1,201 @@
+#!/usr/bin/env node
+import { createHash } from "node:crypto";
+import { existsSync, lstatSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { prepareClassroomSourcePack } from "./prepare-classroom-source-pack.mjs";
+
+const MAX_PDF_BYTES = 100 * 1024 * 1024;
+const MAX_TEXT_BYTES = 20 * 1024 * 1024;
+const CREDENTIAL_ASSIGNMENT = /(api[_ -]?key|secret|password|private[_ -]?key|access[_ -]?token)(\s*[:=]\s*)(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s"'`]{4,})/gi;
+const CREDENTIAL_TOKEN = /\b(?:sk|rk|ghp|xai)-[A-Za-z0-9_-]{16,}\b/gi;
+const SENSITIVE_QUERY_KEY = /^(?:api_?key|access_?token|refresh_?token|id_?token|token|secret|password|code|signature|sig|auth|authorization|jwt|session|session_?id|awsaccesskeyid|googleaccessid|key_pair_id|x_(?:amz|goog)_(?:algorithm|credential|date|expires|security_token|signature|signedheaders))$/i;
+
+function redactCredentialLikeText(text) {
+  let redacted = 0;
+  let clean = text.replace(/https?:\/\/[^\s<>"'`]+/gi, (candidate) => {
+    try {
+      const url = new URL(candidate.replace(/[.,;:!?]+$/, "").replace(/[)\]}]+$/, ""));
+      if ([...url.searchParams.keys()].some((key) => SENSITIVE_QUERY_KEY.test(key.replace(/[-\s]/g, "_")))) {
+        redacted += 1;
+        return "[URL omitted: sensitive query parameter]";
+      }
+    } catch { /* Keep malformed URLs for the link parser to reject. */ }
+    return candidate;
+  });
+  clean = clean.replace(CREDENTIAL_ASSIGNMENT, (_match, label, separator) => {
+    redacted += 1;
+    return `${label}${separator}***`;
+  });
+  clean = clean.replace(CREDENTIAL_TOKEN, () => {
+    redacted += 1;
+    return "***";
+  });
+  return { text: clean, redacted };
+}
+
+export function parsePdfLinks(output) {
+  const links = [];
+  const skipped = [];
+  for (const line of output.split(/\r?\n/)) {
+    const match = line.match(/^\s*(\d+)\s+Annotation\s+(.+?)\s*$/);
+    if (!match) continue;
+    try {
+      const url = new URL(match[2].trim());
+      if (!["http:", "https:"].includes(url.protocol) || url.username || url.password
+        || [...url.searchParams.keys()].some((key) => SENSITIVE_QUERY_KEY.test(key.replace(/[-\s]/g, "_")))) {
+        throw new Error("unsupported_link");
+      }
+      links.push({ url: url.toString(), text: `PDF link on page ${Number(match[1])}` });
+    } catch {
+      skipped.push(`PDF page ${Number(match[1])}: unsupported or invalid link omitted`);
+    }
+  }
+  return { links, skipped };
+}
+
+export function cleanPdfText(text) {
+  return text.replace(/\f(?:\r?\n)*/g, "\n\n").replace(/\u0000/g, "").replace(/[^\S\n\r\t]+\n/g, "\n").trim();
+}
+
+export function parsePdfTextLinks(text) {
+  const links = [];
+  const skipped = [];
+  for (const match of text.matchAll(/https?:\/\/[^\s<>"'`]+/gi)) {
+    const candidate = match[0].replace(/[.,;:!?]+$/, "").replace(/[)\]}]+$/, "");
+    try {
+      const url = new URL(candidate);
+      if (url.username || url.password || [...url.searchParams.keys()].some((key) => SENSITIVE_QUERY_KEY.test(key.replace(/[-\s]/g, "_")))) {
+        throw new Error("credentials_in_url");
+      }
+      links.push({ url: url.toString(), text: "PDF text URL" });
+    } catch {
+      skipped.push("PDF text contains a credential-bearing or invalid URL omitted");
+    }
+  }
+  return { links, skipped };
+}
+
+function run(command, args, maxBuffer = MAX_TEXT_BYTES) {
+  const result = spawnSync(command, args, { encoding: "utf8", maxBuffer, timeout: 120_000 });
+  if (result.error?.code === "ENOBUFS") throw new Error("pdf_text_too_large");
+  if (result.error?.code === "ETIMEDOUT") throw new Error("pdf_extraction_timeout");
+  if (result.error) throw new Error(`${command}_unavailable`);
+  if (result.status !== 0) throw new Error(`${command}_failed`);
+  return result.stdout;
+}
+
+function metadataValue(metadata, label) {
+  const match = metadata.match(new RegExp(`^${label}:\\s*(.*)$`, "mi"));
+  return match?.[1]?.trim() || "";
+}
+
+function writePrivate(file, contents) {
+  if (existsSync(file)) throw new Error("output_exists");
+  writeFileSync(file, contents, { flag: "wx", mode: 0o600 });
+}
+
+export function pdfSourcePack({ pdfPath, pageUrl, title, publishedDate, collectedAt, inferPublishedDateFromFilename = true, sanitizeCredentialLikeText = false, runCommand = run }) {
+  const fileStat = lstatSync(pdfPath);
+  if (!fileStat.isFile() || fileStat.size < 1 || fileStat.size > MAX_PDF_BYTES) throw new Error("pdf_file_invalid");
+  if (path.extname(pdfPath).toLowerCase() !== ".pdf") throw new Error("pdf_file_invalid");
+  const sourceUrl = new URL(pageUrl);
+  if (!["http:", "https:"].includes(sourceUrl.protocol) || sourceUrl.username || sourceUrl.password) throw new Error("source_url_invalid");
+  sourceUrl.hash = "";
+  const metadata = runCommand("pdfinfo", [pdfPath]);
+  const pages = Number(metadataValue(metadata, "Pages"));
+  if (!Number.isSafeInteger(pages) || pages < 1) throw new Error("pdf_page_count_invalid");
+  const extracted = runCommand("pdftotext", ["-enc", "UTF-8", "-layout", "-nopgbrk", pdfPath, "-"]);
+  if (Buffer.byteLength(extracted, "utf8") > MAX_TEXT_BYTES) throw new Error("pdf_text_too_large");
+  const extractedText = cleanPdfText(extracted);
+  const sanitized = sanitizeCredentialLikeText ? redactCredentialLikeText(extractedText) : { text: extractedText, redacted: 0 };
+  const text = sanitized.text;
+  if (!text) throw new Error("pdf_text_unavailable_or_scanned_needs_ocr");
+  const extractedLinks = parsePdfLinks(runCommand("pdfinfo", ["-url", pdfPath]));
+  const textLinks = parsePdfTextLinks(text);
+  const linksByUrl = new Map();
+  for (const link of [...extractedLinks.links, ...textLinks.links]) {
+    const url = new URL(link.url);
+    url.hash = "";
+    const key = url.toString();
+    if (!linksByUrl.has(key)) linksByUrl.set(key, link);
+  }
+  const fileTitle = path.basename(pdfPath, path.extname(pdfPath)).replace(/^\d{4}-\d{2}-\d{2}[-_ ]*/, "").replace(/[-_]+/g, " ").trim();
+  const sourceTitle = title?.trim() || metadataValue(metadata, "Title") || fileTitle;
+  const date = publishedDate || (inferPublishedDateFromFilename ? path.basename(pdfPath).match(/^(\d{4}-\d{2}-\d{2})[-_ ]/)?.[1] : undefined);
+  const source = { title: sourceTitle, tab: sourceTitle, url: sourceUrl.toString(), text, links: [...linksByUrl.values()], collectedAt };
+  if (date) source.publishedAt = date;
+  const prepared = prepareClassroomSourcePack({ startUrl: sourceUrl.toString(), sources: [source], skipped: [...extractedLinks.skipped, ...textLinks.skipped], pending: [] });
+  return {
+    batches: prepared.batches,
+    coverage: prepared.coverage,
+    metadata: {
+      filename: path.basename(pdfPath),
+      inputSha256: createHash("sha256").update(readFileSync(pdfPath)).digest("hex"),
+      pages,
+      textCharacters: text.length,
+      embeddedLinks: extractedLinks.links.length,
+      textLinks: textLinks.links.length,
+      uniqueLinks: linksByUrl.size,
+      skippedLinkAnnotations: extractedLinks.skipped.length,
+      redactedCredentialLikeValues: sanitized.redacted,
+      title: sourceTitle,
+      publishedDate: date ?? null,
+    },
+  };
+}
+
+export function buildPdfSourcePackManifest(result, batchFiles) {
+  const startUrl = result?.batches?.[0]?.startUrl;
+  if (typeof startUrl !== "string" || !Array.isArray(batchFiles) || !batchFiles.length) throw new Error("pdf_source_manifest_invalid");
+  return {
+    version: 1,
+    startUrl,
+    sources: result.coverage.outputSources,
+    links: result.coverage.outputLinks,
+    skipped: result.batches.reduce((total, batch) => total + batch.skipped.length, 0),
+    ...result.metadata,
+    coverage: result.coverage,
+    batches: batchFiles.map(({ file, sha256, sources, links }) => ({ file, sha256, sources, links })),
+  };
+}
+
+if (process.argv[1]?.endsWith("/prepare-pdf-source-pack.mjs")) {
+  const args = process.argv.slice(2);
+  const [pdfPath, pageUrl, output, ...options] = args;
+  const option = (name) => {
+    const index = options.indexOf(name);
+    return index < 0 ? undefined : options[index + 1];
+  };
+  const sanitizeCredentialLikeText = options.includes("--sanitize-credential-like-text");
+  if (!pdfPath || !pageUrl || !output || options.some((item, index) => ["--title", "--published-date"].includes(item) && !options[index + 1])) {
+    console.error("Usage: node scripts/prepare-pdf-source-pack.mjs lesson.pdf source-page-url output.json [--title title] [--published-date YYYY-MM-DD] [--sanitize-credential-like-text]");
+    process.exitCode = 2;
+  } else {
+    try {
+      const result = pdfSourcePack({
+        pdfPath,
+        pageUrl,
+        title: option("--title"),
+        publishedDate: option("--published-date"),
+        sanitizeCredentialLikeText,
+      });
+      const parsed = path.parse(output);
+      const batchFiles = result.batches.map((batch, index) => {
+        const suffix = String(index + 1).padStart(3, "0");
+        const file = path.join(parsed.dir, `${parsed.name}.part-${suffix}${parsed.ext || ".json"}`);
+        const encoded = JSON.stringify(batch, null, 2);
+        return { file, encoded, sha256: createHash("sha256").update(encoded).digest("hex"), sources: batch.sources.length, links: batch.sources.reduce((sum, item) => sum + item.links.length, 0) };
+      });
+      const manifest = path.join(parsed.dir, `${parsed.name}.manifest.json`);
+      if ([...batchFiles.map((batch) => batch.file), manifest].some((file) => existsSync(file))) throw new Error("output_exists");
+      for (const batch of batchFiles) writePrivate(batch.file, batch.encoded);
+      const sourceManifest = buildPdfSourcePackManifest(result, batchFiles);
+      writePrivate(manifest, JSON.stringify(sourceManifest, null, 2));
+      console.log(JSON.stringify({ manifest, pages: result.metadata.pages, sources: result.coverage.outputSources, links: result.coverage.outputLinks, skipped: result.coverage.skippedPages, batches: batchFiles.length }));
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "pdf_source_pack_failed");
+      process.exitCode = 1;
+    }
+  }
+}
