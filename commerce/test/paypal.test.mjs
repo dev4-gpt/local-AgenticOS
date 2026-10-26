@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createPayPalClient, inspectOrder } from '../src/paypal.mjs';
+import { sha256 } from '../src/proposals.mjs';
 
 const expected = { intentId:'intent-test', merchantId:'merchant-test', depositCents:25001, orderId:'ORDER123' };
 function order(status='CREATED') {
@@ -99,7 +100,7 @@ const webhookHeaders=()=>new Headers({'paypal-auth-algo':'SHA256withRSA','paypal
 test('verification is sent to pinned PayPal, never the certificate URL; body is bound to the event',async()=>{
   const {client,calls}=setup([json({verification_status:'SUCCESS'})]);
   const result=await client.verifyWebhook({rawBody:JSON.stringify(event),headers:webhookHeaders()});
-  assert.deepEqual(result,{environment:'sandbox',eventId:'WH-TEST123',eventType:'PAYMENT.CAPTURE.COMPLETED'});
+  assert.deepEqual(result,{environment:'sandbox',eventId:'WH-TEST123',eventType:'PAYMENT.CAPTURE.COMPLETED',payloadHash:sha256(JSON.stringify(event))});
   assert.equal(calls.length,2);assert.equal(calls[1].url,'https://api-m.sandbox.paypal.com/v1/notifications/verify-webhook-signature');
   assert.deepEqual(JSON.parse(calls[1].options.body).webhook_event,event);
   assert.equal(JSON.parse(calls[1].options.body).webhook_id,'test-webhook');

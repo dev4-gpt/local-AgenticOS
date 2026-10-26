@@ -1,0 +1,99 @@
+# Veloce Commerce
+
+Turn approved knowledge into a cited proposal, an explicitly reviewed PayPal sandbox deposit, and one project kickoff. If supporting evidence changes or is withdrawn, new dependent commercial actions are blocked.
+
+This is the standalone capability being developed for the PayPal AI Hackathon. It also provides domain/storage/provider seams for the Veloce host. It does not require a private Veloce backend or ContractorOS to run. Production Veloce binding, complete retention/purge/restore policy, real sandbox acceptance and final submission evidence remain open; see [EXECUTION.md](EXECUTION.md).
+
+## Requirements
+
+- **Node 24.15 or later in the Node 24 series**, with its built-in SQLite module.
+- Existing model access: either an already signed-in **Claude subscription** through the installed Claude CLI, or an already downloaded Ollama text model. No model downloads, creation, API-key fallback or automatic provider fallback are performed by this application.
+- For real payment testing: your PayPal sandbox app, sandbox merchant ID and separate buyer account. Real payment endpoints are intentionally unavailable.
+
+There are no npm dependencies to install. The application uses Node built-ins, native browser features and system fonts. The Claude CLI uses your existing service access; this repository does not redistribute model weights or credentials.
+
+## Local setup
+
+Run commands from this directory using Node 24. `data/` is private runtime state and must never be committed or included in the public source package.
+
+```sh
+node src/cli.mjs init --tenant owner-dev --merchant YOUR_SANDBOX_MERCHANT_ID
+node src/cli.mjs user --tenant owner-dev --username YOUR_AUTHOR_USERNAME --role member
+node src/cli.mjs user --tenant owner-dev --username YOUR_REVIEWER_USERNAME --role admin
+```
+
+The user commands prompt for passwords privately in your terminal. Do not put passwords in command arguments, source files, chat, or screenshots. Distinct authenticated accounts are required for source and commercial review. This enforces account separation; it does not establish that two accounts belong to different real-world people.
+
+Start without any provider configured:
+
+```sh
+node src/cli.mjs serve --tenant owner-dev --port 4141
+```
+
+Open `http://127.0.0.1:4141`. The app binds only to loopback. It does not deploy, expose a public service, create example customers, or seed fake business records.
+
+## Connect an existing model
+
+For an existing Claude Pro/Max subscription already signed in through the official CLI:
+
+```sh
+COMMERCE_DRAFT_PROVIDER=claude-cli node src/cli.mjs serve --tenant owner-dev --port 4141
+```
+
+The adapter verifies subscription OAuth status, disables tools/MCP/hooks/slash commands and session persistence, and runs in an isolated temporary directory. It does not select a new model or pass API keys. Source text intentionally supplied for drafting is sent to your existing Claude service. Use only material you are authorized to send there. Provider model usage is recorded as subscription usage, not a claimed cash invoice or zero-cost API call.
+
+For an **existing installed text model** served by Ollama:
+
+```sh
+COMMERCE_OLLAMA_MODEL=YOUR_EXISTING_MODEL_NAME node src/cli.mjs serve --tenant owner-dev --port 4141
+```
+
+An embedding model such as `nomic-embed-text` cannot write proposals. A manifest without its weight files is not an available model. Do not run `ollama pull` or create a model to satisfy this setup; choose an existing working model/service instead. The app calls only the local chat API; unavailable models fail explicitly. No paid provider is enabled automatically.
+
+## Connect PayPal sandbox
+
+In your own local runtime environment, configure these names without committing their values:
+
+- `PAYPAL_CLIENT_ID`
+- `PAYPAL_CLIENT_SECRET`
+- `PAYPAL_WEBHOOK_ID`
+- `COMMERCE_PAYPAL_ENABLED=1`
+
+The initialized merchant ID must match the app’s sandbox merchant. Add `COMMERCE_DRAFT_PROVIDER=claude-cli` or the existing Ollama model setting to use both integrations. The application reads its own configured credentials server-side; agents should never inspect or print their values. No `.env` file is required or read directly by this repository.
+
+Register `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.DENIED` and `PAYMENT.CAPTURE.REVERSED` for the app webhook. The receiver is `POST /api/paypal/webhook`. Real PayPal delivery requires a reachable HTTPS listener. The local application does not set up a tunnel or publish itself; arrange an explicitly authorized HTTPS forwarding target that preserves the receiver's expected local Host header, and expose only the webhook path. Never expose the local account UI over an unauthenticated public tunnel. Simulator events do not prove the real sandbox flow or work with PayPal postback verification.
+
+Sources: [Orders v2](https://developer.paypal.com/api/orders/v2), [webhook verification](https://developer.paypal.com/api/rest/webhooks/rest/), [idempotency](https://developer.paypal.com/api/rest/reference/idempotency/).
+
+## The working journey
+
+1. Sign in as the author. Add owner-controlled service/scope material. New material enters quarantine.
+2. Sign in as a different authorized reviewer. Review the text and approve ordinary business material.
+3. As the author, select approved sources, describe the desired scope and enter exact USD fee/deposit terms. The configured model drafts requirements, deliverables, questions and source citations. It cannot choose amount, payee or authority.
+4. As the reviewer, inspect the cited passages and exact commercial terms, then approve the immutable proposal revision.
+5. As the author, prepare checkout, explicitly approve in PayPal sandbox using the buyer account, check provider status and confirm sandbox capture.
+6. A verified matching capture unlocks kickoff. Repeated callbacks and repeated kickoff requests return the same local project.
+7. Withdraw a supporting source. New dependent actions are blocked, and paid work is held for review. This does not erase a payment fact or move funds.
+
+Browser success redirects have no payment authority. A pending capture does not unlock delivery. An ambiguous provider result enters reconciliation, with an explicit retry using the original operation ID only inside the recovery window. No automatic refund, payout, escrow or live-money path exists.
+
+## Verification
+
+```sh
+npm test
+npm run check
+```
+
+The HTTP tests bind a temporary loopback port and use disposable accounts, SQLite databases and fixture transports. They make no real model or PayPal calls. Test fixtures exist only in temporary test stores and are removed afterwards. The browser evaluation harness is explicitly labeled fixture-backed:
+
+```sh
+node test/browser-fixture.mjs
+```
+
+Stop it with Ctrl-C to remove its temporary state. Do not present fixture output as real AI or payment evidence. Real-model evaluation is opt-in and separate from the default test suite; `test/real-model-evaluation.mjs` sends only a public hackathon requirements brief through existing subscription access and requires an explicit output path.
+
+## Scope and contribution
+
+The enclosing Veloce application predates this entry. This newly authored standalone module implements the knowledge-bound proposal, commercial review, sandbox provider, payment reconciliation/kickoff and focused UI contribution. The module's [MIT license](LICENSE) applies to this directory only; it does not relicense the enclosing Veloce repository or optional third-party adapters. Node and installed model/service clients retain their own licenses and terms.
+
+Current verification is recorded per milestone. A passing fixture journey is not real PayPal interoperability, customer validation, semantic proof for every citation, complete financial retention policy, or production readiness. Those remain separate acceptance work before a real client rollout.

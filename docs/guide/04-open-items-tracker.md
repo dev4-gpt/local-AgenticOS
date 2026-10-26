@@ -169,11 +169,15 @@ Work happens in the separate ContractorOS repo (`dev4-gpt/ContractorOS`, AGPL, n
 
 ## PayPal hackathon commerce slice (separate worktree, 2026-10-26)
 
-- [x] C1: portable evidence-bound proposal domain in `commerce/`: immutable source/terms digest, source eligibility, distinct review identities and expiry. Verified locally with `npm run test:commerce` on Node 24.18.0; 72 tests passed across this slice.
-- [~] C2: local standalone SQLite review/intent persistence and atomic single-use admission, restart/tenant tests. HTTP authentication, execution orchestration, lifecycle and hosted binding are not complete.
-- [~] C3: PayPal sandbox-only provider boundary and fixture-backed failure tests. No actual PayPal call or payment was made; real interoperability and reconciliation remain open.
-- [ ] C4-C10: AI drafting, UI, verified event inbox/kickoff outbox, Veloce binding, complete lifecycle/budget integration, actual sandbox/model proof, public-source packaging and demo.
-- Plan and trajectory: `commerce/EXECUTION.md`; isolated branch `codex/veloce-commerce`, baseline `707d5b3`. This slice does not close Phase 3 or Phase 7. No shared-checkout edits, push, deployment or publication.
+- [x] C1: portable immutable evidence-bound proposals, exact commercial terms, source eligibility and distinct review identities.
+- [x] C2 local standalone: authenticated accounts/sessions, CSRF, server-selected tenant membership, review/rejection and durable intent admission. Every tenant mutation route rejects missing sessions and wrong-workspace accounts.
+- [x] C3/C5 fixture-backed local implementation: sandbox provider boundary, hash-bound verified event inbox, exclusive operation claims, reconciliation and atomic payment/kickoff outbox. No real PayPal sandbox transaction has been proven.
+- [~] C4: real structured drafting succeeded once through existing Claude Pro access (`claude-sonnet-4-6`) using only public hackathon requirements. No model downloads/creation; broader semantic quality and product-specific material remain to evaluate.
+- [x] C6 local browser surface: desktop approval verified using temporary labeled fixtures; mobile 390×844 had no horizontal overflow. This is not live-payment proof.
+- [~] C9: standalone source/README/MIT license/private runtime setup prepared; zero npm dependencies. Fresh public-package rehearsal and repository publication remain open.
+- [ ] C7: complete Veloce host binding, central budget/lifecycle integration, financial policy and dependency cascade.
+- [ ] C8/C10: real sandbox verification, final demo/video, public repo and submission/judge access.
+- Current checkpoint: 109 Node 24 tests pass; syntax checks pass; later drafting metric changes pass their 8 affected tests. Plan/trajectory: `commerce/EXECUTION.md`. Isolated branch `codex/veloce-commerce`, original baseline `707d5b3`. Phase 3/7 stay open; the active shared checkout is unchanged.
 
 ## Phase 3: Knowledge adapter
 

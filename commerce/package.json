@@ -4,7 +4,21 @@
   "private": true,
   "type": "module",
   "description": "Portable, evidence-bound service commerce for Veloce. Sandbox integration in progress.",
-  "engines": { "node": ">=22 <26" },
-  "scripts": { "test": "node --test test/*.test.mjs", "check": "node --check src/proposals.mjs && node --check src/paypal.mjs && node --check src/store.mjs" },
-  "exports": { "./proposals": "./src/proposals.mjs", "./paypal": "./src/paypal.mjs", "./store": "./src/store.mjs" }
+  "engines": {
+    "node": ">=24.15 <25"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check src/proposals.mjs && node --check src/paypal.mjs && node --check src/store.mjs && node --check src/payments.mjs && node --check src/auth.mjs && node --check src/drafting.mjs && node --check src/server.mjs && node --check src/cli.mjs && node --check web/app.mjs",
+    "start": "node src/cli.mjs serve"
+  },
+  "exports": {
+    "./proposals": "./src/proposals.mjs",
+    "./paypal": "./src/paypal.mjs",
+    "./store": "./src/store.mjs",
+    "./payments": "./src/payments.mjs",
+    "./drafting": "./src/drafting.mjs",
+    "./server": "./src/server.mjs",
+    "./auth": "./src/auth.mjs"
+  }
 }

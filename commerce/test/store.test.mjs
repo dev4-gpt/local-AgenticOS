@@ -116,3 +116,19 @@ test('expired proposal content is hidden after restart without renewing its cloc
     rejects(()=>store.readProposal('writer','owner-dev',f.proposal.id,'v1'),'not_found');
   } finally {store?.close();rmSync(dir,{recursive:true,force:true});}
 });
+test('reviewer can reject a proposal revision with a reason; rejected work cannot obtain approval',()=>{
+  const {store,proposal,review}=setup();try{
+    rejects(()=>store.rejectProposal('other-member','owner-dev',proposal.id,'v1','Needs evidence'),'not_allowed');
+    rejects(()=>store.rejectProposal('reviewer','owner-dev',proposal.id,'v1','no'),'review_reason_required');
+    const result=store.rejectProposal('reviewer','owner-dev',proposal.id,'v1','Narrow the deliverable and resolve the open questions.');
+    assert.equal(result.decision,'rejected');
+    rejects(()=>store.reviewProposal('reviewer','owner-dev',proposal.id,'v1',review),'proposal_rejected');
+    assert.equal(store.workspace('writer','owner-dev').proposals[0].reviewDecision,'rejected');
+  }finally{store.close();}
+});
+test('approved commercial authority cannot be silently overwritten with a rejection',()=>{
+  const {store,proposal,review}=setup();try{
+    store.reviewProposal('reviewer','owner-dev',proposal.id,'v1',review);
+    rejects(()=>store.rejectProposal('reviewer','owner-dev',proposal.id,'v1','Changed my mind'),'proposal_already_reviewed');
+  }finally{store.close();}
+});

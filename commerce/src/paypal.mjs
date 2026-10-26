@@ -1,5 +1,5 @@
 /** Server-only PayPal boundary. No environment reads or automatic retries. Sandbox is pinned. */
-import { CommerceError, usdValue } from './proposals.mjs';
+import { CommerceError, usdValue, sha256 } from './proposals.mjs';
 const BASE = 'https://api-m.sandbox.paypal.com';
 const bad = code => { throw new CommerceError(code); };
 const object = v => v && typeof v === 'object' && !Array.isArray(v);
@@ -67,7 +67,7 @@ export function inspectOrder(raw, expected) {
       approvalUrl = url.href;
     }
   }
-  return Object.freeze({ environment:'sandbox', orderId, status:raw.status, capture, approvalUrl });
+  return Object.freeze({ environment:'sandbox', intentId:e.intentId, merchantId:e.merchantId, depositCents:e.depositCents, orderId, status:raw.status, capture, approvalUrl });
 }
 
 export function createPayPalClient({ clientId, clientSecret, webhookId, fetchImpl = fetch, timeoutMs = 10_000 }) {
@@ -143,7 +143,7 @@ export function createPayPalClient({ clientId, clientSecret, webhookId, fetchImp
         ...fields, webhook_id:webhookId, webhook_event:event,
       });
       if (result.verification_status !== 'SUCCESS') bad('invalid_webhook_signature');
-      return Object.freeze({ environment:'sandbox', eventId:event.id, eventType:event.event_type });
+      return Object.freeze({ environment:'sandbox', eventId:event.id, eventType:event.event_type, payloadHash:sha256(rawBody) });
     },
   });
 }
