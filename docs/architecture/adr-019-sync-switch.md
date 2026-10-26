@@ -1,6 +1,6 @@
 # ADR 019: The sync switch
 
-**Status:** decided 2026-10-26 with the owner (D1 to D4, with D2 changed to add "always" for paying clients); built and tested locally. **Not yet applied to staging or deployed** (the migration, the job setting and the page need the owner's yes).
+**Status:** decided 2026-10-26 with the owner (D1 to D4, with D2 changed to add "always" for paying clients); built, tested, and **applied to staging and deployed on 2026-10-26** (migration, job image `adapter-sync-job:v2`, `ADAPTER_SYNC_USES_SWITCH=true`, scheduler enabled at `*/5`). **The page has not yet been looked at in a browser** (see "Deployed").
 **Builds on:** ADR-015 (the sync job), ADR-014 (deletion receipts), ADR-018 (the real Content OS service and its cost).
 
 ## The problem
@@ -43,11 +43,23 @@ run, the off case (exit 0, the adapter and the feed untouched), a missing or unc
 and no switch configured. Route tests: every gate, tenant only from the server, a closed set of modes, database refusals as stable
 codes. 18 deliberate breakages of these rules were each caught by a test.
 
+## Deployed (2026-10-26)
+
+- The migration is applied to staging; the grants were read back (the job check and "allow always" are service role only, the
+  admin and member functions are for signed-in users only, nobody anonymous).
+- The job runs `adapter-sync-job:v2` with the switch on. With the switch off, a manual run and then a scheduled run each took about
+  1 second, exited 0, logged `skipped=True` with the reason "the sync switch is off", and made no request to the adapter service.
+- The scheduler `veloce-adapter-sync-agentos-staging-creator-os` is enabled at `*/5 * * * *`. **It had never worked until now:** its
+  address was created ending in `creator-osun` (zsh read `$J:run` as a modifier on the variable), so its 01:40 UTC attempt
+  failed with NOT_FOUND. It was fixed with `${J}:run`, and the 01:45 UTC scheduled run succeeded. Anyone building such a
+  URL in zsh should write `${J}:run`.
+- The registry row for `creator-os` is a normal row (not marked `zz-`), so the staging deployment now has a registered adapter.
+
 ## Not done
 
-- The migration is not applied to staging, the job has not been redeployed with the new setting and script (a new
-  `adapter-sync-job` image), the scheduler is still paused, and the page has not been looked at in a browser. Until the job is
-  redeployed the paused scheduler is the only switch.
+- **The page has not been looked at in a browser.** The browser pane had no session (the API answered 401 and the dev
+  server log shows no sign-in request), so the panel's look and its controls are checked by typecheck, lint and tests only. The signed-in
+  account must also be an active member of the tenant the app serves, and an admin to see the controls.
 - Nothing yet stops the adapter service from being kept warm by something else (a task started by hand, for example).
 - Turning the switch on does not warm the service ahead of time; the first run after it is on pays the cold start.
 - The cost figures are estimates, not measurements. A real bill should be checked after a week of use.

@@ -1,6 +1,6 @@
 # ADR 018: Running the real Content OS service for the host
 
-**Status:** decided 2026-10-24 with the owner (D1 to D7, with D1 changed to a free model API); built in Phase 2 item 2 and pushed. The service is deployed to staging. Cloud steps 1 to 6 are done (mount test, state bucket, secrets, deploy, first real task, sync job and deletion receipt against the real service); step 7 (scheduler and alert) is created but the scheduler is paused (see "Cloud step 7").
+**Status:** decided 2026-10-24 with the owner (D1 to D7, with D1 changed to a free model API); built in Phase 2 item 2 and pushed. The service is deployed to staging. Cloud steps 1 to 6 are done (mount test, state bucket, secrets, deploy, first real task, sync job and deletion receipt against the real service); step 7 (scheduler and alert) is done, and the scheduler is enabled (see "Cloud step 7" and ADR-019).
 **Builds on:** ADR-005 (the adapter host contract), ADR-010 (AGPL separation), ADR-012 (token keys), ADR-015 (the sync job), ADR-017 (draft text).
 
 ## The problem
@@ -111,9 +111,10 @@ the folders of earlier tasks that never sent a proposal to the host, and in the 
 
 - Scheduler job `veloce-adapter-sync-agentos-staging-creator-os` (`*/5 * * * *`, UTC) runs the sync job as its own service account
   `veloce-adapter-sync-scheduler`, which holds `roles/run.invoker` on that one job only.
-- **The scheduler is paused.** Staging has no registered adapter (the step 6 proof rows were deleted), and without a registry row
-  every run stops with `cursor_conflict` and exits 1, so an enabled scheduler would fail every five minutes and fire the alert.
-  Register `creator-os` for the client (receipt guarantee), then `gcloud scheduler jobs resume`. That pause is the on/off switch.
+- **The scheduler was paused at first.** Staging had no registered adapter (the step 6 proof rows were deleted), and without a registry
+  row every run stops with `cursor_conflict` and exits 1. `creator-os` has since been registered (receipt guarantee), and the sync
+  switch (ADR-019) now decides whether a run calls the adapter, so the scheduler is enabled at `*/5` and costs pennies while the switch is off.
+  The scheduler's address was wrong when created (see ADR-019, "Deployed"); it was fixed on 2026-10-26.
 - Alert policy "Veloce adapter sync job failed" (any failed execution of a `veloce-adapter-sync-*` job) is enabled and sends email
   to one channel, `veloce.researcher@gmail.com`. The API refused the repo's `alert-policy.yaml` because `notificationRateLimit` is
   allowed only on log-based policies; the file no longer has it, so repeats are not rate limited.
