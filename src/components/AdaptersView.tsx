@@ -6,6 +6,9 @@ import { AlertTriangle, ArrowLeft, Plug, RefreshCw, ShieldAlert } from "lucide-r
 import { formatMicrosUsd, type AdapterCard } from "@/lib/adapterOverview";
 import type { ActivityGroup } from "@/lib/adapterActivity";
 import type { SpendGroup } from "@/lib/adapterSpendReconcile";
+import { describeSyncSwitch, type SyncSwitchStatus } from "@/lib/adapterSyncSwitch";
+
+type SwitchData = { canChange: boolean; adapters: Array<{ adapterId: string; enabled: boolean; status: SyncSwitchStatus }> };
 
 type LoadState = "loading" | "ready" | "disabled" | "signed-out" | "unavailable";
 
@@ -19,6 +22,14 @@ export default function AdaptersView() {
   const [activity, setActivity] = useState<{ windowDays: number; groups: ActivityGroup[] } | null>(null);
   // Same for the spend check: null means it could not be read, and the panel says so instead of showing nothing.
   const [spend, setSpend] = useState<{ windowDays: number; groups: SpendGroup[] } | null>(null);
+  // Same for the sync switch: null means it could not be read, and the panel says so instead of hiding the control.
+  const [syncSwitch, setSyncSwitch] = useState<SwitchData | null>(null);
+
+  const loadSwitch = useCallback(async () => {
+    const response = await fetch("/api/client-runtime/adapter-sync-switch", { cache: "no-store" }).catch(() => null);
+    const json = await response?.json().catch(() => null);
+    setSyncSwitch(response?.ok && json?.ok && Array.isArray(json.adapters) ? { canChange: json.canChange === true, adapters: json.adapters as SwitchData["adapters"] } : null);
+  }, []);
 
   const load = useCallback(async () => {
     setState("loading");
@@ -26,6 +37,7 @@ export default function AdaptersView() {
       fetch("/api/client-runtime/adapters", { cache: "no-store" }).catch(() => null),
       fetch("/api/client-runtime/adapter-activity", { cache: "no-store" }).catch(() => null),
       fetch("/api/client-runtime/adapter-spend", { cache: "no-store" }).catch(() => null),
+      loadSwitch(),
     ]);
     const data = await response?.json().catch(() => null);
     const activityData = await activityResponse?.json().catch(() => null);
@@ -38,7 +50,7 @@ export default function AdaptersView() {
     } else if (response?.status === 401) setState("signed-out");
     else if (data?.error === "adapter_host_disabled") setState("disabled");
     else setState("unavailable");
-  }, []);
+  }, [loadSwitch]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -70,6 +82,8 @@ export default function AdaptersView() {
     {state === "unavailable" && <Notice warn title="Adapter status unavailable" body="The adapter list could not be read, so no state or spend is shown. Nothing here is a guess." />}
     {state === "ready" && cards.length === 0 && <Notice title="No adapters registered yet" body="Every adapter starts disabled once it is registered. None has been registered for this workspace." />}
 
+    {state === "ready" && cards.length > 0 && <SyncSwitchPanel data={syncSwitch} onChanged={loadSwitch} />}
+
     {state === "ready" && cards.length > 0 && <ul className="mt-6 grid gap-4 md:grid-cols-2" aria-label="Registered adapters">
       {cards.map((card) => <li key={card.adapterId}><Card card={card} /></li>)}
     </ul>}
@@ -77,6 +91,82 @@ export default function AdaptersView() {
     {state === "ready" && <SpendPanel spend={spend} />}
     {state === "ready" && <ActivityPanel activity={activity} />}
   </div>;
+}
+
+const SWITCH_DURATIONS = [["1h", "1 hour"], ["4h", "4 hours"], ["24h", "24 hours"]] as const;
+const SWITCH_ERRORS: Record<string, string> = {
+  not_found: "Only an owner or admin can change this.",
+  not_allowed: "Only an owner or admin can change this.",
+  always_not_allowed: "Always on is not allowed for this workspace.",
+  adapter_not_active: "Enable the adapter first.",
+  invalid_input: "That choice was not accepted. Nothing was changed.",
+  runtime_rate_limited: "Too many changes just now. Wait a moment.",
+};
+const SWITCH_UNAVAILABLE = "The host could not be reached. Nothing was changed.";
+
+/** The visible control that keeps the sync from keeping a paid adapter service running (ADR-019). */
+function SyncSwitchPanel({ data, onChanged }: { data: SwitchData | null; onChanged: () => Promise<void> }) {
+  const [choice, setChoice] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ adapterId: string; ok: boolean; text: string } | null>(null);
+  if (!data) return <Notice warn title="Sync switch unavailable" body="The sync switch could not be read, so its state is not shown. Nothing here is a guess." />;
+  if (data.adapters.length === 0) return null;
+
+  async function send(adapterId: string, body: Record<string, unknown>, done: string) {
+    setBusy(adapterId);
+    setMessage(null);
+    const response = await fetch("/api/client-runtime/adapter-sync-switch", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ adapterId, ...body }) }).catch(() => null);
+    const json = await response?.json().catch(() => null);
+    setBusy(null);
+    if (response?.ok && json?.ok) {
+      setMessage({ adapterId, ok: true, text: done });
+      await onChanged();
+    } else setMessage({ adapterId, ok: false, text: SWITCH_ERRORS[String(json?.error)] ?? SWITCH_UNAVAILABLE });
+  }
+
+  return <section className="panel mt-6 p-4" aria-label="Sync switch">
+    <h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Sync switch</h2>
+    <p className="mt-1 max-w-2xl text-[11px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>
+      Keeping an adapter in sync keeps its service running, and that is what costs money. Leave it off and turn it on only when you need it. It switches itself off when the time is up. Deletions are always delivered, and Sync now runs one sync without turning anything on.
+    </p>
+    <ul className="mt-3 grid gap-3">
+      {data.adapters.map(({ adapterId, enabled, status }) => {
+        const words = describeSyncSwitch(status);
+        const isOn = status.mode !== "off";
+        const picked = choice[adapterId] ?? "1h";
+        const locked = !data.canChange || !enabled || busy !== null;
+        return <li key={adapterId} className="rounded-md border p-3" style={{ borderColor: "var(--line-soft)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-mono text-[10px]" style={{ color: "var(--cream-mute)" }}>{adapterId}</p>
+              <p className="mt-0.5 text-[13px] font-semibold" style={{ color: isOn ? "#fbbf24" : "#5ab896" }}>{words.headline}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" role="switch" aria-checked={isOn} aria-label={`Sync for ${adapterId}`} disabled={locked}
+                onClick={() => void send(adapterId, { action: "set", mode: isOn ? "off" : picked }, isOn ? "Sync is off." : "Sync is on.")}
+                className="relative h-6 w-11 rounded-full border transition-colors disabled:opacity-50" style={{ borderColor: "var(--line-soft)", background: isOn ? "#fbbf24" : "rgba(255,255,255,0.08)" }}>
+                <span className="absolute top-0.5 rounded-full bg-white transition-all" style={{ left: isOn ? "1.35rem" : "0.15rem", height: "1.1rem", width: "1.1rem" }} />
+              </button>
+              {!isOn && <label className="text-[11px]" style={{ color: "var(--cream-dim)" }}>for{" "}
+                <select value={picked} disabled={locked} onChange={(event) => setChoice({ ...choice, [adapterId]: event.target.value })} className="rounded-md border bg-transparent px-2 py-1 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream)" }}>
+                  {SWITCH_DURATIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  {status.alwaysAllowed && <option value="always">Always</option>}
+                </select>
+              </label>}
+              <button type="button" disabled={locked || status.syncNowPending} onClick={() => void send(adapterId, { action: "sync_now" }, "One sync is queued. It runs within about 5 minutes.")}
+                className="rounded-md border px-3 py-1.5 text-[11px] disabled:opacity-50" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}>
+                {status.syncNowPending ? "Sync queued" : "Sync now"}
+              </button>
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>{words.detail}</p>
+          {!data.canChange && <p className="mt-1 text-[10px]" style={{ color: "var(--cream-mute)" }}>Only an owner or admin can change this.</p>}
+          {!enabled && <p className="mt-1 text-[10px]" style={{ color: "var(--cream-mute)" }}>This adapter is not enabled, so there is nothing to sync.</p>}
+          {message?.adapterId === adapterId && <p className="mt-1 text-[11px]" role="status" style={{ color: message.ok ? "#5ab896" : "#fda4af" }}>{message.text}</p>}
+        </li>;
+      })}
+    </ul>
+  </section>;
 }
 
 function SpendPanel({ spend }: { spend: { windowDays: number; groups: SpendGroup[] } | null }) {
