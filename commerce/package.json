@@ -9,7 +9,7 @@
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "check": "node --check src/proposals.mjs && node --check src/paypal.mjs && node --check src/store.mjs && node --check src/payments.mjs && node --check src/auth.mjs && node --check src/drafting.mjs && node --check src/server.mjs && node --check src/cli.mjs && node --check web/app.mjs && node --check src/recovery.mjs && node --check src/snapshot-files.mjs && node --check src/webhook-receiver.mjs",
+    "check": "node --check src/proposals.mjs && node --check src/paypal.mjs && node --check src/store.mjs && node --check src/payments.mjs && node --check src/auth.mjs && node --check src/drafting.mjs && node --check src/server.mjs && node --check src/cli.mjs && node --check web/app.mjs && node --check src/recovery.mjs && node --check src/snapshot-files.mjs && node --check src/webhook-receiver.mjs && node --check src/host-tokens.mjs && node --check src/draft-journal.mjs && node --check src/draft-runtime.mjs",
     "start": "node src/cli.mjs serve"
   },
   "exports": {
@@ -20,6 +20,9 @@
     "./drafting": "./src/drafting.mjs",
     "./server": "./src/server.mjs",
     "./auth": "./src/auth.mjs",
-    "./webhook-receiver": "./src/webhook-receiver.mjs"
+    "./webhook-receiver": "./src/webhook-receiver.mjs",
+    "./host-tokens": "./src/host-tokens.mjs",
+    "./draft-journal": "./src/draft-journal.mjs",
+    "./draft-runtime": "./src/draft-runtime.mjs"
   }
 }

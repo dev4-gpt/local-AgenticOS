@@ -216,3 +216,16 @@ test("rotation: the list is 1 to 3 Ed25519 public keys, and anything else is a s
   const rsa = generateKeyPairSync("rsa", { modulusLength: 2048 });
   expect(() => verify(token, [a.publicKey, rsa.publicKey])).toThrow(/Ed25519/);
 });
+
+test("request-bound tokens require the exact optional HTTP fingerprint without changing legacy token use", () => {
+  const pair = generateKeyPairSync("ed25519");
+  const input = { privateKey: pair.privateKey, tenant: "tenant-a", adapterId: "creator-os", scope: ["task.run"] as const, now: 1000 };
+  const minted = tokens.mintAdapterToken({ ...input, requestSha256: "a".repeat(64) });
+  const verify = { token: minted.token, publicKey: pair.publicKey, expectedTenant: "tenant-a", expectedAdapterId: "creator-os", requiredOperation: "task.run", now: 1010 };
+  expect(tokens.verifyAdapterToken({ ...verify, expectedRequestSha256: "a".repeat(64) }).ok).toBe(true);
+  expect(tokens.verifyAdapterToken({ ...verify, expectedRequestSha256: "b".repeat(64) })).toEqual({ ok: false, reason: "request_not_allowed" });
+  const legacy = tokens.mintAdapterToken(input);
+  expect(tokens.verifyAdapterToken({ ...verify, token: legacy.token }).ok).toBe(true);
+  expect(tokens.verifyAdapterToken({ ...verify, token: legacy.token, expectedRequestSha256: "a".repeat(64) })).toEqual({ ok: false, reason: "request_not_allowed" });
+  expect(() => tokens.mintAdapterToken({ ...input, requestSha256: "bad" })).toThrow();
+});

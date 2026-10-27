@@ -49,3 +49,7 @@ The central reserve/settle RPCs own idempotency and caps. There is no local fina
 `tests/commerce-host-draft.spec.ts` loads the actual host library plus the existing budget and Notebook metadata/citation helpers. It tests source authority, original clocks/hashes, refusal before dispatch, reservation/settlement keys, no worker token in runtime payload, duplicate/ambiguous reservation handling, pre-call release, unknown subscription accounting, provider uncertainty, citation/cost failures, in-flight source withdrawal and mutation of caller objects during awaits. Adjacent budget and Notebook provenance regressions run with it through `npm run test:commerce-host`; the new spec also belongs to `test:focused`.
 
 The local run uses already installed Veloce test dependencies; no new dependencies/models are installed. This establishes the host seam against local boundary fixtures. Activation remains disabled/unwired and the full C7 integration is not complete.
+
+## Local transport follow-up
+
+ADR-021 adds a concrete request-bound host HTTP transport and optional draft-only runtime with a dedicated replay/result journal. The verified host-job caller, canonical review resolver, central outcome reconciliation and activation remain open. Local transport tests use fixture billing/model callbacks; they do not close the hosted/runtime/client-data gates above.

@@ -55,3 +55,5 @@ New mapped webhook inbox rows carry tenant attribution. Older inbox tables are u
 
 
 Snapshot schema 2 adds the immutable proposal parent-revision column. Restore also accepts schema 1 snapshots from before that column existed, importing those proposals as roots. Version 2 restore validates parent existence, acyclic ancestry, the original author's identity, the parent rejection decision, and unchanged evidence/terms/policy/creation/expiry across corrections. The database permits only one successor per parent revision. Superseded revisions retain their original content clock and are purged on the same schedule; correction cannot renew it.
+
+The optional draft runtime uses a separate database and inventory described in [DRAFT-RUNTIME.md](DRAFT-RUNTIME.md). Its result expiry/purge and replay skeleton policy do not share the application backup/restore path. Its h1 deletion guarantee is `none`; no shared source-withdrawal receipt or client deployment guarantee is implied.

@@ -29,6 +29,8 @@ export interface AdapterTokenClaims {
   scope: AdapterOperation[];
   /** Memory item ids this token may read through context.read. Absent means the token names no items. */
   handles?: string[];
+  /** Optional exact HTTP method/path/body fingerprint for request-bound runtimes. */
+  requestSha256?: string;
   jti: string;
   iat: number;
   exp: number;
@@ -43,6 +45,7 @@ export type TokenFailure =
   | "wrong_audience"
   | "scope_not_allowed"
   | "handle_not_allowed"
+  | "request_not_allowed"
   | "expired"
   | "not_yet_valid"
   | "ttl_too_long";
@@ -72,6 +75,7 @@ export interface MintInput {
   /** Up to MAX_HANDLES memory item ids (UUIDs) the adapter may read. Narrower than the scope alone. */
   handles?: readonly string[];
   ttlSeconds?: number;
+  requestSha256?: string;
   now?: number; // seconds since epoch; tests only
 }
 
@@ -84,8 +88,9 @@ export function mintAdapterToken(input: MintInput): { token: string; claims: Ada
   if (!scope.length || scope.some((op) => !ADAPTER_OPERATIONS.includes(op))) throw new Error("invalid token scope");
   const handles = input.handles === undefined ? undefined : [...new Set(input.handles)];
   if (handles && (!handles.length || handles.length > MAX_HANDLES || handles.some((id) => !UUID.test(id)))) throw new Error("invalid token handles");
+  if (input.requestSha256 !== undefined && (typeof input.requestSha256 !== "string" || !/^[a-f0-9]{64}$/.test(input.requestSha256))) throw new Error("invalid request fingerprint");
   const iat = input.now ?? Math.floor(Date.now() / 1000);
-  const claims: AdapterTokenClaims = { v: TOKEN_VERSION, iss: TOKEN_ISSUER, tenant: input.tenant, aud: input.adapterId, scope, ...(handles ? { handles } : {}), jti: randomUUID(), iat, exp: iat + ttl };
+  const claims: AdapterTokenClaims = { v: TOKEN_VERSION, iss: TOKEN_ISSUER, tenant: input.tenant, aud: input.adapterId, scope, ...(handles ? { handles } : {}), ...(input.requestSha256 ? { requestSha256: input.requestSha256 } : {}), jti: randomUUID(), iat, exp: iat + ttl };
   const body = b64(Buffer.from(JSON.stringify(claims), "utf8"));
   const signature = sign(null, Buffer.from(body, "utf8"), ed25519PrivateKey(input.privateKey));
   return { token: `${body}.${b64(signature)}`, claims };
@@ -100,6 +105,7 @@ export interface VerifyInput {
   requiredOperation: AdapterOperation;
   /** When set, every id must be named in the token's handles, or the token is refused. */
   requestedItemIds?: readonly string[];
+  expectedRequestSha256?: string;
   now?: number;
 }
 
@@ -107,13 +113,14 @@ function parseClaims(body: string): AdapterTokenClaims | null {
   try {
     const value = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as Record<string, unknown>;
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-    const { v, iss, tenant, aud, scope, handles, jti, iat, exp } = value;
+    const { v, iss, tenant, aud, scope, handles, requestSha256, jti, iat, exp } = value;
     if (typeof v !== "string" || typeof iss !== "string" || typeof tenant !== "string" || typeof aud !== "string") return null;
     if (!Array.isArray(scope) || !scope.every((op) => typeof op === "string")) return null;
     if (handles !== undefined && (!Array.isArray(handles) || !handles.length || handles.length > MAX_HANDLES || !handles.every((id) => typeof id === "string" && UUID.test(id)))) return null;
+    if (requestSha256 !== undefined && (typeof requestSha256 !== "string" || !/^[a-f0-9]{64}$/.test(requestSha256))) return null;
     if (typeof jti !== "string" || !JTI.test(jti)) return null;
     if (!Number.isInteger(iat) || !Number.isInteger(exp)) return null;
-    return { v, iss, tenant, aud, scope, ...(handles !== undefined ? { handles } : {}), jti, iat, exp } as AdapterTokenClaims;
+    return { v, iss, tenant, aud, scope, ...(handles !== undefined ? { handles } : {}), ...(requestSha256 !== undefined ? { requestSha256 } : {}), jti, iat, exp } as AdapterTokenClaims;
   } catch {
     return null;
   }
@@ -147,6 +154,7 @@ export function verifyAdapterToken(input: VerifyInput): VerifyResult {
   if (claims.tenant !== input.expectedTenant) return { ok: false, reason: "wrong_tenant" };
   if (claims.aud !== input.expectedAdapterId) return { ok: false, reason: "wrong_audience" };
   if (!claims.scope.includes(input.requiredOperation)) return { ok: false, reason: "scope_not_allowed" };
+  if (input.expectedRequestSha256 !== undefined && (!/^[a-f0-9]{64}$/.test(input.expectedRequestSha256) || claims.requestSha256 !== input.expectedRequestSha256)) return { ok: false, reason: "request_not_allowed" };
   if (input.requestedItemIds !== undefined) {
     const named = new Set(claims.handles ?? []);
     if (!input.requestedItemIds.length || !input.requestedItemIds.every((id) => named.has(id))) return { ok: false, reason: "handle_not_allowed" };
