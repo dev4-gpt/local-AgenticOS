@@ -133,7 +133,21 @@ export function createPayPalClient({ clientId, clientSecret, webhookId, fetchImp
     async captureOrder(input) {
       expectedOrder(input); const orderId = identifier(input.orderId); operationId(input.operationId);
       const raw = await api(`/v2/checkout/orders/${orderId}/capture`,'POST',{},input.operationId);
-      try { return inspectOrder(raw,input); } catch { bad('provider_reconciliation_required'); }
+      try {
+        if (raw.id !== orderId) bad('provider_order_mismatch');
+        // Capture acknowledgements can omit intent, payee, custom_id and order amount.
+        // Recover those only from a fresh pinned order GET, never caller expectations.
+        const details = await api(`/v2/checkout/orders/${orderId}`,'GET');
+        const observed = inspectOrder(details,input);
+        let units = details.purchase_units;
+        if (raw.purchase_units !== undefined) {
+          if (!Array.isArray(raw.purchase_units) || raw.purchase_units.length !== 1 || !object(raw.purchase_units[0])) bad('provider_order_mismatch');
+          units = [{...details.purchase_units[0],...raw.purchase_units[0]}];
+        }
+        const acknowledged = inspectOrder({...details,...raw,purchase_units:units},input);
+        if (acknowledged.status !== observed.status || acknowledged.capture?.id !== observed.capture?.id || acknowledged.capture?.status !== observed.capture?.status) bad('provider_capture_mismatch');
+        return observed;
+      } catch { bad('provider_reconciliation_required'); }
     },
     async verifyWebhook({ rawBody, headers }) {
       identifier(webhookId);

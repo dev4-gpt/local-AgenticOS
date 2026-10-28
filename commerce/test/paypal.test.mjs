@@ -37,11 +37,45 @@ test('create sends exact cents and merchant, sandbox endpoint and caller-owned s
   assert.equal(calls[1].options.redirect,'error'); assert.ok(calls[1].options.signal);
 });
 test('capture uses its own stable operation and returns provider-confirmed capture',async()=>{
-  const {client,calls}=setup([json(order('COMPLETED'))]);
+  const {client,calls}=setup([json(order('COMPLETED')),json(order('COMPLETED'))]);
   const result=await client.captureOrder({...expected,operationId:'capture-operation-001'});
   assert.equal(calls[1].url,'https://api-m.sandbox.paypal.com/v2/checkout/orders/ORDER123/capture');
   assert.equal(calls[1].options.headers['PayPal-Request-Id'],'capture-operation-001');
   assert.deepEqual(result.capture,{id:'CAPTURE123',status:'COMPLETED'});
+  assert.equal(calls[3].options.method,'GET');assert.equal(calls.length,4);
+});
+test('documented sparse capture acknowledgement is bound to a fresh complete order read',async()=>{
+  const details=order('COMPLETED');
+  const sparse={id:details.id,status:details.status,purchase_units:[{reference_id:'intent-test',payments:details.purchase_units[0].payments}]};
+  const {client,calls}=setup([json(sparse),json(details)]);
+  assert.deepEqual((await client.captureOrder({...expected,operationId:'capture-operation-001'})).capture,{id:'CAPTURE123',status:'COMPLETED'});
+  assert.deepEqual(calls.filter(c=>!c.url.endsWith('/token')).map(c=>c.options.method),['POST','GET']);
+});
+test('minimal capture acknowledgement also requires complete verified order details',async()=>{
+  const {client}=setup([json({id:'ORDER123',status:'COMPLETED'}),json(order('COMPLETED'))]);
+  assert.equal((await client.captureOrder({...expected,operationId:'capture-operation-001'})).capture.id,'CAPTURE123');
+});
+for(const [label,change] of [
+  ['merchant',r=>r.purchase_units[0].payee.merchant_id='other-merchant'],
+  ['amount',r=>r.purchase_units[0].amount.value='1.00'],
+  ['custom id',r=>r.purchase_units[0].custom_id='other-intent'],
+])test(`sparse capture does not excuse ${label} mismatch in readback`,async()=>{
+  const details=order('COMPLETED');change(details);
+  const {client}=setup([json({id:'ORDER123',status:'COMPLETED'}),json(details)]);
+  await rejects(()=>client.captureOrder({...expected,operationId:'capture-operation-001'}),'provider_reconciliation_required');
+});
+test('conflicting capture acknowledgement and readback remain uncertain',async()=>{
+  for(const change of [r=>r.id='OTHERORDER',r=>r.status='APPROVED',r=>r.purchase_units[0].payments.captures[0].id='OTHER-CAPTURE',r=>r.purchase_units[0].amount.value='1.00']){
+    const ack=order('COMPLETED');change(ack);
+    const {client,calls}=setup([json(ack),json(order('COMPLETED'))]);
+    await rejects(()=>client.captureOrder({...expected,operationId:'capture-operation-001'}),'provider_reconciliation_required');
+    assert.equal(calls.filter(c=>c.url.endsWith('/capture')).length,1);
+  }
+});
+test('readback outage after successful capture does not retry the mutation or expose provider errors',async()=>{
+  const {client,calls}=setup([json({id:'ORDER123',status:'COMPLETED'}),new Error('private provider response')]);
+  await rejects(()=>client.captureOrder({...expected,operationId:'capture-operation-001'}),'provider_reconciliation_required');
+  assert.equal(calls.filter(c=>c.url.endsWith('/capture')).length,1);
 });
 test('pending capture is not normalized as paid',()=>{
   const raw=order('COMPLETED');raw.purchase_units[0].payments.captures[0].status='PENDING';

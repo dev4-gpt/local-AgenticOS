@@ -49,3 +49,7 @@ Use only synthetic or public service material and actual sandbox accounts. Keep 
 This run is still pending in the current project. The setup checker cannot replace steps 1–8. A future public demo must identify what was actually performed and keep any fixture-only segment labeled.
 
 Sources checked October 26, 2026: [PayPal Orders v2](https://developer.paypal.com/api/orders/v2), [webhook management and verification](https://developer.paypal.com/api/webhooks/v1), and [webhook overview](https://developer.paypal.com/api/rest/webhooks/rest/).
+
+## Capture response compatibility
+
+PayPal’s [capture response example](https://developer.paypal.com/api/orders/v2/orders-capture) can omit purchase-unit amount, payee and custom ID. After a successful capture acknowledgement, the adapter now reads the stored order from the pinned sandbox API and applies the complete identity/merchant/amount/currency checks to that response. Fields present in the acknowledgement must also agree with the fresh readback; absent fields are recovered only from PayPal’s order details, never filled from local expectations. Readback failure or conflicting observations requires reconciliation, with no automatic repeat capture. This is covered by fixtures, including the authenticated HTTP payment/kickoff journey; it does not prove real sandbox interoperability. Reference checked October 27, 2026.

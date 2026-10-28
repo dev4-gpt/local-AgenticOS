@@ -28,7 +28,7 @@ test('authenticated HTTP journey uses real domain/storage/model/provider adapter
     if(url.endsWith('/v2/checkout/orders')){
       const body=JSON.parse(options.body);rawOrder={...body,id:'ORDER123',status:'CREATED',links:[{rel:'approve',href:'https://www.sandbox.paypal.com/checkoutnow?token=ORDER123'}]};return Response.json(rawOrder);
     }
-    if(url.endsWith('/ORDER123/capture')){captures++;rawOrder.status='COMPLETED';rawOrder.purchase_units[0].payments={captures:[{id:'CAPTURE123',status:'COMPLETED',final_capture:true,amount:{currency_code:'USD',value:'100.00'}}]};return Response.json(rawOrder);}
+    if(url.endsWith('/ORDER123/capture')){captures++;rawOrder.status='COMPLETED';rawOrder.purchase_units[0].payments={captures:[{id:'CAPTURE123',status:'COMPLETED',final_capture:true,amount:{currency_code:'USD',value:'100.00'}}]};return Response.json({id:rawOrder.id,status:rawOrder.status,purchase_units:[{reference_id:rawOrder.purchase_units[0].reference_id,payments:rawOrder.purchase_units[0].payments}]});}
     if(url.endsWith('/ORDER123')&&options.method==='GET')return Response.json(rawOrder);
     throw new Error('Unexpected fixture request');
   }});
