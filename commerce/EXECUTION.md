@@ -4,6 +4,23 @@ Goal: a competitive PayPal AI Hackathon entry with a functioning knowledge → p
 
 Current baseline: `707d5b3dc38b40833c7e1f2cb1b9664b1025a90e`. Worktree: `work/veloce-paypal-research`, branch `codex/veloce-commerce`. The active Veloce source checkout is untouched. The broader design and research are in this task's `outputs/PLAN.md` and `outputs/RESEARCH.md`.
 
+## Current status — October 27, 2026
+
+This section supersedes the initial milestone snapshots retained below. Current implementation checkpoint: `ad940f8`; 151 standalone tests passed both in the worktree and from the extracted source archive. Host drafting/token/budget integration previously passed 41 checks. Test fixtures do not prove PayPal interoperability.
+
+| Milestone | Current evidence | Remaining requirement |
+|---|---|---|
+| C0/C1 | Isolated worktree; immutable source/proposal/terms and review contracts | Preserve these invariants in final provider run |
+| C2/C5/C6 | Local authenticated accounts, durable operation/inbox/outbox, one kickoff, responsive UI and recovery/expiry paths implemented and tested | Real sandbox acceptance and final demo rehearsal |
+| C3 | Sandbox-only provider adapter, strict order readback, signature verification and final-capture admission implemented | Actual owner-configured order, buyer approval, capture and verified callback |
+| C4 | Three real existing-model HTTP calls recorded; synthetic service run took 33.844 seconds | Owner acceptance/correction of final demonstration scope; no automatic semantic approval |
+| C7 | Source/budget admission seam, request-bound transport and durable runtime journal implemented locally | Canonical Phase 3 review resolver, production caller, identity/lifecycle/cost reconciliation and owner activation gates |
+| C8 | Runbook, private interactive launcher and approved temporary webhook tunnel prepared | Owner configuration and complete actual sandbox evidence; local receiver not running at last inspection |
+| C9 | Source-only MIT package verified after extraction, no runtime dependency install | Public repository/rights confirmation and independent judge run |
+| C10 | Factual submission draft, synthetic scenario and under-three-minute recording plan | Actual recorded video, owner-reviewed final story, public links and submission |
+
+No public repository, deployment, actual sandbox capture, verified real callback, public video or Devpost submission is claimed. No client-data rollout or complete Phase 3 integration is claimed. Later checkpoints below are dated implementation history, not additional completion claims.
+
 ## Definition of done
 
 - AI meaningfully extracts requirements, drafts source-linked scope and flags uncertainty using an actual configured model. No fixture output presented as live AI.
@@ -29,7 +46,7 @@ The official criteria are equally weighted: technological implementation, design
 
 Prioritize the end-to-end journey over sponsor count. Sponsor APIs are optional under the rules; adopt only if the core flow has a measured gap they solve.
 
-## Current state and gap
+## Pre-implementation baseline and gap
 
 Veloce already has Notebook proposal prompts, source hashes, identity/approval primitives, budget functions and adapter lifecycle infrastructure. It has no targeted PayPal implementation, no financial action kind, no whole-flow source invalidation contract and no root open-source license. Phase 3 knowledge work is another active stream; no edits or completion claims for that stream are made here.
 
@@ -85,7 +102,7 @@ Domain principal objects must come from a server authentication boundary. The pu
 - Public code rights unresolved: package newly authored standalone code and eliminate unnecessary private/AGPL runtime dependencies. License decisions must reflect actual ownership.
 - Time pressure: cut optional sponsor tooling, advanced media, vector search and extra payment types; preserve real AI, sandbox payment, authority and reconciliation.
 
-## Trajectory and task state
+## Initial trajectory and task state (historical)
 
 Ruflo task/workflow/trajectory/memory tools are not exposed. This file records local execution; no Ruflo database update is claimed.
 
