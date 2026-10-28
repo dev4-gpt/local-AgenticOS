@@ -127,3 +127,7 @@ Correction is available only after rejection, while sources and the original win
 The enclosing Veloce worktree also contains an optional, currently unwired host drafting-admission library using its existing Notebook provenance and central budget functions. That host code is not required by or shipped inside this standalone package. Host identity/review resolution, transport, durable reconciliation and activation remain separate integration work.
 
 An optional public-key-authenticated draft runtime is included for the host transport boundary. It is not started by the app or CLI. See [DRAFT-RUNTIME.md](DRAFT-RUNTIME.md) for request-bound h1 tokens, dedicated durable journal, retention limits and the remaining activation gates.
+
+## Fictional service demo
+
+Use [the reproducible scenario](DEMO-SCENARIO.md) and [synthetic studio brief](DEMO-BRIEF.md) for the service-business journey. The opt-in real-model HTTP harness accepts `--fictional-service`; it keeps PayPal disabled and leaves semantic/commercial review pending. Actual sandbox acceptance remains separate.
