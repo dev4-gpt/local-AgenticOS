@@ -279,7 +279,31 @@ export function applyIngest({ plan, quarantineDir }) {
     }
     throw Object.assign(new Error("ingest_failed"), { cause: error, rolledBack: written.length });
   }
+  if (quarantined > 0) recordQuarantine(quarantineDir, plan.items);
   return { written: written.length, quarantined };
+}
+
+/** quarantine/manifest.json says what each quarantined file was and why: rule names and counts only, never text. */
+function recordQuarantine(quarantineDir, items) {
+  const manifestPath = path.join(quarantineDir, "manifest.json");
+  let manifest = { schema: 1, entries: {} };
+  try {
+    const parsed = JSON.parse(readFileSync(manifestPath, "utf8"));
+    if (parsed?.schema === 1 && parsed.entries && typeof parsed.entries === "object") manifest = parsed;
+  } catch {
+    // none yet, or unreadable: start a fresh one rather than lose the new entries
+  }
+  const at = new Date().toISOString();
+  for (const item of items) {
+    if (item.outcome !== "quarantined") continue;
+    const id = item.quarantineFile.replace(/\.txt$/, "");
+    // Already waiting for review: keep the first record. Released or discarded earlier: the file is back, so review it again.
+    if (manifest.entries[id]?.status === "quarantined") continue;
+    manifest.entries[id] = { rel: item.rel, verdict: item.verdict, findings: item.findings, quarantinedAt: at, status: "quarantined" };
+  }
+  const tmp = `${manifestPath}.tmp-${process.pid}`;
+  writeFileSync(tmp, JSON.stringify(manifest, null, 2), { mode: 0o600 });
+  renameSync(tmp, manifestPath);
 }
 
 export function reportOf(plan) {

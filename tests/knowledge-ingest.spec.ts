@@ -97,7 +97,7 @@ test("injection samples are quarantined, never written to the vault, and the rep
   expect(outcomes(p)).toEqual({ "evil.md": "quarantined", "ok.md": "would-write" });
   applyIngest({ plan: p, quarantineDir: quarantine });
   expect(fs.readdirSync(path.join(vault, "Ingest"))).toEqual([".ku-writer.json", "ok.md"]);
-  const files = fs.readdirSync(quarantine);
+  const files = fs.readdirSync(quarantine).filter((name) => name.endsWith(".txt"));
   expect(files).toHaveLength(1);
   expect(fs.readFileSync(path.join(quarantine, files[0]), "utf8")).toBe(INJECTION);
   const report = JSON.stringify(reportOf(p));
@@ -222,7 +222,7 @@ test("the command line refuses unsafe folders, plans first, and the ingest-delet
   const real = run("ingest.mjs", [...base, "--apply"]);
   expect(real.status).toBe(0);
   expect(fs.readdirSync(path.join(vault, "Ingest"))).toEqual([".ku-writer.json", "a.md"]);
-  expect(fs.readdirSync(path.join(out, "quarantine"))).toHaveLength(1);
+  expect(fs.readdirSync(path.join(out, "quarantine")).filter((name) => name.endsWith(".txt"))).toHaveLength(1);
   const report = JSON.parse(fs.readFileSync(path.join(out, "ingest-report.json"), "utf8"));
   expect(report.summary).toMatchObject({ written: 1, quarantined: 1 });
 
