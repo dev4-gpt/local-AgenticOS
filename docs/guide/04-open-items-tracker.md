@@ -4,7 +4,7 @@ Master plan phases (from `reports/Veloce master plan and error register.md`). Ti
 
 Legend: **Owner** = Me (the assistant) / You / Both / Lawyer. **Sev** = CRITICAL / WARNING / SUGGESTION. IDs refer to the error register.
 
-Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/approval-gateway`.
+Last updated: 2026-10-27 after Phase 3 slice 1 (shared page check, source index and cascade) on `feat/knowledge-adapter`. Earlier rows were last updated 2026-10-26 on `feat/approval-gateway`.
 
 ---
 
@@ -15,7 +15,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 | 0 | Hygiene | Mine done; yours open |
 | 1 | Host foundation | Done and proven on staging (2026-10-21); 9b is deployed on `agentos-mvp` and was run by the scheduler, with the next unattended run on 2026-10-22 03:17 UTC as the last check |
 | 2 | Creator OS adapter | Slice 1, 2a (events feed, durable token ids) and 2b (host side: ingest, puller, contract test) done and pushed; 2c (`memory.tombstone` with deletion receipts, ADR-014) done, proven on staging 2026-10-22 and pushed; 2d (the scheduled sync job, ADR-015) built, pushed, deployed as a job to the staging project and proven end to end in the cloud 2026-10-23; 3a (activity counts for received proposals and confirmed erasures), 3b (budget reconcile, ADR-016) and 3c (draft text on demand, ADR-017) built and pushed. **Done 2026-10-26 (pushed):** the real Content OS service runs on Cloud Run with a free model (ADR-018: first real task, the evidence-cap bug found and fixed, `creator-os:v2`); a real withdrawal came back as a deletion receipt from it; the sync job points at it, with a scheduler (`*/5`, fixed after a mangled address) and a failure alert whose email arrived; and the sync switch (ADR-019: off by default, 1/4/24 h, Sync now, "always" only if the operator allows it, owed deletions never paused) is applied, deployed and checked in a browser. **Still open in Phase 2:** the host starting adapter tasks with a reservation, models through the host (needs its own ADR and your decision), and P2-2 (your starter pillar) |
-| 3 | Knowledge adapter | Not started (dedupe tools exist) |
+| 3 | Knowledge adapter | Started 2026-10-27 on `feat/knowledge-adapter` (own worktree). Slice 1 built locally, not pushed: shared page check and the source index with its deletion cascade (ADR-020), proven on synthetic notes only. Open: ingest, single writer and conflict copies, quarantine, round trip, and a run on your real vault |
 | 4 | Forge adapter | Not started |
 | 5 | SymVibe + REA | Not started |
 | 6 | Flagged extras | Not started |
@@ -169,9 +169,9 @@ Work happens in the separate ContractorOS repo (`dev4-gpt/ContractorOS`, AGPL, n
 
 ## Phase 3: Knowledge adapter
 
-- [ ] Shared page schema enforced; legacy notes (1,357 of 1,441 have no `type`) stay private (X-13)
+- [~] Shared page schema enforced; legacy notes (1,357 of 1,441 have no `type`) stay private (X-13). **Slice 1, built locally 2026-10-27 (ADR-020):** `scripts/knowledge-unify/schema-check.mjs` reports each note as `shared-ok`, `legacy-private` (no `type`, never promotable) or `invalid` with the broken rules named (including a body that no longer matches its `sha256`). **Still open:** nothing in the host calls `isPromotable` yet, so "enforced" is not true until the promote step uses it; it has not been run on your real vault (the 1,357 / 1,441 figure is from the earlier scan)
 - [ ] Ingest from your own files and the Instagram export; lint
-- [ ] Reverse index from each page's `sources` field; dry-run then real source deletion cascade (X-16)
+- [~] Reverse index from each page's `sources` field; dry-run then real source deletion cascade (X-16). **Slice 1, built locally 2026-10-27 (ADR-020):** `scripts/knowledge-unify/source-index.mjs` builds the index and plans the cascade (all-sources-gone notes deleted to a fixed point, notes with another source listed for review, blocked while any note is unreadable, hash re-check before each delete, backup or explicit no-backup). 22 tests in `tests/knowledge-schema-index.spec.ts` (in `test:focused`); 12 of 13 deliberate breakages each fail a test (the 13th is an equivalent). **Still open:** a dry run then a real run on your real vault; client-tenant erasure tied to a deletion receipt
 - [ ] Single-writer rule per folder; conflict-copy check for iCloud (X-12)
 - [ ] Injection samples land in quarantine (S-3)
 - [ ] Review the remaining duplicate groups (8 exact, 56 near-low-confidence) when you choose
