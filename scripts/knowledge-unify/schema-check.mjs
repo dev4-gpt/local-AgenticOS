@@ -20,7 +20,7 @@ export function bodyHash(body) {
   return sha256Hex(canonicalBody(body));
 }
 
-function validDate(value) {
+export function validDate(value) {
   if (typeof value !== "string") return null;
   const match = ISO_DATE.exec(value.trim());
   if (!match) return null;
