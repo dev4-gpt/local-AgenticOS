@@ -29,7 +29,7 @@ function pay(f,proposal){
   const approval=f.store.reviewProposal('reviewer',proposal.tenant,proposal.id,'v1',{expectedDigest:proposal.digest,evidenceReviewed:true,termsReviewed:true,expiresAt:iso(start+DAY)});
   const intent=f.store.beginIntent('writer',proposal.tenant,approval.id),claim=f.store.claimOperation('writer',proposal.tenant,intent.id,'create');
   f.store.completeOperation(claim.operationId,claim.claim,{environment:'sandbox',intentId:intent.id,merchantId:'merchant-test',depositCents:10000,orderId:'order-test',status:'CREATED',approvalUrl:'https://www.sandbox.paypal.com/checkoutnow?token=order-test'});
-  const event={id:'event-test',event_type:'PAYMENT.CAPTURE.COMPLETED',resource:{id:'capture-test',status:'COMPLETED',payee:{merchant_id:'merchant-test'},amount:{currency_code:'USD',value:'100.00'},supplementary_data:{related_ids:{order_id:'order-test'}}}};
+  const event={id:'event-test',event_type:'PAYMENT.CAPTURE.COMPLETED',resource:{id:'capture-test',status:'COMPLETED',final_capture:true,payee:{merchant_id:'merchant-test'},amount:{currency_code:'USD',value:'100.00'},supplementary_data:{related_ids:{order_id:'order-test'}}}};
   const raw=JSON.stringify(event),verified={environment:'sandbox',eventId:event.id,eventType:event.event_type,payloadHash:sha256(raw)};
   f.store.acceptVerifiedWebhook(raw,verified);const project=f.store.deliverKickoff('writer',proposal.tenant,intent.id);
   return {intent,project,raw,verified};

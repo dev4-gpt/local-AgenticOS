@@ -19,7 +19,7 @@ function setup(path=':memory:') {
   const approval=store.reviewProposal('reviewer','owner-dev',proposal.id,'v1',{expectedDigest:proposal.digest,evidenceReviewed:true,termsReviewed:true,expiresAt:'2026-10-27T12:00:00.000Z'});
   const intent=store.beginIntent('writer','owner-dev',approval.id);
   const observation=(status='CREATED',capture=null)=>({environment:'sandbox',intentId:intent.id,merchantId:'merchant-test',depositCents:10000,orderId:'ORDER123',status,capture,approvalUrl:'https://www.sandbox.paypal.com/checkoutnow?token=ORDER123'});
-  const event=(id='WH-1',type='PAYMENT.CAPTURE.COMPLETED')=>({id,event_type:type,resource:{id:'CAPTURE123',status:type==='PAYMENT.CAPTURE.COMPLETED'?'COMPLETED':'PENDING',payee:{merchant_id:'merchant-test'},amount:{currency_code:'USD',value:'100.00'},supplementary_data:{related_ids:{order_id:'ORDER123'}}}});
+  const event=(id='WH-1',type='PAYMENT.CAPTURE.COMPLETED')=>({id,event_type:type,resource:{id:'CAPTURE123',final_capture:true,status:type==='PAYMENT.CAPTURE.COMPLETED'?'COMPLETED':'PENDING',payee:{merchant_id:'merchant-test'},amount:{currency_code:'USD',value:'100.00'},supplementary_data:{related_ids:{order_id:'ORDER123'}}}});
   const verified=raw=>({environment:'sandbox',eventId:JSON.parse(raw).id,eventType:JSON.parse(raw).event_type,payloadHash:sha256(raw)});
   const webhook=e=>{const raw=JSON.stringify(e);return store.acceptVerifiedWebhook(raw,verified(raw));};
   const created=()=>{const claim=store.claimOperation('writer','owner-dev',intent.id,'create');return store.completeOperation(claim.operationId,claim.claim,observation());};
@@ -95,6 +95,21 @@ test('event identity collision, unverified body and wrong merchant/currency/amou
       const e=f.event();change(e);rejects(()=>f.webhook(e),'payment_mismatch');
     }
     assert.equal(f.store.readIntent('writer','owner-dev',f.intent.id).captureId,undefined);
+  } finally {f.store.close();}
+});
+test('only an explicit final capture can pay through a verified webhook',()=>{
+  const f=setup();try {
+    f.created();
+    for(const value of [false,undefined,null,'true',1]){
+      const event=f.event();if(value===undefined)delete event.resource.final_capture;else event.resource.final_capture=value;
+      rejects(()=>f.webhook(event),'payment_mismatch');
+      assert.equal(f.store.readIntent('writer','owner-dev',f.intent.id).captureId,undefined);
+      rejects(()=>f.store.deliverKickoff('writer','owner-dev',f.intent.id),'kickoff_not_allowed');
+    }
+    // Refused bodies were not committed to the inbox; a valid redelivery is admitted.
+    assert.deepEqual(f.webhook(f.event()),{duplicate:false,disposition:'processed'});
+    assert.equal(f.store.readIntent('writer','owner-dev',f.intent.id).state,'paid');
+    assert.ok(f.store.deliverKickoff('writer','owner-dev',f.intent.id).id);
   } finally {f.store.close();}
 });
 test('reversal opens review; replay of earlier completed state cannot remove hold',()=>{

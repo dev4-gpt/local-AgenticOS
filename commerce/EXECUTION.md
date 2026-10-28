@@ -219,3 +219,7 @@ The generated scope preserved the one-page/email-link/local-bundle/one-revision 
 ## Capture readback checkpoint — October 27, 2026
 
 Official Orders v2 documentation exposed an incompatibility in the original fixture shape: a capture acknowledgement can lack full purchase-unit fields required by the order parser. Capture now performs a pinned order-details GET, strictly validates it, and compares any acknowledgement fields/capture identity with the fresh observation. Conflicting merchant, cents, custom ID, capture identity/status or provider-read failures remain uncertain. Exactly one mutation is issued; the existing durable operation/reconciliation path retains its request identity. The complete HTTP workflow fixture now returns a sparse capture response. All 150 standalone tests pass, including seven new response/readback cases. Actual provider acceptance, credentials and webhook delivery remain pending.
+
+## Final-capture webhook checkpoint — October 27, 2026
+
+Aligned verified completed-event admission with order-readback authority: `resource.final_capture` must be boolean true before the event can pay an intent. Updated HTTP, lifecycle and recovery event fixtures to match the documented complete event shape. A new regression checks false/missing/null/string/numeric indicators, no paid state or kickoff, rollback of event admission and later valid delivery. All 151 standalone tests pass. No actual provider request or secret access occurred; real sandbox acceptance remains pending.

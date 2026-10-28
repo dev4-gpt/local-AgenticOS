@@ -82,7 +82,7 @@ test('authenticated HTTP journey uses real domain/storage/model/provider adapter
       rawOrder.status='APPROVED';
       assert.equal((await request('/api/payments/capture',{id:intent.id},'author')).data.intent.state,'paid');assert.equal(captures,1);
       const a=(await request('/api/kickoff',{id:intent.id},'author')).data.project,b=(await request('/api/kickoff',{id:intent.id},'author')).data.project;assert.equal(a.id,b.id);
-      const event={id:'WH-HTTP',event_type:'PAYMENT.CAPTURE.COMPLETED',resource:{id:'CAPTURE123',status:'COMPLETED',payee:{merchant_id:'MERCHANT123'},amount:{currency_code:'USD',value:'100.00'},supplementary_data:{related_ids:{order_id:'ORDER123'}}}};
+      const event={id:'WH-HTTP',event_type:'PAYMENT.CAPTURE.COMPLETED',resource:{id:'CAPTURE123',status:'COMPLETED',final_capture:true,payee:{merchant_id:'MERCHANT123'},amount:{currency_code:'USD',value:'100.00'},supplementary_data:{related_ids:{order_id:'ORDER123'}}}};
       const headers={'paypal-auth-algo':'SHA256withRSA','paypal-cert-url':'https://api.paypal.com/v1/notifications/certs/CERT-TEST','paypal-transmission-id':'TX123','paypal-transmission-sig':'valid','paypal-transmission-time':'2026-10-26T12:00:00Z'};
       assert.equal((await request('/api/paypal/webhook',event,undefined,{...headers,'paypal-transmission-sig':'invalid'})).data.error,'invalid_webhook_signature');
       assert.equal((await request('/api/paypal/webhook',event,undefined,headers)).data.duplicate,false);

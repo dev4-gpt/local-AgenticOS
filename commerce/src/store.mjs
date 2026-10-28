@@ -481,7 +481,7 @@ export class CommerceStore {
       if (mapping && ['PAYMENT.CAPTURE.COMPLETED','PAYMENT.CAPTURE.PENDING','PAYMENT.CAPTURE.DENIED','PAYMENT.CAPTURE.REVERSED'].includes(event.event_type)) {
         const intent=this.#intent(mapping.tenant,mapping.intent_id);
         const status={'PAYMENT.CAPTURE.COMPLETED':'COMPLETED','PAYMENT.CAPTURE.PENDING':'PENDING','PAYMENT.CAPTURE.DENIED':'DECLINED','PAYMENT.CAPTURE.REVERSED':'REFUNDED'}[event.event_type];
-        if (!r || r.payee?.merchant_id!==intent.merchantId || r.amount?.currency_code!=='USD' || r.amount?.value!==usdValue(intent.depositCents) || (status==='COMPLETED' && r.status!=='COMPLETED')) fail('payment_mismatch');
+        if (!r || r.payee?.merchant_id!==intent.merchantId || r.amount?.currency_code!=='USD' || r.amount?.value!==usdValue(intent.depositCents) || (status==='COMPLETED' && (r.status!=='COMPLETED' || r.final_capture!==true))) fail('payment_mismatch');
         this.#applyObservation(intent,{environment:'sandbox',intentId:intent.id,merchantId:intent.merchantId,depositCents:intent.depositCents,orderId,status:status==='COMPLETED'?'COMPLETED':'APPROVED',capture:{id:identifier(r.id),status},approvalUrl:null});
         disposition='processed';
       }

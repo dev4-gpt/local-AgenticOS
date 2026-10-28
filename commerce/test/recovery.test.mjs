@@ -63,7 +63,7 @@ test('paid restore retains capture/inbox identity, blocks kickoff and allows ver
   const c=f.origin.claimOperation('writer','owner-dev',f.intent.id,'create');
   const observation={environment:'sandbox',intentId:f.intent.id,merchantId:'merchant-test',depositCents:10000,orderId:'order-test',status:'CREATED'};
   f.origin.completeOperation(c.operationId,c.claim,observation);
-  const event={id:'event-test',event_type:'PAYMENT.CAPTURE.COMPLETED',resource:{id:'capture-test',status:'COMPLETED',payee:{merchant_id:'merchant-test'},amount:{currency_code:'USD',value:'100.00'},supplementary_data:{related_ids:{order_id:'order-test'}}}};
+  const event={id:'event-test',event_type:'PAYMENT.CAPTURE.COMPLETED',resource:{id:'capture-test',status:'COMPLETED',final_capture:true,payee:{merchant_id:'merchant-test'},amount:{currency_code:'USD',value:'100.00'},supplementary_data:{related_ids:{order_id:'order-test'}}}};
   const raw=JSON.stringify(event),verified={environment:'sandbox',eventId:event.id,eventType:event.event_type,payloadHash:sha256(raw)};
   f.origin.acceptVerifiedWebhook(raw,verified);const project=f.origin.deliverKickoff('writer','owner-dev',f.intent.id);
   const snapshot=f.origin.exportWorkspace('owner-dev');assert.equal(snapshot.tables.commerce_payment_inbox[0].tenant,'owner-dev');
