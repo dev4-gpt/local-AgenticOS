@@ -286,3 +286,64 @@ test("writer-claim claim and release work from the command line and refuse unsaf
   for (const folder of ["../outside", ".", "/etc", ""]) expect(call("claim", folder, "laptop").status, folder).toBe(2);
   expect(fs.existsSync(path.join(path.dirname(vault), "outside"))).toBe(false);
 });
+
+test("a note built from a skipped note is kept too, so nothing outlives its parent's deletion by accident", () => {
+  const vault = makeDir("kw-vault-", {
+    "Theirs/b.md": derived("B"),
+    "Mine/c.md": `---\ntitle: C\nsources: [Theirs/b]\n---\nbody text of a note built from b\n`,
+  });
+  claimFolder(vault, path.join(vault, "Theirs"), { device: "desktop" });
+  const plan = planCascade(buildSourceIndex([store(vault)]), [`url:${URL_A}`]);
+  expect(plan.delete.map((item: { key: string }) => item.key).sort()).toEqual(["v::Mine/c.md", "v::Theirs/b.md"]);
+  const result = applyCascade({ stores: [store(vault)], plan, backupRoot: null, stamp: "s", device: "laptop" });
+  expect(result.log.deleted).toEqual([]);
+  expect(result.log.skipped.map((item: { reason: string }) => item.reason).sort()).toEqual(["built-from-a-kept-note", "folder-owned-by-other-device"]);
+  expect(fs.existsSync(path.join(vault, "Mine", "c.md"))).toBe(true);
+});
+
+test("notes whose names merely mention a conflict are not conflict copies", () => {
+  const vault = makeDir("kw-vault-", { "Policy (conflict of interest).md": text("policy"), "Meeting (conflict resolution).md": text("meeting") });
+  expect(findConflictCopies([store(vault)])).toEqual([]);
+});
+
+test("the conflict scan can be limited to one folder", () => {
+  const vault = makeDir("kw-vault-", { "A/Note.md": text("one"), "A/Note 2.md": text("two"), "B/Note.md": text("one"), "B/Note 2.md": text("two") });
+  expect(rels(findConflictCopies([store(vault)], { under: "A" }))).toEqual(["A/Note 2.md"]);
+});
+
+test("ingest refuses the store itself as the destination", () => {
+  const from = makeDir("kw-from-", { "a.md": GOOD });
+  const vault = makeDir("kw-vault-");
+  for (const into of ["", ".", "./"]) {
+    expect(() => planIngest({ from, store: store(vault), into, scan: scanMemoryContent, now: NOW, device: "laptop" })).toThrow("inside the store");
+  }
+  expect(fs.readdirSync(vault)).toEqual([]);
+});
+
+test("conflict copies that arrive after the plan stop the apply", () => {
+  const from = makeDir("kw-from-", { "a.md": GOOD });
+  const vault = makeDir("kw-vault-", { "Ingest/Note.md": text("one") });
+  const p = planIngest({ from, store: store(vault), scan: scanMemoryContent, now: NOW, device: "laptop" });
+  expect(p.refusal).toBe("");
+  fs.writeFileSync(path.join(vault, "Ingest", "Note 2.md"), text("two"));
+  expect(() => applyIngest({ plan: p, quarantineDir: tempDir("kw-q-") })).toThrow("conflict-copies-present");
+  expect(fs.existsSync(path.join(vault, "Ingest", "a.md"))).toBe(false);
+  expect(readClaim(path.join(vault, "Ingest"))).toBeNull();
+});
+
+test("the check names folders it could not read", () => {
+  const vault = makeDir("kw-vault-", { "Locked/x.md": text("x") });
+  fs.chmodSync(path.join(vault, "Locked"), 0o000);
+  try {
+    const result = run("writer-claim.mjs", ["check", "--store", `v=${vault}`, "--out", tempDir("kw-out-"), "--device", "laptop"]);
+    expect(result.out).toContain("could not be read");
+    expect(result.out).toContain("v::Locked");
+  } finally {
+    fs.chmodSync(path.join(vault, "Locked"), 0o755);
+  }
+});
+
+test("the writer name comes from KU_DEVICE, then the saved name, and whoami prints it", () => {
+  const result = spawnSync(process.execPath, [path.join(SCRIPTS, "writer-claim.mjs"), "whoami"], { encoding: "utf8", env: { ...process.env, KU_DEVICE: "studio-mac" } });
+  expect(result.stdout.trim()).toBe("studio-mac");
+});

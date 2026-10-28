@@ -111,7 +111,7 @@ export function planCascade(index, sourceKeys, { partial = "review" } = {}) {
       const via = page.sourceKeys.filter((source) => gone.has(source));
       if (via.length === 0) continue;
       if (partial === "delete" || via.length === page.sourceKeys.length) {
-        doomed.set(page.key, { key: page.key, root: page.root, rel: page.rel, fileSha256: page.fileSha256, via });
+        doomed.set(page.key, { key: page.key, id: page.id, root: page.root, rel: page.rel, fileSha256: page.fileSha256, via });
         gone.add(page.id);
         changed = true;
       }
@@ -140,13 +140,10 @@ export function applyCascade({ stores, plan, backupRoot, stamp, device = thisDev
   if (plan.blocked) throw Object.assign(new Error("blocked"), { blockers: plan.blockers });
   const rootOf = Object.fromEntries(stores.map((store) => [store.label, store.root]));
   const log = { appliedAt: new Date().toISOString(), deleted: [], skipped: [], failed: [] };
-  const staged = [];
   const foreign = new Set(foreignKeys(stores, plan, { device, takeOver }).map((item) => item.key));
+  const kept = new Set();
+  const candidates = [];
   for (const item of plan.delete) {
-    if (foreign.has(item.key)) {
-      log.skipped.push({ key: item.key, reason: "folder-owned-by-other-device" });
-      continue;
-    }
     const abs = safeAbs(rootOf[item.root], item.rel);
     let raw = null;
     try {
@@ -154,10 +151,26 @@ export function applyCascade({ stores, plan, backupRoot, stamp, device = thisDev
     } catch {
       raw = null;
     }
-    if (raw === null) log.skipped.push({ key: item.key, reason: "unsafe-or-unreadable" });
-    else if (sha256Hex(raw) !== item.fileSha256) log.skipped.push({ key: item.key, reason: "changed-since-index" });
-    else staged.push({ item, abs, raw });
+    let reason = "";
+    if (foreign.has(item.key)) reason = "folder-owned-by-other-device";
+    else if (raw === null) reason = "unsafe-or-unreadable";
+    else if (sha256Hex(raw) !== item.fileSha256) reason = "changed-since-index";
+    if (reason) {
+      log.skipped.push({ key: item.key, reason });
+      kept.add(item.id);
+    } else candidates.push({ item, abs, raw });
   }
+  // A note that stays is still a source for the notes built from it, so those stay too, to a fixed point.
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const candidate of candidates) {
+      if (kept.has(candidate.item.id) || !candidate.item.via.some((source) => kept.has(source))) continue;
+      kept.add(candidate.item.id);
+      log.skipped.push({ key: candidate.item.key, reason: "built-from-a-kept-note" });
+      changed = true;
+    }
+  }
+  const staged = candidates.filter((candidate) => !kept.has(candidate.item.id));
   const dir = backupRoot ? path.join(backupRoot, stamp) : null;
   if (dir) {
     for (const { item, raw } of staged) {

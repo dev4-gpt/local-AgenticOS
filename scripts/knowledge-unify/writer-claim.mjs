@@ -11,8 +11,9 @@
 // Usage:
 //   node scripts/knowledge-unify/writer-claim.mjs check   --store L=PATH [--device NAME] [--out DIR]
 //   node scripts/knowledge-unify/writer-claim.mjs claim   --store L=PATH --folder REL [--device NAME] [--take-over]
+//   node scripts/knowledge-unify/writer-claim.mjs whoami [--init]   (prints this computer's writer name; --init saves it so a later host-name change cannot lock you out)
 //   node scripts/knowledge-unify/writer-claim.mjs release --store L=PATH --folder REL [--device NAME] [--take-over]
-// The device name defaults to the computer's host name; pass --device if yours changes.
+// The device name is KU_DEVICE, else the name saved by `whoami --init`, else the host name; --device overrides all.
 import { chmodSync, linkSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -21,7 +22,21 @@ import { SKIP_DIRS, canonicalBody, isInside, listMarkdown, parseNote, resolveRea
 
 export const MARKER = ".ku-writer.json";
 
+export const DEVICE_FILE = path.join(os.homedir(), ".knowledge-unify-device");
+
+/**
+ * This computer's writer name: KU_DEVICE, else the name saved by `whoami --init`, else the host name. A host name can
+ * change (macOS adds "-2" on a clash, networks rename), which would turn your own claims into someone else's, so save one.
+ */
 export function thisDevice() {
+  const named = process.env.KU_DEVICE?.trim();
+  if (named) return named;
+  try {
+    const saved = readFileSync(DEVICE_FILE, "utf8").trim();
+    if (saved) return saved;
+  } catch {
+    // no saved name
+  }
   return os.hostname();
 }
 
@@ -71,7 +86,15 @@ function writeMarker(dir, claim, replace) {
     writeFileSync(tmp, `${JSON.stringify(claim, null, 2)}\n`, { flag: "wx" });
     chmodSync(tmp, 0o644);
     if (replace) renameSync(tmp, target);
-    else linkSync(tmp, target);
+    else {
+      try {
+        linkSync(tmp, target);
+      } catch (error) {
+        // Some volumes (exFAT, network shares) have no hard links: create the marker exclusively instead.
+        if (!["EPERM", "ENOTSUP", "EOPNOTSUPP", "ENOSYS", "EXDEV", "EMLINK"].includes(error?.code)) throw error;
+        writeFileSync(target, `${JSON.stringify(claim, null, 2)}\n`, { flag: "wx", mode: 0o644 });
+      }
+    }
   } catch (error) {
     if (error?.code === "EEXIST") throw Object.assign(new Error("folder-owned-by-other-device"), { owner: readClaim(dir)?.device ?? "" });
     throw error;
@@ -133,7 +156,8 @@ export function findClaims(root) {
   return { claims: claims.sort((a, b) => a.folder.localeCompare(b.folder)), unreadable };
 }
 
-const SYNC_CONFLICT = /\s\((?:[^()]*\s)?conflict(?:ed)?(?:\scopy)?[^()]*\)$/i;
+// Only the sync services' own wording, so a note called "Policy (conflict of interest)" is not mistaken for a copy.
+const SYNC_CONFLICT = /\s\((?:[^()]*\s)?conflicted copy[^()]*\)$/i;
 const SYNCTHING = /\.sync-conflict-\d{8}-\d{6}(?:-[A-Z0-9]+)?$/;
 const NUMBERED = [
   // One or two digits, like iCloud and Drive produce, so "Notes 2024" next to "Notes" is not called a copy.
@@ -147,10 +171,11 @@ const NUMBERED = [
  * number or "copy" are reported only when the note they would be a copy of sits in the same folder, so "Chapter 2"
  * alone is never flagged. The report holds paths and kinds, never text.
  */
-export function findConflictCopies(stores) {
+export function findConflictCopies(stores, { under = "" } = {}) {
   const found = [];
   for (const { label, root } of stores) {
-    const files = listMarkdown(root);
+    // `under` (a folder relative to the store) limits the walk; a copy always sits in the same folder as its original.
+    const files = under ? listMarkdown(path.join(root, under)).map((rel) => `${under}/${rel}`) : listMarkdown(root);
     const byLower = new Map(files.map((rel) => [rel.toLowerCase(), rel]));
     for (const rel of files) {
       const dir = path.posix.dirname(rel);
@@ -194,7 +219,7 @@ export function findConflictCopies(stores) {
 /** Conflict copies that sit in `dir` (absolute) or below it, for one store. */
 export function conflictsUnder(store, dir) {
   const prefix = path.relative(store.root, dir).split(path.sep).join("/");
-  return findConflictCopies([store]).filter((item) => prefix === "" || item.rel.startsWith(`${prefix}/`));
+  return findConflictCopies([store], { under: prefix });
 }
 
 function fail(message) {
@@ -210,7 +235,18 @@ function safeDir(store, folder) {
 
 function main(argv) {
   const [command, ...args] = argv;
-  if (!["check", "claim", "release"].includes(command ?? "")) return fail("first argument must be check, claim or release");
+  if (command === "whoami") {
+    if (args.includes("--init") && !process.env.KU_DEVICE?.trim()) {
+      try {
+        writeFileSync(DEVICE_FILE, `${os.hostname()}\n`, { flag: "wx", mode: 0o644 });
+      } catch (error) {
+        if (error?.code !== "EEXIST") throw error;
+      }
+    }
+    console.log(thisDevice());
+    return;
+  }
+  if (!["check", "claim", "release"].includes(command ?? "")) return fail("first argument must be check, claim, release or whoami");
   let parsed;
   try {
     parsed = parseStoreArgs(args, "writer-claim");
@@ -231,12 +267,15 @@ function main(argv) {
     const out = resolveReal(opts.out);
     if (parsed.stores.some((store) => isInside(out, store.root))) return fail("--out must be outside every store folder");
     const conflicts = findConflictCopies(parsed.stores);
-    const claims = parsed.stores.flatMap((store) => findClaims(store.root).claims.map((claim) => ({ root: store.label, ...claim, foreign: claim.invalid || claim.device !== opts.device })));
+    const scanned = parsed.stores.map((store) => ({ store, ...findClaims(store.root) }));
+    const claims = scanned.flatMap(({ store, claims: list }) => list.map((claim) => ({ root: store.label, ...claim, foreign: claim.invalid || claim.device !== opts.device })));
+    const unreadable = scanned.flatMap(({ store, unreadable: list }) => list.map((folder) => `${store.label}::${folder}`));
     mkdirSync(out, { recursive: true });
-    writeFileSync(path.join(out, "writer-check.json"), JSON.stringify({ schema: 1, generatedAt: new Date().toISOString(), device: opts.device, conflicts, claims }, null, 2));
+    writeFileSync(path.join(out, "writer-check.json"), JSON.stringify({ schema: 1, generatedAt: new Date().toISOString(), device: opts.device, conflicts, claims, unreadable }, null, 2));
     console.log(`${conflicts.length} conflict cop${conflicts.length === 1 ? "y" : "ies"}; ${claims.length} folder claim(s), ${claims.filter((claim) => claim.foreign).length} held by another device.`);
     for (const item of conflicts) console.log(`  conflict ${item.key} (${item.kind}${item.original ? `, copy of ${item.original}${item.identical ? ", same text" : ", different text"}` : ""})`);
     for (const claim of claims.filter((entry) => entry.foreign)) console.log(`  other device ${claim.root}::${claim.folder} (${claim.invalid ? "unreadable claim" : claim.device})`);
+    if (unreadable.length > 0) console.log(`WARNING: ${unreadable.length} folder(s) could not be read, so a claim inside them would not show here: ${unreadable.join(", ")}`);
     console.log(`Report (paths and kinds only): ${path.join(out, "writer-check.json")}`);
     return;
   }

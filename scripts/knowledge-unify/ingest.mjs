@@ -217,13 +217,14 @@ export function planIngest({ from, store, into = "Ingest", scan, defaults = {}, 
   const fileBlock = skipped.some((entry) => entry.reason === "not-downloaded" || entry.reason === "unreadable-dir");
   // One writer per folder: another device's claim, or conflict copies already in the destination, stop the run.
   const claimDir = resolveReal(path.join(store.root, into));
+  if (claimDir === resolveReal(store.root)) throw new Error("--into must name a folder inside the store, not the store itself");
   let refusal = "";
   if (isInside(claimDir, store.root)) {
     const gate = folderGate(store.root, claimDir, { device, takeOver });
     if (!gate.ok) refusal = gate.reason;
     else if (existsSync(claimDir) && conflictsUnder(store, claimDir).length > 0) refusal = "conflict-copies-present";
   }
-  return { items, skipped, fileBlock, refusal, blocked: fileBlock || refusal !== "", storeRoot: store.root, claimDir, device, takeOver };
+  return { items, skipped, fileBlock, refusal, blocked: fileBlock || refusal !== "", store, storeRoot: store.root, claimDir, device, takeOver };
 }
 
 function atomicCreate(abs, text) {
@@ -246,6 +247,8 @@ function atomicCreate(abs, text) {
 export function applyIngest({ plan, quarantineDir }) {
   if (plan.blocked) throw Object.assign(new Error(plan.refusal || "blocked"), { skipped: plan.skipped });
   if (plan.items.some((item) => item.outcome === "would-write")) {
+    // Conflict copies may have arrived since the plan was made.
+    if (existsSync(plan.claimDir) && conflictsUnder(plan.store, plan.claimDir).length > 0) throw Object.assign(new Error("conflict-copies-present"), { skipped: plan.skipped });
     claimFolder(plan.storeRoot, plan.claimDir, { device: plan.device, takeOver: plan.takeOver, by: "knowledge-ingest" });
   }
   const written = [];
