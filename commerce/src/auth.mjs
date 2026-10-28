@@ -42,6 +42,19 @@ export class CommerceAuth {
     catch{fail('user_already_exists');}
     return {subject:id,username:name};
   }
+  /** Local operator recovery only; never expose as an unauthenticated HTTP action. */
+  async resetPassword(login,secret){
+    const name=username(login);password(secret,true);
+    const salt=randomBytes(32).toString('hex'),verifier=await derive(secret,salt,64,policy);
+    this.#db.exec('BEGIN IMMEDIATE');
+    try{
+      const row=this.#db.prepare('SELECT id FROM commerce_users WHERE username=?').get(name);
+      if(!row)fail('user_not_found');
+      this.#db.prepare('UPDATE commerce_users SET salt=?,verifier=? WHERE id=?').run(salt,verifier.toString('hex'),row.id);
+      this.#db.prepare('DELETE FROM commerce_sessions WHERE user_id=?').run(row.id);
+      this.#db.exec('COMMIT');
+    }catch(error){this.#db.exec('ROLLBACK');throw error;}
+  }
   setActive(subject,active){
     if(typeof active!=='boolean')fail('invalid_input');
     this.#db.exec('BEGIN IMMEDIATE');
@@ -74,8 +87,8 @@ export class CommerceAuth {
     const expected=Buffer.from(row?.verifier??'0'.repeat(128),'hex');
     if(!timingSafeEqual(computed,expected)||!row||row.active!==1)fail('invalid_credentials');
     // Recheck activation after asynchronous derivation; a revocation racing login must win.
-    const active=this.#db.prepare('SELECT active FROM commerce_users WHERE id=?').get(row.id);
-    if(active?.active!==1)fail('invalid_credentials');
+    const active=this.#db.prepare('SELECT active,salt,verifier FROM commerce_users WHERE id=?').get(row.id);
+    if(active?.active!==1||active.salt!==row.salt||active.verifier!==row.verifier)fail('invalid_credentials');
     const sessionToken=token(),csrfToken=token(),expiresAt=this.#clock()+60*60*1000;
     this.#db.prepare('DELETE FROM commerce_sessions WHERE expires_at<=?').run(this.#clock());
     this.#db.prepare('INSERT INTO commerce_sessions VALUES(?,?,?,?)').run(sha256(sessionToken),sha256(csrfToken),row.id,expiresAt);

@@ -34,7 +34,7 @@ async function hiddenPassword(prompt){
 }
 const command=process.argv[2]??'help';
 if(command==='help'){
-  process.stdout.write('Veloce Commerce (Node 24)\n\ninit --tenant owner-dev --merchant SANDBOX_MERCHANT_ID\nuser --tenant owner-dev --username YOUR_USERNAME --role owner|admin|member\nserve --tenant owner-dev --port 4141 [--webhook-port 4143]\nsandbox-check --tenant owner-dev\nretention --tenant owner-dev [--apply] [--batch 100] [--compact]\nexport --tenant owner-dev --output PRIVATE_FILE\nrestore --tenant owner-dev --input PRIVATE_FILE [--apply --expected-digest DIGEST]\n\nAll commands accept --data-dir PATH (private, mode 0700).\nPasswords are entered privately in your own terminal.\nProvider configuration is documented in README.md; paid services are not enabled.\n');
+  process.stdout.write('Veloce Commerce (Node 24)\n\ninit --tenant owner-dev --merchant SANDBOX_MERCHANT_ID\nuser --tenant owner-dev --username YOUR_USERNAME --role owner|admin|member\npassword --username YOUR_USERNAME\nserve --tenant owner-dev --port 4141 [--webhook-port 4143]\nsandbox-check --tenant owner-dev\nretention --tenant owner-dev [--apply] [--batch 100] [--compact]\nexport --tenant owner-dev --output PRIVATE_FILE\nrestore --tenant owner-dev --input PRIVATE_FILE [--apply --expected-digest DIGEST]\n\nAll commands accept --data-dir PATH (private, mode 0700).\nPasswords are entered privately in your own terminal.\nProvider configuration is documented in README.md; paid services are not enabled.\n');
 }else{
   let store,auth;
   try{
@@ -50,6 +50,12 @@ if(command==='help'){
       if(secret!==confirmation)throw new Error('Passwords did not match.');
       const user=await auth.createUser(username,secret);store.setMember({tenant,subject:user.subject,role});
       process.stdout.write('Local account created. Sign in through the workspace.\n');
+    }else if(command==='password'){
+      auth=new CommerceAuth(path);
+      const secret=await hiddenPassword('New Veloce password (12 or more characters; hidden): '),confirmation=await hiddenPassword('Confirm new password (hidden): ');
+      if(secret!==confirmation)throw new Error('Passwords did not match.');
+      await auth.resetPassword(arg('username'),secret);
+      process.stdout.write('Local password replaced; previous sessions revoked. Workspace and account identity preserved.\n');
     }else if(command==='sandbox-check'){
       const required=['PAYPAL_CLIENT_ID','PAYPAL_CLIENT_SECRET','PAYPAL_WEBHOOK_ID'];
       const missing=required.filter(name=>!process.env[name]);

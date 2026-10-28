@@ -43,3 +43,27 @@ test('login attempts are bounded durably without storing usernames or addresses 
     await assert.rejects(()=>auth.createUser('test-user','short'),e=>e.code==='password_requirements');
   }finally{auth.close();}
 });
+test('operator password recovery preserves identity and activation, revokes sessions and rejects old credentials',async()=>{
+  const auth=new CommerceAuth(':memory:');try{
+    const user=await auth.createUser('author-test',secret),session=await auth.login('author-test',secret);
+    await auth.resetPassword('AUTHOR-TEST','replacement test password');
+    assert.throws(()=>auth.authenticate(session.sessionToken),e=>e.code==='sign_in_required');
+    await assert.rejects(()=>auth.login('author-test',secret),e=>e.code==='invalid_credentials');
+    assert.equal((await auth.login('author-test','replacement test password')).subject,user.subject);
+    auth.setActive(user.subject,false);
+    await auth.resetPassword('author-test','another replacement password');
+    await assert.rejects(()=>auth.login('author-test','another replacement password'),e=>e.code==='invalid_credentials');
+    await assert.rejects(()=>auth.resetPassword('missing-user','another replacement password'),e=>e.code==='user_not_found');
+  }finally{auth.close();}
+});
+test('credential replacement racing a pending login cannot create a session with the old verifier',async()=>{
+  const dir=mkdtempSync(join(tmpdir(),'veloce-password-race-')),path=join(dir,'test.sqlite'),auth=new CommerceAuth(path),db=new DatabaseSync(path);
+  try{
+    const user=await auth.createUser('author-test',secret);
+    const pending=auth.login('author-test',secret);
+    // A completed operator reset changes the verifier while login's scrypt is pending.
+    db.prepare('UPDATE commerce_users SET salt=? WHERE id=?').run('a'.repeat(64),user.subject);
+    await assert.rejects(()=>pending,e=>e.code==='invalid_credentials');
+    assert.equal(db.prepare('SELECT count(*) AS n FROM commerce_sessions').get().n,0);
+  }finally{db.close();auth.close();rmSync(dir,{recursive:true,force:true});}
+});

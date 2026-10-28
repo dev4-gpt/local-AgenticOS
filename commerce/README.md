@@ -131,3 +131,7 @@ An optional public-key-authenticated draft runtime is included for the host tran
 ## Fictional service demo
 
 Use [the reproducible scenario](DEMO-SCENARIO.md) and [synthetic studio brief](DEMO-BRIEF.md) for the service-business journey. The opt-in real-model HTTP harness accepts `--fictional-service`; it keeps PayPal disabled and leaves semantic/commercial review pending. Actual sandbox acceptance remains separate.
+
+## Recover a local account password
+
+In your own terminal, run `node src/cli.mjs password --username YOUR_USERNAME --data-dir YOUR_PRIVATE_DATA_DIRECTORY`. The operator command privately prompts for a new password and confirmation. It preserves the account ID, workspace membership and activation state, and revokes that account’s existing sessions. It does not change PayPal credentials. It is a local provisioning command, not a web endpoint.

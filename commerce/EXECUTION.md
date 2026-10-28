@@ -240,3 +240,7 @@ Official Orders v2 documentation exposed an incompatibility in the original fixt
 ## Final-capture webhook checkpoint — October 27, 2026
 
 Aligned verified completed-event admission with order-readback authority: `resource.final_capture` must be boolean true before the event can pay an intent. Updated HTTP, lifecycle and recovery event fixtures to match the documented complete event shape. A new regression checks false/missing/null/string/numeric indicators, no paid state or kickoff, rollback of event admission and later valid delivery. All 151 standalone tests pass. No actual provider request or secret access occurred; real sandbox acceptance remains pending.
+
+## Local password recovery checkpoint — October 27, 2026
+
+Added an operator-only `password` CLI command with hidden confirmation, fresh salted scrypt, transactional session revocation, unchanged account identity/membership/activation, and a post-derivation credential recheck preventing a pending old-password login from surviving rotation. No HTTP reset route is exposed. Six authentication tests and all 153 standalone tests pass with synthetic data. The owner recovery helper prompts for new local passwords; no owner password was entered, read, reset or logged by the agent. PayPal configuration remains owner-local. Earlier extracted-package evidence remains tied to its earlier source archive.
