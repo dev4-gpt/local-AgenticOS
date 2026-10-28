@@ -19,6 +19,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { PAGE_TYPES, bodyHash, checkPage, parseStoreArgs, validDate } from "./schema-check.mjs";
 import { MAX_BYTES, SKIP_DIRS, canonicalBody, isInside, listMarkdown, parseNote, resolveReal, sha256Hex } from "./scan.mjs";
+import { claimFolder, conflictsUnder, folderGate, thisDevice } from "./writer-claim.mjs";
 
 export const INGEST_EXTENSIONS = new Set([".md", ".markdown", ".txt"]);
 export const MIN_BODY_CHARS = 20;
@@ -138,7 +139,7 @@ function existingBodies(store) {
  * Reads everything and decides each file's outcome. Writes nothing.
  * `scan` is the injection scanner (scanMemoryContent); there is no default, so ingest cannot run without one.
  */
-export function planIngest({ from, store, into = "Ingest", scan, defaults = {}, allowFlagged = false, now = new Date() }) {
+export function planIngest({ from, store, into = "Ingest", scan, defaults = {}, allowFlagged = false, now = new Date(), device = thisDevice(), takeOver = false }) {
   if (typeof scan !== "function") throw new Error("a scanner function is required");
   const today = now.toISOString().slice(0, 10);
   const settings = { type: "topic", licence: "third-party / unknown", origin: store.label, tenant: "", ...defaults };
@@ -213,8 +214,16 @@ export function planIngest({ from, store, into = "Ingest", scan, defaults = {}, 
     item.destAbs = destAbs;
     item.text = built.text;
   }
-  const blocked = skipped.some((entry) => entry.reason === "not-downloaded" || entry.reason === "unreadable-dir");
-  return { items, skipped, blocked };
+  const fileBlock = skipped.some((entry) => entry.reason === "not-downloaded" || entry.reason === "unreadable-dir");
+  // One writer per folder: another device's claim, or conflict copies already in the destination, stop the run.
+  const claimDir = resolveReal(path.join(store.root, into));
+  let refusal = "";
+  if (isInside(claimDir, store.root)) {
+    const gate = folderGate(store.root, claimDir, { device, takeOver });
+    if (!gate.ok) refusal = gate.reason;
+    else if (existsSync(claimDir) && conflictsUnder(store, claimDir).length > 0) refusal = "conflict-copies-present";
+  }
+  return { items, skipped, fileBlock, refusal, blocked: fileBlock || refusal !== "", storeRoot: store.root, claimDir, device, takeOver };
 }
 
 function atomicCreate(abs, text) {
@@ -235,7 +244,10 @@ function atomicCreate(abs, text) {
 
 /** Writes the planned pages and copies quarantined originals out. A failed write removes every page written in this run. */
 export function applyIngest({ plan, quarantineDir }) {
-  if (plan.blocked) throw Object.assign(new Error("blocked"), { skipped: plan.skipped });
+  if (plan.blocked) throw Object.assign(new Error(plan.refusal || "blocked"), { skipped: plan.skipped });
+  if (plan.items.some((item) => item.outcome === "would-write")) {
+    claimFolder(plan.storeRoot, plan.claimDir, { device: plan.device, takeOver: plan.takeOver, by: "knowledge-ingest" });
+  }
   const written = [];
   let quarantined = 0;
   try {
@@ -282,6 +294,7 @@ export function reportOf(plan) {
       exists: count("exists"),
       skipped: count("skipped") + plan.skipped.length,
     },
+    refusal: plan.refusal,
     items: plan.items.map(({ rel, outcome, problems, findings, verdict, dest, of, quarantineFile }) => ({ rel, outcome, problems, findings, verdict, dest, of, quarantineFile })),
     skipped: plan.skipped,
   };
@@ -310,12 +323,13 @@ async function main(argv) {
   }
   if (parsed.stores.length !== 1) return fail("give exactly one --store");
   const store = parsed.stores[0];
-  const opts = { from: "", into: "Ingest", type: "topic", licence: "third-party / unknown", origin: store.label, tenant: "", out: path.join(os.tmpdir(), "knowledge-unify"), quarantine: "", apply: false, allowFlagged: false };
-  const valued = { "--from": "from", "--into": "into", "--type": "type", "--licence": "licence", "--origin": "origin", "--tenant": "tenant", "--out": "out", "--quarantine": "quarantine" };
+  const opts = { from: "", into: "Ingest", type: "topic", licence: "third-party / unknown", origin: store.label, tenant: "", out: path.join(os.tmpdir(), "knowledge-unify"), quarantine: "", apply: false, allowFlagged: false, device: thisDevice(), takeOver: false };
+  const valued = { "--from": "from", "--into": "into", "--type": "type", "--licence": "licence", "--origin": "origin", "--tenant": "tenant", "--out": "out", "--quarantine": "quarantine", "--device": "device" };
   for (let i = 0; i < parsed.rest.length; i += 1) {
     const arg = parsed.rest[i];
     if (valued[arg]) opts[valued[arg]] = parsed.rest[++i] ?? "";
     else if (arg === "--apply") opts.apply = true;
+    else if (arg === "--take-over") opts.takeOver = true;
     else if (arg === "--allow-flagged") opts.allowFlagged = true;
     else return fail(`unknown argument ${arg}`);
   }
@@ -340,13 +354,15 @@ async function main(argv) {
   }
   let plan;
   try {
-    plan = planIngest({ from, store, into: opts.into, scan, allowFlagged: opts.allowFlagged, defaults: { type: opts.type, licence: opts.licence, origin: opts.origin, tenant: opts.tenant } });
+    plan = planIngest({ from, store, into: opts.into, scan, allowFlagged: opts.allowFlagged, device: opts.device, takeOver: opts.takeOver, defaults: { type: opts.type, licence: opts.licence, origin: opts.origin, tenant: opts.tenant } });
   } catch (error) {
     return fail(error.message);
   }
   const { summary } = reportOf(plan);
   console.log(`${summary.files} file(s): ${summary.wouldWrite} to write, ${summary.quarantined} quarantined, ${summary.duplicate} duplicate, ${summary.lintFailed} failed lint, ${summary.exists} already there, ${summary.skipped} skipped.`);
-  if (plan.blocked) console.log("BLOCKED: some files are not downloaded from iCloud or a folder is unreadable. Fix that and run again.");
+  if (plan.fileBlock) console.log("BLOCKED: some files are not downloaded from iCloud or a folder is unreadable. Fix that and run again.");
+  if (plan.refusal === "conflict-copies-present") console.log(`BLOCKED: the destination folder holds sync conflict copies. Resolve them first (writer-claim.mjs check lists them).`);
+  else if (plan.refusal) console.log(`BLOCKED: ${plan.refusal} (device "${opts.device}"). Another device is the writer for that folder; use --take-over only if it has stopped.`);
   mkdirSync(out, { recursive: true });
   const reportPath = path.join(out, "ingest-report.json");
   if (!opts.apply || plan.blocked) {

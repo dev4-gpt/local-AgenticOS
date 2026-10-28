@@ -17,6 +17,7 @@ import path from "node:path";
 import { safeAbs } from "./apply.mjs";
 import { checkPage, parseStoreArgs } from "./schema-check.mjs";
 import { canonicalUrl, isInside, listMarkdown, parseNote, resolveReal, sha256Hex } from "./scan.mjs";
+import { folderGate, thisDevice } from "./writer-claim.mjs";
 
 const stripMd = (rel) => rel.replace(/\.md$/i, "");
 
@@ -125,13 +126,27 @@ export function planCascade(index, sourceKeys, { partial = "review" } = {}) {
   return { delete: [...doomed.values()], review, blocked: index.blockers.length > 0, blockers: index.blockers };
 }
 
+/** Planned deletions that sit in a folder claimed by another device. Those are skipped, never deleted. */
+export function foreignKeys(stores, plan, { device = thisDevice(), takeOver = false } = {}) {
+  const rootOf = Object.fromEntries(stores.map((store) => [store.label, store.root]));
+  return plan.delete.filter((item) => {
+    const root = rootOf[item.root];
+    return !folderGate(root, path.dirname(path.join(root, item.rel)), { device, takeOver }).ok;
+  });
+}
+
 /** Deletes the planned notes. Originals are copied to backupRoot first (null = erase with no copy). */
-export function applyCascade({ stores, plan, backupRoot, stamp }) {
+export function applyCascade({ stores, plan, backupRoot, stamp, device = thisDevice(), takeOver = false }) {
   if (plan.blocked) throw Object.assign(new Error("blocked"), { blockers: plan.blockers });
   const rootOf = Object.fromEntries(stores.map((store) => [store.label, store.root]));
   const log = { appliedAt: new Date().toISOString(), deleted: [], skipped: [], failed: [] };
   const staged = [];
+  const foreign = new Set(foreignKeys(stores, plan, { device, takeOver }).map((item) => item.key));
   for (const item of plan.delete) {
+    if (foreign.has(item.key)) {
+      log.skipped.push({ key: item.key, reason: "folder-owned-by-other-device" });
+      continue;
+    }
     const abs = safeAbs(rootOf[item.root], item.rel);
     let raw = null;
     try {
@@ -182,10 +197,12 @@ function main(argv) {
     return fail(error.message);
   }
   const { stores } = parsed;
-  const opts = { out: path.join(os.tmpdir(), "knowledge-unify"), source: "", partial: "review", backupDir: "", apply: false, erase: false };
+  const opts = { out: path.join(os.tmpdir(), "knowledge-unify"), source: "", partial: "review", backupDir: "", apply: false, erase: false, device: thisDevice(), takeOver: false };
   for (let i = 0; i < parsed.rest.length; i += 1) {
     const arg = parsed.rest[i];
-    if (arg === "--out") opts.out = parsed.rest[++i] ?? "";
+    if (arg === "--device") opts.device = parsed.rest[++i] ?? "";
+    else if (arg === "--take-over") opts.takeOver = true;
+    else if (arg === "--out") opts.out = parsed.rest[++i] ?? "";
     else if (arg === "--source") opts.source = parsed.rest[++i] ?? "";
     else if (arg === "--partial") opts.partial = parsed.rest[++i] ?? "";
     else if (arg === "--backup-dir") opts.backupDir = parsed.rest[++i] ?? "";
@@ -218,6 +235,8 @@ function main(argv) {
   console.log(`${plan.delete.length} note(s) derived from the source would be deleted; ${plan.review.length} still have another source (kept, review them).`);
   for (const item of plan.delete) console.log(`  delete ${item.key}`);
   for (const item of plan.review) console.log(`  review ${item.key} (still cites ${item.remaining.length} other source(s))`);
+  const foreign = foreignKeys(stores, plan, { device: opts.device, takeOver: opts.takeOver });
+  if (foreign.length > 0) console.log(`WARNING: ${foreign.length} of these note(s) are in folders claimed by another device and will be skipped (use --take-over only if that device has stopped).`);
   if (!opts.apply) {
     console.log("Dry run: nothing deleted. Add --apply with --backup-dir DIR (or --erase-no-backup) to delete.");
     return;
@@ -228,7 +247,7 @@ function main(argv) {
   if (backupRoot && !outside(backupRoot)) return fail("--backup-dir must be outside every store folder");
   if (plan.delete.length === 0) return;
   try {
-    const result = applyCascade({ stores, plan, backupRoot, stamp: new Date().toISOString().replace(/[:.]/g, "-") });
+    const result = applyCascade({ stores, plan, backupRoot, stamp: new Date().toISOString().replace(/[:.]/g, "-"), device: opts.device, takeOver: opts.takeOver });
     console.log(`Deleted ${result.log.deleted.length}, skipped ${result.log.skipped.length}, failed ${result.log.failed.length}.`);
     if (result.backupDir && existsSync(result.backupDir)) console.log(`Originals and log: ${result.backupDir}`);
     if (result.log.failed.length > 0 || result.log.skipped.length > 0) process.exitCode = 1;

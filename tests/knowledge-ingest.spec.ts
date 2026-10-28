@@ -96,7 +96,7 @@ test("injection samples are quarantined, never written to the vault, and the rep
   const p = plan(from, vault);
   expect(outcomes(p)).toEqual({ "evil.md": "quarantined", "ok.md": "would-write" });
   applyIngest({ plan: p, quarantineDir: quarantine });
-  expect(fs.readdirSync(path.join(vault, "Ingest"))).toEqual(["ok.md"]);
+  expect(fs.readdirSync(path.join(vault, "Ingest"))).toEqual([".ku-writer.json", "ok.md"]);
   const files = fs.readdirSync(quarantine);
   expect(files).toHaveLength(1);
   expect(fs.readFileSync(path.join(quarantine, files[0]), "utf8")).toBe(INJECTION);
@@ -199,7 +199,7 @@ test("a failed write removes the pages already written in that run", () => {
   const p = plan(from, vault);
   expect(() => applyIngest({ plan: p, quarantineDir: tempDir("ki-q-") })).toThrow();
   expect(fs.existsSync(path.join(vault, "Ingest", "a.md"))).toBe(false);
-  expect(fs.readdirSync(path.join(vault, "Ingest"))).toEqual(["b"]);
+  expect(fs.readdirSync(path.join(vault, "Ingest"))).toEqual([".ku-writer.json", "b"]);
 });
 
 test("the command line refuses unsafe folders, plans first, and the ingest-delete-cascade round trip works", () => {
@@ -221,7 +221,7 @@ test("the command line refuses unsafe folders, plans first, and the ingest-delet
 
   const real = run("ingest.mjs", [...base, "--apply"]);
   expect(real.status).toBe(0);
-  expect(fs.readdirSync(path.join(vault, "Ingest"))).toEqual(["a.md"]);
+  expect(fs.readdirSync(path.join(vault, "Ingest"))).toEqual([".ku-writer.json", "a.md"]);
   expect(fs.readdirSync(path.join(out, "quarantine"))).toHaveLength(1);
   const report = JSON.parse(fs.readFileSync(path.join(out, "ingest-report.json"), "utf8"));
   expect(report.summary).toMatchObject({ written: 1, quarantined: 1 });
