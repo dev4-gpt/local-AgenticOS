@@ -183,8 +183,8 @@ Work happens in the separate ContractorOS repo (`dev4-gpt/ContractorOS`, AGPL, n
 - [ ] Fresh private held-out test sets; old public ones treated as burned (X-8)
 - [ ] Health, tenant id, connection; evaluator-tamper test
 - [ ] A round runs end to end with a human approving a hash
-- [ ] Confirm where Forge is hosted (unknown today)
-- [ ] CI added: PR #1 merged with no checks (P-5)
+- [x] Confirm where Forge is hosted: Vercel (team `veloce-agentic-os`), Neon Postgres and CreateOS Sandbox, via Stripe Projects (2026-10-28)
+- [x] CI added: PR #1 merged with no checks (P-5). **Done 2026-10-28:** `dev4-gpt/veloce-forge` PRs #13 (CI: tests, type check, production build; lint reported only, 40 errors to clear) and #14 (`/api/state` and `/api/replay` read the database per request, so previews and CI build without a database) merged; CI on `main` and the production deploy both succeeded. Forge is hosted on Vercel with Neon and the CreateOS Sandbox (`veloce-forge-hardened.vercel.app`), which also answers 'where is Forge hosted'
 
 ## Phase 5: SymVibe + REA
 
