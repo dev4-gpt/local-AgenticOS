@@ -117,6 +117,26 @@ test("content over the host's limit, and content the host scanner would block or
   expect(report.would_propose.length).toBe(1);
 });
 
+test("a raised limit lets a long page through whole, the host validator agrees at that limit, and a bad limit is refused", () => {
+  const { vault, outbox, stores } = ingested({});
+  const long = `${"A plain synthetic sentence about gardening. ".repeat(200)}\n`; // about 8,800 characters
+  sharedPage(vault, "long", "https://example.com/long", long);
+  const base = { stores, outbox, adapterId: "knowledge", scan, now: NOW };
+  expect(reportOf(planPromote(base)).skipped).toEqual({ "too-long": 1 });
+  const raised = planPromote({ ...base, maxChars: 20_000 });
+  expect(reportOf(raised).would_propose.length).toBe(1);
+  expect(reportOf(raised).would_propose[0].excerpted).toBe(false);
+  const data = raised.items.find((item: { outcome: string }) => item.outcome === "would-propose").data;
+  expect(data.content.length).toBeGreaterThan(MAX_PROPOSAL_CHARS);
+  expect(validateProposal(data, "knowledge", 20_000)).not.toBeNull();
+  expect(validateProposal(data, "knowledge")).toBeNull(); // the host's default limit still refuses it
+  for (const bad of [0, 30_001, 1.5, Number.NaN]) expect(() => planPromote({ ...base, maxChars: bad })).toThrow("length limit");
+  const cut = planPromote({ ...base, maxChars: 3_000, excerpt: true });
+  const excerpt = cut.items.find((item: { outcome: string }) => item.outcome === "would-propose").data.content;
+  expect(excerpt.length).toBeLessThanOrEqual(3_000);
+  expect(excerpt).toContain("[Excerpt:");
+});
+
 test("the outbox refuses to continue if its numbers skip or it is malformed", () => {
   const outbox = tempDir("kp-out-");
   fs.writeFileSync(path.join(outbox, "events.json"), JSON.stringify({ events: [{ seq: 2, data: {} }] }));

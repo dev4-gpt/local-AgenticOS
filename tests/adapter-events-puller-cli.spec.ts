@@ -20,7 +20,7 @@ const TASK = "h1-aaaaaaaaaaaaaaaaaaaaaaaa";
 const listen = (server: Server) => new Promise<number>((resolve) => server.listen(0, "127.0.0.1", () => resolve((server.address() as AddressInfo).port)));
 const bodyOf = (req: IncomingMessage) => new Promise<string>((resolve) => { let s = ""; req.on("data", (c) => (s += c)); req.on("end", () => resolve(s)); });
 
-function startStubs(o: { owner?: boolean; ownerStatus?: number; adapterStatus?: number } = {}) {
+function startStubs(o: { owner?: boolean; ownerStatus?: number; adapterStatus?: number; noteChars?: number } = {}) {
   const seen = { rpc: [] as { name: string; body: Record<string, unknown>; auth: string | undefined }[], adapter: [] as { url: string; verified: boolean }[] };
   let cursor = 0;
   const db = createServer(async (req, res) => {
@@ -43,7 +43,7 @@ function startStubs(o: { owner?: boolean; ownerStatus?: number; adapterStatus?: 
     const after = Number(new URL(req.url ?? "", "http://x").searchParams.get("after"));
     const all = [
       { seq: 1, id: "a".repeat(32), at: "2026-10-21T20:00:00.000Z", kind: "task.state", taskId: TASK, data: { state: "succeeded" } },
-      { seq: 2, id: "b".repeat(32), at: "2026-10-21T20:00:00.000Z", kind: "memory.propose", taskId: TASK, data: { content: NOTE, sourceUrl: "https://example.test/x", citationId: "c1", retrievedAt: "2026-10-20T10:00:00.000Z", sourceTaskId: TASK, adapterVersion: "0.1.0", agentPrincipal: ADAPTER } },
+      { seq: 2, id: "b".repeat(32), at: "2026-10-21T20:00:00.000Z", kind: "memory.propose", taskId: TASK, data: { content: o.noteChars ? "A plain synthetic fact. ".repeat(Math.ceil(o.noteChars / 24)).slice(0, o.noteChars) : NOTE, sourceUrl: "https://example.test/x", citationId: "c1", retrievedAt: "2026-10-20T10:00:00.000Z", sourceTaskId: TASK, adapterVersion: "0.1.0", agentPrincipal: ADAPTER } },
     ];
     const events = all.filter((e) => e.seq > after);
     res.writeHead(200, { "content-type": "application/json" });
@@ -101,6 +101,19 @@ test("a run pulls the feed with tokens the host's own verifier accepts, stores t
   });
 });
 
+test("ADAPTER_MAX_PROPOSAL_CHARS reaches the puller: a 5,000-character proposal is refused by default and stored when the limit is raised", async () => {
+  await withStubs({ noteChars: 5000 }, async ({ env, seen }) => {
+    const byDefault = JSON.parse((await runCli(env)).stdout.trim().split("\n").pop()!);
+    expect(byDefault.created).toBe(0);
+    expect(seen.rpc.some((r) => r.name === "client_adapter_ingest_memory_proposal")).toBe(false);
+  });
+  await withStubs({ noteChars: 5000 }, async ({ env, seen }) => {
+    const raised = JSON.parse((await runCli({ ...env, ADAPTER_MAX_PROPOSAL_CHARS: "20000" })).stdout.trim().split("\n").pop()!);
+    expect(raised.created).toBe(1);
+    expect(seen.rpc.some((r) => r.name === "client_adapter_ingest_memory_proposal")).toBe(true);
+  });
+});
+
 test("a second run starts where the first stopped and finds nothing new", async () => {
   await withStubs({}, async ({ env }) => {
     expect((await runCli(env)).code).toBe(0);
@@ -126,6 +139,8 @@ test("it refuses to start without its settings, naming the setting and never a v
       "an Ed25519 private key": { ADAPTER_TOKEN_SIGNING_KEY_PEM: "not a key" },
       "must be https": { SUPABASE_URL: "http://db.example.test" },
       "is not a url": { SUPABASE_URL: "nonsense" },
+      "ADAPTER_MAX_PROPOSAL_CHARS must be a whole number": { ADAPTER_MAX_PROPOSAL_CHARS: "30001" },
+      "from 1 to 30000": { ADAPTER_MAX_PROPOSAL_CHARS: "lots" },
     };
     for (const [phrase, over] of Object.entries(bad)) {
       const out = await runCli({ ...env, ...over });

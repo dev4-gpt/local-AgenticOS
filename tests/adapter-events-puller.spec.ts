@@ -321,3 +321,35 @@ test("a spend field on an event that is not a task.state is not treated as a rep
   expect(r.db.state.spends).toEqual([]);
   expect(report.spendReported).toBe(0);
 });
+
+test("the proposal length limit is per adapter: 2,000 by default, raisable up to the contract's 30,000, never beyond, and it never changes what is scanned or hashed", async () => {
+  const long = "A long synthetic page. ".repeat(400); // 9,200 characters
+  const refused = run([propose(1, long)]);
+  expect(await refused.report).toMatchObject({ created: 0, rejected: { bad_proposal: 1 } });
+
+  const raised = run([propose(1, long), propose(2, "x".repeat(20_001))], {}, {}, { maxProposalChars: 20_000 });
+  const report = await raised.report;
+  expect(report).toMatchObject({ created: 1, rejected: { bad_proposal: 1 } });
+  expect(raised.db.state.ingests[0]!.p_content).toBe(long);
+  expect(raised.db.state.ingests[0]!.p_content_sha256).toBe(sha(long));
+
+  for (const bad of [0, -1, 1.5, 30_001, Number.NaN]) {
+    await expect(run([], {}, {}, { maxProposalChars: bad }).report, String(bad)).rejects.toThrow("invalid proposal length limit");
+  }
+  const atContract = run([propose(1, "y".repeat(30_000))], {}, {}, { maxProposalChars: 30_000 });
+  expect(await atContract.report).toMatchObject({ created: 1 });
+});
+
+test("with a raised limit and no page size given, pages shrink so a full page stays under the response cap", async () => {
+  const r = run([propose(1)], {}, {}, { maxProposalChars: 20_000 });
+  await r.report;
+  const limit = Number(new URL(r.feed.requests[0]!.url).searchParams.get("limit"));
+  expect(limit).toBeLessThanOrEqual(26);
+  expect(limit).toBeGreaterThanOrEqual(1);
+  const normal = run([propose(1)]);
+  await normal.report;
+  expect(Number(new URL(normal.feed.requests[0]!.url).searchParams.get("limit"))).toBe(50); // the default is unchanged
+  const explicit = run([propose(1)], {}, {}, { maxProposalChars: 20_000, pageSize: 40 });
+  await explicit.report;
+  expect(Number(new URL(explicit.feed.requests[0]!.url).searchParams.get("limit"))).toBe(40); // an explicit size is respected
+});
