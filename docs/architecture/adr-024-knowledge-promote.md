@@ -14,7 +14,7 @@ Status: built locally on `feat/knowledge-adapter` (2026-10-28). Closes the "noth
 
 - The host's puller handles `memory.propose` only; it counts any other kind as unknown. A `memory.tombstone` event for withdrawn proposals is the contract (ADR-005) but is not pulled yet, so orphans are reported, not withdrawn automatically.
 - Serving the outbox as `GET /h1/events` with the host's token check needs an adapter service; none exists for Knowledge yet. The outbox format is the feed body, so a small service can serve it unchanged.
-- Pages whose only sources are local files have no public address and are skipped (`no-public-source`). Whether to allow a stand-in address for them is the owner's decision.
+- Pages whose only sources are local files have no public address and are skipped (`no-public-source`) unless `--stand-in` is given (built 2026-10-29, off by default): they then get `https://<store>.knowledge.invalid/<page>`. `.invalid` can never resolve, so nothing can fetch it, and a real address is never replaced. The host's reviewer sees it is a location, not a web page.
 - Real-vault runs so far are dry runs with counts only (2026-10-28, with the owner's go-ahead): promote found 0 of 1,434 pages promotable. Nothing has been written to any vault.
 
 ## Addendum: repair plan for invalid pages (2026-10-28)

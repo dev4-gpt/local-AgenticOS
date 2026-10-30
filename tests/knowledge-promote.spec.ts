@@ -6,7 +6,7 @@ import path from "node:path";
 import { scanMemoryContent } from "../src/lib/adapterMemoryGuard";
 import { parsePage, validateProposal } from "../src/lib/adapterEventsPuller";
 import { applyIngest, planIngest } from "../scripts/knowledge-unify/ingest.mjs";
-import { applyPromote, MAX_PROPOSAL_CHARS, orphanedProposals, planPromote, readOutbox, reportOf } from "../scripts/knowledge-unify/promote.mjs";
+import { applyPromote, MAX_PROPOSAL_CHARS, orphanedProposals, planPromote, readOutbox, reportOf, standInSource } from "../scripts/knowledge-unify/promote.mjs";
 import { bodyHash } from "../scripts/knowledge-unify/schema-check.mjs";
 import { applyCascade, buildSourceIndex, planCascade, resolveRef } from "../scripts/knowledge-unify/source-index.mjs";
 
@@ -135,6 +135,21 @@ test("a raised limit lets a long page through whole, the host validator agrees a
   const excerpt = cut.items.find((item: { outcome: string }) => item.outcome === "would-propose").data.content;
   expect(excerpt.length).toBeLessThanOrEqual(3_000);
   expect(excerpt).toContain("[Excerpt:");
+});
+
+test("a page with no web source is skipped by default, and with the stand-in option gets an address that cannot resolve and passes the host validator", () => {
+  const { outbox, stores } = ingested({ "beta.md": LOCAL_ONLY, "alpha.md": WEB });
+  const base = { stores, outbox, adapterId: "knowledge", scan, now: NOW };
+  expect(reportOf(planPromote(base)).skipped).toEqual({ "no-public-source": 1 });
+  const plan = planPromote({ ...base, standIn: true });
+  const proposed = plan.items.filter((item: { outcome: string }) => item.outcome === "would-propose");
+  expect(proposed.length).toBe(2);
+  const local = proposed.find((item: { standIn: boolean }) => item.standIn);
+  expect(local.data.sourceUrl).toMatch(/^https:\/\/v\.knowledge\.invalid\/ingest\//);
+  expect(validateProposal(local.data, "knowledge")).not.toBeNull();
+  expect(proposed.find((item: { standIn: boolean }) => !item.standIn).data.sourceUrl).toBe("https://example.com/notes/alpha"); // a real address is never replaced
+  expect(standInSource("My Vault_1", "A B/Page One.md")).toBe("https://my-vault-1.knowledge.invalid/a%20b/page%20one");
+  expect(standInSource("___", "x.md")).toBe("https://store.knowledge.invalid/x");
 });
 
 test("the outbox refuses to continue if its numbers skip or it is malformed", () => {

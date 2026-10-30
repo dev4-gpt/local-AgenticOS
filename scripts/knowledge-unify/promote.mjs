@@ -8,7 +8,8 @@
 // limit, it has an http(s) source address (canonical_url, else the first http(s) entry in `sources`), the host scanner
 // does not block or flag it, and it was not proposed before at this content. Everything else is listed with a reason.
 // The report holds paths, ids and reasons, never page text. The outbox folder must be outside every store.
-// Usage: node scripts/knowledge-unify/promote.mjs plan|apply|orphans --store label=path --outbox DIR [--adapter-id ID] [--max-chars N] [--excerpt]
+// Usage: node scripts/knowledge-unify/promote.mjs plan|apply|orphans --store label=path --outbox DIR [--adapter-id ID] [--max-chars N] [--excerpt] [--stand-in]
+// --stand-in gives pages with no web source a non-resolving address (<label>.knowledge.invalid/<page>); off by default.
 // --max-chars must match the host's ADAPTER_MAX_PROPOSAL_CHARS for this adapter (default 2000, at most 30000).
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
@@ -36,6 +37,16 @@ export function publicSource(meta) {
     if (clean) return clean;
   }
   return null;
+}
+
+/**
+ * An address for a page that has no web source, so the host's reviewer sees where it lives without a real link. The host
+ * ends in `.invalid`, which can never resolve (RFC 6761), so nothing can fetch it. Opt-in only (`--stand-in`).
+ */
+export function standInSource(label, rel) {
+  const host = label.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "store";
+  const pagePath = rel.replace(/\.md$/i, "").toLowerCase().split("/").map(encodeURIComponent).join("/");
+  return `https://${host}.knowledge.invalid/${pagePath}`;
 }
 
 export function readOutbox(dir) {
@@ -69,7 +80,7 @@ export function citationOf(label, rel, bodySha) {
   return sha(`${label}::${rel}:${bodySha}`).slice(0, 32);
 }
 
-export function planPromote({ stores, outbox, adapterId, scan, now = new Date(), excerpt = false, maxChars = MAX_PROPOSAL_CHARS }) {
+export function planPromote({ stores, outbox, adapterId, scan, now = new Date(), excerpt = false, maxChars = MAX_PROPOSAL_CHARS, standIn = false }) {
   if (!ADAPTER_ID.test(adapterId)) throw new Error("the adapter id is not valid");
   if (!Number.isInteger(maxChars) || maxChars < 1 || maxChars > HOST_CONTRACT_CHARS) throw new Error(`the length limit must be a whole number from 1 to ${HOST_CONTRACT_CHARS}`);
   const known = new Set(readOutbox(outbox).events.map((event) => event.data?.citationId));
@@ -97,7 +108,8 @@ export function planPromote({ stores, outbox, adapterId, scan, now = new Date(),
         continue;
       }
       const content = excerptOf(full, maxChars);
-      const sourceUrl = publicSource(meta);
+      const real = publicSource(meta);
+      const sourceUrl = real ?? (standIn ? standInSource(label, rel) : null);
       if (!sourceUrl) {
         items.push({ ...base, outcome: "skipped", reason: "no-public-source" });
         continue;
@@ -116,6 +128,7 @@ export function planPromote({ stores, outbox, adapterId, scan, now = new Date(),
         ...base,
         outcome: "would-propose",
         excerpted: content !== full,
+        standIn: real === null,
         citationId,
         data: { content, sourceUrl, adapterVersion: ADAPTER_VERSION, agentPrincipal: adapterId, sourceTaskId: task, citationId, retrievedAt: now.toISOString() },
       });
@@ -150,7 +163,7 @@ export function reportOf(plan) {
   const reasons = {};
   for (const item of plan.items) if (item.outcome === "skipped") reasons[item.reason] = (reasons[item.reason] ?? 0) + 1;
   return {
-    would_propose: plan.items.filter((item) => item.outcome === "would-propose").map(({ page, citationId, excerpted }) => ({ page, citationId, excerpted })),
+    would_propose: plan.items.filter((item) => item.outcome === "would-propose").map(({ page, citationId, excerpted, standIn }) => ({ page, citationId, excerpted, standIn })),
     skipped: reasons,
   };
 }
@@ -188,7 +201,7 @@ async function main() {
   });
   const scan = (text, options) => ({ verdict: scanMemoryContent(text, options).verdict });
   const maxRaw = flag("--max-chars");
-  const plan = planPromote({ stores, outbox: outboxReal, adapterId: flag("--adapter-id") ?? "knowledge", scan, excerpt: rest.includes("--excerpt"), maxChars: maxRaw === undefined ? MAX_PROPOSAL_CHARS : Number(maxRaw) });
+  const plan = planPromote({ stores, outbox: outboxReal, adapterId: flag("--adapter-id") ?? "knowledge", scan, excerpt: rest.includes("--excerpt"), standIn: rest.includes("--stand-in"), maxChars: maxRaw === undefined ? MAX_PROPOSAL_CHARS : Number(maxRaw) });
   console.log(JSON.stringify(reportOf(plan), null, 1));
   if (command === "apply") console.log(JSON.stringify(applyPromote({ plan }), null, 1));
   else console.log("Dry run: nothing written. Use `apply` to append the events.");
