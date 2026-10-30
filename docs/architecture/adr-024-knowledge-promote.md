@@ -13,7 +13,6 @@ Status: built locally on `feat/knowledge-adapter` (2026-10-28). Closes the "noth
 ## Not covered
 
 - The host's puller handles `memory.propose` only; it counts any other kind as unknown. A `memory.tombstone` event for withdrawn proposals is the contract (ADR-005) but is not pulled yet, so orphans are reported, not withdrawn automatically.
-- Serving the outbox as `GET /h1/events` with the host's token check needs an adapter service; none exists for Knowledge yet. The outbox format is the feed body, so a small service can serve it unchanged.
 - Pages whose only sources are local files have no public address and are skipped (`no-public-source`) unless `--stand-in` is given (built 2026-10-29, off by default): they then get `https://<store>.knowledge.invalid/<page>`. `.invalid` can never resolve, so nothing can fetch it, and a real address is never replaced. The host's reviewer sees it is a location, not a web page.
 - Real-vault runs so far are dry runs with counts only (2026-10-28, with the owner's go-ahead): promote found 0 of 1,434 pages promotable. Nothing has been written to any vault.
 
@@ -24,6 +23,10 @@ Status: built locally on `feat/knowledge-adapter` (2026-10-28). Closes the "noth
 ## Addendum: raising the length limit (2026-10-28)
 
 All 41 shareable pages were over 2,000 characters (median about 5,200, longest about 16,400), so nothing could be proposed. The limit is now a per-adapter host setting, `ADAPTER_MAX_PROPOSAL_CHARS` (whole number 1 to 30,000, default 2,000), read by `run-adapter-events-puller.mjs` and passed to the puller, which also shrinks its page size so a feed page stays under the 1 MiB response cap. `promote.mjs --max-chars N` must match it. 30,000 is the most the database accepts and the most the scanner covers, so a raised limit loses no scanning. `--excerpt` (a plain cut with a visible note, no rewriting) is an optional fallback for pages still over the limit. Real vault dry run (llm-wiki only, counts only, `--max-chars 20000`): 26 of the 41 would be proposed whole, 15 are skipped as `scan-flagged` for the owner to look at, nothing written. Nothing has been applied to an outbox yet.
+
+## Addendum: the events service (2026-10-29)
+
+`scripts/knowledge-unify/serve-events.mjs` serves the outbox as `GET /h1/events?after=&limit=`. It is read-only and holds only the host's public key (`ADAPTER_PUBLIC_KEY_PEM`), `CLIENT_SLUG`, `ADAPTER_ID` and `KNOWLEDGE_OUTBOX_DIR`; it listens on 127.0.0.1 unless `HOST` says otherwise, so TLS has to be put in front of it for the puller (https is required off loopback). A request needs a host-signed token for this tenant and adapter with scope `events`, checked by the host's own `verifyAdapterToken`. Every refusal is a bare 401 with no body; a token id is remembered until it expires, so a token works once (in memory, so a restart inside the 5-minute token life forgets it; the host-side consume step still applies where the host has database access). A bad `after` or `limit` is a 400, a malformed or gapped outbox is a bare 500, and a page is cut to stay under the host's 1 MiB cap. The host's real puller reads it end to end in `tests/knowledge-events-service.spec.ts` (5 tests; 6 of 6 deliberate breakages each fail a test). Nothing is deployed and the outbox is still empty.
 
 ## Files
 
