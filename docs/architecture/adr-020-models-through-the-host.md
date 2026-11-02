@@ -86,9 +86,18 @@ started adapter tasks**. So the host now starts the task itself (option A), and 
 - Not yet: the same through the real REST layer (`scripts/staging-model-call-proof.mjs`, for the owner's terminal), and a real
   model call end to end, which needs the content adapter switched and the host deployed with the route on.
 
+## The content adapter (built)
+
+ContractorOS `ba40b41` (local): `CONTENT_OS_MODEL_MODE=host` makes Content OS keyless. `task.run` takes `modelGrant`, each draft
+task gets its own runner that calls only the configured `CONTENT_OS_HOST_MODEL_URL` with that grant (never the address in the
+request; one naming another address is refused), the grant is never written to disk, and an unreachable host fails the call
+with no fallback. Host mode refuses a model key or provider address at start-up. Direct mode stays the default until the host
+route is deployed. Tests and a 32-mutation hand sweep are clean (tracker P2-4).
+
 ## Still open
 
-- The content adapter's host-brokered `AgentRunner` and `modelGrant` in its `task.run`.
+- Deploying both sides on staging and one real model call end to end.
+- `founder.board` has no model in host mode yet.
 - The Spend check (ADR-016) matches exact task ids, so per-call rows do not roll up under their task yet.
 - A replayed start with a new grant id is refused (`task_has_grant`); a caller that retries a start must reuse its grant id.
 - Forge (Phase 4) on the same operation, once where Forge is hosted is known.
