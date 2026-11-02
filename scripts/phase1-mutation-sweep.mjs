@@ -75,6 +75,9 @@ export const EQUIVALENT = [
   { file: `${SQL_DIR}/supabase-client-adapter-proposals.sql`, line: 91, original: "raise exception 'adapter_promotion_scan_required';", reason: "Unreachable: an insert only admits a clean, flagged or blocked verdict, the scan cannot be rewritten, and a blocked one is refused by the check just above." },
   { file: "src/lib/adapterEventsPuller.ts", line: 141, original: "if (!reader) return null;", reason: "A response with no body makes getReader throw, and the caller's catch turns that into the same null, so the result is identical." },
   { file: "src/lib/adapterMemoryGuard.ts", line: 98, original: "if (!url) return null;", reason: "new URL(undefined) and new URL('') throw, and the catch returns null, so the result is identical." },
+  { file: "src/lib/adapterModelGrant.ts", line: 86, original: 'if (!value || typeof value !== "object" || Array.isArray(value)) return null;', reason: "A null payload throws on the next line's destructuring inside the try (null), and an array has no string v, iss or tenant, so the next check returns null." },
+  { file: "src/lib/adapterModelGrant.ts", line: 205, original: "if (!raw) return null;", reason: "JSON.parse(undefined) and JSON.parse('') throw, and the catch returns null, so the result is identical." },
+  { file: "src/app/api/adapter-host/model-call/route.ts", line: 24, original: "if (!pem) return null;", reason: "createPrivateKey(undefined) and createPrivateKey('') throw, and the catch returns null, so the result is identical." },
 ];
 
 const lineOf = (text, index) => text.slice(0, index).split("\n").length;

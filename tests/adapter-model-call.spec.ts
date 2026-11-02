@@ -121,6 +121,8 @@ test("a missing, bad or foreign credential is refused before anything else", asy
 test("a request for another task, or a malformed request, is refused before the database", async () => {
   const bad: [unknown, number, string][] = [
     [request({ taskKey: "host-task-0002" }), 403, "task_mismatch"],
+    [request({ taskKey: 5 }), 400, "invalid_request"],
+    [request({ taskKey: "has/slash" }), 400, "invalid_request"],
     [null, 400, "invalid_request"],
     [[], 400, "invalid_request"],
     [{ ...request(), extra: 1 }, 400, "invalid_request"],
@@ -245,6 +247,10 @@ test("the per-minute limits passed to the database can be changed but are always
   }
   expect(() => calls.assertModelCallDeps({ ...harness().deps, workerToken: "short" })).toThrow();
   expect(() => calls.assertModelCallDeps({ ...harness().deps, tenantSlug: "BAD" })).toThrow();
+  for (const tenantMonthlyCapMicros of [-1, 1.5, Number.MAX_SAFE_INTEGER + 2]) {
+    expect(() => calls.assertModelCallDeps({ ...harness().deps, tenantMonthlyCapMicros })).toThrow(/monthly cap/);
+  }
+  expect(() => calls.assertModelCallDeps({ ...harness().deps, tenantMonthlyCapMicros: 0 })).not.toThrow();
 });
 
 test("nothing from the prompt or the answer reaches the database", async () => {
@@ -255,7 +261,7 @@ test("nothing from the prompt or the answer reaches the database", async () => {
 });
 
 // ---- The route: switches, configuration, and that it hands the adapter's header and body to handleModelCall. ----
-function loadRoute(env: Record<string, string | undefined>, handle?: (...args: unknown[]) => unknown) {
+function loadRoute(env: Record<string, string | undefined>, handle?: (...args: unknown[]) => unknown, switches: { callsEnabled?: boolean; allowed?: boolean } = {}) {
   const seen: unknown[][] = [];
   const nextServer = { NextResponse: { json: (body: unknown, init: ResponseInit) => Response.json(body, init) } };
   const route = loadReviewModule("src/app/api/adapter-host/model-call/route.ts", {
@@ -264,9 +270,9 @@ function loadRoute(env: Record<string, string | undefined>, handle?: (...args: u
     "@/lib/adapterModelCall": { handleModelCall: async (...args: unknown[]) => { seen.push(args); return handle ? handle(...args) : { status: 200, body: { ok: true, output: "made-up", usage: null, costMicros: 0, call: 1 } }; } },
     "@/lib/clientDataPlane": { workerRpc: async () => ({ ok: false, status: 503, value: null }) },
     "@/lib/clientInputSafety": { containsClientSecretLike: () => false },
-    "@/lib/clientProviderAdapter": { callClientTextProvider: async () => ({ ok: false, status: 503 }), clientProviderRequestAllowed: () => ({ ok: false }), clientTextUsageCostMicros: () => null, estimateClientTextCostMicros: () => null, safeClientProviderOutput: (s: string) => s },
+    "@/lib/clientProviderAdapter": { callClientTextProvider: async () => ({ ok: false, status: 503 }), clientProviderRequestAllowed: (_p: string, model: string) => (switches.allowed ? { ok: true, model } : { ok: false }), clientTextUsageCostMicros: () => null, estimateClientTextCostMicros: () => null, safeClientProviderOutput: (s: string) => s },
     "@/lib/clientProviderContracts": { clientProviderContract: () => null },
-    "@/lib/clientRuntimePolicy": { clientProviderCallsEnabled: () => false },
+    "@/lib/clientRuntimePolicy": { clientProviderCallsEnabled: () => switches.callsEnabled === true },
   });
   const saved: Record<string, string | undefined> = {};
   const post = async (init: RequestInit = {}) => {
@@ -321,4 +327,15 @@ test("a deployment mistake inside the call becomes host_not_configured with no d
   const res = await r.post();
   expect(res.status).toBe(503);
   expect(await res.text()).toBe(JSON.stringify({ ok: false, error: "host_not_configured" }));
+});
+
+test("the client's provider-call switch and allowlist both have to say yes", async () => {
+  const policyOf = async (switches: { callsEnabled?: boolean; allowed?: boolean }) => {
+    const r = loadRoute(ON, undefined, switches);
+    await r.post();
+    return (r.seen[0][2] as { policy: { clientAllows: (p: string, m: string) => boolean } }).policy;
+  };
+  expect((await policyOf({ callsEnabled: true, allowed: true })).clientAllows("groq", "openai/gpt-oss-120b")).toBe(true);
+  expect((await policyOf({ callsEnabled: false, allowed: true })).clientAllows("groq", "openai/gpt-oss-120b")).toBe(false);
+  expect((await policyOf({ callsEnabled: true, allowed: false })).clientAllows("groq", "openai/gpt-oss-120b")).toBe(false);
 });

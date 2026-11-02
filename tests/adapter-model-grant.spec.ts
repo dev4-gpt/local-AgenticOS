@@ -72,6 +72,12 @@ test("every claim is checked", () => {
     [{ task: "has/slash" }, "malformed"],
     [{ jti: "nope" }, "malformed"],
     [{ iat: 1.5 }, "malformed"],
+    [{ v: 5 }, "malformed"],
+    [{ iss: 5 }, "malformed"],
+    [{ tenant: ["tenant-a"] }, "malformed"],
+    [{ scope: { 0: "model.call", length: 1 } }, "malformed"], // looks like a one-item list but is not one
+    [{ scope: "model.call" }, "malformed"],
+    [{ scope: [5] }, "malformed"],
   ];
   for (const [change, reason] of cases) {
     expect(verify(forge(privateKey, { ...baseClaims, ...change }), publicKey), JSON.stringify(change)).toEqual({ ok: false, reason });
@@ -212,6 +218,14 @@ test("limits and lifetime can be narrowed, and the grant never outlives its cred
     expect(await starter.startAdapterTaskWithGrant(startConfig, quiet.deps, { ...startInput, ...bad }), JSON.stringify(bad)).toEqual({ ok: false, reason: "invalid_input" });
     expect(quiet.log).toHaveLength(0);
     expect(quiet.requests).toHaveLength(0);
+  }
+});
+
+test("a bad tenant or adapter id in the configuration is refused before the database", async () => {
+  for (const change of [{ tenantSlug: "BAD SLUG" }, { adapterId: "X" }]) {
+    const h = starterHarness();
+    expect(await starter.startAdapterTaskWithGrant({ ...startConfig, ...change }, h.deps, startInput), JSON.stringify(change)).toEqual({ ok: false, reason: "invalid_config" });
+    expect(h.log).toHaveLength(0);
   }
 });
 

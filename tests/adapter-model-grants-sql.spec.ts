@@ -210,6 +210,11 @@ test("a call is refused for the wrong task, adapter or tenant, a closed or expir
   expect(await close(db)).toBe("already_closed");
   expect(await close(db, "task-9")).toBe("not_found");
   expect((await begin(db)).status).toBe("grant_closed");
+  // a missing argument is a caller mistake, not an unknown task
+  await db.exec("reset role; set role service_role");
+  for (const args of [[null, "forge", "wf-task-1"], ["tenant-a", null, "wf-task-1"], ["tenant-a", "forge", null]]) {
+    expect((await db.query<{ s: string }>("select public.client_adapter_model_grant_close($1,$2,$3) as s", args)).rows[0].s).toBe("invalid");
+  }
 });
 
 test("the adapter's task id is recorded once and must be unique for that adapter", async () => {
