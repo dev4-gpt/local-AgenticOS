@@ -1,6 +1,6 @@
 # ADR 020: Adapters reach AI models through the host
 
-**Status:** direction decided by the owner on 2026-11-02 ("Through Veloce"); open points settled and option A chosen by the owner the same day. Host side built (`a7865ab`, local) and its database rules proven on staging 2026-11-02. The content adapter switch and Forge are still to do.
+**Status:** direction decided by the owner on 2026-11-02 ("Through Veloce"); open points settled and option A chosen by the owner the same day. Host side built (`a7865ab`, local) and its database rules proven on staging 2026-11-02; the content adapter's host mode built (ContractorOS `ba40b41`, local). Deployment, a real end-to-end call and Forge are still to do.
 **Builds on:** ADR-005 (host and adapter contract), ADR-012 (adapter token keys), ADR-013 (what vendors may receive), ADR-016 (budget reconcile),
 ADR-018 ("Models through the host" under What comes next). **Affects:** the content adapter now, Forge in Phase 4, every later adapter.
 
