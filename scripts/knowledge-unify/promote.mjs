@@ -12,7 +12,7 @@
 // --stand-in gives pages with no web source a non-resolving address (<label>.knowledge.invalid/<page>); off by default.
 // --max-chars must match the host's ADAPTER_MAX_PROPOSAL_CHARS for this adapter (default 2000, at most 30000).
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { checkPage, isPromotable, parseStoreArgs } from "./schema-check.mjs";
 import { pageId } from "./source-index.mjs";
@@ -22,6 +22,8 @@ export const MAX_PROPOSAL_CHARS = 2_000; // the host's limit (adapterEventsPulle
 export const HOST_CONTRACT_CHARS = 30_000; // the most the host accepts even when its limit is raised (ADAPTER_MAX_PROPOSAL_CHARS)
 export const ADAPTER_VERSION = "knowledge-promote-1";
 export const OUTBOX_FILE = "events.json";
+export const LOCK_DIR = ".events.lock";
+const LOCK_STALE_MS = 60_000;
 export const EXCERPT_CHARS = 1_900;
 export const EXCERPT_NOTE = "\n\n[Excerpt: the first part of a longer page. The full page is at the source address.]";
 
@@ -47,6 +49,48 @@ export function standInSource(label, rel) {
   const host = label.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "store";
   const pagePath = rel.replace(/\.md$/i, "").toLowerCase().split("/").map(encodeURIComponent).join("/");
   return `https://${host}.knowledge.invalid/${pagePath}`;
+}
+
+/** Raised when another writer holds the outbox. The caller can try again later; nothing was changed. */
+export class OutboxBusyError extends Error {
+  constructor() {
+    super("the outbox is being written by another process");
+    this.code = "outbox_busy";
+  }
+}
+
+/** One writer at a time. The lock is a directory (mkdir is atomic); one left behind by a crash expires after a minute. */
+export function withOutboxLock(dir, fn) {
+  mkdirSync(dir, { recursive: true });
+  const lock = path.join(dir, LOCK_DIR);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      mkdirSync(lock);
+      break;
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      let age = 0;
+      try {
+        age = Date.now() - statSync(lock).mtimeMs;
+      } catch {
+        continue; // released between the two calls
+      }
+      if (age > LOCK_STALE_MS && attempt === 0) rmSync(lock, { recursive: true, force: true });
+      else throw new OutboxBusyError();
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    rmSync(lock, { recursive: true, force: true });
+  }
+}
+
+function writeOutbox(dir, events) {
+  const file = path.join(dir, OUTBOX_FILE);
+  const tmp = `${file}.tmp`;
+  writeFileSync(tmp, JSON.stringify({ events }, null, 1), { mode: 0o600 });
+  renameSync(tmp, file);
 }
 
 export function readOutbox(dir) {
@@ -83,7 +127,7 @@ export function citationOf(label, rel, bodySha) {
 export function planPromote({ stores, outbox, adapterId, scan, now = new Date(), excerpt = false, maxChars = MAX_PROPOSAL_CHARS, standIn = false }) {
   if (!ADAPTER_ID.test(adapterId)) throw new Error("the adapter id is not valid");
   if (!Number.isInteger(maxChars) || maxChars < 1 || maxChars > HOST_CONTRACT_CHARS) throw new Error(`the length limit must be a whole number from 1 to ${HOST_CONTRACT_CHARS}`);
-  const known = new Set(readOutbox(outbox).events.map((event) => event.data?.citationId));
+  const known = new Set(readOutbox(outbox).events.map((event) => event.data?.citationId ?? event.erasedCitationId));
   const items = [];
   const task = `knowledge-promote-${now.toISOString().slice(0, 10)}`;
   for (const { label, root } of stores) {
@@ -138,25 +182,49 @@ export function planPromote({ stores, outbox, adapterId, scan, now = new Date(),
 }
 
 export function applyPromote({ plan, now = new Date() }) {
-  const file = path.join(plan.outbox, OUTBOX_FILE);
-  const current = readOutbox(plan.outbox);
-  const events = [...current.events];
-  const written = [];
-  for (const item of plan.items) {
-    if (item.outcome !== "would-propose") continue;
-    if (events.some((event) => event.data?.citationId === item.citationId)) continue; // a second run never doubles an event
-    const seq = events.length + 1;
-    const event = { seq, id: sha(`${item.citationId}:${seq}`).slice(0, 32), at: now.toISOString(), kind: "memory.propose", taskId: plan.task, data: item.data };
-    events.push(event);
-    written.push(item.page);
-  }
-  if (written.length) {
-    mkdirSync(plan.outbox, { recursive: true });
-    const tmp = `${file}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ events }, null, 1), { mode: 0o600 });
-    renameSync(tmp, file);
-  }
-  return { written, total: events.length };
+  return withOutboxLock(plan.outbox, () => {
+    const events = [...readOutbox(plan.outbox).events];
+    const written = [];
+    for (const item of plan.items) {
+      if (item.outcome !== "would-propose") continue;
+      if (events.some((event) => (event.data?.citationId ?? event.erasedCitationId) === item.citationId)) continue; // a second run never doubles an event
+      const seq = events.length + 1;
+      events.push({ seq, id: sha(`${item.citationId}:${seq}`).slice(0, 32), at: now.toISOString(), kind: "memory.propose", taskId: plan.task, data: item.data });
+      written.push(item.page);
+    }
+    if (written.length) writeOutbox(plan.outbox, events);
+    return { written, total: events.length };
+  });
+}
+
+const ERASED_KIND = "memory.erased";
+
+/**
+ * Erases the page text of the named events (ADR-025). An erased event becomes a stub with the same number, id, time and
+ * task, so the numbering stays gapless; it keeps only the citation id (so the page is not proposed again) and the host
+ * event it was erased for. The receipt is worked out from the outbox itself, so asking again for the same host event gives
+ * the same receipt, even after a crash between the write and the answer. If any named event holds different content than
+ * the caller says, nothing is erased.
+ */
+export function eraseEvents({ outbox, tenantSlug, adapterId, eventId, targets }) {
+  return withOutboxLock(outbox, () => {
+    const events = [...readOutbox(outbox).events];
+    const wanted = new Map(targets.map((target) => [target.adapterEventId, target.contentSha256]));
+    for (const event of events) {
+      if (event.kind === "memory.propose" && wanted.has(event.id) && sha(event.data.content) !== wanted.get(event.id)) return { ok: false, error: "hash_mismatch" };
+    }
+    let changed = false;
+    const next = events.map((event) => {
+      if (event.kind !== "memory.propose" || !wanted.has(event.id)) return event;
+      changed = true;
+      return { seq: event.seq, id: event.id, at: event.at, taskId: event.taskId, kind: ERASED_KIND, erasedCitationId: event.data.citationId, erasedFor: eventId };
+    });
+    if (changed) writeOutbox(outbox, next);
+    const deletedCount = next.filter((event) => event.kind === ERASED_KIND && event.erasedFor === eventId).length;
+    const ids = [...wanted.keys()].sort().join(",");
+    const receiptSha256 = sha(`${tenantSlug}:${adapterId}:${eventId}:${ids}:${deletedCount}`);
+    return { ok: true, receipt: { tenantSlug, adapterId, eventId, receiptSha256, deletedCount } };
+  });
 }
 
 export function reportOf(plan) {
@@ -181,7 +249,7 @@ export function orphanedProposals({ stores, outbox }) {
       }
     }
   }
-  return readOutbox(outbox).events.filter((event) => !live.has(event.data?.citationId)).map((event) => ({ seq: event.seq, citationId: event.data.citationId }));
+  return readOutbox(outbox).events.filter((event) => event.kind === "memory.propose" && !live.has(event.data?.citationId)).map((event) => ({ seq: event.seq, citationId: event.data.citationId }));
 }
 
 async function main() {

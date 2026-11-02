@@ -12,7 +12,7 @@ Status: built locally on `feat/knowledge-adapter` (2026-10-28). Closes the "noth
 
 ## Not covered
 
-- The host's puller handles `memory.propose` only; it counts any other kind as unknown. A `memory.tombstone` event for withdrawn proposals is the contract (ADR-005) but is not pulled yet, so orphans are reported, not withdrawn automatically.
+- Withdrawal runs host to adapter (ADR-014, ADR-025): the host tells the adapter to erase its copy and takes a receipt. Orphans (pages deleted after they were proposed) are reported, not withdrawn automatically; the owner withdraws those notes in the host screen.
 - Pages whose only sources are local files have no public address and are skipped (`no-public-source`) unless `--stand-in` is given (built 2026-10-29, off by default): they then get `https://<store>.knowledge.invalid/<page>`. `.invalid` can never resolve, so nothing can fetch it, and a real address is never replaced. The host's reviewer sees it is a location, not a web page.
 - Real-vault runs so far are dry runs with counts only (2026-10-28, with the owner's go-ahead): promote found 0 of 1,434 pages promotable. Nothing has been written to any vault.
 

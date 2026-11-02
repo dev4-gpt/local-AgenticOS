@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -6,7 +7,7 @@ import path from "node:path";
 import { scanMemoryContent } from "../src/lib/adapterMemoryGuard";
 import { parsePage, validateProposal } from "../src/lib/adapterEventsPuller";
 import { applyIngest, planIngest } from "../scripts/knowledge-unify/ingest.mjs";
-import { applyPromote, MAX_PROPOSAL_CHARS, orphanedProposals, planPromote, readOutbox, reportOf, standInSource } from "../scripts/knowledge-unify/promote.mjs";
+import { applyPromote, eraseEvents, LOCK_DIR, MAX_PROPOSAL_CHARS, orphanedProposals, OutboxBusyError, planPromote, readOutbox, reportOf, standInSource } from "../scripts/knowledge-unify/promote.mjs";
 import { bodyHash } from "../scripts/knowledge-unify/schema-check.mjs";
 import { applyCascade, buildSourceIndex, planCascade, resolveRef } from "../scripts/knowledge-unify/source-index.mjs";
 
@@ -150,6 +151,85 @@ test("a page with no web source is skipped by default, and with the stand-in opt
   expect(proposed.find((item: { standIn: boolean }) => !item.standIn).data.sourceUrl).toBe("https://example.com/notes/alpha"); // a real address is never replaced
   expect(standInSource("My Vault_1", "A B/Page One.md")).toBe("https://my-vault-1.knowledge.invalid/a%20b/page%20one");
   expect(standInSource("___", "x.md")).toBe("https://store.knowledge.invalid/x");
+});
+
+const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
+const HOST_EVENT = "11111111-1111-4111-8111-111111111111";
+
+function promoted(count: number) {
+  const { vault, outbox, stores } = ingested({});
+  for (let i = 1; i <= count; i++) sharedPage(vault, `p${i}`, `https://example.com/p${i}`, `Synthetic fact number ${i} about gardening tools.\n`);
+  applyPromote({ plan: planPromote({ stores, outbox, adapterId: "knowledge", scan, now: NOW }), now: NOW });
+  return { vault, outbox, stores, events: readOutbox(outbox).events };
+}
+const targetOf = (event: { id: string; data: { content: string } }) => ({ adapterEventId: event.id, contentSha256: sha256(event.data.content) });
+const erase = (outbox: string, targets: unknown[], eventId = HOST_EVENT) => eraseEvents({ outbox, tenantSlug: "tenant-a", adapterId: "knowledge", eventId, targets });
+
+test("ERASE: an erased event keeps its number but loses its text, the same request gets the same receipt, and the page is not proposed again", () => {
+  const { outbox, stores, events } = promoted(3);
+  const before = fs.readFileSync(path.join(outbox, "events.json"), "utf8");
+  const result = erase(outbox, [targetOf(events[1])]);
+  expect(result).toMatchObject({ ok: true, receipt: { tenantSlug: "tenant-a", adapterId: "knowledge", eventId: HOST_EVENT, deletedCount: 1 } });
+  expect(result.receipt.receiptSha256).toMatch(/^[0-9a-f]{64}$/);
+  const after = readOutbox(outbox).events;
+  expect(after.map((e: { seq: number }) => e.seq)).toEqual([1, 2, 3]); // still gapless
+  expect(after[1]).toEqual({ seq: 2, id: events[1].id, at: events[1].at, taskId: events[1].taskId, kind: "memory.erased", erasedCitationId: events[1].data.citationId, erasedFor: HOST_EVENT });
+  const text = fs.readFileSync(path.join(outbox, "events.json"), "utf8");
+  expect(text).not.toContain("fact number 2");
+  expect(text).toContain("fact number 1"); // the others are untouched
+  expect(before).toContain("fact number 2");
+  expect(fs.statSync(path.join(outbox, "events.json")).mode & 0o777).toBe(0o600);
+  expect(erase(outbox, [targetOf(events[1])])).toEqual(result); // a lost answer can be asked again
+  expect(fs.readdirSync(outbox).sort()).toEqual(["events.json"]); // no lock or temp file left behind
+  // the page is still in the vault, but is not sent again; an edited page is
+  expect(reportOf(planPromote({ stores, outbox, adapterId: "knowledge", scan, now: NOW })).skipped).toEqual({ "already-proposed": 3 });
+  expect(orphanedProposals({ stores, outbox })).toEqual([]);
+  expect(applyPromote({ plan: planPromote({ stores, outbox, adapterId: "knowledge", scan, now: NOW }), now: NOW }).total).toBe(3);
+});
+
+test("ERASE: different content than the caller names erases nothing, an unknown event is a zero receipt, and two targets count twice", () => {
+  const { outbox, events } = promoted(3);
+  const snapshot = fs.readFileSync(path.join(outbox, "events.json"), "utf8");
+  const wrong = { adapterEventId: events[0].id, contentSha256: sha256("something else") };
+  expect(erase(outbox, [targetOf(events[2]), wrong])).toEqual({ ok: false, error: "hash_mismatch" });
+  expect(fs.readFileSync(path.join(outbox, "events.json"), "utf8")).toBe(snapshot); // not even the matching one
+  const none = erase(outbox, [{ adapterEventId: "a".repeat(32), contentSha256: "b".repeat(64) }], "22222222-2222-4222-8222-222222222222");
+  expect(none).toMatchObject({ ok: true, receipt: { deletedCount: 0 } });
+  expect(fs.readFileSync(path.join(outbox, "events.json"), "utf8")).toBe(snapshot);
+  const both = erase(outbox, [targetOf(events[0]), targetOf(events[2])], "33333333-3333-4333-8333-333333333333");
+  expect(both.receipt.deletedCount).toBe(2);
+  expect(erase(outbox, [targetOf(events[2]), targetOf(events[0])], "33333333-3333-4333-8333-333333333333")).toEqual(both); // order does not matter
+  const other = erase(outbox, [targetOf(events[0])], "44444444-4444-4444-8444-444444444444");
+  expect(other.receipt.deletedCount).toBe(0); // it was erased for another host event; this request erased nothing
+  expect(other.receipt.receiptSha256).not.toBe(both.receipt.receiptSha256);
+});
+
+test("ERASE: a plan made before the erase cannot bring the page back when it is applied afterwards", () => {
+  const { vault, outbox, stores } = ingested({});
+  sharedPage(vault, "one", "https://example.com/one", "A synthetic fact that is planned, sent, erased, and then applied again.\n");
+  const plan = planPromote({ stores, outbox, adapterId: "knowledge", scan, now: NOW });
+  applyPromote({ plan, now: NOW });
+  const [event] = readOutbox(outbox).events;
+  erase(outbox, [targetOf(event)]);
+  expect(applyPromote({ plan, now: NOW })).toEqual({ written: [], total: 1 });
+  expect(readOutbox(outbox).events[0].kind).toBe("memory.erased");
+});
+
+test("LOCK: a second writer is refused while the outbox is held, a stale lock from a crash is cleared, and the lock is always released", () => {
+  const { vault, outbox, stores, events } = promoted(1);
+  sharedPage(vault, "later", "https://example.com/later", "A later synthetic fact about composting.\n");
+  const plan = planPromote({ stores, outbox, adapterId: "knowledge", scan, now: NOW });
+  fs.mkdirSync(path.join(outbox, LOCK_DIR));
+  expect(() => applyPromote({ plan, now: NOW })).toThrow(OutboxBusyError);
+  expect(() => erase(outbox, [targetOf(events[0])])).toThrow(OutboxBusyError);
+  expect(readOutbox(outbox).events.length).toBe(1); // nothing changed
+  const old = new Date(Date.now() - 5 * 60_000);
+  fs.utimesSync(path.join(outbox, LOCK_DIR), old, old);
+  expect(applyPromote({ plan, now: NOW }).total).toBe(2); // the stale lock was cleared
+  expect(fs.existsSync(path.join(outbox, LOCK_DIR))).toBe(false);
+  fs.writeFileSync(path.join(outbox, "events.json"), "{}"); // a failing writer still releases the lock
+  expect(() => erase(outbox, [targetOf(events[0])])).toThrow("malformed");
+  expect(fs.existsSync(path.join(outbox, LOCK_DIR))).toBe(false);
 });
 
 test("the outbox refuses to continue if its numbers skip or it is malformed", () => {
