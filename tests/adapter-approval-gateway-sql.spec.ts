@@ -288,8 +288,10 @@ test("the retention command runs the expiry sweep and the token purge only with 
   expect(guarded).toContain("rpc/client_adapter_expire_approvals");
   expect(guarded).toContain("rpc/client_adapter_purge_token_uses");
   expect(guarded).toContain("rpc/client_adapter_purge_token_counts");
+  expect(block).toContain("adapterHost.modelGrantsPurged = null;");
+  expect(guarded).toContain("rpc/client_adapter_purge_model_grants"); // ADR-020; a 404 (migration not applied) is reported, not hidden
   // a failed housekeeping call stops the run instead of being reported as success
-  expect((guarded.match(/fail\(/g) ?? []).length).toBe(3);
+  expect((guarded.match(/fail\(/g) ?? []).length).toBe(4);
   // the report carries the counts
   expect(lifecycle).toMatch(/console\.log\(JSON\.stringify\(\{[^\n]*adapterHost/);
 });

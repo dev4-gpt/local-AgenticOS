@@ -41,8 +41,8 @@ function fakeFeed(events: Ev[], o: { status?: number; body?: string; throws?: bo
 }
 
 /** A fake database: the three host functions, with a cursor, and a way to choose what ingest answers. */
-function fakeDb(o: { ingest?: (body: Record<string, unknown>, n: number) => string; spend?: (body: Record<string, unknown>, n: number) => string; casFails?: boolean; cursor?: number } = {}) {
-  const state = { cursor: o.cursor ?? 0, ingests: [] as Record<string, unknown>[], spends: [] as Record<string, unknown>[], advances: [] as number[], calls: [] as string[] };
+function fakeDb(o: { ingest?: (body: Record<string, unknown>, n: number) => string; spend?: (body: Record<string, unknown>, n: number) => string; close?: (body: Record<string, unknown>) => string; casFails?: boolean; cursor?: number } = {}) {
+  const state = { cursor: o.cursor ?? 0, ingests: [] as Record<string, unknown>[], spends: [] as Record<string, unknown>[], closes: [] as Record<string, unknown>[], advances: [] as number[], calls: [] as string[] };
   const rpc = async (name: string, body: Record<string, unknown>) => {
     state.calls.push(name);
     if (name === "client_adapter_events_cursor_get") return { ok: true, status: 200, value: state.cursor };
@@ -51,6 +51,12 @@ function fakeDb(o: { ingest?: (body: Record<string, unknown>, n: number) => stri
       state.cursor = body.p_next as number;
       state.advances.push(state.cursor);
       return { ok: true, status: 200, value: true };
+    }
+    if (name === "client_adapter_model_grant_close") {
+      state.closes.push(body);
+      const outcome = o.close ? o.close(body) : "not_found";
+      if (outcome === "__throw") throw new Error("down");
+      return outcome === "__down" ? { ok: false, status: 503, value: null } : { ok: true, status: 200, value: outcome };
     }
     if (name === "client_adapter_budget_record_report") {
       state.spends.push(body);
@@ -320,4 +326,24 @@ test("a spend field on an event that is not a task.state is not treated as a rep
   const report = await r.report;
   expect(r.db.state.spends).toEqual([]);
   expect(report.spendReported).toBe(0);
+});
+
+test("a task's final state closes its model grant; other states do not (ADR-020)", async () => {
+  const states = ["queued", "running", "succeeded", "failed", "cancelled", "weird"];
+  const events: Ev[] = states.map((state, i) => ({ ...taskState(i + 1), taskId: `task-${state}`, data: { state } }));
+  const r = run(events, { close: (body) => (body.p_task_id === "task-failed" ? "already_closed" : "closed") });
+  const report = await r.report;
+  expect(r.db.state.closes.map((b) => b.p_task_id)).toEqual(["task-succeeded", "task-failed", "task-cancelled"]);
+  expect(r.db.state.closes[0]).toEqual({ p_tenant_slug: TENANT, p_adapter_id: ADAPTER, p_task_id: "task-succeeded" });
+  expect(report).toMatchObject({ grantsClosed: 2, grantCloseFailed: 0, stopped: null, cursor: 6 });
+  expect(r.db.state.ingests).toHaveLength(0);
+});
+
+test("a close the database does not confirm is counted and never stops the run", async () => {
+  for (const answer of ["__down", "__throw", "nonsense"]) {
+    const r = run([taskState(1), taskState(2)], { close: () => answer });
+    expect(await r.report, answer).toMatchObject({ grantsClosed: 0, grantCloseFailed: 2, stopped: null, cursor: 2 });
+  }
+  const unbound = run([taskState(1)], { close: () => "not_found" }); // a task started without a grant
+  expect(await unbound.report).toMatchObject({ grantsClosed: 0, grantCloseFailed: 0, stopped: null });
 });

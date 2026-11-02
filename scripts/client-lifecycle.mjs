@@ -385,6 +385,7 @@ if (mode === "retention") {
     adapterHost.approvalsExpired = null;
     adapterHost.tokenUsesPurged = null;
     adapterHost.tokenCountsPurged = null;
+    adapterHost.modelGrantsPurged = null;
     if (apply) {
       const expireResponse = await supabaseRequest("rpc/client_adapter_expire_approvals", { method: "POST", body: JSON.stringify({ p_limit: 1000 }) });
       if (!expireResponse.ok) fail(`Adapter approval expiry failed (${expireResponse.status}); verify the approval gateway migration`);
@@ -395,6 +396,11 @@ if (mode === "retention") {
       const countsResponse = await supabaseRequest("rpc/client_adapter_purge_token_counts", { method: "POST", body: JSON.stringify({ p_limit: 1000 }) });
       if (!countsResponse.ok) fail(`Adapter token-count purge failed (${countsResponse.status}); verify the token migration`);
       adapterHost.tokenCountsPurged = await countsResponse.json();
+      // Model grants (ADR-020). A 404 means the grants migration is not applied, so there are no grant rows to purge.
+      const grantsResponse = await supabaseRequest("rpc/client_adapter_purge_model_grants", { method: "POST", body: JSON.stringify({ p_limit: 1000 }) });
+      if (grantsResponse.status === 404) adapterHost.modelGrantsPurged = "not_installed";
+      else if (!grantsResponse.ok) fail(`Adapter model-grant purge failed (${grantsResponse.status}); verify the model-grants migration`);
+      else adapterHost.modelGrantsPurged = await grantsResponse.json();
     }
   }
   if (apply && ids.length) {

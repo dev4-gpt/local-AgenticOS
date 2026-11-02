@@ -46,6 +46,12 @@ export const TARGETS = [
   { file: "src/lib/adapterCommandPolicy.ts", kind: "ts", specs: [T("adapter-command-policy")] },
   { file: "src/app/api/client-runtime/adapter-promotions/[id]/decision/route.ts", kind: "ts", specs: [T("adapter-promotions-routes"), T("adapter-wrong-tenant-routes")] },
   { file: "src/lib/adapterOverview.ts", kind: "ts", specs: [T("adapter-overview")] },
+  // ADR-020: models through the host
+  { file: `${SQL_DIR}/supabase-client-adapter-model-grants.sql`, kind: "sql", specs: [T("adapter-model-grants-sql")] },
+  { file: "src/lib/adapterModelGrant.ts", kind: "ts", specs: [T("adapter-model-grant"), T("adapter-model-call")] },
+  { file: "src/lib/adapterModelCall.ts", kind: "ts", specs: [T("adapter-model-call")] },
+  { file: "src/lib/adapterTaskStarter.ts", kind: "ts", specs: [T("adapter-model-grant")] },
+  { file: "src/app/api/adapter-host/model-call/route.ts", kind: "ts", specs: [T("adapter-model-call")] },
 ];
 
 // Success results are not rules; removing them would only break the happy path, which proves nothing.
