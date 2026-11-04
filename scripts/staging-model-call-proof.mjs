@@ -40,10 +40,14 @@ function check(name, ok, detail = "") {
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${ok || !detail ? "" : `  (${detail})`}`);
 }
 
+// The newer keys (sb_publishable_..., sb_secret_...) go on the apikey header only: Supabase rejects them as a Bearer token
+// because they are not JWTs. The older JWT keys (anon, service_role) are also sent as the Bearer token, as before.
+const authHeaders = (key) => (key.startsWith("sb_") ? { apikey: key } : { apikey: key, Authorization: `Bearer ${key}` });
+
 async function call(urlPath, { method = "GET", key, body, headers = {} } = {}) {
   const response = await fetch(`${BASE}${urlPath}`, {
     method,
-    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...headers },
+    headers: { ...authHeaders(key), "Content-Type": "application/json", ...headers },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   }).catch(() => null);
   if (!response) return { ok: false, status: 0, value: null };
