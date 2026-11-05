@@ -85,6 +85,14 @@ test("a good call is counted, reserved, made, settled at its real cost and finis
   expect(h.providerCalls).toEqual([["groq", "openai/gpt-oss-120b", request().messages, 500]]);
 });
 
+test("the output cap is 8,192 tokens (Forge asks this much so reasoning models are not cut off), and a request at the cap is answered", async () => {
+  expect(calls.MAX_OUTPUT_TOKENS).toBe(8192);
+  const h = harness();
+  const result = await calls.handleModelCall(`Bearer ${credential()}`, request({ maxOutputTokens: 8192 }), h.deps);
+  expect(result.status).toBe(200);
+  expect(h.log.find(([name]) => name === "client_adapter_budget_reserve")).toBeTruthy();
+});
+
 test("the settled cost never exceeds the reservation, and a call without usage settles the full reservation", async () => {
   const pricey = harness({}, { policy: { ...harness().deps.policy, usageMicros: () => 10_000_000 } });
   const a = await calls.handleModelCall(`Bearer ${credential()}`, request(), pricey.deps);
@@ -136,7 +144,7 @@ test("a request for another task, or a malformed request, is refused before the 
     [request({ messages: [{ role: "user", content: "" }] }), 400, "invalid_request"],
     [request({ messages: [{ role: "user", content: "x", name: "n" }] }), 400, "invalid_request"],
     [request({ maxOutputTokens: 0 }), 400, "invalid_request"],
-    [request({ maxOutputTokens: 4097 }), 400, "invalid_request"],
+    [request({ maxOutputTokens: 8193 }), 400, "invalid_request"],
     [request({ maxOutputTokens: 1.5 }), 400, "invalid_request"],
   ];
   for (const [body, status, error] of bad) {

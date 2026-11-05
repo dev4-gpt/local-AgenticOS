@@ -23,7 +23,7 @@ import { MAX_GRANT_TOKENS, TASK_KEY, verifyModelGrantCredential } from "./adapte
 /** The providers an adapter may reach through the host in the first version. */
 export const MODEL_CALL_PROVIDERS = ["openai", "anthropic", "gemini", "groq", "openrouter"] as const;
 export const MAX_MESSAGES = 50;
-export const MAX_OUTPUT_TOKENS = 4096;
+export const MAX_OUTPUT_TOKENS = 8192;
 export const DEFAULT_ADAPTER_PER_MINUTE = 30;
 export const DEFAULT_TENANT_PER_MINUTE = 60;
 const MAX_PROVIDER_CHARS = 40;
