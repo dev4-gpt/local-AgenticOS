@@ -1,6 +1,6 @@
 # ADR 020: Adapters reach AI models through the host
 
-**Status:** direction decided by the owner on 2026-11-02 ("Through Veloce"); open points settled and option A chosen by the owner the same day. Host side built (`a7865ab`, local) and its database rules proven on staging 2026-11-02; the content adapter's host mode built (ContractorOS `ba40b41`, local). Deployment, a real end-to-end call and Forge are still to do.
+**Status:** direction decided by the owner on 2026-11-02 ("Through Veloce"); open points settled and option A chosen by the owner the same day. Host side built (`a7865ab`, local) and its database rules proven on staging 2026-11-02 and through the REST layer 2026-11-04; the content adapter's host mode built (ContractorOS `ba40b41`, local). Deployment, a real end-to-end call and Forge are still to do.
 **Builds on:** ADR-005 (host and adapter contract), ADR-012 (adapter token keys), ADR-013 (what vendors may receive), ADR-016 (budget reconcile),
 ADR-018 ("Models through the host" under What comes next). **Affects:** the content adapter now, Forge in Phase 4, every later adapter.
 
@@ -83,8 +83,9 @@ started adapter tasks**. So the host now starts the task itself (option A), and 
   wrong model, counting, a real reserve and settle under `…/m1`, the token limit, the call limit, members and the publishable key
   refused on the tables and the close function, close by the adapter's task id, and a call after closing, all as tested. A check
   afterwards found no row left.
-- Not yet: the same through the real REST layer (`scripts/staging-model-call-proof.mjs`, for the owner's terminal), and a real
-  model call end to end, which needs the content adapter switched and the host deployed with the route on.
+- Staging through the real REST layer, 2026-11-04: the owner ran `scripts/staging-model-call-proof.mjs` (the host's real
+  model.call code, a stand-in provider): 19 passed, 0 failed, and a check afterwards found nothing left behind.
+- Not yet: a real model call end to end, which needs the content adapter switched and the host deployed with the route on.
 
 ## The content adapter (built)
 
