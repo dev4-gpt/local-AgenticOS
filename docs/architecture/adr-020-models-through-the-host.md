@@ -106,7 +106,7 @@ charged twice; a new branch. ProofMint (`dev4-gpt/veloce-proofmint`, adapter id 
 - h1 operations at `/h1/<op>` (manifest, health, task.run, task.get, task.result, task.cancel, events), off unless
   `FORGE_H1_ENABLED=true`. Host tokens are checked by the same rules as the content adapter; used token ids are kept in Postgres
   until they expire, because ProofMint runs as serverless functions.
-- One draft-class task, `forge.round`. `task.run` requires `modelGrant { token, url }`, and the address must equal the configured
+- One draft-class task, `proofmint.round`. `task.run` requires `modelGrant { token, url }`, and the address must equal the configured
   `VELOCE_HOST_MODEL_URL`. The round runs after the reply (`after()`, within the 300-second limit). A task still running after
   330 seconds is recorded as failed (`timed_out`), so the host's feed always ends with a final state.
 - Every model answer for such a round comes from `model.call` with the grant: the grant is kept in memory only, there is no retry
