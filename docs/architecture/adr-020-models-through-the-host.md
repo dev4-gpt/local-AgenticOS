@@ -1,6 +1,6 @@
 # ADR 020: Adapters reach AI models through the host
 
-**Status:** direction decided by the owner on 2026-11-02 ("Through Veloce"); open points settled and option A chosen by the owner the same day. Host side built (`a7865ab`, local) and its database rules proven on staging 2026-11-02 and through the REST layer 2026-11-04; the content adapter's host mode built (ContractorOS `ba40b41`, local). Deployment, a real end-to-end call and Forge are still to do.
+**Status:** direction decided by the owner on 2026-11-02 ("Through Veloce"); open points settled and option A chosen by the owner the same day. Host side built (`a7865ab`, local) and its database rules proven on staging 2026-11-02 and through the REST layer 2026-11-04; the content adapter's host mode built (ContractorOS `ba40b41`, local); ProofMint (formerly Forge) built on the same operation 2026-11-04 (`61ffae3`, local). Deployment and a real end-to-end call are still to do.
 **Builds on:** ADR-005 (host and adapter contract), ADR-012 (adapter token keys), ADR-013 (what vendors may receive), ADR-016 (budget reconcile),
 ADR-018 ("Models through the host" under What comes next). **Affects:** the content adapter now, Forge in Phase 4, every later adapter.
 
@@ -46,7 +46,7 @@ started adapter tasks**. So the host now starts the task itself (option A), and 
    id when the task's final state arrives (best effort; the grant expires anyway). If `task.run` fails the grant is left to
    expire, because the adapter may have received it.
 2. **The operation.** `POST /api/adapter-host/model-call` with `Authorization: Bearer <grant>` and exactly
-   `{ taskKey, provider, model, messages, maxOutputTokens }` (1 to 50 messages, roles system, user or assistant, at most 4,096
+   `{ taskKey, provider, model, messages, maxOutputTokens }` (1 to 50 messages, roles system, user or assistant, at most 8,192 (raised from 4,096 for ProofMint, 2026-11-04)
    output tokens). Text in, text out; no tools, no streaming. Off unless `ADAPTER_HOST_ENABLED` and `ADAPTER_MODEL_CALLS_ENABLED`
    are both `true`; a client edition must also list the path in `CLIENT_ALLOWED_API_ROUTES`. There is no member session: the
    grant is the only way in.
@@ -95,13 +95,36 @@ request; one naming another address is refused), the grant is never written to d
 with no fallback. Host mode refuses a model key or provider address at start-up. Direct mode stays the default until the host
 route is deployed. Tests and a 32-mutation hand sweep are clean (tracker P2-4).
 
+## Veloce ProofMint, formerly Forge (Phase 4, built)
+
+Owner choices on 2026-11-04 ("Yes, use recommendations"): a minimal h1 surface plus a "veloce" provider, off by default; the host's
+output cap raised from 4,096 to 8,192 tokens (host `0300844`), because ProofMint asks for 8,192 so reasoning models are not cut off
+mid-code; the host pays for the model calls and ProofMint's own wallet charges only sandbox time and the round fee, so nothing is
+charged twice; a new branch. ProofMint (`dev4-gpt/veloce-proofmint`, adapter id `veloce-proofmint`) `feat/veloce-host` commit
+`61ffae3`, local only:
+
+- h1 operations at `/h1/<op>` (manifest, health, task.run, task.get, task.result, task.cancel, events), off unless
+  `FORGE_H1_ENABLED=true`. Host tokens are checked by the same rules as the content adapter; used token ids are kept in Postgres
+  until they expire, because ProofMint runs as serverless functions.
+- One draft-class task, `forge.round`. `task.run` requires `modelGrant { token, url }`, and the address must equal the configured
+  `VELOCE_HOST_MODEL_URL`. The round runs after the reply (`after()`, within the 300-second limit). A task still running after
+  330 seconds is recorded as failed (`timed_out`), so the host's feed always ends with a final state.
+- Every model answer for such a round comes from `model.call` with the grant: the grant is kept in memory only, there is no retry
+  and no fallback to ProofMint's own free-tier keys, refusals come back as short codes only, and redirects are refused. The page's
+  own rounds still use those keys and are unchanged.
+- 29 new tests; all 348 pass; typecheck clean. A hand sweep of 95 mutations: 92 caught, 3 equivalent, files restored.
+
+Gaps in this slice: ProofMint does not report `spentMicros` (the host's ledger already holds the model cost); its deletion
+guarantee is `none`, which keeps it out of a client edition until it can give receipts; a running round cannot be cancelled
+part way (`task.cancel` answers `cancelled: false`); running it needs a host registry row for `veloce-proofmint`, an allowlist
+entry in `ADAPTER_MODEL_ALLOWLIST_JSON` and both sides deployed.
+
 ## Still open
 
-- Deploying both sides on staging and one real model call end to end.
+- Deploying both sides on staging and one real model call end to end (content adapter and ProofMint).
 - `founder.board` has no model in host mode yet.
 - The Spend check (ADR-016) matches exact task ids, so per-call rows do not roll up under their task yet.
 - A replayed start with a new grant id is refused (`task_has_grant`); a caller that retries a start must reuse its grant id.
-- Forge (Phase 4) on the same operation, once where Forge is hosted is known.
 
 ## Consequences
 
