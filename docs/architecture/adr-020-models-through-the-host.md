@@ -114,16 +114,39 @@ charged twice; a new branch. ProofMint (`dev4-gpt/veloce-proofmint`, adapter id 
   own rounds still use those keys and are unchanged.
 - 29 new tests; all 348 pass; typecheck clean. A hand sweep of 95 mutations: 92 caught, 3 equivalent, files restored.
 
-Gaps in this slice: ProofMint does not report `spentMicros` (the host's ledger already holds the model cost); its deletion
-guarantee is `none`, which keeps it out of a client edition until it can give receipts; a running round cannot be cancelled
-part way (`task.cancel` answers `cancelled: false`); running it needs a host registry row for `veloce-proofmint`, an allowlist
-entry in `ADAPTER_MODEL_ALLOWLIST_JSON` and both sides deployed.
+Gaps in this slice: its deletion guarantee is `none`, which keeps it out of a client edition until it can give receipts; a
+running round cannot be cancelled part way (`task.cancel` answers `cancelled: false`); running it needs a host registry row for
+`veloce-proofmint`, an allowlist entry in `ADAPTER_MODEL_ALLOWLIST_JSON` and both sides deployed.
+
+## An adapter's own spend (built 2026-11-05; owner: "Yes, plan it", then "Yes, build it")
+
+ProofMint pays for a sandbox and a round fee besides its model calls. The host now sets that aside and settles it, so the
+client's budget covers it and the Spend check (ADR-016) can compare it:
+
+- The starter takes `ownSpend { tenantMonthlyCapMicros }`: after opening the grant it reserves `budgetMaxMicros` under the host's
+  key for the task (`own-reserve-<key>`, provider `adapter`). A refused budget stops the start (`budget_refused`); a clear refusal
+  from the adapter (4xx, or 503 busy) releases it; an unclear failure keeps it for the final state. Without `ownSpend` nothing
+  changes.
+- ProofMint refuses a budget below one round's cap (`budget_too_low`, $0.25) and reports `spentMicros` on the final state: what
+  its wallet was charged; 0 for a refused payment or a round released before any sandbox; the full cap when the cost is unknown.
+- The sync job settles the reservation when the final state arrives (`client_adapter_own_spend_settle`, service role): at the
+  reported figure but never above the reservation, or the full reservation when no usable figure came. A task with nothing set
+  aside is passed quietly; a database without the function yet (404) is treated the same, so the job never stalls on an
+  unmigrated database; any other failure stops the run before that task, so the next run settles it.
+- The Spend check finds the reservation from the adapter's own task id through the grant. Model calls are left out of the
+  comparison (the host settles each at real cost), which replaces the earlier "roll up per-call rows" item.
+- Host `src/lib/adapterTaskStarter.ts`, `src/lib/adapterEventsPuller.ts`, `product-experience/supabase-client-adapter-spend-rollup.sql`
+  (applied to staging and proven in a rolled-back transaction, nothing left behind); ProofMint `64666d4`. Tests: 7 SQL, 4 starter,
+  3 sync job, ProofMint h1 updated; hand sweep of 38 mutations across both repos, 36 caught on the first run and the 2 survivors
+  (the adapter filters, each masked by the other) now caught by a new test.
 
 ## Still open
 
 - Deploying both sides on staging and one real model call end to end (content adapter and ProofMint).
 - `founder.board` has no model in host mode yet.
-- The Spend check (ADR-016) matches exact task ids, so per-call rows do not roll up under their task yet.
+- No host code calls the starter yet; the caller that starts ProofMint tasks passes `ownSpend` and the client's monthly cap.
+- The own-spend settle has no report of its own in the Spend check when an adapter sends no figure: it is settled in full and
+  counted in the sync job's report (`ownSpendSettledFull`), not listed as a reconcile row.
 - A replayed start with a new grant id is refused (`task_has_grant`); a caller that retries a start must reuse its grant id.
 
 ## Consequences

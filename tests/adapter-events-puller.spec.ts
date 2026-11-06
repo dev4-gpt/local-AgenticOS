@@ -41,8 +41,8 @@ function fakeFeed(events: Ev[], o: { status?: number; body?: string; throws?: bo
 }
 
 /** A fake database: the three host functions, with a cursor, and a way to choose what ingest answers. */
-function fakeDb(o: { ingest?: (body: Record<string, unknown>, n: number) => string; spend?: (body: Record<string, unknown>, n: number) => string; close?: (body: Record<string, unknown>) => string; casFails?: boolean; cursor?: number } = {}) {
-  const state = { cursor: o.cursor ?? 0, ingests: [] as Record<string, unknown>[], spends: [] as Record<string, unknown>[], closes: [] as Record<string, unknown>[], advances: [] as number[], calls: [] as string[] };
+function fakeDb(o: { ingest?: (body: Record<string, unknown>, n: number) => string; spend?: (body: Record<string, unknown>, n: number) => string; close?: (body: Record<string, unknown>) => string; own?: (body: Record<string, unknown>) => string; casFails?: boolean; cursor?: number } = {}) {
+  const state = { cursor: o.cursor ?? 0, ingests: [] as Record<string, unknown>[], spends: [] as Record<string, unknown>[], closes: [] as Record<string, unknown>[], owns: [] as Record<string, unknown>[], advances: [] as number[], calls: [] as string[] };
   const rpc = async (name: string, body: Record<string, unknown>) => {
     state.calls.push(name);
     if (name === "client_adapter_events_cursor_get") return { ok: true, status: 200, value: state.cursor };
@@ -51,6 +51,13 @@ function fakeDb(o: { ingest?: (body: Record<string, unknown>, n: number) => stri
       state.cursor = body.p_next as number;
       state.advances.push(state.cursor);
       return { ok: true, status: 200, value: true };
+    }
+    if (name === "client_adapter_own_spend_settle") {
+      state.owns.push(body);
+      const outcome = o.own ? o.own(body) : "not_reserved";
+      if (outcome === "__throw") throw new Error("down");
+      if (outcome === "__missing") return { ok: false, status: 404, value: null };
+      return outcome === "__down" ? { ok: false, status: 503, value: null } : { ok: true, status: 200, value: outcome };
     }
     if (name === "client_adapter_model_grant_close") {
       state.closes.push(body);
@@ -346,4 +353,48 @@ test("a close the database does not confirm is counted and never stops the run",
   }
   const unbound = run([taskState(1)], { close: () => "not_found" }); // a task started without a grant
   expect(await unbound.report).toMatchObject({ grantsClosed: 0, grantCloseFailed: 0, stopped: null });
+});
+
+// An adapter's own spend (ADR-020, ProofMint): the host set the task's budget aside at start and settles it at the final state.
+test("a final state settles the adapter's own spend at the reported figure, or in full when no usable figure came", async () => {
+  const events: Ev[] = [
+    spending(1, 20_010),
+    { ...taskState(2), taskId: "task-no-figure" },
+    { ...spending(3, -5), taskId: "task-bad-figure" },
+    { ...taskState(4), taskId: "task-running", data: { state: "running", spentMicros: 7 } },
+  ];
+  const r = run(events, { own: (body) => (body.p_reported_micros === null ? "settled_full" : "settled") });
+  const report = await r.report;
+  expect(r.db.state.owns).toEqual([
+    { p_tenant_slug: TENANT, p_adapter_id: ADAPTER, p_adapter_task_id: TASK, p_reported_micros: 20_010 },
+    { p_tenant_slug: TENANT, p_adapter_id: ADAPTER, p_adapter_task_id: "task-no-figure", p_reported_micros: null },
+    { p_tenant_slug: TENANT, p_adapter_id: ADAPTER, p_adapter_task_id: "task-bad-figure", p_reported_micros: null },
+  ]); // a running task settles nothing
+  expect(report).toMatchObject({ ownSpendSettled: 1, ownSpendSettledFull: 2, stopped: null, cursor: 4 });
+  expect(report.rejected).toEqual({ bad_spend: 1 });
+  // the spend is settled before the grant is closed
+  const order = r.db.state.calls.filter((c) => c === "client_adapter_own_spend_settle" || c === "client_adapter_model_grant_close");
+  expect(order.slice(0, 2)).toEqual(["client_adapter_own_spend_settle", "client_adapter_model_grant_close"]);
+});
+
+test("a task with nothing set aside, or already settled, is quietly passed; an invalid call is counted and passed", async () => {
+  for (const answer of ["not_reserved", "already_closed"]) {
+    const r = run([spending(1, 5)], { own: () => answer });
+    expect(await r.report, answer).toMatchObject({ ownSpendSettled: 0, ownSpendSettledFull: 0, rejected: {}, stopped: null, cursor: 1 });
+  }
+  // a database where the settle function is not installed yet set nothing aside: the feed goes on
+  const missing = run([spending(1, 5), spending(2, 6, "h1-bbbbbbbbbbbbbbbbbbbbbbbb")], { own: () => "__missing" });
+  expect(await missing.report).toMatchObject({ ownSpendSettled: 0, rejected: {}, stopped: null, cursor: 2 });
+  const invalid = run([spending(1, 5), spending(2, 6, "h1-bbbbbbbbbbbbbbbbbbbbbbbb")], { own: (b) => (b.p_adapter_task_id === TASK ? "invalid" : "settled") });
+  expect(await invalid.report).toMatchObject({ rejected: { bad_settle: 1 }, ownSpendSettled: 1, stopped: null, cursor: 2 });
+});
+
+test("a database that cannot settle stops the run at that task, so the next run settles it", async () => {
+  for (const answer of ["__down", "__throw", "nonsense"]) {
+    const r = run([taskState(1), spending(2, 5, "h1-bbbbbbbbbbbbbbbbbbbbbbbb"), spending(3, 6, "h1-cccccccccccccccccccccccc")], { own: (b) => (b.p_adapter_task_id === TASK ? "not_reserved" : answer) });
+    const report = await r.report;
+    expect(report, answer).toMatchObject({ stopped: "database_unavailable", cursor: 1 });
+    expect(r.db.state.owns, answer).toHaveLength(2); // it did not carry on to the next task
+    expect(r.db.state.closes.map((b) => b.p_task_id), answer).toEqual([TASK]); // nor close the grant of the task it could not settle
+  }
 });

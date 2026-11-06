@@ -5,6 +5,9 @@
  *   3. record the adapter's own task id on the grant, so the sync job can close the grant when the task ends.
  * Nothing is sent to the adapter unless the grant is open. If task.run fails the grant is left to expire: the adapter may
  * have received it before the failure, and closing it here would race with a task that did start.
+ * An adapter with costs of its own (`ownSpend`, ProofMint's sandbox) also gets the task's budget set aside under the host's key
+ * between steps 1 and 2; a budget that refuses stops the start. A clear refusal from the adapter (a 4xx, or 503 "busy") gives the
+ * reservation back; an unclear failure keeps it, and the sync job settles it when the task's final state arrives.
  * Every dependency is passed in; this module reads no environment and holds no key of its own.
  */
 import type { KeyObject } from "node:crypto";
@@ -15,6 +18,7 @@ import {
   mintModelGrantCredential, newGrantId, openModelGrant, TASK_KEY, type GrantRpc,
 } from "./adapterModelGrant";
 import { adapterRouteUrl, readCapped } from "./adapterEventsPuller";
+import { releaseAdapterBudget, reserveAdapterBudget, type BudgetStatus } from "./adapterBudget";
 
 /** Defaults match the content adapter's own per-task token cap (ADR-018). */
 export const DEFAULT_TASK_MAX_CALLS = 20;
@@ -55,13 +59,26 @@ export interface StartTaskInput {
   maxCalls?: number;
   maxTokens?: number;
   ttlSeconds?: number;
+  /** For an adapter with costs of its own: set `budgetMaxMicros` aside under the host's key before task.run. */
+  ownSpend?: { tenantMonthlyCapMicros: number };
 }
+
+/** What happened to an own-spend reservation when the start failed after it was made. */
+export type OwnSpendAfterFailure = "released" | "kept" | "release_failed";
+type AdapterFailure = "adapter_unreachable" | "redirect_refused" | "adapter_refused" | "bad_response";
 
 export type StartTaskResult =
   | { ok: true; taskId: string; state: string; grantId: string; replay: boolean; grantBound?: false }
   | { ok: false; reason: "invalid_input" | "invalid_config" }
   | { ok: false; reason: "grant_not_opened"; status: string }
-  | { ok: false; reason: "adapter_unreachable" | "redirect_refused" | "adapter_refused" | "bad_response"; grantId: string };
+  | { ok: false; reason: "budget_refused"; status: BudgetStatus; grantId: string }
+  | { ok: false; reason: AdapterFailure; grantId: string; ownSpend?: OwnSpendAfterFailure };
+
+const OWN_SPEND_PROVIDER = "adapter";
+const ownSpendOk = (o: StartTaskInput["ownSpend"]) =>
+  o === undefined || (o !== null && typeof o === "object" && Number.isSafeInteger(o.tenantMonthlyCapMicros) && o.tenantMonthlyCapMicros >= 0);
+/** The adapter clearly did not take the task: a 4xx, or 503 (busy, nothing recorded). Anything else may have started it. */
+const clearRefusal = (status: number | null) => status !== null && ((status >= 400 && status < 500) || status === 503);
 
 function hostModelUrlOk(raw: string, allowInsecureLoopback: boolean | undefined): boolean {
   try {
@@ -83,7 +100,8 @@ export async function startAdapterTaskWithGrant(config: StartTaskConfig, deps: S
     && input.models.every((entry) => typeof entry === "string" && ALLOWED_MODEL.test(entry))
     && Number.isInteger(maxCalls) && maxCalls >= 1 && maxCalls <= MAX_GRANT_CALLS
     && Number.isInteger(maxTokens) && maxTokens >= 1 && maxTokens <= MAX_GRANT_TOKENS
-    && Number.isInteger(ttl) && ttl >= 1 && ttl <= MAX_GRANT_TTL_SECONDS;
+    && Number.isInteger(ttl) && ttl >= 1 && ttl <= MAX_GRANT_TTL_SECONDS
+    && ownSpendOk(input.ownSpend);
   if (!inputOk) return { ok: false, reason: "invalid_input" };
 
   let runUrl: string;
@@ -107,6 +125,22 @@ export async function startAdapterTaskWithGrant(config: StartTaskConfig, deps: S
     privateKey: deps.privateKey, tenant: config.tenantSlug, adapterId: config.adapterId, taskKey: input.idempotencyKey, grantId, ttlSeconds: ttl, now,
   }).token;
 
+  // 1b. The adapter's own spend, set aside under the host's key for the task.
+  const who = { tenantSlug: config.tenantSlug, workerToken: deps.workerToken, adapterId: config.adapterId, taskId: input.idempotencyKey };
+  if (input.ownSpend) {
+    const reserved = await reserveAdapterBudget(deps.rpc, {
+      ...who, idempotencyKey: `own-reserve-${input.idempotencyKey}`, amountMicros: input.budgetMaxMicros,
+      provider: OWN_SPEND_PROVIDER, model: null, tenantMonthlyCapMicros: input.ownSpend.tenantMonthlyCapMicros,
+    });
+    if (!reserved.allowed) return { ok: false, reason: "budget_refused", status: reserved.status, grantId };
+  }
+  const failed = async (reason: AdapterFailure, status: number | null): Promise<StartTaskResult> => {
+    if (!input.ownSpend) return { ok: false, reason, grantId };
+    if (!clearRefusal(status)) return { ok: false, reason, grantId, ownSpend: "kept" };
+    const released = await releaseAdapterBudget(deps.rpc, { ...who, idempotencyKey: `own-release-${input.idempotencyKey}` });
+    return { ok: false, reason, grantId, ownSpend: released.allowed ? "released" : "release_failed" };
+  };
+
   // 2. task.run.
   const hostToken = mintAdapterToken({ privateKey: deps.privateKey, tenant: config.tenantSlug, adapterId: config.adapterId, scope: ["task.run"], ttlSeconds: 60, now }).token;
   let response: Response;
@@ -127,17 +161,17 @@ export async function startAdapterTaskWithGrant(config: StartTaskConfig, deps: S
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch {
-    return { ok: false, reason: "adapter_unreachable", grantId };
+    return failed("adapter_unreachable", null);
   }
-  if (response.status >= 300 && response.status < 400) { await response.body?.cancel().catch(() => undefined); return { ok: false, reason: "redirect_refused", grantId }; }
-  if (!response.ok) { await response.body?.cancel().catch(() => undefined); return { ok: false, reason: "adapter_refused", grantId }; }
+  if (response.status >= 300 && response.status < 400) { await response.body?.cancel().catch(() => undefined); return failed("redirect_refused", response.status); }
+  if (!response.ok) { await response.body?.cancel().catch(() => undefined); return failed("adapter_refused", response.status); }
   const raw = await readCapped(response, MAX_RESPONSE_BYTES).catch(() => null);
   let json: unknown = null;
   try { json = raw === null ? null : JSON.parse(raw); } catch { json = null; }
   const answer = json && typeof json === "object" && !Array.isArray(json) ? json as Record<string, unknown> : null;
   if (!answer || answer.ok !== true || typeof answer.taskId !== "string" || !ADAPTER_TASK_ID.test(answer.taskId)
       || typeof answer.state !== "string" || !STATE.test(answer.state)) {
-    return { ok: false, reason: "bad_response", grantId };
+    return failed("bad_response", null);
   }
 
   // 3. Tie the grant to the adapter's task id.

@@ -165,16 +165,20 @@ test("the per-adapter model list is read strictly and fails closed", () => {
 // ---- The host task starter (option A): open the grant, start the task with it, record the adapter's task id. ----
 const guard = loadReviewModule("src/lib/adapterMemoryGuard.ts", { "./adapterContracts": contracts });
 const puller = loadReviewModule("src/lib/adapterEventsPuller.ts", { "./adapterContracts": contracts, "./adapterMemoryGuard": guard });
+const budget = loadReviewModule("src/lib/adapterBudget.ts", { "./adapterContracts": contracts });
 const starter = loadReviewModule("src/lib/adapterTaskStarter.ts", {
-  "./adapterContracts": contracts, "./adapterTokens": tokens, "./adapterModelGrant": grants, "./adapterEventsPuller": puller,
+  "./adapterContracts": contracts, "./adapterTokens": tokens, "./adapterModelGrant": grants, "./adapterEventsPuller": puller, "./adapterBudget": budget,
 });
+const DEFAULT_ANSWERS: Record<string, string> = {
+  client_adapter_model_grant_open: "opened", client_adapter_model_grant_bind: "bound", client_adapter_budget_reserve: "reserved", client_adapter_budget_release: "released",
+};
 
 function starterHarness(answers: Record<string, unknown> = {}, response: () => Response | Promise<Response> = () => Response.json({ ok: true, taskId: "wf_tide.1", state: "queued" }, { status: 202 })) {
   const { privateKey: key, publicKey: pub } = pair();
   const log: [string, Record<string, unknown>][] = [];
   const rpc = async (name: string, body: Record<string, unknown>) => {
     log.push([name, body]);
-    const value = name in answers ? answers[name] : name === "client_adapter_model_grant_open" ? "opened" : "bound";
+    const value = name in answers ? answers[name] : DEFAULT_ANSWERS[name];
     return { ok: true, status: 200, value };
   };
   const requests: { url: string; init: RequestInit }[] = [];
@@ -272,4 +276,75 @@ test("a replayed start binds the same task id again, and a failed bind is report
   expect(await starter.startAdapterTaskWithGrant(startConfig, replay.deps, startInput)).toEqual({ ok: true, taskId: "wf_tide.1", state: "running", grantId: GRANT, replay: true });
   const unbound = starterHarness({ client_adapter_model_grant_bind: "conflict" });
   expect(await starter.startAdapterTaskWithGrant(startConfig, unbound.deps, startInput)).toEqual({ ok: true, taskId: "wf_tide.1", state: "queued", grantId: GRANT, replay: false, grantBound: false });
+});
+
+// ---- An adapter with its own costs (ProofMint's sandbox): the host sets the task's budget aside before task.run. ----
+const CAP = 50_000_000;
+const ownSpendInput = { ...startInput, ownSpend: { tenantMonthlyCapMicros: CAP } };
+
+test("with own spend, the task's budget is reserved under the host's key after the grant opens and before task.run", async () => {
+  const h = starterHarness();
+  let sentBeforeReserve = true;
+  const deps = { ...h.deps, fetchImpl: async (url: string, init: RequestInit) => { sentBeforeReserve = !h.log.some(([n]) => n === "client_adapter_budget_reserve"); return h.deps.fetchImpl(url, init); } };
+  const result = await starter.startAdapterTaskWithGrant(startConfig, deps, ownSpendInput);
+  expect(result).toEqual({ ok: true, taskId: "wf_tide.1", state: "queued", grantId: GRANT, replay: false });
+  expect(sentBeforeReserve).toBe(false);
+  expect(h.log.map(([n]) => n)).toEqual(["client_adapter_model_grant_open", "client_adapter_budget_reserve", "client_adapter_model_grant_bind"]);
+  expect(h.log[1][1]).toEqual({
+    p_tenant_slug: "tenant-a", p_worker_token: WORKER, p_adapter_id: "creator-os", p_task_id: "host-task-0001", p_idempotency_key: "own-reserve-host-task-0001",
+    p_amount_micros: 500_000, p_provider: "adapter", p_model: null, p_tenant_monthly_cap_micros: CAP,
+  });
+  // the adapter is told the same budget the host set aside
+  expect(JSON.parse(String(h.requests[0].init.body)).budgetMaxMicros).toBe(500_000);
+  // a replayed start finds its reservation already made
+  const again = starterHarness({ client_adapter_budget_reserve: "already_reserved" });
+  expect((await starter.startAdapterTaskWithGrant(startConfig, again.deps, ownSpendInput)).ok).toBe(true);
+});
+
+test("a reservation the budget refuses stops the start before anything is sent to the adapter", async () => {
+  for (const [answer, status] of [["adapter_cap_exceeded", "adapter_cap_exceeded"], ["tenant_cap_exceeded", "tenant_cap_exceeded"], ["adapter_not_ready", "adapter_not_ready"], ["task_already_reserved", "task_already_reserved"], ["weird", "unavailable"]]) {
+    const h = starterHarness({ client_adapter_budget_reserve: answer });
+    expect(await starter.startAdapterTaskWithGrant(startConfig, h.deps, ownSpendInput), answer).toEqual({ ok: false, reason: "budget_refused", status, grantId: GRANT });
+    expect(h.requests).toHaveLength(0);
+  }
+});
+
+test("a clear refusal from the adapter gives the reservation back; an unclear failure keeps it for the task's final state", async () => {
+  const clear: [() => Response, string][] = [
+    [() => new Response("{}", { status: 400 }), "adapter_refused"],
+    [() => new Response("{}", { status: 409 }), "adapter_refused"],
+    [() => new Response("{}", { status: 503 }), "adapter_refused"],
+  ];
+  for (const [response, reason] of clear) {
+    const h = starterHarness({}, response);
+    expect(await starter.startAdapterTaskWithGrant(startConfig, h.deps, ownSpendInput)).toEqual({ ok: false, reason, grantId: GRANT, ownSpend: "released" });
+    expect(h.log.map(([n]) => n)).toEqual(["client_adapter_model_grant_open", "client_adapter_budget_reserve", "client_adapter_budget_release"]);
+    expect(h.log[2][1]).toEqual({ p_tenant_slug: "tenant-a", p_worker_token: WORKER, p_adapter_id: "creator-os", p_task_id: "host-task-0001", p_idempotency_key: "own-release-host-task-0001" });
+  }
+  const unclear: [() => Response | Promise<Response>, string][] = [
+    [() => new Response("{}", { status: 500 }), "adapter_refused"],
+    [() => new Response("{}", { status: 502 }), "adapter_refused"],
+    [() => { throw new Error("down"); }, "adapter_unreachable"],
+    [() => new Response("not json", { status: 202 }), "bad_response"],
+    [() => new Response(null, { status: 302, headers: { location: "https://elsewhere.test" } }), "redirect_refused"],
+  ];
+  for (const [response, reason] of unclear) {
+    const h = starterHarness({}, response);
+    expect(await starter.startAdapterTaskWithGrant(startConfig, h.deps, ownSpendInput), reason).toEqual({ ok: false, reason, grantId: GRANT, ownSpend: "kept" });
+    expect(h.log.map(([n]) => n)).not.toContain("client_adapter_budget_release");
+  }
+  // a release the database does not confirm is said so
+  const stuck = starterHarness({ client_adapter_budget_release: "weird" }, () => new Response("{}", { status: 400 }));
+  expect(await starter.startAdapterTaskWithGrant(startConfig, stuck.deps, ownSpendInput)).toEqual({ ok: false, reason: "adapter_refused", grantId: GRANT, ownSpend: "release_failed" });
+});
+
+test("without own spend nothing is reserved, and a bad monthly cap is refused before the database", async () => {
+  const h = starterHarness({}, () => new Response("{}", { status: 400 }));
+  expect(await starter.startAdapterTaskWithGrant(startConfig, h.deps, startInput)).toEqual({ ok: false, reason: "adapter_refused", grantId: GRANT });
+  expect(h.log.map(([n]) => n)).toEqual(["client_adapter_model_grant_open"]);
+  for (const ownSpend of [{ tenantMonthlyCapMicros: -1 }, { tenantMonthlyCapMicros: 1.5 }, { tenantMonthlyCapMicros: "5" }, {}, null]) {
+    const quiet = starterHarness();
+    expect(await starter.startAdapterTaskWithGrant(startConfig, quiet.deps, { ...startInput, ownSpend }), JSON.stringify(ownSpend)).toEqual({ ok: false, reason: "invalid_input" });
+    expect(quiet.log).toHaveLength(0);
+  }
 });
