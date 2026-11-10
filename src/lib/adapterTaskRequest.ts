@@ -17,6 +17,17 @@ export interface AdapterTaskSetting {
   tasks: readonly string[];
   budgetMaxMicros: number;
   ownSpend: boolean;
+  /** When set, a task's input is exactly `{ [field]: one of choices }` (the page shows the choices as a list). */
+  input?: { field: string; choices: readonly string[] };
+}
+
+/** What the Adapters page may show about a task it can start: never an address, a key or another setting. */
+export interface AdapterTaskOption {
+  adapterId: string;
+  task: string;
+  budgetMaxMicros: number;
+  field?: string;
+  choices?: readonly string[];
 }
 
 /** The most one task may set aside: one hundred dollars, in micros. */
@@ -26,6 +37,10 @@ const TASK_NAME = /^[a-z][a-z0-9._-]{1,63}$/;
 const REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const REQUEST_FIELDS = ["adapterId", "task", "input", "requestId"] as const;
 const SETTING_FIELDS = ["tasks", "budgetMaxMicros", "ownSpend"] as const;
+const SETTING_FIELDS_WITH_INPUT = [...SETTING_FIELDS, "input"] as const;
+const INPUT_FIELD = /^[a-z][A-Za-z0-9_]{0,39}$/;
+const CHOICE = /^[A-Za-z0-9._-]{1,64}$/;
+const MAX_CHOICES = 50;
 const MIN_WORKER_TOKEN_CHARS = 24;
 const MODEL_CALL_PATH = "/api/adapter-host/model-call";
 
@@ -42,14 +57,39 @@ function parseJson(raw: string | undefined): unknown {
   }
 }
 
+function inputOf(value: unknown): AdapterTaskSetting["input"] | null {
+  if (!isObject(value) || !exactKeys(value, ["field", "choices"])) return null;
+  const { field, choices } = value;
+  if (typeof field !== "string" || !INPUT_FIELD.test(field) || !Array.isArray(choices) || choices.length < 1 || choices.length > MAX_CHOICES) return null;
+  if (!choices.every((c) => typeof c === "string" && CHOICE.test(c)) || new Set(choices).size !== choices.length) return null;
+  return { field, choices: [...choices] as string[] };
+}
+
 function settingOf(value: unknown): AdapterTaskSetting | null {
-  if (!isObject(value) || !exactKeys(value, SETTING_FIELDS)) return null;
+  if (!isObject(value) || !(exactKeys(value, SETTING_FIELDS) || exactKeys(value, SETTING_FIELDS_WITH_INPUT))) return null;
+  const input = Object.hasOwn(value, "input") ? inputOf(value.input) : undefined;
+  if (input === null) return null;
   const { tasks, budgetMaxMicros, ownSpend } = value;
   if (!Array.isArray(tasks) || tasks.length < 1 || tasks.length > MAX_TASKS_PER_ADAPTER) return null;
   if (!tasks.every((t) => typeof t === "string" && TASK_NAME.test(t)) || new Set(tasks).size !== tasks.length) return null;
   if (typeof budgetMaxMicros !== "number" || !Number.isSafeInteger(budgetMaxMicros) || budgetMaxMicros < 1 || budgetMaxMicros > MAX_TASK_BUDGET_MICROS) return null;
   if (typeof ownSpend !== "boolean") return null;
-  return { tasks: [...tasks] as string[], budgetMaxMicros, ownSpend };
+  return { tasks: [...tasks] as string[], budgetMaxMicros, ownSpend, ...(input ? { input } : {}) };
+}
+
+/** One entry per adapter and task the page may offer (empty when the setting is missing or wrong). */
+export function adapterTaskOptions(settings: Record<string, AdapterTaskSetting> | null): AdapterTaskOption[] {
+  if (!settings) return [];
+  return Object.entries(settings).flatMap(([adapterId, s]) => s.tasks.map((task) => ({
+    adapterId, task, budgetMaxMicros: s.budgetMaxMicros, ...(s.input ? { field: s.input.field, choices: s.input.choices } : {}),
+  })));
+}
+
+/** True when `input` is what the setting allows: anything without choices, or exactly `{ [field]: one of choices }`. */
+function inputAllowed(setting: AdapterTaskSetting, input: unknown): boolean {
+  if (!setting.input) return true;
+  const { field, choices } = setting.input;
+  return isObject(input) && exactKeys(input, [field]) && typeof input[field] === "string" && choices.includes(input[field] as string);
 }
 
 /** ADAPTER_TASKS_JSON, read strictly: one wrong entry refuses the whole setting. Null when unset or wrong. */
@@ -135,6 +175,7 @@ export async function handleAdapterTaskStart(body: unknown, deps: TaskStartDeps)
   if (!settings) return refuse(503, "tasks_not_configured");
   const setting = Object.hasOwn(settings, adapterId) ? settings[adapterId] : null;
   if (!setting || !setting.tasks.includes(task)) return refuse(403, "task_not_allowed");
+  if (!inputAllowed(setting, input)) return refuse(400, "invalid_input");
 
   const baseUrl = adapterEndpoint(env.endpointsJson, adapterId);
   const models = adapterModelAllowlist(env.allowlistJson, adapterId);

@@ -163,11 +163,18 @@ client's budget covers it and the Spend check (ADR-016) can compare it:
 - 11 tests; hand sweep of 49 mutations over the library and route, 48 caught on the first run and the survivor (the monthly
   cap read) caught by an added test.
 
+## On the Adapters page (built 2026-11-10; owner: "Yes, plan it", then "Yes, build it")
+
+- A "Start a round" panel (`src/components/AdapterTasksPanel.tsx`) shows the tasks the host's setting offers, with their budget. An entry in `ADAPTER_TASKS_JSON` may list `"input": {"field": "family", "choices": [...]}`; the panel shows those as a list and the start route refuses anything else. Only owners and admins can press Start. A start that got no answer keeps its request id, so Try again is the same round.
+- The panel follows the round every 5 seconds until it finishes (six minutes at most) and lists the last 10 starts from the audit log, each with Check. `GET /api/client-runtime/adapter-tasks` (any member) returns the options, whether this person may start one and the recent starts; with `?adapterId=&taskId=` it reads that task from the adapter (`src/lib/adapterTaskStatus.ts`): a fresh single-use host token per operation (`task.get`, then `task.result` once succeeded), https only, no redirects, a size cap, and only a whitelisted summary back (state, a short error code, what it cost, verdict, whether it needs approval, the proposal's fingerprint and test counts). The proposal's code is never sent to the page; it is reviewed and approved in the adapter.
+- The web server already held the host's signing key for the model-call route, so reading task results from a page needs no new key decision (ADR-017 left that open for drafts).
+- 8 new tests (6 status, 2 choices) and the route's GET wiring; hand sweep of 46 mutations, 45 caught and 1 explained (the read route's own task-id check duplicates the reader's). The panel itself has no automated test; it was checked with typecheck and lint only, and needs a look in a browser on a deployed host.
+
 ## Still open
 
 - Deploying both sides on staging and one real model call end to end (content adapter and ProofMint).
 - `founder.board` has no model in host mode yet.
-- A button on the Adapters page to start a ProofMint round, and showing its result there.
+- A browser check of the Start a round panel on a deployed host with the settings on.
 - The own-spend settle has no report of its own in the Spend check when an adapter sends no figure: it is settled in full and
   counted in the sync job's report (`ownSpendSettledFull`), not listed as a reconcile row.
 - A replayed start with a new grant id is refused (`task_has_grant`); the host's task route derives the grant id from the task key, so its retries are safe.

@@ -66,6 +66,35 @@ test("the task setting is read strictly: known adapters, listed tasks, a whole b
   expect(lib.adapterTaskSettings(one({ tasks: ["proofmint.round"], budgetMaxMicros: lib.MAX_TASK_BUDGET_MICROS, ownSpend: false }))).not.toBeNull();
 });
 
+test("a task may list the choices a member can pick, and those choices are read strictly too", () => {
+  const withChoices = JSON.stringify({ "veloce-proofmint": { tasks: ["proofmint.round"], budgetMaxMicros: 250_000, ownSpend: true, input: { field: "family", choices: ["dates", "money"] } } });
+  expect(lib.adapterTaskSettings(withChoices)).toEqual({ "veloce-proofmint": { tasks: ["proofmint.round"], budgetMaxMicros: 250_000, ownSpend: true, input: { field: "family", choices: ["dates", "money"] } } });
+  const one = (input: unknown) => JSON.stringify({ "veloce-proofmint": { tasks: ["proofmint.round"], budgetMaxMicros: 1, ownSpend: true, input } });
+  for (const input of [null, [], "family", { field: "family" }, { field: "family", choices: [] }, { field: "family", choices: ["a", "a"] }, { field: "Bad Field", choices: ["a"] },
+    { field: "family", choices: ["has space"] }, { field: "family", choices: [5] }, { field: "family", choices: ["a"], extra: 1 }, { field: "family", choices: Array.from({ length: 51 }, (_, i) => `c${i}`) }]) {
+    expect(lib.adapterTaskSettings(one(input)), JSON.stringify(input)).toBeNull();
+  }
+  // what the page may show: adapters, tasks, choices and budgets, never addresses or keys
+  expect(lib.adapterTaskOptions(lib.adapterTaskSettings(withChoices))).toEqual([{ adapterId: "veloce-proofmint", task: "proofmint.round", budgetMaxMicros: 250_000, field: "family", choices: ["dates", "money"] }]);
+  expect(lib.adapterTaskOptions(lib.adapterTaskSettings(TASKS))).toEqual([
+    { adapterId: "veloce-proofmint", task: "proofmint.round", budgetMaxMicros: 250_000 },
+    { adapterId: "creator-os", task: "content.draft", budgetMaxMicros: 400_000 },
+  ]);
+  expect(lib.adapterTaskOptions(null)).toEqual([]);
+});
+
+test("when a task lists choices, the request's input must be exactly one of them", async () => {
+  const tasksJson = JSON.stringify({ "veloce-proofmint": { tasks: ["proofmint.round"], budgetMaxMicros: 250_000, ownSpend: true, input: { field: "family", choices: ["dates", "money"] } } });
+  const ok = harness({ env: { tasksJson } });
+  expect((await lib.handleAdapterTaskStart(body({ input: { family: "money" } }), ok.deps)).status).toBe(202);
+  expect((ok.starts[0] as unknown[])[2]).toMatchObject({ input: { family: "money" } });
+  for (const input of [{ family: "durations" }, { family: "money", extra: 1 }, { other: "money" }, "money", { family: 5 }, {}]) {
+    const h = harness({ env: { tasksJson } });
+    expect(await lib.handleAdapterTaskStart(body({ input }), h.deps), JSON.stringify(input)).toEqual({ status: 400, body: { ok: false, error: "invalid_input" } });
+    expect(h.starts).toHaveLength(0);
+  }
+});
+
 test("an adapter's address comes only from the host's endpoint setting", () => {
   expect(lib.adapterEndpoint(ENDPOINTS, "veloce-proofmint")).toBe("https://proofmint.example.test");
   for (const [raw, id] of [[ENDPOINTS, "other-one"], [undefined, "veloce-proofmint"], ["not json", "veloce-proofmint"], ["[]", "veloce-proofmint"], [JSON.stringify({ "veloce-proofmint": 5 }), "veloce-proofmint"], [ENDPOINTS, "toString"]] as [string | undefined, string][]) {
@@ -215,20 +244,23 @@ function loadRoute(o: { gateOk?: boolean; handle?: (...args: unknown[]) => unkno
       readJsonObject: async (request: Request, max: number) => { seen.push(["read", max]); return JSON.parse(await request.text()); },
     },
     "@/lib/adapterTaskRequest": { handleAdapterTaskStart: async (...args: unknown[]) => { seen.push(["handle", ...args]); return o.handle ? o.handle(...args) : { status: 202, body: { ok: true } }; } },
+    "@/lib/adapterTaskStatus": { RECENT_LIMIT: 10, handleAdapterTaskRead: async (...args: unknown[]) => { seen.push(["read", ...args]); return o.handle ? o.handle(...args) : { status: 200, body: { ok: true } }; } },
     "@/lib/adapterTaskStarter": { startAdapterTaskWithGrant: async () => ({}) },
     "@/lib/clientAuth": { currentClientCredentialManager: async () => true },
-    "@/lib/clientDataPlane": { workerRpc: async () => ({}), recordClientAudit: async () => true },
+    "@/lib/clientDataPlane": { workerRpc: async () => ({}), recordClientAudit: async () => true, selectClientRecords: async (table: string, filters: Record<string, string>) => { seen.push(["select", table, filters]); return { ok: true, status: 200, records: [] }; } },
   });
-  const post = async (env: Record<string, string | undefined>) => {
+  const withEnv = async <T>(env: Record<string, string | undefined>, fn: () => Promise<T>) => {
     const saved: Record<string, string | undefined> = {};
     for (const [k, v] of Object.entries(env)) { saved[k] = process.env[k]; if (v === undefined) delete process.env[k]; else process.env[k] = v; }
     try {
-      return await route.POST(new Request("https://host.example.test/api/client-runtime/adapter-tasks", { method: "POST", body: JSON.stringify(body()) }));
+      return await fn();
     } finally {
       for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
     }
   };
-  return { post, seen };
+  const post = (env: Record<string, string | undefined>) => withEnv(env, () => route.POST(new Request("https://host.example.test/api/client-runtime/adapter-tasks", { method: "POST", body: JSON.stringify(body()) })));
+  const get = (env: Record<string, string | undefined>, query = "") => withEnv(env, () => route.GET(new Request(`https://host.example.test/api/client-runtime/adapter-tasks${query}`)));
+  return { post, get, seen };
 }
 const PEM = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
 const ON = {
@@ -263,6 +295,24 @@ test("the route checks the member gate first, needs model calls switched on, and
     await c.post({ ...ON, CLIENT_BUDGET_CAP: cap });
     expect((c.seen[2] as [string, unknown, { env: { capUsd: number } }])[2].env.capUsd, String(cap)).toBe(expected);
   }
+  // the page's read: the member gate with its own bucket, model calls switched on, the query passed as is, the latest starts read from the audit log
+  const g = loadRoute();
+  const read = await g.get(ON, `?adapterId=veloce-proofmint&taskId=ft-aaaaaaaaaaaaaaaaaaaaaaaa`);
+  expect(read.status).toBe(200);
+  expect(read.headers.get("cache-control")).toBe("private, no-store");
+  expect(g.seen[0]).toEqual(["gate", "adapter-task-read", 60]);
+  const [, sentParams, readDeps] = g.seen[1] as [string, URLSearchParams, { env: Record<string, unknown>; readRecent: () => Promise<unknown>; isManager: unknown }];
+  expect(sentParams.toString()).toBe("adapterId=veloce-proofmint&taskId=ft-aaaaaaaaaaaaaaaaaaaaaaaa");
+  expect(readDeps.env).toMatchObject({ tenantSlug: "tenant-a", tasksJson: TASKS, endpointsJson: ENDPOINTS, allowLoopback: false });
+  expect((readDeps.env.privateKey as { asymmetricKeyType: string }).asymmetricKeyType).toBe("ed25519");
+  await readDeps.readRecent();
+  expect(g.seen[2]).toEqual(["select", "client_runtime_audit_events", { tenant_slug: "eq.tenant-a", event_type: "eq.tenant.adapter.task_started", select: "metadata,created_at", order: "created_at.desc", limit: "10" }]);
+  const gOff = loadRoute();
+  expect((await gOff.get({ ...ON, ADAPTER_MODEL_CALLS_ENABLED: undefined })).status).toBe(403);
+  expect(gOff.seen.some((s) => s[0] === "read")).toBe(false);
+  const gOut = loadRoute({ gateOk: false });
+  expect((await gOut.get(ON)).status).toBe(401);
+
   // a signing key that is missing or not Ed25519 reaches the handler as no key, so it refuses as not configured
   for (const pem of [undefined, "junk", generateKeyPairSync("rsa", { modulusLength: 1024 }).privateKey.export({ type: "pkcs8", format: "pem" }).toString()]) {
     const k = loadRoute();

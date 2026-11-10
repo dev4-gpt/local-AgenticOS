@@ -2,9 +2,10 @@ import { createPrivateKey, type KeyObject } from "node:crypto";
 import { NextResponse } from "next/server";
 import { adapterJsonError, adapterRouteGate, NO_STORE, readJsonObject } from "@/lib/adapterRouteGate";
 import { handleAdapterTaskStart } from "@/lib/adapterTaskRequest";
+import { RECENT_LIMIT, handleAdapterTaskRead } from "@/lib/adapterTaskStatus";
 import { startAdapterTaskWithGrant } from "@/lib/adapterTaskStarter";
 import { currentClientCredentialManager } from "@/lib/clientAuth";
-import { recordClientAudit, workerRpc } from "@/lib/clientDataPlane";
+import { recordClientAudit, selectClientRecords, workerRpc } from "@/lib/clientDataPlane";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,28 @@ function signingKey(): KeyObject | null {
   } catch {
     return null;
   }
+}
+
+// What the Adapters page shows (any active member): with no query, the tasks it may offer, whether this person may start one,
+// and the latest starts; with ?adapterId=&taskId=, that task's state and a short summary of its result, read from the adapter.
+export async function GET(request: Request) {
+  const gate = await adapterRouteGate("adapter-task-read", 60);
+  if (!gate.ok) return gate.response;
+  if (process.env.ADAPTER_MODEL_CALLS_ENABLED !== "true") return adapterJsonError("model_calls_disabled", 403);
+  const result = await handleAdapterTaskRead(new URL(request.url).searchParams, {
+    env: {
+      tenantSlug: gate.tenantSlug,
+      privateKey: signingKey(),
+      tasksJson: process.env.ADAPTER_TASKS_JSON,
+      endpointsJson: process.env.ADAPTER_ENDPOINTS,
+      allowLoopback: process.env.ADAPTER_ALLOW_LOOPBACK === "true",
+    },
+    isManager: currentClientCredentialManager,
+    readRecent: () => selectClientRecords("client_runtime_audit_events", {
+      tenant_slug: `eq.${gate.tenantSlug}`, event_type: "eq.tenant.adapter.task_started", select: "metadata,created_at", order: "created_at.desc", limit: String(RECENT_LIMIT),
+    }),
+  });
+  return NextResponse.json(result.body, { status: result.status, headers: NO_STORE });
 }
 
 // An owner or admin starts an adapter task (ADR-020; ProofMint rounds first). Off unless the adapter host and model calls are
