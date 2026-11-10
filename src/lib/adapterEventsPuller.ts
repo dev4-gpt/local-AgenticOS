@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { isValidAdapterId, isValidTenantSlug } from "./adapterContracts";
+import { isValidAdapterId, isValidTenantSlug, MAX_MEMORY_CONTENT_CHARS } from "./adapterContracts";
 import { scanMemoryContent } from "./adapterMemoryGuard";
 
 /**
@@ -41,6 +41,8 @@ export interface PullerConfig {
   /** Allows plain http to 127.0.0.1, localhost or [::1]. For tests and local runs only. */
   allowInsecureLoopback?: boolean;
   pageSize?: number;
+  /** Longest proposal accepted from THIS adapter. Defaults to MAX_PROPOSAL_CHARS; never above the contract's MAX_MEMORY_CONTENT_CHARS. */
+  maxProposalChars?: number;
   maxPages?: number;
   timeoutMs?: number;
   maxResponseBytes?: number;
@@ -101,12 +103,12 @@ export function adapterRouteUrl(config: Pick<PullerConfig, "baseUrl" | "allowIns
 }
 
 /** Strict check of one `memory.propose` payload. The adapter may not add fields, and may not name another adapter. */
-export function validateProposal(data: unknown, adapterId: string): Proposal | null {
+export function validateProposal(data: unknown, adapterId: string, maxChars: number = MAX_PROPOSAL_CHARS): Proposal | null {
   if (!isObject(data)) return null;
   const keys = Object.keys(data).sort();
   if (keys.length !== PROPOSAL_KEYS.length || keys.some((key, i) => key !== PROPOSAL_KEYS[i])) return null;
   const { content, sourceUrl, adapterVersion, agentPrincipal, sourceTaskId, citationId, retrievedAt } = data;
-  if (!text(content, 1, MAX_PROPOSAL_CHARS) || !text(adapterVersion, 1, 40) || !text(citationId, 1, 128)) return null;
+  if (!text(content, 1, maxChars) || !text(adapterVersion, 1, 40) || !text(citationId, 1, 128)) return null;
   if (agentPrincipal !== adapterId || typeof sourceTaskId !== "string" || !TASK_ID.test(sourceTaskId)) return null;
   if (!text(retrievedAt, 1, 40) || !Number.isFinite(Date.parse(retrievedAt))) return null;
   if (!text(sourceUrl, 1, 2048)) return null;
@@ -156,10 +158,13 @@ export async function readCapped(response: Response, max: number): Promise<strin
 
 export async function pullAdapterEvents(config: PullerConfig, deps: PullerDeps): Promise<PullReport> {
   if (!isValidTenantSlug(config.tenantSlug) || !isValidAdapterId(config.adapterId)) throw new Error("invalid tenant or adapter id");
-  const pageSize = config.pageSize ?? EVENTS_PAGE_SIZE;
   const maxPages = config.maxPages ?? MAX_PAGES_PER_RUN;
   const timeoutMs = config.timeoutMs ?? REQUEST_TIMEOUT_MS;
   const maxBytes = config.maxResponseBytes ?? MAX_RESPONSE_BYTES;
+  const maxChars = config.maxProposalChars ?? MAX_PROPOSAL_CHARS;
+  if (!Number.isInteger(maxChars) || maxChars < 1 || maxChars > MAX_MEMORY_CONTENT_CHARS) throw new Error("invalid proposal length limit");
+  // A raised limit means bigger pages; keep a full page of worst-case events (JSON escapes can double the size) under the response cap.
+  const pageSize = config.pageSize ?? Math.max(1, Math.min(EVENTS_PAGE_SIZE, Math.floor(maxBytes / (maxChars * 2))));
   if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100 || !Number.isInteger(maxPages) || maxPages < 1) throw new Error("invalid page limits");
   eventsUrl(config, 0, pageSize); // refuse a bad address before anything is sent
   const doFetch = deps.fetchImpl ?? fetch;
@@ -241,7 +246,7 @@ export async function pullAdapterEvents(config: PullerConfig, deps: PullerDeps):
         continue;
       }
       if (event.kind !== "memory.propose") { reject("unknown_kind"); handled = event.seq; continue; }
-      const proposal = validateProposal(event.data, config.adapterId);
+      const proposal = validateProposal(event.data, config.adapterId, maxChars);
       if (!proposal || event.taskId !== proposal.sourceTaskId) { reject("bad_proposal"); handled = event.seq; continue; }
       const sha = createHash("sha256").update(proposal.content, "utf8").digest("hex");
       const scan = scanMemoryContent(proposal.content, { sourceUrl: proposal.sourceUrl });

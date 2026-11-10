@@ -4,7 +4,7 @@ Master plan phases (from `reports/Veloce master plan and error register.md`). Ti
 
 Legend: **Owner** = Me (the assistant) / You / Both / Lawyer. **Sev** = CRITICAL / WARNING / SUGGESTION. IDs refer to the error register.
 
-Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/approval-gateway`.
+Last updated: 2026-10-27 after Phase 3 slice 3 and the quarantine review command on `feat/knowledge-adapter`. Earlier rows were last updated 2026-10-26 on `feat/approval-gateway`.
 
 ---
 
@@ -15,7 +15,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 | 0 | Hygiene | Mine done; yours open |
 | 1 | Host foundation | Done and proven on staging (2026-10-21); 9b is deployed on `agentos-mvp` and was run by the scheduler, with the next unattended run on 2026-10-22 03:17 UTC as the last check |
 | 2 | Creator OS adapter | Slice 1, 2a (events feed, durable token ids) and 2b (host side: ingest, puller, contract test) done and pushed; 2c (`memory.tombstone` with deletion receipts, ADR-014) done, proven on staging 2026-10-22 and pushed; 2d (the scheduled sync job, ADR-015) built, pushed, deployed as a job to the staging project and proven end to end in the cloud 2026-10-23; 3a (activity counts for received proposals and confirmed erasures), 3b (budget reconcile, ADR-016) and 3c (draft text on demand, ADR-017) built and pushed. **Done 2026-10-26 (pushed):** the real Content OS service runs on Cloud Run with a free model (ADR-018: first real task, the evidence-cap bug found and fixed, `creator-os:v2`); a real withdrawal came back as a deletion receipt from it; the sync job points at it, with a scheduler (`*/5`, fixed after a mangled address) and a failure alert whose email arrived; and the sync switch (ADR-019: off by default, 1/4/24 h, Sync now, "always" only if the operator allows it, owed deletions never paused) is applied, deployed and checked in a browser. **Still open in Phase 2:** the host starting adapter tasks with a reservation, models through the host (needs its own ADR and your decision), and P2-2 (your starter pillar) |
-| 3 | Knowledge adapter | Not started (dedupe tools exist) |
+| 3 | Knowledge adapter | Started 2026-10-27 on `feat/knowledge-adapter` (own worktree). Slices 1-3 built locally, not pushed, proven on synthetic notes only: shared page check, source index and deletion cascade (ADR-020), ingest with lint and quarantine (ADR-021), single writer per folder and conflict-copy check (ADR-022). Open: Instagram export, quarantine review, promote and round trip, and a run on your real vault |
 | 4 | Forge adapter | Not started |
 | 5 | SymVibe + REA | Not started |
 | 6 | Flagged extras | Not started |
@@ -42,7 +42,7 @@ Last updated: 2026-10-20 after promotion hardening (Phase 1 item 10) on `feat/ap
 - [ ] **You:** decide whether client notes may live in an iCloud-synced vault (S-5, X-12)
 - [ ] **You + Lawyer:** review the AGPL separation (X-10, WARNING). `docs/architecture/adr-010-agpl-candidate-adapter-separation.md` writes up the separate-process pattern and the ten candidates for the lawyer to review (ContractorOS, `seo-os`, inkos, trypost, brightbean-studio, plunk, OpenMontage, MiroFish, FreshRSS, stackrender, locally-uncensored, firecrawl); the pattern is documentation only, nothing calls any of them, and every candidate stays blocked until sign-off
 - [ ] **You + Lawyer:** payment route: choose a licensed provider; do not use the bank-message-reading gateway (PAY-1 to PAY-4, CRITICAL)
-- [ ] **You:** decide the base branch for the work (X-18). Currently cut from `wip/backup-2026-10-03`, not `main`
+- [x] **You:** decide the base branch for the work (X-18). Decided 2026-10-27: keep the stack (`wip/backup-2026-10-03` is an ancestor of `feat/approval-gateway`, and `feat/knowledge-adapter` sits on top; all three are ahead of `main`, and `main` has nothing they lack). Leave `main` alone until Phase 7; then one PR from `feat/approval-gateway`, Knowledge after it. Reverse by choosing another base when the PR is opened
 - [ ] **You:** retire the duplicate staging copy of the Keepy library when ready (X-14)
 - [ ] **You (Codex task):** Instagram export through the official data download (S-4)
 - [x] Vendor telemetry gate built (ADR-013): PostHog, Sentry and Datadog receive only ten pinned fields, hashed tenant, and fixed known values (`other` otherwise); `tests/client-vendor-egress.spec.ts` captures the real outgoing requests and proves no client text leaves. All vendors are off by default
@@ -169,13 +169,14 @@ Work happens in the separate ContractorOS repo (`dev4-gpt/ContractorOS`, AGPL, n
 
 ## Phase 3: Knowledge adapter
 
-- [ ] Shared page schema enforced; legacy notes (1,357 of 1,441 have no `type`) stay private (X-13)
-- [ ] Ingest from your own files and the Instagram export; lint
-- [ ] Reverse index from each page's `sources` field; dry-run then real source deletion cascade (X-16)
-- [ ] Single-writer rule per folder; conflict-copy check for iCloud (X-12)
-- [ ] Injection samples land in quarantine (S-3)
+- [~] Shared page schema enforced; legacy notes (1,357 of 1,441 have no `type`) stay private (X-13). **Slice 1, built locally 2026-10-27 (ADR-020):** `scripts/knowledge-unify/schema-check.mjs` reports each note as `shared-ok`, `legacy-private` (no `type`, never promotable) or `invalid` with the broken rules named (including a body that no longer matches its `sha256`). **Promote step, built locally 2026-10-28 (ADR-024):** `scripts/knowledge-unify/promote.mjs` turns only `shared-ok` pages (via `isPromotable`) into `memory.propose` events in the host's format, so the schema is now enforced before anything can be proposed. **Still open:** it has not been run on your real vault (the 1,357 / 1,441 figure is from the earlier scan)
+- [~] Ingest from your own files and the Instagram export; lint. **Slice 2, built locally 2026-10-27 (ADR-021):** `scripts/knowledge-unify/ingest.mjs` ingests `.md`, `.markdown` and `.txt` files as shared-format pages (dry run first; duplicates, existing files and destinations outside the vault refused; a page that fails the slice 1 check is `lint-failed`; a failed write is undone). 16 tests in `tests/knowledge-ingest.spec.ts` (in `test:focused`); 19 of 20 deliberate breakages each fail a test (16 on the first pass; the other 3 exposed gaps that now have tests), and the 20th is an equivalent (the explicit symlink skip is redundant because Node reports a link as not a file). **Still open:** the Instagram export (needs the export and its own parser), other file types, and a run on your real files
+- [~] Reverse index from each page's `sources` field; dry-run then real source deletion cascade (X-16). **Slice 1, built locally 2026-10-27 (ADR-020):** `scripts/knowledge-unify/source-index.mjs` builds the index and plans the cascade (all-sources-gone notes deleted to a fixed point, notes with another source listed for review, blocked while any note is unreadable, hash re-check before each delete, backup or explicit no-backup). 22 tests in `tests/knowledge-schema-index.spec.ts` (in `test:focused`); 12 of 13 deliberate breakages each fail a test (the 13th is an equivalent). **Still open:** a dry run then a real run on your real vault; client-tenant erasure tied to a deletion receipt
+- [x] Single-writer rule per folder; conflict-copy check for iCloud (X-12). **Slice 3, built locally 2026-10-27 (ADR-022):** `scripts/knowledge-unify/writer-claim.mjs` adds a per-folder writer marker (`.ku-writer.json`, nearest marker governs, unreadable marker fails closed, `--take-over` to replace) that ingest and the cascade respect, and a read-only conflict-copy check that flags and never touches them. 26 tests in `tests/knowledge-writer.spec.ts` (in `test:focused`); 8 of 9 deliberate breakages each fail a test (the 9th, the symlink skip in the claim scan, is an equivalent). **Still open:** it is a convention, not a lock (ADR-022), and whether client notes may live in an iCloud vault is still yours to decide (S-5)
+- [~] Injection samples land in quarantine (S-3). **Built locally 2026-10-27 as part of ingest (ADR-021):** files the host scanner blocks (or flags, unless `--allow-flagged`) are copied to a folder outside the vault and never written to it; the report holds rule names only. **Review step, built locally 2026-10-27 (ADR-023):** ingest writes a manifest of what was stopped and why; `scripts/knowledge-unify/quarantine.mjs` lists, releases (flagged files only, to a staging folder for a second ingest with `--allow-flagged`) and discards; blocked files are never released; 11 tests in `tests/knowledge-quarantine.spec.ts`. **Still open:** the limits of the scanner itself (ADR-009)
+- [~] The 84 invalid typed pages in your vaults. **Dry run, 2026-10-28 (ADR-024 addendum):** `scripts/knowledge-unify/repair.mjs plan` found 41 repairable from the page itself (all in llm-wiki: own hash, and a canonical address on 39 source pages) and 43 that need a person (no sources, dates, licence or origin, 35 with an unknown type). Nothing was written. **Applied 2026-10-28 with your go-ahead:** the 41 now pass the check (originals backed up under `~/Documents/Codex/knowledge-backups/repair-2026-10-28`). **Still open:** a decision on the 43
 - [ ] Review the remaining duplicate groups (8 exact, 56 near-low-confidence) when you choose
-- [ ] Round trip: ingest, promote, delete source, derived pages gone
+- [~] Round trip: ingest, promote, delete source, derived pages gone. **Built locally 2026-10-28 (ADR-024):** `tests/knowledge-promote.spec.ts` (8 tests, in `test:focused`) runs ingest, then promote (events accepted by the host's own `validateProposal` and `parsePage`), then deletes the source and the cascade removes the page; `promote.mjs orphans` lists proposals whose page is gone. 11 of 11 deliberate breakages each fail a test. **Still open (yours or later):** serving the outbox as `GET /h1/events` needs a small Knowledge adapter service; the host's puller does not yet pull `memory.tombstone`, so a withdrawn page's host copy is reported, not removed; pages with only local-file sources have no public address and are skipped until you decide on a stand-in; the default cascade only lists pages that also cite a web address (the owner can pick `partial: delete`)
 
 ## Phase 4: Forge adapter
 
@@ -183,8 +184,8 @@ Work happens in the separate ContractorOS repo (`dev4-gpt/ContractorOS`, AGPL, n
 - [ ] Fresh private held-out test sets; old public ones treated as burned (X-8)
 - [ ] Health, tenant id, connection; evaluator-tamper test
 - [ ] A round runs end to end with a human approving a hash
-- [ ] Confirm where Forge is hosted (unknown today)
-- [ ] CI added: PR #1 merged with no checks (P-5)
+- [x] Confirm where Forge is hosted: Vercel (team `veloce-agentic-os`), Neon Postgres and CreateOS Sandbox, via Stripe Projects (2026-10-28)
+- [x] CI added: PR #1 merged with no checks (P-5). **Done 2026-10-28:** `dev4-gpt/veloce-forge` PRs #13 (CI: tests, type check, production build; lint reported only, 40 errors to clear) and #14 (`/api/state` and `/api/replay` read the database per request, so previews and CI build without a database) merged; CI on `main` and the production deploy both succeeded. Forge is hosted on Vercel with Neon and the CreateOS Sandbox (`veloce-forge-hardened.vercel.app`), which also answers 'where is Forge hosted'
 
 ## Phase 5: SymVibe + REA
 
