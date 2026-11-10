@@ -51,6 +51,9 @@ export const TARGETS = [
   { file: "src/lib/adapterModelGrant.ts", kind: "ts", specs: [T("adapter-model-grant"), T("adapter-model-call")] },
   { file: "src/lib/adapterModelCall.ts", kind: "ts", specs: [T("adapter-model-call")] },
   { file: "src/lib/adapterTaskStarter.ts", kind: "ts", specs: [T("adapter-model-grant")] },
+  { file: "src/lib/adapterTaskRequest.ts", kind: "ts", specs: [T("adapter-task-request")] },
+  { file: "src/app/api/client-runtime/adapter-tasks/route.ts", kind: "ts", specs: [T("adapter-task-request")] },
+  { file: `${SQL_DIR}/supabase-client-adapter-spend-rollup.sql`, kind: "sql", specs: [T("adapter-spend-rollup-sql")] },
   { file: "src/app/api/adapter-host/model-call/route.ts", kind: "ts", specs: [T("adapter-model-call")] },
 ];
 

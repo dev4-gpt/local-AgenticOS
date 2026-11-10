@@ -140,14 +140,37 @@ client's budget covers it and the Spend check (ADR-016) can compare it:
   3 sync job, ProofMint h1 updated; hand sweep of 38 mutations across both repos, 36 caught on the first run and the 2 survivors
   (the adapter filters, each masked by the other) now caught by a new test.
 
+## Starting tasks from the host (built 2026-11-10; owner: "Yes, plan it", then "Yes, build it")
+
+`POST /api/client-runtime/adapter-tasks` with exactly `{ adapterId, task, input, requestId }` (`src/lib/adapterTaskRequest.ts`):
+
+- Owners and admins only (checked on the server), behind the usual member gate and a rate limit of 10 per 15 minutes; off unless
+  `ADAPTER_HOST_ENABLED` and `ADAPTER_MODEL_CALLS_ENABLED` are both `true`. The tenant comes from the server's setting.
+- Only adapters and tasks listed in the host's setting `ADAPTER_TASKS_JSON`, for example
+  `{"veloce-proofmint": {"tasks": ["proofmint.round"], "budgetMaxMicros": 250000, "ownSpend": true}}`, which also fixes each
+  task's budget (at most $100) and whether the adapter has costs of its own. The request can name neither. One wrong entry
+  refuses the whole setting.
+- The adapter's address comes from `ADAPTER_ENDPOINTS` (the sync job's setting), its models from `ADAPTER_MODEL_ALLOWLIST_JSON`,
+  the host's own model.call address from `CLIENT_RUNTIME_BASE_URL`, and the own-spend cap from `CLIENT_BUDGET_CAP`.
+- The task key is `<adapter id>-<request id>` and the grant id is derived from tenant, adapter and key, so a retry with the same
+  request id reopens the same grant, finds the same reservation and replays the task. This closes "a caller that retries a start
+  must reuse its grant id" for this route.
+- Answers are short codes (`not_permitted`, `task_not_allowed`, `tasks_not_configured`, `host_not_configured`, `adapter_not_ready`,
+  `budget_exceeded`, `adapter_refused`, `adapter_unavailable`, ...). Every start and failure is recorded in the audit log with
+  ids and the code only; the task's input is never recorded.
+- A client edition that turns this on must also list `/api/client-runtime/adapter-tasks` in `CLIENT_ALLOWED_API_ROUTES`. No
+  button yet: the Adapters page is the next slice.
+- 11 tests; hand sweep of 49 mutations over the library and route, 48 caught on the first run and the survivor (the monthly
+  cap read) caught by an added test.
+
 ## Still open
 
 - Deploying both sides on staging and one real model call end to end (content adapter and ProofMint).
 - `founder.board` has no model in host mode yet.
-- No host code calls the starter yet; the caller that starts ProofMint tasks passes `ownSpend` and the client's monthly cap.
+- A button on the Adapters page to start a ProofMint round, and showing its result there.
 - The own-spend settle has no report of its own in the Spend check when an adapter sends no figure: it is settled in full and
   counted in the sync job's report (`ownSpendSettledFull`), not listed as a reconcile row.
-- A replayed start with a new grant id is refused (`task_has_grant`); a caller that retries a start must reuse its grant id.
+- A replayed start with a new grant id is refused (`task_has_grant`); the host's task route derives the grant id from the task key, so its retries are safe.
 
 ## Consequences
 
