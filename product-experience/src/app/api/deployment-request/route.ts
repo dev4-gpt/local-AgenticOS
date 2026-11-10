@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
-import { allowPublicRequest, payloadTooLarge } from "@/lib/publicRequestGuard";
+import { allowPublicRequest, payloadTooLarge, readPublicJsonBody } from "@/lib/publicRequestGuard";
 import { notifyLead } from "@/lib/leadNotification";
 import { normalizeCommercialScopeInputs, recommendCommercialScope } from "@/lib/commercialScope";
 import { hashSetupToken, publicEmail, requestId as launchRequestId, sendSetupEmail, supabaseServiceInsert, supabaseServiceSelect } from "@/lib/publicLaunch";
@@ -55,13 +55,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "not_configured" }, { status: 503 });
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "bad_json" }, { status: 400 });
-  }
-  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ ok: false, error: "invalid_fields" }, { status: 400 });
+  const parsed = await readPublicJsonBody(req);
+  if (!parsed.ok) return NextResponse.json({ ok: false, error: parsed.error === "too_large" ? "payload_too_large" : "bad_json" }, { status: parsed.error === "too_large" ? 413 : 400 });
+  if (!parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return NextResponse.json({ ok: false, error: "invalid_fields" }, { status: 400 });
+  const body = parsed.value as Record<string, unknown>;
 
   const termsAccepted = body.termsAccepted === true;
   const privacyAccepted = body.privacyAccepted === true;

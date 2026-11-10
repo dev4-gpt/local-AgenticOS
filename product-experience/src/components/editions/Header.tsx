@@ -12,33 +12,11 @@ type SearchResult = {
   href: string;
 };
 
-const DEFAULT_CLIENT_RUNTIME_URL = "https://veloce-cloud-test-1075094991117.asia-south1.run.app/login?next=%2F";
-const CLIENT_RUNTIME_ENV_PREFIX = "NEXT_PUBLIC_CLIENT_RUNTIME_URL=";
-
-function clientRuntimeUrlFrom(value: string | undefined) {
-  const configuredValue = value?.trim();
-  const candidate = configuredValue?.startsWith(CLIENT_RUNTIME_ENV_PREFIX)
-    ? configuredValue.slice(CLIENT_RUNTIME_ENV_PREFIX.length).trim()
-    : configuredValue || DEFAULT_CLIENT_RUNTIME_URL;
-
-  try {
-    const url = new URL(candidate);
-    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : DEFAULT_CLIENT_RUNTIME_URL;
-  } catch {
-    return DEFAULT_CLIENT_RUNTIME_URL;
-  }
-}
-
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [accessOpen, setAccessOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const configuredRuntimeUrl = clientRuntimeUrlFrom(process.env.NEXT_PUBLIC_CLIENT_RUNTIME_URL);
-  const allowLocalRuntimeLink = process.env.NEXT_PUBLIC_ALLOW_LOCAL_CLIENT_RUNTIME_LINK === "1";
-  const clientRuntimeUrl = process.env.NODE_ENV === "production" && /https?:\/\/(localhost|127\.0\.0\.1)/i.test(configuredRuntimeUrl) && !allowLocalRuntimeLink
-    ? ""
-    : configuredRuntimeUrl;
 
   const searchResults = useMemo<SearchResult[]>(() => {
     const chapterResults = chapters.map((chapter) => ({
@@ -55,7 +33,7 @@ export function Header() {
         title: item.eyebrow ?? chapter.title,
         eyebrow: chapter.title,
         description: item.desc ?? "Open this operating surface.",
-        href: item.linkHref ?? `#${chapter.slug}`,
+        href: item.linkHref?.startsWith("#") ? `#${chapter.slug}` : item.linkHref ?? `#${chapter.slug}`,
       }))
     );
 
@@ -166,17 +144,10 @@ export function Header() {
                   Request runtime
                   <span className="mt-1 block text-xs font-normal text-black/55">Describe the workspace you need.</span>
                 </a>
-                {clientRuntimeUrl ? (
-                  <a href={clientRuntimeUrl} role="menuitem" onClick={() => setAccessOpen(false)} className="block rounded-md px-3 py-3 text-sm font-semibold no-underline transition hover:bg-black/[0.05]">
-                    Client login
-                    <span className="mt-1 block text-xs font-normal text-black/55">Open your approved runtime.</span>
-                  </a>
-                ) : (
-                  <span role="menuitem" aria-disabled="true" className="block rounded-md px-3 py-3 text-sm font-semibold text-black/40">
-                    Client login
-                    <span className="mt-1 block text-xs font-normal text-black/45">Available after approval.</span>
-                  </span>
-                )}
+                <a href="/login" role="menuitem" onClick={() => setAccessOpen(false)} className="block rounded-md px-3 py-3 text-sm font-semibold no-underline transition hover:bg-black/[0.05]">
+                  Client login
+                  <span className="mt-1 block text-xs font-normal text-black/55">Open your approved workspace.</span>
+                </a>
               </div>
             )}
           </div>
@@ -214,7 +185,7 @@ export function Header() {
           <div className="flex flex-col gap-3 px-5 py-6 text-xs text-white/60">
             <span>&copy; Veloce AgenticOS</span>
             <a href="/start" onClick={() => setMenuOpen(false)} className="no-underline hover:underline">Request runtime</a>
-            {clientRuntimeUrl && <a href={clientRuntimeUrl} onClick={() => setMenuOpen(false)} className="no-underline hover:underline">Client login</a>}
+            <a href="/login" onClick={() => setMenuOpen(false)} className="no-underline hover:underline">Client login</a>
             <a href="#terms" onClick={() => setMenuOpen(false)} className="no-underline hover:underline">
               Terms of Service
             </a>

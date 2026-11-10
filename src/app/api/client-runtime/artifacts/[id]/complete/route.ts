@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
+import { clientRetentionSecondsRemaining } from "@/lib/clientRetention";
 import { clientGcpAccessToken, clientStorageConfig, clientStorageObjectMetadata, safeClientObjectKey } from "@/lib/clientStorage";
 
 export const runtime = "nodejs";
@@ -27,7 +28,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const artifact = result.records[0];
   const objectKey = typeof artifact?.object_key === "string" ? artifact.object_key : "";
   if (!result.ok) return NextResponse.json({ ok: false, error: "artifact_lookup_failed" }, { status: 502 });
-  if (!artifact || artifact.status !== "pending" || !safeClientObjectKey(objectKey, config.namespace)) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+  if (!artifact || artifact.tenant_slug !== tenantSlug || artifact.created_by !== user.id || artifact.status !== "pending" || clientRetentionSecondsRemaining(artifact) < 1 || !safeClientObjectKey(objectKey, config.namespace)) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
 
   const token = await clientGcpAccessToken();
   if (!token) return NextResponse.json({ ok: false, error: "storage_identity_unavailable" }, { status: 503 });

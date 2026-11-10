@@ -4,6 +4,7 @@ import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, insertClientRecord, selectClientRecords, recordClientAudit } from "@/lib/clientDataPlane";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
+import { clientRetentionExpiresAt, clientRetentionSecondsRemaining } from "@/lib/clientRetention";
 import { validateNotebookSource, validateNotebookDeletionRequest, type NotebookSourceKind } from "@/lib/v96NotebookContracts";
 
 export const runtime = "nodejs";
@@ -24,11 +25,12 @@ export async function GET(request: Request) {
     tenant_slug: `eq.${session.tenantSlug}`,
     ...(notebookId ? { notebook_id: `eq.${notebookId}` } : {}),
     deleted_at: "is.null",
+    retention_expires_at: `gt.${new Date().toISOString()}`,
     order: "created_at.desc",
     limit: "100",
   });
   if (!result.ok) return fail(result.status === 404 ? "notebook_lineage_schema_missing" : "notebook_source_read_failed", result.status === 404 ? 503 : 502);
-  return NextResponse.json({ ok: true, sources: result.records.map(publicSource) }, { headers: { "cache-control": "private, no-store" } });
+  return NextResponse.json({ ok: true, sources: result.records.filter((record) => clientRetentionSecondsRemaining(record) > 0).map(publicSource) }, { headers: { "cache-control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {
@@ -46,18 +48,41 @@ export async function POST(request: Request) {
   const id = randomUUID();
   const errors = validateNotebookSource({ contractVersion: "v96", id, tenantSlug: session.tenantSlug, kind: kind as NotebookSourceKind, title, sourceUrl, artifactId, status: "registered" });
   if (errors.length) return NextResponse.json({ ok: false, error: "source_input_invalid", details: errors }, { status: 400 });
-  const retentionDays = Math.min(3650, Math.max(1, Number(process.env.CLIENT_NOTEBOOK_RETENTION_DAYS ?? 30)));
+  const notebookId = typeof body.notebookId === "string" ? body.notebookId.trim() : null;
+  if (notebookId && !UUID.test(notebookId)) return fail("source_input_invalid", 400);
+  if (notebookId) {
+    const notebook = await selectClientRecords("client_notebooks", { id: `eq.${notebookId}`, tenant_slug: `eq.${session.tenantSlug}`, limit: "1" });
+    if (!notebook.ok) return fail("source_notebook_lookup_failed", 502);
+    if (notebook.records[0]?.tenant_slug !== session.tenantSlug) return fail("source_notebook_not_found", 404);
+  }
+  let retentionExpiresAt = clientRetentionExpiresAt(process.env.CLIENT_NOTEBOOK_RETENTION_DAYS ?? process.env.CLIENT_RETENTION_DAYS);
+  if (!retentionExpiresAt) return fail("retention_not_configured", 503);
+  if (artifactId) {
+    const result = await selectClientRecords("client_runtime_artifacts", { id: `eq.${artifactId}`, tenant_slug: `eq.${session.tenantSlug}`, limit: "1" });
+    if (!result.ok) return fail("source_artifact_lookup_failed", 502);
+    const artifact = result.records[0];
+    if (!artifact || artifact.tenant_slug !== session.tenantSlug || artifact.status !== "ready" || clientRetentionSecondsRemaining(artifact) < 1) return fail("source_artifact_not_found", 404);
+    if (artifact.created_by !== session.userId) {
+      const jobId = typeof artifact.job_id === "string" ? artifact.job_id : "";
+      if (!jobId) return fail("source_artifact_not_found", 404);
+      const job = await selectClientRecords("client_runtime_jobs", { id: `eq.${jobId}`, tenant_slug: `eq.${session.tenantSlug}`, requested_by: `eq.${session.userId}`, limit: "1" });
+      if (!job.ok || job.records[0]?.tenant_slug !== session.tenantSlug || job.records[0]?.requested_by !== session.userId) return fail("source_artifact_not_found", 404);
+    }
+    if (Date.parse(String(artifact.retention_expires_at)) < Date.parse(retentionExpiresAt)) {
+      retentionExpiresAt = String(artifact.retention_expires_at);
+    }
+  }
   const stored = await insertClientRecord(TABLE, {
     id,
     tenant_slug: session.tenantSlug,
     created_by: session.userId,
-    notebook_id: typeof body.notebookId === "string" && UUID.test(body.notebookId) ? body.notebookId : null,
+    notebook_id: notebookId,
     kind,
     title,
     source_url: sourceUrl ?? null,
     artifact_id: artifactId ?? null,
     status: "registered",
-    retention_expires_at: new Date(Date.now() + retentionDays * 86_400_000).toISOString(),
+    retention_expires_at: retentionExpiresAt,
   });
   if (!stored.ok) return fail(stored.status === 404 ? "notebook_lineage_schema_missing" : "notebook_source_write_failed", stored.status === 404 ? 503 : 502);
   await recordClientAudit("tenant.notebook.source_registered", { sourceId: id, kind });

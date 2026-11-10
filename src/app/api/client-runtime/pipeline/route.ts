@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
+import { clientRetentionExpiresAt } from "@/lib/clientRetention";
 import {
   cancelClientRuntimeJob, checkClientRuntimeRateLimit, deleteClientRecord, enqueueClientRuntimeJob,
   insertClientRecord, recordClientAudit, refundClientRuntimeRateLimit, selectClientRecords, updateClientRecord,
@@ -12,7 +13,7 @@ import { clientWorkspaceJobConfigured } from "@/lib/clientCloudRunJobs";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import {
   PIPELINE_STAGES, normalizePipelineItem, pipelineArtifactIntent, pipelineBuildPrompt, pipelineCanBuild, pipelineCanShape,
-  pipelineSchemaMissing, pipelineShapePrompt, pipelineUniqueSlug, type PipelineItem,
+  pipelineSchemaMissing, pipelineShapePrompt, pipelineSlugify, pipelineUniqueSlug, type PipelineItem,
 } from "@/lib/clientPipelineAdapter";
 
 export const runtime = "nodejs";
@@ -40,13 +41,23 @@ function done(payload: Record<string, unknown>, status = 200) {
 }
 
 async function readItems(tenantSlug: string) {
-  const result = await selectClientRecords(TABLE, { tenant_slug: `eq.${tenantSlug}`, order: "created_at.desc", limit: "200" });
+  const result = await selectClientRecords(TABLE, {
+    tenant_slug: `eq.${tenantSlug}`,
+    retention_expires_at: `gt.${new Date().toISOString()}`,
+    order: "created_at.desc",
+    limit: "200",
+  });
   if (!result.ok) return { ok: false as const, schemaMissing: pipelineSchemaMissing(result.status), status: result.status };
   return { ok: true as const, items: result.records.map(normalizePipelineItem) };
 }
 
 async function readItem(tenantSlug: string, id: string): Promise<PipelineItem | null> {
-  const result = await selectClientRecords(TABLE, { tenant_slug: `eq.${tenantSlug}`, id: `eq.${id}`, limit: "1" });
+  const result = await selectClientRecords(TABLE, {
+    tenant_slug: `eq.${tenantSlug}`,
+    id: `eq.${id}`,
+    retention_expires_at: `gt.${new Date().toISOString()}`,
+    limit: "1",
+  });
   return result.ok && result.records[0] ? normalizePipelineItem(result.records[0]) : null;
 }
 
@@ -87,19 +98,30 @@ async function capture(user: { userId: string; tenantSlug: string }, body: Recor
   const title = typeof body.title === "string" && body.title.trim()
     ? body.title.trim().slice(0, 240)
     : idea.split("\n")[0].slice(0, 80);
+  const retentionExpiresAt = clientRetentionExpiresAt(process.env.CLIENT_RETENTION_DAYS);
+  if (!retentionExpiresAt) return fail("retention_configuration_invalid", 503);
 
   const existing = await readItems(user.tenantSlug);
   if (!existing.ok) return fail(existing.schemaMissing ? "pipeline_schema_missing" : "pipeline_read_failed", existing.schemaMissing ? 503 : 502);
 
   const id = randomUUID();
-  const stored = await insertClientRecord(TABLE, {
+  const record = {
     id,
     tenant_slug: user.tenantSlug,
     created_by: user.userId,
     slug: pipelineUniqueSlug(title, existing.items.map((item) => item.slug)),
     title,
     idea,
-  });
+    retention_expires_at: retentionExpiresAt,
+  };
+  let stored = await insertClientRecord(TABLE, record);
+  if (!stored.ok && stored.status === 409) {
+    const base = pipelineSlugify(title) || "idea";
+    stored = await insertClientRecord(TABLE, {
+      ...record,
+      slug: `${base.slice(0, 51)}-${id.slice(0, 8)}`,
+    });
+  }
   if (!stored.ok) return fail(stored.status === 404 ? "pipeline_schema_missing" : "pipeline_write_failed", stored.status === 404 ? 503 : 502);
   await recordClientAudit("pipeline.captured", {});
   return done({ id }, 201);
@@ -142,7 +164,11 @@ async function dispatch(user: { userId: string; tenantSlug: string }, body: Reco
   });
   if (!jobId) return fail("pipeline_job_store_failed", 502);
 
-  await updateClientRecord(TABLE, { id: `eq.${id}`, tenant_slug: `eq.${user.tenantSlug}` }, {
+  await updateClientRecord(TABLE, {
+    id: `eq.${id}`,
+    tenant_slug: `eq.${user.tenantSlug}`,
+    retention_expires_at: `gt.${new Date().toISOString()}`,
+  }, {
     execution_job_id: jobId,
     execution_state: "queued",
     execution_error: null,
@@ -155,7 +181,11 @@ async function dispatch(user: { userId: string; tenantSlug: string }, body: Reco
     const taskError = task.error ?? "task_enqueue_failed";
     await cancelClientRuntimeJob(jobId, taskError);
     await refundClientRuntimeRateLimit("pipeline-write", 900);
-    await updateClientRecord(TABLE, { id: `eq.${id}`, tenant_slug: `eq.${user.tenantSlug}` }, {
+    await updateClientRecord(TABLE, {
+      id: `eq.${id}`,
+      tenant_slug: `eq.${user.tenantSlug}`,
+      retention_expires_at: `gt.${new Date().toISOString()}`,
+    }, {
       execution_state: "failed", execution_error: taskError.slice(0, 120), updated_at: new Date().toISOString(),
     });
     return fail(taskError, task.status >= 500 ? 503 : task.status);
@@ -174,13 +204,13 @@ export async function PATCH(request: Request) {
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const id = typeof body.id === "string" ? body.id.trim() : "";
   if (!UUID_RE.test(id)) return fail("pipeline_input_invalid", 400);
+  const item = await readItem(user.tenantSlug, id);
+  if (!item) return fail("pipeline_item_not_found", 404);
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   const decision = typeof body.decision === "string" ? body.decision.trim().toLowerCase() : null;
   if (decision) {
     if (decision !== "approve" && decision !== "reject") return fail("pipeline_input_invalid", 400);
-    const item = await readItem(user.tenantSlug, id);
-    if (!item) return fail("pipeline_item_not_found", 404);
     // The gate exists precisely so approval cannot happen implicitly.
     if (item.stage !== "review") return fail("pipeline_decision_not_allowed", 409);
     patch.stage = decision === "approve" ? "building" : "rejected";
@@ -195,7 +225,11 @@ export async function PATCH(request: Request) {
   }
   if (Object.keys(patch).length <= 1) return fail("pipeline_input_invalid", 400);
 
-  const updated = await updateClientRecord(TABLE, { id: `eq.${id}`, tenant_slug: `eq.${user.tenantSlug}` }, patch);
+  const updated = await updateClientRecord(TABLE, {
+    id: `eq.${id}`,
+    tenant_slug: `eq.${user.tenantSlug}`,
+    retention_expires_at: `gt.${new Date().toISOString()}`,
+  }, patch);
   if (!updated.ok) return fail("pipeline_write_failed", 502);
   if (decision) await recordClientAudit(`pipeline.${decision}d`, {});
   return done({});
@@ -209,7 +243,12 @@ export async function DELETE(request: Request) {
   if (!limit.allowed) return fail("runtime_rate_limited", 429);
   const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
   if (!UUID_RE.test(id)) return fail("pipeline_input_invalid", 400);
-  const removed = await deleteClientRecord(TABLE, { id: `eq.${id}`, tenant_slug: `eq.${user.tenantSlug}` });
+  if (!(await readItem(user.tenantSlug, id))) return fail("pipeline_item_not_found", 404);
+  const removed = await deleteClientRecord(TABLE, {
+    id: `eq.${id}`,
+    tenant_slug: `eq.${user.tenantSlug}`,
+    retention_expires_at: `gt.${new Date().toISOString()}`,
+  });
   if (!removed.ok) return fail("pipeline_delete_failed", 502);
   await recordClientAudit("pipeline.deleted", {});
   return done({});

@@ -2,10 +2,14 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, selectClientRecords } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
-import { clientGcpAccessToken, clientServiceAccountEmail, signedClientStorageUrl } from "@/lib/clientStorage";
+import { clientRetentionSecondsRemaining } from "@/lib/clientRetention";
+import { clientGcpAccessToken, clientStorageConfig, proxyClientStorageObject, safeClientFileName, safeClientObjectKey } from "@/lib/clientStorage";
+import { artifactContentSha256, artifactJobReleased, artifactReviewApproved, MAX_NOTEBOOK_REVIEW_BYTES, notebookArtifactReleased, notebookArtifactReviewRequired, readArtifactReviewBytes } from "@/lib/clientArtifactReview";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const MAX_DOWNLOAD_BYTES = 250 * 1024 * 1024;
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await currentClientUser();
@@ -19,9 +23,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ ok: false, error: "invalid_artifact" }, { status: 400 });
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
-  const namespace = process.env.CLIENT_STORAGE_NAMESPACE?.trim();
-  const bucket = process.env.CLIENT_STORAGE_BUCKET?.trim();
-  if (!tenantSlug || !namespace || !bucket) return NextResponse.json({ ok: false, error: "storage_not_configured" }, { status: 503 });
+  const config = clientStorageConfig();
+  if (!tenantSlug || !config) return NextResponse.json({ ok: false, error: "storage_not_configured" }, { status: 503 });
 
   const result = await selectClientRecords("client_runtime_artifacts", {
     id: `eq.${id}`,
@@ -31,20 +34,69 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!result.ok) return NextResponse.json({ ok: false, error: "artifact_lookup_failed" }, { status: 502 });
   const artifact = result.records[0];
   const objectKey = typeof artifact?.object_key === "string" ? artifact.object_key : "";
-  if (!artifact || artifact.status !== "ready" || !safeObjectKey(objectKey, namespace)) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+  const expiresInSeconds = artifact ? clientRetentionSecondsRemaining(artifact) : 0;
+  if (!artifact || artifact.tenant_slug !== tenantSlug || artifact.status !== "ready" || !expiresInSeconds || !safeClientObjectKey(objectKey, config.namespace)) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+  const jobId = typeof artifact.job_id === "string" ? artifact.job_id : "";
+  let reviewRequired = false;
+  if (jobId) {
+    const job = await selectClientRecords("client_runtime_jobs", { id: `eq.${jobId}`, tenant_slug: `eq.${tenantSlug}`, requested_by: `eq.${user.id}`, limit: "1" });
+    if (!job.ok || job.records[0]?.id !== jobId || job.records[0]?.tenant_slug !== tenantSlug || job.records[0]?.requested_by !== user.id) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+    reviewRequired = notebookArtifactReviewRequired(job.records[0]);
+    if (!artifactJobReleased(job.records[0], id)) return NextResponse.json({ ok: false, error: "artifact_job_not_released" }, { status: 409 });
+  } else if (artifact.created_by !== user.id) {
+    return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+  }
 
+  if (reviewRequired && !artifactReviewApproved(artifact, user.id)) return NextResponse.json({ ok: false, error: "artifact_review_required" }, { status: 409 });
+
+  const byteSize = typeof artifact.byte_size === "number" ? artifact.byte_size : -1;
+  if (!Number.isSafeInteger(byteSize) || byteSize < 1) return NextResponse.json({ ok: false, error: "artifact_size_invalid" }, { status: 409 });
+  if (byteSize > MAX_DOWNLOAD_BYTES) return NextResponse.json({ ok: false, error: "artifact_too_large" }, { status: 413 });
+  if (reviewRequired && byteSize > MAX_NOTEBOOK_REVIEW_BYTES) return NextResponse.json({ ok: false, error: "artifact_review_not_supported" }, { status: 409 });
   const token = await clientGcpAccessToken();
-  const serviceAccount = await clientServiceAccountEmail(process.env.CLIENT_RUNTIME_SERVICE_ACCOUNT);
-  if (!serviceAccount || !token) return NextResponse.json({ ok: false, error: "signing_identity_unavailable" }, { status: 503 });
-
-  const url = await signedClientStorageUrl({ method: "GET", bucket, objectKey, serviceAccount, token });
-  if (!url) return NextResponse.json({ ok: false, error: "signed_download_unavailable" }, { status: 503 });
-  return NextResponse.redirect(url, { status: 302, headers: { "cache-control": "private, no-store" } });
-}
-
-function safeObjectKey(value: string, namespace: string) {
-  return value.startsWith(`${namespace}/`)
-    && !value.startsWith("/")
-    && !value.includes("\\")
-    && !value.split("/").some((part) => part === ".." || part.length === 0);
+  if (!token) return NextResponse.json({ ok: false, error: "storage_identity_unavailable" }, { status: 503 });
+  const object = await proxyClientStorageObject({ bucket: config.bucket, objectKey, token, maxBytes: MAX_DOWNLOAD_BYTES, expectedBytes: byteSize });
+  if (!object) return NextResponse.json({ ok: false, error: "artifact_download_failed" }, { status: 502 });
+  let body = object.body;
+  if (reviewRequired) {
+    const bytes = body ? await readArtifactReviewBytes(body, byteSize) : null;
+    if (!bytes || artifactContentSha256(bytes) !== artifact.review_sha256) return NextResponse.json({ ok: false, error: "artifact_review_content_changed" }, { status: 409 });
+    if (!clientRetentionSecondsRemaining(artifact)) return NextResponse.json({ ok: false, error: "artifact_not_found" }, { status: 404 });
+    // Recheck a decision revoked or replaced while storage was being read.
+    const current = await selectClientRecords("client_runtime_artifacts", { id: `eq.${id}`, tenant_slug: `eq.${tenantSlug}`, limit: "1" });
+    const latest = current.records[0];
+    if (!current.ok || !latest || latest.id !== artifact.id || latest.tenant_slug !== tenantSlug
+      || latest.status !== "ready" || !clientRetentionSecondsRemaining(latest)
+      || latest.job_id !== jobId
+      || latest.object_key !== objectKey || latest.review_sha256 !== artifactContentSha256(bytes)
+      || !artifactReviewApproved(latest, user.id)) return NextResponse.json({ ok: false, error: "artifact_review_required" }, { status: 409 });
+    const currentJobs = await selectClientRecords("client_runtime_jobs", { id: `eq.${jobId}`, tenant_slug: `eq.${tenantSlug}`, requested_by: `eq.${user.id}`, limit: "1" });
+    const currentJob = currentJobs.records[0];
+    if (!currentJobs.ok || !currentJob || currentJob.id !== jobId || currentJob.tenant_slug !== tenantSlug
+      || currentJob.requested_by !== user.id || !notebookArtifactReleased(currentJob, id)) return NextResponse.json({ ok: false, error: "artifact_job_not_released" }, { status: 409 });
+    body = new Response(new Uint8Array(bytes)).body!;
+  } else if (jobId) {
+    const [current, currentJobs] = await Promise.all([
+      selectClientRecords("client_runtime_artifacts", { id: `eq.${id}`, tenant_slug: `eq.${tenantSlug}`, limit: "1" }),
+      selectClientRecords("client_runtime_jobs", { id: `eq.${jobId}`, tenant_slug: `eq.${tenantSlug}`, requested_by: `eq.${user.id}`, limit: "1" }),
+    ]);
+    const latest = current.records[0];
+    const currentJob = currentJobs.records[0];
+    if (!current.ok || !latest || latest.id !== id || latest.tenant_slug !== tenantSlug || latest.job_id !== jobId
+      || latest.object_key !== objectKey || latest.status !== "ready" || !clientRetentionSecondsRemaining(latest)
+      || !currentJobs.ok || !currentJob || currentJob.id !== jobId || currentJob.tenant_slug !== tenantSlug
+      || currentJob.requested_by !== user.id || !artifactJobReleased(currentJob, id)) {
+      await body?.cancel().catch(() => undefined);
+      return NextResponse.json({ ok: false, error: "artifact_job_not_released" }, { status: 409 });
+    }
+  }
+  const fileName = safeClientFileName(typeof artifact.original_name === "string" ? artifact.original_name : "") ?? "artifact.bin";
+  const headers = new Headers({
+    "cache-control": "private, no-store",
+    "content-type": typeof artifact.content_type === "string" ? artifact.content_type : object.contentType,
+    "content-disposition": `attachment; filename="${fileName}"`,
+    "x-content-type-options": "nosniff",
+  });
+  if (object.contentLength) headers.set("content-length", object.contentLength);
+  return new Response(body, { status: 200, headers });
 }

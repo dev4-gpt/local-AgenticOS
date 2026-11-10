@@ -36,7 +36,9 @@ function done(payload: Record<string, unknown>, status = 200) {
 }
 
 async function readRun(tenantSlug: string, id: string) {
-  const result = await selectClientRecords(HERMES_FACTORY_TABLE, { tenant_slug: `eq.${tenantSlug}`, id: `eq.${id}`, limit: "1" });
+  const result = await selectClientRecords(HERMES_FACTORY_TABLE, {
+    tenant_slug: `eq.${tenantSlug}`, id: `eq.${id}`, retention_expires_at: `gt.${new Date().toISOString()}`, limit: "1",
+  });
   return result.ok && result.records[0] ? normalizeClientHermesFactoryRun(result.records[0]) : null;
 }
 
@@ -51,7 +53,9 @@ export async function GET(request: Request) {
     const run = await readRun(user.tenantSlug, id);
     return run ? done({ run }) : fail("content_factory_not_found", 404);
   }
-  const result = await selectClientRecords(HERMES_FACTORY_TABLE, { tenant_slug: `eq.${user.tenantSlug}`, order: "created_at.desc", limit: "50" });
+  const result = await selectClientRecords(HERMES_FACTORY_TABLE, {
+    tenant_slug: `eq.${user.tenantSlug}`, retention_expires_at: `gt.${new Date().toISOString()}`, order: "created_at.desc", limit: "50",
+  });
   if (!result.ok) return result.status === 404 ? done({ configured: false, runs: [] }) : fail("content_factory_read_failed", 502);
   return done({ configured: true, runs: result.records.map(normalizeClientHermesFactoryRun) });
 }
@@ -80,7 +84,12 @@ export async function POST(request: Request) {
   }
   const effectiveIdempotencyKey = idempotencyKey || plan.workflowId;
   const existing = await selectClientRecords(HERMES_FACTORY_TABLE, { tenant_slug: `eq.${user.tenantSlug}`, idempotency_key: `eq.${effectiveIdempotencyKey}`, limit: "1" });
-  if (existing.ok && existing.records[0]) return done({ run: normalizeClientHermesFactoryRun(existing.records[0]), replayed: true });
+  if (existing.ok && existing.records[0]) {
+    if (!existing.records[0].retention_expires_at || Date.parse(String(existing.records[0].retention_expires_at)) <= Date.now()) {
+      return fail("content_factory_retention_expired", 410);
+    }
+    return done({ run: normalizeClientHermesFactoryRun(existing.records[0]), replayed: true });
+  }
 
   const runId = randomUUID();
   const providerName = process.env.CLIENT_WORKSPACE_PROVIDER?.trim().toLowerCase() || "hermes";
@@ -102,7 +111,12 @@ export async function POST(request: Request) {
   });
   if (!stored.ok) {
     const replay = await selectClientRecords(HERMES_FACTORY_TABLE, { tenant_slug: `eq.${user.tenantSlug}`, idempotency_key: `eq.${effectiveIdempotencyKey}`, limit: "1" });
-    if (replay.ok && replay.records[0]) return done({ run: normalizeClientHermesFactoryRun(replay.records[0]), replayed: true });
+    if (replay.ok && replay.records[0]) {
+      if (!replay.records[0].retention_expires_at || Date.parse(String(replay.records[0].retention_expires_at)) <= Date.now()) {
+        return fail("content_factory_retention_expired", 410);
+      }
+      return done({ run: normalizeClientHermesFactoryRun(replay.records[0]), replayed: true });
+    }
     return fail(stored.status === 404 ? "content_factory_schema_missing" : "content_factory_write_failed", stored.status === 404 ? 503 : 502);
   }
 

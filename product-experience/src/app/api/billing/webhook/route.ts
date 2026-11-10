@@ -68,6 +68,28 @@ async function ensurePublicLaunchReviewItem(input: { eventId: string; eventType:
   return inserted.ok;
 }
 
+async function ensureManagedCreditReviewItem(input: { eventId: string; eventType: string; hash: string }) {
+  const prior = await supabaseServiceSelect("stripe_financial_event_dispositions", {
+    event_id: `eq.${input.eventId}`,
+    disposition: "eq.review_required",
+  });
+  if (!prior.ok) return false;
+  if (prior.rows.length) {
+    const row = prior.rows[0];
+    return row.event_type === input.eventType && row.payload_hash === input.hash && row.financial_scope === "managed_credit";
+  }
+  const inserted = await supabaseServiceInsert("stripe_financial_event_dispositions", {
+    event_id: input.eventId,
+    event_type: input.eventType,
+    payload_hash: input.hash,
+    financial_scope: "managed_credit",
+    disposition: "review_required",
+    recorded_by: "stripe-webhook",
+    reason: "Managed-credit purchase linkage is no longer retained; reconcile this lifecycle event manually before any wallet adjustment.",
+  });
+  return inserted.ok;
+}
+
 export async function POST(request: Request) {
   const payload = await request.text();
   // Webhook delivery only needs the Stripe secret and signing secret. The
@@ -192,9 +214,40 @@ export async function POST(request: Request) {
           return NextResponse.json({ ok: true, eventId: event.id, status: "public_launch_refund_reviewed" });
         }
       }
+      const isManagedCreditProduct = ["veloce-managed-credits", "veloce-managed-credits-plan"].includes(stringValue(metadata.product) ?? "");
+      if (isManagedCreditProduct && (event.type === "charge.refunded" || event.type === "charge.dispute.created")) {
+        if (!(await ensureManagedCreditReviewItem({ eventId: event.id, eventType: event.type, hash }))) {
+          return NextResponse.json({ ok: false, error: "managed_credit_review_record_failed" }, { status: 502 });
+        }
+        const stored = await storeWebhookEvent(event.id, event.type, payload, "processed", "managed_credit_manual_review_required", "managed_credit");
+        if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
+        return NextResponse.json({ ok: true, eventId: event.id, status: "managed_credit_manual_review_required" });
+      }
       const stored = await storeWebhookEvent(event.id, event.type, payload, "failed", "credit_plan_metadata_missing", "unknown");
       if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
       return NextResponse.json({ ok: false, error: "credit_plan_metadata_missing" }, { status: 422 });
+    }
+
+    if (event.type === "charge.refunded" || event.type === "charge.dispute.created") {
+      const retainedPlan = await supabaseServiceSelect("client_credit_purchase_plans", {
+        id: `eq.${creditPlanId}`,
+        select: "id,created_at",
+      });
+      if (!retainedPlan.ok) return NextResponse.json({ ok: false, error: "credit_plan_lookup_failed" }, { status: 502 });
+      const createdAt = typeof retainedPlan.rows[0]?.created_at === "string"
+        ? Date.parse(retainedPlan.rows[0].created_at)
+        : Number.NaN;
+      const linkageIsCurrent = Number.isFinite(createdAt)
+        && createdAt > Date.now() - 35 * 24 * 60 * 60 * 1000;
+      // Enforce the expiry even if the bounded retention purge has not run yet.
+      if (!retainedPlan.rows.length || !linkageIsCurrent) {
+        if (!(await ensureManagedCreditReviewItem({ eventId: event.id, eventType: event.type, hash }))) {
+          return NextResponse.json({ ok: false, error: "managed_credit_review_record_failed" }, { status: 502 });
+        }
+        const stored = await storeWebhookEvent(event.id, event.type, payload, "processed", "managed_credit_manual_review_required", "managed_credit");
+        if (!stored.ok) return NextResponse.json({ ok: false, error: "event_store_failed" }, { status: 502 });
+        return NextResponse.json({ ok: true, eventId: event.id, status: "managed_credit_manual_review_required" });
+      }
     }
 
     const amountMicros = typeof object.amount_refunded === "number"

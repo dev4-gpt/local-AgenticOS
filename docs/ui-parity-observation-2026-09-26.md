@@ -111,3 +111,221 @@ Read-only `gcloud projects describe 1075094991117` was denied for both
 configured accounts (`aryamandev777@gmail.com` and `aryamans.dev96@gmail.com`).
 The Cloud Run revision, image digest, and source SHA remain unknown; do not
 promote this observation into a parity pass.
+
+**Current browser and local-process check, 2026-10-02:** The user's signed-in
+Chrome window at `https://veloce-cloud-test-1075094991117.asia-south1.run.app/room`
+rendered the client-edition AI Agent Mastermind. Its visible Hermes agent
+returned a reply using the approved Groq model lane. This is a read-only
+observation of one cloud route, not a same-revision comparison or a full
+customer journey. The local service at `http://127.0.0.1:3565/setup` returned
+HTTP 200, but its listening process had `product-experience/` as its working
+directory. It is the public/setup app, **not** the root client workspace that
+serves the cloud `/room` route. Comparing those two screens as UI parity would
+be invalid. The root checkout's `.env.local` contains only a Groq key name;
+it lacks the Supabase URL/publishable key, tenant slug, allowed email, and
+model allowlist required by `scripts/run-client-runtime-local.mjs` for signed-in
+local parity. Do not disable authentication or copy production secrets to
+make a visual comparison pass. Obtain an approved staging env file and compare
+the same workspace route, identity, build revision, and responsive viewports.
+
+**Signed-in Memory recheck, 2026-10-03 20:50 UTC:** The existing Chrome window
+at `https://veloce-cloud-test-1075094991117.asia-south1.run.app/room` was
+already authenticated and showed the client-edition Mastermind with an earlier
+Hermes reply; no new model request was sent. Navigating within that session to
+`/memory` showed 24 tenant memories, 29 graph nodes, 57 edges, Markdown
+import/export, note creation, graph refresh, and Recent/Search/Graph/Galaxy.
+After the page finished loading, it still did **not** show the reviewed JSON
+source-pack control mounted by the current checkout's
+`src/components/ClientDataWorkspace.tsx` and
+`src/components/ClientCommunitySourceImport.tsx`. No record was changed, and
+no tenant content or credentials were retained in this note. This confirms a
+visible cloud/current-source surface gap on the explicit `asia-south1.run.app`
+URL. It does not establish which revision is deployed, whether its source-import
+API or migration exists, or whether current local and cloud sessions can be
+compared under the same identity. Source import and UI parity remain unaccepted.
+The pinned Cloud Run console tab targeted
+`projects/veloce-agenticos-2026/locations/asia-south1/services/veloce-cloud-test`
+under `aryamans.dev96@gmail.com` and displayed "You need additional access"
+with `run.services.get (Missing)`. That account cannot supply the revision or
+image digest from the console. No IAM change was attempted; an authorized owner
+must provide read-only deployment identity before candidate parity can be
+certified.
+
+**Local-launch safety follow-up, 2026-10-03:** `scripts/run-client-runtime-local.mjs`
+now defaults `CLIENT_PROVIDER_CALLS_ENABLED` to `0`, so opening a local UI
+cannot silently enable provider spending. `npm run dev:client-runtime --
+--check-config` reports missing parity settings by name and exits before
+starting a server. A provider test requires an explicit `1` setting and a
+separately reviewed cost boundary. A private Supabase file exists on this
+machine, but it does not establish an approved staging tenant slug, allowed
+email, or cloud revision; it was not used for a signed-in parity claim. A
+model allowlist is required only when an explicitly approved provider test
+enables calls, not for an auth-only UI comparison.
+
+**Stable local preview, 2026-10-03:** The dev watcher exhausted this machine's
+file handles, so the guarded launcher now supports `--build-production` followed
+by `--production` using a separate `.next-client-prod` output directory. With a
+private, reduced env file (Supabase URL and anon key, tenant slug, allowed email;
+no service role key), the build passed, `/login` returned 200, and `/memory`
+redirected to `/login`. Provider calls remained disabled. No signed-in local
+journey or cloud revision comparison has been completed; these checks do not
+establish UI parity or production acceptance.
+
+**Signed-in same-profile comparison, 2026-10-03:** The user signed in to the
+local client preview at `http://127.0.0.1:3939/` in the Chrome work profile.
+Its `/memory` page loaded 24 tenant memories and a 29-node/57-edge graph. An
+existing signed-in tab in that profile at
+`https://veloce-cloud-test-1075094991117.asia-south1.run.app/memory` showed
+the same counts and the same first/last record titles. Only counts and control
+names, not record bodies or credentials, are retained here. Desktop visual
+inspection found the shared Memory layout and Markdown/note/search/graph
+controls closely aligned. The local candidate additionally displayed
+`Community sources` / `Review JSON source packs` and sidebar entries for
+`Classroom Research` and `Social Research`; those controls were absent from
+the cloud tab. The local candidate was source commit `83a986d`, with provider
+calls disabled. Separate browser origins have separate sessions, and matching
+data does not prove identical auth claims or tenant isolation. The cloud
+revision/image digest/source SHA and source-pack migration state remain unknown.
+No write or provider action was attempted. This is concrete deployment drift,
+not an accepted `ui-parity` result; compare again on an immutable deployed
+candidate at desktop and mobile sizes before closing that gate.
+
+**Local session follow-up, 2026-10-04:** After the user's sign-in confirmation,
+the in-app browser retained a Delivery page with `workspace_execution_read_failed`.
+Nothing was listening on port 3939, and navigation failed with connection refused.
+The existing production preview was restarted with the approved reduced env file
+and provider calls disabled. In Chrome's Work profile, local Memory loaded without
+a login prompt: 24 records, initially 29 nodes and 57 edges; after refreshing the
+map it displayed 33 nodes and 57 edges. Delivery initially appeared empty; using
+its Refresh history control loaded two successful existing packages, `v100 verify
+deliver` and `Delivery · Monthly package`. Selecting the first displayed its
+retained tenant artifact and signed-download control. The earlier history error
+was not reproducible after the restart. No new note, import, delivery, download,
+or provider job was submitted. The in-app browser separately redirected to login,
+so its session must not be conflated with Chrome's authenticated session. Local
+authentication, Memory reads, and existing Delivery history are verified; package
+creation and the full customer journey remain unverified. The preview reused the
+existing build, not a new release.
+
+**Release-verifier snapshot, 2026-10-04:** `node
+scripts/verify-production-readiness.mjs --allow-dirty` returned
+`releaseReady: false` on source commit `6d6c952`. The release ledger bucket is
+not configured. Twenty-four ledger-backed gates remain unevaluated, including
+current deployment identity, the J01-J15 customer journey, applied migrations,
+source import, UI parity, buyer simulation, AI engineering, operations, legal,
+and rollback evidence. The local Delivery observation does not satisfy hosted
+production release evidence.
+
+**Local/cloud Delivery comparison, 2026-10-05:** In the existing signed-in
+Chrome Work profile, `/deliver` first rendered an empty-history message while
+the client-runtime request was still pending. Refreshing history on each page
+loaded the same two successful entries: `v100 verify deliver` and
+`Delivery · Monthly package`. Selecting the verification entry showed the
+same retained `v100-verify-deliver.md` artifact detail and signed-download
+control. The cloud page reported 0 of 10,000 credits used this month and
+`$0.00`. No download, write, send, or provider request occurred. The
+`ClientStudioWorkspace` initial and manual-refresh states now distinguish
+loading from a genuinely empty history. A fresh optimized local build passed
+typecheck, scoped ESLint, and production compilation; after restart on the
+same signed-in origin, it automatically loaded the two existing entries. The
+cloud deployment was not changed. This is a read-only Delivery check, not
+evidence that all routes match, that both origins use identical auth claims,
+or that either page has production-ready end-to-end coverage.
+
+**Cloud Memory recheck, 2026-10-05:** The same Chrome Work profile opened the
+Cloud Run `/memory` route. It showed 24 tenant memories, 33 graph nodes, and 57
+edges, matching the refreshed local client counts. The local Memory screen has
+a `Community sources` / `Review JSON source packs` section; this cloud screen
+does not. The cloud page also showed historical notes and graph controls, but
+no source-pack import control. No upload or write was attempted. This confirms
+the source-import UI is absent from the observed cloud deployment; the deployed
+revision, database migration state, and cause of the drift remain unknown.
+
+**Settled-state correction, 2026-10-05:** A later read-only Chrome comparison
+initially rendered 0/0/0 in both the local and Cloud Run Memory views while
+their requests were still loading. Refreshing the local graph and then
+returning to the Cloud Run tab showed 24 tenant memories, 33 nodes, and 57
+edges in both views. The earlier zero-count observation was a transient loading
+state, not evidence that the cloud tenant was empty. The browser did not expose
+a verifiable tenant identifier, so matching counts do not establish that both
+origins use the same tenant. The `Community sources` controls remain present
+locally and absent in the observed Cloud Run screen. Current source code mounts
+`ClientCommunitySourceImport` whenever `ClientDataWorkspace` is on the Memory
+surface; no local-only feature flag is present at that mount. The deployed
+revision and migration state remain unverified, and no source pack was
+uploaded.
+
+**Public login deployment gap, 2026-10-05:** `https://app.veloceos.cloud/login`
+still returns Vercel's 404 page; this was verified in the user's Chrome Work
+window. Read-only `vercel inspect` identifies the production alias as
+deployment `dpl_ECwKPW7sLjQhS364gM1pEJERX6Qa`, target
+`product-experience-9zi6qlrqg-veloce-agentic-os.vercel.app`, created
+2026-09-26 02:06 UTC and aliased to `app.veloceos.cloud`. The linked Vercel
+project's root directory is `product-experience`. The shared `/login` route was
+added later in source commit `b97d6e7623a4a7ed8815651c186c5885f4aea774` on
+2026-10-03 21:39 EDT. The deployment inspection did not expose a source SHA, so
+no exact source-to-deploy mapping is claimed; its creation time nevertheless
+predates the route commit. A fresh local production build includes `/login`,
+returns HTTP 200, and an isolated Chrome test verified the disabled-by-default
+sign-in state plus request/support links without sending an email. The focused
+Playwright test passed 1/1 locally. Production remains broken until a reviewed
+release deploys the route and verifies its provider configuration, email
+delivery, callback, and tenant membership checks. No deployment was initiated.
+
+**Fresh local Chrome and product checks, 2026-10-05:** The 10-test
+`tests/product-experience.spec.ts` suite passed against local port 3568 in
+installed Chrome. This covers the public experience, the `/login` page's
+configured/disabled state, navigation, legal/catalog surfaces, onboarding
+inputs, and mobile horizontal overflow; it does not submit onboarding or
+authenticate. The local Product Experience env file has no Supabase URL or
+anon key, so sign-in remains intentionally unavailable there. In the user's
+Chrome Work window, the production `/login` URL still renders Vercel 404.
+
+The full local workbench was separately started on port 3738 with the supplied
+`agent-os-3d-worlds-2026-09-21` add-on served on loopback port 3945. The World
+Studio shell and viewer returned 200; the tea, glass, and snow GLBs, guide, and
+editable scene endpoint each returned 200. Installed Chrome rendered the
+interactive Three.js scene at 1440x900 and 390x844, with 155 and 167 distinct
+sampled screenshot colors respectively, no horizontal overflow, successful
+tea-to-glass switching, and detected keyboard and touch movement. Screenshots
+are local-only at `/private/tmp/agentos-world-studio-desktop.png` and
+`/private/tmp/agentos-world-studio-mobile.png`. This optional World Studio is
+explicitly hidden by the client-edition route guard; it is not a missing
+customer-facing Cloud Run feature and does not establish overall local/cloud
+parity or target-device GPU performance.
+
+**AI and release gates, 2026-10-05:** The deterministic AI release evaluation
+passed 9/9 cases with Node 24.18.0, zero model samples, and no provider calls;
+the report remains `productionReady: false`. Running the same gate with the
+host shell's unsupported Node 26.4.0 correctly failed its Node-version check,
+despite all nine test cases passing. The supported-runtime report is
+`/private/tmp/agentos-ai-release-local-v1-node24-2026-10-05.json`. The
+production-readiness verifier snapshot on source `8a16e4cd37e1e865e363556a0c108324644ca468`
+remains false: no reviewed release-ledger bucket is configured, and 24
+ledger-backed gates remain unevaluated. The focused suite last passed 275 with
+one skip on this same source commit; local UI and AI checks do not close the
+hosted J01-J15 journey, migrations, deployment identity, or approvals.
+
+**MiroFish pilot configuration, 2026-10-05:** The existing private Groq
+credential was wired into the isolated pilot's ignored, mode-600 `.env` using
+the AgentOS-configured Groq-compatible endpoint and model. No key value is
+recorded here. `ZEP_API_KEY` is still absent from the pilot environment; no
+MiroFish request or simulation was run. The pilot remains pending until its
+Zep credential is configured and the zero-paid-spend provider posture is
+confirmed for this run.
+
+**Same-profile tenant Memory recheck, 2026-10-05:** The current Chrome Work
+profile's local client runtime at `http://127.0.0.1:3939/memory` loaded 24
+tenant memories, 33 graph nodes, and 57 edges, with `Community sources` and
+`Review JSON source packs` controls. Read-only process metadata confirms the
+local server's working directory is this AgentOS checkout. The Cloud Run
+`/memory` page in the same Chrome profile rendered 0 tenant memories, 0 nodes,
+and 0 edges, and did not show the source-pack controls. No records, imports,
+or provider actions were submitted. Because the Cloud page's tenant identity
+could not be established from the rendered page, the count difference is a
+current parity warning, not proof of cross-tenant isolation or proof that the
+cloud intentionally has no data. Reconfirm the approved tenant identity and
+deployed revision before treating this cloud surface as the local counterpart.
+On source commit `a295be5b3b81fc5bd0a9cedc68932bf02a931405`, the focused
+source-import, tenant-isolation, job-trace, and observability accuracy suites
+passed 18/18 locally; these deterministic tests do not certify hosted behavior.

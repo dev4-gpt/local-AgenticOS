@@ -60,14 +60,14 @@ export async function GET(request: Request) {
   if (runId) {
     if (!UUID_RE.test(runId)) return fail("loop_input_invalid", 400);
     const rounds = await selectClientRecords(ROUNDS, {
-      tenant_slug: `eq.${user.tenantSlug}`, run_id: `eq.${runId}`, order: "round.asc", limit: "10",
+      tenant_slug: `eq.${user.tenantSlug}`, run_id: `eq.${runId}`, retention_expires_at: `gt.${new Date().toISOString()}`, order: "round.asc", limit: "10",
     });
     if (!rounds.ok) return fail("loop_read_failed", 502);
     return done({ configured: true, rounds: rounds.records.map(normalizeLoopRound) });
   }
 
   const runs = await selectClientRecords(RUNS, {
-    tenant_slug: `eq.${user.tenantSlug}`, order: "created_at.desc", limit: "50",
+    tenant_slug: `eq.${user.tenantSlug}`, retention_expires_at: `gt.${new Date().toISOString()}`, order: "created_at.desc", limit: "50",
   });
   if (!runs.ok) {
     return loopSchemaMissing(runs.status)
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
   const runId = idempotencyKey ? stableLoopRunId(user.tenantSlug, idempotencyKey) : randomUUID();
   if (idempotencyKey) {
     const existing = await selectClientRecords(RUNS, {
-      tenant_slug: `eq.${user.tenantSlug}`, id: `eq.${runId}`,
+      tenant_slug: `eq.${user.tenantSlug}`, id: `eq.${runId}`, retention_expires_at: `gt.${new Date().toISOString()}`,
     });
     if (!existing.ok) return fail(loopSchemaMissing(existing.status) ? "loop_schema_missing" : "loop_read_failed", loopSchemaMissing(existing.status) ? 503 : 502);
     const prior = existing.records[0];
@@ -170,7 +170,7 @@ export async function DELETE(request: Request) {
   if (!limit.allowed) return fail("runtime_rate_limited", 429);
   const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
   if (!UUID_RE.test(id)) return fail("loop_input_invalid", 400);
-  const removed = await deleteClientRecord(RUNS, { id: `eq.${id}`, tenant_slug: `eq.${user.tenantSlug}` });
+  const removed = await deleteClientRecord(RUNS, { id: `eq.${id}`, tenant_slug: `eq.${user.tenantSlug}`, retention_expires_at: `gt.${new Date().toISOString()}` });
   if (!removed.ok) return fail("loop_delete_failed", 502);
   await recordClientAudit("loop.run_deleted", {});
   return done({});

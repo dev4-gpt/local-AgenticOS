@@ -61,7 +61,7 @@ export function validateClientVisualQaInput(input: Record<string, unknown>) {
   const frames = input.frames;
   const maxFrames = typeof input.maxFrames === "number" && Number.isInteger(input.maxFrames) ? input.maxFrames : 12;
   const errors: string[] = [];
-  if (!tenantSlug || !/^[a-z0-9][a-z0-9-]{1,62}$/.test(tenantSlug)) errors.push("visual_qa_tenant_invalid");
+  if (!tenantSlug || !/^[a-z][a-z0-9-]{2,40}$/.test(tenantSlug)) errors.push("visual_qa_tenant_invalid"); // the database rule
   if (!/^[0-9a-f-]{36}$/i.test(artifactId)) errors.push("visual_qa_artifact_invalid");
   if (!Array.isArray(frames) || frames.length < 1 || frames.length > CLIENT_VISUAL_QA_MAX_FRAMES) errors.push("visual_qa_bounds_invalid");
   if (!Number.isInteger(maxFrames) || maxFrames < 1 || maxFrames > CLIENT_VISUAL_QA_MAX_FRAMES) errors.push("visual_qa_max_frames_invalid");

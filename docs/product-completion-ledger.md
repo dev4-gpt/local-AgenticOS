@@ -17,6 +17,8 @@ Status: executing. Execution gate: allowed by the user's explicit approval of th
 | 6 Local installation | Clean supported-machine installation, pairing, scoped execution, update/recovery and uninstall | Pending; supported-platform/signing choices required before release |
 | 7 Expansion | Each promoted repository/method passes use-mode review and a defined functional/quality/resource acceptance test | Pending; not a promise to install all repositories |
 
+The [content-pipeline article review](content-pipeline-article-review-2026-10-03.md) maps eight suggested tools to current Veloce capabilities. It prioritizes a $0-provider-spend, local-only transcription feasibility check after the release gates; it does not authorize new dependencies, provider calls, or deployment.
+
 ## Current evidence
 - Latest acceptance and deployment details: [22 September receipt](release-acceptance-2026-09-22.md) and [23 September Notebook/Room receipt](release-acceptance-2026-09-23.md). Credential readiness and Pipeline format correction are deployed. A second approved Groq build shipped UTF-8 Markdown with settled usage and passed a bounded grounding review; general content quality is not certified. ECC output and direct Jina extraction passed. A Notebook scoping defect was corrected and one current-release scoped note/chat journey passed. Room now gates its roster on tenant execution credentials; one Groq-fallback Hermes round returned a settled response.
 - Original deployed source: `94f793e`; see deployment receipt dated 2026-09-21.

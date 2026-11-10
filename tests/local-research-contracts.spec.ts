@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { answerViolations, sourcePack, type ClassroomSource } from "../src/lib/classroomResearch";
+import { answerViolations, beginClassroomLogin, collectClassroom, sourcePack, type ClassroomSource } from "../src/lib/classroomResearch";
 import { isLocalOnlyRequest } from "../src/lib/localOnlyRequest";
+import { markdownSourcePack } from "../scripts/prepare-markdown-source-pack.mjs";
 
 const sources: ClassroomSource[] = [{
   id: "S1",
@@ -19,6 +20,12 @@ test("local research routes reject non-loopback callers", () => {
   expect(isLocalOnlyRequest(new Request("https://app.veloceos.cloud/api/research", { headers: { host: "app.veloceos.cloud" } }))).toBe(false);
 });
 
+test("Skool automated collection stops before opening a browser or loading a session", async () => {
+  const url = "https://www.skool.com/ai-profit-lab-7462/classroom/9daf24e1";
+  await expect(beginClassroomLogin(url)).rejects.toThrow("Skool automated collection is disabled");
+  await expect(collectClassroom({ startUrl: url })).rejects.toThrow("Skool automated collection is disabled");
+});
+
 test("citation answers reject unsupported claims and unknown source IDs", () => {
   expect(answerViolations("The course begins next week. [S1]", sources)).toEqual([]);
   expect(answerViolations("The course begins next week.", sources)).toEqual(["Line 1 has no citation."]);
@@ -32,9 +39,10 @@ test("classroom source pack retains safe outbound links", () => {
     { url: "https://user:pass@example.edu/private", text: "Credentialed" },
   ] }] };
   const pack = sourcePack(run);
-  expect(pack).toContain("Lesson one: https://example.edu/lesson/1");
+  expect(pack).toContain("[Lesson one](<https://example.edu/lesson/1>)");
   expect(pack).not.toContain("Unsafe");
   expect(pack).not.toContain("Credentialed");
+  expect(markdownSourcePack(pack, run.startUrl).sources.reduce((count, source) => count + source.links.length, 0)).toBe(1);
 });
 
 test("research routes retain local-only and bounded collection controls", () => {

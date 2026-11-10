@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     if (action === "begin-login") return NextResponse.json(await beginClassroomLogin(String(body.startUrl ?? "")));
     if (action === "save-login") return NextResponse.json(await saveClassroomLogin(String(body.loginId ?? "")));
     if (action === "collect") return NextResponse.json({ run: await collectClassroom({ startUrl: String(body.startUrl ?? ""), scopePrefix: typeof body.scopePrefix === "string" ? body.scopePrefix : undefined, maxPages: Number(body.maxPages ?? 25) }) });
+    if (action === "resume") return NextResponse.json({ run: await collectClassroom({ resumeRunId: String(body.runId ?? ""), maxPages: Number(body.maxPages ?? 25) }) });
     if (action === "answer") {
       const question = String(body.question ?? "").trim();
       if (!question) return NextResponse.json({ error: "question is required" }, { status: 400 });

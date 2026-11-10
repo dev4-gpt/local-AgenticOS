@@ -14,13 +14,13 @@ for (const route of ["credential-submissions", "credentials/revoke"]) {
   test(`${route}: viewer/member are rejected before any Google write`, async () => {
     let calls = 0;
     globalThis.fetch = async () => { calls++; throw new Error("No network allowed"); };
-    const module = loadReviewModule(`src/app/api/client-runtime/${route}/route.ts`, {
+    const mod = loadReviewModule(`src/app/api/client-runtime/${route}/route.ts`, {
       "@/lib/clientAuth": { currentClientUser: async () => ({ id: "viewer" }), currentClientMember: async () => true, currentClientCredentialManager: async () => false },
       "@/lib/clientDataPlane": { checkClientRuntimeRateLimit: async () => { calls++; return { ok: true, allowed: true }; } },
       "@/lib/clientCredentialCatalog": {}, "@/lib/clientRuntimePolicy": {}, "@/lib/clientInputSafety": {},
       "@/lib/publicProviderCatalog": {}, "@/lib/clientActivationManifest": {},
     });
-    const result = await module.POST(new Request("https://tenant.invalid", { method: "POST" }));
+    const result = await mod.POST(new Request("https://tenant.invalid", { method: "POST" }));
     expect(result.status).toBe(403);
     expect(await result.json()).toMatchObject({ error: "credential_admin_required" });
     expect(calls).toBe(0);
@@ -117,7 +117,7 @@ test("provisioning refuses activation when its approved monthly cap cannot persi
       supabaseServiceUpsert: async (table: string, record: Record<string, unknown>) => { writes.push({ table, record }); return { ok: table !== "client_credit_accounts" }; },
     },
   });
-  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test", "Content-Type": "application/json" }, body: JSON.stringify({ runId: "run-a", status: "succeeded", resourceManifest: { phase: "deploy", runtimeUrl: "https://tenant-a.run.app", clientSlug: "tenant-a", clientName: "Tenant A", retentionDays: 30 }, evidenceBundle: { smoke: { ok: true, url: "https://tenant-a.run.app" } } }) }));
+  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test", "Content-Type": "application/json" }, body: JSON.stringify({ runId: "run-a", status: "succeeded", resourceManifest: { phase: "deploy", runtimeUrl: "https://tenant-a.run.app", clientSlug: "tenant-a", clientName: "Tenant A", retentionDays: 28 }, evidenceBundle: { smoke: { ok: true, url: "https://tenant-a.run.app" } } }) }));
   expect(result.status).toBe(502);
   expect(await result.json()).toMatchObject({ error: "managed_credit_cap_persist_failed" });
   expect(writes.find((w) => w.table === "client_credit_accounts")?.record.monthly_cap_micros).toBe(0);
@@ -134,11 +134,33 @@ test("provisioning accepts a validated decimal-string monthly cap and persists i
       supabaseServiceUpsert: async (table: string, record: Record<string, unknown>) => { writes.push({ table, record }); return { ok: true }; },
     },
   });
-  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test", "Content-Type": "application/json" }, body: JSON.stringify({ runId: "run-a", status: "succeeded", resourceManifest: { phase: "deploy", runtimeUrl: "https://tenant-a.run.app", clientSlug: "tenant-a", clientName: "Tenant A", retentionDays: 30 }, evidenceBundle: { smoke: { ok: true, url: "https://tenant-a.run.app" } } }) }));
+  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test", "Content-Type": "application/json" }, body: JSON.stringify({ runId: "run-a", status: "succeeded", resourceManifest: { phase: "deploy", runtimeUrl: "https://tenant-a.run.app", clientSlug: "tenant-a", clientName: "Tenant A", retentionDays: 28 }, evidenceBundle: { smoke: { ok: true, url: "https://tenant-a.run.app" } } }) }));
   expect(result.status).toBe(200);
   expect(await result.json()).toMatchObject({ ok: true, activationReady: true });
   expect(writes.find((w) => w.table === "client_credit_accounts")?.record).toMatchObject({ tenant_slug: "tenant-a", monthly_cap_micros: 250000, warning_threshold_micros: 200000 });
   expect(writes.find((w) => w.table === "client_onboarding_accounts")?.record).toMatchObject({ status: "smoke_testing", tenant_slug: "tenant-a", runtime_url: "https://tenant-a.run.app" });
+});
+
+test("provisioning callback rejects tenant retention above 28 days before tenant activation", async () => {
+  process.env.CONTROL_PLANE_OPERATOR_SECRET = "operator-test";
+  const writes: string[] = [];
+  const mod = loadReviewModule("product-experience/src/app/api/onboarding/provision-result/route.ts", {
+    "@/lib/publicLaunch": {
+      supabaseServiceSelect: async (table: string) => ({ ok: true, rows: table === "client_provisioning_runs" ? [{ onboarding_id: "onboarding-a" }] : [{ approved_manifest: { clientSlug: "tenant-a", budget: { monthlyCap: 0 } } }] }),
+      supabaseServiceUpdate: async (table: string) => { writes.push(table); return { ok: true }; },
+      supabaseServiceUpsert: async (table: string) => { writes.push(table); return { ok: true }; },
+    },
+  });
+  const result = await mod.POST(new Request("https://control.invalid", {
+    method: "POST",
+    headers: { "x-control-plane-secret": "operator-test", "Content-Type": "application/json" },
+    body: JSON.stringify({ runId: "run-a", status: "succeeded", resourceManifest: {
+      phase: "deploy", runtimeUrl: "https://tenant-a.run.app", clientSlug: "tenant-a", clientName: "Tenant A", retentionDays: 29,
+    }, evidenceBundle: { smoke: { ok: true, url: "https://tenant-a.run.app" } } }),
+  }));
+  expect(result.status).toBe(409);
+  expect(await result.json()).toMatchObject({ error: "provisioning_callback_manifest_mismatch" });
+  expect(writes).not.toContain("client_tenants");
 });
 
 test("activation fails closed when its setup email is not accepted", async () => {
@@ -289,6 +311,79 @@ test("an unclassified refund stays failed closed and cannot mutate managed credi
   }));
 });
 
+test("late managed-credit refunds and disputes enter manual review without wallet mutation", async () => {
+  process.env.STRIPE_SECRET_KEY = "test-stripe-key";
+  for (const scenario of [
+    { type: "charge.refunded", metadata: { product: "veloce-managed-credits-plan", credit_plan_id: "expired-plan" } },
+    { type: "charge.dispute.created", metadata: { product: "veloce-managed-credits" } },
+  ]) {
+    const records: Array<{ table: string; record: Record<string, unknown> }> = [];
+    let rpcCalls = 0;
+    let expiredPlanStillPresent = false;
+    const mod = loadReviewModule("product-experience/src/app/api/billing/webhook/route.ts", {
+      "@/lib/publicLaunch": {
+        verifyStripeSignature: () => true,
+        supabaseServiceSelect: async (table: string) => {
+          if (table === "client_credit_purchase_plans" && scenario.type === "charge.refunded") {
+            expiredPlanStillPresent = true;
+            return { ok: true, rows: [{ id: "expired-plan", created_at: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000 - 1000).toISOString() }] };
+          }
+          return { ok: true, rows: [] };
+        },
+        supabaseServiceInsert: async (table: string, record: Record<string, unknown>) => { records.push({ table, record }); return { ok: true, rows: [] }; },
+        supabaseServiceUpdate: async () => ({ ok: true, rows: [] }),
+        supabaseServiceRpc: async () => { rpcCalls++; throw new Error("late lifecycle event must never mutate wallet"); },
+      },
+    });
+    const payload = JSON.stringify({ id: `evt-late-${scenario.type}`, type: scenario.type, data: { object: {
+      payment_intent: "pi-expired", amount_refunded: 250, metadata: scenario.metadata,
+    } } });
+    const result = await mod.POST(new Request("https://control.invalid", { method: "POST", body: payload }));
+    expect(result.status).toBe(200);
+    expect(await result.json()).toMatchObject({ status: "managed_credit_manual_review_required" });
+    expect(records).toContainEqual(expect.objectContaining({
+      table: "stripe_financial_event_dispositions",
+      record: expect.objectContaining({ financial_scope: "managed_credit", disposition: "review_required", event_type: scenario.type }),
+    }));
+    expect(records).toContainEqual(expect.objectContaining({
+      table: "stripe_webhook_events",
+      record: expect.objectContaining({ financial_scope: "managed_credit", status: "processed", error_code: "managed_credit_manual_review_required" }),
+    }));
+    if (scenario.type === "charge.refunded") expect(expiredPlanStillPresent).toBe(true);
+    expect(rpcCalls).toBe(0);
+    expect(records.flatMap(({ record }) => Object.keys(record))).not.toContain("tenant_slug");
+  }
+});
+
+test("managed-credit refunds before day 35 still use the linked lifecycle", async () => {
+  process.env.STRIPE_SECRET_KEY = "test-stripe-key";
+  const records: Array<{ table: string; record: Record<string, unknown> }> = [];
+  let rpcCalls = 0;
+  const mod = loadReviewModule("product-experience/src/app/api/billing/webhook/route.ts", {
+    "@/lib/publicLaunch": {
+      verifyStripeSignature: () => true,
+      supabaseServiceSelect: async (table: string) => table === "client_credit_purchase_plans"
+        ? { ok: true, rows: [{ id: "recent-plan", created_at: new Date(Date.now() - 34 * 24 * 60 * 60 * 1000).toISOString() }] }
+        : { ok: true, rows: [] },
+      supabaseServiceInsert: async (table: string, record: Record<string, unknown>) => { records.push({ table, record }); return { ok: true, rows: [] }; },
+      supabaseServiceUpdate: async () => ({ ok: true, rows: [] }),
+      supabaseServiceRpc: async () => { rpcCalls++; return { ok: true, value: true }; },
+    },
+  });
+  const payload = JSON.stringify({ id: "evt-recent-refund", type: "charge.refunded", data: { object: {
+    payment_intent: "pi-recent", amount_refunded: 250,
+    metadata: { product: "veloce-managed-credits-plan", credit_plan_id: "recent-plan" },
+  } } });
+  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", body: payload }));
+  expect(result.status).toBe(200);
+  expect(await result.json()).toMatchObject({ status: "processed" });
+  expect(rpcCalls).toBe(1);
+  expect(records).toEqual([expect.objectContaining({
+    table: "stripe_webhook_events",
+    record: expect.objectContaining({ financial_scope: "managed_credit", status: "processed", error_code: null }),
+  })]);
+});
+
 test("ambiguous Stripe scopes and event identity conflicts have zero financial effects", async () => {
   process.env.STRIPE_SECRET_KEY = "test-stripe-key";
   for (const scenario of ["multiple-plans", "both-scopes", "mixed-checkout", "missing-plan", "changed-payload"]) {
@@ -373,6 +468,27 @@ test("only the operator can create an immutable reviewed disposition for a faile
   expect(records).toEqual([expect.objectContaining({
     financial_scope: "public_launch",
     disposition: "public_launch_refund_reviewed",
+  })]);
+});
+
+test("operator can audit a queued late managed-credit refund without adjusting wallet", async () => {
+  process.env.CONTROL_PLANE_OPERATOR_SECRET = "operator-test";
+  const writes: Array<{ table: string; record: Record<string, unknown> }> = [];
+  const mod = loadReviewModule("product-experience/src/app/api/internal/billing/webhook-review/route.ts", {
+    "@/lib/publicLaunch": {
+      supabaseServiceSelect: async (table: string) => table === "stripe_webhook_events"
+        ? { ok: true, rows: [{ event_id: "evt-late-review", event_type: "charge.dispute.created", payload_hash: "c".repeat(64), status: "processed", financial_scope: "managed_credit", error_code: "managed_credit_manual_review_required" }] }
+        : { ok: true, rows: [{ event_type: "charge.dispute.created", payload_hash: "c".repeat(64), financial_scope: "managed_credit", disposition: "review_required" }] },
+      supabaseServiceInsert: async (table: string, record: Record<string, unknown>) => { writes.push({ table, record }); return { ok: true, rows: [] }; },
+    },
+  });
+  const body = JSON.stringify({ eventId: "evt-late-review", eventType: "charge.dispute.created", payloadHash: "c".repeat(64), reviewedBy: "billing-owner", reason: "Reconciled manually; no automated wallet change." });
+  const result = await mod.POST(new Request("https://control.invalid", { method: "POST", headers: { "x-control-plane-secret": "operator-test" }, body }));
+  expect(result.status).toBe(200);
+  expect(await result.json()).toMatchObject({ disposition: "managed_credit_lifecycle_reviewed", walletAdjusted: false });
+  expect(writes).toEqual([expect.objectContaining({
+    table: "stripe_financial_event_dispositions",
+    record: expect.objectContaining({ financial_scope: "managed_credit", disposition: "managed_credit_lifecycle_reviewed" }),
   })]);
 });
 

@@ -65,7 +65,7 @@ const CLIENT_HOSTED_PROVIDER_ROUTES: Record<string, { provider: "openrouter" }> 
   "/engine": { provider: "openrouter" },
 };
 
-export default function Shell({ children, clientEdition = false }: { children: ReactNode; clientEdition?: boolean }) {
+export default function Shell({ children, clientEdition = false, allowedClientRoutes = [] }: { children: ReactNode; clientEdition?: boolean; allowedClientRoutes?: string[] }) {
   const pathname = usePathname();
   const reduceMotion = useReducedMotion();
   if (pathname === "/login" || pathname === "/auth/callback" || pathname === "/provider-catalog" || pathname === "/credits" || pathname === "/client-unavailable") return <>{children}</>;
@@ -103,7 +103,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
         <span className="workspace-shell__signal workspace-shell__signal--b" />
       </div>
       <div className="relative z-10 h-screen flex overflow-hidden">
-        <Sidebar clientEdition={clientEdition} />
+        <Sidebar clientEdition={clientEdition} allowedClientRoutes={allowedClientRoutes} />
         <main className={`workspace-shell__main flex-auto w-full min-w-0 overflow-y-auto ${isWorlds ? "pb-0" : "pb-20 md:pb-0"}`} data-scroll-root>
           <motion.div
             key={pathname}
@@ -117,7 +117,7 @@ export default function Shell({ children, clientEdition = false }: { children: R
           </motion.div>
         </main>
       </div>
-      <MobileNav clientEdition={clientEdition} />
+      <MobileNav clientEdition={clientEdition} allowedClientRoutes={allowedClientRoutes} />
     </div>
   );
 }

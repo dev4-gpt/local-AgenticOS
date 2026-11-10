@@ -9,7 +9,7 @@
 // without the ceiling cannot be judged.
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Wallet } from "lucide-react";
+import { AlertTriangle, RefreshCw, Wallet } from "lucide-react";
 import { formatUsageCredits, microsToUsageCredits } from "@/lib/usageCredits";
 
 type Budget = {
@@ -37,11 +37,19 @@ export function formatMicros(micros: number) {
 
 export default function ClientSpendMeter({ compact = false }: { compact?: boolean }) {
   const [budget, setBudget] = useState<Budget | null>(null);
+  const [state, setState] = useState<"loading" | "ready" | "unavailable">("loading");
 
   const load = useCallback(async () => {
+    setState("loading");
     const response = await fetch("/api/client-runtime/budget", { cache: "no-store" }).catch(() => null);
     const data = await response?.json().catch(() => null);
-    if (response?.ok && data?.ok) setBudget(data as Budget);
+    if (response?.ok && data?.ok) {
+      setBudget(data as Budget);
+      setState("ready");
+    } else {
+      setBudget(null);
+      setState("unavailable");
+    }
   }, []);
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -50,6 +58,12 @@ export default function ClientSpendMeter({ compact = false }: { compact?: boolea
 
   // No cap configured means no ceiling to report, and inventing one would be
   // worse than showing nothing.
+  if (state === "loading") return <section className="panel p-3.5 text-[11px]" style={{ color: "var(--cream-mute)" }}>Checking budget...</section>;
+  if (state === "unavailable") return <section className="panel flex flex-wrap items-center gap-2 p-3.5 text-[11px]" style={{ color: "#fbbf24" }}>
+    <AlertTriangle size={14} aria-hidden="true" />
+    <span className="min-w-0 flex-1">Budget status unavailable. Current spend and remaining limit cannot be confirmed.</span>
+    <button type="button" onClick={() => void load()} className="inline-flex items-center gap-1 rounded-md border px-2 py-1" style={{ borderColor: "var(--line-soft)" }}><RefreshCw size={12} />Retry</button>
+  </section>;
   if (!budget || budget.capMicros <= 0) return null;
 
   const percent = Math.round(budget.usedFraction * 100);

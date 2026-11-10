@@ -6,9 +6,15 @@ import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
 import { clientProviderRequestAllowed } from "@/lib/clientProviderAdapter";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
+import { readBoundedJsonObject } from "@/lib/clientNetworkSafety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const MAX_REQUEST_BYTES = 64 * 1024;
+const MAX_PROMPT_CHARS = 20_000;
+const MAX_HISTORY_ITEMS = 16;
+const MAX_HISTORY_ITEM_CHARS = 12_000;
 
 export async function POST(request: Request) {
   const user = await currentClientUser();
@@ -19,17 +25,24 @@ export async function POST(request: Request) {
   if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });
   if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
 
-  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const parsed = await readBoundedJsonObject(request, MAX_REQUEST_BYTES);
+  if (!parsed.ok) return NextResponse.json({ ok: false, error: parsed.reason === "too_large" ? "job_request_too_large" : "job_input_invalid" }, { status: parsed.reason === "too_large" ? 413 : 400 });
+  const body = parsed.value;
   const provider = typeof body.provider === "string" ? body.provider : "";
   const model = typeof body.model === "string" ? body.model.trim() : null;
-  const prompt = typeof body.prompt === "string" ? body.prompt.trim().slice(0, 20_000) : "";
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   const idempotencyKey = typeof body.idempotencyKey === "string" && body.idempotencyKey.trim().length >= 8
     ? body.idempotencyKey.trim().slice(0, 180)
     : randomUUID();
-  const history = Array.isArray(body.history)
-    ? body.history.filter((item): item is Record<string, string> => Boolean(item && typeof item === "object" && ["system", "user", "assistant"].includes(String((item as Record<string, unknown>).role)) && typeof (item as Record<string, unknown>).content === "string")).slice(-16)
-    : [];
-  if (!provider || !prompt) return NextResponse.json({ ok: false, error: "job_input_invalid" }, { status: 400 });
+  const historyInput = body.history === undefined ? [] : body.history;
+  if (!Array.isArray(historyInput) || historyInput.length > MAX_HISTORY_ITEMS) return NextResponse.json({ ok: false, error: "job_input_invalid" }, { status: 400 });
+  const history = historyInput.map((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+    const entry = item as Record<string, unknown>;
+    if (!["system", "user", "assistant"].includes(String(entry.role)) || typeof entry.content !== "string" || entry.content.length > MAX_HISTORY_ITEM_CHARS) return null;
+    return { role: entry.role, content: entry.content };
+  });
+  if (!provider || !prompt || prompt.length > MAX_PROMPT_CHARS || history.some((item) => item === null)) return NextResponse.json({ ok: false, error: "job_input_invalid" }, { status: 400 });
   const providerPolicy = clientProviderRequestAllowed(provider, model);
   if (!providerPolicy.ok) return NextResponse.json({ ok: false, error: providerPolicy.error }, { status: providerPolicy.status });
   if (containsClientSecretLike(prompt, history)) return NextResponse.json({ ok: false, error: "secret_like_input_rejected" }, { status: 400 });

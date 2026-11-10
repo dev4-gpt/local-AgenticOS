@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "frameSeed": "agentos-buyer-v1",
+  "cohort": "mirofish-buyer-micro-v2",
+  "target": {
+    "field": "agency delivery",
+    "orgSizes": ["solo", "2-20"]
+  },
+  "firstWorkflow": "turn approved client documents and a scoped request into a source-linked draft of a client proposal, audit, or weekly report",
+  "personas": [
+    { "id": "P00201" },
+    { "id": "P00654" },
+    { "id": "P00264" },
+    { "id": "P00615" },
+    { "id": "P00225" },
+    { "id": "P00678" },
+    { "id": "P00288" },
+    { "id": "P00639" },
+    { "id": "P00249" },
+    { "id": "P00692" }
+  ]
+}

@@ -19,6 +19,7 @@ export const CLIENT_CREDENTIAL_OPTIONS: readonly ClientCredentialOption[] = [
   { key: "ELEVENLABS_API_KEY", label: "ElevenLabs", category: "Audio", secret: true, submitAllowed: true },
   { key: "ELEVENLABS_MUSIC_API_KEY", label: "ElevenLabs Music", category: "Audio", secret: true, submitAllowed: true },
   { key: "HEYGEN_API_KEY", label: "HeyGen", category: "Video", secret: true, submitAllowed: true },
+  { key: "HIGGSFIELD_API_KEY", label: "Higgsfield (key ID:secret)", category: "Video", secret: true, submitAllowed: true },
   { key: "SUNO_API_KEY", label: "Suno", category: "Audio", secret: true, submitAllowed: true },
   { key: "FIRECRAWL_API_KEY", label: "Firecrawl", category: "Research", secret: true, submitAllowed: true },
   { key: "BRAVE_API_KEY", label: "Brave Search", category: "Research", secret: true, submitAllowed: true },

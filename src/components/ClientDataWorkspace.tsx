@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Archive, BookOpenText, CalendarDays, Check, ChevronLeft, ChevronRight, Download, ExternalLink, FileText, LockKeyhole, Network, Plus, RefreshCw, Save, Tag, Target, Trash2, Upload } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import ClientCommunitySourceImport from "@/components/ClientCommunitySourceImport";
 import ClientMemoryGraph3D, { type ClientGraphEdge, type ClientGraphNode } from "@/components/ClientMemoryGraph3D";
 import ClientNotebookWorkspace from "@/components/ClientNotebookWorkspace";
 import VoiceButton from "@/components/VoiceButton";
+import { notebookSourceLinks, safeNotebookSourceUrl } from "@/lib/clientNotebookLanes";
 
 type Surface = "memory" | "journal" | "goals" | "notebook";
+type LoadState = "loading" | "loaded" | "error";
 type RecordItem = { id: string; title: string; content: string; status: "active" | "done" | "archived"; metadata?: Record<string, unknown>; created_at: string };
 const COPY: Record<Surface, { title: string; eyebrow: string; kind: string; placeholder: string; content: string }> = {
   memory: { title: "Tenant Memory", eyebrow: "Context · Memory", kind: "memory", placeholder: "Name this decision or memory", content: "Write the approved project memory here..." },
@@ -19,6 +23,7 @@ const COPY: Record<Surface, { title: string; eyebrow: string; kind: string; plac
 export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   const copy = COPY[surface];
   const [records, setRecords] = useState<RecordItem[]>([]);
+  const [recordsLoadState, setRecordsLoadState] = useState<LoadState>("loading");
   const [hasMoreRecords, setHasMoreRecords] = useState(false);
   const [loadingMoreRecords, setLoadingMoreRecords] = useState(false);
   const [title, setTitle] = useState("");
@@ -42,22 +47,31 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   const [exporting, setExporting] = useState(false);
   const [graphNodes, setGraphNodes] = useState<ClientGraphNode[]>([]);
   const [graphEdges, setGraphEdges] = useState<ClientGraphEdge[]>([]);
+  const [graphLoadState, setGraphLoadState] = useState<LoadState>("loading");
   const [graphPreviewLimited, setGraphPreviewLimited] = useState(false);
   const [graphBusy, setGraphBusy] = useState(false);
   const [selectedGraphNodeId, setSelectedGraphNodeId] = useState<string | null>(null);
   const [selectedGraphRecord, setSelectedGraphRecord] = useState<RecordItem | null>(null);
+  const graphEmptyRetryRef = useRef(false);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function load() {
+    setRecordsLoadState("loading");
     // "all" is the only view that is not scoped to one notebook, so a client
     // can always see everything they imported regardless of how it is filed.
     const scope = surface === "notebook" && activeNotebook !== "all" ? `&notebook=${encodeURIComponent(activeNotebook)}` : "";
     const response = await fetch(`/api/client-runtime/records?kind=${copy.kind}${scope}`, { cache: "no-store" }).catch(() => null);
     const data = await response?.json().catch(() => null);
-    setRecords(Array.isArray(data?.records) ? data.records : []);
+    if (!response?.ok || !Array.isArray(data?.records)) {
+      setRecordsLoadState("error");
+      if (data?.error === "capability_not_enabled") setError("Tenant data is not enabled in this client manifest yet.");
+      return false;
+    }
+    setRecords(data.records);
     setHasMoreRecords(data?.hasMore === true);
-    if (!response?.ok && data?.error === "capability_not_enabled") setError("Tenant data is not enabled in this client manifest yet.");
+    setRecordsLoadState("loaded");
+    return true;
   }
   useEffect(() => { void load(); }, [copy.kind, activeNotebook]);
 
@@ -96,18 +110,22 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     setBusy(false);
   }
 
-  async function loadGraph() {
+  const loadGraph = useCallback(async () => {
     if (surface !== "memory") return;
     const response = await fetch("/api/client-runtime/memory-graph", { cache: "no-store" }).catch(() => null);
     const data = await response?.json().catch(() => null);
-    if (response?.ok) {
-      setGraphNodes(Array.isArray(data?.nodes) ? data.nodes : []);
-      setGraphEdges(Array.isArray(data?.edges) ? data.edges : []);
+    if (response?.ok && Array.isArray(data?.nodes) && Array.isArray(data?.edges)) {
+      setGraphNodes(data.nodes);
+      setGraphEdges(data.edges);
       setGraphPreviewLimited(data?.previewLimited?.nodes === true || data?.previewLimited?.edges === true);
+      setGraphLoadState("loaded");
+      return true;
+    } else {
+      setGraphLoadState("error");
     }
-    return response?.ok === true;
-  }
-  useEffect(() => { void loadGraph(); }, [surface]);
+    return false;
+  }, [surface]);
+  useEffect(() => { void loadGraph(); }, [loadGraph]);
 
   useEffect(() => {
     const query = memoryQuery.trim();
@@ -147,7 +165,7 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     setBusy(true); setError("");
     const response = await fetch("/api/client-runtime/records", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: copy.kind, title, content, notebookId: surface === "notebook" && activeNotebook !== "all" && activeNotebook !== "unfiled" ? activeNotebook : null, category: surface === "goals" ? category : undefined }) }).catch(() => null);
     if (!response?.ok) setError((await response?.json().catch(() => null))?.error || "The tenant record could not be saved.");
-    else { setTitle(""); setContent(""); setCategory(""); await load(); if (surface === "memory") setSearchRevision((current) => current + 1); }
+    else { setTitle(""); setContent(""); setCategory(""); await load(); if (surface === "memory") { await refreshGraph(); setSearchRevision((current) => current + 1); } }
     setBusy(false);
   }
 
@@ -158,8 +176,9 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
     if (surface === "memory") { await refreshGraph(); setSearchRevision((current) => current + 1); }
   }
 
-  async function remove(id: string) {
-    const response = await fetch(`/api/client-runtime/records?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => null);
+  async function remove(record: RecordItem) {
+    if (!window.confirm(`Permanently delete "${record.title}"? This cannot be undone.`)) return;
+    const response = await fetch(`/api/client-runtime/records?id=${encodeURIComponent(record.id)}`, { method: "DELETE" }).catch(() => null);
     if (!response?.ok) { setError("The record could not be deleted."); return; }
     await load();
     if (surface === "memory") { await refreshGraph(); setSearchRevision((current) => current + 1); }
@@ -241,6 +260,13 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   }
 
   const active = useMemo(() => records.filter((record) => record.status !== "archived"), [records]);
+  useEffect(() => { graphEmptyRetryRef.current = false; }, [surface]);
+  useEffect(() => {
+    if (surface !== "memory" || recordsLoadState !== "loaded" || !active.some((record) => record.status === "active") || graphLoadState !== "loaded" || graphNodes.length > 0 || graphEmptyRetryRef.current) return;
+    graphEmptyRetryRef.current = true;
+    const timer = window.setTimeout(() => { void loadGraph(); }, 350);
+    return () => window.clearTimeout(timer);
+  }, [surface, recordsLoadState, active, graphLoadState, graphNodes.length, loadGraph]);
   const goalStats = useMemo(() => {
     const total = records.length;
     const completed = records.filter((record) => record.status === "done").length;
@@ -279,7 +305,13 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   // loaded page of records or the bounded graph preview.
   const searchedRecords = memoryQuery.trim().length >= 2 && searchResult.query === memoryQuery.trim() ? searchResult.records : [];
   // What the notebook's chat and studio lanes are allowed to draw on.
-  const notebookSources = useMemo(() => active.map((record) => ({ id: record.id, title: record.title, content: record.content })), [active]);
+  const notebookSources = useMemo(() => active.map((record) => ({
+    id: record.id,
+    title: record.title,
+    content: record.content,
+    sourceUrl: safeNotebookSourceUrl(record.metadata?.source_url),
+    links: notebookSourceLinks(record.metadata?.source_links),
+  })), [active]);
   function selectGraphNode(nodeId: string) {
     setSelectedGraphNodeId((current) => current === nodeId ? null : nodeId);
   }
@@ -287,8 +319,8 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
   return <div className="space-y-5">
     <section className="panel p-5 md:p-6">
       <div className="flex items-start gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg" style={{ background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.28)", color: "#60a5fa" }}><LockKeyhole size={18} /></div><div><p className="eyebrow">{copy.eyebrow}</p><h1 className="mt-2 text-[26px]" style={{ color: "var(--cream)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>{copy.title}</h1><p className="mt-2 max-w-3xl text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>This client edition stores records in the current tenant namespace with Supabase RLS. It does not read the operator vault or local filesystem.</p></div></div>
-      {surface === "memory" && <><div className="mt-4 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}><span className="rounded-md px-2 py-1" style={{ background: "rgba(179,128,63,0.14)", color: "var(--gold-deep)" }}>{active.length} tenant memories</span><span>{graphNodes.length} nodes · {graphEdges.length} edges</span><span>Sources are scoped to this client tenant</span></div><div className="mt-4 flex flex-wrap gap-2"><input ref={fileInputRef} type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" className="sr-only" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void importMarkdown(file); }} /><button type="button" onClick={() => fileInputRef.current?.click()} disabled={importing} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Upload size={13} />{importing ? "Importing source" : "Import Markdown"}</button><button type="button" onClick={() => void exportMemory()} disabled={exporting} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px] disabled:opacity-50" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Download size={13} />{exporting ? "Preparing export" : "Export Markdown"}</button><button type="button" onClick={() => { setTitle(""); setContent(""); document.getElementById("client-memory-composer")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "rgba(179,128,63,0.42)", color: "var(--gold-deep)", background: "rgba(179,128,63,0.08)" }}><Plus size={13} />Add note</button></div></>}
-      {surface === "notebook" && <><div className="mt-4 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}><span className="rounded-md px-2 py-1" style={{ background: "rgba(52,211,153,0.1)", color: "#34d399" }}>Tenant authenticated</span><span>{records.length} notebook records</span><span>{records.filter((record) => record.status !== "archived").length} active sources</span></div><div className="mt-5 flex flex-wrap gap-2" aria-label="Notebook workspace sections">{(["library", "research", "chat", "studio", "assets"] as const).map((item) => <button key={item} type="button" onClick={() => setNotebookTab(item)} className="rounded-md border px-3 py-2 text-[11px] capitalize" style={{ color: notebookTab === item ? "#07111d" : "var(--cream-dim)", background: notebookTab === item ? "#60a5fa" : "rgba(255,255,255,0.03)", borderColor: notebookTab === item ? "#60a5fa" : "var(--line-soft)" }}>{item}</button>)}</div>
+    {surface === "memory" && <><div className="mt-4 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}><span className="rounded-md px-2 py-1" style={{ background: "rgba(179,128,63,0.14)", color: "var(--gold-deep)" }}>{recordsLoadState === "loading" && records.length === 0 ? "Loading tenant memories..." : recordsLoadState === "error" && records.length === 0 ? "Tenant memories unavailable" : `${active.length}${hasMoreRecords ? "+" : ""} tenant memories`}</span><span role={graphNodes.length === 0 && (graphLoadState === "loading" || recordsLoadState === "loading") ? "status" : undefined}>{graphLoadState === "error" && graphNodes.length === 0 ? "Graph unavailable" : graphNodes.length === 0 && recordsLoadState === "loading" ? "Checking graph..." : graphLoadState === "loading" && graphNodes.length === 0 ? "Loading graph..." : `${graphNodes.length} nodes · ${graphEdges.length} edges`}</span><span>Sources are scoped to this client tenant</span></div><div className="mt-4 flex flex-wrap gap-2"><input ref={fileInputRef} type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" className="sr-only" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void importMarkdown(file); }} /><button type="button" onClick={() => fileInputRef.current?.click()} disabled={importing} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Upload size={13} />{importing ? "Importing source" : "Import Markdown"}</button><button type="button" onClick={() => void exportMemory()} disabled={exporting} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px] disabled:opacity-50" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}><Download size={13} />{exporting ? "Preparing export" : "Export Markdown"}</button><button type="button" onClick={() => { setTitle(""); setContent(""); document.getElementById("client-memory-composer")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px]" style={{ borderColor: "rgba(179,128,63,0.42)", color: "var(--gold-deep)", background: "rgba(179,128,63,0.08)" }}><Plus size={13} />Add note</button></div></>}
+    {surface === "notebook" && <><div className="mt-4 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}><span className="rounded-md px-2 py-1" style={{ background: "rgba(52,211,153,0.1)", color: "#34d399" }}>Tenant authenticated</span><span>{records.length} notebook records</span><span>{records.filter((record) => record.status !== "archived").length} active sources</span></div><div className="mt-5 flex flex-wrap gap-2" aria-label="Notebook workspace sections">{(["library", "research", "chat", "studio", "assets"] as const).map((item) => <button key={item} type="button" aria-pressed={notebookTab === item} onClick={() => setNotebookTab(item)} className="rounded-md border px-3 py-2 text-[11px] capitalize" style={{ color: notebookTab === item ? "#07111d" : "var(--cream-dim)", background: notebookTab === item ? "#60a5fa" : "rgba(255,255,255,0.03)", borderColor: notebookTab === item ? "#60a5fa" : "var(--line-soft)" }}>{item}</button>)}</div>
       <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--line-soft)" }}>
         <p className="text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--cream-mute)" }}>Notebook</p>
         <p className="mt-1 text-[10px]" style={{ color: "var(--cream-mute)" }}>Chat and studio only see the sources in the notebook you pick here.</p>
@@ -307,17 +339,17 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
       </div></>}
     </section>
     {surface === "goals" && <section className="grid grid-cols-2 gap-3 md:grid-cols-4"><StatCard label="Total" value={String(goalStats.total)} color="#60a5fa" /><StatCard label="Active" value={String(goalStats.active)} color="#c4b5fd" /><StatCard label="Completed" value={String(goalStats.completed)} color="#34d399" /><StatCard label="Progress" value={`${goalStats.progress}%`} color="#f0c94a" progress={goalStats.progress} /></section>}
-    {surface === "notebook" && notebookTab !== "library" ? <ClientNotebookWorkspace tab={notebookTab} sources={notebookSources} notebookId={activeNotebook === "all" || activeNotebook === "unfiled" ? null : activeNotebook} onImported={load} /> : surface === "goals" ? <GoalComposer title={title} content={content} category={category} busy={busy} filter={goalFilter} stats={goalStats} onTitle={setTitle} onContent={setContent} onCategory={setCategory} onFilter={setGoalFilter} onAdd={add} /> : surface === "journal" ? <JournalComposer title={title} content={content} busy={busy} days={journalDays} selectedDay={journalDay} entries={journalRecords} onTitle={setTitle} onContent={setContent} onSelectDay={setJournalDay} onAdd={add} /> : <section id={surface === "memory" ? "client-memory-composer" : undefined} className="panel p-5 md:p-6">
+    {surface === "notebook" && notebookTab !== "library" ? <ClientNotebookWorkspace tab={notebookTab} sources={notebookSources} notebookId={activeNotebook === "all" || activeNotebook === "unfiled" ? null : activeNotebook} notebookScope={activeNotebook} onImported={async () => { await load(); }} /> : surface === "goals" ? <GoalComposer title={title} content={content} category={category} busy={busy} filter={goalFilter} stats={goalStats} onTitle={setTitle} onContent={setContent} onCategory={setCategory} onFilter={setGoalFilter} onAdd={add} /> : surface === "journal" ? <JournalComposer title={title} content={content} busy={busy} days={journalDays} selectedDay={journalDay} entries={journalRecords} onTitle={setTitle} onContent={setContent} onSelectDay={setJournalDay} onAdd={add} /> : <section id={surface === "memory" ? "client-memory-composer" : undefined} className="panel p-5 md:p-6">
       <div className="flex items-center gap-2"><Plus size={15} color="#60a5fa" /><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>Add tenant record</h2></div>
       <div className="mt-4 flex gap-3"><VoiceButton size={38} onTranscript={(transcript, options) => { if (options.final) setContent((current) => `${current}${current ? "\n" : ""}${transcript}`); }} /><div className="min-w-0 flex-1"><input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={copy.placeholder} className="w-full rounded-md border px-3 py-2.5 text-[12px]" style={{ color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" }} />
       <textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder={copy.content} className="mt-3 min-h-[130px] w-full resize-y rounded-md border px-3 py-2.5 text-[12px] leading-relaxed" style={{ color: "var(--cream)", background: "rgba(255,255,255,0.035)", borderColor: "var(--line-soft)" }} /></div></div>
       <div className="mt-4 flex items-center gap-3"><button type="button" onClick={add} disabled={busy || !title.trim() || !content.trim()} className="inline-flex items-center gap-2 rounded-md px-4 py-2.5 text-[11px] font-semibold" style={{ background: busy ? "rgba(255,255,255,0.1)" : "#60a5fa", color: busy ? "var(--cream-mute)" : "#07111d" }}><Save size={13} />{busy ? "Saving" : "Save to tenant"}</button><span className="text-[10px]" style={{ color: "var(--cream-mute)" }}>No secrets or credentials should be entered here.</span></div>
       {error && <p className="mt-3 text-[11px]" style={{ color: "#fda4af" }}>{error}</p>}
     </section>}
-    {surface === "memory" && <ClientCommunitySourceImport onImported={async () => { await load(); if (!(await loadGraph())) throw new Error("memory_graph_read_failed"); setSearchRevision((current) => current + 1); }} />}
+    {surface === "memory" && <ClientCommunitySourceImport onImported={async () => { const refreshed = await Promise.all([load(), loadGraph()]); setSearchRevision((current) => current + 1); if (refreshed.some((loaded) => !loaded)) throw new Error("memory_refresh_failed"); }} />}
     {surface === "memory" && <section className="panel p-5 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2"><Network size={16} color="var(--gold-deep)" /><h2 className="text-[15px] font-semibold" style={{ color: "var(--cream)" }}>Knowledge map</h2><span className="rounded-md px-2 py-1 text-[10px] font-semibold" style={{ color: "var(--cream-soft)", background: "rgba(179,128,63,0.14)" }}>{graphEdges.length} relationships · {graphNodes.length} nodes</span></div>
+        <div className="flex items-center gap-2"><Network size={16} color="var(--gold-deep)" /><h2 className="text-[15px] font-semibold" style={{ color: "var(--cream)" }}>Knowledge map</h2><span role={graphNodes.length === 0 && (graphLoadState === "loading" || recordsLoadState === "loading") ? "status" : undefined} className="rounded-md px-2 py-1 text-[10px] font-semibold" style={{ color: "var(--cream-soft)", background: "rgba(179,128,63,0.14)" }}>{graphLoadState === "error" && graphNodes.length === 0 ? "Unavailable" : graphNodes.length === 0 && recordsLoadState === "loading" ? "Checking graph..." : graphLoadState === "loading" && graphNodes.length === 0 ? "Loading graph..." : `${graphEdges.length} relationships · ${graphNodes.length} nodes`}</span></div>
         <div className="flex items-center gap-2"><button type="button" onClick={refreshGraph} disabled={graphBusy} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[11px] font-semibold" style={{ borderColor: "rgba(179,128,63,0.42)", color: "var(--gold-deep)", background: "rgba(179,128,63,0.08)" }}><RefreshCw size={13} className={graphBusy ? "animate-spin" : ""} />{graphBusy ? "Refreshing" : "Refresh map"}</button></div>
       </div>
       {graphPreviewLimited && <p className="mt-3 text-xs text-amber-200">Graph preview is limited. Search reaches tenant memories beyond the visible map.</p>}
@@ -334,18 +366,43 @@ export default function ClientDataWorkspace({ surface }: { surface: Surface }) {
         <ClientMemoryGraph3D nodes={graphNodes} edges={graphEdges} selectedNodeId={selectedGraphNodeId} onSelectNode={selectGraphNode} onClearSelection={() => setSelectedGraphNodeId(null)} />
         {selectedGraphNode && <div className="mt-4 rounded-md border p-4" style={{ borderColor: selectedGraphNode.kind === "document" ? "rgba(47,143,107,0.42)" : "rgba(176,74,104,0.42)", background: selectedGraphNode.kind === "document" ? "rgba(47,143,107,0.08)" : "rgba(176,74,104,0.08)" }}>
           <div className="flex items-center gap-2 text-[10px] font-semibold uppercase" style={{ color: selectedGraphNode.kind === "document" ? "var(--emerald-dim)" : "var(--plum)" }}>{selectedGraphNode.kind === "document" ? <FileText size={13} /> : selectedGraphNode.kind === "url" ? <ExternalLink size={13} /> : <Tag size={13} />}{selectedGraphNode.kind === "document" ? "Selected memory" : selectedGraphNode.kind === "url" ? "Selected link" : "Selected tag"}</div>
-          {selectedRecord ? <><h3 className="mt-2 text-[15px]" style={{ color: "var(--cream)" }}>{selectedRecord.title}</h3>{typeof selectedRecord.metadata?.source_url === "string" && <a href={selectedRecord.metadata.source_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 break-all text-xs text-emerald-300 hover:underline"><ExternalLink size={12} />Original source</a>}<p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed" style={{ color: "var(--cream-soft)" }}>{selectedRecord.content}</p></> : <><h3 className="mt-2 text-[15px]" style={{ color: "var(--cream)" }}>{selectedGraphNode.label}</h3>{selectedGraphNode.kind === "url" && typeof selectedGraphNode.metadata?.url === "string" && <a href={selectedGraphNode.metadata.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 break-all text-xs text-emerald-300 hover:underline"><ExternalLink size={12} />{selectedGraphNode.metadata.url}</a>}<div className="mt-3 flex flex-wrap gap-2">{visibleRecords.map((record) => <button key={record.id} type="button" onClick={() => { const documentNode = graphNodes.find((node) => node.kind === "document" && node.record_id === record.id); if (documentNode) setSelectedGraphNodeId(documentNode.id); }} className="rounded-md border px-3 py-2 text-left text-[11px] font-semibold" style={{ borderColor: "rgba(176,74,104,0.32)", color: "var(--plum)", background: "rgba(250,247,239,0.8)" }}>{record.title}</button>)}</div></>}
+          {selectedRecord ? <><h3 className="mt-2 text-[15px]" style={{ color: "var(--cream)" }}>{selectedRecord.title}</h3>{typeof selectedRecord.metadata?.source_url === "string" && <a href={selectedRecord.metadata.source_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 break-all text-xs text-emerald-300 hover:underline"><ExternalLink size={12} />Original source</a>}<RecordContent record={selectedRecord} /></> : <><h3 className="mt-2 text-[15px]" style={{ color: "var(--cream)" }}>{selectedGraphNode.label}</h3>{selectedGraphNode.kind === "url" && typeof selectedGraphNode.metadata?.url === "string" && <a href={selectedGraphNode.metadata.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 break-all text-xs text-emerald-300 hover:underline"><ExternalLink size={12} />{selectedGraphNode.metadata.url}</a>}<div className="mt-3 flex flex-wrap gap-2">{visibleRecords.map((record) => <button key={record.id} type="button" onClick={() => { const documentNode = graphNodes.find((node) => node.kind === "document" && node.record_id === record.id); if (documentNode) setSelectedGraphNodeId(documentNode.id); }} className="rounded-md border px-3 py-2 text-left text-[11px] font-semibold" style={{ borderColor: "rgba(176,74,104,0.32)", color: "var(--plum)", background: "rgba(250,247,239,0.8)" }}>{record.title}</button>)}</div></>}
         </div>}
-      </> : memoryView === "graph" || memoryView === "galaxy" ? <p className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>No graph links yet. Add two related tenant memories and refresh the map.</p> : memoryView === "recent" ? <p className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>{active.length}{hasMoreRecords ? "+" : ""} recent tenant memories are available below.</p> : null}
+      </> : memoryView === "graph" || memoryView === "galaxy" ? graphLoadState === "loading" ? <p role="status" className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>Loading the tenant knowledge map...</p> : graphLoadState === "error" ? <p role="alert" className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>The tenant knowledge map could not be loaded. Try refreshing the page.</p> : recordsLoadState === "loading" ? <p role="status" className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>Checking tenant memories before explaining the empty map...</p> : recordsLoadState === "error" ? <p role="alert" className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>No graph nodes were returned, and tenant memories could not be verified. Retry loading Memory records.</p> : active.some((record) => record.status === "active") ? <p className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>The graph index is empty despite active memories. Refresh the map to rebuild it.</p> : <p className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>No active memories are available to map. Add an active memory, then refresh the map.</p> : memoryView === "recent" ? <p role={recordsLoadState === "loading" ? "status" : undefined} className="mt-4 text-[11px]" style={{ color: "var(--cream-mute)" }}>{recordsLoadState === "loading" && records.length === 0 ? "Loading tenant memories..." : recordsLoadState === "error" && records.length === 0 ? "Tenant memories could not be loaded." : `${active.length}${hasMoreRecords ? "+" : ""} recent tenant memories are available below.`}</p> : null}
     </section>}
     {surface !== "journal" && !(surface === "notebook" && notebookTab !== "library") && <section className="space-y-3">
-      {!(surface === "memory" && memoryView === "search") && active.length === 0 && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No tenant records yet.</div>}
+      {!(surface === "memory" && memoryView === "search") && active.length === 0 && recordsLoadState === "loading" && <div role="status" className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>Loading tenant records...</div>}
+      {!(surface === "memory" && memoryView === "search") && active.length === 0 && recordsLoadState === "error" && <div role="alert" className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>Tenant records could not be loaded. <button type="button" className="ml-2 underline" onClick={() => void load()}>Retry</button></div>}
+      {!(surface === "memory" && memoryView === "search") && active.length === 0 && recordsLoadState === "loaded" && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No tenant records yet.</div>}
       {!(surface === "memory" && memoryView === "search") && active.length > 0 && visibleRecords.length === 0 && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No tenant records match this graph node.</div>}
       {surface === "memory" && memoryView === "search" && memoryQuery.trim().length >= 2 && !searchBusy && searchResult.query === memoryQuery.trim() && searchedRecords.length === 0 && <div className="panel p-6 text-center text-[12px]" style={{ color: "var(--cream-mute)" }}>No matching memories in this tenant.</div>}
-      {(surface === "goals" ? goalRecords : surface === "memory" && memoryView === "search" ? searchedRecords : visibleRecords).map((record) => <article key={record.id} className="panel p-4"><div className="flex items-start gap-3"><FileText size={15} color="#60a5fa" className="mt-0.5" /><div className="min-w-0 flex-1"><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>{record.title}</h2><p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>{record.content}</p><SourceLinks metadata={record.metadata} /><p className="mt-3 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}>{surface === "goals" && typeof record.metadata?.category === "string" && <span className="inline-flex items-center gap-1"><Tag size={10} />{record.metadata.category}</span>}<span>{new Date(record.created_at).toLocaleString()} · {record.status}</span></p></div><div className="flex items-center gap-1"><button type="button" title={record.status === "done" ? "Mark active" : "Mark done"} onClick={() => update(record.id, record.status === "done" ? "active" : "done")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: record.status === "done" ? "#34d399" : "var(--cream-mute)" }}><Check size={13} /></button><button type="button" title="Archive" onClick={() => update(record.id, "archived")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "var(--cream-mute)" }}><Archive size={13} /></button><button type="button" title="Delete" onClick={() => remove(record.id)} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "#fda4af" }}><Trash2 size={13} /></button></div></div></article>)}
+      {(surface === "goals" ? goalRecords : surface === "memory" && memoryView === "search" ? searchedRecords : visibleRecords).map((record) => <article key={record.id} className="panel p-4"><div className="flex items-start gap-3"><FileText size={15} color="#60a5fa" className="mt-0.5" /><div className="min-w-0 flex-1"><h2 className="text-[13px] font-semibold" style={{ color: "var(--cream)" }}>{record.title}</h2><RecordContent record={record} /><SourceLinks metadata={record.metadata} /><p className="mt-3 flex flex-wrap items-center gap-2 text-[10px]" style={{ color: "var(--cream-mute)" }}>{surface === "goals" && typeof record.metadata?.category === "string" && <span className="inline-flex items-center gap-1"><Tag size={10} />{record.metadata.category}</span>}<span>{new Date(record.created_at).toLocaleString()} · {record.status}</span></p></div><div className="flex items-center gap-1"><button type="button" title={record.status === "done" ? "Mark active" : "Mark done"} onClick={() => update(record.id, record.status === "done" ? "active" : "done")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: record.status === "done" ? "#34d399" : "var(--cream-mute)" }}><Check size={13} /></button><button type="button" title="Archive" onClick={() => update(record.id, "archived")} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "var(--cream-mute)" }}><Archive size={13} /></button><button type="button" title="Delete" onClick={() => remove(record)} className="grid h-8 w-8 place-items-center rounded-md border" style={{ borderColor: "var(--line-soft)", color: "#fda4af" }}><Trash2 size={13} /></button></div></div></article>)}
       {surface === "memory" && memoryView === "search" ? searchResult.query === memoryQuery.trim() && searchResult.hasMore && <button type="button" onClick={() => void loadMoreSearch()} disabled={searchMoreBusy} className="w-full rounded-md border px-4 py-2.5 text-xs font-semibold disabled:opacity-40" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}>{searchMoreBusy ? "Loading" : "Load more matches"}</button> : hasMoreRecords && <button type="button" onClick={() => void loadMoreRecords()} disabled={loadingMoreRecords} className="w-full rounded-md border px-4 py-2.5 text-xs font-semibold disabled:opacity-40" style={{ borderColor: "var(--line-soft)", color: "var(--cream-dim)" }}>{loadingMoreRecords ? "Loading" : "Load more"}</button>}
     </section>}
   </div>;
+}
+
+function RecordContent({ record }: { record: RecordItem }) {
+  if (typeof record.metadata?.source_import_key !== "string") {
+    return <p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>{record.content}</p>;
+  }
+  const content = <div className="mt-2 space-y-2 break-words text-[12px] leading-relaxed" style={{ color: "var(--cream-dim)" }}>
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+      a: ({ href, children }) => {
+        const safeHref = safeSourceHref(href);
+        return safeHref ? <a href={safeHref} target="_blank" rel="noopener noreferrer" className="text-sky-300 underline-offset-2 hover:underline">{children}</a> : <span>{children}</span>;
+      },
+      img: ({ alt }) => <span>{alt || "Image"}</span>,
+      p: ({ children }) => <p className="whitespace-pre-wrap">{children}</p>,
+      ul: ({ children }) => <ul className="list-disc space-y-1 pl-5">{children}</ul>,
+      ol: ({ children }) => <ol className="list-decimal space-y-1 pl-5">{children}</ol>,
+      code: ({ children }) => <code className="break-all rounded-sm bg-black/5 px-1">{children}</code>,
+      pre: ({ children }) => <pre className="overflow-x-auto whitespace-pre-wrap">{children}</pre>,
+    }}>{record.content}</ReactMarkdown>
+  </div>;
+  return record.content.length > 1_000
+    ? <details className="mt-2"><summary className="cursor-pointer text-xs" style={{ color: "var(--cream-soft)" }}>Read source text</summary>{content}</details>
+    : content;
 }
 
 function SourceLinks({ metadata }: { metadata?: Record<string, unknown> }) {

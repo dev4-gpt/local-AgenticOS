@@ -4,11 +4,14 @@ import path from "node:path";
 import process from "node:process";
 import { clientRuntimeArtifactRouteAllowed } from "./lib/client-runtime-artifact-surface.mjs";
 
-const standaloneRoot = path.resolve(valueAfter("--standalone-root") ?? ".next/standalone");
-const serverRoot = path.join(standaloneRoot, ".next", "server");
+const distDir = resolveDistDir(valueAfter("--dist-dir") ?? process.env.VELOCE_DIST_DIR ?? ".next");
+const standaloneRoot = path.resolve(valueAfter("--standalone-root") ?? path.join(distDir, "standalone"));
+const serverRoot = path.resolve(standaloneRoot, distDir, "server");
 const failures = [];
 
 const appPaths = await readJson(path.join(serverRoot, "app-paths-manifest.json"), "app_paths_manifest_missing");
+if (!Object.hasOwn(appPaths, "/api/client-runtime/build-identity/route")) failures.push("build_identity_route_missing");
+if (!Object.hasOwn(appPaths, "/api/client-runtime/source-import/route")) failures.push("source_import_route_missing");
 for (const [entryKey, entryFile] of Object.entries(appPaths)) {
   const route = routePath(entryKey);
   if (!clientRuntimeArtifactRouteAllowed(route)) failures.push("disallowed_route_manifested");
@@ -71,4 +74,11 @@ function routePath(entryKey) {
 function valueAfter(flag) {
   const index = process.argv.indexOf(flag);
   return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
+function resolveDistDir(value) {
+  const absolute = path.resolve(value);
+  const relative = path.relative(process.cwd(), absolute);
+  if (relative === ".." || relative.startsWith(`..${path.sep}`)) throw new Error("client_dist_dir_invalid");
+  return relative || ".";
 }

@@ -34,24 +34,26 @@
     "src/**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    ".next-v0/types/**/*.d.ts",
-    ".next-v0/types/validator.ts",
-    ".next-v0/dev/types/**/*.d.ts",
-    ".next-v0/dev/types/validator.ts",
-    ".next-client-test/types/**/*.d.ts",
-    ".next-client-test/types/validator.ts",
-    ".next-client-test/dev/types/**/*.d.ts",
-    ".next-client-test/dev/types/validator.ts",
-    ".next-client/types/**/*.d.ts",
-    ".next-client/types/validator.ts",
-    ".next-client/dev/types/**/*.d.ts",
-    ".next-client/dev/types/validator.ts"
+    ".next-client-prod/types/**/*.ts",
+    ".next-client-prod/dev/types/**/*.ts",
+    ".next-client-browser/types/**/*.ts",
+    ".next-client-browser/dev/types/**/*.ts",
+    ".next-client-e2e/types/**/*.ts",
+    ".next-client-e2e/dev/types/**/*.ts",
+    ".next-client/types/**/*.ts",
+    ".next-client/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "node_modules 2",
     "public-site",
     "tests",
-    ".next"
+    ".next",
+    ".next-v0",
+    ".next-client-test",
+    ".next-client",
+    ".next-client-prod",
+    ".next-client-browser",
+    ".next-client-e2e"
   ]
 }

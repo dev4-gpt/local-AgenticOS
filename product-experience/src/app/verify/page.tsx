@@ -7,6 +7,8 @@ export default function VerifyPage() {
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("token");
     window.history.replaceState(null, "", "/verify");
+    // The query token is available only after mount; this is the invalid-link UI state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!token) { setMessage("This verification link is invalid or expired."); return; }
     fetch("/api/onboarding/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }).then(async (response) => {
       const body = await response.json().catch(() => null);

@@ -56,7 +56,7 @@ Done when an actual MiroFish run has reproducible artifacts and a prioritized, t
 
 1. Define release-critical AI behaviors for provider routing, policy denials, budget reservation/settlement, artifact validity, source grounding, and tenant isolation. Build a versioned fixture set with expected outcomes and explicit failure labels; do not use customer or course content in public test fixtures.
 2. Run deterministic tests on every candidate and repeat stochastic model-backed evaluations only inside an approved staging tenant with a hard spend ceiling. Record model, prompt/fixture version, sample size, pass rate, failure rate, latency distribution, token use, and uncertainty; a single green sample is not reliability evidence.
-   Local harness now has a nine-case versioned fixture and release receipt (`npm run verify:ai-evaluation`). The first development run passed 9/9 on a dirty tree; repeat on a clean candidate before publishing. This is not hosted or model-backed evidence.
+   Local harness now has a ten-case versioned fixture and release receipt (`npm run verify:ai-evaluation`). The first development run passed 9/9 on a dirty tree; repeat on a clean candidate before publishing. This is not hosted or model-backed evidence.
 3. Trace each hosted job from admission through provider and persistence with tenant-scoped, bounded, redacted stage timing. Keep prompts, outputs, credentials, and raw provider responses out of trace metadata. Validate the read API and user-visible trace view against cross-tenant and malformed-metadata cases.
    The local read API now rejects any returned audit, job, or ledger row whose tenant does not match the runtime, bounds old audit labels, and drops secret-like values before responding. The panel shows a retryable failure state instead of disappearing. Local regression tests cover malformed metadata and a mixed-tenant response; hosted two-tenant execution and alert delivery remain unverified.
 4. Add alerts and incident review for policy bypass, budget/settlement failures, provider errors, stalled jobs, and artifact failures. Reconcile job status, ledger, and trace evidence in staging before claiming production observability. Keep a retention and deletion policy for trace data.
@@ -76,3 +76,89 @@ Execution order: establish baseline and test matrix; implement the authorized im
 3. Specify the export format and graph migration, then implement the first authorized import slice.
 4. Capture local/cloud route screenshots and action parity, fixing the first verified discrepancy.
 5. Prepare the isolated MiroFish pilot and explicit cost proposal before any paid run.
+
+## Execution checkpoint — 2026-10-13
+
+This is a measured checkpoint, not a production-readiness claim. The repository
+was clean at source commit `da73092d2a41727d7e4dfef11d67b1093df34127` on
+`wip/backup-2026-10-03`.
+
+- The strict evidence verifier returned `releaseReady: false`. Its configured
+  ledger bucket is missing, and deployment, migration, customer-journey,
+  source-import, parity, buyer-pilot, AI-evaluation, operations, legal, and
+  rollback evidence are not attached to this candidate.
+- The offline AI release suite ran 14/14 cases successfully with no provider
+  requests. The first run under Node v26.4.0 was rejected by the verifier; a
+  rerun under installed Node v24 passed the local gate. The report is
+  local-only and explicitly does not establish model quality or hosted behavior.
+- The latest parity observation remains **unproven**: local and cloud data and
+  capability surfaces differed, the cloud build identity route was unavailable,
+  and no contemporaneous same-tenant comparison is recorded.
+- The Skool archive inventory remains partial. No complete authorized source
+  package has been imported and verified in the tenant graph. Use the
+  user-provided/official export path; do not automate authenticated bulk
+  collection without platform-level authorization.
+- The latest MiroFish preparation record describes a two-buyer, ten-round
+  candidate that passed offline preflight, but records no executed simulation
+  or validated buyer interaction. A run must remain within the user's approved
+  zero-paid-spend limit and current provider-account limits.
+- Making the GitHub repository public is not equivalent to publishing or
+  accepting the AgentOS production service.
+
+The previous baseline-and-evaluation step is now complete. Next, make the local
+AI gate reproducible in the project's documented runtime setup, refresh the
+customer journey and parity evidence on a single identified candidate, then
+finish the authorized import and pilot evidence before attempting strict
+release acceptance. Preserve the stated cost, deployment, tenant-data, and
+scraping constraints throughout.
+
+### Verification refresh — 2026-10-13
+
+- Re-ran the offline AI evaluator with Node 24: **14/14 cases passed** and the
+  local gate passed. No provider calls were made.
+- `npm run verify:html-source-pack` passed **5/5** tests.
+- `npm run verify:source-import-postgres` passed its disposable local Postgres
+  smoke and **2/2** source-guard schema-evidence tests.
+- `npm run verify:mirofish-buyer-artifacts` passed **23/23** offline tests.
+  These validate pilot attribution, telemetry, and review guards; they are not
+  evidence that a MiroFish simulation or buyer interaction occurred.
+- `npm run verify:policy-gates` passed: 696 license entries, 8 provider-egress
+  manifests, 48 tenant-boundary routes, 3 navigation-policy tests, integration
+  catalog validation, and ECC provenance.
+- `npm run verify:public-beta`, `npm run verify:public-launch`,
+  `npm run verify:engineering-controls`, and
+  `npm run verify:client-provider-policy` all passed.
+- `npm run verify:client-lifecycle` passed **22/22** retention, ownership,
+  and offboarding contract tests.
+- The client-runtime observability, telemetry-boundary, and job-trace suite
+  passed **24/24**, including desktop/mobile status states, bounded redacted
+  traces, and cross-tenant fail-closed behavior. No external provider requests
+  were made.
+- `npm run test:focused` under Node 24 passed **349/350** tests (one skipped).
+  This broad local regression suite includes customer-journey and release-gate
+  contracts, buyer-pilot evidence validation, and two-tenant isolation tests;
+  it does not replace signed-in hosted acceptance.
+- A Node 24 production build passed. The general workspace build does not
+  include the client-runtime `Community sources` control, so the first browser
+  attempt against that edition was invalid for this feature.
+- `npm run verify:source-import-browser` subsequently passed **5/5** against
+  the configured local internal-beta client runtime on port 3941. The private
+  env file passed its safe config check, provider calls were disabled, and the
+  tests intercepted every API request. This validates the local UI contract,
+  not a hosted import or customer content.
+- A read-only navigation in the existing Chrome session reached local
+  `/memory`; the session, records, and memory-graph endpoints returned HTTP
+  200. The user/tenant identity and returned records were not inspected, so
+  this is partial local-journey evidence, not a same-tenant parity result.
+- The final `npm run verify:production-readiness` on clean pushed HEAD
+  `2cbb9cb33f330f224ed30fffcb232141b1407984` returned
+  `releaseReady: false`. The only hard failure is the unconfigured release
+  ledger bucket; 37 release-evidence items remain unevaluated. The earlier
+  dirty-tree warning was cleared by committing and pushing the checkpoint. No
+  production release artifact was created.
+
+No hosted database, tenant data, Skool content, provider, or deployment was
+changed during this refresh. Next: re-run the signed-in customer journey and
+parity checks on one source-identified candidate, then complete the authorized
+sample import and pilot evidence. Do not label the product production-ready
+until the release verifier has complete evidence and passes.

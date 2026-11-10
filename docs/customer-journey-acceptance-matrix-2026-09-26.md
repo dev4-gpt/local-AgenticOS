@@ -60,3 +60,335 @@ The public browser callback now independently validates the destination before a
 **Local verification handoff update, 2026-09-29:** The verification page now removes its one-time query token from browser history before calling the API, skips the call when no token exists, and follows only a successful HTTPS `checkout.stripe.com` response. Six production-build browser checks with fake tokens and intercepted requests passed for missing/expired links, pending commercial review, hostile and lookalike checkout hosts, and an intercepted Stripe handoff. These do not prove real email delivery, token consumption in the hosted database, a reviewed quote, or a Stripe Test-mode session; J02 and J03 remain open.
 
 **Local setup-link update, 2026-09-29:** The setup page now removes its one-time query token when it mounts and makes no API request without a token. The setup API validates the generated Supabase magic-link origin, path, type, token, and approved public callback before consuming the setup token or returning the link. Three local browser tests with fake tokens and intercepted sign-in navigation passed, and both `/setup` and `/verify` returned `Referrer-Policy: no-referrer` from the production build. The database/API tests also reject malformed links before token consumption. J08 still requires a real disposable tenant, applied migration, redirect allowlist, signed-in browser session, and recovery-path evidence.
+
+**Read-only and local follow-up, 2026-10-02:** A signed-in Cloud Run `/room` page rendered AI Agent Mastermind and an existing Hermes reply through Groq, but the deployed revision/source SHA and a same-identity local session remain unknown. The local service on port 3565 is the separate `product-experience` setup app, not the workspace comparator. The root workspace has no approved Supabase/tenant configuration in its local env file. With Node 24, the deterministic AI evaluation passed 9/9 cases (`localGatePassed: true`, `productionReady: false`), typecheck passed, local classroom research passed 4/4, and source-pack/parser tests passed 11 with one private-pack test skipped because no authorized export file was configured. Three local setup-page browser tests passed with fake tokens and mocked sign-in; the sandboxed Chromium attempt could not launch, and the permitted retry passed. None of these checks exercises J01-J15 end to end on the current hosted candidate; the matrix remains 0/15 accepted.
+
+**Local repeat-login update, 2026-10-03:** Current source routes the public `Client login` menu to `/login` instead of one test tenant. An off-by-default, durable-rate-limited request route sends a non-signup Supabase Auth email only for one active onboarding account and returns the same acknowledgement for unknown or ambiguous accounts. The public callback then rechecks active tenant membership before handing a session to the recorded Cloud Run runtime. Local unit tests, a product build, and a local browser entry/form check passed; the local form correctly reports unavailable with the feature flag off. This does not satisfy J08 or J13: the Supabase email template and exact redirect path, real delivered link, disposable signed-in session, revoked access, and cross-tenant denial still need hosted evidence. The source is not deployed.
+
+**Live entry check, 2026-10-03:** The public `app.veloceos.cloud` root returned 200 while its `/login` route returned 404; the older Cloud Run test login returned 200. No J08 credit is claimed. The release gate now requires each J01-J15 evidence reference to include a matching, named case attestation for the exact source and deployment rather than accepting fifteen unrelated hashed files. That validates receipt identity and review structure, not the truth of the observation; hosted execution and human review are still required.
+
+**Two-tenant evidence correction, 2026-10-03:** The isolation verifier now refuses to call an empty table isolated. For every probed table, each tenant must first read its own matching sentinel row; failed cross-reads remain inconclusive, and any visible cross-tenant row fails. Local fixture tests cover all three outcomes. J13 remains open until two approved disposable tenant identities have sentinel data in every probed table and the hosted verifier passes. This is a deliberate stricter precondition, not a claim that existing production tables are populated.
+
+**Source-import audit correction, 2026-10-03:** The import RPC now writes a content-free `tenant.source_pack.imported` audit event inside the memory/graph transaction. An audit failure rolls back records and graph changes instead of allowing a successful API response without provenance; local embedded-Postgres tests cover that failure. This remains local J09/J12 support, not hosted migration or signed-in import evidence.
+
+**Signed-in local workspace check, 2026-10-03:** The user signed in to the local client production preview through Chrome. `/memory` then loaded 24 tenant records and a 29-node/57-edge graph, matching the counts in an existing signed-in Cloud Run tab in the same Chrome profile. This establishes a working local auth/read path and a useful same-data UI comparator, but not setup-link consumption, session recovery, a current hosted revision, two-tenant isolation, or any complete J-row. The cloud build lacks the local `Community sources` control, so source import and UI parity remain unaccepted; the matrix remains 0/15 current-candidate E2E receipts.
+
+**Local support-path update, 2026-10-06:** The public support route now stores the same ticket UUID that it returns, emails and sends to the team; a separately supplied request/tenant ID remains a reference instead of replacing the ticket ID. Overlong fields are rejected before storage instead of silently truncated. A synthetic route test and a mobile browser test with intercepted API responses passed. The browser test also exposed and repaired a success-path event-reference error that had prevented the confirmation from rendering. When acknowledgement email is unavailable, the page now displays the full ticket ID and tells the customer to retain it. No hosted support ticket or email was sent, and J12 still needs current-deployment support, suspension, full export, offboarding and retention evidence.
+
+**Local offboarding safety update, 2026-10-06:** The tenant lifecycle export is credential-safe metadata, not a complete accounting archive. Deleting `client_tenants` cascades managed-credit ledgers. The apply path now checks those ledgers and nonzero credit balances before its first tenant or cloud mutation, and fails closed when a billing table cannot be read. Mocked tests cover history, balance and read failure. A reviewed financial-retention/reconciliation procedure and a hosted disposable-tenant drill are still needed before J12 or J14 can pass; this guard intentionally blocks offboarding paying tenants until then.
+
+**Database deletion guard, 2026-10-06:** A new, not-yet-applied V47 migration blocks tenant `DELETE` when managed-credit history or nonzero balances exist and rejects tenant `TRUNCATE`. It protects the final database mutation even if a financial row arrives after the operator command's earlier check. A PGlite regression exercises each protected table, balances, idempotent migration application and a zero-credit deletion; the release verifier now requires an exact V47 migration receipt. This does not establish a 45-day customer-data retention clock, create a financial archive, or satisfy J12 without owner policy and hosted evidence.
+
+**Chrome Work-profile check, 2026-10-06:** The signed-in internal-beta `/memory` page rendered two tenant memories and a 114-node/113-edge knowledge map. This is a different hosted surface from the earlier `veloce-cloud-test` comparator and does not establish same-revision parity. Its visible `Classroom Research` link redirected to `/client-unavailable?route=%2Fclassroom-research`. The public `app.veloceos.cloud` login menu still targets one test tenant and public `/login` still returns 404. The current internal-beta revision could not be read because the authenticated account lacks `run.services.get`. J08/J09/J13 and current-candidate parity remain open.
+
+**Local navigation-policy repair, 2026-10-06:** The client sidebar and mobile navigation now receive the same runtime `CLIENT_ALLOWED_ROUTES` list used by middleware. The client root layout waits for a request before reading that list, preventing a generic image's build-time manifest from leaking forbidden links into a tenant runtime. A production build with `/capabilities` present at build time and absent at runtime passed two Chrome browser checks: desktop hides `Classroom Research`, `Social Research`, and `Capabilities`; mobile hides `Capabilities` and `Provider matrix` while keeping allowed `Context intake`. The existing unauthenticated client-route verifier and policy gates passed locally. The hosted runtime has not been redeployed, so this does not close J09 or hosted navigation parity.
+
+**Local sign-in recovery update, 2026-10-07:** The public auth callback now offers a new shared sign-in link and support after an expired or invalid token, failed destination lookup, or rejected runtime URL. It still removes URL-fragment credentials before any request. Chrome browser checks cover the error routes, a valid handoff, and a 375px recovery view without horizontal overflow. These use synthetic tokens and intercepted destination responses; J08 remains open until a real delivered link, active tenant, revocation and recovery are tested on the current hosted candidate.
+
+**Local tenant-login redirect repair, 2026-10-07:** The tenant login's `next` parameter now resolves against the current tenant origin and rejects backslashes, control characters, and off-origin destinations before navigation. The prior prefix-only check accepted `/\evil.example/path`, which URL parsers treat as an external origin. Focused unit and Chrome browser checks cover both already-authorized and password-login redirects. This is a local J08/J13 security repair, not a hosted sign-in or tenant-isolation receipt.
+
+**Local offboarding inventory guard, 2026-10-08:** An applied offboarding now requires a hash-confirmed tenant manifest whose slug, project, bucket, and storage namespace match the requested target. It refuses absent tenant rows, failed object/queue/alert/secret inventory, and secret names that merely share a tenant-slug prefix. Whole-bucket deletion is limited to the canonical tenant-dedicated bucket name. Local mock failures prove object, queue, and secret inventory errors stop before the tenant-status update; the operator lifecycle and security verifiers pass. This is not a cloud deletion drill, a financial-record archive, a complete tenant export, or enforcement of the proposed 45-day retention policy. J12 and J14 remain open.
+
+**Local lifecycle coverage and surviving-record guard, 2026-10-08:** The credential-safe tenant snapshot now includes manifest proposals, provider-connection metadata, support tickets, and research-worker failures. Mocked export/restore checks confirm restored proposals and connections return to `submitted` without reviving approvals, credential references, or validation state. Applied offboarding refuses tenant-linked support tickets and onboarding accounts, or an unreadable check, before cloud or tenant mutation: those rows otherwise survive tenant deletion and support tickets lose their tenant association. Onboarding/deployment records and financial history still lack a reviewed retention/reconciliation path; hosted restore/deletion and 45-day policy evidence remain missing. J12 and J14 stay open.
+
+**Same-tenant local/cloud read comparison, 2026-10-08:** With provider calls disabled, the local internal-beta client at `http://127.0.0.1:3939/memory` opened in the existing authorized Chrome session. Both it and the signed-in internal-beta Cloud Run Memory page showed two bonus-index memories and 114 nodes/113 edges. Local archive search for `BONUSES` returned the `OTHER BONUSES` record with its source-page reference and 27 source links; local session, records, graph, and search requests returned HTTP 200. The local page has `Community sources` and hides disallowed classroom/social navigation; the hosted page lacks that import control and still shows those links. The isolated Chrome source-import browser suite passed 5/5 against localhost with API writes intercepted. This confirms same-data local reads and a visible revision/policy mismatch, not a matching source SHA, hosted import receipt, complete classroom coverage, or J09/J13 acceptance. No provider request, real upload, or hosted mutation was made during this comparison.
+
+The same day's read-only `gcloud run services describe agentos-internal-beta --project agentos-mvp --region europe-west1` returned `PERMISSION_DENIED` for `run.services.get` under `aryamandev777@gmail.com`. The hosted revision cannot be bound to a source commit from this account; obtain a read-only revision receipt from an authorized operator before claiming parity.
+
+**Local customer-visible trace update, 2026-10-08:** The tenant home dashboard already fetched redacted job traces but discarded them. Recent job activity now exposes its validated stage sequence, outcome, duration, and truncation notice in an expandable row. Synthetic Chrome checks passed at 1280px and 390px, including a failed provider stage and absence of a private output string; the existing badge checks and 11 focused trace/observability unit tests passed. This is local UI and mocked-data evidence, not a hosted job-failure receipt or end-to-end J09/J14 acceptance.
+
+**Local home-route parity repair, 2026-10-08:** The client home previously rendered chapter, tool, dock, and credential links without consulting the runtime route manifest, even when sidebar and middleware hid those routes. It now receives the request-time `CLIENT_ALLOWED_ROUTES` list, suppresses disallowed destinations, and uses an allowed chapter tool as the main action when the preferred route is unavailable. A separate localhost client with only `/`, `/context`, `/memory`, `/hermes`, and `/credentials` allowed passed 1280px and 390px Chrome checks: every rendered local link stayed within that list and Command fell back to `/hermes`. No hosted revision or release-configuration parity is claimed; J09 and UI parity remain open.
+
+**Bounded synthetic buyer pilot, 2026-10-09 UTC:** In the isolated MiroFish checkout, `sim_fe9b23d28531` completed 10 rounds with 10 configured personas, two scheduled buyers, four recorded post actions (two seeded and two dynamic), and graph-memory updates disabled. The checked-in AgentOS auditor passed all 10 technical/content checks after an explicitly AI-assisted review of the two dynamic posts; its result says `pilotEvidencePassed: true` and `marketValidation: false`. The posts ask for concrete tenant-isolation/privacy evidence, visible cost controls, governance, setup effort, and live-tenant screenshots. These are useful journey-test prompts, not measured demand or a 10,000-persona result. The earlier attempt `sim_3b7bfff26e22` failed at round zero because the local tokenizer cache was missing; its run artifacts were retained. The user confirmed Free-tier Groq/Zep and a $0 paid-spend limit, but no provider billing receipt or current-release ledger record was captured. The release buyer-simulation gate and J01-J15 hosted journey receipts remain open.
+
+**Retention decision and local guard, 2026-10-09 UTC:** The owner chose 45 days from each customer-data item's creation as the retention clock; a billing reviewer and separate financial-record schedule are still to be named. The read-only snapshot audit now reports items due at the exact 45-day boundary without treating them as approved deletion candidates. Lifecycle exports refuse to overwrite an existing private backup, including on an offboarding retry. These local checks do not purge tenant data, objects, exports, backups, or vendor copies, and they do not satisfy J12.
+
+**Local offboarding object-backup guard, 2026-10-09 UTC:** If a tenant namespace contains objects, applied offboarding now requires `--include-objects`, a fresh private backup directory, a successful copy, and a local file for every reviewed object path before tenant status or cloud objects change. Mocked tests reject missing, failed, empty, and cross-namespace backup evidence. File existence does not freeze concurrent writes or prove checksums or restore, and the backup's own 45-day expiry remains unimplemented; J12 and J14 remain open.
+
+**Local deletion inventory recheck, 2026-10-09 UTC:** The object list must remain identical after backup and after tenant suspension; a successful cloud delete command is not enough unless the namespace reads empty afterward. A later read before tenant-row deletion catches reappearing objects when the bucket remains. Mocked tests cover a file arriving during backup and a no-op delete that returns success. These are command-level safety checks, not proof against every write race or a hosted post-deletion receipt. The draft privacy policy's unsupported claim about universal historical deletion verification was removed; J12/J14/J15 remain open.
+
+**Owner-export media reference support, 2026-10-09 UTC:** The local classroom source-pack converter now accepts structured video/audio/image/embed/file references and stable `video_page_links` from an owner-provided export, preserving them as tenant graph link references. A media-only lesson is explicitly flagged as lacking text/transcript; signed download URLs fail validation. This does not fetch Skool, obtain media bytes, transcribe video, prove export completeness, or close the hosted source-import gate.
+
+**Runtime-record retention increment, 2026-10-09:** The checked-in `supabase-client-runtime-record-retention.sql` adds a service-role-only, 45-day per-record creation cutoff for tenant runtime records, a bounded delete batch, orphan graph-node cleanup, and aggregate audit counts. The operator command previews that scope alongside due ECC lessons; current apply requires both `--confirm-retention-records` and `--confirm-retention-learning`, plus the hosted V48 reference guard. Embedded-Postgres tests cover the exact boundary, tenant isolation, graph cleanup, role grants, and audit-failure rollback; 303 focused tests passed with one skipped, and security checks passed. The migration has not been applied to the hosted database, no retention job is scheduled, and objects, notebooks, exports, backups, vendor copies, and financial data remain outside this purge. J12 and J14 remain open.
+
+**Chrome Work-profile parity recheck, 2026-10-09:** The internal-beta Cloud Run `/memory` tab still showed two bonus-index memories and 114 nodes/113 edges, without the local `Community sources` review control. Its Notebook Research tab rendered, while its visible Classroom Research link again led to `/client-unavailable?route=%2Fclassroom-research`. The separate cloud-test `/memory` tab showed zero memories and zero graph nodes/edges; its empty tenant must not be treated as a regression in internal beta. The local `127.0.0.1:3939/memory` tab showed the two memories, 114 nodes/113 edges, source search, and the source-pack review control. One local Home navigation initially redirected to `/login?next=%2F`, but subsequent Home and Notebook navigation worked, Notebook remained authenticated after a hard reload, and `BONUSES` search returned the source-linked record. Local Notebook Assets listed one ready and one pending copy of the bonus-index JSON; no download was attempted. This establishes a current signed-in local read path, not session recovery or a full customer journey. Local navigation hides Classroom/Social Research while the older internal-beta page displays those links; the current sidebar source filters by the runtime route allowlist, so navigation difference alone does not prove a code mismatch. The missing hosted source-pack control does show a visible build difference. Exact hosted revision/source identity, same-revision route configuration, and full J08/J09/J13 browser receipts remain required. No upload, provider call, or hosted mutation occurred during this check.
+
+**Client-edition copy correction, 2026-10-09:** The shared Home Context panel claimed that sources stay local even in the hosted client edition, contradicting its Supabase tenant storage. Current source keeps that sentence only for the private-local edition and uses tenant-workspace wording for the client edition. The local Chrome client page displayed the corrected text in the Context panel; typecheck and the focused suite passed (303 passed, one skipped). The older hosted beta still displays the old text and needs a reviewed, same-revision deployment before parity or customer-facing accuracy can be accepted.
+
+**Signed-in local build-identity check, 2026-10-09:** On source `83b3387c9e55a942d9ccfa569a75d19fde665443`, the existing 3939 dev server initially answered `client_route_not_enabled` because its startup allowlist predated the new route. A separate current-code instance on 3940 returned `ok: true` to the authorized Chrome session; after a controlled restart of 3939 with the same private env and `--gcp-auth`, that port also returned `ok: true` with null source commit and revision, as expected for local development. Provider calls remained disabled. The same signed-in Memory page still read two tenant records and a 114-node/113-edge graph. This proves the read-only local route and session survived the restart, not a stamped hosted image, complete customer action, or J08/J09/UI-parity acceptance. No tenant write or hosted mutation occurred.
+
+**Artifact retention default, 2026-10-09:** New upload metadata now defaults to 45 days from creation instead of 30, while an explicitly configured shorter period remains available to disposable test tenants. Invalid runtime retention values fail before a signed upload URL or database write. The customer manifest example, local env template, and public intake form now present 45 days by default; local API tests cover the boundary and invalid settings. This does not reconcile existing tenant manifests and bucket lifecycle policies, schedule object-byte deletion, purge notebooks or backups, or establish a financial-record schedule. The internal-beta manifest intentionally remains a one-day disposable tenant. J12/J15 and hosted retention evidence remain open.
+
+**Shared retention metadata correction, 2026-10-09:** Client uploads, worker-produced artifacts, and Notebook source rows now use the same validated 45-day default. Notebook sources inherit `CLIENT_RETENTION_DAYS` unless `CLIENT_NOTEBOOK_RETENTION_DAYS` is explicitly set; invalid values fail before a source write. An invalid worker retention setting fails before claiming a job or making a provider call. Focused route tests cover the Notebook default/override and both failure boundaries. These changes stamp new metadata only; they do not purge expired rows or bytes, reconcile older records, change disposable-tenant policy, or satisfy J12/J14 hosted deletion evidence.
+
+**Read-side expiry and download authorization, 2026-10-09:** Artifact list and both download routes now reject expired or undated artifacts. The alternate redirect download route also checks upload ownership or the requesting member of the producing job; all three artifact reads verify tenant identity on returned rows. Source-pack preview/import refuses an expired or undated upload, and Notebook source listing omits expired or undated rows. Generated GCS download signatures are capped by the artifact's absolute expiry. Local two-member/two-tenant, expiry, source-import and signature tests pass. Before deployment, inventory legacy null-expiry rows and approve a migration or exception; these endpoints deliberately withhold them, and no data is erased by this code. Existing signed URLs may remain usable until their original signature expires, and other database, object, backup, export and vendor paths still require retention enforcement. J12/J13/J14 hosted evidence remains open.
+
+**Legacy expiry-impact audit, 2026-10-09:** The private lifecycle-snapshot audit now reports aggregate missing, invalid, expired-still-present, and over-window expiry counts for artifact and Notebook source rows; an absent table reports `present: false`, not zero risk. `verify:client-lifecycle` runs the audit regression. The checked local export directory did not provide a suitable current private hosted receipt for a real tenant impact count; one older local lifecycle file had mode `0644` and was not read or modified. Generate a fresh private export under the approved operator procedure, review the aggregate counts and affected data classes, and plan deletion or a specifically approved exception before enabling the new read guard on a hosted tenant. This audit does not authorize blanket expiry backfills or prove object-byte deletion. J12/J14 remain open.
+
+**Artifact mutation ownership repair, 2026-10-09:** Local completion and deletion routes now verify returned tenant and uploader/job-requester identity before reading or deleting an object. Markdown import and Visual QA reject expired or foreign artifacts before writing records or enqueuing jobs. A separate, not-yet-applied `supabase-client-runtime-artifact-owner-guard.sql` migration makes direct member RPCs enforce uploader ownership for completion, uploader or producing-job requester ownership for deletion, and the same ownership plus active retention for delivery artifact references. Embedded-Postgres tests cover cross-member, cross-tenant, expired, worker-produced and idempotency-collision cases; route tests verify denial before storage or job work. The release verifier requires this exact migration receipt. The existing hosted RPCs remain unsafe until the migration is applied and verified there; do not treat the local route checks as a production patch or perform a hosted delete drill before that. J12/J13/J14 remain open.
+
+**Notebook reference isolation repair, 2026-10-09:** Local source registration now verifies the requested notebook's tenant and the referenced artifact's tenant, readiness, active retention and uploader/job-requester ownership before writing. Source expiry is capped to its artifact expiry. The separate, not-yet-applied `supabase-client-notebook-source-reference-guard.sql` migration adds the same reference checks to authenticated insert/update policy, so a direct PostgREST call cannot bypass the route. Embedded-Postgres and route regressions pass. The release verifier requires its migration receipt; hosted cross-tenant and cross-member evidence is still missing. This does not implement object-byte deletion or prove all 45-day retention paths. J12/J13/J14 remain open.
+
+**Hosted image and configuration identity, 2026-10-09:** An alternate already-configured Google account could read `agentos-mvp` after the default account received `run.services.get` denial. Cloud Run still serves `agentos-internal-beta-00034-v69` at 100%, with image digest `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`. Cloud Build produced that image on September 26 from a storage upload and recorded no repository SHA; the service has no `VELOCE_BUILD_SOURCE_COMMIT`. The page allowlist includes `/capabilities` and `/paperclip`, and the API allowlist excludes both `/api/client-runtime/source-import` and `/api/client-runtime/build-identity`. `CLIENT_RETENTION_DAYS=1`, versus the owner's 45-day customer-data decision. These independent, read-only observations explain why current local source and hosted beta cannot pass UI/source-import or retention parity; they do not prove exactly which Git commit supplied the image. A reviewed new image and runtime config, hosted migration receipts, signed-in same-revision journeys, and data deletion evidence remain required. J08/J09/J12/J13/J14 remain open.
+
+**Read-only candidate configuration preflight, 2026-10-09:** `verify-client-runtime-config.mjs` now checks a Cloud Run service JSON snapshot against an explicitly reviewed service, revision, immutable digest and tenant. It fails closed on pending template state, split traffic, duplicate variables, missing source-import/build-identity API routes, missing core client pages/capabilities, operator research pages in the allowlist, or retention other than 45 days; output excludes environment values. The current beta snapshot failed exactly on `retention_days_not_45` and the two missing API routes. Three fixture regressions and the repository security suite passed. This is a configuration check only; it does not attest source SHA, hosted migration state, signed-in route behavior, or deletion. J09/J12/J13/J14 remain open.
+
+**Bucket retention-policy receipt, 2026-10-09:** A read-only describe of the internal-beta bucket found a Delete rule for `internal-beta/` objects at age one day and a reported seven-day soft-delete duration. That matches the beta's one-day runtime setting but not the selected 45-day customer-data period. It is policy metadata, not proof of object-byte deletion or backup/vendor cleanup. No object inventory was read and no live setting changed. J12/J14 remain open.
+
+**Source-pack direct-RPC ownership repair, 2026-10-09:** The existing source graph RPC is security-definer and previously allowed any member in a tenant to update an imported memory owned by another member when its deterministic source key matched. The still-unapplied `supabase-client-runtime-source-pack-rpc-guard.sql` migration now revokes member access to the legacy/four-argument implementation and requires the tenant's server-held worker token on the guarded RPC. It also rejects expired artifacts and cross-member source-key collisions. The HTTP route checks the exact GCS bytes against the reviewed hash before sending that token. Embedded and disposable PostgreSQL tests cover the token, role grants, ownership, and idempotency. The database does not independently fetch GCS bytes, so production acceptance still requires the exact route and Secret Manager configuration, direct PostgREST denial, hosted migration, and two-member verification. J12/J13/J14 remain open.
+
+**Learning retention reference guard, 2026-10-10:** The ECC learning schema used cascading foreign keys from source jobs and records, so deleting an older source could erase a learning item created less than 45 days ago. The new, unapplied V48 migration changes those two references to set only their nullable source IDs to null on parent deletion. A local PostgreSQL regression applies the migration twice and verifies a newer item survives both record retention and job deletion. The operator learning cleanup now requires separate confirmation, selects at most 100 tenant-scoped IDs per run, checks both `created_at <= now - 45 days` and `retention_expires_at <= now`, and verifies the returned deletion IDs. These changes are local only. They do not purge object bytes, notebook sources, backups, vendor copies, or financial records; J12/J14 remain open.
+
+**Notebook draft provenance and retention, 2026-10-10:** Studio now submits selected source IDs and a notebook scope instead of browser-composed source text. The server verifies tenant, active notebook, record kind/status, selected notebook scope, and content safety, then stores source IDs, URLs/links, and SHA-256 hashes with the job. A service-role-only worker RPC re-reads only active notebook records younger than 45 days for the claimed running job; the worker verifies hashes before it builds a citation-aware prompt. Expired, changed, missing, or cross-scope sources fail before a provider call. Proposal, audit-report, and weekly-report output choices are available, with the resulting job retaining its source register. Local route, prompt, and embedded-PostgreSQL regressions pass, and the local production build succeeds. The migration is not applied to Supabase; hosted grants, signed-in buyer flow, artifact expiry/deletion, and cloud parity remain unverified. No deployment or provider request was made.
+
+**Customer budget meter accuracy, 2026-10-09:** The lightweight `/api/client-runtime/budget` meter previously read only the newest 1,000 ledger rows yet displayed their sum as the full monthly spend. It now pages by ledger ID through the same 10,000-row bound as observability and returns an unavailable error if the ledger is larger, a cursor is malformed, a row belongs to another tenant, or an amount is invalid. The spend meter now visibly reports an unavailable read instead of silently disappearing or retaining a stale value, with a retry command. Local route tests cover 1,002 entries and failure cases; six installed-Chrome checks at 1280px/390px cover the intercepted meter error/retry state and existing observability UI. These browser checks used a synthetic cookie and intercepted API responses because the local client server lacks an authenticated tenant configuration. The hosted meter, actual month-end ledger, and buyer-visible cost comprehension have not been verified; J11 remains open.
+
+**Public sign-in production-build check, 2026-10-10:** `npm --prefix product-experience run build` succeeded and listed `/login` as a dynamic route. The locally served production build returned HTTP 200 for `/login`. Six installed-Chrome callback tests passed against that build using synthetic tokens and intercepted runtime destinations: malformed destinations were rejected, expired/stalled links offered recovery, and only a validated `*.run.app` origin received the synthetic session. This proves the route and local browser contract exist in current source; it does not explain or repair the older hosted `/login` 404, configure a real login email, verify Supabase redirect allowlisting, or satisfy J08 on a deployed candidate.
+
+**Live public sign-in deployment identity, 2026-10-10:** A read-only HEAD request to `https://app.veloceos.cloud/login` returned Vercel HTTP 404. The Vercel project/deployment API identified the production alias as deployment `dpl_ECwKPW7sLjQhS364gM1pEJERX6Qa`, source `cli`, commit `c1f41ca9f47d64190030cc237c7e8763576b1802`. The shared `/login` source page first appears in later commit `b97d6e7`, and the current production environment listing contains no `CLIENT_LOGIN_ENABLED` name (39 names returned, zero hidden production names; values were not read). Thus source age explains the 404, while missing configuration would still disable sign-in after a code-only redeploy. Before J08 can pass, deploy a reviewed current candidate to an approved preview, configure the flag and remaining auth prerequisites there, allowlist its callback, and verify an actual signed-in recovery flow. The current production alias was not changed.
+
+**Local gate and inventory follow-up, 2026-10-10:** At source `14fc5d2`, the deterministic AI evaluation passed 11/11 cases under supported Node 24 (`localGatePassed: true`, `productionReady: false`), with no model or Zep requests. A later read-only Vercel CLI inventory attempt timed out. The preflight now fails closed with `inventoryStatus: unavailable` and unknown variable presence rather than reporting every setting absent. This does not supersede the earlier successful 39-name listing, prove the current environment state, or advance J08. No Vercel configuration or alias was changed.
+
+**Buyer-pilot and AI receipt follow-up, 2026-10-10:** The later price-aware MiroFish run `sim_49b3a7426c50` completed ten rounds with two active buyers and eight actions. Quote-post review now reads generated `quote_content` rather than the copied source post. All 11 technical checks pass, but only one of two generated buyer replies passes content review: the healthcare persona invented a precise `$2k+` budget from an `over $1000` band. Therefore `pilotEvidencePassed: false`; release capture fails closed, and neither run validates demand. The deterministic AI evaluation was refreshed on clean commit `56a214a` under Node 24: 11/11 cases passed with `productionReady: false` and zero model samples. The hosted J01-J15 matrix remains 0/15 accepted; no public deployment or paid provider capacity followed.
+
+**Reviewed bounded repeat, 2026-10-10:** After the user checked and reported both provider accounts on Free plans, `sim_4d52cec6d408` completed ten rounds with two active buyers, eight actions, and two generated quote-posts. The exact-profile and quote-content audit passed all 12 checks, and the current-source release capturer accepted eight hashed artifacts against `d13a535`. Both reviewed posts stayed within their source budget facts. The receipt says `pilotEvidencePassed: true` and `marketValidation: false`; it is two synthetic reactions, not ten buyer interviews. Independent post-run provider billing reconciliation is still absent. The posts reinforce J09/J13 tenant-isolation and access-control proof and J10 total-cost clarity, but do not close those hosted rows. J01-J15 remain 0/15 accepted on the current deployed candidate.
+
+**Local Notebook-source retention increment, 2026-10-10:** The unapplied `supabase-client-notebook-source-retention.sql` migration adds a service-role-only, tenant-scoped dry-run and bounded delete for sources older than 45 days whose explicit expiry has passed. Source deletion cascades extracted chunks and writes aggregate audit counts in the same transaction. A source with a younger chunk is deferred rather than deleting that chunk early; legacy rows missing expiry or carrying a future expiry are also counted but preserved for review. The migration also prevents authenticated members from backdating or extending source retention through direct table writes while leaving service-role restores untouched. Artifact objects and their metadata are outside this function. The operator command requires `--confirm-retention-sources` for apply, and local PostgreSQL tests cover batching, isolation, role grants, younger chunks, immutable retention fields, cascading chunks and audit rollback. No hosted migration, scheduled job, object-byte deletion, or end-to-end J12/J14 evidence is claimed.
+
+**Read-only Cloud Run candidate recheck, 2026-10-10:** Using the configured Google account with read access, `agentos-internal-beta` still serves revision `agentos-internal-beta-00034-v69` at 100% traffic with image `sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`. The current-source `verify-client-runtime-config.mjs` preflight, bound to that service, revision, digest, and `internal-beta` tenant, fails on exactly `retention_days_not_45`, missing `/api/client-runtime/source-import`, and missing `/api/client-runtime/build-identity`. A name-only runtime inventory also found no `VELOCE_BUILD_SOURCE_COMMIT` and no Secret Manager binding for `CLIENT_WORKER_TOKEN`; the candidate's existing provider-call flag is `0`. The other configured Google account is denied `run.services.get`. No source import, tenant write, deployment, traffic change, or provider request occurred. This confirms the old hosted/local configuration mismatch, but does not establish Supabase migration state or a signed-in customer journey. J08/J09/J12/J13/J14 remain open.
+
+**Deterministic AI evaluation rerun, 2026-10-10:** On clean source commit `12e22554935e1232071ef42b672c8dca96e53246`, the local deterministic release evaluation passed 11/11 cases under supported Node `v24.19.0` (`localGatePassed: true`, `productionReady: false`). It made zero LLM or Zep requests and recorded zero model samples/provider cost. Coverage includes provider routing, revocation, budget reservation/settlement, exact-byte source import, tenant-scoped source graph, trace redaction, observability completeness, telemetry content filtering, and evaluation credential isolation. The shell-default Node run is unsupported and fails its local gate; do not use it as candidate evidence. This evaluation does not establish hosted behavior, model quality, stochastic reliability, billing reconciliation, or a complete customer journey. The generated report remains local under ignored `tmp/`; no release-ledger record was published because the ledger bucket is unconfigured. J01-J15 remain 0/15 accepted on the current deployed candidate.
+
+**PostgreSQL source-import and release-contract verification, 2026-10-10:** On source commit `eb501cf`, `npm run verify:source-import-postgres` passed using disposable PostgreSQL 17 with container networking disabled, a temporary database filesystem, and read-only source/fixture mounts; its two source-guard schema-evidence tests also passed. `npm run verify:security` passed, including 22 client lifecycle/retention cases, 9 runtime/storage configuration preflight fixtures, and the remaining security and integration-governance verifiers. `npm run verify:public-launch` and `npm run typecheck` passed. These checks establish local SQL/contract behavior only: no hosted migration was applied or queried, no Skool content was imported, no customer journey was exercised, and no provider calls were made. The classroom source-pack workflow still requires a platform-permitted owner export; the member code package is not that export. The release verifier remains not ready and J01-J15 remain 0/15 accepted.
+
+**Focused candidate-suite and release-gate recheck, 2026-10-10:** On source commit `fcfe3fb0f5e15b715a1995b586e4198eb2795f92`, `npm run test:focused` passed 323 tests with 1 skipped. `npm run verify:production-readiness` correctly returned `releaseReady: false`: no release-ledger bucket is configured, no evidence bundle was attached, and the hosted deployment identity, 15 customer-journey receipts, migration receipts, approvals, and rollback target remain unverified. This focused suite contains contract/unit and embedded-database checks; it is not a substitute for hosted end-to-end acceptance. No deployment, hosted data change, Stripe transaction, or provider request occurred.
+
+**Release-ledger storage inventory, 2026-10-10:** A read-only bucket list for GCP project `agentos-mvp` returned only `agentos-mvp-veloce-internal-beta` and `agentos-mvp_cloudbuild`; no dedicated release-evidence bucket exists. The internal-beta bucket contains tenant/runtime data and the Cloud Build bucket is build infrastructure, so neither was selected for ledger receipts. No bucket was created or modified. The strict release gate remains blocked until an owner-approved ledger destination is configured and its retention/access policy is verified.
+
+**Local client-runtime image candidate, 2026-10-10:** The first local Docker build was stopped after it began transferring 3.45 GB of ignored Next.js cache snapshots. `.dockerignore` now excludes all `.next*` build snapshots, nested private env/config directories, and the duplicate `product-experience 2/` folder; the fix is in commit `7d1aa459ce58291fd39aaa2b79c9f8a4096c8844`. The corrected build context was 113.78 MB. The local-only image built successfully from that clean commit with digest `sha256:8b094fd71cdc1483b08c2a20b573134e71512f05413661a57660c41a29382432`, and its OCI revision label matches the full source SHA. Next build, TypeScript, route pruning, and build-trace checks passed; Next emitted two Edge-runtime API warnings. A temporary loopback container returned 200 for `/status` and `/login`, 405 for GET `/api/client-runtime/source-import` (POST-only route present), and 401 for unauthenticated `/api/client-runtime/build-identity`. Cloud Run currently uses a TCP startup probe on 8080, so `/healthz`'s auth-gate redirect is not that service's probe. The live revision remains `agentos-internal-beta-00034-v69`; IAM returned 403 to route probes, so cloud route behavior is not verified. The image was neither pushed to a registry nor deployed, and it has no provider credentials.
+
+**Authenticated local parity re-entry, 2026-10-10:** The private local Supabase
+environment file is mode `0600`, contains the required URL and anon key, and
+targets the known internal-beta project. The client launcher passes its
+config-only check with the `internal-beta` slug and owner email allowlist,
+without printing secret values. A local client server is now ready at
+`http://127.0.0.1:3941` in a dedicated Next build directory, with provider
+calls disabled; the existing port-3939 process was left untouched. The visible
+Chrome Work profile's `veloce-cloud-test` Memory request redirected to its
+runtime login form, so there is no authenticated Cloud Test journey to compare
+yet and its tenant/project identity is not established by this observation.
+No credentials were entered, no customer data was read, and no tenant write or
+provider request occurred. Owner sign-in to the local and Cloud Test pages is
+still required before read-only same-user parity checks; this setup does not
+accept any J01-J15 row.
+
+**Authenticated read-only parity correction, 2026-10-10:** The later signed-in
+Chrome Work session supersedes the sign-in-required observation above. Local
+`http://127.0.0.1:3941/memory` rendered 2 tenant memories and a 114-node,
+113-edge graph, including Community sources and two bonus-link index records
+(27 and 84 links); this is not a full Skool classroom export. Local
+`/notebook` authenticated but had 0 notebook records and 0 active sources.
+`https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/memory` rendered 24 tenant
+memories and a 33-node, 57-edge graph, while its authenticated `/notebook`
+rendered 0 notebook records and 0 active sources. The distinct
+`https://veloce-cloud-test-1075094991117.asia-south1.run.app/notebook` origin
+rendered 9 notebook records and 9 active sources; its Studio exposed Outline,
+Summary, Briefing, and Study questions, with no source selected and document
+generation disabled. These origins therefore do not currently provide a
+consistent same-data Notebook journey; matching login status or memory counts
+does not establish shared tenant identity, deployment, or database. No source
+was selected, document generated, tenant record changed, provider request
+made, or deployment performed. This read-only comparison accepts no J01-J15
+row and does not replace two-tenant isolation or release-identity evidence.
+Read-only GETs to `/api/client-runtime/build-identity` on both Cloud Test
+origins returned `client_route_not_enabled`, so neither app exposed a source
+SHA or Cloud Run revision. The read-only Cloud Run inventory for the selected
+GCP project `agentos-mvp` listed only `agentos` and `agentos-internal-beta`;
+neither Cloud Test origin was mapped to a service in that project. This does
+not establish that they are absent from another GCP project. Their serving
+project, runtime configuration, and tenant mapping remain unknown.
+
+**Build-identity endpoint follow-up, 2026-10-10:** An authenticated read-only
+GET to local `http://127.0.0.1:3941/api/client-runtime/build-identity` returned
+`ok: true` but null source commit and revision. The local launcher had not
+stamped a source identity. Source now derives `VELOCE_BUILD_SOURCE_COMMIT`
+from Git only for a clean checkout and clears the stamp when the checkout is
+dirty or Git metadata is unavailable; this avoids attributing changed code to
+an old commit. The focused local-launcher and build-identity tests pass 7/7.
+The already-running port-3941 process was not restarted, so it still reports
+the pre-fix null identity. No authenticated client configuration was loaded
+into a new server, and no tenant write, provider call, or deployment occurred.
+
+**Local unauthenticated-route recheck, 2026-10-10:** With checkout at
+`758096c14750b53e4c3386da7dc1b3c5855c1752`, read-only requests to the live
+client runtime at `127.0.0.1:3941` returned HTTP 200 for `/login`, redirected
+`/memory` to `/login?next=%2Fmemory`, and returned HTTP 401 for
+`/api/client-runtime/build-identity`. The client launcher config-only check
+passes with the private internal-beta env file and provider calls disabled,
+but no verifier cookie exists. This proves the unauthenticated login boundary
+only; it does not establish a signed-in session, source/revision identity from
+the running process, same-user local/cloud data parity, or a completed customer
+journey. No tenant data was read or written, and no provider call occurred.
+
+**Live Internal Beta release-config recheck, 2026-10-10:** A read-only Cloud
+Run inventory in `agentos-mvp` / `europe-west1`, evaluated with the current
+`verify-client-runtime-config.mjs` policy, confirms
+`agentos-internal-beta-00034-v69` still receives 100% traffic with image
+`sha256:70d24863d095aa9753cf02629a30458f7fdd8ef81bfc5ed2ce35e2c0ed16da57`.
+The verifier fails exactly on `retention_days_not_45` (live value `1`),
+`required_api_route_missing:/api/client-runtime/source-import`, and
+`required_api_route_missing:/api/client-runtime/build-identity`. The live
+provider-call flag remains `0`. The sanitized snapshot omitted environment
+values except the named non-secret policy fields; secret values were not
+queried or emitted. No deployment, migration, tenant write, traffic change, or
+provider request occurred. Internal Beta is not a valid candidate for the
+current local source or the approved 45-day customer-data policy; the
+production gate remains open.
+
+**Signed-in Memory-route parity spot check, 2026-10-10:** In Chrome's Work
+profile, local `http://127.0.0.1:3941/memory` settled to 2 tenant memories,
+114 graph nodes, and 113 edges. It displayed the `Community sources` JSON
+review/import control and the `OTHER BONUSES` and `LAUNCH KITS:` records.
+Internal Beta `agentos-internal-beta-vbimnfseva-ew.a.run.app/memory` showed
+the same counts and record titles, but only the standard Markdown import; the
+Community-sources control was absent. This is a narrow data-count/content and
+UI parity observation, not proof that both origins used the same authenticated
+identity, tenant, source commit, or image. The local build-identity route was
+previously observed to return null commit/revision, and the deployed beta
+revision is an older image. Local `3941/notebook` showed 0 notebook records and
+0 active sources; the Cloud Notebook comparison was interrupted when the user
+took control of Chrome. No route write, provider call, migration, or deployment
+occurred. The full J01-J15 customer journey and same-release parity remain
+unaccepted.
+
+**Public unauthenticated request-body bounds, 2026-10-10:** The deployment
+request, support, repeat-login, and billing-checkout routes now use a shared
+JSON reader that caps bytes while consuming the request stream, in addition to
+rejecting an oversized declared `Content-Length`. Chunked bodies above 100 KB
+return 413 before database, email, login, or Stripe side effects; malformed
+JSON returns a bounded 400 response. Focused route tests cover streamed
+oversize requests on all four endpoints and assert no downstream actions;
+helper tests cover malformed, valid, and over-limit streams. The focused
+public-intake/login suites, TypeScript, ESLint, and public-launch contract pass
+locally. This closes a local request-abuse gap only: it does not establish
+deployed rate-limit behavior or accept any public customer-journey row.
+J01-J15 remain unaccepted on the hosted candidate.
+
+**Exact-head deterministic AI and observability evaluation, 2026-10-10:** On
+clean commit `61b6f3b2fb3faedd0f0d2c967256cbe3810789d8`, the offline AI release
+suite passed 14/14 cases under supported Node `v24.18.0` (`localGatePassed:
+true`, `productionReady: false`). Coverage includes provider routing,
+credential revocation, tenant budgets, artifact integrity, source-graph
+isolation, trace redaction, observability ledger completeness, telemetry
+filtering, and notebook provenance/retention/citations. The runner removed
+inherited provider, database, and billing credentials from the child process;
+model samples and provider requests were zero. This is deterministic local
+contract evidence, not model-quality or stochastic evaluation, cloud
+observability, billing reconciliation, or a completed customer journey. The
+local JSON report is generated under ignored `tmp/`; the strict readiness
+gate still reports `releaseReady: false` because no ledger bucket or approved
+release evidence bundle is configured.
+
+**Focused cross-workstream suite, 2026-10-10:** On source commit
+`53197c84754d84c908aaf53538c0f2ef50c3c747`, `npm run test:focused` passed
+344/344 executed tests with one configured skip under Node `v24.18.0`. The
+suite includes release-contract, migration-fixture, tenant-isolation,
+observability, source-pack, MiroFish-pilot, and lifecycle regressions. This is
+local automated evidence only; it does not convert any hosted gate to
+accepted, and the skipped case remains outside the passing count.
+
+**Public request-abuse fallback and exact-head refresh, 2026-10-10:** The
+in-memory public rate-limit fallback now expires inactive keys every 15-minute
+window and caps storage at 10,000 distinct keys, failing closed for new keys
+at capacity. A regression filled the cap, verified the next unique key was
+denied without allocation, advanced the clock past expiry, and verified
+capacity recovered. On clean commit `1d2af80ec6f69131e9614880b886903b7f42c2eb`,
+the focused suite passed 345 tests with one configured skip and the offline
+AI/observability evaluation passed 14/14 under Node `v24.18.0`; no model or
+provider requests were made. The production-readiness verifier remains
+`releaseReady: false`: the release-ledger bucket is unconfigured, so required
+receipts and approvals remain unevaluated. These local checks do not prove
+hosted rate limiting or customer-journey acceptance.
+
+**Current-head MiroFish receipt refresh, 2026-10-10:** The retained synthetic
+run `sim_b0958acead3f` was re-audited and its eight artifact hashes were
+captured against clean AgentOS commit
+`701de92ac9016ed03a84ff9c3bf77642a67ffc1d`. All 12 technical and content
+checks pass for ten profiles, ten configured rounds, and two active synthetic
+buyers; `pilotEvidencePassed: true`, `marketValidation: false`. No `.env` was
+loaded and no provider request was made. AgentOS's MiroFish artifact suite
+passed 22 tests, and the pinned MiroFish buyer-smoke suite passed 8 tests.
+This is a reproducible synthetic pilot receipt, not 10,000 active personas,
+real-buyer validation, or independent billing reconciliation; the approved
+paid-spend ceiling remains $0.
+
+**Cloud Test deployment and route recheck, 2026-10-10:** Using the configured
+`aryamandev777@gmail.com` gcloud account, a read-only inventory mapped
+`veloce-cloud-test-mquo4bf7aq-el.a.run.app` to service `veloce-cloud-test` in
+`veloce-agenticos-2026/asia-south1`. Revision `veloce-cloud-test-acceptance-9417c3c`
+receives 100% traffic with image digest
+`sha256:91d3185c4dbe4285a1aa6c347c884baca4f7dc30e3a8ef2994eb3e89d9950d38`.
+The digest matches the historic release artifact built from source commit
+`9417c3c`; current Git history shows the source-import route was added later
+in `f2f3b8e` and the build-identity route in `dd6b6cd`. This explains why
+those APIs are absent from the deployed image, rather than indicating a local
+route-registration failure. Cloud Test still needs an explicitly approved
+build/configuration/release before it can verify current-source parity.
+The runtime has `CLIENT_PROVIDER_CALLS_ENABLED=1` and
+`CLIENT_RETENTION_DAYS=14`; its API allowlist omits
+`/api/client-runtime/build-identity` and `/api/client-runtime/source-import`.
+Its `CLIENT_STORAGE_BUCKET` is
+`veloce-agenticos-2026-veloce-cloud-test`. A metadata-only bucket describe
+returned null for `retentionPolicy`, `lifecycle`, `softDeletePolicy`, and
+`iamConfiguration`; no object listing or reads were performed, so object-byte
+expiry and access mode remain unverified.
+Unauthenticated GETs returned `/status` 200, `/login` 200, `/memory` 307, and
+403 for both omitted API routes. Current local port 3941 returned 200, 200,
+307, 401, and 405 respectively (source-import is POST-only and present
+locally). This is a concrete deployment/configuration mismatch; do not invoke
+provider-capable actions or apply a hosted change as part of this audit. The
+provider flag is enabled on this service, so no execution UI/API was used.
+Internal Beta is a separate service in `agentos-mvp/europe-west1`, revision
+`agentos-internal-beta-00034-v69`, with provider calls disabled and one-day
+retention. At this inventory checkpoint no signed-in same-user session or
+tenant data was inspected, and no configuration or deployment changed.
+
+**Authenticated Chrome Work profile parity recheck, 2026-10-10:** A later
+read-only UI inspection in the user's Chrome Work profile found local
+`127.0.0.1:3941/memory` with 2 tenant memories, 114 graph nodes, 113 edges,
+and the Community sources/review control; the two bonus-index records expose
+27 and 84 source links. Cloud Test `/memory` showed 24 memories, 33 nodes, 57
+edges, and no Community sources panel. Internal Beta `/notebook` showed an
+authenticated tenant with 0 notebook records and 0 active sources. This
+confirms visible state and data-count differences among the three runtimes;
+sharing a Chrome profile does not prove identical Supabase user or tenant
+identity across origins. No import, record write, provider call, or hosted
+change occurred.
+
+**Current-source local client browser refresh, 2026-10-14:** On pushed source
+commit `9c8e635`, seven client browser specs passed **31/31** against an
+isolated production-mode local runtime on port 3992 with provider calls
+disabled, synthetic browser authentication, and mocked API responses. Coverage
+includes membership denial and recovery, safe `next` redirects, manifest-bound
+navigation at desktop/mobile sizes, pending-versus-empty memory and failed
+refresh handling, source-import consent/cleanup/part permissions, source
+register rendering, budget fail-closed behavior, redacted observability, and
+Notebook Studio output. These tests establish local UI/contract behavior only;
+they do not authenticate to Supabase or exercise a hosted deployment. The
+J01-J15 current-candidate evidence rows remain open, and the Cloud Test
+build-identity route still returns 403.
+
+**Security and source-import database refresh, 2026-10-14:** On commit
+`4c90f96`, `npm run verify:security` passed, including local secret-file
+permission checks, security-release/provider-policy checks, lifecycle and
+retention tests, notebook execution/source-reference guards, 16 runtime and
+storage configuration fixtures, and the remaining integration-governance
+verifiers. `npm run verify:source-import-postgres` then passed against
+disposable PostgreSQL 17 with networking disabled, read-only migration/fixture
+mounts, and a temporary database filesystem; both source-guard schema-evidence
+tests passed. A first disposable-container attempt disconnected during
+startup, but the fixture passed in a preserved disposable container and the
+full verifier passed on retry. These results validate local security and SQL
+contracts only; no Supabase migration, tenant import, hosted write, deployment,
+or provider request occurred. The Skool graph remains partial and the hosted
+J01-J15 journey is not accepted.

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readGoals, writeGoals, type Goal } from "@/lib/vaultWriter";
+import { readGoals, writeGoals, VAULT_AVAILABLE, type Goal } from "@/lib/vaultWriter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,11 +7,13 @@ export const dynamic = "force-dynamic";
 function newId(): string { return Math.random().toString(36).slice(2, 10); }
 
 export async function GET() {
+  if (!VAULT_AVAILABLE) return NextResponse.json({ goals: [], configured: false });
   const goals = await readGoals();
-  return NextResponse.json({ goals });
+  return NextResponse.json({ goals, configured: true });
 }
 
 export async function POST(req: Request) {
+  if (!VAULT_AVAILABLE) return NextResponse.json({ error: "Connect an Obsidian vault to save goals." }, { status: 503 });
   const body = await req.json();
   const text = String(body.text ?? "").slice(0, 500).trim();
   const category = body.category ? String(body.category).slice(0, 30).trim() : undefined;
@@ -29,6 +31,7 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  if (!VAULT_AVAILABLE) return NextResponse.json({ error: "Connect an Obsidian vault to edit goals." }, { status: 503 });
   const body = await req.json();
   const id = String(body.id ?? "");
   const goals = await readGoals();
@@ -42,6 +45,7 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  if (!VAULT_AVAILABLE) return NextResponse.json({ error: "Connect an Obsidian vault to delete goals." }, { status: 503 });
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });

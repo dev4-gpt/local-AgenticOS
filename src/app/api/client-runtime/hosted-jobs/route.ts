@@ -4,8 +4,9 @@ import { currentClientMember } from "@/lib/clientAuth";
 import { cancelClientRuntimeJob, checkClientRuntimeRateLimit, enqueueClientRuntimeJob, refundClientRuntimeRateLimit } from "@/lib/clientDataPlane";
 import { enqueueClientRuntimeTask } from "@/lib/cloudTasks";
 import { clientCapabilityEnabled, clientProviderCallsEnabled } from "@/lib/clientRuntimePolicy";
-import { clientCapabilityProviderEnabled, clientProviderEnabled } from "@/lib/clientRuntimePolicy";
+import { clientCapabilityProviderEnabled } from "@/lib/clientRuntimePolicy";
 import { containsClientSecretLike } from "@/lib/clientInputSafety";
+import { readBoundedJsonObject } from "@/lib/clientNetworkSafety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ const PROVIDER_KEYS: Record<string, string> = {
   openai: "OPENAI_API_KEY",
   firecrawl: "FIRECRAWL_API_KEY",
 };
+const MAX_HOSTED_JOB_REQUEST_BYTES = 32 * 1024;
 
 export async function GET() {
   if (!(await currentClientMember())) return NextResponse.json({ ok: false, error: "not_authenticated" }, { status: 401 });
@@ -37,7 +39,9 @@ export async function POST(request: Request) {
   if (!rateLimit.ok) return NextResponse.json({ ok: false, error: "runtime_limit_unavailable" }, { status: 503 });
   if (!rateLimit.allowed) return NextResponse.json({ ok: false, error: "runtime_rate_limited" }, { status: 429, headers: { "Retry-After": "900" } });
 
-  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const parsed = await readBoundedJsonObject(request, MAX_HOSTED_JOB_REQUEST_BYTES);
+  if (!parsed.ok) return NextResponse.json({ ok: false, error: parsed.reason === "too_large" ? "job_request_too_large" : "job_input_invalid" }, { status: parsed.reason === "too_large" ? 413 : 400 });
+  const body = parsed.value;
   const requested = typeof body.capability === "string" ? body.capability.trim().toLowerCase() : "";
   const spec = SPECS[requested];
   if (!spec || !clientCapabilityEnabled(spec.capability)) return NextResponse.json({ ok: false, error: "capability_not_enabled" }, { status: 403 });

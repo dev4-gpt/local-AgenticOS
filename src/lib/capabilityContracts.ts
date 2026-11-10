@@ -111,7 +111,8 @@ export interface CapabilityEnvelope {
   updatedAt: string;
 }
 
-const TENANT_SLUG = /^[a-z0-9][a-z0-9-]{1,62}$/;
+// Must match client_tenants.slug in the database (tests/adapter-contracts.spec.ts keeps every copy in step).
+const TENANT_SLUG = /^[a-z][a-z0-9-]{2,40}$/;
 const REQUEST_ID = /^[a-zA-Z0-9][a-zA-Z0-9_-]{1,127}$/;
 const IDEMPOTENCY_KEY = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,179}$/;
 

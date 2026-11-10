@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 import { loadReviewModule } from "./helpers/load-review-module";
 
 const savedEnv = { ...process.env };
-test.afterEach(() => { process.env = { ...savedEnv }; });
+const savedDateNow = Date.now;
+test.afterEach(() => { process.env = { ...savedEnv }; Date.now = savedDateNow; });
 
 function record(index: number) {
   return {
@@ -10,7 +11,7 @@ function record(index: number) {
     title: `Memory ${index}`,
     content: `Approved content ${index}`,
     status: "active",
-    created_at: "2026-09-01T00:00:00Z",
+    created_at: new Date(savedDateNow() - 86_400_000).toISOString(),
   };
 }
 
@@ -19,33 +20,49 @@ function exportRoute(data: {
   records?: ReturnType<typeof record>[];
   failPage?: number;
   authenticated?: boolean;
+  retentionDays?: number;
+  retentionAvailable?: boolean;
+  expireDuringRead?: boolean;
+  expectedRecordCount?: number;
 }) {
   let reads = 0;
   let audits = 0;
   let countReads = 0;
   const records = data.records ?? [];
+  const expectedRecordCount = data.expectedRecordCount ?? records.filter((item) =>
+    Date.parse(item.created_at) > savedDateNow() - (data.retentionDays ?? 28) * 86_400_000).length;
   const route = loadReviewModule("src/app/api/client-runtime/memory-import/route.ts", {
     "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
     "@/lib/clientAuth": { currentClientUser: async () => data.authenticated === false ? null : { id: "member" }, currentClientMember: async () => true },
     "@/lib/clientDataPlane": {
       checkClientRuntimeRateLimit: async () => ({ ok: true, allowed: true }),
+      clientRpc: async (name: string, body: Record<string, unknown>) => {
+        expect(name).toBe("client_tenant_retention_days");
+        expect(body).toEqual({ p_tenant_slug: "tenant-a" });
+        return { ok: data.retentionAvailable !== false, status: 200, value: data.retentionDays ?? 28 };
+      },
       countClientRecords: async (table: string, filters: Record<string, string>) => {
         expect(table).toBe("client_runtime_records");
         expect(filters).toMatchObject({ tenant_slug: "eq.tenant-a", kind: "eq.memory" });
-        expect(filters.created_at).toMatch(/^lte\./);
+        expect(filters.and).toMatch(/^\(created_at\.gt\..+,created_at\.lte\..+\)$/);
         return { ok: true, count: data.counts[Math.min(countReads++, data.counts.length - 1)] };
       },
       selectClientRecords: async (table: string, filters: Record<string, string>) => {
         reads++;
         expect(table).toBe("client_runtime_records");
         expect(filters).toMatchObject({ tenant_slug: "eq.tenant-a", kind: "eq.memory", order: "id.asc", limit: "100" });
-        expect(filters.created_at).toMatch(/^lte\./);
+        expect(filters.and).toMatch(/^\(created_at\.gt\..+,created_at\.lte\..+\)$/);
+        const cutoff = filters.and.match(/created_at\.gt\.([^,]+)/)?.[1];
+        const snapshot = filters.and.match(/created_at\.lte\.([^,)]+)/)?.[1];
+        if (!cutoff || !snapshot) throw new Error("retention_window_filter_missing");
         if (reads === data.failPage) return { ok: false, records: [] };
-        return { ok: true, records: records.filter((item) => !filters.id || item.id > filters.id.slice(3)).slice(0, 100) };
+        if (data.expireDuringRead) Date.now = () => savedDateNow() + 2_000;
+        return { ok: true, records: records.filter((item) => Date.parse(item.created_at) > Date.parse(cutoff)
+          && Date.parse(item.created_at) <= Date.parse(snapshot) && (!filters.id || item.id > filters.id.slice(3))).slice(0, 100) };
       },
       recordClientAudit: async (event: string, metadata: Record<string, unknown>) => {
         expect(event).toBe("tenant.memory.exported");
-        expect(metadata.recordCount).toBe(records.length);
+        expect(metadata.recordCount).toBe(expectedRecordCount);
         audits++;
       },
       insertClientRecord: async () => ({ ok: true }),
@@ -98,4 +115,33 @@ test("Markdown export rejects oversized or unauthenticated requests before readi
   const unauthorized = exportRoute({ counts: [1], authenticated: false });
   expect((await unauthorized.get()).status).toBe(401);
   expect(unauthorized.stats().countReads).toBe(0);
+});
+
+test("Markdown export applies the tenant active-retention window and fails closed if it cannot load policy", async () => {
+  process.env.CLIENT_SLUG = "tenant-a";
+  const fresh = record(10);
+  const expired = { ...record(11), created_at: new Date(savedDateNow() - 29 * 86_400_000).toISOString() };
+  const fixture = exportRoute({ counts: [1, 1], records: [fresh, expired] });
+  const response = await fixture.get();
+  expect(response.status).toBe(200);
+  const markdown = await response.text();
+  expect(markdown).toContain("Approved content 10");
+  expect(markdown).not.toContain("Approved content 11");
+
+  const unavailable = exportRoute({ counts: [1], records: [fresh], retentionAvailable: false });
+  expect((await unavailable.get()).status).toBe(503);
+  expect(unavailable.stats()).toEqual({ reads: 0, audits: 0, countReads: 0 });
+  const invalid = exportRoute({ counts: [1], records: [fresh], retentionDays: 29 });
+  expect((await invalid.get()).status).toBe(503);
+  expect(invalid.stats()).toEqual({ reads: 0, audits: 0, countReads: 0 });
+});
+
+test("Markdown export rejects records that cross active expiry while being assembled", async () => {
+  process.env.CLIENT_SLUG = "tenant-a";
+  const nearExpiry = { ...record(12), created_at: new Date(savedDateNow() - 28 * 86_400_000 + 1_000).toISOString() };
+  const fixture = exportRoute({ counts: [1, 1], records: [nearExpiry], expireDuringRead: true });
+  const response = await fixture.get();
+  expect(response.status).toBe(409);
+  expect(await response.json()).toMatchObject({ error: "memory_export_changed_retry" });
+  expect(fixture.stats().audits).toBe(0);
 });
