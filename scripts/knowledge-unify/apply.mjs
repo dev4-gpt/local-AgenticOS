@@ -25,7 +25,7 @@ import { assertSchema } from "./dedupe-report.mjs";
 import { isInside, resolveReal, sha256Hex } from "./scan.mjs";
 
 /** Absolute path of a regular file inside the store, or null. Symlinks and escapes are refused. */
-function safeAbs(root, rel) {
+export function safeAbs(root, rel) {
   if (typeof rel !== "string" || rel === "" || path.isAbsolute(rel) || rel.split("/").includes("..")) return null;
   try {
     const realRoot = realpathSync(root);

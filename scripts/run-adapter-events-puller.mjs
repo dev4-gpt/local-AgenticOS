@@ -39,6 +39,10 @@ const supabaseUrl = need("SUPABASE_URL").replace(/\/$/, "");
 const serviceKey = need("SUPABASE_SERVICE_ROLE_KEY");
 const signingPem = need("ADAPTER_TOKEN_SIGNING_KEY_PEM");
 const loopbackAllowed = process.env.ADAPTER_ALLOW_LOOPBACK === "true";
+// Optional, per adapter (one adapter per process): the longest proposal accepted, up to the contract's 30,000.
+const maxProposalRaw = (process.env.ADAPTER_MAX_PROPOSAL_CHARS ?? "").trim();
+const maxProposalChars = maxProposalRaw === "" ? undefined : Number(maxProposalRaw);
+if (maxProposalChars !== undefined && !(Number.isInteger(maxProposalChars) && maxProposalChars >= 1 && maxProposalChars <= 30000)) refuse("ADAPTER_MAX_PROPOSAL_CHARS must be a whole number from 1 to 30000");
 
 let endpoints;
 try {
@@ -99,7 +103,7 @@ const { pullAdapterEvents } = loadLib("adapterEventsPuller");
 const mintToken = () => tokens.mintAdapterToken({ privateKey, tenant: tenantSlug, adapterId, scope: ["events"], ttlSeconds: 60 }).token;
 let report;
 try {
-  report = await pullAdapterEvents({ tenantSlug, adapterId, baseUrl, allowInsecureLoopback: loopbackAllowed }, { rpc, mintToken });
+  report = await pullAdapterEvents({ tenantSlug, adapterId, baseUrl, allowInsecureLoopback: loopbackAllowed, maxProposalChars }, { rpc, mintToken });
 } catch (error) {
   // The message names a setting at most (for example "the adapter url must be https"); it never holds a value.
   console.error(`REFUSED: ${error instanceof Error ? error.message : "the puller could not start"}`);
