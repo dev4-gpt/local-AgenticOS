@@ -170,10 +170,15 @@ client's budget covers it and the Spend check (ADR-016) can compare it:
 - The web server already held the host's signing key for the model-call route, so reading task results from a page needs no new key decision (ADR-017 left that open for drafts).
 - 8 new tests (6 status, 2 choices) and the route's GET wiring; hand sweep of 46 mutations, 45 caught and 1 explained (the read route's own task-id check duplicates the reader's). The panel itself has no automated test; it was checked with typecheck and lint only, and needs a look in a browser on a deployed host.
 
+## founder.board in host mode (built 2026-11-16)
+
+ContractorOS `03b6066` (local): in host mode a new `founder.board` task needs the host's grant, like `content.draft`, and its three
+lens calls go only to the configured host address with that grant. A replay of a known board task needs none; `founder.cfo` and
+`founder.plan` call no model and ignore the grant. 5 new tests; all packages green (592); 12-mutation hand check clean.
+
 ## Still open
 
 - Deploying both sides on staging and one real model call end to end (content adapter and ProofMint).
-- `founder.board` has no model in host mode yet.
 - A browser check of the Start a round panel on a deployed host with the settings on.
 - The own-spend settle has no report of its own in the Spend check when an adapter sends no figure: it is settled in full and
   counted in the sync job's report (`ownSpendSettledFull`), not listed as a reconcile row.
