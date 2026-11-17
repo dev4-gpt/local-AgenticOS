@@ -6,6 +6,8 @@ Legend: **Owner** = Me (the assistant) / You / Both / Lawyer. **Sev** = CRITICAL
 
 Last updated: 2026-11-17 on `feat/models-through-host` after merging `feat/approval-gateway` (Phase 3, PR 24, `031f08d`) into it. Host-side ProofMint notes: 2026-11-04 after Veloce ProofMint (formerly Forge) on models through the host (ADR-020, P2-4; ProofMint `61ffae3`, host `0300844`) on `feat/models-through-host`. Base notes: 2026-11-10 after PR 24 (Knowledge adapter, ADR-020 to 025) was merged into `feat/approval-gateway` as `031f08d`. Phase 3 rows were last edited by the Phase 3 chat on 2026-10-28; this edit only brings the status table and one missing row in line with what was merged. Earlier rows were last updated 2026-10-26 on `feat/approval-gateway`.
 
+**Audit gate exception (2026-11-17, owner decision "Allowlist it").** `npm audit --audit-level=high` failed in all four workflows on picomatch ReDoS (GHSA-fc5q-39xc-vjpf), which has no patched release (affects up to 4.0.7, the latest). The four workflows now run `scripts/audit-gate.mjs`, which keeps the same high/critical bar but allows that one advisory until **2026-12-17**, then fails on its own. Any other high or critical advisory still blocks. To retire the exception: remove the entry in `ALLOWED_ADVISORIES` once picomatch ships a fix (run `npm view picomatch version`) or the dependency is gone, or renew the date as a new owner decision.
+
 ---
 
 ## Phase status
