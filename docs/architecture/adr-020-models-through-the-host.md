@@ -114,8 +114,10 @@ charged twice; a new branch. ProofMint (`dev4-gpt/veloce-proofmint`, adapter id 
   own rounds still use those keys and are unchanged.
 - 29 new tests; all 348 pass; typecheck clean. A hand sweep of 95 mutations: 92 caught, 3 equivalent, files restored.
 
-Gaps in this slice: its deletion guarantee is `none`, which keeps it out of a client edition until it can give receipts; a
-running round cannot be cancelled part way (`task.cancel` answers `cancelled: false`); running it needs a host registry row for
+Gaps in this slice: its deletion guarantee is `none`, which keeps it out of a client edition (see "ProofMint deletion" below);
+a running round could not be cancelled part way (fixed 2026-11-16, ProofMint `1d13002`, local: `task.cancel` records the request,
+the round stops at its checkpoints and ends `cancelled`, settled at the usage so far and never as zero when unknown; the
+checkpoints inside the round have no unit test and need a real round to prove); running it needs a host registry row for
 `veloce-proofmint`, an allowlist entry in `ADAPTER_MODEL_ALLOWLIST_JSON` and both sides deployed.
 
 ## An adapter's own spend (built 2026-11-05; owner: "Yes, plan it", then "Yes, build it")
@@ -175,6 +177,30 @@ client's budget covers it and the Spend check (ADR-016) can compare it:
 ContractorOS `03b6066` (local): in host mode a new `founder.board` task needs the host's grant, like `content.draft`, and its three
 lens calls go only to the configured host address with that grant. A replay of a known board task needs none; `founder.cfo` and
 `founder.plan` call no model and ignore the grant. 5 new tests; all packages green (592); 12-mutation hand check clean.
+
+## ProofMint deletion (option A chosen by the owner on 2026-11-16: "Yes, option A")
+
+Decided: ProofMint keeps `deletionGuarantee: "none"` and may be admitted to a client edition because it holds no tenant-supplied
+data. Not yet done, and not code: the owner's policy line in ADR-011/ADR-014 that says a `none` adapter stays out of a client
+edition needs a matching exception for adapters that hold no tenant data; ProofMint's manifest comment (`src/lib/h1/manifest.ts`,
+"keeps it out of a client edition") should then be reworded, and `host-owned` is not the right label (it means Veloce holds the
+data). Check `deletionScope` is accepted for a `none` manifest before adding the sentence. The analysis behind the choice:
+
+Receipts (ADR-014) answer one question: when the host erases a note an adapter proposed, did the adapter erase its copy?
+ProofMint proposes no memory (its manifest has no `memory.propose`), so the host never holds a note that came from it and
+there is nothing for `memory.tombstone` to erase. What the host gives ProofMint is a family name from a fixed list and a
+per-task model grant (reused for each model call of that task, at most 15 minutes) that is kept in memory only; model answers come back through the host. What ProofMint keeps is its own:
+task rows and final events, stored round streams, tools and a hash-chained report, all built from public benchmark cases and
+the code a model wrote for them. No client text enters it. So `none` is accurate, not a gap in the code.
+
+Options for the owner:
+- **A (recommended).** Keep `none` and let the client edition admit an adapter whose manifest states, in `deletionScope`, that it
+  holds no tenant-supplied data. A search of `src` found no code that keeps a `none` adapter out of a client edition: the
+  guarantee is stored, shown on the Adapters page and checked against the manifest (`receipt` needs `memory.tombstone`), and the
+  exclusion is a policy from ADR-011 and ADR-014. So A is an owner policy statement plus the manifest text, not a code change.
+- **B.** Build a receipt anyway for task rows and stored round streams. The report chain is append-only and holds candidate code,
+  so erasing it breaks the chain; the receipt would have to say the chain is kept. More work for a promise nobody asked for.
+- **C.** Leave ProofMint out of client editions.
 
 ## Still open
 
