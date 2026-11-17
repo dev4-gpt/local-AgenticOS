@@ -130,6 +130,23 @@ export async function runClientTextAdapter(input: {
   return { ok: true as const, provider, model, output: response.output, usage: response.usage, finishReason: "finishReason" in response ? response.finishReason : null, instructionBudget: prepared.instructionBudget, ...(prepared.compression ? { compression: prepared.compression } : {}) };
 }
 
+/**
+ * One plain text call for the host's `model.call` (ADR-020): the client's own key, no tools, the usual timeout and size
+ * caps. Policy, budget and the adapter's grant are checked by the caller (adapterModelCall.ts) before this runs.
+ */
+export async function callClientTextProvider(provider: string, model: string, messages: Message[], maxOutputTokens: number) {
+  const spec = Object.hasOwn(PROVIDERS, provider) ? PROVIDERS[provider] : undefined;
+  if (!spec) return { ok: false as const, status: 403 };
+  const key = await clientExecutionCredential(spec.key);
+  if (!key) return { ok: false as const, status: 503 };
+  const response = spec.protocol === "anthropic"
+    ? await callAnthropic(spec, key, model, messages, maxOutputTokens)
+    : spec.protocol === "gemini"
+      ? await callGemini(spec, key, model, messages, maxOutputTokens)
+      : await callOpenAiCompatible(spec, key, model, messages, maxOutputTokens, clientProviderAttributionHeaders(provider));
+  return response.ok ? { ok: true as const, output: response.output, ...(response.usage ? { usage: response.usage } : {}) } : { ok: false as const, status: response.status };
+}
+
 function providerFailureCode(status: number) {
   if (status === 401 || status === 403) return "provider_auth_failed";
   if (status === 404) return "provider_model_unavailable";
