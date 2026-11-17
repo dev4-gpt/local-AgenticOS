@@ -181,10 +181,11 @@ lens calls go only to the configured host address with that grant. A replay of a
 ## ProofMint deletion (option A chosen by the owner on 2026-11-16: "Yes, option A")
 
 Decided: ProofMint keeps `deletionGuarantee: "none"` and may be admitted to a client edition because it holds no tenant-supplied
-data. Not yet done, and not code: the owner's policy line in ADR-011/ADR-014 that says a `none` adapter stays out of a client
-edition needs a matching exception for adapters that hold no tenant data; ProofMint's manifest comment (`src/lib/h1/manifest.ts`,
-"keeps it out of a client edition") should then be reworded, and `host-owned` is not the right label (it means Veloce holds the
-data). Check `deletionScope` is accepted for a `none` manifest before adding the sentence. The analysis behind the choice:
+data. Policy wording is now recorded consistently in ADR-005, ADR-011 and ADR-014; the matching ProofMint manifest
+comment and `deletionScope` text are prepared on its `feat/veloce-host` branch. The existing host validator accepts a
+`deletionScope` field with `none`, although its normalized return value does not retain that descriptive field. No
+runtime admission logic or deletion guarantee was changed. Deployment and real end-to-end evidence remain open.
+The analysis behind the choice:
 
 Receipts (ADR-014) answer one question: when the host erases a note an adapter proposed, did the adapter erase its copy?
 ProofMint proposes no memory (its manifest has no `memory.propose`), so the host never holds a note that came from it and

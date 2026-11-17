@@ -70,6 +70,13 @@ Rules the shim enforces, none of which depend on QM behaving:
 - **Unverified mapping.** How QM reports an aborted run is guessed (`aborted` or `cancelled` becomes `cancelled`, anything
   unknown becomes `failed`). Confirm on staging.
 
+## Client-edition exception (owner-approved 2026-11-16)
+
+An adapter with `deletionGuarantee: "none"` may be admitted to a client edition when its manifest states in
+`deletionScope` that it holds no tenant-supplied data. It remains outside the deletion guarantee and still needs the
+normal registration and activation checks. This is the ProofMint option A decision in ADR-020; it does not admit QM,
+which retains the raw client content listed above.
+
 ## Order of work
 
 1. This shim and its tests (done, adapter disabled).
