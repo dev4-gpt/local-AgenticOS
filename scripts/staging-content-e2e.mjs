@@ -7,7 +7,7 @@
 //   read -rs STAGING_SUPABASE_ANON_KEY && export STAGING_SUPABASE_ANON_KEY
 //   read -rs STAGING_SUPABASE_SERVICE_ROLE_KEY && export STAGING_SUPABASE_SERVICE_ROLE_KEY
 //   export ADAPTER_TOKEN_SIGNING_KEY_PEM="$(gcloud secrets versions access latest --secret ADAPTER_TOKEN_SIGNING_KEY --project agentos-mvp)"
-//   export CLIENT_WORKER_TOKEN="$(gcloud secrets versions access latest --secret veloce-host-agentos-staging-worker-token --project agentos-mvp)"
+//   export CLIENT_WORKER_TOKEN="$(gcloud secrets versions access latest --secret veloce-agentos-staging-worker-token --project agentos-mvp)"
 //   STAGING_SUPABASE_URL=https://edxznuovrevymmdvbarb.supabase.co \
 //   HOST_URL=https://<veloce-host-agentos-staging URL> CONTENT_OS_URL=https://<veloce-creator-os-agentos-staging URL> \
 //   node scripts/staging-content-e2e.mjs
