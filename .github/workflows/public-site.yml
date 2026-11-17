@@ -19,7 +19,7 @@ jobs:
           cache: npm
           cache-dependency-path: public-site/package-lock.json
       - run: npm ci
-      - run: npm audit --audit-level=high
+      - run: node ../scripts/audit-gate.mjs
       - run: npm run verify:public
       - name: Reject private implementation references from the shipped output
         run: |

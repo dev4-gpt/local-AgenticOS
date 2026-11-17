@@ -24,5 +24,5 @@ jobs:
           cache-dependency-path: product-experience/package-lock.json
       - run: npm ci
       - run: npm run verify:release-gates
-      - run: npm audit --omit=dev --audit-level=high
+      - run: node ../scripts/audit-gate.mjs --omit=dev
       - run: npm run check
