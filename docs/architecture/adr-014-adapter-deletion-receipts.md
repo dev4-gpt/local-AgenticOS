@@ -34,6 +34,13 @@ claim about the host, so Creator OS was labelled `deletionGuarantee: "none"` and
    at withdrawal, not at retention expiry (every host copy expires on the same clock). A receipt row is deleted with its
    note by the retention purge, so a note purged before acknowledgement loses its receipt row.
 
+## Client-edition exception (owner-approved 2026-11-16)
+
+A `none`-deletion adapter whose manifest states in `deletionScope` that it holds no tenant-supplied data may be
+admitted to a client edition, subject to the normal registration and activation checks. ProofMint uses this exception
+(ADR-020 option A): it accepts a fixed benchmark family and an in-memory model grant, proposes no memory, and keeps
+no tenant-supplied text. It remains outside the deletion guarantee; this does not claim receipts or automatic activation.
+
 ## What was built
 
 - Content OS (ContractorOS): `MemoryStore.findContaining/erase`, the event log's `tombstone`, `tombstone.ts`, the route and

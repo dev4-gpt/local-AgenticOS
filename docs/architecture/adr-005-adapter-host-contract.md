@@ -25,7 +25,9 @@ authority over identity, policy, approval, budget and the shared memory ledger. 
    executed once. Identity comes from the host's verified login, never from a request field.
 5. **Deletion is a protocol.** Removing a source writes a tombstone event to the outbox. Tombstoning erases the
    content and keeps the hash for audit. An adapter with the `receipt` guarantee returns a receipt hash; an adapter
-   with `none` is labelled outside the guarantee and stays out of the client edition.
+   with `none` is labelled outside the guarantee and stays out of the client edition unless its manifest
+   states in `deletionScope` that it holds no tenant-supplied data (owner-approved option A, 2026-11-16; ADR-020).
+   This exception does not grant a deletion guarantee or activate an adapter.
 6. **Money is integer micros end to end** (millionths of a US dollar, as the existing runtime budget ledger already
    uses). The per-adapter table logs events and points to the central ledger (`reserve_client_runtime_budget` and
    the settle function). It is not a second ledger.
