@@ -77,7 +77,8 @@ begin
   from public.client_runtime_records as record
   where record.tenant_slug = p_tenant_slug
     and record.kind = 'memory'
-    and record.status = 'active';
+    and record.status = 'active'
+    and record.created_at > now() - make_interval(days => public.client_tenant_retention_days(p_tenant_slug));
 
   insert into public.client_runtime_memory_graph_nodes
     (tenant_slug, graph_key, label, kind, metadata)
@@ -98,6 +99,7 @@ begin
     where record.tenant_slug = p_tenant_slug
       and record.kind = 'memory'
       and record.status = 'active'
+      and record.created_at > now() - make_interval(days => public.client_tenant_retention_days(p_tenant_slug))
   ) as tag
   on conflict (tenant_slug, graph_key) do nothing;
 
@@ -121,6 +123,7 @@ begin
     where record.tenant_slug = p_tenant_slug
       and record.kind = 'memory'
       and record.status = 'active'
+      and record.created_at > now() - make_interval(days => public.client_tenant_retention_days(p_tenant_slug))
   ) as tags
   join public.client_runtime_memory_graph_nodes as document_node
     on document_node.tenant_slug = p_tenant_slug

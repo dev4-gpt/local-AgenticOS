@@ -47,9 +47,18 @@ test("separate parts cannot silently overwrite the same source identity", async 
 });
 
 test("one ordinary JSON pack can still be selected without a manifest", async () => {
-  const file = new File(["{}"], "one-course-pack.json", { type: "application/json" });
+  const file = new File([JSON.stringify({ startUrl: "https://example.org/course", sources: [{ title: "Lesson", url: "https://example.org/course/one", text: "Lesson text", links: [] }] })], "one-course-pack.json", { type: "application/json" });
   const selected = await selectClientSourceBatches([file]);
-  expect(selected).toEqual({ batches: [{ file, sha256: null }], sourceCount: null, linkCount: null, skippedCount: null });
+  expect(selected).toEqual({ batches: [{ file, sha256: null }], sourceCount: 1, linkCount: 0, skippedCount: 0 });
+});
+
+test("all parts are content-validated before the first upload can begin", async () => {
+  const { parts } = exportFixture();
+  const startUrl = "https://example.org/course";
+  const invalidContents = JSON.stringify({ startUrl, skipped: [], sources: [{ title: "Lesson 2", url: `${startUrl}/2`, text: "Lesson text", links: [{ url: "https://example.org/download?X-Amz-Signature=secret", text: "Download" }] }] });
+  const invalidPart = new File([invalidContents], parts[1].file.name, { type: "application/json" });
+  const manifest = new File([JSON.stringify({ version: 1, startUrl, sources: 2, links: 2, skipped: 1, batches: [{ file: parts[0].file.name, sha256: parts[0].sha256, sources: 1, links: 1 }, { file: invalidPart.name, sha256: createHash("sha256").update(invalidContents).digest("hex"), sources: 1, links: 1 }] })], "course.manifest.json", { type: "application/json" });
+  await expect(selectClientSourceBatches([parts[0].file, invalidPart, manifest])).rejects.toThrow("source_batch_content_invalid");
 });
 
 test("the converter's real multi-part output passes browser manifest selection", async () => {

@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "suite": "ai-release-local-v1",
+  "mode": "deterministic-local",
+  "checkedAt": "2026-10-14T14:20:49.550Z",
+  "fixtureSha256": "25dc17e3342e934d2c1e104171578bddc74b5441031a2a23caad6ede8a85e7bc",
+  "sourceCommit": "0983e361773ddccdc09b45e17e67a0434686c7ba",
+  "workingTreeClean": true,
+  "nodeVersion": "v24.18.0",
+  "nodeEngineSupported": true,
+  "runnerExitCode": 0,
+  "metrics": {
+    "cases": 16,
+    "passed": 16,
+    "failed": 0,
+    "deterministicPassRate": 1,
+    "modelSamples": 0,
+    "modelLatencyMs": null,
+    "modelTokens": null,
+    "providerCostMicros": null
+  },
+  "localGatePassed": true,
+  "productionReady": false,
+  "limitations": [
+    "Selected local tests do not establish hosted behavior, model quality, stochastic reliability, or a complete customer journey.",
+    "The lifecycle settlement case uses a local harness; hosted ledger reconciliation requires separate staging evidence.",
+    "No LLM or Zep request is part of this evaluation."
+  ],
+  "cases": [
+    {
+      "id": "provider-routing",
+      "behavior": "Automatic routing prefers approved low-cost paths and denies unavailable routes",
+      "failureLabel": "provider_routing_regression",
+      "evidenceScope": "policy unit test",
+      "spec": "provider-matrix-policy.spec.ts",
+      "title": "cost routing prefers native and free routes and fails closed",
+      "status": "passed",
+      "testDurationMs": 0
+    },
+    {
+      "id": "credential-revocation",
+      "behavior": "Revoked provider credentials cannot make upstream calls",
+      "failureLabel": "policy_bypass",
+      "evidenceScope": "mocked route test",
+      "spec": "ga-security-regressions.spec.ts",
+      "title": "revoked text and speech credentials produce zero upstream calls despite loaded env keys",
+      "status": "passed",
+      "testDurationMs": 4
+    },
+    {
+      "id": "tenant-budget-cap",
+      "behavior": "Tenant worker authorization and monthly reservation cap fail closed",
+      "failureLabel": "budget_or_tenant_isolation_regression",
+      "evidenceScope": "embedded PostgreSQL migration test",
+      "spec": "ga-sql-regressions.spec.ts",
+      "title": "real PostgreSQL: role, worker-token, revocation and cross-month cap regressions",
+      "status": "passed",
+      "testDurationMs": 722
+    },
+    {
+      "id": "budget-settlement",
+      "behavior": "Settlement refuses usage above the reserved quote",
+      "failureLabel": "budget_settlement_regression",
+      "evidenceScope": "local lifecycle harness, not a hosted ledger receipt",
+      "spec": "managed-credit-lifecycle.spec.ts",
+      "title": "settlement records actual usage and rejects an overrun",
+      "status": "passed",
+      "testDurationMs": 0
+    },
+    {
+      "id": "artifact-integrity",
+      "behavior": "Import commits only the exact reviewed artifact bytes with permission",
+      "failureLabel": "artifact_integrity_regression",
+      "evidenceScope": "mocked storage and route test",
+      "spec": "client-source-pack.spec.ts",
+      "title": "source import commits only the exact artifact bytes reviewed with permission",
+      "status": "passed",
+      "testDurationMs": 26
+    },
+    {
+      "id": "grounding-boundary",
+      "behavior": "Notebook answers cannot cite material outside explicit source scope",
+      "failureLabel": "ungrounded_answer_admitted",
+      "evidenceScope": "answer-contract unit test, not model output quality",
+      "spec": "notebook-contracts.spec.ts",
+      "title": "Notebook retrieval and answers cannot widen the explicit source scope",
+      "status": "passed",
+      "testDurationMs": 0
+    },
+    {
+      "id": "source-graph-isolation",
+      "behavior": "Imported source and link graph remains tenant-scoped and idempotent",
+      "failureLabel": "source_graph_isolation_regression",
+      "evidenceScope": "embedded PostgreSQL migration test",
+      "spec": "client-source-pack.spec.ts",
+      "title": "source pack SQL imports idempotently and builds tenant-scoped source/link graph",
+      "status": "passed",
+      "testDurationMs": 1571
+    },
+    {
+      "id": "private-source-link-sanitization",
+      "behavior": "Private-network, loopback, and secret-bearing URLs are omitted from imported links",
+      "failureLabel": "unsafe_source_link_admitted",
+      "evidenceScope": "offline source-pack sanitizer test; no network access",
+      "spec": "private-source-pack-sanitizer.spec.ts",
+      "title": "private source sanitizer preserves sources and omits only unsafe link targets",
+      "status": "passed",
+      "testDurationMs": 1
+    },
+    {
+      "id": "buyer-pilot-evidence-binding",
+      "behavior": "Buyer-pilot evidence is replayed, hash-bound, and rejected when reviewer or run inputs fail validation",
+      "failureLabel": "buyer_pilot_evidence_unbound",
+      "evidenceScope": "local temporary-artifact harness; no provider request",
+      "spec": "buyer-pilot-release-evidence.spec.ts",
+      "title": "release buyer receipt is replayed and bound to the audited run inputs",
+      "status": "passed",
+      "testDurationMs": 57
+    },
+    {
+      "id": "trace-redaction",
+      "behavior": "Job traces retain stage outcomes without prompt, output, or credentials",
+      "failureLabel": "trace_content_leak",
+      "evidenceScope": "local trace unit test",
+      "spec": "client-job-trace.spec.ts",
+      "title": "job trace records bounded stages without prompt, output, or credential data",
+      "status": "passed",
+      "testDurationMs": 2
+    },
+    {
+      "id": "observability-completeness",
+      "behavior": "Observability refuses an incomplete monthly budget ledger",
+      "failureLabel": "incomplete_usage_report",
+      "evidenceScope": "mocked route test",
+      "spec": "client-observability-accuracy.spec.ts",
+      "title": "observability refuses an incomplete monthly ledger",
+      "status": "passed",
+      "testDurationMs": 6
+    },
+    {
+      "id": "telemetry-boundary",
+      "behavior": "Client product telemetry rejects unapproved events and strips caller content before analytics and audit",
+      "failureLabel": "telemetry_content_leak",
+      "evidenceScope": "mocked route test, not deployed analytics configuration",
+      "spec": "client-telemetry-boundary.spec.ts",
+      "title": "product telemetry accepts only shipped events and strips caller content",
+      "status": "passed",
+      "testDurationMs": 7
+    },
+    {
+      "id": "evaluation-credential-isolation",
+      "behavior": "The offline evaluation runner passes no inherited database, billing, or provider credentials to its tests",
+      "failureLabel": "evaluation_credential_leak",
+      "evidenceScope": "local subprocess environment policy test",
+      "spec": "ai-release-environment.spec.ts",
+      "title": "offline AI evaluation child process receives no inherited credential variables",
+      "status": "passed",
+      "testDurationMs": 8
+    },
+    {
+      "id": "notebook-source-provenance",
+      "behavior": "Notebook draft prompts are reconstructed from verified source text and its queued content hash",
+      "failureLabel": "notebook_source_provenance_regression",
+      "evidenceScope": "local prompt reconstruction unit test",
+      "spec": "client-notebook-execution-provenance.spec.ts",
+      "title": "worker-side prompt reconstruction verifies source hashes and cites only queued source IDs",
+      "status": "passed",
+      "testDurationMs": 1
+    },
+    {
+      "id": "notebook-source-retention",
+      "behavior": "Notebook workers cannot load expired, inactive, unclaimed, or cross-scope source text",
+      "failureLabel": "notebook_source_retention_regression",
+      "evidenceScope": "embedded PostgreSQL RPC test",
+      "spec": "notebook-execution-source-worker.spec.ts",
+      "title": "worker source RPC returns only active, unexpired sources for a running tenant job",
+      "status": "passed",
+      "testDurationMs": 667
+    },
+    {
+      "id": "notebook-citation-audit",
+      "behavior": "A notebook draft cannot complete without citations from its verified source manifest and a source register",
+      "failureLabel": "notebook_citation_audit_regression",
+      "evidenceScope": "local citation contract unit test",
+      "spec": "client-notebook-execution-provenance.spec.ts",
+      "title": "draft citation audit requires a valid source token and a source register",
+      "status": "passed",
+      "testDurationMs": 1
+    }
+  ]
+}

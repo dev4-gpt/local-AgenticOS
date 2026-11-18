@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import "./globals.css";
 import Shell from "@/components/Shell";
+import { clientAllowedRoutes } from "@/lib/clientRuntimePolicy";
 
 export const metadata: Metadata = {
   title: "Veloce AgenticOS — Mission Control",
   description: "Your command center for Claude, OpenClaw, Hermes",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const clientEdition = process.env.VELOCE_CLIENT_EDITION === "1";
+  if (clientEdition) await connection();
   return (
     <html lang="en" className="h-full antialiased">
       <head>
@@ -24,7 +28,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body className="min-h-full">
-        <Shell clientEdition={process.env.VELOCE_CLIENT_EDITION === "1"}>{children}</Shell>
+        <Shell clientEdition={clientEdition} allowedClientRoutes={clientEdition ? clientAllowedRoutes() : []}>{children}</Shell>
       </body>
     </html>
   );

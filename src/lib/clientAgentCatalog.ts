@@ -24,7 +24,7 @@ export const CLIENT_AGENT_CATALOG: ClientAgentDefinition[] = [
   {
     route: "/claude", provider: "anthropic", title: "Claude", credentialKey: "ANTHROPIC_API_KEY", accent: "#d97757",
     subtitle: "Hosted Claude workspace with durable tenant history and artifacts.", model: "Claude via approved API",
-    tabs: [chat(), workspace(), { id: "artifacts", label: "Artifacts", description: "Inspect tenant-owned outputs and signed downloads." }, { id: "ultracode", label: "Ultracode", description: "Prepare bounded build plans for review." }, { id: "ant", label: "Ant CLI", description: "Hosted adapter status for the Ant-compatible build lane." }, { id: "agents", label: "Agents", description: "Review the approved agent plan before execution." }],
+    tabs: [chat(), workspace(), { id: "artifacts", label: "Artifacts", description: "Inspect tenant-owned outputs and authenticated downloads." }, { id: "ultracode", label: "Ultracode", description: "Prepare bounded build plans for review." }, { id: "ant", label: "Ant CLI", description: "Hosted adapter status for the Ant-compatible build lane." }, { id: "agents", label: "Agents", description: "Review the approved agent plan before execution." }],
   },
   {
     route: "/openclaw", provider: "openclaw", title: "OpenClaw", credentialKey: "OPENROUTER_API_KEY", accent: "#f472b6",

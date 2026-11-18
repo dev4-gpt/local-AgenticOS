@@ -153,6 +153,8 @@ export async function POST(request: Request) {
     inputMetadata: {
       conversationId,
       roundId,
+      roomCreatedAt: conversation.createdAt,
+      roomRetentionExpiresAt: conversation.retentionExpiresAt,
       message,
       transcript,
       contextText: context.text,

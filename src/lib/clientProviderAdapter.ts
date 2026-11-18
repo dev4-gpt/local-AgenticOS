@@ -130,6 +130,23 @@ export async function runClientTextAdapter(input: {
   return { ok: true as const, provider, model, output: response.output, usage: response.usage, finishReason: "finishReason" in response ? response.finishReason : null, instructionBudget: prepared.instructionBudget, ...(prepared.compression ? { compression: prepared.compression } : {}) };
 }
 
+/**
+ * One plain text call for the host's `model.call` (ADR-020): the client's own key, no tools, the usual timeout and size
+ * caps. Policy, budget and the adapter's grant are checked by the caller (adapterModelCall.ts) before this runs.
+ */
+export async function callClientTextProvider(provider: string, model: string, messages: Message[], maxOutputTokens: number) {
+  const spec = Object.hasOwn(PROVIDERS, provider) ? PROVIDERS[provider] : undefined;
+  if (!spec) return { ok: false as const, status: 403 };
+  const key = await clientExecutionCredential(spec.key);
+  if (!key) return { ok: false as const, status: 503 };
+  const response = spec.protocol === "anthropic"
+    ? await callAnthropic(spec, key, model, messages, maxOutputTokens)
+    : spec.protocol === "gemini"
+      ? await callGemini(spec, key, model, messages, maxOutputTokens)
+      : await callOpenAiCompatible(spec, key, model, messages, maxOutputTokens, clientProviderAttributionHeaders(provider));
+  return response.ok ? { ok: true as const, output: response.output, ...(response.usage ? { usage: response.usage } : {}) } : { ok: false as const, status: response.status };
+}
+
 function providerFailureCode(status: number) {
   if (status === 401 || status === 403) return "provider_auth_failed";
   if (status === 404) return "provider_model_unavailable";
@@ -157,23 +174,36 @@ function configuredProviderModels(provider: string) {
 }
 
 export function estimateClientTextCostMicros(model: string, messages: Message[], maxOutputTokens: number) {
-  let pricing: Record<string, { inputMicrosPer1k: number; outputMicrosPer1k: number }>;
-  try { pricing = JSON.parse(process.env.CLIENT_MODEL_PRICING_JSON ?? "{}"); } catch { return null; }
-  const rate = pricing[model];
-  if (!rate || !Number.isFinite(rate.inputMicrosPer1k) || !Number.isFinite(rate.outputMicrosPer1k)) return null;
-  // Reserve against a character-level upper bound so settlement cannot exceed
-  // the worker reservation when a provider reports unusually dense token use.
+  const rate = clientTextPricing(model);
+  if (!rate || !Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 0) return null;
+  // Price the supplied prompt conservatively; a multi-call worker must still
+  // reserve its complete envelope and reconcile measured usage separately.
   const inputTokens = Math.max(1, messages.reduce((total, item) => total + item.content.length, 0));
-  return Math.ceil((inputTokens / 1000) * rate.inputMicrosPer1k + (maxOutputTokens / 1000) * rate.outputMicrosPer1k);
+  return pricedTextTokens(rate, inputTokens, maxOutputTokens);
 }
 
 export function clientTextUsageCostMicros(model: string, usage: ProviderUsage) {
-  let pricing: Record<string, { inputMicrosPer1k: number; outputMicrosPer1k: number }>;
+  const rate = clientTextPricing(model);
+  if (!rate || !usage || !Number.isSafeInteger(usage.inputTokens) || !Number.isSafeInteger(usage.outputTokens) || usage.inputTokens < 0 || usage.outputTokens < 0) return null;
+  return pricedTextTokens(rate, usage.inputTokens, usage.outputTokens);
+}
+
+type TextPricing = { inputMicrosPer1k: number; outputMicrosPer1k: number };
+
+function clientTextPricing(model: string): TextPricing | null {
+  let pricing: unknown;
   try { pricing = JSON.parse(process.env.CLIENT_MODEL_PRICING_JSON ?? "{}"); } catch { return null; }
-  const rate = pricing[model];
-  if (!rate || !Number.isFinite(rate.inputMicrosPer1k) || !Number.isFinite(rate.outputMicrosPer1k)) return null;
-  if (!Number.isSafeInteger(usage.inputTokens) || !Number.isSafeInteger(usage.outputTokens) || usage.inputTokens < 0 || usage.outputTokens < 0) return null;
-  return Math.ceil((usage.inputTokens / 1000) * rate.inputMicrosPer1k + (usage.outputTokens / 1000) * rate.outputMicrosPer1k);
+  if (!pricing || typeof pricing !== "object" || Array.isArray(pricing) || !Object.hasOwn(pricing, model)) return null;
+  const rate = (pricing as Record<string, unknown>)[model];
+  if (!rate || typeof rate !== "object" || Array.isArray(rate)) return null;
+  const { inputMicrosPer1k, outputMicrosPer1k } = rate as TextPricing;
+  return Number.isFinite(inputMicrosPer1k) && inputMicrosPer1k >= 0 && Number.isFinite(outputMicrosPer1k) && outputMicrosPer1k >= 0
+    ? { inputMicrosPer1k, outputMicrosPer1k } : null;
+}
+
+function pricedTextTokens(rate: TextPricing, inputTokens: number, outputTokens: number) {
+  const cost = Math.ceil((inputTokens / 1000) * rate.inputMicrosPer1k + (outputTokens / 1000) * rate.outputMicrosPer1k);
+  return Number.isSafeInteger(cost) && cost >= 0 ? cost : null;
 }
 
 export function safeClientProviderOutput(value: string) {
@@ -280,10 +310,9 @@ async function callGemini(spec: ProviderSpec, key: string, model: string, messag
 }
 
 function normalizeUsage(inputTokens: unknown, outputTokens: unknown): ProviderUsage | undefined {
-  const input = Number(inputTokens);
-  const output = Number(outputTokens);
-  return Number.isSafeInteger(input) && Number.isSafeInteger(output) && input >= 0 && output >= 0
-    ? { inputTokens: input, outputTokens: output }
+  return typeof inputTokens === "number" && typeof outputTokens === "number"
+    && Number.isSafeInteger(inputTokens) && Number.isSafeInteger(outputTokens) && inputTokens >= 0 && outputTokens >= 0
+    ? { inputTokens, outputTokens }
     : undefined;
 }
 

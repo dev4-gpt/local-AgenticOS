@@ -100,6 +100,7 @@ const runtimeRateLimitedRoutes = [
   "src/app/api/client-runtime/records/route.ts",
   "src/app/api/client-runtime/memory-import/route.ts",
   "src/app/api/client-runtime/source-import/route.ts",
+  "src/app/api/client-runtime/source-import/upload/route.ts",
   "src/app/api/client-runtime/memory-graph/route.ts",
   "src/app/api/client-runtime/delivery/route.ts",
   "src/app/api/client-runtime/telemetry/route.ts",
@@ -154,7 +155,7 @@ expect(
 expect(deliveryApproval.includes("delivery.approved") && deliveryApproval.includes("delivery.queued") && deliveryApproval.includes("client_runtime_audit_events"), "delivery approval CLI must record redacted approval and queue audit events");
 expect(networkSafety.includes("resolvesToPublicAddresses") && seoAdapter.includes("resolveSafePublicUrl") && deliveryAdapter.includes("resolveSafePublicUrl"), "outbound adapters must re-check DNS resolution before fetching public URLs");
 expect(seoAdapter.includes("readBoundedResponseBytes") && seoAdapter.includes("4_000_000"), "SEO adapter must bound provider response bytes before parsing");
-expect(telemetryRoute.includes("captureClientProductEvent") && telemetryRoute.includes("telemetry-write") && telemetryRoute.includes("SAFE_KEYS"), "telemetry route must authenticate, rate-limit, and allowlist product event properties");
+expect(telemetryRoute.includes("captureClientProductEvent") && telemetryRoute.includes("telemetry-write") && telemetryRoute.includes("safeProperties.provider") && telemetryRoute.includes("safeProperties.messageCount"), "telemetry route must authenticate, rate-limit, and allowlist product event properties");
 expect(telemetryRoute.includes("recordClientAudit"), "telemetry route must retain redacted events in the tenant audit stream");
 expect(observability.includes("POSTHOG_API_KEY") && observability.includes("SENTRY_DSN") && observability.includes("application/x-sentry-envelope"), "observability must support optional PostHog capture and redacted Sentry envelopes");
 expect(clientProviderWorkspace.includes('message.role === "assistant" && message.jobId === jobId'), "provider workspace must append assistant output even when the user prompt already has the job id");
@@ -190,7 +191,11 @@ expect(memoryImportRoute.includes("containsClientSecretLike") && memoryImportRou
 expect(memoryImportRoute.includes("client_runtime_records") && memoryImportRoute.includes("tenant.memory.exported"), "memory import/export must use tenant records and write redacted audit events");
 expect(runtimePolicy.includes('"/api/client-runtime/memory-import"') && provisioner.includes("/api/client-runtime/memory-import"), "memory import must be included in the reviewed client API allowlist");
 expect(sourceImportRoute.includes("currentClientMember") && sourceImportRoute.includes("created_by: `eq.${user.id}`") && sourceImportRoute.includes("safeClientObjectKey"), "source import must verify tenant membership, artifact owner and object namespace");
+const sourceImportUploadRoute = runtimeRateLimitedRouteSources.find(([path]) => path.endsWith("source-import/upload/route.ts"))?.[1] ?? "";
+expect(sourceImportUploadRoute.includes("permissionConfirmed") && sourceImportUploadRoute.includes("uploadClientStorageObject") && sourceImportUploadRoute.includes("deleteClientStorageObject"), "source-pack upload must require consent, proxy storage writes and clean up failed uploads");
+expect(sourceImportRoute.includes("readClientStorageObject") && !sourceImportRoute.includes("signedClientStorageUrl"), "source-pack preview must read through the server-side storage proxy without signed URLs");
 expect(sourcePackGraphSql.includes("import_client_runtime_source_pack") && sourcePackGraphSql.includes("source_import_key") && sourcePackGraphSql.includes("links_to"), "source-pack migration must preserve idempotency and outbound graph links");
+expect(sourceImportRoute.includes("CLIENT_WORKER_TOKEN") && sourceImportRoute.includes("p_worker_token"), "source import must require the server-held tenant worker verifier");
 expect(runtimePolicy.includes('"/api/client-runtime/source-import"') && provisioner.includes("/api/client-runtime/source-import"), "source import must be included in the reviewed client API allowlist");
 expect(memoryGraphRoute.includes("refresh_client_runtime_memory_graph") && memoryGraphRoute.includes("currentClientMember"), "memory graph refresh must use the authenticated tenant RPC");
 expect(memoryGraphRoute.includes("runtime_limit_unavailable") && memoryGraphRoute.includes("runtime_rate_limited"), "memory graph route must distinguish a limiter outage from rate limiting");
@@ -205,7 +210,7 @@ expect(workflowsRoute.includes('checkClientRuntimeRateLimit("workflow-read", 240
 expect(workflowWorkspace.includes("setInterval(() => { void load(); }, 10000)"), "workflow polling must not consume the read limiter faster than a normal worker run");
 expect(workflowWorkspace.includes("runtime_rate_limited"), "workflow read throttles must be visible in the client workspace");
 expect(workflowsRoute.includes("refundClientRuntimeRateLimit") && jobRoute.includes("refundClientRuntimeRateLimit") && hostedJobsRoute.includes("refundClientRuntimeRateLimit"), "task enqueue failures must refund their consumed client rate-limit token");
-expect(authenticatedVerifier.includes("completedSteps === 4") && authenticatedVerifier.includes("signed artifact upload") && authenticatedVerifier.includes("equalBytes"), "authenticated verifier must prove four-step workflow completion and signed artifact byte integrity");
+expect(authenticatedVerifier.includes("completedSteps === 4") && authenticatedVerifier.includes("same-origin upload path") && authenticatedVerifier.includes("equalBytes"), "authenticated verifier must prove four-step workflow completion and proxied artifact byte integrity");
 expect(authenticatedVerifier.includes("cookie-file") && authenticatedVerifier.includes("must not be readable by group or other users") && !authenticatedVerifier.includes("console.log(cookie"), "authenticated verifier must accept a protected cookie file without printing credentials");
 expect(authenticatedVerifier.includes("--workspace-smoke") && authenticatedVerifier.includes("verifyWorkspaceExecution") && authenticatedVerifier.includes("/api/client-runtime/executions"), "authenticated verifier must retain the hosted workspace execution acceptance path");
 for (const [relativePath, source] of runtimeRateLimitedRouteSources) {
@@ -264,7 +269,8 @@ expect(!provisioner.includes('"services", "enable"') && !provisioner.includes('"
 expect(provisioner.includes("CLIENT_RUNTIME_BASE_URL") && provisioner.includes("configureRuntimeBaseUrl"), "GCP provisioner must configure the Cloud Run task callback URL");
 expect(provisioner.includes("routeTrafficToLatestRevision") && provisioner.includes("update-traffic") && provisioner.includes("--to-latest"), "GCP provisioner must route deploy traffic to the latest ready revision");
 expect(cloudTasks.includes("CLIENT_RUNTIME_BASE_URL") && cloudTasks.includes("baseUrl"), "Cloud Tasks helper must use the approved runtime callback URL");
-expect(cloudTasks.includes("CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH") && cloudTasks.includes('"auth", "print-access-token"') && cloudTasks.includes('NODE_ENV === "production"'), "local Cloud Tasks identity must be explicit, development-only, and absent from production");
+const gcpIdentity = await readFile(join(root, "src/lib/clientGcpIdentity.ts"), "utf8");
+expect(cloudTasks.includes('from "./clientGcpIdentity"') && gcpIdentity.includes("CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH") && gcpIdentity.includes('"auth", "print-access-token"') && gcpIdentity.includes('NODE_ENV !== "development"'), "local Cloud Tasks identity must be explicit, development-only, and absent from production");
 expect(cloudTasks.includes("randomUUID") && cloudTasks.includes("const taskName") && cloudTasks.includes("${identifier}-${randomUUID()}"), "Cloud Tasks retries must use unique dispatch names");
 expect(provisioner.includes("secretVersionAdder") && provisioner.includes("CLIENT_CREDENTIAL_INBOX_SECRET"), "GCP provisioner must grant inbox version-write access explicitly");
 expect(workerRoute.includes("runtime.provider_failed") && workerRoute.includes("runtime.budget_exceeded") && deliveryRoute.includes("runtime.delivery_failed") && alerts.includes("runtime_budget_denied") && alerts.includes("runtime_provider_failed") && alerts.includes("runtime_delivery_failed"), "runtime must emit and provision redacted provider, budget, and delivery alerts");

@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "classification": "redacted_historical_local_summary",
+  "preparedOn": "2026-10-17",
+  "applicationBaseline": {
+    "commit": "a4c379aaac517e23ad2863c1b8695e63dd939b8f",
+    "tree": "0f8e82476932827bf1be4fb7a12ecdf093f25973",
+    "branch": "wip/backup-2026-10-03"
+  },
+  "historicalReceipt": {
+    "sha256": "2151e8037812089a977a66d200c34f6093546138c8dc089841b516cf2e8715e8",
+    "included": false,
+    "checkedAt": "2026-10-17T16:58:45.270Z",
+    "sourceCommit": "7344a7d9d47a93a5553d4b0d57c9bdeab8a70b87",
+    "candidateFingerprintSchema": "agentos-working-tree-v1",
+    "candidateFingerprintSha256": "bdc1b86205485f79fcfd678c220b679a4ce58e2e9cc051bcd29e80c9e00af2c8",
+    "cleanCommitRun": false,
+    "currentReleaseAttestation": false
+  },
+  "historicalLocalChecks": {
+    "focusedPassed": 458,
+    "offlineAiCasesPassed": 24,
+    "realModelSamples": 0,
+    "syntheticNotebookScenariosPassed": 6,
+    "focusedEslint": "passed",
+    "typecheck": "passed",
+    "lifecycleContract": "passed",
+    "retentionInventory": "passed",
+    "strictExitCode": 1,
+    "releaseReady": false,
+    "releaseGateFailures": [
+      "working_tree_clean",
+      "ledger_bucket_not_configured",
+      "release_environment"
+    ],
+    "notEvaluatedCategoryCount": 56
+  },
+  "historicalPrivateArchive": {
+    "included": false,
+    "coverage": "partial_local",
+    "graphSha256": "fab82595e200129711a8f86247e9527a6b88d0c4eecb4f27baee0c32208a5867",
+    "registeredLessons": 110,
+    "lessonsWithPageText": 107,
+    "lessonsWithoutInlineBody": 3,
+    "youtubeMainPlayers": 93,
+    "skoolNativeMainPlayers": 17,
+    "nodes": 1471,
+    "relations": 10735,
+    "fullTranscriptSegments": 0,
+    "excerptTranscriptSegments": 1,
+    "unknownScopeTranscriptSegments": 2,
+    "completenessVerified": false,
+    "hostedImportVerified": false,
+    "videoBackupVerified": false
+  },
+  "prospect": {
+    "identityIncluded": false,
+    "status": "owner_named_prospect_only",
+    "clientApplicationSetupFee": 0,
+    "clientApplicationSubscriptionFee": 0,
+    "pilotDurationApproved": false,
+    "workflowBaselineVerified": false,
+    "customerAcceptance": false,
+    "marketValidation": false,
+    "providerOrInfrastructureSpendAuthorized": false
+  },
+  "publicationBoundary": {
+    "rawEvidenceIncluded": false,
+    "courseContentIncluded": false,
+    "credentialsIncluded": false,
+    "clientDataIncluded": false,
+    "repositoryVisibilityChanged": false,
+    "hackathonRulesVerified": false,
+    "createOsIntegrationVerified": false,
+    "liveStripeAcceptanceClaimed": false
+  }
+}

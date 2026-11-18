@@ -72,7 +72,11 @@ export async function paperclipWriteLimit() {
 type TableRead<T> = { ok: true; rows: T[] } | { ok: false; schemaMissing: boolean; status: number };
 
 async function readTable<T>(table: string, tenantSlug: string, normalize: (row: Record<string, unknown>) => T, extra: Record<string, string> = {}): Promise<TableRead<T>> {
-  const result = await selectClientRecords(table, { tenant_slug: `eq.${tenantSlug}`, ...extra });
+  const result = await selectClientRecords(table, {
+    tenant_slug: `eq.${tenantSlug}`,
+    retention_expires_at: `gt.${new Date().toISOString()}`,
+    ...extra,
+  });
   if (!result.ok) return { ok: false, schemaMissing: paperclipSchemaMissing(result.status), status: result.status };
   return { ok: true, rows: result.records.map(normalize) };
 }
@@ -139,15 +143,19 @@ export function insertPaperclipRow(table: string, record: Record<string, unknown
 }
 
 export function updatePaperclipRow(table: string, tenantSlug: string, id: string, patch: Record<string, unknown>) {
-  return updateClientRecord(table, { id: `eq.${id}`, tenant_slug: `eq.${tenantSlug}` }, { ...patch, updated_at: new Date().toISOString() });
+  return updateClientRecord(table, {
+    id: `eq.${id}`, tenant_slug: `eq.${tenantSlug}`, retention_expires_at: `gt.${new Date().toISOString()}`,
+  }, { ...patch, updated_at: new Date().toISOString() });
 }
 
 export function deletePaperclipRow(table: string, tenantSlug: string, id: string) {
-  return deleteClientRecord(table, { id: `eq.${id}`, tenant_slug: `eq.${tenantSlug}` });
+  return deleteClientRecord(table, { id: `eq.${id}`, tenant_slug: `eq.${tenantSlug}`, retention_expires_at: `gt.${new Date().toISOString()}` });
 }
 
 export async function readPaperclipIssue(tenantSlug: string, id: string) {
-  const result = await selectClientRecords(PAPERCLIP_TABLES.issues, { tenant_slug: `eq.${tenantSlug}`, id: `eq.${id}`, limit: "1" });
+  const result = await selectClientRecords(PAPERCLIP_TABLES.issues, {
+    tenant_slug: `eq.${tenantSlug}`, id: `eq.${id}`, retention_expires_at: `gt.${new Date().toISOString()}`, limit: "1",
+  });
   if (!result.ok || !result.records[0]) return null;
   return normalizePaperclipIssue(result.records[0]);
 }

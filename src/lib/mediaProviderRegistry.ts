@@ -19,6 +19,7 @@ export const MEDIA_PROVIDER_REGISTRY: readonly MediaProviderDescriptor[] = [
   { id: "openai-image", label: "OpenAI image", kind: "image", model: "gpt-image-1", license: "provider-terms", provenance: "Veloce approved adapter", approval: "review-before-artifact", enabledByDefault: false, supports: ["image-generation"] },
   { id: "heygen-video", label: "HeyGen video", kind: "video", model: "heygen-video", license: "provider-terms", provenance: "Veloce approved adapter", approval: "human-before-external-action", enabledByDefault: false, supports: ["avatar-video"] },
   { id: "elevenlabs-speech", label: "ElevenLabs speech", kind: "audio", model: "eleven-multilingual-v2", license: "provider-terms", provenance: "Veloce approved adapter", approval: "review-before-artifact", enabledByDefault: false, supports: ["speech"] },
+  { id: "higgsfield", label: "Higgsfield image and video", kind: "video", model: "higgsfield-catalog", license: "provider-terms", provenance: "Veloce approved adapter (docs.higgsfield.ai, 2026-10-21); client brings own key", approval: "review-before-artifact", enabledByDefault: false, supports: ["video-generation", "image-generation"] },
   { id: "skyreels-v2", label: "SkyReels V2", kind: "video", model: "skyreels-v2", license: "pending-host-review", provenance: "future isolated GPU adapter", approval: "human-before-external-action", enabledByDefault: false, supports: ["video-generation"] },
 ];
 

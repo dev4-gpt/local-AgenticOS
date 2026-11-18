@@ -6,16 +6,70 @@ The public website is open to everyone. Activation is governed: a request is pen
 
 - `veloceos.cloud`: product, catalog, pricing, public onboarding, legal, and support.
 - `app.veloceos.cloud`: currently the editorial `product-experience` site with
-  a link to one approved test runtime. An authenticated shared portal at this
-  domain is a future topology, not the live state. Test credential and credit
-  pages against the exact tenant Cloud Run URL until shared routing is proven.
+  a live link to one approved test runtime. Current source adds a shared
+  `/login` entry, but it is not deployed or accepted. Test credential and
+  credit pages against the exact tenant Cloud Run URL until shared routing is proven.
 - Tenant Cloud Run URLs remain the initial isolation boundary. Add branded tenant subdomains only after shared-portal routing is proven.
+
+Current source sends `Client login` to `/login`, not to a globally configured
+tenant URL. The server-side request route is off unless `CLIENT_LOGIN_ENABLED=1`.
+It requires a Supabase publishable/anon key, the existing service-role lookup,
+an exact HTTPS `PUBLIC_APP_URL`, and a working durable rate limiter. Unknown,
+inactive, or ambiguous accounts receive the same generic acknowledgement and
+no Auth email; existing active accounts receive a non-signup Supabase Magic
+Link. The callback rechecks active tenant membership before handoff. Before
+live activation, inspect a delivered email for the exact allowlisted callback
+path, verify rate-limit failure behavior, run J08/J13 with an approved tenant,
+and prove revoked access cannot reach a workspace. None of this changes the
+currently deployed test-runtime link until a reviewed release.
+
+### Public login deployment preflight (observed October 9, 2026)
+
+The live `https://app.veloceos.cloud/login` returned 404. Its Runtime access
+menu still linked `Client login` to the cloud-test Cloud Run origin, while
+current source links to `/login`. Vercel project `veloce-agentic-os/product-experience`
+served a Production deployment from `main` commit
+`c1f41ca9f47d64190030cc237c7e8763576b1802`; it was not connected to a
+Git repository. Pushing the current WIP branch therefore does not update this
+site. Vercel's Production environment listed `SUPABASE_ANON_KEY` but not
+`CLIENT_LOGIN_ENABLED`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, or
+`PUBLIC_APP_URL`; no shared variables were linked. Do not infer readiness from
+the locally passing Next build, which does include `/login` and the request API.
+
+Supabase Auth URL Configuration in project `ppmoqjtmjtfxadsnejqc` listed only
+the cloud-test wildcard and internal-beta `/auth/callback` redirect. It did
+not list `https://app.veloceos.cloud/auth/callback`. Its default Site URL was
+the cloud-test origin. These are read-only observations, not permission to
+change shared production Auth settings, reveal secret values, or deploy.
+
+Before a customer-facing login release:
+
+1. Review an immutable source commit and deploy it to a non-production Vercel
+   Preview first, without assigning `app.veloceos.cloud` or connecting Git for
+   automatic production builds as a side effect. Record the deployment ID and
+   source commit. Preview environment variables must be configured separately
+   if the sign-in flow will be tested there.
+2. With approved project-wide change scope, configure the required server-only
+   login variables and an exact callback redirect for the tested origin. Keep
+   production `CLIENT_LOGIN_ENABLED` off. Enable it only on the configured
+   preview to check the durable rate limiter, active-account lookup, delivered
+   Magic Link, callback, and tenant handoff.
+3. Test active, unknown, inactive, ambiguous, revoked, and second-tenant
+   accounts on that exact preview and capture redacted J08/J13 receipts. Verify
+   the public header points to `/login`, the page loads, and the callback
+   returns to the correct tenant without leaking a session token.
+4. Only after the broader J01-J15 release gates and operator approval, promote
+   the reviewed deployment/configuration to `app.veloceos.cloud`. Recheck the
+   custom domain, exact redirect, login, rollback target, and release ledger.
+
+The previous WIP backup push is recoverability evidence, not a preview
+deployment or a public release.
 
 Configure both custom domains at the hosting layer and keep Cloudflare DNS records for the active hosting targets. Do not point the public domain at a tenant runtime directly.
 
 ## Required server configuration
 
-`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `PUBLIC_EMAIL_FROM`, `LEAD_NOTIFICATION_*`, `PUBLIC_APP_URL`, `PUBLIC_SITE_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_SETUP_PRICE_ID`, `STRIPE_PLATFORM_PRICE_ID`, `STRIPE_CREDIT_PRICE_ID`, `CONTROL_PLANE_OPERATOR_SECRET`, `CONTROL_PLANE_WORKER_TOKEN`, and `CONTROL_PLANE_PROVISIONER_URL` are server-side values. Add `TURNSTILE_SECRET_KEY` when abuse-challenge enforcement is enabled. Never expose these as `NEXT_PUBLIC_*` values.
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `CLIENT_LOGIN_ENABLED`, `RESEND_API_KEY`, `PUBLIC_EMAIL_FROM`, `LEAD_NOTIFICATION_*`, `PUBLIC_APP_URL`, `PUBLIC_SITE_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_SETUP_PRICE_ID`, `STRIPE_PLATFORM_PRICE_ID`, `STRIPE_CREDIT_PRICE_ID`, `CONTROL_PLANE_OPERATOR_SECRET`, `CONTROL_PLANE_WORKER_TOKEN`, and `CONTROL_PLANE_PROVISIONER_URL` are server-side values. Add `TURNSTILE_SECRET_KEY` when abuse-challenge enforcement is enabled. Never expose these as `NEXT_PUBLIC_*` values.
 
 The Vercel app authenticates to the public Cloud Run provisioner through short-lived Vercel OIDC federation. Add these non-secret Production configuration values only after the GCP Workload Identity Pool and dedicated invoker identity exist:
 

@@ -40,8 +40,8 @@ export async function GET(request: Request) {
   if (issueId) {
     if (!UUID_RE.test(issueId)) return paperclipError("paperclip_issue_input_invalid", 400);
     const [issues, comments] = await Promise.all([
-      selectClientRecords(PAPERCLIP_TABLES.issues, { tenant_slug: `eq.${session.tenantSlug}`, id: `eq.${issueId}`, limit: "1" }),
-      selectClientRecords(PAPERCLIP_TABLES.comments, { tenant_slug: `eq.${session.tenantSlug}`, issue_id: `eq.${issueId}`, order: "created_at.asc", limit: "100" }),
+      selectClientRecords(PAPERCLIP_TABLES.issues, { tenant_slug: `eq.${session.tenantSlug}`, id: `eq.${issueId}`, retention_expires_at: `gt.${new Date().toISOString()}`, limit: "1" }),
+      selectClientRecords(PAPERCLIP_TABLES.comments, { tenant_slug: `eq.${session.tenantSlug}`, issue_id: `eq.${issueId}`, retention_expires_at: `gt.${new Date().toISOString()}`, order: "created_at.asc", limit: "100" }),
     ]);
     if (!issues.ok || !comments.ok) return paperclipError("paperclip_read_failed", 502);
     if (!issues.records[0]) return paperclipError("paperclip_issue_not_found", 404);
@@ -155,5 +155,6 @@ async function createComment(tenantSlug: string, userId: string, body: Record<st
 
 function withoutPreview(issue: PaperclipIssue) {
   const { buildPreviewHtml: _preview, ...rest } = issue;
+  void _preview;
   return { ...rest, hasBuild: Boolean(issue.buildArtifactId) };
 }

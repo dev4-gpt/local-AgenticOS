@@ -7,6 +7,8 @@ const baseUrl = required("--url").replace(/\/$/, "");
 const cookieFile = required("--cookie-file");
 const runProviderSmoke = args.includes("--provider-smoke");
 const providerOnly = args.includes("--provider-only");
+const readOnly = args.includes("--read-only");
+if (readOnly && (runProviderSmoke || providerOnly)) fail("--read-only cannot be combined with provider smoke");
 const requestTimeoutMs = boundedTimeout(process.env.VELOCE_PARITY_REQUEST_TIMEOUT_MS);
 // Workflow creation and brief capture both require the runtime to be inside
 // GCP: 15 client routes either enqueue a Cloud Task -- which is a *push* queue,
@@ -46,8 +48,13 @@ try {
     await verifyApi("/api/capabilities");
     await verifyApi("/api/client-runtime/credentials");
     await verifyApi("/api/client-runtime/provider-history?provider=anthropic");
-    for (const kind of recordKinds) await verifyRecord(kind);
-    if (skipGcpDependent) {
+    for (const kind of recordKinds) {
+      if (readOnly) await verifyRecordList(kind);
+      else await verifyRecord(kind);
+    }
+    if (readOnly) {
+      console.log("Skipping workflow and brief creation in read-only mode.");
+    } else if (skipGcpDependent) {
       console.log(`Skipping ${workflowSurfaces.length} workflow and ${briefSurfaces.length} brief surfaces: they require Cloud Tasks or a GCP metadata identity.`);
     } else {
       for (const surface of workflowSurfaces) await verifyWorkflow(surface);
@@ -69,7 +76,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Client runtime surface-map verification passed for ${baseUrl}${runProviderSmoke ? " with provider smoke" : ""}${skipGcpDependent ? " (routes, capabilities and records only; GCP-dependent surfaces skipped)" : ""}.`);
+console.log(`Client runtime surface-map verification passed for ${baseUrl}${readOnly ? " (read-only route and API inventory; no mutation requests or provider calls)" : runProviderSmoke ? " with provider smoke" : skipGcpDependent ? " (routes, capabilities and records only; GCP-dependent surfaces skipped)" : ""}.`);
 
 async function verifyRoute(route) {
   const response = await api(route, { headers: { accept: "text/html" } });
@@ -97,6 +104,12 @@ async function verifyRecord(kind) {
   const record = Array.isArray(body?.records) ? body.records.find((item) => item?.title === title) : null;
   expect(Boolean(record?.id), `${kind} record was not listed after create`);
   if (record?.id) cleanup.push(() => api(`/api/client-runtime/records?id=${encodeURIComponent(record.id)}`, { method: "DELETE" }));
+}
+
+async function verifyRecordList(kind) {
+  const response = await api(`/api/client-runtime/records?kind=${encodeURIComponent(kind)}`);
+  const body = await safeJson(response);
+  expect(response.status === 200 && Array.isArray(body?.records), `${kind} record list failed (${response.status})`);
 }
 
 async function verifyWorkflow(surface) {
@@ -259,7 +272,7 @@ async function persistRotatedCookies(response) {
   const nextCookie = `veloce_access_token=${jar.get("veloce_access_token")}; veloce_refresh_token=${jar.get("veloce_refresh_token")}`;
   if (nextCookie !== cookie) {
     cookie = nextCookie;
-    await writeFile(cookieFile, `${cookie}\n`, { mode: 0o600 });
+    if (!readOnly) await writeFile(cookieFile, `${cookie}\n`, { mode: 0o600 });
   }
 }
 

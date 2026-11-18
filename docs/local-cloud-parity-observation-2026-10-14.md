@@ -1,0 +1,166 @@
+# Local And Hosted Parity Observation - 2026-10-14
+
+## Scope
+
+Read-only inspection of four already-open, signed-in AgentOS Notebook tabs in
+the user's existing Chrome window. No tabs were opened. No tenant writes,
+imports, provider calls, configuration changes, or deployments were performed.
+
+The canonical checkout is `/Users/aryamandev/Documents/Codex/Projects/AgentOS/source`,
+branch `wip/backup-2026-10-03`, commit
+`6f13c646701a8250082c8e44f52a9ea441694478`. The listeners on ports 3943 and
+3965 both report this checkout as their process working directory. This does
+not prove that either running process serves artifacts built from this commit.
+
+## Observations
+
+| Environment | Existing tab | Visible authenticated Notebook state |
+| --- | --- | --- |
+| Cloud Test | `https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/notebook` | 9 notebook records, 9 active sources; acceptance and competitor notebooks are visible |
+| Internal Beta | `https://agentos-internal-beta-vbimnfseva-ew.a.run.app/notebook` | 0 notebook records, 0 active sources; no tenant records message |
+| Local | `http://127.0.0.1:3965/notebook` | 0 notebook records, 0 active sources; no tenant records message |
+| Local | `http://127.0.0.1:3943/notebook` | 0 notebook records, 0 active sources; no tenant records message |
+
+The tabs were in the same Chrome profile (`Aryaman (Work)`), but the visible
+page does not reveal a comparable user ID, tenant ID, Supabase project ref, or
+runtime source commit. Therefore the differing record counts establish a
+visible data difference, not a same-user/same-tenant parity failure. Cloud
+Test must not be used as the baseline for local or Internal Beta until those
+identities are independently matched.
+
+## Release Gate
+
+On this commit, `npm run verify:production-readiness` returns
+`releaseReady: false`, with `ledger_bucket_not_configured` and 38 evidence
+categories not evaluated. The release ledger remains unconfigured. No bucket
+was created and no IAM or hosted state was changed.
+
+## Next Checks
+
+1. Establish each environment's tenant, project, source-commit, and image
+   identity through an approved read-only mechanism before treating record
+   counts as a same-tenant parity comparison.
+2. Use a known synthetic fixture in a non-production tenant to compare the
+   local and Internal Beta source-selection, drafting, provenance, review,
+   and export journey. Do not seed or modify the existing signed-in tenants.
+3. Keep Cloud Test data separate unless its tenant identity is proven to match.
+4. Configure a release-ledger bucket only after the exact GCP project and
+   associated storage/recovery costs are verified by the owner.
+
+## Same-User Recheck
+
+A later read-only check used the already-open tabs for
+`http://127.0.0.1:3955/notebook` and
+`https://veloce-cloud-test-mquo4bf7aq-el.a.run.app/notebook`:
+
+- Both authenticated session endpoints returned the same user subject ID. The
+  identifier and email are omitted from this repository note.
+- Local showed 0 notebook records and 0 active sources; Cloud Test showed 9 of
+  each. This proves a same-user visible data difference, but not a same-tenant
+  or same-Supabase-project comparison.
+- After navigating away from Cloud Test and back to Notebook, its first render
+  showed 0 records; a browser reload restored 9. This is a transient display
+  observation requiring a fresh-load regression check, not evidence that data
+  was deleted.
+- The local session was workspace-authorized. Cloud Test's session endpoint
+  confirmed authentication, while the visible Notebook showed tenant access.
+  No tenant IDs, project refs, or deployed build identities were verified.
+- No tenant writes, imports, provider calls, or hosted changes were performed.
+
+## Runtime Identity Recheck
+
+Read-only `GET` requests to the existing build-identity routes returned:
+
+- Local `3955` reports source commit
+  `c428639d84c9a6a2fef59312b9c5bd5a9c03d88c`, no Cloud Run revision, and a
+  tenant-scope digest. Its provenance explicitly says the identity is reported
+  by the runtime, not independently attested.
+- Cloud Test returns `client_route_not_enabled` for
+  `/api/client-runtime/build-identity`, so its source commit, Cloud Run
+  revision, and tenant-scope digest cannot be read through this route.
+- The current pushed `HEAD` is `e9f95b51d86bb8947ac89d53249ae255bd1bc898`.
+  `git diff --name-status c428639d84c9a6a2fef59312b9c5bd5a9c03d88c..HEAD`
+  lists documentation changes only, so the local runtime's product source
+  matches the current repository product source. This does not prove the
+  hosted image was built from the same source.
+- The private local kit named `internal-beta-parity.env` points to Supabase
+  project ref `ppmoqjtmjtfxadsnejqc` and tenant slug `internal-beta`; auth is
+  enforced, provider calls are disabled, and one email is allowlisted. The
+  filename and slug do not establish that this Supabase project is an isolated
+  beta project. Verify the project designation before any tenant write or
+  migration.
+
+The same-user record-count difference is therefore confirmed, but the tenant
+and hosted-build causes remain unresolved. The local Supabase environment
+designation is also unverified. Do not import, seed, delete records, or apply
+migrations to force parity; first establish the Cloud Test deployment identity
+and the tenant/project scope through an approved read-only mechanism.
+
+## Fresh Signed-In Recheck - 2026-10-14
+
+Using existing tabs in the `Aryaman (Work)` Chrome window, the Cloud Test and
+local `3955` session endpoints both reported the same authenticated user
+subject. The identifier and email are intentionally omitted here. Local also
+reported `workspaceAuthorized: true`.
+
+- A fresh Cloud Test Notebook load showed 9 records and 9 active sources.
+- A full reload of local `http://127.0.0.1:3955/notebook` showed 0 records and
+  0 active sources.
+- Local `GET /api/client-runtime/build-identity` reported source commit
+  `c428639d84c9a6a2fef59312b9c5bd5a9c03d88c`, a tenant-scope digest, and
+  `reported_by_runtime_not_independent_attestation`. The Cloud Test
+  build-identity route remains disabled (`client_route_not_enabled`).
+- The requested `3985` tab remained rendered in Chrome, but port 3985 had no
+  listener. The authenticated live local check therefore used the already-open
+  3955 tab; no duplicate tab or tenant data was created.
+- Compared with the current checkout, the local runtime's reported source
+  revision predates only documentation, test, and helper-script changes; no
+  application `src/` paths differ. This does not attest the built runtime or
+  resolve tenant identity.
+
+This confirms a same-user visible data difference, not a same-tenant parity
+failure. The live Cloud Test runtime does not expose a comparable tenant/project
+identity; the checked-in deployment manifest is compared separately below. No
+tenant writes, imports, provider calls, migrations, or deployments occurred.
+
+## Tenant And Manifest Scope Follow-Up - 2026-10-14
+
+The checked-in private Cloud Test deployment manifest and the local private
+parity env were compared without printing credential values:
+
+- Both point at Supabase project ref `ppmoqjtmjtfxadsnejqc`.
+- The local kit uses tenant slug `internal-beta`; the Cloud Test manifest uses
+  `veloce-cloud-test`. The 0-versus-9 record counts therefore reflect separate
+  tenant namespaces and are not a same-tenant data-parity test.
+- The Cloud Test manifest declares 45-day retention and provider calls off. It
+  also declares a capability set different from the local launcher's defaults.
+  This is desired configuration only; the disabled Cloud Test build-identity
+  route means the currently serving revision/configuration is not attested.
+
+A read-only local launch at port 3985 using the Cloud Test slug was attempted
+with provider calls disabled. Next.js exhausted the available file watchers
+(`EMFILE`) and restarted repeatedly; the process was stopped. Its generated
+`tsconfig.json` entries and isolated build directory were removed. No tenant
+write or provider request occurred. A same-tenant live UI parity check remains
+pending until the local runtime can be launched without exhausting watchers.
+
+## Current-Source Continuation Check - 2026-10-14
+
+On the pushed checkout at `dd9fa452d5000b902cd4c893e990215317f8847b`, the
+signed-in local runtime at `http://127.0.0.1:3985/notebook` authenticated and
+rendered successfully with 0 notebook records and 0 active sources. The
+already-open Cloud Test Notebook rendered 9 records and 9 active sources. This
+is a tenant-visible data difference only; the current Cloud Test route does not
+expose build identity, and matching tenant/project scope was not established.
+The local `/api/client-runtime/build-identity` response reported this source
+commit and explicitly labeled its provenance as runtime-reported rather than
+independently attested.
+
+Under Node `v24.19.0`, the deterministic AI release evaluation passed 16/16
+cases with the local gate passing, `productionReady: false`, and no provider
+requests. The focused regression suite passed 365 tests with 1 skipped (366
+total). The production-readiness verifier remains `releaseReady: false`, with
+`ledger_bucket_not_configured` and 38 evidence categories not evaluated. No
+tenant writes, imports, provider calls, deployment, migration, or hosted
+configuration changes occurred. The temporary local runtime was stopped after
+the browser check.

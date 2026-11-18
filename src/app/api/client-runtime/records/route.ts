@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { currentClientMember, currentClientUser } from "@/lib/clientAuth";
 import { checkClientRuntimeRateLimit, clientRpc, deleteClientRecord, insertClientRecord, selectClientRecords, updateClientRecord, recordClientAudit } from "@/lib/clientDataPlane";
 import { clientCapabilityEnabled } from "@/lib/clientRuntimePolicy";
+import { readBoundedJsonObject } from "@/lib/clientNetworkSafety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 const KINDS = new Set(["memory", "journal", "goal", "notebook"]);
 const GOAL_CATEGORIES = new Set(["Work", "Business", "Content", "SEO", "Health", "Personal", "Learning"]);
 const SECRET_LIKE = /(api[_ -]?key|secret|password|private[_ -]?key|access[_ -]?token)\s*[:=]/i;
+const MAX_REQUEST_BYTES = 128 * 1024;
 
 export async function GET(request: Request) {
   const user = await currentClientUser();
@@ -66,7 +68,9 @@ export async function POST(request: Request) {
   const rateLimit = await checkClientRuntimeRateLimit("tenant-records-write", 30, 900);
   if (!rateLimit.ok) return jsonError("runtime_limit_unavailable", 503);
   if (!rateLimit.allowed) return jsonError("runtime_rate_limited", 429);
-  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const parsed = await readBoundedJsonObject(request, MAX_REQUEST_BYTES);
+  if (!parsed.ok) return jsonError(parsed.reason === "too_large" ? "record_request_too_large" : "record_input_invalid", parsed.reason === "too_large" ? 413 : 400);
+  const body = parsed.value;
   const kind = typeof body.kind === "string" ? body.kind.trim().toLowerCase() : "";
   const title = typeof body.title === "string" ? body.title.trim().slice(0, 240) : "";
   const content = typeof body.content === "string" ? body.content.trim().slice(0, 30000) : "";
@@ -101,7 +105,9 @@ export async function PATCH(request: Request) {
   const rateLimit = await checkClientRuntimeRateLimit("tenant-records-write", 30, 900);
   if (!rateLimit.ok) return jsonError("runtime_limit_unavailable", 503);
   if (!rateLimit.allowed) return jsonError("runtime_rate_limited", 429);
-  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const parsed = await readBoundedJsonObject(request, MAX_REQUEST_BYTES);
+  if (!parsed.ok) return jsonError(parsed.reason === "too_large" ? "record_request_too_large" : "record_input_invalid", parsed.reason === "too_large" ? 413 : 400);
+  const body = parsed.value;
   const id = typeof body.id === "string" ? body.id.trim() : "";
   const status = typeof body.status === "string" ? body.status.trim().toLowerCase() : "";
   if (!/^[0-9a-f-]{36}$/i.test(id) || !["active", "done", "archived"].includes(status)) return jsonError("record_update_invalid", 400);

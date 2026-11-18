@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { clientJobTraceSnapshot, safeClientJobTrace, traceClientJobStage, withClientJobTrace } from "../src/lib/clientJobTrace";
 import { runClientTextAdapter } from "../src/lib/clientProviderAdapter";
+import { clientRetentionExpiresAt } from "../src/lib/clientRetention";
 import { loadReviewModule } from "./helpers/load-review-module";
 
 const jobId = "00000000-0000-4000-8000-000000000001";
@@ -88,6 +89,7 @@ test("worker persists the redacted claim trace when a claimed job fails admissio
   let completed: Record<string, unknown> | null = null;
   mocks["next/server"] = { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } };
   mocks["@/lib/clientTaskAuth"] = { validClientTaskIdentity: async () => true };
+  mocks["@/lib/clientRetention"] = { clientRetentionExpiresAt };
   mocks["@/lib/clientJobTrace"] = { clientJobTraceSnapshot, traceClientJobStage, withClientJobTrace };
   mocks["@/lib/capabilityTraits"] = { validateTraitBundle: () => ["invalid"] };
   mocks["@/lib/clientRuntimeObservability"] = { logClientRuntimeEvent: () => undefined };

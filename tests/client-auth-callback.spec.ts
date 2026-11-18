@@ -36,7 +36,8 @@ test("public callback strips credentials before resolving one active runtime", (
 test("runtime destination accepts exactly one active account for the authenticated user", async () => {
   process.env.SUPABASE_URL = "https://db.invalid";
   const lookups: Array<Record<string, string>> = [];
-  let rows: Record<string, unknown>[] = [{ runtime_url: "https://tenant-a.run.app" }];
+  let rows: Record<string, unknown>[] = [{ runtime_url: "https://tenant-a.run.app", tenant_slug: "tenant-a" }];
+  let isMember = true;
   const mod = loadReviewModule("product-experience/src/app/api/onboarding/runtime-destination/route.ts", {
     "@/lib/publicLaunch": {
       publicLaunchConfig: () => ({ url: "https://db.invalid", serviceKey: "service-key" }),
@@ -44,19 +45,27 @@ test("runtime destination accepts exactly one active account for the authenticat
     },
   });
   globalThis.fetch = async (url, init) => {
-    expect(String(url)).toBe("https://db.invalid/auth/v1/user");
     expect(init?.headers).toMatchObject({ Authorization: `Bearer ${"a".repeat(24)}` });
-    return Response.json({ id: "user-a" });
+    if (String(url) === "https://db.invalid/auth/v1/user") return Response.json({ id: "user-a" });
+    expect(String(url)).toBe("https://db.invalid/rest/v1/rpc/client_member");
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBe(JSON.stringify({ p_tenant_slug: "tenant-a" }));
+    return Response.json(isMember);
   };
   const request = () => new Request("https://app.invalid/api/onboarding/runtime-destination", { method: "POST", headers: { authorization: `Bearer ${"a".repeat(24)}` } });
   const success = await mod.POST(request());
   expect(success.status).toBe(200);
   expect(success.headers.get("cache-control")).toBe("no-store");
   expect(await success.json()).toEqual({ ok: true, runtimeUrl: "https://tenant-a.run.app" });
-  expect(lookups).toEqual([{ auth_user_id: "eq.user-a", status: "eq.active", select: "runtime_url", limit: "2" }]);
-  rows = [{ runtime_url: "https://tenant-a.run.app" }, { runtime_url: "https://tenant-b.run.app" }];
+  expect(lookups).toEqual([{ auth_user_id: "eq.user-a", status: "eq.active", select: "runtime_url,tenant_slug", limit: "2" }]);
+  isMember = false;
   expect((await mod.POST(request())).status).toBe(403);
-  rows = [{ runtime_url: "https://tenant-a.run.app.evil.example" }];
+  isMember = true;
+  rows = [{ runtime_url: "https://tenant-a.run.app" }];
+  expect((await mod.POST(request())).status).toBe(403);
+  rows = [{ runtime_url: "https://tenant-a.run.app", tenant_slug: "tenant-a" }, { runtime_url: "https://tenant-b.run.app", tenant_slug: "tenant-b" }];
+  expect((await mod.POST(request())).status).toBe(403);
+  rows = [{ runtime_url: "https://tenant-a.run.app.evil.example", tenant_slug: "tenant-a" }];
   expect((await mod.POST(request())).status).toBe(403);
   for (const runtimeUrl of [
     "https://evil.example?.run.app",
@@ -66,7 +75,7 @@ test("runtime destination accepts exactly one active account for the authenticat
     "https://tenant-a.run.app/redirect",
     "https://tenant-a.run.app?next=evil.example",
   ]) {
-    rows = [{ runtime_url: runtimeUrl }];
+    rows = [{ runtime_url: runtimeUrl, tenant_slug: "tenant-a" }];
     expect((await mod.POST(request())).status, runtimeUrl).toBe(403);
   }
   rows = [];

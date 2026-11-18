@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   const accounts = await supabaseServiceSelect("client_onboarding_accounts", { id: `eq.${runRecord.onboarding_id}` });
   const account = accounts.rows[0];
   const approvedManifest = account?.approved_manifest && typeof account.approved_manifest === "object" && !Array.isArray(account.approved_manifest) ? account.approved_manifest as Record<string, unknown> : {};
-  if (!accounts.ok || approvedManifest.clientSlug !== clientSlug || !/^[a-z][a-z0-9-]{2,40}$/.test(clientSlug) || !clientName || !Number.isSafeInteger(retentionDays) || retentionDays < 1 || retentionDays > 3650) {
+  if (!accounts.ok || approvedManifest.clientSlug !== clientSlug || !/^[a-z][a-z0-9-]{2,40}$/.test(clientSlug) || !clientName || !Number.isSafeInteger(retentionDays) || retentionDays < 1 || retentionDays > 28) {
     await supabaseServiceUpdate("client_onboarding_accounts", { id: `eq.${runRecord.onboarding_id}` }, { status: "provision_failed", updated_at: new Date().toISOString() });
     return NextResponse.json({ ok: false, error: "provisioning_callback_manifest_mismatch" }, { status: 409 });
   }

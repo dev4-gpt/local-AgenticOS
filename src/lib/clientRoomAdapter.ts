@@ -47,6 +47,7 @@ export type RoomConversation = {
   presentAgents: string[];
   createdAt: string;
   updatedAt: string;
+  retentionExpiresAt: string | null;
 };
 
 export type RoomMessage = {
@@ -123,9 +124,9 @@ const ROOM_SYSTEM = [
   "Keep every message SHORT and conversational — 1 to 3 sentences, like a real chat.",
   "Stay fully in your own character. You can agree, disagree, build on, or tease the other agents by name.",
   "Don't repeat what someone already said. Be genuinely useful and real. No preamble, no name prefix — just your message.",
-  "You can take REAL actions in this workspace, but ONLY when the user clearly asks:",
-  "• To SAVE your point as a workspace memory note, add a final line exactly: NOTE:: <a short title>",
-  "• To ADD an idea to the delivery pipeline, add a final line exactly: PIPELINE:: <one-line idea>",
+  "You can propose workspace changes ONLY when the user clearly asks. Proposals require separate human review; never claim they are saved or approved:",
+  "• To PROPOSE your point as a workspace memory note, add a final line exactly: NOTE:: <a short title>",
+  "• To PROPOSE an idea for the delivery pipeline, add a final line exactly: PIPELINE:: <one-line idea>",
   "Use these sparingly. Write your normal chat message first, then the directive on its own final line. Never mention this directive syntax in your visible message.",
 ].join(" ");
 
@@ -179,6 +180,14 @@ export function roomRoundAgents(message: string, presentIds: string[]) {
 
 export type RoomTurn = { speaker: string; text: string };
 
+export function roomJobRetentionDeadline(input: Record<string, unknown>, now = Date.now()): number | null {
+  const timestamp = (value: unknown) => typeof value === "string" && /T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? Date.parse(value) : NaN;
+  const origin = timestamp(input.roomCreatedAt);
+  const expiry = timestamp(input.roomRetentionExpiresAt);
+  return Number.isFinite(origin) && Number.isFinite(expiry) && origin <= now
+    && expiry > origin && expiry <= origin + 28 * 86_400_000 ? expiry : null;
+}
+
 export function roomTranscript(messages: RoomMessage[], userLabel = "You"): RoomTurn[] {
   return messages
     .filter((message) => message.kind === "message" && (message.role === "user" || message.role === "agent"))
@@ -212,6 +221,24 @@ export function roomPrompt(input: {
 }
 
 export type RoomDirective = { kind: "note" | "pipeline"; label: string };
+export type RoomDirectiveProposal = RoomDirective & { body: string; agentId: string; agentName: string };
+export type RoomDirectiveReview = {
+  jobId: string;
+  index: number;
+  proposal: RoomDirectiveProposal;
+  decision: "pending" | "approved" | "rejected";
+  recordId: string | null;
+};
+
+export function validRoomDirectiveProposal(value: unknown): value is RoomDirectiveProposal {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const p = value as Record<string, unknown>;
+  return Object.keys(p).length === 5 && (p.kind === "note" || p.kind === "pipeline")
+    && typeof p.label === "string" && p.label.trim().length > 0 && p.label.length <= (p.kind === "note" ? 80 : 120)
+    && typeof p.body === "string" && p.body.trim().length > 0 && p.body.length <= 4000
+    && typeof p.agentId === "string" && p.agentId.length > 0 && p.agentId.length <= 40
+    && typeof p.agentName === "string" && p.agentName.length > 0 && p.agentName.length <= 60;
+}
 
 /**
  * Splits an agent reply into its visible message and any NOTE:: / PIPELINE::
@@ -283,6 +310,7 @@ export function normalizeRoomConversation(row: Record<string, unknown>): RoomCon
     presentAgents: Array.isArray(row.present_agents) ? row.present_agents.filter((value): value is string => typeof value === "string").slice(0, 16) : [],
     createdAt: str(row.created_at, 40),
     updatedAt: str(row.updated_at, 40),
+    retentionExpiresAt: nullableStr(row.retention_expires_at, 40),
   };
 }
 

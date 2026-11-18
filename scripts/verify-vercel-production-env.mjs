@@ -6,7 +6,8 @@ const projectDir = valueAfter("--project-dir") || "product-experience";
 const failures = [];
 const warnings = [];
 const required = [
-  "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "RESEND_API_KEY", "PUBLIC_EMAIL_FROM",
+  "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY", "CLIENT_LOGIN_ENABLED",
+  "RESEND_API_KEY", "PUBLIC_EMAIL_FROM",
   "PUBLIC_APP_URL", "PUBLIC_SITE_URL", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET",
   "STRIPE_SETUP_PRICE_ID", "STRIPE_PLATFORM_PRICE_ID", "STRIPE_CREDIT_PRICE_ID", "STRIPE_MODE",
   "CONTROL_PLANE_OPERATOR_SECRET", "CONTROL_PLANE_WORKER_TOKEN", "CONTROL_PLANE_PROVISIONER_URL",
@@ -26,18 +27,19 @@ const allowedPublicKeys = new Set(["NEXT_PUBLIC_TURNSTILE_SITE_KEY"]);
 const result = spawnSync("vercel", ["env", "ls", "production", "--json", "--no-color", "--cwd", projectDir], {
   encoding: "utf8",
   maxBuffer: 5_000_000,
+  timeout: 30_000,
 });
-if (result.status !== 0) {
-  failures.push(`Vercel environment listing failed: ${(result.stderr || "").trim().split("\n").at(-1) || "unknown error"}`);
-}
+if (result.error || result.status !== 0) unavailable("Vercel environment listing failed");
+if (!result.stdout?.trim()) unavailable("Vercel environment listing returned no data");
 
-let rows = [];
+let rows;
 try {
-  const parsed = JSON.parse(result.stdout || "[]");
-  rows = Array.isArray(parsed) ? parsed : (parsed?.envs || parsed?.variables || []);
+  const parsed = JSON.parse(result.stdout);
+  rows = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.envs) ? parsed.envs : parsed?.variables);
 } catch {
-  failures.push("Vercel environment listing did not return valid JSON");
+  unavailable("Vercel environment listing did not return valid JSON");
 }
+if (!Array.isArray(rows)) unavailable("Vercel environment listing returned an unsupported shape");
 
 const metadata = rows
   .map((row) => ({ name: row?.key || row?.name || "", type: row?.type || "", targets: row?.target || row?.environments || [] }))
@@ -63,6 +65,7 @@ if (!managedPricingPresent) warnings.push("Managed OpenRouter remains fail-close
 
 console.log(JSON.stringify({
   ok: failures.length === 0,
+  inventoryStatus: "complete",
   projectDir,
   productionVariableCount: metadata.filter((row) => row.targets.includes("production")).length,
   present: Object.fromEntries(required.map((name) => [name, byName.has(name)])),
@@ -74,6 +77,20 @@ if (failures.length) process.exit(1);
 
 function expect(condition, message) {
   if (!condition) failures.push(message);
+}
+
+function unavailable(message) {
+  console.log(JSON.stringify({
+    ok: false,
+    inventoryStatus: "unavailable",
+    projectDir,
+    productionVariableCount: null,
+    present: Object.fromEntries(required.map((name) => [name, null])),
+    sensitiveTypes: Object.fromEntries([...sensitive].map((name) => [name, null])),
+    failures: [message],
+    warnings: [],
+  }, null, 2));
+  process.exit(1);
 }
 
 function valueAfter(flag) {

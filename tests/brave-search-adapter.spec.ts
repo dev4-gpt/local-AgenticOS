@@ -74,9 +74,11 @@ test("the local tunnel verifier requires a public HTTPS origin", () => {
 
 test("local Cloud Tasks identity requires explicit development opt-in", () => {
   const cloudTasks = readFileSync(join(process.cwd(), "src/lib/cloudTasks.ts"), "utf8");
-  expect(cloudTasks).toContain("CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH");
-  expect(cloudTasks).toContain('"auth", "print-access-token"');
-  expect(cloudTasks).toContain('process.env.NODE_ENV === "production"');
+  const identity = readFileSync(join(process.cwd(), "src/lib/clientGcpIdentity.ts"), "utf8");
+  expect(cloudTasks).toContain('from "./clientGcpIdentity"');
+  expect(identity).toContain("CLIENT_RUNTIME_LOCAL_GCLOUD_AUTH");
+  expect(identity).toContain('"auth", "print-access-token"');
+  expect(identity).toContain('process.env.NODE_ENV !== "development"');
 });
 
 test("the worker enforces Brave search-only behavior and attributes its budget", () => {

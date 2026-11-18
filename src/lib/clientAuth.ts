@@ -63,17 +63,29 @@ export async function currentClientAccessToken() {
 
 export async function currentClientMember() {
   const user = await currentClientUser();
-  const config = supabaseConfig();
+  if (!user) return false;
   const token = await currentClientAccessToken();
+  const membership = await clientMembershipForToken(token);
+  return membership.ok && membership.member;
+}
+
+type ClientMembership = { ok: true; member: boolean } | { ok: false; error: "tenant_not_configured" | "tenant_membership_unavailable" };
+
+export async function clientMembershipForToken(token: string | null): Promise<ClientMembership> {
+  const config = supabaseConfig();
   const tenantSlug = process.env.CLIENT_SLUG?.trim();
-  if (!user || !config || !token || !tenantSlug) return false;
+  if (!config || !tenantSlug) return { ok: false, error: "tenant_not_configured" };
+  if (!token) return { ok: false, error: "tenant_membership_unavailable" };
   const response = await fetch(`${config.url}/rest/v1/rpc/client_member`, {
     method: "POST",
     headers: { apikey: config.key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ p_tenant_slug: tenantSlug }),
     cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
   }).catch(() => null);
-  return response?.ok === true && (await response.json().catch(() => false)) === true;
+  if (!response?.ok) return { ok: false, error: "tenant_membership_unavailable" };
+  const member: unknown = await response.json().catch(() => null);
+  return typeof member === "boolean" ? { ok: true, member } : { ok: false, error: "tenant_membership_unavailable" };
 }
 
 export async function currentClientCredentialManager() {

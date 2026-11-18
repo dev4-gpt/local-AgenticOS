@@ -9,6 +9,7 @@ export default defineConfig([
     ".next/**",
     ".next-client/**",
     ".next-client-test/**",
+    ".next-client-e2e/**",
     ".next-v0/**",
     "out/**",
     "build/**",

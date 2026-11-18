@@ -29,7 +29,13 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (!lookup.ok) return error("artifact_lookup_failed", 502);
   const artifact = lookup.records[0];
   const objectKey = typeof artifact?.object_key === "string" ? artifact.object_key : "";
-  if (!artifact || !safeClientObjectKey(objectKey, config.namespace)) return error("artifact_not_found", 404);
+  if (!artifact || artifact.tenant_slug !== tenantSlug || !safeClientObjectKey(objectKey, config.namespace)) return error("artifact_not_found", 404);
+  if (artifact.created_by !== user.id) {
+    const jobId = typeof artifact.job_id === "string" ? artifact.job_id : "";
+    if (!jobId) return error("artifact_not_found", 404);
+    const job = await selectClientRecords("client_runtime_jobs", { id: `eq.${jobId}`, tenant_slug: `eq.${tenantSlug}`, requested_by: `eq.${user.id}`, limit: "1" });
+    if (!job.ok || job.records[0]?.tenant_slug !== tenantSlug || job.records[0]?.requested_by !== user.id) return error("artifact_not_found", 404);
+  }
 
   const token = await clientGcpAccessToken();
   if (!token) return error("storage_identity_unavailable", 503);

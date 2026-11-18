@@ -1,0 +1,66 @@
+{
+  "entity_types": [
+    {
+      "name": "Buyer",
+      "description": "A fictional prospect evaluating AgentOS for a first workflow.",
+      "attributes": [
+        { "name": "persona_id", "type": "text", "description": "Synthetic profile identifier" },
+        { "name": "decision_role", "type": "text", "description": "Hands-on user, workflow owner, technical evaluator, security reviewer, or budget holder" },
+        { "name": "ai_literacy", "type": "text", "description": "Experience with AI tools" },
+        { "name": "privacy_posture", "type": "text", "description": "Data handling preference" },
+        { "name": "monthly_budget", "type": "text", "description": "Synthetic budget band" },
+        { "name": "first_workflow", "type": "text", "description": "Initial task being assessed" }
+      ],
+      "examples": ["P00603", "P09494"]
+    },
+    {
+      "name": "Person",
+      "description": "Any individual who is not one of the fictional buyers.",
+      "attributes": [
+        { "name": "role", "type": "text", "description": "Participant's role" }
+      ],
+      "examples": ["AgentOS representative", "Independent advisor"]
+    },
+    {
+      "name": "Organization",
+      "description": "A company or institution involved in a buyer scenario.",
+      "attributes": [
+        { "name": "sector", "type": "text", "description": "Industry or field" }
+      ],
+      "examples": ["Fictional buyer organization", "AgentOS"]
+    }
+  ],
+  "edge_types": [
+    {
+      "name": "EVALUATES",
+      "description": "Assesses a product or organization for a first workflow.",
+      "source_targets": [{ "source": "Buyer", "target": "Organization" }],
+      "attributes": []
+    },
+    {
+      "name": "WORKS_FOR",
+      "description": "Works for or represents an organization.",
+      "source_targets": [
+        { "source": "Buyer", "target": "Organization" },
+        { "source": "Person", "target": "Organization" }
+      ],
+      "attributes": []
+    },
+    {
+      "name": "QUESTIONS",
+      "description": "Asks another participant about evidence or risk.",
+      "source_targets": [
+        { "source": "Buyer", "target": "Person" },
+        { "source": "Person", "target": "Buyer" }
+      ],
+      "attributes": []
+    },
+    {
+      "name": "ADVISES",
+      "description": "Offers an independent view about product fit.",
+      "source_targets": [{ "source": "Person", "target": "Buyer" }],
+      "attributes": []
+    }
+  ],
+  "analysis_summary": "Manually reviewed synthetic buyer ontology within Zep Free custom-type limits; role distinctions remain in Buyer attributes and seed text."
+}

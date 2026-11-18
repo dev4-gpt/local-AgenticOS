@@ -100,10 +100,11 @@ cd "$BUILD_DIR"
 git checkout 736c7e6
 
 IMAGE=asia-south1-docker.pkg.dev/$PROJECT/veloce/client-runtime:v124-public-beta-20260822
+SOURCE_COMMIT=$(git rev-parse HEAD)
 gcloud builds submit . \
   --project "$PROJECT" \
   --config cloudbuild.client.yaml \
-  --substitutions="_IMAGE=$IMAGE"
+  --substitutions="_IMAGE=$IMAGE,_SOURCE_COMMIT=$SOURCE_COMMIT"
 
 gcloud run services update veloce-cloud-test \
   --project "$PROJECT" \

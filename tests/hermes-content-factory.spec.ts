@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import {
   HERMES_CONTENT_FACTORY_SOURCE,
   HERMES_CONTENT_FACTORY_STEPS,
@@ -76,4 +78,11 @@ test("approval and delivery records are workflow-bound and delivery retries repl
   expect(approval?.status).toBe("approved");
   expect(hermesFactoryDeliveryReplay({ ...run, status: "published", delivery: { id: "delivery-1", workflowId: plan.workflowId, tenantSlug: plan.tenantSlug, destination: "internal-review", status: "recorded", approvalId: approval?.approval.id } })).toBe(true);
   expect(hermesFactoryDeliveryReplay({ ...run, status: "published", delivery: null })).toBe(false);
+});
+
+test("Hermes API reads and idempotent retries respect active retention expiry", () => {
+  const route = readFileSync(path.join(process.cwd(), "src/app/api/client-runtime/hermes-content-factory/route.ts"), "utf8");
+  expect(route).toContain("retention_expires_at: `gt.${new Date().toISOString()}`");
+  expect(route).toContain("content_factory_retention_expired");
+  expect(route).toContain("Date.parse(String(existing.records[0].retention_expires_at)) <= Date.now()");
 });

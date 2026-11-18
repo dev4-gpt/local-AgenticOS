@@ -152,7 +152,7 @@ export function isAllowedV96ResearchUrl(value: string) {
 export function validateV96ResearchRequest(input: Partial<V96StructuredResearchRequest>) {
   const errors: string[] = [];
   if (input.contractVersion !== V96_CONTRACT_VERSION) errors.push("contractVersion must be v96");
-  if (!input.tenantSlug || !/^[a-z0-9][a-z0-9-]{1,62}$/.test(input.tenantSlug)) errors.push("tenantSlug is invalid");
+  if (!input.tenantSlug || !/^[a-z][a-z0-9-]{2,40}$/.test(input.tenantSlug)) errors.push("tenantSlug is invalid"); // the database rule
   if (!input.provider) errors.push("provider is required");
   if (!Array.isArray(input.sourceUrls) || input.sourceUrls.length < 1 || input.sourceUrls.length > 8) errors.push("sourceUrls must contain 1 to 8 URLs");
   if (Array.isArray(input.sourceUrls)) {

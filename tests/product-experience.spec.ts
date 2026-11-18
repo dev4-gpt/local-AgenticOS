@@ -2,6 +2,35 @@ import { expect, test } from "@playwright/test";
 
 test.use({ baseURL: process.env.PRODUCT_EXPERIENCE_URL || "http://127.0.0.1:3565" });
 
+test("client sign-in entry is reachable and exposes only its configured state", async ({ page }) => {
+  const response = await page.goto("/login", { waitUntil: "networkidle" });
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { name: "Client sign-in" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Request a workspace" })).toHaveAttribute("href", "/start");
+  await expect(page.getByRole("link", { name: "Contact support" })).toHaveAttribute("href", "/support");
+
+  const status = page.getByRole("status");
+  if (await status.isVisible()) {
+    await expect(status).toContainText("Client sign-in is not available yet");
+  } else {
+    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Email sign-in link" })).toBeVisible();
+  }
+});
+
+test("product experience font stacks resolve without a remote font service", async ({ page }) => {
+  const fontRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("fonts.googleapis.com") || request.url().includes("fonts.gstatic.com")) {
+      fontRequests.push(request.url());
+    }
+  });
+  await page.goto("/login", { waitUntil: "networkidle" });
+  const families = await page.locator("body").evaluate((body) => getComputedStyle(body).fontFamily);
+  expect(families).toContain("system-ui");
+  expect(fontRequests).toEqual([]);
+});
+
 test("product experience opens on the Renaissance hero", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -32,6 +61,18 @@ test("product experience header search is readable and searchable", async ({ pag
 
   await expect(page.getByRole("link", { name: /memory/i }).first()).toBeVisible();
   await expect(page.getByText(/approved reasoning/i).first()).toBeVisible();
+  await page.getByRole("link", { name: /memory/i }).first().click();
+  await expect(page).toHaveURL(/#agentic$/);
+});
+
+test("unconfigured runtime cards request access in the current tab", async ({ page }) => {
+  test.skip(Boolean(process.env.NEXT_PUBLIC_APP_URL), "Configured client runtime cards open the workspace.");
+  await page.goto("/", { waitUntil: "networkidle" });
+  const memory = page.locator("#agentic").getByRole("link", { name: "Ask about access" }).first();
+  await expect(memory).toHaveAttribute("href", "#developer");
+  await expect(memory).not.toHaveAttribute("target", "_blank");
+  await memory.click();
+  await expect(page).toHaveURL(/#developer$/);
 });
 
 test("product experience contact form is present and submittable", async ({ page }) => {
@@ -56,7 +97,9 @@ test("product experience exposes the public catalog and credits policy", async (
   await expect(page.getByText(/OpenSEO/i)).toBeVisible();
 
   await page.goto("/credits", { waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { name: /platform fees, scope, and provider credits/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /platform fees and provider usage/i })).toBeVisible();
+  await expect(page.getByText("$3,750", { exact: true })).toBeVisible();
+  await expect(page.getByText(/excludes taxes, provider usage, and any approved scope-based quote/i)).toBeVisible();
   await expect(page.getByText(/With BYOK, you pay the provider directly/i)).toBeVisible();
 });
 

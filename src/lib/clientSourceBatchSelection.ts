@@ -50,7 +50,8 @@ export async function selectClientSourceBatches<T extends SourceFile>(files: T[]
   if (manifests.length > 1 || !parts.length) throw new Error("source_batch_manifest_invalid");
   if (!manifests.length) {
     if (parts.length !== 1 || /\.part-\d+\.json$/i.test(parts[0].name)) throw new Error("source_batch_manifest_required");
-    return { batches: [{ file: parts[0], sha256: null }], sourceCount: null, linkCount: null, skippedCount: null };
+    const pack = parsePack((await readJson(parts[0])).value);
+    return { batches: [{ file: parts[0], sha256: null }], sourceCount: pack.sources.length, linkCount: pack.linkCount, skippedCount: pack.skippedCount };
   }
 
   const manifest = (await readJson(manifests[0])).value;
@@ -76,27 +77,26 @@ export async function selectClientSourceBatches<T extends SourceFile>(files: T[]
     const expectedLinks = count(entry?.links);
     if (!file || !name.endsWith(`.part-${String(index + 1).padStart(3, "0")}.json`) || typeof expectedHash !== "string" || !/^[a-f0-9]{64}$/.test(expectedHash) || expectedSources === null || expectedLinks === null) throw new Error("source_batch_manifest_invalid");
     const { value, bytes } = await readJson(file);
-    if (await sha256(bytes) !== expectedHash || value.startUrl !== manifest.startUrl || !Array.isArray(value.sources) || !Array.isArray(value.skipped)) throw new Error("source_batch_manifest_mismatch");
-    for (const rawSource of value.sources) {
-      const source = record(rawSource);
-      const url = canonicalHttpUrl(source?.url);
-      if (!source || !url) throw new Error("source_batch_manifest_mismatch");
-      const tab = typeof source.tab === "string" ? source.tab.trim() : "";
-      const key = JSON.stringify([startUrl, url, tab]);
+    if (await sha256(bytes) !== expectedHash || value.startUrl !== manifest.startUrl || !Array.isArray(value.skipped)) throw new Error("source_batch_manifest_mismatch");
+    const pack = parsePack(value);
+    for (const source of pack.sources) {
+      const key = JSON.stringify([startUrl, source.sourceUrl, source.tab ?? ""]);
       if (importKeys.has(key)) throw new Error("source_batch_duplicate_source");
       importKeys.add(key);
     }
-    const actualLinks = value.sources.reduce<number | null>((total, source) => {
-      const item = record(source);
-      return total !== null && item && Array.isArray(item.links) ? total + item.links.length : null;
-    }, 0);
-    if (value.sources.length !== expectedSources || actualLinks !== expectedLinks) throw new Error("source_batch_manifest_mismatch");
-    sources += value.sources.length;
-    links += actualLinks;
-    skipped += value.skipped.length;
+    if (pack.sources.length !== expectedSources || pack.linkCount !== expectedLinks) throw new Error("source_batch_manifest_mismatch");
+    sources += pack.sources.length;
+    links += pack.linkCount;
+    skipped += pack.skippedCount;
     batches.push({ file, sha256: expectedHash });
     byName.delete(name);
   }
   if (byName.size || sources !== sourceCount || links !== linkCount || skipped !== skippedCount) throw new Error("source_batch_manifest_mismatch");
   return { batches, sourceCount, linkCount, skippedCount };
 }
+
+function parsePack(value: unknown) {
+  try { return parseClientSourcePackShape(value); }
+  catch { throw new Error("source_batch_content_invalid"); }
+}
+import { parseClientSourcePackShape } from "@/lib/clientSourcePackShape";

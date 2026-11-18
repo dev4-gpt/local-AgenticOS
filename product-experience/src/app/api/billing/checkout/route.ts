@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { allowPublicRequest } from "@/lib/publicRequestGuard";
+import { allowPublicRequest, readPublicJsonBody } from "@/lib/publicRequestGuard";
 import { stripeConfigured, stripeGet, stripeRequest, stripeSecretConfigured, stripeTestFixtureConfig, supabaseServiceSelect, supabaseServiceUpdate } from "@/lib/publicLaunch";
 
 export const runtime = "nodejs";
@@ -8,7 +8,10 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   if (!(await allowPublicRequest(request, "billing-checkout"))) return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
   if (!stripeSecretConfigured()) return NextResponse.json({ ok: false, error: "billing_not_configured" }, { status: 503 });
-  const body = await request.json().catch(() => ({})) as { requestId?: unknown; email?: unknown };
+  const parsed = await readPublicJsonBody(request);
+  if (!parsed.ok) return NextResponse.json({ ok: false, error: parsed.error === "too_large" ? "payload_too_large" : "invalid_request" }, { status: parsed.error === "too_large" ? 413 : 400 });
+  if (!parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return NextResponse.json({ ok: false, error: "invalid_request" }, { status: 400 });
+  const body = parsed.value as { requestId?: unknown; email?: unknown };
   const requestId = typeof body.requestId === "string" ? body.requestId.trim() : "";
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId) || !email) return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });

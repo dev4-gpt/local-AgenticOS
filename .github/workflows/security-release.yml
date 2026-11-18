@@ -24,7 +24,7 @@ jobs:
       - run: npm run verify:security
       - run: npm run verify:policy-gates
       - run: npm run test:focused
-      - run: npm audit --audit-level=high
+      - run: node scripts/audit-gate.mjs
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:ecc-ui

@@ -1,0 +1,79 @@
+digraph AgentOS {
+  graph [
+    rankdir=TB,
+    bgcolor="white",
+    pad="0.22",
+    nodesep="0.25",
+    ranksep="0.42",
+    splines=polyline,
+    fontname="Arial",
+    fontsize=20,
+    labelloc=t,
+    label="Veloce AgenticOS | Current and Intended System Boundaries"
+  ];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=16,
+        color="#8EA9BE", fontcolor="#102A43", fillcolor="#F2F7FB",
+        margin="0.14,0.10"];
+  edge [fontname="Arial", fontsize=11, color="#537895", fontcolor="#334E68",
+        arrowsize=0.7];
+
+  member [label="Tenant member\nBrowser session"];
+  operator [label="Owner / operator\nLocal machine"];
+
+  subgraph cluster_public {
+    label="Public entry surface";
+    color="#9AB9D1";
+    style="rounded";
+    vercel [label="Vercel product-experience\nEditorial site / intake / quote", fillcolor="#E4F1FA"];
+    intake [label="Supabase intake state\nRequests / scope / approvals", fillcolor="#E4F1FA"];
+  }
+
+  subgraph cluster_local {
+    label="Local operator edition";
+    color="#9AB9D1";
+    style="rounded";
+    local_app [label="Next.js operator workspace\nlocalhost", fillcolor="#EAF3F8"];
+    local_mem [label="Obsidian vault / local files\nOllama + installed agents", fillcolor="#F7FAFC"];
+  }
+
+  subgraph cluster_tenant {
+    label="Tenant workspace boundary";
+    color="#4C7A9D";
+    style="rounded,bold";
+    runtime [label="Client-edition Next.js runtime\nCloud Run; route / capability gates", fillcolor="#D8EAF6"];
+    api [label="Authenticated API routes\nmember + tenant + policy checks", fillcolor="#EAF3F8"];
+    tasks [label="Cloud Tasks\nbounded asynchronous dispatch", fillcolor="#EAF3F8"];
+    worker [label="Private worker routes\nclaim / execute / settle", fillcolor="#D8EAF6"];
+  }
+
+  subgraph cluster_data {
+    label="Tenant data and secrets";
+    color="#9AB9D1";
+    style="rounded";
+    supabase [label="Supabase Auth + Postgres\nRLS / tenant records / jobs / audit / graph", fillcolor="#E4F1FA"];
+    secrets [label="GCP Secret Manager\nprovider and worker secrets", fillcolor="#F2F7FB"];
+    objects [label="Private object storage\nartifact bytes; proxy / lifecycle gates", fillcolor="#F2F7FB"];
+  }
+
+  providers [label="External model / tool providers\nBYOK or explicitly managed", fillcolor="#F7FAFC"];
+
+  member -> runtime [label="HTTPS; authenticated session"];
+  runtime -> api [label="UI actions"];
+  api -> supabase [label="RLS-scoped reads / enqueue RPC"];
+  api -> tasks [label="approved async job"];
+  tasks -> worker [label="signed task dispatch"];
+  worker -> supabase [label="claim / budget / completion"];
+  worker -> secrets [label="IAM-bound secret access"];
+  worker -> providers [label="only when policy + budget allow"];
+  worker -> objects [label="artifact write"];
+  runtime -> objects [label="authenticated artifact proxy"];
+
+  member -> vercel [label="public information / intake"];
+  vercel -> intake [label="request data"];
+  operator -> local_app [label="local control plane"];
+  local_app -> local_mem [label="local memory / tools"];
+
+  note [shape=note, label="Release note: diagram describes the intended boundary.\nCloud Run revision, route allowlist, retention, image provenance,\nand hosted end-to-end parity remain unaccepted gates.",
+        fillcolor="#FFF8E7", color="#D6B65C", fontsize=13];
+  note -> runtime [style=dashed, arrowhead=none, color="#C09A32"];
+}

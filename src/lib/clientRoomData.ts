@@ -100,6 +100,7 @@ async function read<T>(table: string, filters: Record<string, string>, normalize
 export function readRoomConversations(tenantSlug: string) {
   return read<RoomConversation>(ROOM_TABLES.conversations, {
     tenant_slug: `eq.${tenantSlug}`,
+    retention_expires_at: `gt.${new Date().toISOString()}`,
     order: "updated_at.desc",
     limit: "80",
   }, normalizeRoomConversation);
@@ -109,6 +110,7 @@ export function readRoomMessages(tenantSlug: string, conversationId: string) {
   return read<RoomMessage>(ROOM_TABLES.messages, {
     tenant_slug: `eq.${tenantSlug}`,
     conversation_id: `eq.${conversationId}`,
+    retention_expires_at: `gt.${new Date().toISOString()}`,
     order: "seq.asc",
     limit: "400",
   }, normalizeRoomMessage);
@@ -118,6 +120,7 @@ export function readRoomRounds(tenantSlug: string, conversationId: string) {
   return read<RoomRound>(ROOM_TABLES.rounds, {
     tenant_slug: `eq.${tenantSlug}`,
     conversation_id: `eq.${conversationId}`,
+    retention_expires_at: `gt.${new Date().toISOString()}`,
     order: "created_at.desc",
     limit: "10",
   }, normalizeRoomRound);
@@ -127,6 +130,7 @@ export async function readRoomConversation(tenantSlug: string, id: string) {
   const result = await selectClientRecords(ROOM_TABLES.conversations, {
     tenant_slug: `eq.${tenantSlug}`,
     id: `eq.${id}`,
+    retention_expires_at: `gt.${new Date().toISOString()}`,
     limit: "1",
   });
   if (!result.ok || !result.records[0]) return null;
@@ -201,12 +205,17 @@ export async function roomMemoryContext(tenantSlug: string, query: string) {
   const result = await selectClientRecords("client_runtime_records", {
     tenant_slug: `eq.${tenantSlug}`,
     kind: "eq.memory",
+    status: "eq.active",
     order: "created_at.desc",
     limit: "40",
   });
   if (!result.ok) return { titles: [] as string[], text: "" };
   const terms = query.toLowerCase().split(/[^a-z0-9]+/).filter((term) => term.length > 3);
   const scored = result.records
+    .filter((row) => {
+      const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata as Record<string, unknown> : {};
+      return metadata.source !== "agent-room" || typeof metadata.roomSourceJobId === "string";
+    })
     .map((row) => {
       const title = typeof row.title === "string" ? row.title : "";
       const content = typeof row.content === "string" ? row.content : "";
