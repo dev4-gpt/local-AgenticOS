@@ -51,6 +51,37 @@ test("pruning leaves the client surface registered and removes operator route en
   }
 });
 
+test("pruning keeps the adapter host's model route and the Adapters pages (ADR-020)", async () => {
+  const root = await mkdtemp(join(tmpdir(), "veloce-client-adapter-host-"));
+  try {
+    const server = join(root, ".next", "server");
+    const routes = {
+      "/api/adapter-host/model-call/route": "app/api/adapter-host/model-call/route.js",
+      "/adapters/page": "app/adapters/page.js",
+      "/adapters/approvals/page": "app/adapters/approvals/page.js",
+      "/api/adapter-hostile/route": "app/api/adapter-hostile/route.js",
+      "/adaptersx/page": "app/adaptersx/page.js",
+      "/api/client-runtime/build-identity/route": "app/api/client-runtime/build-identity/route.js",
+      "/api/client-runtime/source-import/route": "app/api/client-runtime/source-import/route.js",
+    };
+    for (const file of Object.values(routes)) await writeRoute(server, file);
+    await writeFile(join(server, "app-paths-manifest.json"), JSON.stringify(routes));
+
+    execFileSync("node", ["scripts/prune-client-runtime-artifact.mjs", "--standalone-root", root], { cwd: process.cwd(), stdio: "pipe" });
+    const manifest = JSON.parse(await readFile(join(server, "app-paths-manifest.json"), "utf8"));
+    expect(Object.keys(manifest).sort()).toEqual([
+      "/adapters/approvals/page",
+      "/adapters/page",
+      "/api/adapter-host/model-call/route",
+      "/api/client-runtime/build-identity/route",
+      "/api/client-runtime/source-import/route",
+    ]);
+    execFileSync("node", ["scripts/verify-client-runtime-build-trace.mjs", "--standalone-root", root], { cwd: process.cwd(), stdio: "pipe" });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("artifact pruning and verification follow a custom Next dist directory", async () => {
   const root = await mkdtemp(join(tmpdir(), "veloce-client-custom-dist-"));
   const standalone = join(root, "standalone");
