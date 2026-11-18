@@ -4,11 +4,11 @@ export const clientRuntimePageRoutes = [
   "/kimi", "/glm", "/glm-code", "/grok", "/freeclaude", "/fusion", "/sakana", "/local", "/engine",
   "/agent-kanban", "/loop", "/ruflo", "/goals", "/journal", "/seo", "/opendesign", "/web-studio",
   "/flow-lab", "/integrations", "/video", "/studio", "/openmontage", "/music", "/games", "/thumbnails",
-  "/notebook", "/kanban", "/memory", "/leads", "/radar", "/guide", "/seo-guide", "/hybrid",
+  "/notebook", "/kanban", "/memory", "/leads", "/radar", "/guide", "/seo-guide", "/hybrid", "/adapters",
 ];
 
 const systemRoutes = ["/_not-found", "/_global-error", "/favicon.ico", "/healthz", "/status", "/login", "/auth/callback", "/client-unavailable"];
-const clientApiPrefixes = ["/api/capabilities", "/api/speech/transcribe", "/api/client-runtime", "/api/internal/client-runtime", "/api/client-auth"];
+const clientApiPrefixes = ["/api/capabilities", "/api/speech/transcribe", "/api/client-runtime", "/api/internal/client-runtime", "/api/client-auth", "/api/adapter-host"];
 
 export function clientRuntimeArtifactRouteAllowed(pathname) {
   if (systemRoutes.includes(pathname)) return true;
