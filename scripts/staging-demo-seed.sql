@@ -9,7 +9,7 @@ do $seed$
 declare
   t constant text := 'agentos-staging';
   a constant text := 'zz-demo-creator';
-  v_a uuid; v_b uuid;
+  v_a uuid; v_b uuid; n integer;
   scan jsonb; c text; ev text; r jsonb; promo uuid; shared uuid; canon text; owed jsonb;
 begin
   if coalesce(current_setting('zz_demo.account_a', true), '') !~ '^[0-9a-f]{8,}$'
@@ -24,8 +24,13 @@ begin
   if exists (select 1 from public.client_adapter_registry where tenant_slug = t and adapter_id = a) then raise exception 'zz-demo: already seeded'; end if;
 
   perform set_config('search_path', 'public, extensions', true);
-  insert into public.client_memberships (tenant_slug, user_id, role, status) values (t, v_a, 'admin', 'active'), (t, v_b, 'admin', 'active')
-    on conflict (tenant_slug, user_id) do nothing;
+  -- A membership that already exists is never touched; the notice says which ones this run added, so cleanup can remove only those.
+  insert into public.client_memberships (tenant_slug, user_id, role, status) values (t, v_a, 'admin', 'active') on conflict (tenant_slug, user_id) do nothing;
+  get diagnostics n = row_count;
+  raise notice 'zz-demo: account A %', case when n = 1 then 'was added as admin; set zz_demo.remove_account_a to yes when running the cleanup' else 'was already a member and is left as it is' end;
+  insert into public.client_memberships (tenant_slug, user_id, role, status) values (t, v_b, 'admin', 'active') on conflict (tenant_slug, user_id) do nothing;
+  get diagnostics n = row_count;
+  raise notice 'zz-demo: account B %', case when n = 1 then 'was added as admin; set zz_demo.remove_account_b to yes when running the cleanup' else 'was already a member and is left as it is' end;
 
   insert into public.client_adapter_registry (tenant_slug, adapter_id, display_name, contract_version, manifest_sha256, state,
       side_effect_ceiling, deletion_guarantee, budget_cap_micros, budget_period, created_by)
