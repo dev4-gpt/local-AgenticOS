@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { isValidAdapterId, isValidTenantSlug } from "./adapterContracts";
+import { isValidAdapterId, isValidTenantSlug, MAX_MEMORY_CONTENT_CHARS } from "./adapterContracts";
 import { scanMemoryContent } from "./adapterMemoryGuard";
 
 /**
@@ -29,6 +29,7 @@ const TASK_ID = /^[A-Za-z0-9._:-]{1,128}$/;
 /** The most a single task can be reported to have cost: one million dollars, in micros. Matches the database's limit. */
 const MAX_SPENT_MICROS = 1_000_000_000_000;
 const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"]);
+const FINAL_STATES = new Set(["succeeded", "failed", "cancelled"]);
 
 export type RpcResult = { ok: boolean; status: number; value: unknown };
 export type RpcFn = (functionName: string, body: Record<string, unknown>) => Promise<RpcResult>;
@@ -41,6 +42,8 @@ export interface PullerConfig {
   /** Allows plain http to 127.0.0.1, localhost or [::1]. For tests and local runs only. */
   allowInsecureLoopback?: boolean;
   pageSize?: number;
+  /** Longest proposal accepted from THIS adapter. Defaults to MAX_PROPOSAL_CHARS; never above the contract's MAX_MEMORY_CONTENT_CHARS. */
+  maxProposalChars?: number;
   maxPages?: number;
   timeoutMs?: number;
   maxResponseBytes?: number;
@@ -68,6 +71,14 @@ export interface PullReport {
   tasksSeen: number;
   /** How many tasks' reported spend was newly recorded for the budget reconcile (ADR-016). */
   spendReported: number;
+  /** Model grants closed because their task reached a final state (ADR-020). */
+  grantsClosed: number;
+  /** Closes the database did not confirm. Not a stop: the grant still ends when it expires (at most 15 minutes). */
+  grantCloseFailed: number;
+  /** Own-spend reservations settled at the adapter's reported figure (ADR-020: an adapter with costs of its own). */
+  ownSpendSettled: number;
+  /** Own-spend reservations settled in full because no usable figure came with the final state. */
+  ownSpendSettledFull: number;
   /** Reason -> how many events were skipped for it. */
   rejected: Record<string, number>;
   stopped: StopReason | null;
@@ -101,12 +112,12 @@ export function adapterRouteUrl(config: Pick<PullerConfig, "baseUrl" | "allowIns
 }
 
 /** Strict check of one `memory.propose` payload. The adapter may not add fields, and may not name another adapter. */
-export function validateProposal(data: unknown, adapterId: string): Proposal | null {
+export function validateProposal(data: unknown, adapterId: string, maxChars: number = MAX_PROPOSAL_CHARS): Proposal | null {
   if (!isObject(data)) return null;
   const keys = Object.keys(data).sort();
   if (keys.length !== PROPOSAL_KEYS.length || keys.some((key, i) => key !== PROPOSAL_KEYS[i])) return null;
   const { content, sourceUrl, adapterVersion, agentPrincipal, sourceTaskId, citationId, retrievedAt } = data;
-  if (!text(content, 1, MAX_PROPOSAL_CHARS) || !text(adapterVersion, 1, 40) || !text(citationId, 1, 128)) return null;
+  if (!text(content, 1, maxChars) || !text(adapterVersion, 1, 40) || !text(citationId, 1, 128)) return null;
   if (agentPrincipal !== adapterId || typeof sourceTaskId !== "string" || !TASK_ID.test(sourceTaskId)) return null;
   if (!text(retrievedAt, 1, 40) || !Number.isFinite(Date.parse(retrievedAt))) return null;
   if (!text(sourceUrl, 1, 2048)) return null;
@@ -156,10 +167,13 @@ export async function readCapped(response: Response, max: number): Promise<strin
 
 export async function pullAdapterEvents(config: PullerConfig, deps: PullerDeps): Promise<PullReport> {
   if (!isValidTenantSlug(config.tenantSlug) || !isValidAdapterId(config.adapterId)) throw new Error("invalid tenant or adapter id");
-  const pageSize = config.pageSize ?? EVENTS_PAGE_SIZE;
   const maxPages = config.maxPages ?? MAX_PAGES_PER_RUN;
   const timeoutMs = config.timeoutMs ?? REQUEST_TIMEOUT_MS;
   const maxBytes = config.maxResponseBytes ?? MAX_RESPONSE_BYTES;
+  const maxChars = config.maxProposalChars ?? MAX_PROPOSAL_CHARS;
+  if (!Number.isInteger(maxChars) || maxChars < 1 || maxChars > MAX_MEMORY_CONTENT_CHARS) throw new Error("invalid proposal length limit");
+  // A raised limit means bigger pages; keep a full page of worst-case events (JSON escapes can double the size) under the response cap.
+  const pageSize = config.pageSize ?? Math.max(1, Math.min(EVENTS_PAGE_SIZE, Math.floor(maxBytes / (maxChars * 2))));
   if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100 || !Number.isInteger(maxPages) || maxPages < 1) throw new Error("invalid page limits");
   eventsUrl(config, 0, pageSize); // refuse a bad address before anything is sent
   const doFetch = deps.fetchImpl ?? fetch;
@@ -168,9 +182,9 @@ export async function pullAdapterEvents(config: PullerConfig, deps: PullerDeps):
   const cursorRead = await deps.rpc("client_adapter_events_cursor_get", who);
   const start = Number(cursorRead.value);
   if (!cursorRead.ok || !isWhole(start)) {
-    return { adapterId: config.adapterId, startCursor: 0, cursor: 0, pages: 0, events: 0, created: 0, duplicates: 0, tasksSeen: 0, spendReported: 0, rejected: {}, stopped: "database_unavailable" };
+    return { adapterId: config.adapterId, startCursor: 0, cursor: 0, pages: 0, events: 0, created: 0, duplicates: 0, tasksSeen: 0, spendReported: 0, grantsClosed: 0, grantCloseFailed: 0, ownSpendSettled: 0, ownSpendSettledFull: 0, rejected: {}, stopped: "database_unavailable" };
   }
-  const report: PullReport = { adapterId: config.adapterId, startCursor: start, cursor: start, pages: 0, events: 0, created: 0, duplicates: 0, tasksSeen: 0, spendReported: 0, rejected: {}, stopped: null };
+  const report: PullReport = { adapterId: config.adapterId, startCursor: start, cursor: start, pages: 0, events: 0, created: 0, duplicates: 0, tasksSeen: 0, spendReported: 0, grantsClosed: 0, grantCloseFailed: 0, ownSpendSettled: 0, ownSpendSettledFull: 0, rejected: {}, stopped: null };
   const reject = (reason: string) => { report.rejected[reason] = (report.rejected[reason] ?? 0) + 1; };
 
   /** Moves the stored cursor to what has been handled. False means someone else moved it, and this run must stop. */
@@ -237,11 +251,45 @@ export async function pullAdapterEvents(config: PullerConfig, deps: PullerDeps):
             }
           }
         }
+        // A task that has ended settles what the host set aside for the adapter's own costs (ADR-020), at the reported figure, or
+        // in full when no usable figure came. Not reserved / already settled is normal. A database that cannot answer stops the run
+        // here, before the grant is closed, so the next run settles it.
+        if (isObject(event.data) && FINAL_STATES.has(String(event.data.state)) && TASK_ID.test(event.taskId)) {
+          const spent = "spentMicros" in event.data && isWhole(event.data.spentMicros, MAX_SPENT_MICROS) ? event.data.spentMicros : null;
+          let settledAs: unknown = null;
+          try {
+            const own = await deps.rpc("client_adapter_own_spend_settle", { ...who, p_adapter_task_id: event.taskId, p_reported_micros: spent });
+            // a database without the function yet (migration not applied) has set nothing aside, so there is nothing to settle
+            settledAs = own.ok ? own.value : own.status === 404 ? "not_reserved" : null;
+          } catch {
+            settledAs = null;
+          }
+          if (settledAs === "settled") report.ownSpendSettled += 1;
+          else if (settledAs === "settled_full") report.ownSpendSettledFull += 1;
+          else if (settledAs === "invalid") reject("bad_settle");
+          else if (settledAs !== "not_reserved" && settledAs !== "already_closed") {
+            report.stopped = "database_unavailable";
+            if (!(await save(handled))) report.stopped = "cursor_conflict";
+            return report;
+          }
+        }
+        // A task that has ended needs no more model calls: close its grant (ADR-020). Best effort; a grant expires anyway.
+        if (isObject(event.data) && FINAL_STATES.has(String(event.data.state)) && TASK_ID.test(event.taskId)) {
+          let outcome: unknown = null;
+          try {
+            const closed = await deps.rpc("client_adapter_model_grant_close", { p_tenant_slug: config.tenantSlug, p_adapter_id: config.adapterId, p_task_id: event.taskId });
+            outcome = closed.ok ? closed.value : null;
+          } catch {
+            outcome = null;
+          }
+          if (outcome === "closed") report.grantsClosed += 1;
+          else if (outcome !== "already_closed" && outcome !== "not_found") report.grantCloseFailed += 1;
+        }
         handled = event.seq;
         continue;
       }
       if (event.kind !== "memory.propose") { reject("unknown_kind"); handled = event.seq; continue; }
-      const proposal = validateProposal(event.data, config.adapterId);
+      const proposal = validateProposal(event.data, config.adapterId, maxChars);
       if (!proposal || event.taskId !== proposal.sourceTaskId) { reject("bad_proposal"); handled = event.seq; continue; }
       const sha = createHash("sha256").update(proposal.content, "utf8").digest("hex");
       const scan = scanMemoryContent(proposal.content, { sourceUrl: proposal.sourceUrl });

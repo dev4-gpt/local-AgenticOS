@@ -35,13 +35,13 @@ jobs:
       - run: npm run verify:secrets
       - run: npm run verify:security
       - run: npm run verify:capability-traits
-      - run: npm audit --audit-level=high
+      - run: node scripts/audit-gate.mjs
 
       # POLICY_GATE: license compliance, provider budget/egress, and tenant-
       # boundary static checks (scripts/verify-license-compliance.mjs,
       # scripts/verify-provider-egress-budget.mjs,
       # scripts/verify-client-runtime-tenant-boundary.mjs). verify:secrets and
-      # npm audit above already cover secret-exposure and dependency-advisory;
+      # the audit gate above already cover secret-exposure and dependency-advisory;
       # connector risk classification and customer-facing spend approval are
       # deferred to later roadmap phases. Inline steps, not a separate
       # `needs:` job -- no isolation benefit for read-only checks, and a

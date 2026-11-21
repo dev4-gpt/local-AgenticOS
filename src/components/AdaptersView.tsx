@@ -7,6 +7,7 @@ import { formatMicrosUsd, type AdapterCard } from "@/lib/adapterOverview";
 import type { ActivityGroup } from "@/lib/adapterActivity";
 import type { SpendGroup } from "@/lib/adapterSpendReconcile";
 import { describeSyncSwitch, type SyncSwitchStatus } from "@/lib/adapterSyncSwitch";
+import AdapterTasksPanel from "./AdapterTasksPanel";
 
 type SwitchData = { canChange: boolean; adapters: Array<{ adapterId: string; enabled: boolean; status: SyncSwitchStatus }> };
 
@@ -83,6 +84,7 @@ export default function AdaptersView() {
     {state === "ready" && cards.length === 0 && <Notice title="No adapters registered yet" body="Every adapter starts disabled once it is registered. None has been registered for this workspace." />}
 
     {state === "ready" && cards.length > 0 && <SyncSwitchPanel data={syncSwitch} onChanged={loadSwitch} />}
+    {state === "ready" && cards.length > 0 && <AdapterTasksPanel />}
 
     {state === "ready" && cards.length > 0 && <ul className="mt-6 grid gap-4 md:grid-cols-2" aria-label="Registered adapters">
       {cards.map((card) => <li key={card.adapterId}><Card card={card} /></li>)}

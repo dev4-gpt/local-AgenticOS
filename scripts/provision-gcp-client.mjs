@@ -5,6 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import { clientStorageLifecycleRules } from "../src/lib/clientStorageRetentionClock.mjs";
 import { normalizeCapabilityProviderAllowlist, normalizeHostAllowlist, normalizeModelPricing, normalizeResearchWorkerConfig, validateProviderActivation, validateResearchWorkerConfig } from "./client-provider-policy.mjs";
+import { resolveOptionalSurfaces } from "./lib/client-optional-surfaces.mjs";
 
 const args = process.argv.slice(2);
 const configPath = valueAfter("--config") ?? valueAfter("-c");
@@ -88,7 +89,8 @@ if (configuredStorageNamespace != null && sanitizeSlug(String(configuredStorageN
   fail("storage.namespace must equal clientSlug so Supabase and Cloud Storage namespaces cannot diverge");
 }
 const retentionDays = normalizeRetentionDays(manifest.retention?.days);
-const storageCorsOrigins = normalizeCorsOrigins(manifest.storage?.corsOrigins);
+let optionalSurface;
+try { optionalSurface = resolveOptionalSurfaces(manifest.optionalSurfaces); } catch (error) { fail(error.message); }const storageCorsOrigins = normalizeCorsOrigins(manifest.storage?.corsOrigins);
 const storageCorsFile = `/tmp/veloce-${slug}-storage-cors.json`;
 writeFileSync(storageCorsFile, JSON.stringify([{
   origin: storageCorsOrigins,
@@ -116,8 +118,8 @@ const protectedRuntimeEnv = {
   CLIENT_CREDENTIAL_INBOX_SECRET: credentialInboxSecret,
   CLIENT_REQUEST_INBOX_SECRET: requestInboxSecret,
   CLIENT_ALLOWED_USER_EMAILS: allowedUserEmails.join(","),
-  CLIENT_ALLOWED_ROUTES: "/,/provider-catalog,/credits,/context,/orchestrate,/create,/credentials,/capabilities,/deliver,/paperclip,/room,/pipeline,/claude,/openclaw,/hermes,/antigravity,/codex,/kimi,/glm,/glm-code,/grok,/freeclaude,/fusion,/sakana,/local,/engine,/agent-kanban,/loop,/ruflo,/goals,/journal,/seo,/seo-guide,/opendesign,/web-studio,/flow-lab,/integrations,/video,/studio,/openmontage,/music,/games,/thumbnails,/notebook,/kanban,/memory,/leads,/radar,/guide",
-  CLIENT_ALLOWED_API_ROUTES: "/api/capabilities,/api/speech/transcribe,/api/client-runtime/credentials,/api/client-runtime/credentials/revoke,/api/client-runtime/credits,/api/client-runtime/credits/checkout,/api/client-runtime/manifest-proposals,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-runtime/artifacts,/api/client-runtime/visual-qa,/api/client-runtime/hosted-jobs,/api/client-runtime/executions,/api/client-runtime/intent,/api/client-runtime/delivery,/api/client-runtime/memory-import,/api/client-runtime/source-import,/api/client-runtime/source-import/upload,/api/client-runtime/memory-graph,/api/client-runtime/provider-history,/api/client-runtime/telemetry,/api/client-runtime/observability,/api/client-runtime/build-identity,/api/client-runtime/records,/api/client-runtime/research,/api/client-runtime/notebooks,/api/client-runtime/notebook-sources,/api/client-runtime/budget,/api/client-runtime/skills,/api/client-runtime/learning,/api/client-runtime/ecc,/api/client-runtime/workflows,/api/client-runtime/paperclip,/api/client-runtime/room,/api/client-runtime/pipeline,/api/client-runtime/boards,/api/client-runtime/loop,/api/client-runtime/ruflo,/api/client-runtime/hermes-content-factory,/api/client-runtime/jobs,/api/internal/client-runtime/jobs,/api/internal/client-runtime/dispatch,/api/internal/client-runtime/visual-qa-dispatch,/api/internal/client-runtime/delivery,/api/client-auth/session",
+  CLIENT_ALLOWED_ROUTES: "/,/provider-catalog,/credits,/context,/orchestrate,/create,/credentials,/capabilities,/deliver,/paperclip,/room,/pipeline,/claude,/openclaw,/hermes,/antigravity,/codex,/kimi,/glm,/glm-code,/grok,/freeclaude,/fusion,/sakana,/local,/engine,/agent-kanban,/loop,/ruflo,/goals,/journal,/seo,/seo-guide,/opendesign,/web-studio,/flow-lab,/integrations,/video,/studio,/openmontage,/music,/games,/thumbnails,/notebook,/kanban,/memory,/leads,/radar,/guide" + optionalSurface.pages.map((route) => `,${route}`).join(""),
+  CLIENT_ALLOWED_API_ROUTES: "/api/capabilities,/api/speech/transcribe,/api/client-runtime/credentials,/api/client-runtime/credentials/revoke,/api/client-runtime/credits,/api/client-runtime/credits/checkout,/api/client-runtime/manifest-proposals,/api/client-runtime/credential-submissions,/api/client-runtime/requests,/api/client-runtime/artifacts,/api/client-runtime/visual-qa,/api/client-runtime/hosted-jobs,/api/client-runtime/executions,/api/client-runtime/intent,/api/client-runtime/delivery,/api/client-runtime/memory-import,/api/client-runtime/source-import,/api/client-runtime/source-import/upload,/api/client-runtime/memory-graph,/api/client-runtime/provider-history,/api/client-runtime/telemetry,/api/client-runtime/observability,/api/client-runtime/build-identity,/api/client-runtime/records,/api/client-runtime/research,/api/client-runtime/notebooks,/api/client-runtime/notebook-sources,/api/client-runtime/budget,/api/client-runtime/skills,/api/client-runtime/learning,/api/client-runtime/ecc,/api/client-runtime/workflows,/api/client-runtime/paperclip,/api/client-runtime/room,/api/client-runtime/pipeline,/api/client-runtime/boards,/api/client-runtime/loop,/api/client-runtime/ruflo,/api/client-runtime/hermes-content-factory,/api/client-runtime/jobs,/api/internal/client-runtime/jobs,/api/internal/client-runtime/dispatch,/api/internal/client-runtime/visual-qa-dispatch,/api/internal/client-runtime/delivery,/api/client-auth/session" + optionalSurface.apiRoutes.map((route) => `,${route}`).join(""),
   CLIENT_ENABLED_CAPABILITIES: enabledCapabilities.join(","),
   CLIENT_ENABLED_TRAITS: enabledTraits.join(","),
   CLIENT_INTENT_ROUTING_ENABLED: manifest.intentRoutingEnabled === false ? "0" : "1",

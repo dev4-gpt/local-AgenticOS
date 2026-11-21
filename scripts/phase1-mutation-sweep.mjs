@@ -46,6 +46,16 @@ export const TARGETS = [
   { file: "src/lib/adapterCommandPolicy.ts", kind: "ts", specs: [T("adapter-command-policy")] },
   { file: "src/app/api/client-runtime/adapter-promotions/[id]/decision/route.ts", kind: "ts", specs: [T("adapter-promotions-routes"), T("adapter-wrong-tenant-routes")] },
   { file: "src/lib/adapterOverview.ts", kind: "ts", specs: [T("adapter-overview")] },
+  // ADR-020: models through the host
+  { file: `${SQL_DIR}/supabase-client-adapter-model-grants.sql`, kind: "sql", specs: [T("adapter-model-grants-sql")] },
+  { file: "src/lib/adapterModelGrant.ts", kind: "ts", specs: [T("adapter-model-grant"), T("adapter-model-call")] },
+  { file: "src/lib/adapterModelCall.ts", kind: "ts", specs: [T("adapter-model-call")] },
+  { file: "src/lib/adapterTaskStarter.ts", kind: "ts", specs: [T("adapter-model-grant")] },
+  { file: "src/lib/adapterTaskRequest.ts", kind: "ts", specs: [T("adapter-task-request"), T("adapter-task-status")] },
+  { file: "src/lib/adapterTaskStatus.ts", kind: "ts", specs: [T("adapter-task-status")] },
+  { file: "src/app/api/client-runtime/adapter-tasks/route.ts", kind: "ts", specs: [T("adapter-task-request"), T("adapter-task-status")] },
+  { file: `${SQL_DIR}/supabase-client-adapter-spend-rollup.sql`, kind: "sql", specs: [T("adapter-spend-rollup-sql")] },
+  { file: "src/app/api/adapter-host/model-call/route.ts", kind: "ts", specs: [T("adapter-model-call")] },
 ];
 
 // Success results are not rules; removing them would only break the happy path, which proves nothing.
@@ -67,8 +77,11 @@ export const EQUIVALENT = [
   { file: "src/lib/adapterTokens.ts", line: 111, original: 'if (typeof v !== "string" || typeof iss !== "string" || typeof tenant !== "string" || typeof aud !== "string") return null;', reason: "Each of those four fields is compared for equality with an expected string afterwards, so a non-string can never verify." },
   { file: "src/lib/adapterCommandPolicy.ts", line: 77, original: "if (!closed) return false;", reason: "A closing bracket with no opening one never compiles (new RegExp throws first), and the tests already prove that a) and ) are refused." },
   { file: `${SQL_DIR}/supabase-client-adapter-proposals.sql`, line: 91, original: "raise exception 'adapter_promotion_scan_required';", reason: "Unreachable: an insert only admits a clean, flagged or blocked verdict, the scan cannot be rewritten, and a blocked one is refused by the check just above." },
-  { file: "src/lib/adapterEventsPuller.ts", line: 141, original: "if (!reader) return null;", reason: "A response with no body makes getReader throw, and the caller's catch turns that into the same null, so the result is identical." },
+  { file: "src/lib/adapterEventsPuller.ts", line: 152, original: "if (!reader) return null;", reason: "A response with no body makes getReader throw, and the caller's catch turns that into the same null, so the result is identical." },
   { file: "src/lib/adapterMemoryGuard.ts", line: 98, original: "if (!url) return null;", reason: "new URL(undefined) and new URL('') throw, and the catch returns null, so the result is identical." },
+  { file: "src/lib/adapterModelGrant.ts", line: 86, original: 'if (!value || typeof value !== "object" || Array.isArray(value)) return null;', reason: "A null payload throws on the next line's destructuring inside the try (null), and an array has no string v, iss or tenant, so the next check returns null." },
+  { file: "src/lib/adapterModelGrant.ts", line: 205, original: "if (!raw) return null;", reason: "JSON.parse(undefined) and JSON.parse('') throw, and the catch returns null, so the result is identical." },
+  { file: "src/app/api/adapter-host/model-call/route.ts", line: 24, original: "if (!pem) return null;", reason: "createPrivateKey(undefined) and createPrivateKey('') throw, and the catch returns null, so the result is identical." },
 ];
 
 const lineOf = (text, index) => text.slice(0, index).split("\n").length;

@@ -51,8 +51,18 @@ files that a test keeps identical), the puller change and its report field `spen
 targets. Existing databases need the migration applied before the next puller run (the runbook lists the order); until then the
 record function does not exist and the puller stops with "database unavailable".
 
+## Update 2026-11-05: an adapter's own spend (ADR-020)
+
+The host's task starter can now set a task's budget aside under the host's own key before `task.run` (ProofMint, for its sandbox
+and fee), and the sync job settles it from the adapter's report when the task's final state arrives
+(`client_adapter_own_spend_settle`, never above the reservation, the full reservation when no usable figure came). The comparison
+now finds that row from the adapter's own task id through the task's model grant
+(`supabase-client-adapter-spend-rollup.sql`); tasks without a grant are compared by exact id as before. Model calls
+(`<key>/m<n>`) are left out of the comparison: the host settles each at the provider's real cost, and the adapter reports only its
+own spend. Applied to staging and proven in a rolled-back transaction on 2026-11-05 (report recorded, `open`, settled, `matched`).
+
 ## Still open
 
 - Looked at in a browser on 2026-10-24 against staging (marked seed data, removed afterwards): all five statuses and their counts matched the seeded rows, the activity lines showed, no horizontal overflow at 375 px.
-- Starting adapter tasks from the host with a reservation first, so the comparison has something to compare against.
+- Starting adapter tasks from the host with a reservation first: built for adapters with costs of their own (above); no host code calls the starter yet.
 - Deciding whether a large `unreserved` or `over_reserved` count should ever pause an adapter. D3 was flag only.
