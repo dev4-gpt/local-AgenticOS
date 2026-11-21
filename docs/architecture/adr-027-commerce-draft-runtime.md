@@ -1,0 +1,29 @@
+# ADR 027: Request-bound Commerce draft transport
+
+Status: implemented/tested locally; not deployed, registered or invoked by a production host worker. Builds on ADR-005, ADR-012 and ADR-026. Owner activation/model-routing and shared client-data gates remain open.
+
+## Decision
+
+Connect the host drafting-admission seam to an optional draft-only h1 HTTP runtime. The host retains its worker credential and signing key. The runtime rejects private key objects and private PEM strings and receives only configured host public keys and request-bound short-lived capabilities, not host credentials, local account sessions or payment authority.
+
+The host token minter now accepts an optional `requestSha256`. The generic verifier checks it when a caller supplies `expectedRequestSha256`. Existing mint/verify callers without that field remain compatible. Commerce's public-key-only verifier **requires** the field, exactly one operation scope, tenant/audience, expiry and selected-source handles. The fingerprint covers the exact UTF-8 method, raw path/query and serialized body separated by newlines. It prevents a task/source/model/instruction/budget or read/cancel query from changing after signing. Token consumption is durable and single-use; a fingerprint is not a substitute for replay protection.
+
+`src/lib/commerceDraftTransport.ts` implements the host callback used by `runCommerceHostDraft`. It pins the operator-configured HTTPS base, allows HTTP only through explicit loopback test configuration, disables redirects, bounds time/body size, mints a fresh scoped token for each operation, validates returned task/tenant/model/accounting and keeps all errors opaque. Model dispatch occurs only after the existing host source/budget checks. Result retrieval uses a new `task.result` token; it does not dispatch again. Raw stored results still require fresh host source/job authority before proposal admission.
+
+The portable `commerce/src/draft-runtime.mjs` exposes authenticated h1 manifest/health/task.run/task.get/task.result/task.cancel. It has no account UI, PayPal route, publish task, model download or worker-key input. Its manifest has a draft ceiling and deletion guarantee `none`. The normal Commerce server/CLI does not start it. No existing production Veloce job/route calls the new transport automatically.
+
+The runtime's dedicated SQLite journal commits token consumption and task/request/idempotency identity before a configured model callback. Identical completed retries return stored output. Running/uncertain claims never automatically execute again, including after restart. Cancellation marks uncertainty, does not promise provider termination, and cannot release a central reservation. A late result cannot remove that hold. A journal write failure after model work keeps a durable admission that blocks another run. Stored running status is not process-liveness evidence.
+
+## Lifecycle and admission limits
+
+The separate private runtime database is not the application account database or central financial ledger. The journal refuses other application tables; the runtime refuses an in-memory journal except through an explicit test-only option. Independent replica journals do not establish global replay safety, so distributed activation remains outside this local implementation. It keeps request fingerprints/source IDs and generated result, never separately stores input source bodies or instructions, and stores neither tokens nor keys. Generated output may quote sources and is therefore content. Its result expiry is the earliest original source expiry; reads stop immediately at expiry and a privileged bounded purge redacts it after seven recovery days. Token IDs can be removed a day after their signed expiry. Replay skeletons remain. Offline local checkpoint/vacuum is supported; external backup/provider/media erasure is not guaranteed.
+
+No purge schedule, protected journal export/restore, host source-withdrawal receipts or full offboarding integration exists yet. The runtime is outside the client deletion guarantee and must remain excluded until shared lifecycle/hosted isolation gates are met. Never reset a journal/restore an old copy to force task execution. No hosted database migration, registry activation, public tunnel, paid model or key transfer is performed by this change.
+
+## Evidence and remaining work
+
+The standard host command now includes the actual token minter/verifier, host admission/budget helpers and HTTP transport tests. A fixture-model loopback run demonstrates central reservation before dispatch, request/source-bound tokens, bounded returned scope, unknown-cost hold, duplicate reservation refusal and stored result retrieval without a second model call. The worker credential is absent from all runtime bodies. Existing token/rotation tests establish backward compatibility.
+
+Standalone tests cover all six endpoints' missing/invalid/wrong-tenant refusal, body tampering and broad scopes, size and side-effect refusal, token replay after restart, persisted completed response, uncertain provider outcome, concurrent retry suppression, cancellation/late completion, journal failure, source-clock expiry, tenant-scoped purge/compaction and a complete dedicated schema inventory. This is local fixture evidence with generated in-memory test keys, not a real hosted ledger or real model/PayPal-through-runtime run.
+
+Remaining activation work: canonical fresh Phase 3 review/source resolver; verified claimed-job entry and durable host outcome/unknown-cost reconciliation; provisioning/public-key distribution and lifecycle/identity binding; operator-approved cost policy; external deletion guarantees and hosted isolation. Real sandbox checkout/capture/webhook evidence and final video/publication/submission remain separate outstanding gates. No claim that C7 or the overall hackathon goal is complete.

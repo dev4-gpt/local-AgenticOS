@@ -113,3 +113,8 @@ docs/architecture/diagrams/
 
 # adapter sync job build output (slice 2d)
 /dist/
+
+# Veloce Commerce runtime state stays outside source control.
+/commerce/data/
+/commerce/**/*.sqlite
+/commerce/**/*.sqlite-*

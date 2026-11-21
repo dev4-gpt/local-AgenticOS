@@ -1,0 +1,6 @@
+/data/
+/evidence/
+node_modules/
+.env*
+*.sqlite
+*.sqlite-*

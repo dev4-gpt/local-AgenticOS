@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "scope": "dedicated draft-runtime journal only; not the Commerce application database",
+  "tables": {
+    "commerce_runtime_tasks": {
+      "class": "derived-content-and-replay",
+      "policy": "Request fingerprint and source IDs, no separately stored request source bodies; generated result may quote source text. Result hidden at earliest original source expiry and redacted 7 days later by privileged bounded purge. Task/request skeleton remains to prevent repeat execution. No automatic schedule/export/restore."
+    },
+    "commerce_runtime_tokens": {
+      "class": "capability-replay",
+      "policy": "Single-use token jti, tenant and expiry only. Token bytes and signing keys not stored. Privileged bounded purge may remove rows 1 day after expiry; signature/expiry checks still precede every call."
+    }
+  }
+}
