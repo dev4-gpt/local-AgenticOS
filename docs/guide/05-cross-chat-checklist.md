@@ -2,7 +2,7 @@
 
 One sheet to match the three chats against. It does not replace `04-open-items-tracker.md`; it shows which chat holds each piece and what is proven versus only reported.
 
-Last written: 2026-11-02 by the Phase 2 / pitch-video chat.
+Last written: 2026-11-02 by the Phase 2 / pitch-video chat. The `founder.gtm` section was added 2026-11-21 from a relayed report; the rest of the sheet has not been refreshed since 2026-11-02 and is behind the tracker (for example Phase 2 "models through the host" and Phase 3 are now in the tracker as built or merged).
 
 ## How to use
 
@@ -16,7 +16,7 @@ Last written: 2026-11-02 by the Phase 2 / pitch-video chat.
 |---|---|---|
 | A. Phase 1/2 + pitch | Phases 0-2, Creator OS adapter, pitch video | `feat/approval-gateway`, pushed, HEAD `707d5b3` |
 | B. Phase 3 + Forge | Knowledge adapter, Forge evaluator hardening | PR 24 (`dev4-gpt/local-AgenticOS`) |
-| C. (name it) | Fill in: what is the third chat working on? | |
+| C. Go-to-market strategy research (confirm this is the third chat) | `founder.gtm` in Creator OS: staging proof, retention sweep | ContractorOS `feat/founder-gtm` (not in ContractorOS PR #2) |
 
 ## Phase 3: Knowledge adapter (chat B)
 
@@ -50,6 +50,21 @@ B's note lists what is built, tested and not done. The rows below map that to th
 | CI added (PR 1 merged with no checks) | P-5 | open | [ ] |
 | Forge `.projects` files checked for secrets | X-8, S-1 | yours (Phase 0) | [ ] |
 | Any Forge runner calls `decideCommand` before every command | QM-6b | note for whoever builds the runner | [ ] |
+
+## founder.gtm in Creator OS (chat C, reported by that chat)
+
+Added 2026-11-21 from a message relayed by the owner. Source: `reports/Veloce plan - GTM research task in Creator OS.md`, section 12. **R** = reported, not re-verified here.
+
+| Item | C reports | Verified here |
+|---|---|---|
+| Staging service `veloce-creator-os-agentos-staging` runs `creator-os:host-0e14f26` (revision `00013-wf5`), replacing `host-e98a87e` (`00012-nj8`, the rollback target); adapter 0.5.1, only the image changed | done (R) | [ ] |
+| D4 retention sweep: founder task state hidden after `CONTENT_OS_RETENTION_DAYS` (default 28), deleted 7 days later, checked at start-up and hourly | done in code, ContractorOS `0e14f26` (R) | [ ] |
+| ContractorOS `0e14f26` is on `origin/feat/founder-gtm` | verified by the chat that relayed this | [ ] |
+| ContractorOS PR #2 (`feat/content-os-combined`, head `aeae1ff`) contains the retention sweep | **no**, it does not yet | [ ] |
+| Slice 4 staging proof: run 0009 passed (27 of 27 quotes found again), cancel run 0002 passed | done (R) | [ ] |
+| Token cap stopping a run on staging | **not run** on staging; covered by a service test | [ ] |
+| Withdrawal proof (4d): a withdrawn fact leaves the task's file | **not done**, belongs with the ADR-020 host work | [ ] |
+| A host-mode run of `founder.gtm` | **not done**, belongs with the ADR-020 host work | [ ] |
 
 ## Phase 2: Creator OS adapter (chat A)
 
