@@ -8,7 +8,7 @@ This is a separately constructed draft-only h1 service for future Veloce host bi
 
 The journal must use a separate private directory (0700) and private database file (0600). It refuses symlinks and a database containing other application tables. An in-memory journal is suitable only for tests and is refused by the runtime constructor unless `allowVolatileJournalForTests: true` is explicitly supplied. The application account database is not the runtime journal. Keep both runtime state and keys out of source packages. The host signing key must remain in its existing host signing boundary; do not copy it to the runtime.
 
-The host must authorize job/source/review authority and reserve against its central ledger before minting a runtime call. A valid token proves host authorization, not that the sidecar independently read a central budget reservation. The host dispatcher owns that ordering. The runtime also enforces its configured provider/model and request budget ceiling; actual provider price/maximum enforcement and unknown costs still need the upstream policy described in ADR-020.
+The host must authorize job/source/review authority and reserve against its central ledger before minting a runtime call. A valid token proves host authorization, not that the sidecar independently read a central budget reservation. The host dispatcher owns that ordering. The runtime also enforces its configured provider/model and request budget ceiling; actual provider price/maximum enforcement and unknown costs still need the upstream policy described in ADR-026.
 
 ## Request-bound h1 calls
 

@@ -1,6 +1,6 @@
-# ADR 021: Request-bound Commerce draft transport
+# ADR 027: Request-bound Commerce draft transport
 
-Status: implemented/tested locally; not deployed, registered or invoked by a production host worker. Builds on ADR-005, ADR-012 and ADR-020. Owner activation/model-routing and shared client-data gates remain open.
+Status: implemented/tested locally; not deployed, registered or invoked by a production host worker. Builds on ADR-005, ADR-012 and ADR-026. Owner activation/model-routing and shared client-data gates remain open.
 
 ## Decision
 

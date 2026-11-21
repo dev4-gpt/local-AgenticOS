@@ -1,4 +1,4 @@
-# ADR 020: Commerce host drafting admission
+# ADR 026: Commerce host drafting admission
 
 Status: local implementation seam; activation and deployment pending. This does not amend the owner's outstanding decision about routing model execution through the host.
 
@@ -52,4 +52,4 @@ The local run uses already installed Veloce test dependencies; no new dependenci
 
 ## Local transport follow-up
 
-ADR-021 adds a concrete request-bound host HTTP transport and optional draft-only runtime with a dedicated replay/result journal. The verified host-job caller, canonical review resolver, central outcome reconciliation and activation remain open. Local transport tests use fixture billing/model callbacks; they do not close the hosted/runtime/client-data gates above.
+ADR-027 adds a concrete request-bound host HTTP transport and optional draft-only runtime with a dedicated replay/result journal. The verified host-job caller, canonical review resolver, central outcome reconciliation and activation remain open. Local transport tests use fixture billing/model callbacks; they do not close the hosted/runtime/client-data gates above.
